@@ -1,0 +1,35 @@
+version: '0.1'
+
+volumes:
+  postgres-data:
+  notecondria-data:
+networks:
+  notecondria-back:
+
+services:
+  app:
+    image: trancezero/notecondria:v0.1
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: gunicorn notecondria.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - notecondria-data:/usr/src/app/
+    ports:
+      - 8000:8000
+    depends_on:
+      - db
+    networks:
+      - notecondria-back
+  db:
+    image: postgres:15
+    volumes:
+      - postgres-data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=${POSTGRE_USERNAME}
+      - POSTGRES_PASSWORD=${POSTGRE_PASSWORD}
+      - POSTGRES_DB=${POSTGRE_HOST}
+    ports:
+      - 5433:5432
+    networks:
+      - notecondria-back

@@ -1,0 +1,75 @@
+<header class="mb-auto">
+    <!-- Nav bar use some code from: https://getbootstrap.com/docs/5.3/components/navbar/#scrolling -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <!-- Title -->
+            <a class="navbar-brand ml-3" href="#">Notecondria</a>
+            <!-- Toggle for navigation bar if there is no enough space -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarScroll"
+                aria-controls="navbarScroll" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <!-- Toggle content (navigation bar) -->
+            <div class="collapse navbar-collapse" id="navbarScroll">
+                <ul class="navbar-nav my-2 my-lg-0 navbar-nav-scroll" style="--bs-scroll-height: 100px;">
+                    <!-- Homepage -->
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="{% url '' %}">Home</a>
+                    </li>
+                    <!-- Extra link -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{%url 'about'%}">About</a>
+                    </li>
+
+                    {% if user.is_authenticated %}
+                    <!-- Extra dropdown -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="" role="button" data-bs-toggle="dropdown"
+                            aria-expanded="false">
+                            Shortcuts
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{%url 'notes:add_snippits' %}">Create recipe</a></li>
+                        </ul>
+                    </li>
+                    <!-- Extra dropdown -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="" role="button" data-bs-toggle="dropdown"
+                            aria-expanded="false">
+                            Utilities
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{%url 'gptutil:text' %}">Start conversation</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                </ul>
+
+                <!-- Search bar -->
+                <form class="d-flex ms-auto me-auto" action="{% url 'recipes:search' %}" role="search" method="post">
+                    {% csrf_token %}
+                    <input class="form-control me-2" type="text" name="query" placeholder="{% if query%}{{query}}{% else %}Enter to start serach{%endif%}">
+                    <button class="btn btn btn-outline-success" type="submit">Search</button>
+                </form>
+
+                <!-- User info -->
+                {% if user.is_authenticated %}
+                <a class="btn btn-primary ms-3" href="{% url 'members:profile' user.username %}">Setting</a>
+                <a class="btn btn-primary ms-3" href="{% url 'members:logout' %}">Logout</a>
+                {% else %}
+                <a class="btn btn-primary ms-3" href="{% url 'members:login' %}">Login</a>
+                <!-- TODO: Make this function -->
+                <a class="btn btn-primary ms-3" href="{% url 'members:register' %}">Register</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    {% if messages %}
+    {% for message in messages %}
+    <div class="{% if message.tags %}{% if message.tags == 'debug' %}alert alert-light{% elif message.tags == 'error'%}alert alert-danger{% else %}alert alert-{{message.tags}}{% endif %}{% endif %} mb-3">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+</header>
