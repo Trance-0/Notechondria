@@ -22,7 +22,9 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('',views.home,name="home"),
     path('notes/', include(('notes.urls','notes'),namespace='notes')),
+    path('creators/', include(('creators.urls','creators'),namespace='creators')),
     path('gptutils/', include(('gptutils.urls','recipes'),namespace='gptutils')),
     path('about/',views.about,name="about"),
+    path('search/',views.about,name="search"),
     path('admin/', admin.site.urls),
 ]+ static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

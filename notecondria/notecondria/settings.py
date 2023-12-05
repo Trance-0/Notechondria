@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     # apps created
     'gptutils',
     'notes',
+    'creators',
     # I will skip all the styling problem
     'bootstrap5'
 ]
@@ -87,7 +88,8 @@ DATABASES = {
         'NAME': 'postgres',
         'USER': os.getenv('POSTGRE_USERNAME'),
         'PASSWORD': os.getenv('POSTGRE_PASSWORD'),
-        'HOST': os.getenv('POSTGRE_HOST'),
+        # 'HOST': os.getenv('POSTGRE_HOST'),
+        'HOST': "localhost",
         'PORT': os.getenv('POSTGRE_PORT')
     }
 }

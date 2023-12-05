@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    {% load static %}
+
+    {% load bootstrap5 %}
+    {% bootstrap_css %}
+    {% bootstrap_javascript %}
+</head>
+
+<body>
+
+    {% include "navbar.html" %}
+
+    <main class="container mt-3">
+        <div class="row g-2">
+            <div class="col-md-8 mt-3">
+                <!-- Render basic user info -->
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h2 class="card-title">User info</h2>
+                        <h5 class="card-title">Username</h5>
+                        <p>{{userinfo.user_id.username}}</p>
+                        <h5 class="card-title">Moto</h5>
+                        <p>{{userinfo.moto}}</p>
+                        <h5 class="card-title">Social link</h5>
+                        <p><a href="{{userinfo.social_link}}">{{userinfo.social_link}}</a></p>
+                        <h5 class="card-title">Total recipes count</h5>
+                        <p>{{recipes|length}}</p>
+                        <h5 class="card-title">Total reviews count</h5>
+                        <p>{{reviews|length}}</p>
+                        {% if can_edit%}
+                        <div class="col-md-2">
+                            <a class="btn btn-primary"
+                                href="{% url 'creators:edit_profile' userinfo.user_id.username %}">Edit</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+</body>
+
+<!-- TODO: create footer here -->

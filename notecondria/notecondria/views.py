@@ -12,3 +12,7 @@ def home(request):
 def about(request):
     """render static about page"""
     return render(request,'about.html',{})
+
+def search(request):
+    """render dynamic search page, process get requests only"""
+    return render(request,'about.html',{})

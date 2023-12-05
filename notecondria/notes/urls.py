@@ -8,5 +8,7 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('', views.notes, name='notes')
+    path('', views.notes, name='notes'),
+    path('snippets/new',views.notes,name='add_snippets'),
+    path('notes/new',views.notes,name='add_notes')
 ]

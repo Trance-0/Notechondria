@@ -14,7 +14,7 @@
                 <ul class="navbar-nav my-2 my-lg-0 navbar-nav-scroll" style="--bs-scroll-height: 100px;">
                     <!-- Homepage -->
                     <li class="nav-item">
-                        <a class="nav-link active" aria-current="page" href="{% url '' %}">Home</a>
+                        <a class="nav-link active" aria-current="page" href="{% url 'home' %}">Home</a>
                     </li>
                     <!-- Extra link -->
                     <li class="nav-item">
@@ -29,7 +29,8 @@
                             Shortcuts
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{%url 'notes:add_snippits' %}">Create recipe</a></li>
+                            <li><a class="dropdown-item" href="{%url 'notes:add_snippets' %}">Add snippets</a></li>
+                            <li><a class="dropdown-item" href="{%url 'notes:add_notes' %}">Create notes</a></li>
                         </ul>
                     </li>
                     <!-- Extra dropdown -->
@@ -39,14 +40,15 @@
                             Utilities
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{%url 'gptutil:text' %}">Start conversation</a></li>
+                            <li><a class="dropdown-item" href="{%url 'gptutils:text' %}">Start conversation</a></li>
+                            <li><a class="dropdown-item" href="{%url 'gptutils:image' %}">Image conversion</a></li>
                         </ul>
                     </li>
                     {% endif %}
                 </ul>
 
                 <!-- Search bar -->
-                <form class="d-flex ms-auto me-auto" action="{% url 'recipes:search' %}" role="search" method="post">
+                <form class="d-flex ms-auto me-auto" action="{% url 'search' %}" role="search" method="post">
                     {% csrf_token %}
                     <input class="form-control me-2" type="text" name="query" placeholder="{% if query%}{{query}}{% else %}Enter to start serach{%endif%}">
                     <button class="btn btn btn-outline-success" type="submit">Search</button>
@@ -54,12 +56,12 @@
 
                 <!-- User info -->
                 {% if user.is_authenticated %}
-                <a class="btn btn-primary ms-3" href="{% url 'members:profile' user.username %}">Setting</a>
-                <a class="btn btn-primary ms-3" href="{% url 'members:logout' %}">Logout</a>
+                <a class="btn btn-primary ms-3" href="{% url 'creators:profile' user.username %}">Setting</a>
+                <a class="btn btn-primary ms-3" href="{% url 'creators:logout' %}">Logout</a>
                 {% else %}
-                <a class="btn btn-primary ms-3" href="{% url 'members:login' %}">Login</a>
+                <a class="btn btn-primary ms-3" href="{% url 'creators:login' %}">Login</a>
                 <!-- TODO: Make this function -->
-                <a class="btn btn-primary ms-3" href="{% url 'members:register' %}">Register</a>
+                <a class="btn btn-primary ms-3" href="{% url 'creators:register' %}">Register</a>
                 {% endif %}
             </div>
         </div>
