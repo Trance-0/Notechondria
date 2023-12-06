@@ -7,10 +7,29 @@ https://docs.djangoproject.com/en/4.2/topics/forms/
 from django import forms
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.validators import UnicodeUsernameValidator
+from django.contrib.auth.password_validation import validate_password,get_default_password_validators
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.core.validators import EmailValidator
 from .models import Creator
+
+class RepassValidator:
+    """validate if the user enter the password correctly"""
+    def __init__(self, repassword:str):
+        self.repass=repassword
+
+    def validate(self, password, user=None):
+        """default validate function"""
+        if not password==self.repass:
+            raise ValidationError(
+                _("This password did not match with your re-entered password.")
+            )
+
+    def get_help_text(self):
+        """return standard help_text"""
+        return _(
+            "Your password must match with the re-entered password."
+        )
 
 
 class LoginForm(forms.Form):
@@ -41,17 +60,23 @@ class RegisterForm(forms.ModelForm):
     user_name = forms.CharField(
         max_length=150, validators=[UnicodeUsernameValidator], required=True
     )
+    image=forms.ImageField(help_text="To reduce request count, please upload image after you completed all other forms to reduce error rates")
     first_name = forms.CharField(max_length=150, required=True)
     last_name = forms.CharField(max_length=150, required=True)
     email = forms.CharField(max_length=255, validators=[EmailValidator])
     password = forms.CharField(
         widget=forms.PasswordInput,
-        help_text="We do have validator if I have enough time.",
-        required=True,
+        required=True
     )
     repassword = forms.CharField(
         label="Re-enter your password", widget=forms.PasswordInput, required=True
     )
+
+    # attributes for image cropping
+    x = forms.FloatField(widget=forms.HiddenInput())
+    y = forms.FloatField(widget=forms.HiddenInput())
+    width = forms.FloatField(widget=forms.HiddenInput())
+    height = forms.FloatField(widget=forms.HiddenInput())
 
     class Meta:
         """Load meta data for multiple field to generate form
@@ -63,6 +88,11 @@ class RegisterForm(forms.ModelForm):
 
         model = Creator
         fields = [
+            "image",
+            "x",
+            "y",
+            "width",
+            "height",
             "user_name",
             "first_name",
             "last_name",
@@ -104,6 +134,11 @@ class RegisterForm(forms.ModelForm):
         if any(self.errors):
             return
         data = self.cleaned_data
+        # validate password
+        repass=RepassValidator(data["repassword"])
+        validators=get_default_password_validators()
+        validators.append(repass)
+        data["password"].validate_password(validators=validators)
         # check user name repeated
         # check if user exist
         if User.objects.filter(username=data["user_name"]).exists() and (
@@ -115,8 +150,6 @@ class RegisterForm(forms.ModelForm):
         if self.instance.pk is not None and data["password"] == "":
             return
         # password validation:
-        if len(data["password"]) < 8:
-            raise ValidationError(_("Password is too short"))
         if data["repassword"] != data["password"]:
             raise ValidationError(_("Re-entered passoword mismatch"))
         # check password match

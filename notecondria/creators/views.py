@@ -1,5 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.forms import modelformset_factory
+from PIL import Image
 
 from django.http import HttpResponse
 from django.contrib.auth.models import User
@@ -72,15 +73,26 @@ def register_request(request):
             lastname = form.cleaned_data["last_name"]
             email = form.cleaned_data["email"]
             # create user
-            member = form.save(commit=False)
+            creator = form.save(commit=False)
             user = User.objects.create(
                 username=username, first_name=firstname, last_name=lastname, email=email
             )
             user.set_password(password)
             # the user will not be save automatically
             user.save()
-            member.user_id = user
-            member.save()
+            creator.user_id = user
+            # load image 
+            x = form.cleaned_data.get('x')
+            y = form.cleaned_data.get('y')
+            w = form.cleaned_data.get('width')
+            h = form.cleaned_data.get('height')
+            # resize image based on parameters
+            image = Image.open(creator.image)
+            cropped_image = image.crop((x, y, w+x, h+y))
+            resized_image = cropped_image.resize((200, 200), Image.ANTIALIAS)
+            resized_image.save(creator.image.file.path)
+
+            creator.save()
             # redirect to a new URL:
             messages.info(request, "User registration success")
             user = authenticate(username=username, password=password)
@@ -91,10 +103,10 @@ def register_request(request):
             if form.errors:
                 for key, value in form.errors.items():
                     messages.error(request, f"{key},{value}")
-            return redirect("creator:register")
+            return render(request, "register_bootstrap.html", {"form": form})
     else:
         form = RegisterForm()
-        return render(request, "register_bootstrap.html", {"form": form})
+        return redirect("creators:register")
 
 
 def logout_request(request):
@@ -109,11 +121,11 @@ def get_profile(request, username):
     If the user is the owner of the page, also add other attributes for edits
     """
     user_instance = get_object_or_404(User, username=username)
-    member_instance = get_object_or_404(Creator, user_id=user_instance)
+    creator_instance = get_object_or_404(Creator, user_id=user_instance)
     # test for edit permission
     can_edit = False
     # placeholder value
-    if member_instance.user_id == request.user:
+    if creator_instance.user_id == request.user:
         can_edit = True
         # render forms for review
         # initalized form factories if other attributes added
@@ -122,7 +134,7 @@ def get_profile(request, username):
         "profile_bootstrap.html",
         {
             "can_edit": can_edit,
-            "userinfo": member_instance,
+            "userinfo": creator_instance,
         },
     )
 

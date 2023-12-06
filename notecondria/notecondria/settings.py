@@ -45,7 +45,8 @@ INSTALLED_APPS = [
     'notes',
     'creators',
     # I will skip all the styling problem
-    'bootstrap5'
+    'bootstrap5',
+    "django_static_jquery3"
 ]
 
 MIDDLEWARE = [
@@ -63,6 +64,7 @@ ROOT_URLCONF = 'notecondria.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        # this is the place to put global templates
         'DIRS': [os.path.join(BASE_DIR, 'notecondria/templates')],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -103,7 +105,10 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',  
+        "OPTIONS": {
+            "min_length": 9,
+        },
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
@@ -132,6 +137,11 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 STATIC_URL = '/static/'
+
+# static file in the project folder
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
 
 # Image files (jpg, jpeg)
 # reference: https://djangocentral.com/uploading-images-with-django/
