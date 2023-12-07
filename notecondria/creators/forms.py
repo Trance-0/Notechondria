@@ -60,10 +60,10 @@ class RegisterForm(forms.ModelForm):
     user_name = forms.CharField(
         max_length=150, validators=[UnicodeUsernameValidator], required=True
     )
-    image=forms.ImageField(help_text="To reduce request count, please upload image after you completed all other forms to reduce error rates")
+    image=forms.ImageField(help_text="To reduce request count, please upload image after you completed all other forms to reduce error rates",required=False)
     first_name = forms.CharField(max_length=150, required=True)
     last_name = forms.CharField(max_length=150, required=True)
-    email = forms.CharField(max_length=255, validators=[EmailValidator])
+    email = forms.CharField(max_length=255, validators=[EmailValidator], required=True)
     password = forms.CharField(
         widget=forms.PasswordInput,
         required=True
@@ -115,6 +115,11 @@ class RegisterForm(forms.ModelForm):
         # prefill instance value
         if self.instance.pk:
             self.fields["user_name"].initial = self.instance.user_id.username
+            self.fields["image"].initial = self.instance.image
+            self.fields["x"].initial = self.instance.x
+            self.fields["y"].initial = self.instance.y
+            self.fields["width"].initial = self.instance.width
+            self.fields["height"].initial = self.instance.height
             self.fields["first_name"].initial = self.instance.user_id.first_name
             self.fields["last_name"].initial = self.instance.user_id.last_name
             self.fields["email"].initial = self.instance.user_id.email
@@ -138,7 +143,7 @@ class RegisterForm(forms.ModelForm):
         repass=RepassValidator(data["repassword"])
         validators=get_default_password_validators()
         validators.append(repass)
-        data["password"].validate_password(validators=validators)
+        validate_password(data["password"],password_validators=validators)
         # check user name repeated
         # check if user exist
         if User.objects.filter(username=data["user_name"]).exists() and (

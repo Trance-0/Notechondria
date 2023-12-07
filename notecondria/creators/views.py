@@ -1,5 +1,4 @@
 from django.contrib.auth.decorators import login_required
-from django.forms import modelformset_factory
 from PIL import Image
 
 from django.http import HttpResponse
@@ -43,8 +42,7 @@ def login_request(request):
             if user is not None:
                 login(request, user)
                 return redirect("home")
-            else:
-                messages.warning(request, "User password mismatch")
+            messages.warning(request, "User password mismatch")
         else:
             messages.warning(request, "User not found")
         # redirect to a new URL:
@@ -90,8 +88,9 @@ def register_request(request):
             image = Image.open(creator.image)
             cropped_image = image.crop((x, y, w+x, h+y))
             resized_image = cropped_image.resize((200, 200), Image.ANTIALIAS)
-            resized_image.save(creator.image.file.path)
+            resized_image.save(creator.image.path)
 
+            # the creator will not be saved automatically due to false commit
             creator.save()
             # redirect to a new URL:
             messages.info(request, "User registration success")
@@ -99,14 +98,13 @@ def register_request(request):
             if user is not None:
                 login(request, user)
             return redirect("home")
-        else:
-            if form.errors:
-                for key, value in form.errors.items():
-                    messages.error(request, f"{key},{value}")
-            return render(request, "register_bootstrap.html", {"form": form})
-    else:
-        form = RegisterForm()
-        return redirect("creators:register")
+        if form.errors:
+            for key, value in form.errors.items():
+                messages.error(request, f"validation error {key},{value}")
+        return render(request, "register_bootstrap.html", {"form": form})
+    # processing GET request
+    form = RegisterForm()
+    return render(request, "register_bootstrap.html", {"form": form})
 
 
 def logout_request(request):
@@ -169,8 +167,7 @@ def edit_profile(request, username):
             # redirect to a new URL:
             messages.success(request, "edit profile success")
             return redirect("creators:profile", username=username)
-        else:
-            messages.error(request, "edit profile form invalid")
+        messages.error(request, "edit profile form invalid")
     else:
         profile_form = RegisterForm(instance=membmer)
     return render(request, "edit_profile_bootstrap.html", {"form": profile_form})

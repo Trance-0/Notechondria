@@ -14,8 +14,10 @@ please save the origional database and edit for postgre
 
 from django.conf import settings
 from django.db import models
+from django.utils.timezone import now 
+from datetime import timedelta
 from django.utils.translation import gettext_lazy as _
-
+from django.utils.crypto import get_random_string
 
 class UserGroupChoices(models.TextChoices):
     """User group choices, may be more efficient if use django internal group"""
@@ -35,7 +37,7 @@ class Creator(models.Model):
         on_delete=models.CASCADE,
         null=False,
     )
-    image = models.ImageField(upload_to='profile_pic', default='default.jpg')
+    image = models.ImageField(upload_to='profile_pic', default='profile_pic/default.jpg')
     motto = models.CharField(max_length=100, null=True)
     reputation = models.IntegerField(default=0, null=False)
     exp = models.IntegerField(default=0, null=False)
@@ -57,13 +59,23 @@ class Creator(models.Model):
         """for better list display"""
         return f"{self.user_id.get_full_name()}"
 
+class VerificationChoices(models.TextChoices):
+    """User group choices, may be more efficient if use django internal group"""
 
-class ActivationCode(models.Model):
-    """This is the activation code that will be used for create user."""
-
-    code = models.CharField(max_length=255, null=False)
-    expire_date = models.DateTimeField(null=True)
-    max_use = models.IntegerField(default=1, null=False)
+    REGISTER = "R", _("Register")
+    AUTHENTICATE = "A", _("Authenticate")
+    FUNCTION = "F", _("Function")
 
 class VerificationCode(models.Model):
-    """This is the verification code sent to email"""
+    """This is the activation code that will be used for create user."""
+
+    code = models.CharField(max_length=255, default=get_random_string(length=6),null=False)
+    expire_date = models.DateTimeField(default=now()+timedelta(minutes=10),null=False)
+    usage = models.CharField(
+        null=False,
+        max_length=1,
+        choices=VerificationChoices.choices,
+        default=VerificationChoices.AUTHENTICATE,
+    )
+    function = models.CharField(max_length=255, default="",null=False)
+    max_use = models.IntegerField(default=1, null=False)

@@ -8,7 +8,7 @@ from django.contrib import admin
 
 # Register your models here.
 
-from .models import Creator,ActivationCode
+from .models import Creator,VerificationCode
 
 
 class MemberInline(admin.TabularInline):
@@ -18,9 +18,9 @@ class MemberInline(admin.TabularInline):
 
 class ActivationCodeInline(admin.StackedInline):
     """Line per creator in admin view and one extra for convinience"""
-    model=ActivationCode
+    model=VerificationCode
     extra=1
 
 # Add model to admin view
 admin.site.register(Creator)
-admin.site.register(ActivationCode)
+admin.site.register(VerificationCode)

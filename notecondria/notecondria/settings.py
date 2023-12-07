@@ -138,10 +138,13 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-# static file in the project folder
+# static file in the project folder (global)
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
+
+# this is the location where collect static will run
+STATIC_ROOT = os.path.join(BASE_DIR, 'productionfiles/')
 
 # Image files (jpg, jpeg)
 # reference: https://djangocentral.com/uploading-images-with-django/
