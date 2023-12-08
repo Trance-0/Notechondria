@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib.auth import login, logout, authenticate
 
-from .forms import LoginForm, RegisterForm
+from .forms import LoginForm, RegisterForm, EditForm
 from .models import Creator
 
 
@@ -64,34 +64,9 @@ def register_request(request):
         form = RegisterForm(request.POST)
         # check whether it's valid:
         if form.is_valid():
-            # process the data in form.cleaned_data as required, validation in form class
-            username = form.cleaned_data["user_name"]
-            password = form.cleaned_data["password"]
-            firstname = form.cleaned_data["first_name"]
-            lastname = form.cleaned_data["last_name"]
-            email = form.cleaned_data["email"]
-            # create user
-            creator = form.save(commit=False)
-            user = User.objects.create(
-                username=username, first_name=firstname, last_name=lastname, email=email
-            )
-            user.set_password(password)
-            # the user will not be save automatically
-            user.save()
-            creator.user_id = user
-            # load image 
-            x = form.cleaned_data.get('x')
-            y = form.cleaned_data.get('y')
-            w = form.cleaned_data.get('width')
-            h = form.cleaned_data.get('height')
-            # resize image based on parameters
-            image = Image.open(creator.image)
-            cropped_image = image.crop((x, y, w+x, h+y))
-            resized_image = cropped_image.resize((200, 200), Image.ANTIALIAS)
-            resized_image.save(creator.image.path)
-
-            # the creator will not be saved automatically due to false commit
-            creator.save()
+            username=form.cleaned_data["user_name"]
+            password=form.cleaned_data["password"]
+            form.save()
             # redirect to a new URL:
             messages.info(request, "User registration success")
             user = authenticate(username=username, password=password)
@@ -144,30 +119,25 @@ def edit_profile(request, username):
     if request.user.username != username:
         messages.warning(request, "Do not change other's password")
     user_instance = get_object_or_404(User, username=username)
-    membmer = get_object_or_404(Creator, user_id=user_instance)
+    creator = get_object_or_404(Creator, user_id=user_instance)
     if request.method == "POST":
         # for lazy, we just return the register form, could be more fancy if we want to.
-        profile_form = RegisterForm(request.POST, instance=membmer)
+        profile_form = EditForm(request.POST, instance=creator)
         if profile_form.is_valid():
             # process the data in form.cleaned_data as required, validation in form class
-            password = profile_form.cleaned_data["password"]
-            user_instance.username = profile_form.cleaned_data["user_name"]
-            # django generic class function, password validation in form module
-            user_instance.set_password(password)
-            user_instance.firstname = profile_form.cleaned_data["first_name"]
-            user_instance.lastname = profile_form.cleaned_data["last_name"]
-            user_instance.email = profile_form.cleaned_data["email"]
-
-            # the user will not be save automatically
-            user_instance.save()
-            profile_form.save()
+            username=profile_form.cleaned_data["user_name"]
+            password=profile_form.cleaned_data["password"]
+            creator=profile_form.save()
             user = authenticate(username=username, password=password)
             if user is not None:
                 login(request, user)
             # redirect to a new URL:
             messages.success(request, "edit profile success")
             return redirect("creators:profile", username=username)
+        if profile_form.errors:
+            for key, value in profile_form.errors.items():
+                messages.error(request, f"validation error {key},{value}")
         messages.error(request, "edit profile form invalid")
     else:
-        profile_form = RegisterForm(instance=membmer)
+        profile_form = EditForm(instance=creator)
     return render(request, "edit_profile_bootstrap.html", {"form": profile_form})

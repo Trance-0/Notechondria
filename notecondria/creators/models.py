@@ -12,10 +12,10 @@ python manage.py runserver
 please save the origional database and edit for postgre
 """
 
+from datetime import timedelta
 from django.conf import settings
 from django.db import models
-from django.utils.timezone import now 
-from datetime import timedelta
+from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from django.utils.crypto import get_random_string
 
