@@ -37,13 +37,14 @@ Expected:
 
 - [ ] Finish creater APP
   - [ ] Add validation code section, we need to process register and edit form differently.
-  - [ ] Activation code validation
   - [ ] Authentication for note and snippet create
   - [ ] Credit deduction for use of AI
 
-  - [ ] Sign up function and activation code
 
 ## Done
 
+- [x] Activation code validation
+- [x] Sign up function and activation code
+- [x] Build avatar uploading and form validation function
 - [x] Build basic framework for the APP
 - [x] Create login function

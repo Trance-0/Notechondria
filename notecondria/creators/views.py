@@ -61,7 +61,7 @@ def register_request(request):
     """
     if request.method == "POST":
         # create a form instance and populate it with data from the request:
-        form = RegisterForm(request.POST)
+        form = RegisterForm(request.POST,request.FILES)
         # check whether it's valid:
         if form.is_valid():
             username=form.cleaned_data["user_name"]
@@ -122,7 +122,7 @@ def edit_profile(request, username):
     creator = get_object_or_404(Creator, user_id=user_instance)
     if request.method == "POST":
         # for lazy, we just return the register form, could be more fancy if we want to.
-        profile_form = EditForm(request.POST, instance=creator)
+        profile_form = EditForm(request.POST,request.FILES, instance=creator)
         if profile_form.is_valid():
             # process the data in form.cleaned_data as required, validation in form class
             username=profile_form.cleaned_data["user_name"]

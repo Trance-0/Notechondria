@@ -77,5 +77,5 @@ class VerificationCode(models.Model):
         choices=VerificationChoices.choices,
         default=VerificationChoices.AUTHENTICATE,
     )
-    function = models.CharField(max_length=255, default="",null=False)
+    function = models.CharField(max_length=255, default="",null=True)
     max_use = models.IntegerField(default=1, null=False)

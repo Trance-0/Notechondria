@@ -32,7 +32,7 @@
                 <!-- Stylize Login form, since we are in member directory, we don't need to specify members namespace -->
                 <div class="card">
                     <div class="card-body">
-                        <form action="{% url 'creators:edit_profile' form.instance.user_id.username  %}" method="post" id="formUpload">
+                        <form action="{% url 'creators:edit_profile' form.instance.user_id.username  %}" enctype="multipart/form-data"  method="post" id="formUpload">
                             {% csrf_token %}
                             <h3>Edit profile</h3>
                             <!-- Django overkill form -->
