@@ -44,7 +44,11 @@ class Creator(models.Model):
     social_link = models.URLField(max_length=255, null=True)
     credit_remains = models.IntegerField(default=0, null=False)
 
-    # last_login and date_joined automatically created by user_id
+    # last_login and date_joined automatically created by user_id, for these field, create one time value to timezone.now()
+    # The field is only automatically updated when calling Model.save().
+    last_login=models.DateTimeField(auto_now=True,null=False)
+    # Automatically set the field to now when the object is first created. 
+    date_joined=models.DateTimeField(auto_now_add=True,null=False)
 
     user_group = models.CharField(
         null=False,

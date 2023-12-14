@@ -1,6 +1,9 @@
+import random
 from django.db import models
+from django.utils.timezone import now
 from creators.models import Creator
 from django.utils.translation import gettext_lazy as _
+
 
 
 # Create your models here.
@@ -33,9 +36,12 @@ class Conversation(models.Model):
         on_delete=models.CASCADE,
         null=False,
     )
+    sharing_id = models.CharField(max_length=36,unique=True,null=False)
     title = models.CharField(max_length=100, null=True)
 
-    # last_login and date_joined automatically created by user_id
+    # last_use and date_created automatically created, for these field, create one time value to timezone.now()
+    date_created=models.DateTimeField(auto_now_add=True,null=False)
+    last_use=models.DateTimeField(auto_now=True,null=False)
 
     # model setting parameter
     # reference:https://platform.openai.com/docs/api-reference/chat/create
@@ -66,7 +72,10 @@ class Conversation(models.Model):
 
     def __str__(self):
         """for better list display"""
-        return f"{self.title} created by {self.creator.user_id.username}"
+        return f"{self.title} created by {self.creator_id.user_id.username}"
+    
+    
+        
     
     # def created(self)->datetime:
     #     MessageRoleChoices.objects.filter().orderby()
@@ -91,7 +100,8 @@ class Message(models.Model):
     conversation_id = models.ForeignKey(
         Conversation, on_delete=models.CASCADE, null=False
     )
-    created = models.DateTimeField(auto_now=True, null=False)
+    # for created, create one time value to timezone.now()
+    created = models.DateTimeField(auto_now_add=True,null=False)
     role = models.CharField(
         null=False,
         max_length=9,
@@ -101,3 +111,4 @@ class Message(models.Model):
     image = models.ImageField(upload_to="message_pic", null=True)
     file = models.FileField(upload_to="message_file", null=True)
     text = models.CharField(max_length=2048, null=True)
+

@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'creators',
     # I will skip all the styling problem
     'bootstrap5',
+    'django_bootstrap_icons',
     "django_static_jquery3"
 ]
 

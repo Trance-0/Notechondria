@@ -7,7 +7,9 @@ This file maps the url requrest from member app and share it with notecondria.ur
 from django.urls import path
 from . import views
 urlpatterns = [
-    path('', views.gptutils, name='gptutils'),
-    path('text/',views.text,name='text'),
-    path('image/',views.image,name='image')
+    path('', views.gptutils, name='main'),
+    path('send/<int:pk>',views.send,name='send'),
+    path('chat/<int:pk>',views.get_chat,name='get_chat'),
+    path('create/',views.create_chat,name='create_chat'),
+    path('one/',views.one_chat,name='one')
 ]

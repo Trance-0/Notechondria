@@ -1,6 +1,7 @@
-from django.contrib.auth.decorators import login_required
+
 from PIL import Image
 
+from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.contrib.auth.models import User
 from django.contrib import messages
@@ -41,6 +42,9 @@ def login_request(request):
             user = authenticate(username=username, password=password)
             if user is not None:
                 login(request, user)
+                # set last login 
+                creator=Creator.objects.get(user_id=user)
+                creator.save()
                 return redirect("home")
             messages.warning(request, "User password mismatch")
         else:
@@ -48,9 +52,8 @@ def login_request(request):
         # redirect to a new URL:
         return redirect("home")
     # if a GET (or any other method) we'll create a blank form
-    else:
-        form = LoginForm()
-        return render(request, "login_bootstrap.html", {"form": form})
+    form = LoginForm()
+    return render(request, "login_bootstrap.html", {"form": form})
 
 
 def register_request(request):
