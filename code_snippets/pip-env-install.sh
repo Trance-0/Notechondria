@@ -1,1 +1,1 @@
-pip install -r .../notecondria/requirements.txt
+pip install -r .../notechondria/requirements.txt

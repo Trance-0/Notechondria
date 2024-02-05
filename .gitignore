@@ -1,5 +1,5 @@
 # For development offline
-notecondria/static/localization
+notechondria/static/localization
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

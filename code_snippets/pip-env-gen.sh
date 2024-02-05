@@ -1,1 +1,1 @@
-pip freeze > requirements.txt
+pip freeze > ../notechondria/requirements.txt

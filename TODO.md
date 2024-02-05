@@ -1,4 +1,4 @@
-# Notecondria
+# Notechondria
 May your note be your power for success.
 
 ## Esimate time
