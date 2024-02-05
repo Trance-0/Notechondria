@@ -1,1 +1,0 @@
-conda create --name python-web python=3.9.18 --file environment.yml

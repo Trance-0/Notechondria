@@ -1,4 +1,9 @@
 # Notecondria
+
+This is the last app I developed in django fullstack, this is the first, and the last complete project that I will commit to and maintain for the rest of my life.
+
+[![wakatime](https://wakatime.com/badge/user/53e0bfc9-ae89-4cb3-99fe-c6cbc6359857/project/018c2de2-1078-40a7-a3b2-e47582609f27.svg)](https://wakatime.com/badge/user/53e0bfc9-ae89-4cb3-99fe-c6cbc6359857/project/018c2de2-1078-40a7-a3b2-e47582609f27)
+
 May your note be your power for success.
 
 This page is updated in 2023/12/4

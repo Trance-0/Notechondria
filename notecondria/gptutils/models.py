@@ -5,7 +5,6 @@ from creators.models import Creator
 from django.utils.translation import gettext_lazy as _
 
 
-
 # Create your models here.
 class GPTModelChoices(models.TextChoices):
     """User group choices, may be more efficient if use django internal group"""
@@ -73,9 +72,6 @@ class Conversation(models.Model):
     def __str__(self):
         """for better list display"""
         return f"{self.title} created by {self.creator_id.user_id.username}"
-    
-    
-        
     
     # def created(self)->datetime:
     #     MessageRoleChoices.objects.filter().orderby()
