@@ -6,13 +6,7 @@
 
     {% load static %}
 
-    {% load bootstrap5 %}
-    {% bootstrap_css %}
-    {% bootstrap_javascript %}
-
-    <!-- jquery -->
-    <script src="{% static 'jquery/jquery.js' %}"></script>
-    <script src="{% static 'jquery/plugins/jquery.cookie.js' %}"></script>
+    {% include "resource_header.html" %}
 
     <!-- image cropper -->
     <script src="{% static 'js/cropper/cropper.js' %}"></script>

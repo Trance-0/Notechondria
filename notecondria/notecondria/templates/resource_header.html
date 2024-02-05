@@ -1,0 +1,23 @@
+{% load static %}
+
+{% if is_offline %}
+
+<!-- Bootstrap -->
+<link href="{% static 'localization/bootstrap-5.3.2-dist/css/bootstrap.min.css' %}" rel="stylesheet">  
+<script src="{% static 'localization/bootstrap-5.3.2-dist/js/bootstrap.bundle.min.js' %}"></script>  
+
+
+{% else %}
+
+{% load bootstrap5 %}
+{% bootstrap_css %}
+{% bootstrap_javascript %}
+
+{% endif %}
+
+<!-- jquery -->
+<script src="{% static 'jquery/jquery.js' %}"></script>
+<script src="{% static 'jquery/plugins/jquery.cookie.js' %}"></script>
+
+
+<!-- <script type="text/javascript" src="{% static 'localization/jquery/jquery-3.7.1.min.js'%}"></script> -->

@@ -20,7 +20,10 @@ def gptutils(request):
     """ render main chat page"""
     owner_id = Creator.objects.get(user_id=request.user)
     # get list of conversations
-    return render(request, "conversation.html", {"user":owner_id })
+    conversations=Conversation.objects.filter(creator_id=owner_id)
+    return render(request, "conversation.html", context={"user":owner_id,
+                                                         "conversation_list":conversations
+                                                         })
 
 @login_required
 def send(request,pk):
