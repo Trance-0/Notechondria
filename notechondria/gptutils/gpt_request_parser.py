@@ -6,6 +6,8 @@ import os
 import base64
 import requests
 
+from .models import Conversation,Message
+
 # OpenAI API Key
 api_key = os.getenv("OPENAI_API_KEY")
 
@@ -49,4 +51,33 @@ def gpt4v_request(image_path: str, prompt: str, max_tokens: int = 300):
     )
 
     return response.json()
+
+def generate_message(conversation:Conversation):
+    """ Void function that generate the AI response given the conversation
+    """
+
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
+
+    message_list=Message.objects.filter(conversation_id=conversation).order_by("created")[-conversation.memory_size:]
+    payload = {
+        "model": "gpt-4-vision-preview",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    i.to_json() for i in message_list
+                ],
+            }
+        ],
+        "max_tokens": conversation.max_token,
+    }
+
+    response = requests.post(
+        "https://api.openai.com/v1/chat/completions",
+        headers=headers,
+        json=payload,
+    )
+
+    return response.json()
+
 

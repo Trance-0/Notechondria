@@ -8,8 +8,7 @@ from django.urls import path
 from . import views
 urlpatterns = [
     path('', views.gptutils, name='main'),
-    path('send/<int:pk>',views.send,name='send'),
-    path('chat/<int:pk>',views.get_chat,name='get_chat'),
-    path('create/',views.create_chat,name='create_chat'),
-    path('one/',views.one_chat,name='one')
+    path('chat/<int:conv_pk>',views.get_chat,name='get_chat'),
+    path('chat/delete/<int:conv_pk>',views.delete_chat,name='delete_chat'),
+    path('chat/create',views.create_chat,name='create_chat')
 ]

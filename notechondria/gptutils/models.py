@@ -1,3 +1,4 @@
+import base64
 import random
 from django.db import models
 from django.utils.timezone import now
@@ -10,7 +11,9 @@ class GPTModelChoices(models.TextChoices):
     """User group choices, may be more efficient if use django internal group"""
 
     # gpt4-v
-    GPT4_V = "gpt-4-vision-preview", _("GPT 4 Vision")
+    GPT4_V = "gpt-4-vision-preview", _("GPT 4 Vision with auto resolution")
+    GPT4_VH = "gpt-4-vision-preview:high", _("GPT 4 Vision with high resolution")
+    GPT4_VL = "gpt-4-vision-preview:low", _("GPT 4 Vision with low resolution")
     # gpt4-chat
     GPT4_1106 = "gpt-4-1106-preview", _("GPT 4 Nov preview")
     GPT4_32K = "gpt-4-32k", _("GPT 4 32K model")
@@ -51,23 +54,17 @@ class Conversation(models.Model):
         default=GPTModelChoices.GPT4_1106,
     )
     # [0,1] the larger the more uncertain
-    temperature = (
-        models.DecimalField(default=0.9, max_length=3, max_digits=2, null=False),
-    )
+    temperature = models.DecimalField(default=0.9, max_length=3, max_digits=2, null=False)
     memory_size = models.IntegerField(default=3, null=False)
     # The maximum number of tokens to generate in the chat completion.
     max_token = models.IntegerField(default=500, null=False)
     timeout = models.IntegerField(default=600, null=False)
     # Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency
     # in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
-    frequency_penalty = (
-        models.DecimalField(default=0.9, max_length=3, max_digits=2, null=False),
-    )
+    frequency_penalty = models.DecimalField(default=0.9, max_length=3, max_digits=2, null=False)
     # Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear
     # in the text so far, increasing the model's likelihood to talk about new topics.
-    presence_penalty = (
-        models.DecimalField(default=0.9, max_length=3, max_digits=2, null=False),
-    )
+    presence_penalty = models.DecimalField(default=0.9, max_length=3, max_digits=2, null=False)
 
     def __str__(self):
         """for better list display"""
@@ -105,6 +102,24 @@ class Message(models.Model):
         default=MessageRoleChoices.USER,
     )
     image = models.ImageField(upload_to="message_pic", null=True)
+    # file field is currently unsupported
     file = models.FileField(upload_to="message_file", null=True)
     text = models.CharField(max_length=2048, null=True)
 
+    def to_json(self):
+        def encode_image(image_path):
+            """Function to encode the image"""
+            with open(image_path, "rb") as image_file:
+                return base64.b64encode(image_file.read()).decode("utf-8")
+        message={
+                "role": self.role,
+                "content": [
+                    ]}
+        if self.text:
+            message["content"].append({"type": "text", "text": self.text})
+        if self.image:
+            base64_image = encode_image(self.image)
+            message["content"].append({"type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},"detail": "auto" if len(self.conversation_id.model.split(":"))==1 else self.conversation_id.model.split(":")[1] })
+        # if self.file:
+        return message
