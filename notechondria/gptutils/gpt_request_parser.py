@@ -78,6 +78,6 @@ def generate_message(conversation:Conversation):
         json=payload,
     )
 
-    return response.json()
+    print(response.json())
 
 

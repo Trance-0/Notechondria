@@ -6,7 +6,7 @@ from django.contrib import messages
 from creators.models import Creator
 from .forms import ConversationForm,MessageForm
 from .models import Conversation,Message
-from gpt_request_parser import generate_message
+from .gpt_request_parser import generate_message
 
 # Create your views here.
 
@@ -62,6 +62,17 @@ def get_chat(request,conv_pk):
 
 @login_required
 def create_chat(request):
+    """ send text request """
+    if request.method=="POST":
+        chat_form=ConversationForm(request.POST, request.FILES)
+        chat_instance=chat_form.save(commit=False)
+        chat_instance.sharing_id=generate_chat_id()
+        chat_instance.save()
+        return redirect("gptutils:get_chat",conv_pk=chat_instance)
+    return redirect("gptutils:main")
+
+@login_required
+def delete_chat(request):
     """ send text request """
     if request.method=="POST":
         chat_form=ConversationForm(request.POST, request.FILES)

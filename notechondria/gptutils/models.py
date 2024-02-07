@@ -54,17 +54,17 @@ class Conversation(models.Model):
         default=GPTModelChoices.GPT4_1106,
     )
     # [0,1] the larger the more uncertain
-    temperature = models.DecimalField(default=0.9, max_length=3, max_digits=2, null=False)
+    temperature = models.DecimalField(default=0.9, max_length=3, max_digits=2, decimal_places=2, null=False)
     memory_size = models.IntegerField(default=3, null=False)
     # The maximum number of tokens to generate in the chat completion.
     max_token = models.IntegerField(default=500, null=False)
     timeout = models.IntegerField(default=600, null=False)
     # Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency
     # in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
-    frequency_penalty = models.DecimalField(default=0.9, max_length=3, max_digits=2, null=False)
+    frequency_penalty = models.DecimalField(default=0.9, max_length=3, max_digits=2, decimal_places=2, null=False)
     # Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear
     # in the text so far, increasing the model's likelihood to talk about new topics.
-    presence_penalty = models.DecimalField(default=0.9, max_length=3, max_digits=2, null=False)
+    presence_penalty = models.DecimalField(default=0.9, max_length=3, max_digits=2, decimal_places=2, null=False)
 
     def __str__(self):
         """for better list display"""
