@@ -62,7 +62,7 @@ class ResizedImageValidator:
                 },
             )
 
-    def clean(self, image: Image, resize=(200, 200)) -> Image:
+    def clean(self, image: Image, resize=(500,500)) -> Image:
         """return cleanned image"""
         cropped_image = image.crop(
             (self.x, self.y, self.width + self.x, self.height + self.y)
@@ -84,7 +84,7 @@ class LoginForm(forms.Form):
         required=True,
     )
     password = forms.CharField(
-        label="Password", widget=forms.PasswordInput, required=True
+        label="Password", widget=forms.PasswordInput(), required=True
     )
 
     def __init__(self, *args, **kwargs):
@@ -138,9 +138,9 @@ class RegisterForm(forms.ModelForm):
     first_name = forms.CharField(max_length=150, required=True)
     last_name = forms.CharField(max_length=150, required=True)
     email = forms.CharField(max_length=255, validators=[EmailValidator], required=True)
-    password = forms.CharField(widget=forms.PasswordInput, required=True)
+    password = forms.CharField(widget=forms.PasswordInput(), required=True)
     repassword = forms.CharField(
-        label="Re-enter your password", widget=forms.PasswordInput, required=True
+        label="Re-enter your password", widget=forms.PasswordInput(), required=True
     )
 
     # attributes for image cropping
@@ -154,7 +154,7 @@ class RegisterForm(forms.ModelForm):
 
         if you are lazy enough, you can also load meta,
         reference: https://docs.djangoproject.com/en/4.2/ref/forms/fields/
-        (serach for 'Meta')
+        (search for 'Meta')
         """
 
         model = Creator
@@ -275,9 +275,9 @@ class EditForm(forms.ModelForm):
     first_name = forms.CharField(max_length=150, required=False)
     last_name = forms.CharField(max_length=150, required=False)
     email = forms.CharField(max_length=255, validators=[EmailValidator], required=False)
-    password = forms.CharField(widget=forms.PasswordInput, required=False)
+    password = forms.CharField(label="New password", widget=forms.PasswordInput(), required=False)
     repassword = forms.CharField(
-        label="Re-enter your password", widget=forms.PasswordInput, required=False
+        label="Re-enter your password", widget=forms.PasswordInput(), required=False
     )
 
     # attributes for image cropping
@@ -353,7 +353,7 @@ class EditForm(forms.ModelForm):
         validate_user_name(data["user_name"], user=self.instance)
 
     def save(self, commit: bool = ...) -> Creator:
-        creator_instance = super(EditForm, self).save()
+        creator_instance = super(EditForm, self).save(commit=False)
         user_instance = creator_instance.user_id
         password = self.cleaned_data["password"]
         # skip empty fields for saving user instance
@@ -372,8 +372,8 @@ class EditForm(forms.ModelForm):
         user_instance.save()
         # skip empty fields for saving creator instance
 
-        # save image first
-        creator_instance.save()
+        # save image first for path
+        creator_instance = super(EditForm, self).save(commit=commit)
 
         if self.cleaned_data.get("new_image"):
             # load image
@@ -388,7 +388,7 @@ class EditForm(forms.ModelForm):
             resized_image = img_validator.clean(
                 Image.open(self.cleaned_data.get("new_image"))
             )
-            # overwrite origional image
+            # overwrite original image
             resized_image.save(creator_instance.image.path)
 
         return creator_instance

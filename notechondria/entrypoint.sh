@@ -1,4 +1,5 @@
 #!/bin/bash
+# if the script cannot be found, change the file from CRLF to LF
 
 if [ "$DATABASE" = "postgres" ]
 then

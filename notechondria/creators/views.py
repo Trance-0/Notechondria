@@ -127,11 +127,12 @@ def edit_profile(request, username):
         # for lazy, we just return the register form, could be more fancy if we want to.
         profile_form = EditForm(request.POST,request.FILES, instance=creator)
         if profile_form.is_valid():
+            # false save
+            creator=profile_form.save(commit=True)
             # process the data in form.cleaned_data as required, validation in form class
-            username=profile_form.cleaned_data["user_name"]
-            password=profile_form.cleaned_data["password"]
-            creator=profile_form.save()
-            user = authenticate(username=username, password=password)
+            new_username=profile_form.cleaned_data["user_name"]
+            new_password=profile_form.cleaned_data["password"]
+            user = authenticate(username=new_username, password=new_password)
             if user is not None:
                 login(request, user)
             # redirect to a new URL:

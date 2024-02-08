@@ -4,64 +4,39 @@
 <head>
     <title>Notechondria About</title>
     <meta charset="UTF-8">
-    
+
     <!-- only load icon when we have to... -->
     {% load bootstrap_icons %}
-    
+
     {% include "resource_header.html" %}
-    
+
 </head>
 
-<body>
+<body style="height: 100vh">
 
     {% include "navbar.html" %}
 
-    <div class="modal fade" id="createChatModal" tabindex="-1" aria-labelledby="createChatModalLabel"
+    <div class="modal fade" id="createChatModalS" tabindex="-1" aria-labelledby="createChatModalSLabel"
         aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <form action="{% url 'gptutils:create_chat' %}" method="post">
                     <!-- Use jQuery to hide advanced options -->
                     <div class="modal-header">
-                        <h5 class="modal-title" id="createAdvancedChatModalLabel">Create A New Chat</h5>
+                        <h5 class="modal-title" id="createChatModalSLabel">Create A New Chat [simple config]</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        {% if create_form %}
+                        {% if create_form_simple %}
                         {% csrf_token %}
                         <!-- Django overkill form -->
                         <!-- Include the hidden fields -->
-                        {% for hidden in create_form.hidden_fields %}
+                        {% for hidden in create_form_simple.hidden_fields %}
                         {{ hidden }}
                         {% endfor %}
                         <!-- Include the visible fields  -->
-                        {% for field in create_form.visible_fields %}
-                        {% if field.label == 'New image'%}
-                        <img src="{{form.instance.image.url }}" class="card-img-top" style="width:100%; height: auto;"
-                            alt="profile picture">
-
-                        <div class="mt-3">
-                            <!-- render errors -->
-                            {%if field.errors%}
-                            <div class="alert alert-danger">
-                                {% for error in field.errors %}
-                                {{ error }}
-                                {% endfor %}
-                            </div>
-                            {% endif %}
-                            <!-- render label and fields -->
-                            <label for="{{ field.id_for_label }}" class="form-label">
-                                {{ field.label }}
-                            </label>
-                            {{ field }}
-                            <!-- render help text -->
-                            {% if field.help_text %}
-                            <div class="form-text">{{ field.help_text|safe }}</div>
-                            {% endif %}
-                        </div>
-
-                        {% else %}
-                        <div class="mt-3">
+                        {% for field in create_form_simple.visible_fields %}
+                        <div class="mb-3">
                             {%if field.errors%}
                             <div class="alert alert-danger">
                                 {% for error in field.errors %}
@@ -77,13 +52,68 @@
                             <div class="form-text">{{ field.help_text|safe }}</div>
                             {% endif %}
                         </div>
-
-                        {% endif %}
                         {% endfor %}
+                        {% else %}
+                        <div class="alert alert-success" role="alert">
+                            Simple form not received from server
+                        </div>
                         {% endif %}
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="button" class="btn btn-primary">Create Chat</button>
+                            <button type="submit" class="btn btn-primary">Create Chat</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="createChatModalL" tabindex="-1" aria-labelledby="createChatModalLLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form action="{% url 'gptutils:create_chat' %}" method="post">
+                    <!-- Use jQuery to hide advanced options -->
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="createAdvancedChatModalLabel">Create A New Chat [complex config]
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        {% if create_form_advanced %}
+                        {% csrf_token %}
+                        <!-- Django overkill form -->
+                        <!-- Include the hidden fields -->
+                        {% for hidden in create_form_advanced.hidden_fields %}
+                        {{ hidden }}
+                        {% endfor %}
+                        <!-- Include the visible fields  -->
+                        {% for field in create_form_advanced.visible_fields %}
+                        <div class="mb-3">
+                            {%if field.errors%}
+                            <div class="alert alert-danger">
+                                {% for error in field.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <label for="{{ field.id_for_label }}" class="form-label">
+                                {{ field.label }}
+                            </label>
+                            {{ field }}
+                            {% if field.help_text %}
+                            <div class="form-text">{{ field.help_text|safe }}</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <div class="alert alert-success" role="alert">
+                            Advanced form not received from server
+                        </div>
+                        {% endif %}
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Create Chat</button>
                         </div>
                     </div>
                 </form>
@@ -94,82 +124,78 @@
     <main class="container-fluid mt-3">
         <div class="row g-2">
             <aside class="col-md-3 blog-sidebar mt-3">
-                <div class="card">
+                <div class="h-100 card">
                     <div class="card-header d-flex justify-content-end">
-                        <a class="link-dark" data-bs-toggle="modal" href="#createChatModal" role="button">
+                        <a class="link-dark" data-bs-toggle="modal" href="#createChatModalS" role="button">
                             {% bs_icon 'plus-circle' size='2em' %}
                         </a>
                     </div>
                     <div class="card-body">
                         <div class="d-flex align-items-stretch">
-                            <ul class="list-group list-group-flush" style="height: 100%; overflow-y: scroll;">
-                                <li class="list-group-item">An item</li>
-                                <li class="list-group-item">A second item</li>
-                                <li class="list-group-item">A third item</li>
-                                <li class="list-group-item">A fourth item</li>
-                                <li class="list-group-item">And a fifth one</li>
-                                <li class="list-group-item">An item</li>
-                                <li class="list-group-item">A second item</li>
-                                <li class="list-group-item">A third item</li>
-                                <li class="list-group-item">A fourth item</li>
-                                <li class="list-group-item">And a fifth one</li>
-                                <li class="list-group-item">An item</li>
-                                <li class="list-group-item">A second item</li>
-                                <li class="list-group-item">A third item</li>
-                                <li class="list-group-item">A fourth item</li>
-                                <li class="list-group-item">And a fifth one</li>
-                                <li class="list-group-item">An item</li>
-                                <li class="list-group-item">A second item</li>
-                                <li class="list-group-item">A third item</li>
-                                <li class="list-group-item">A fourth item</li>
-                                <li class="list-group-item">And a fifth one</li>
-                                <li class="list-group-item">An item</li>
-                                <li class="list-group-item">A second item</li>
-                                <li class="list-group-item">A third item</li>
-                                <li class="list-group-item">A fourth item</li>
-                                <li class="list-group-item">And a fifth one</li>
-                                <li class="list-group-item">An item</li>
-                                <li class="list-group-item">A second item</li>
-                                <li class="list-group-item">A third item</li>
-                                <li class="list-group-item">A fourth item</li>
-                                <li class="list-group-item">And a fifth one</li>
-                                <li class="list-group-item">An item</li>
-                                <li class="list-group-item">A second item</li>
-                                <li class="list-group-item">A third item</li>
-                                <li class="list-group-item">A fourth item</li>
-                                <li class="list-group-item">And a fifth one</li>
-                                <li class="list-group-item">An item</li>
-                                <li class="list-group-item">A second item</li>
-                                <li class="list-group-item">A third item</li>
-                                <li class="list-group-item">A fourth item</li>
-                                <li class="list-group-item">And a fifth one</li>
-                                <li class="list-group-item">An item</li>
-                                <li class="list-group-item">A second item</li>
-                                <li class="list-group-item">A third item</li>
-                                <li class="list-group-item">A fourth item</li>
-                                <li class="list-group-item">And a fifth one</li>
+                            <ul class="list-group list-group-flush" style="overflow-y: scroll;">
+                                {% if conversations_list %}
+                                {% for conv in conversations_list %}
+                                <li class="list-group-item"><a class="btn btn-light"
+                                        href="{% url 'gptutils:get_chat' conv.pk %}">{{ conv.title }}</a></li>
+                                {% endfor %}
+                                {% else %}
+                                <li class="list-group-item">Create your first conversation by clicking the icon above.
+                                </li>
+                                {% endif %}
                             </ul>
                         </div>
                     </div>
                 </div>
             </aside>
             <div class="col mt-3">
-                <div class="h-100 card">
+                <div class="card" style="height: 85vh;">
                     <div class="card-body">
                         <!-- Render conversation info -->
                         {%if messages_list%}
                         {%else%}
                         <div class="h-100 position-relative">
                             <div class="position-absolute top-50 start-50 translate-middle">
-                                <a class="link-dark" data-bs-toggle="modal" href="#createChatModal" role="button">Create
-                                    a
-                                    chat with advanced configuration</a>
+                                <a class="link-dark" data-bs-toggle="modal" href="#createChatModalL" role="button">
+                                    Create a chat with advanced configuration
+                                </a>
                             </div>
                         </div>
                         {%endif%}
                     </div>
                     <div class="card-footer">
-
+                        {% if message_form %}
+                        <!-- inline form reference: https://getbootstrap.com/docs/5.3/forms/layout/#inline-forms -->
+                        <form class="row g-3 align-items-center justify-content-end"
+                            action="{% url 'gptutils:create_chat' %}" method="post">
+                            {% csrf_token %}
+                            <!-- Django overkill form -->
+                            <!-- Include the hidden fields -->
+                            {% for hidden in message_form.hidden_fields %}
+                            {{ hidden }}
+                            {% endfor %}
+                            <!-- Include the visible fields  -->
+                            {% for field in message_form.visible_fields %}
+                            {% if field.name == "text" %}
+                            <div class="col">
+                                <label for="{{ field.id_for_label }}" class="visually-hidden">
+                                    {{ field.label }}
+                                </label>
+                                {{ field }}
+                            </div>
+                            {% else %}
+                            <div class="col-3">
+                                <label for="{{ field.id_for_label }}" class="visually-hidden">
+                                    {{ field.label }}
+                                </label>
+                                {{ field }}
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                            <div class="col-auto">
+                                <button type="submit" class="btn btn-primary">Send</button>
+                            </div>
+                        </form>
+                        {% endif %}
                     </div>
                 </div>
                 <form>

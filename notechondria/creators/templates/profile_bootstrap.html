@@ -13,21 +13,21 @@
 
     {% include "navbar.html" %}
 
-    <main class="container mt-3">
+    <main class="container mt-3 align-items-center">
         <div class="row g-2">
-            <div class="col-md-8 mt-3">
+            <div class="col-auto mt-3">
                 <!-- Render basic user info -->
                 <div class="card mb-3">
                     <div class="card-body">
                         {% if userinfo.image %}
-                        <img src="{{ userinfo.image.url }}" alt="My image"/>
+                        <img src="{{ userinfo.image.url }}" alt="My image" style=" border-radius: 25px;" />
                         {% endif %}
-                        <h2 class="card-title">User info</h2>
-                        <h5 class="card-title">Username</h5>
+                        <h2 class="card-title mt-3">User info</h2>
+                        <h5 class="card-subtitle mt-3">Username</h5>
                         <p>{{userinfo.user_id.username}}</p>
-                        <h5 class="card-title">Motto</h5>
+                        <h5 class="card-subtitle mt-3">Motto</h5>
                         <p>{{userinfo.motto}}</p>
-                        <h5 class="card-title">Social link</h5>
+                        <h5 class="card-subtitle mt-3">Social link</h5>
                         <p><a href="{{userinfo.social_link}}">{{userinfo.social_link}}</a></p>
                         {% if can_edit%}
                         <div class="col-md-2">
@@ -38,6 +38,15 @@
                     </div>
                 </div>
             </div>
+
+            <aside class="col-md blog-sidebar mt-3 mb-3">
+                <!-- Render basic user info -->
+                <div class="card h-100 mb-3">
+                    <div class="card-body">
+                        side panel to be implemented
+                    </div>
+                </div>
+            </aside>
         </div>
     </main>
 

@@ -22,10 +22,10 @@ class GPTModelChoices(models.TextChoices):
     GPT3_16K = "gpt-3.5-turbo-16k", _("GPT 3.5 16K model")
     GPT3_T = "gpt-3.5-turbo", _("GPT 3 turbo model")
     # tts
-    TTS_1 = "tts-1", _("Normal")
-    TTS_1_HD = "tts-1-hd", _("Normal")
+    # TTS_1 = "tts-1", _("TTS 1 text to speech model")
+    # TTS_1_HD = "tts-1-hd", _("TTS 1 text to speech model with high resolution")
     # whisper (open source)
-    WHISPER = "whisper", _("Normal")
+    # WHISPER = "whisper", _("Normal")
 
 
 class Conversation(models.Model):
@@ -70,6 +70,7 @@ class Conversation(models.Model):
         """for better list display"""
         return f"{self.title} created by {self.creator_id.user_id.username}"
     
+    # the following function cannot be created here due to reference recursion
     # def created(self)->datetime:
     #     MessageRoleChoices.objects.filter().orderby()
 

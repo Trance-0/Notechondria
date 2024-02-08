@@ -38,7 +38,7 @@ class ResizedImageValidator:
             )
 
     def clean(self, image: Image, resize=(200, 200)) -> Image:
-        """return cleanned image"""
+        """return cleaned image"""
         cropped_image = image.crop(
             (self.x, self.y, self.width + self.x, self.height + self.y)
         )
@@ -49,28 +49,65 @@ class ResizedImageValidator:
         return _("Please try to re-cropping the image or contact admin for bug report")
 
 
-class ConversationForm(forms.Form):
+class ConversationFormS(forms.ModelForm):
     """Generate gpt chat with parameters"""
+
+    # add form_type identifier for model creation
+    form_type=forms.CharField(widget=forms.HiddenInput(),required=True)
+    
+    class Meta:
+        """Load meta data for multiple field to generate form
+
+        if you are lazy enough, you can also load meta,
+        reference: https://docs.djangoproject.com/en/4.2/ref/forms/fields/
+        (search for 'Meta')
+        """
+
+        model = Conversation
+        fields = ["form_type",
+                  "title",
+                    "model"]
+
+    def __init__(self, *args, **kwargs):
+        """add extra arguments for each input,
+        reference: https://stackoverflow.com/questions/29716023/add-class-to-form-field-django-modelform
+        """
+        super(ConversationFormS, self).__init__(*args, **kwargs)
+        self.fields["form_type"].initial = "simple"
+        for visible in self.visible_fields():
+            visible.field.widget.attrs["class"] = "form-control"
+
+class ConversationFormL(forms.ModelForm):
+    """Generate gpt chat with parameters"""
+
+    # add form_type identifier for model creation
+    form_type=forms.CharField(widget=forms.HiddenInput(),required=True)
 
     class Meta:
         """Load meta data for multiple field to generate form
 
         if you are lazy enough, you can also load meta,
         reference: https://docs.djangoproject.com/en/4.2/ref/forms/fields/
-        (serach for 'Meta')
+        (search for 'Meta')
         """
 
         model = Conversation
-        fields = [
-            "model",
-            "temperature",
-        ]
+        fields = ["form_type",
+                  "title",
+                    "model",
+                   "temperature",
+                   "memory_size",
+                   "max_token",
+                   "timeout",
+                   "frequency_penalty",
+                   "presence_penalty"]
 
     def __init__(self, *args, **kwargs):
         """add extra arguments for each input,
         reference: https://stackoverflow.com/questions/29716023/add-class-to-form-field-django-modelform
         """
-        super(ConversationForm, self).__init__(*args, **kwargs)
+        super(ConversationFormL, self).__init__(*args, **kwargs)
+        self.fields["form_type"].initial = "advanced"
         for visible in self.visible_fields():
             visible.field.widget.attrs["class"] = "form-control"
 
@@ -88,6 +125,7 @@ def validate_user_name(new_user_name, user=None) -> None:
 class MessageForm(forms.ModelForm):
     """Generate new message form"""
 
+    text = forms.CharField(max_length=2048)
     # Guess what? I am LAZY.
     class Meta:
         """Load meta data for multiple field to generate form
@@ -99,16 +137,16 @@ class MessageForm(forms.ModelForm):
 
         model = Message
         fields = [
-            "conversation_id",
-            "role",
-            "image",
+            # "conversation_id",
+            # "role",
             "text",
+            "image",
         ]
 
     def __init__(self, *args, **kwargs):
         """add extra arguments for each input,
         reference: https://stackoverflow.com/questions/29716023/add-class-to-form-field-django-modelform
         """
-        super(ConversationForm, self).__init__(*args, **kwargs)
+        super(MessageForm, self).__init__(*args, **kwargs)
         for visible in self.visible_fields():
             visible.field.widget.attrs["class"] = "form-control"

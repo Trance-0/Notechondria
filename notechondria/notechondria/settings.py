@@ -159,3 +159,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 
 # Offline development tag
 OFFLINE = False
+
+# login url
+
+LOGIN_URL="/creator/login"
+
+LOGIN_REDIRECT_URL="/creator/profile"
