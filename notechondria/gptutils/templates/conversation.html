@@ -1,18 +1,31 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-100">
 
 <head>
     <title>Notechondria About</title>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- only load icon when we have to... -->
-    {% load bootstrap_icons %}
+    <style>
+        .fill-height {
+            height: calc(100vh - 72px);
+            /* Adjust the navbar height as needed */
+        }
+
+        .edit-icon {
+            display: none;
+        }
+
+        .user-msg:hover .edit-icon {
+            display: block;
+        }
+    </style>
 
     {% include "resource_header.html" %}
 
 </head>
 
-<body style="height: 100vh">
+<body class="h-100" style="height: 100vh">
 
     {% include "navbar.html" %}
 
@@ -121,38 +134,92 @@
         </div>
     </div>
 
-    <main class="container-fluid mt-3">
-        <div class="row g-2">
-            <aside class="col-md-3 blog-sidebar mt-3">
+    <main class="container-fluid fill-height">
+        <div class="h-100 row g-2">
+            <aside class="col-sm-3 blog-sidebar mt-3 mb-3">
+                <!--  style="max-width: 490px;" -->
                 <div class="h-100 card">
-                    <div class="card-header d-flex justify-content-end">
-                        <a class="link-dark" data-bs-toggle="modal" href="#createChatModalS" role="button">
-                            {% bs_icon 'plus-circle' size='2em' %}
+                    <div class="card-header d-flex justify-content-end"style="color:red;">
+                        <a data-bs-toggle="modal" href="#createChatModalS" role="button" >
+                            plus-circle icon
                         </a>
                     </div>
                     <div class="card-body">
-                        <div class="d-flex align-items-stretch">
-                            <ul class="list-group list-group-flush" style="overflow-y: scroll;">
-                                {% if conversations_list %}
-                                {% for conv in conversations_list %}
-                                <li class="list-group-item"><a class="btn btn-light"
-                                        href="{% url 'gptutils:get_chat' conv.pk %}">{{ conv.title }}</a></li>
-                                {% endfor %}
-                                {% else %}
-                                <li class="list-group-item">Create your first conversation by clicking the icon above.
-                                </li>
-                                {% endif %}
-                            </ul>
-                        </div>
+                        <ul class="h-100 w-100 list-group list-group-flush" style="overflow-y: hidden;">
+                            {% if conversations_list %}
+                            {% for conv in conversations_list %}
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="d-inline-block" tabindex="0" data-bs-toggle="popover"
+                                        data-bs-trigger="hover focus" data-bs-content="Model name: {{conv.model}}">
+                                        <a class="btn btn-light" type="button"
+                                            href="{% url 'gptutils:get_chat' conv.pk %}">
+                                            {{ conv.title }}
+                                        </a>
+                                    </span>
+                                    <a href="/">gear icon</a>
+                                </div>
+                            </li>
+                            {% endfor %}
+                            {% else %}
+                            <li class="d-flex list-group-item">Create your first conversation by clicking the icon
+                                above.
+                            </li>
+                            {% endif %}
+                        </ul>
                     </div>
                 </div>
             </aside>
-            <div class="col mt-3">
-                <div class="card" style="height: 85vh;">
+            <div class="h-100 col-sm-9 mt-3 mb-3">
+                <div class="h-100 card">
+                    {% if cur_conversation %}
+                    <div class="card-header d-flex justify-content-center">
+                        {{cur_conversation.title}} : {{cur_conversation.model}}
+                    </div>
+                    {% endif %}
                     <div class="card-body">
                         <!-- Render conversation info -->
-                        {%if messages_list%}
-                        {%else%}
+                        {% if messages_list %}
+                        {% for message in messages_list %}
+                        {% if message.role == 'user' %}
+                        <div class="row d-flex justify-content-end">
+                            <div class="col-1">
+                            </div>
+                            <div class="col-auto">
+                                <div class="user-msg alert alert-primary" role="alert">
+                                    {{message.text}}
+                                    {% if message.image %}
+                                    <img src="{{ message.image.url }}" alt="image send on message {{message.id}}"
+                                        style=" border-radius: 25px;" />
+                                    {% endif %}
+                                    <a class="edit-icon" href="/">
+                                        pen-icon</a>
+                                </div>
+                            </div>
+                        </div>
+                        {% elif message.role == 'assistant' %}
+                        <div class="row">
+                            <div class="col-auto">
+                                <div class="alert alert-secondary" role="alert">
+                                    <div class="col-auto">
+                                        {{message.text}}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-1">
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                        {% else %}
+                        {% if cur_conversation %}
+
+                        <div class="h-100 position-relative">
+                            <div class="position-absolute top-50 start-50 translate-middle">
+                                Send a message to begin conversation.
+                            </div>
+                        </div>
+                        {% else %}
                         <div class="h-100 position-relative">
                             <div class="position-absolute top-50 start-50 translate-middle">
                                 <a class="link-dark" data-bs-toggle="modal" href="#createChatModalL" role="button">
@@ -161,41 +228,47 @@
                             </div>
                         </div>
                         {%endif%}
+                        {%endif%}
                     </div>
                     <div class="card-footer">
                         {% if message_form %}
                         <!-- inline form reference: https://getbootstrap.com/docs/5.3/forms/layout/#inline-forms -->
-                        <form class="row g-3 align-items-center justify-content-end"
-                            action="{% url 'gptutils:create_chat' %}" method="post">
-                            {% csrf_token %}
-                            <!-- Django overkill form -->
-                            <!-- Include the hidden fields -->
-                            {% for hidden in message_form.hidden_fields %}
-                            {{ hidden }}
-                            {% endfor %}
-                            <!-- Include the visible fields  -->
-                            {% for field in message_form.visible_fields %}
-                            {% if field.name == "text" %}
-                            <div class="col">
-                                <label for="{{ field.id_for_label }}" class="visually-hidden">
-                                    {{ field.label }}
-                                </label>
-                                {{ field }}
-                            </div>
+                        {% if cur_conversation %}
+                        <form class="row g-3 align-items-center justify-content-end" id="ajax-send"
+                            action="{% url 'gptutils:get_chat' cur_conversation.id %}" method="post">
                             {% else %}
-                            <div class="col-3">
-                                <label for="{{ field.id_for_label }}" class="visually-hidden">
-                                    {{ field.label }}
-                                </label>
-                                {{ field }}
-                            </div>
+                            <form class="row g-3 align-items-center justify-content-end"
+                                action="{% url 'gptutils:fast_chat'%}" method="post">
+                                {% endif %}
+                                {% csrf_token %}
+                                <!-- Django overkill form -->
+                                <!-- Include the hidden fields -->
+                                {% for hidden in message_form.hidden_fields %}
+                                {{ hidden }}
+                                {% endfor %}
+                                <!-- Include the visible fields  -->
+                                {% for field in message_form.visible_fields %}
+                                {% if field.name == "text" %}
+                                <div class="col">
+                                    <label for="{{ field.id_for_label }}" class="visually-hidden">
+                                        {{ field.label }}
+                                    </label>
+                                    {{ field }}
+                                </div>
+                                {% elif field.name == "image" and is_visual_model %}
+                                <div class="col-3">
+                                    <label for="{{ field.id_for_label }}" class="visually-hidden">
+                                        {{ field.label }}
+                                    </label>
+                                    {{ field }}
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                                <div class="col-auto">
+                                    <button type="submit" class="btn btn-primary">Send</button>
+                                </div>
+                            </form>
                             {% endif %}
-                            {% endfor %}
-                            <div class="col-auto">
-                                <button type="submit" class="btn btn-primary">Send</button>
-                            </div>
-                        </form>
-                        {% endif %}
                     </div>
                 </div>
                 <form>
@@ -204,6 +277,15 @@
             </div>
         </div>
     </main>
+
+    <!-- enable popover -->
+
+    <script>
+        var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
+        var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+            return new bootstrap.Popover(popoverTriggerEl)
+        })
+    </script>
 </body>
 
 <!-- TODO: create footer here -->

@@ -27,7 +27,6 @@
                 <div class="card">
                     <div class="card-body">
                         <form action="{% url 'creators:edit_profile' form.instance.user_id.username  %}" enctype="multipart/form-data"  method="post" id="formUpload">
-                            {% csrf_token %}
                             <h3>Edit profile</h3>
                             <!-- Django overkill form -->
                             {% csrf_token %}

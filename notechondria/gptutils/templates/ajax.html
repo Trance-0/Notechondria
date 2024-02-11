@@ -1,0 +1,21 @@
+
+{% if cur_conversation %}
+<!-- Js for AJAX -->
+<script type="text/javascript">
+    $(document).on('submit', '#ajax-send', function (e) {
+        e.preventDefault();
+        $.ajax({
+            type: 'POST',
+            url: '{% url "gptutils:get_chat" cur_conversation.id %}',
+            data:
+            {
+                task: $("#ajax-send").val(),
+                csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+            },
+            success: function () {
+                alert('Saved');
+            }
+        })
+    });
+</script>
+{% endif %}

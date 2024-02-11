@@ -126,6 +126,7 @@ class MessageForm(forms.ModelForm):
     """Generate new message form"""
 
     text = forms.CharField(max_length=2048)
+    image = forms.ImageField(required=False)
     # Guess what? I am LAZY.
     class Meta:
         """Load meta data for multiple field to generate form

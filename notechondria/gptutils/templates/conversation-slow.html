@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en" class="h-100">
+
+<head>
+    <title>Notechondria About</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        .fill-height {
+            height: calc(100vh - 72px);
+            /* Adjust the navbar height as needed */
+        }
+
+        .edit-icon {
+            display: none;
+        }
+
+        .user-msg:hover .edit-icon {
+            display: block;
+        }
+    </style>
+
+    <!-- only load icon when we have to... -->
+    {% load bootstrap_icons %}
+
+    {% include "resource_header.html" %}
+
+</head>
+
+<body class="h-100" style="height: 100vh">
+
+    {% include "navbar.html" %}
+
+    <div class="modal fade" id="createChatModalS" tabindex="-1" aria-labelledby="createChatModalSLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form action="{% url 'gptutils:create_chat' %}" method="post">
+                    <!-- Use jQuery to hide advanced options -->
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="createChatModalSLabel">Create A New Chat [simple config]</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        {% if create_form_simple %}
+                        {% csrf_token %}
+                        <!-- Django overkill form -->
+                        <!-- Include the hidden fields -->
+                        {% for hidden in create_form_simple.hidden_fields %}
+                        {{ hidden }}
+                        {% endfor %}
+                        <!-- Include the visible fields  -->
+                        {% for field in create_form_simple.visible_fields %}
+                        <div class="mb-3">
+                            {%if field.errors%}
+                            <div class="alert alert-danger">
+                                {% for error in field.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <label for="{{ field.id_for_label }}" class="form-label">
+                                {{ field.label }}
+                            </label>
+                            {{ field }}
+                            {% if field.help_text %}
+                            <div class="form-text">{{ field.help_text|safe }}</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <div class="alert alert-success" role="alert">
+                            Simple form not received from server
+                        </div>
+                        {% endif %}
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Create Chat</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="createChatModalL" tabindex="-1" aria-labelledby="createChatModalLLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form action="{% url 'gptutils:create_chat' %}" method="post">
+                    <!-- Use jQuery to hide advanced options -->
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="createAdvancedChatModalLabel">Create A New Chat [complex config]
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        {% if create_form_advanced %}
+                        {% csrf_token %}
+                        <!-- Django overkill form -->
+                        <!-- Include the hidden fields -->
+                        {% for hidden in create_form_advanced.hidden_fields %}
+                        {{ hidden }}
+                        {% endfor %}
+                        <!-- Include the visible fields  -->
+                        {% for field in create_form_advanced.visible_fields %}
+                        <div class="mb-3">
+                            {%if field.errors%}
+                            <div class="alert alert-danger">
+                                {% for error in field.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <label for="{{ field.id_for_label }}" class="form-label">
+                                {{ field.label }}
+                            </label>
+                            {{ field }}
+                            {% if field.help_text %}
+                            <div class="form-text">{{ field.help_text|safe }}</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <div class="alert alert-success" role="alert">
+                            Advanced form not received from server
+                        </div>
+                        {% endif %}
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Create Chat</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <main class="container-fluid fill-height">
+        <div class="h-100 row g-2">
+            <aside class="col-sm-3 blog-sidebar mt-3 mb-3">
+                <!--  style="max-width: 490px;" -->
+                <div class="h-100 card">
+                    <div class="card-header d-flex justify-content-end align-items-center">
+                        <a class="link-dark" data-bs-toggle="modal" href="#createChatModalS" role="button">
+                            {% bs_icon 'plus-circle' size='2em' color='grey'%}
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <ul class="h-100 w-100 list-group list-group-flush" style="overflow-y: hidden;">
+                            {% if conversations_list %}
+                            {% for conv in conversations_list %}
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="d-inline-block" tabindex="0" data-bs-toggle="popover"
+                                        data-bs-trigger="hover focus" data-bs-content="Model name: {{conv.model}}">
+                                        <a class="btn btn-light" type="button"
+                                            href="{% url 'gptutils:get_chat' conv.pk %}">
+                                            {{ conv.title }}
+                                        </a>
+                                    </span>
+                                    <a href="/">{% bs_icon 'gear' size='1.5em' color='grey'%}</a>
+                                </div>
+                            </li>
+                            {% endfor %}
+                            {% else %}
+                            <li class="d-flex list-group-item">Create your first conversation by clicking the icon
+                                above.
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+            </aside>
+            <div class="h-100 col-sm-9 mt-3 mb-3">
+                <div class="h-100 card">
+                    {% if cur_conversation %}
+                    <div class="card-header d-flex justify-content-center">
+                        {{cur_conversation.title}} : {{cur_conversation.model}}
+                    </div>
+                    {% endif %}
+                    <div class="card-body">
+                        <!-- Render conversation info -->
+                        {% if messages_list %}
+                        {% for message in messages_list %}
+                        {% if message.role == 'user' %}
+                        <div class="row d-flex justify-content-end">
+                            <div class="col-1">
+                            </div>
+                            <div class="col-auto">
+                                <div class="user-msg alert alert-primary" role="alert">
+                                    {{message.text}}
+                                    {% if message.image %}
+                                    <img src="{{ message.image.url }}" alt="image send on message {{message.id}}"
+                                        style=" border-radius: 25px;" />
+                                    {% endif %}
+                                    <a class="edit-icon" href="/">
+                                        {% bs_icon 'pen' size='0.7em' color='blue'%}</a>
+                                </div>
+                            </div>
+                        </div>
+                        {% elif message.role == 'assistant' %}
+                        <div class="row">
+                            <div class="col-auto">
+                                <div class="alert alert-secondary" role="alert">
+                                    <div class="col-auto">
+                                        {{message.text}}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-1">
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                        {% else %}
+                        {% if cur_conversation %}
+
+                        <div class="h-100 position-relative">
+                            <div class="position-absolute top-50 start-50 translate-middle">
+                                Send a message to begin conversation.
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="h-100 position-relative">
+                            <div class="position-absolute top-50 start-50 translate-middle">
+                                <a class="link-dark" data-bs-toggle="modal" href="#createChatModalL" role="button">
+                                    Create a chat with advanced configuration
+                                </a>
+                            </div>
+                        </div>
+                        {%endif%}
+                        {%endif%}
+                    </div>
+                    <div class="card-footer">
+                        {% if message_form %}
+                        <!-- inline form reference: https://getbootstrap.com/docs/5.3/forms/layout/#inline-forms -->
+                        {% if cur_conversation %}
+                        <form class="row g-3 align-items-center justify-content-end" id="ajax-send"
+                            action="{% url 'gptutils:get_chat' cur_conversation.id %}" method="post">
+                            {% else %}
+                            <form class="row g-3 align-items-center justify-content-end"
+                                action="{% url 'gptutils:fast_chat'%}" method="post">
+                                {% endif %}
+                                {% csrf_token %}
+                                <!-- Django overkill form -->
+                                <!-- Include the hidden fields -->
+                                {% for hidden in message_form.hidden_fields %}
+                                {{ hidden }}
+                                {% endfor %}
+                                <!-- Include the visible fields  -->
+                                {% for field in message_form.visible_fields %}
+                                {% if field.name == "text" %}
+                                <div class="col">
+                                    <label for="{{ field.id_for_label }}" class="visually-hidden">
+                                        {{ field.label }}
+                                    </label>
+                                    {{ field }}
+                                </div>
+                                {% elif field.name == "image" and is_visual_model %}
+                                <div class="col-3">
+                                    <label for="{{ field.id_for_label }}" class="visually-hidden">
+                                        {{ field.label }}
+                                    </label>
+                                    {{ field }}
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                                <div class="col-auto">
+                                    <button type="submit" class="btn btn-primary">Send</button>
+                                </div>
+                            </form>
+                            {% endif %}
+                    </div>
+                </div>
+                <form>
+
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <!-- enable popover -->
+
+    <script>
+        var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
+        var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+            return new bootstrap.Popover(popoverTriggerEl)
+        })
+    </script>
+</body>
+
+<!-- TODO: create footer here -->

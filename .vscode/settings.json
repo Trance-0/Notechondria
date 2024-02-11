@@ -1,7 +1,11 @@
 {
     "cSpell.words": [
+        "csrfmiddlewaretoken",
         "gptutil",
         "gptutils",
-        "repassword"
+        "notechondria",
+        "probs",
+        "repassword",
+        "tqdm"
     ]
 }

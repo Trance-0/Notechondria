@@ -130,7 +130,7 @@ class RegisterForm(forms.ModelForm):
     user_name = forms.CharField(
         max_length=150, validators=[UnicodeUsernameValidator], required=True
     )
-    register_code = forms.CharField(max_length=150, required=True)
+    register_code = forms.CharField(help_text="The website is currently under testing, only qualified user can register. For further information, please contact site-admin",max_length=150, required=True)
     image = forms.ImageField(
         help_text="To reduce request count, please upload image after you completed all other forms to reduce error rates",
         required=False,

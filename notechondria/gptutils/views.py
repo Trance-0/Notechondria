@@ -1,12 +1,16 @@
+import logging
 import random
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
 
 from django.contrib import messages
 from creators.models import Creator
 from .forms import ConversationFormS, ConversationFormL, MessageForm
-from .models import Conversation, Message
+from .models import Conversation, Message, GPTModelChoices
 from .gpt_request_parser import generate_message
+
+logger=logging.getLogger()
 
 # Create your views here.
 
@@ -21,35 +25,37 @@ from .gpt_request_parser import generate_message
 @login_required
 def gptutils(request):
     """render main chat page"""
-    return render(request, "conversation.html", context=__get_basic_context(request))
-
-
-@login_required
-def send(request, conv_pk):
-    """send image request"""
-    return redirect("gptutils:get_chat", conv_pk)
-
+    context=__get_basic_context(request)
+    context["is_visual_model"]=True
+    return render(request, "conversation.html", context=context)
 
 @login_required
 def get_chat(request, conv_pk):
+    """ send text request """
+    logger.debug(f'request from user {request.user}')
+    # processing sending in AJAX (to be implement)
     context = __get_basic_context(request)
-    cur_conversation = get_object_or_404(Conversation, pk=conv_pk)
+    cur_conversation = get_object_or_404(Conversation, id=conv_pk)
     context["cur_conversation"] = cur_conversation
+    context["is_visual_model"] = (cur_conversation.model == GPTModelChoices.GPT4_V or 
+                                    cur_conversation.model == GPTModelChoices.GPT4_VH 
+                                    or cur_conversation.model == GPTModelChoices.GPT4_VL)
     if cur_conversation.creator_id != context["user"]:
         messages.error(request, f"no permission for edit the conversation")
         return redirect("gptutils:main")
-    """ send text request """
-    # processing sending
     if request.method == "POST":
         # permission check
         message_form = MessageForm(request.POST, request.FILES)
         if not message_form.is_valid():
-            messages.error(request, f"invalid conversation")
+            for key, value in message_form.errors.items():
+                messages.error(request, f"validation error on field {key},{value}")
             return redirect("gptutils:get_chat", conv_pk=conv_pk)
         message_instance = message_form.save(commit=False)
         message_instance.conversation_id = cur_conversation
         message_instance.save()
-        generate_message(cur_conversation)
+        response_json=generate_message(cur_conversation)
+        if "error" in response_json:
+            messages.error(request, f"open-ai error: {response_json}")
     # processing response
     messages_list = Message.objects.filter(conversation_id=conv_pk)
     context["messages_list"] = messages_list
@@ -58,6 +64,56 @@ def get_chat(request, conv_pk):
 
 @login_required
 def create_chat(request):
+    """create chat based on conversation form received from user"""
+    # test for user
+    owner_id = get_object_or_404(Creator, user_id=request.user)
+    if request.method == "POST":
+        form_type = request.POST.get("form_type", "invalid")
+        if form_type == "invalid":
+            messages.error(request, f"form type not found or invalid")
+        chat_form = (
+            ConversationFormL(request.POST, request.FILES)
+            if form_type == "advanced"
+            else ConversationFormS(request.POST)
+        )
+        if chat_form.is_valid():
+            chat_instance = chat_form.save(commit=False)
+            chat_instance.sharing_id = __generate_chat_id()
+            chat_instance.creator_id = owner_id
+            chat_instance.save()
+            return redirect("gptutils:get_chat", conv_pk=chat_instance.id)
+        else:
+            messages.warning(request,f"invalid parameters found")
+    return redirect("gptutils:main")
+
+@login_required
+def fast_chat(request):
+    """create chat based on conversation form received from user"""
+    # test for user
+    owner_id = get_object_or_404(Creator, user_id=request.user)
+    if request.method == "POST":
+        # permission check
+        message_form = MessageForm(request.POST, request.FILES)
+        if not message_form.is_valid():
+            messages.error(request, f"invalid message")
+            return redirect("gptutils:main")
+        message_instance = message_form.save(commit=False)
+        cur_conversation=Conversation.objects.create(creator_id=owner_id,
+                                                     sharing_id=__generate_chat_id(),
+                                                     model=GPTModelChoices.GPT4_V if message_instance.image else GPTModelChoices.GPT4_1106)
+        message_instance.conversation_id = cur_conversation
+        message_instance.save()
+        ai_response=generate_message(cur_conversation)
+        if not "error" in ai_response:
+            return redirect("gptutils:get_chat", conv_pk=cur_conversation.id)
+        else:
+            messages.warning(request,f"Error when generating response {ai_response['error']}")
+    else:
+        messages.warning(request,f"invalid parameters found")
+    return redirect("gptutils:main")
+
+@login_required
+def edit_chat(request):
     """send text request"""
     # test for user
     owner_id = get_object_or_404(Creator, user_id=request.user)
@@ -77,18 +133,19 @@ def create_chat(request):
         return redirect("gptutils:get_chat", conv_pk=chat_instance.id)
     return redirect("gptutils:main")
 
-
 @login_required
 def delete_chat(request, conv_pk):
     """send text request"""
     if request.method == "POST":
         # validate ownership
-        chat_instance = get_object_or_404(Conversation, pk=conv_pk)
+        chat_instance = get_object_or_404(Conversation, id=conv_pk)
         owner_id = get_object_or_404(Creator, user_id=request.user)
         if chat_instance.owner_id == owner_id:
-            messages.success()
+            messages.success(request,f"Successfully delete the chat with title {chat_instance.title}")
             chat_instance.delete()
             return redirect("gptutils:main")
+        else:
+            messages.warning(request,f"current user don't have the permission to delete the chat")
     return redirect("gptutils:get_chat", conv_pk=conv_pk)
 
 
@@ -126,5 +183,5 @@ def __get_basic_context(request) -> dict:
     # get list of conversations
     context["conversations_list"] = Conversation.objects.filter(
         creator_id=context["user"]
-    )
+    ).order_by("last_use")
     return context

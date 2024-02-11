@@ -9,7 +9,7 @@ from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib.auth import login, logout, authenticate
 
 from .forms import LoginForm, RegisterForm, EditForm
-from .models import Creator
+from .models import Creator,VerificationCode
 
 
 # Create your views here.
@@ -45,12 +45,10 @@ def login_request(request):
                 # set last login 
                 creator=Creator.objects.get(user_id=user)
                 creator.save()
-                return redirect("home")
+                return redirect(request.POST['next']) if 'next' in request.POST else redirect("home") 
             messages.warning(request, "User password mismatch")
         else:
             messages.warning(request, "User not found")
-        # redirect to a new URL:
-        return redirect("home")
     # if a GET (or any other method) we'll create a blank form
     form = LoginForm()
     return render(request, "login_bootstrap.html", {"form": form})
@@ -69,12 +67,18 @@ def register_request(request):
         if form.is_valid():
             username=form.cleaned_data["user_name"]
             password=form.cleaned_data["password"]
+            code_val=form.cleaned_data["register_code"]
             form.save()
             # redirect to a new URL:
             messages.info(request, "User registration success")
             user = authenticate(username=username, password=password)
+            # impossible to happen, don't know why someone will write this.
             if user is not None:
                 login(request, user)
+            # reduce usage of registration code, and the code must be valid or it will not pass the test
+            code_instance=get_object_or_404(VerificationCode,code=code_val)
+            code_instance.max_use-=1
+            code_instance.save()
             return redirect("home")
         if form.errors:
             for key, value in form.errors.items():

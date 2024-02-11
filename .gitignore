@@ -1,6 +1,9 @@
 # For development offline
 notechondria/static/localization
 
+# For playground data
+playground/data
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

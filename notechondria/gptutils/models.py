@@ -66,6 +66,9 @@ class Conversation(models.Model):
     # in the text so far, increasing the model's likelihood to talk about new topics.
     presence_penalty = models.DecimalField(default=0.9, max_length=3, max_digits=2, decimal_places=2, null=False)
 
+    total_prompt_tokens=models.IntegerField(default=0, null=False)
+    total_completion_tokens=models.IntegerField(default=0, null=False)
+
     def __str__(self):
         """for better list display"""
         return f"{self.title} created by {self.creator_id.user_id.username}"
@@ -112,6 +115,7 @@ class Message(models.Model):
             """Function to encode the image"""
             with open(image_path, "rb") as image_file:
                 return base64.b64encode(image_file.read()).decode("utf-8")
+            
         message={
                 "role": self.role,
                 "content": [

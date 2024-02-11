@@ -73,8 +73,8 @@ class VerificationChoices(models.TextChoices):
 class VerificationCode(models.Model):
     """This is the activation code that will be used for create user."""
 
-    code = models.CharField(max_length=255, default=get_random_string(length=6),null=False)
-    expire_date = models.DateTimeField(default=now()+timedelta(minutes=10),null=False)
+    code = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    expire_date = models.DateTimeField(auto_now=True,null=False)
     usage = models.CharField(
         null=False,
         max_length=1,

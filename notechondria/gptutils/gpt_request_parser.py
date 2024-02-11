@@ -5,8 +5,11 @@
 import os
 import base64
 import requests
+import logging
 
-from .models import Conversation,Message
+logger = logging.getLogger("django")
+
+from .models import Conversation,Message,MessageRoleChoices
 
 # OpenAI API Key
 api_key = os.getenv("OPENAI_API_KEY")
@@ -58,16 +61,11 @@ def generate_message(conversation:Conversation):
 
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
 
-    message_list=Message.objects.filter(conversation_id=conversation).order_by("created")[-conversation.memory_size:]
+    message_list=Message.objects.filter(conversation_id=conversation).order_by("created")[:conversation.memory_size]
     payload = {
         "model": "gpt-4-vision-preview",
         "messages": [
-            {
-                "role": "user",
-                "content": [
-                    i.to_json() for i in message_list
-                ],
-            }
+            i.to_json() for i in message_list
         ],
         "max_tokens": conversation.max_token,
     }
@@ -78,6 +76,18 @@ def generate_message(conversation:Conversation):
         json=payload,
     )
 
-    print(response.json())
+    logger.debug(payload)
+    logger.debug(response.json())
 
+    json_res = response.json()
 
+    # generate response msg to conversation
+    if not "error" in response:
+        # update token count
+        conversation.total_prompt_tokens+=json_res["usage"]["prompt_tokens"]
+        conversation.total_completion_tokens+=json_res["usage"]["completion_tokens"]
+        conversation.save()
+        response_choices=json_res["choices"]
+        Message.objects.create(conversation_id=conversation,role=MessageRoleChoices.ASSISTANT,text=response_choices["message"]["content"])
+
+    return json_res

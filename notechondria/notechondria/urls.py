@@ -1,7 +1,7 @@
 """notechondria URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/3.1/topics/http/urls/
+    https://docs.djangoproject.com/en/4.2/topics/http/urls/
 Examples:
 Function views
     1. Add an import:  from my_app import views
@@ -20,6 +20,8 @@ from django.views.static import serve
 from . import views
 
 urlpatterns = [
+    # debugger url: https://django-debug-toolbar.readthedocs.io/en/latest/installation.html
+    path("__debug__/", include("debug_toolbar.urls")),
     path('',views.home,name="home"),
     path('notes/', include(('notes.urls','notes'),namespace='notes')),
     path('creators/', include(('creators.urls','creators'),namespace='creators')),
@@ -30,7 +32,7 @@ urlpatterns = [
 ]
 
 # ... the rest of your URLconf goes here ...
-
+# regex the path request with media in current directory
 if settings.DEBUG:
     urlpatterns += [
         re_path(
