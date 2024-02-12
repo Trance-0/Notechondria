@@ -57,7 +57,7 @@ def get_chat(request, conv_pk):
         if "error" in response_json:
             messages.error(request, f"open-ai error: {response_json}")
     # processing response
-    messages_list = Message.objects.filter(conversation_id=conv_pk)
+    messages_list = Message.objects.filter(conversation_id=conv_pk).order_by("created")
     context["messages_list"] = messages_list
     return render(request, "conversation.html", context=context)
 
@@ -113,10 +113,14 @@ def fast_chat(request):
     return redirect("gptutils:main")
 
 @login_required
-def edit_chat(request):
-    """send text request"""
+def edit_chat(request,conv_pk):
+    """redirect to edit chat page"""
     # test for user
     owner_id = get_object_or_404(Creator, user_id=request.user)
+    chat_instance = get_object_or_404(Conversation, id=conv_pk)
+    if chat_instance.creator_id!=owner_id:
+        messages.error(request, f"You don't have access to the chat")
+        return redirect("gptutils:main")
     if request.method == "POST":
         form_type = request.POST.get("form_type", "invalid")
         if form_type == "invalid":
@@ -131,7 +135,35 @@ def edit_chat(request):
         chat_instance.creator_id = owner_id
         chat_instance.save()
         return redirect("gptutils:get_chat", conv_pk=chat_instance.id)
-    return redirect("gptutils:main")
+    return render(request,"htmx_edit_chat_form.html",context={"edit_form":ConversationFormL(chat_instance)})
+
+@login_required
+def edit_message(request,conv_pk,message_pk):
+    """redirect to edit chat modal, process handel by htmx"""
+    # test for user
+    # owner_id = get_object_or_404(Creator, user_id=request.user)
+    # chat_instance = get_object_or_404(Conversation, id=conv_pk)
+    # if chat_instance.owner_id!=owner_id:
+    #     messages.error(request, f"You don't have access to the chat")
+    #     return redirect("gptutils:main")
+    # if request.method == "POST":
+    #     form_type = request.POST.get("form_type", "invalid")
+    #     if form_type == "invalid":
+    #         messages.error(request, f"form type not found or invalid")
+    #     chat_form = (
+    #         ConversationFormL(request.POST, request.FILES)
+    #         if form_type == "advanced"
+    #         else ConversationFormS(request.POST)
+    #     )
+    #     chat_instance = chat_form.save(commit=False)
+    #     chat_instance.sharing_id = __generate_chat_id()
+    #     chat_instance.creator_id = owner_id
+    #     chat_instance.save()
+    #     return redirect("gptutils:get_chat", conv_pk=chat_instance.id)
+    # process get request
+    # render page
+    return render(request,"edit_chat_form.html",context={"edit_form":ConversationFormL(chat_instance)})
+
 
 @login_required
 def delete_chat(request, conv_pk):
@@ -145,7 +177,7 @@ def delete_chat(request, conv_pk):
             chat_instance.delete()
             return redirect("gptutils:main")
         else:
-            messages.warning(request,f"current user don't have the permission to delete the chat")
+            messages.warning(request,f"Current user don't have the permission to delete the chat")
     return redirect("gptutils:get_chat", conv_pk=conv_pk)
 
 

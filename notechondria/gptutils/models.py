@@ -21,6 +21,8 @@ class GPTModelChoices(models.TextChoices):
     GPT3_1106 = "gpt-3.5-turbo-1106", _("GPT 3.5 Nov preview")
     GPT3_16K = "gpt-3.5-turbo-16k", _("GPT 3.5 16K model")
     GPT3_T = "gpt-3.5-turbo", _("GPT 3 turbo model")
+    # plain-chat room
+    PLAIN = "plain-chat", _("Plain chat room for testing")
     # tts
     # TTS_1 = "tts-1", _("TTS 1 text to speech model")
     # TTS_1_HD = "tts-1-hd", _("TTS 1 text to speech model with high resolution")
@@ -38,6 +40,8 @@ class Conversation(models.Model):
         on_delete=models.CASCADE,
         null=False,
     )
+    # plan for chat room in near future
+    param = models.CharField(max_length=1024,null=True)
     sharing_id = models.CharField(max_length=36,unique=True,null=False)
     title = models.CharField(max_length=100, null=True)
 
@@ -71,7 +75,7 @@ class Conversation(models.Model):
 
     def __str__(self):
         """for better list display"""
-        return f"{self.title} created by {self.creator_id.user_id.username}"
+        return f"{self.title}: {self.model}"
     
     # the following function cannot be created here due to reference recursion
     # def created(self)->datetime:
@@ -105,10 +109,13 @@ class Message(models.Model):
         choices=MessageRoleChoices.choices,
         default=MessageRoleChoices.USER,
     )
-    image = models.ImageField(upload_to="message_pic", null=True)
+    image = models.ImageField(upload_to="message_pic",blank=True, null=True)
     # file field is currently unsupported
-    file = models.FileField(upload_to="message_file", null=True)
-    text = models.CharField(max_length=2048, null=True)
+    file = models.FileField(upload_to="message_file",blank=True, null=True)
+    text = models.CharField(max_length=2048, blank=True, null=True)
+
+    def __str__(self) -> str:
+        return f'{self.conversation_id.title}: {self.created}'
 
     def to_json(self):
         def encode_image(image_path):

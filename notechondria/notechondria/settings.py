@@ -45,9 +45,6 @@ INSTALLED_APPS = [
     'gptutils',
     'notes',
     'creators',
-    # I will skip all the styling problem
-    'bootstrap5',
-    'django_static_jquery3',
     # debugger
     'debug_toolbar'
 ]
@@ -85,6 +82,9 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'notechondria.views.is_offline'
             ],
+            'libraries': {
+                'svg_tags': 'notechondria.templatetags.svg_tags',
+            }
         },
     },
 ]
@@ -188,6 +188,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
+# you should not use django to process your static files, the static url should be set to other file providing url
 STATIC_URL = '/static/'
 
 # static file in the project folder (global)
@@ -195,7 +196,7 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
 
-# this is the location where collect static will run
+# this is the location where collect static will run, set it to the service directory of static url in production
 STATIC_ROOT = os.path.join(BASE_DIR, 'productionfiles/')
 
 # Image files (jpg, jpeg)

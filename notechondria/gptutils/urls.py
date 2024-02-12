@@ -14,7 +14,8 @@ urlpatterns = [
     path('chat/delete/<int:conv_pk>',views.delete_chat,name='delete_chat'),
     path('chat/edit/<int:conv_pk>',views.edit_chat,name='edit_chat'),
     path('chat/create',views.create_chat,name='create_chat'),
-    path('chat/create/fast',views.fast_chat,name='fast_chat')
+    path('chat/create/fast',views.fast_chat,name='fast_chat'),
+    path('chat/<int:conv_pk>/edit/<int:message_pk>',views.edit_message,name='edit_message'),
 ]
 # redirect media request to media root
 if settings.DEBUG:

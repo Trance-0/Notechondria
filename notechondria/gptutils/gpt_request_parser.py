@@ -61,7 +61,7 @@ def generate_message(conversation:Conversation):
 
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
 
-    message_list=Message.objects.filter(conversation_id=conversation).order_by("created")[:conversation.memory_size]
+    message_list=Message.objects.filter(conversation_id=conversation).order_by("-created")[:conversation.memory_size]
     payload = {
         "model": "gpt-4-vision-preview",
         "messages": [
@@ -88,6 +88,6 @@ def generate_message(conversation:Conversation):
         conversation.total_completion_tokens+=json_res["usage"]["completion_tokens"]
         conversation.save()
         response_choices=json_res["choices"]
-        Message.objects.create(conversation_id=conversation,role=MessageRoleChoices.ASSISTANT,text=response_choices["message"]["content"])
+        Message.objects.create(conversation_id=conversation,role=MessageRoleChoices.ASSISTANT,text=response_choices[0]["message"]["content"])
 
     return json_res

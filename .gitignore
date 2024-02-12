@@ -1,5 +1,5 @@
-# For development offline
-notechondria/static/localization
+# Teporary production files
+notechondria/productionfiles
 
 # For playground data
 playground/data
