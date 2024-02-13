@@ -1,0 +1,53 @@
+{% if edit_message_form%}
+<div class="msg-edit-form" id="msg-edit-{{edit_message_form.instance.id}}">
+    <form class="row g-3 align-items-center justify-content-end"
+        action="{% url 'gptutils:edit_message' edit_message_form.instance.id%}" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <!-- Django overkill form -->
+        <!-- Include the hidden fields -->
+        {% for hidden in edit_message_form.hidden_fields %}
+        {{ hidden }}
+        {% endfor %}
+        <!-- Include the visible fields  -->
+        {% for field in edit_message_form.visible_fields %}
+        {% if field.name == "text" %}
+        <div class="col">
+            <label for="{{ field.id_for_label }}" class="visually-hidden">
+                {{ field.label }}
+            </label>
+            {{ field }}
+        </div>
+        {% elif field.name == "image" and is_visual_model %}
+        <div class="col-3">
+            <label for="{{ field.id_for_label }}" class="visually-hidden">
+                {{ field.label }}
+            </label>
+            {{ field }}
+        </div>
+        {% endif %}
+        {% endfor %}
+        <div class="col-auto">
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary mb-3">Save</button>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-secondary edit-icon">Cancel</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- turn off msg and open self -->
+
+<script>
+    $(document).ready(function () {
+        $('#msg-{{edit_message_form.instance.id}}').hide();
+        $('#msg-edit-{{edit_message_form.instance.id}}').show();
+    });
+</script>
+
+{% else %}
+<div class="alert alert-warning ms-3 me-3 mt-3" role="alert">
+    Edit message form not received from server
+</div>
+{% endif %}

@@ -8,6 +8,7 @@ from PIL import Image
 from django import forms
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.contrib.auth.models import User
 from .models import Conversation, Message
 
@@ -54,6 +55,7 @@ class ConversationFormS(forms.ModelForm):
 
     # add form_type identifier for model creation
     form_type=forms.CharField(widget=forms.HiddenInput(),required=True)
+    title=forms.CharField(help_text="Name of the conversation",max_length=100,required=True)
     
     class Meta:
         """Load meta data for multiple field to generate form
@@ -82,6 +84,22 @@ class ConversationFormL(forms.ModelForm):
 
     # add form_type identifier for model creation
     form_type=forms.CharField(widget=forms.HiddenInput(),required=True)
+    title=forms.CharField(help_text="Name of the conversation",max_length=100,required=True)
+    temperature=forms.FloatField(help_text="What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",validators=[
+            MaxValueValidator(2),
+            MinValueValidator(0)
+        ])
+    memory_size=forms.IntegerField(help_text="Number of message to included during the conversation, the larger then value, the longer can GPT recall your message, but this comes with higher token costs.",validators=[MinValueValidator(0)])
+    max_tokens=forms.IntegerField(help_text="The maximum number of tokens that can be generated in the chat completion.",validators=[MinValueValidator(100)])
+    timeout=forms.IntegerField(help_text="Override the client-level default timeout for this request, in seconds",validators=[MinValueValidator(5)])
+    frequency_penalty=forms.FloatField(help_text="Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",validators=[
+            MaxValueValidator(2),
+            MinValueValidator(-2)
+        ])
+    presence_penalty=forms.FloatField(help_text="Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",validators=[
+            MaxValueValidator(2),
+            MinValueValidator(-2)
+        ])
 
     class Meta:
         """Load meta data for multiple field to generate form
@@ -97,7 +115,7 @@ class ConversationFormL(forms.ModelForm):
                     "model",
                    "temperature",
                    "memory_size",
-                   "max_token",
+                   "max_tokens",
                    "timeout",
                    "frequency_penalty",
                    "presence_penalty"]
@@ -125,7 +143,7 @@ def validate_user_name(new_user_name, user=None) -> None:
 class MessageForm(forms.ModelForm):
     """Generate new message form"""
 
-    text = forms.CharField(max_length=2048)
+    text = forms.CharField(widget=forms.Textarea(attrs={'rows':1}))
     image = forms.ImageField(required=False)
     # Guess what? I am LAZY.
     class Meta:
@@ -151,3 +169,6 @@ class MessageForm(forms.ModelForm):
         super(MessageForm, self).__init__(*args, **kwargs)
         for visible in self.visible_fields():
             visible.field.widget.attrs["class"] = "form-control"
+        if self.instance.pk!=None:
+            self.fields['text'].widget.attrs['rows'] = 3
+            self.fields['text'].help_text = "To remove the message, please save the message as empty."

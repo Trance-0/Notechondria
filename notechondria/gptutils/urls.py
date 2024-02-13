@@ -11,11 +11,12 @@ from . import views
 urlpatterns = [
     path('', views.gptutils, name='main'),
     path('chat/<int:conv_pk>',views.get_chat,name='get_chat'),
+    path('chat/stream/<int:conv_pk>',views.stream_chat,name='stream_chat'),
     path('chat/delete/<int:conv_pk>',views.delete_chat,name='delete_chat'),
     path('chat/edit/<int:conv_pk>',views.edit_chat,name='edit_chat'),
     path('chat/create',views.create_chat,name='create_chat'),
     path('chat/create/fast',views.fast_chat,name='fast_chat'),
-    path('chat/<int:conv_pk>/edit/<int:message_pk>',views.edit_message,name='edit_message'),
+    path('chat/edit_message/<int:message_pk>',views.edit_message,name='edit_message'),
 ]
 # redirect media request to media root
 if settings.DEBUG:

@@ -33,7 +33,7 @@
 
     <div class="modal fade" id="createChatModalS" tabindex="-1" aria-labelledby="createChatModalSLabel"
         aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <form action="{% url 'gptutils:create_chat' %}" method="post">
                     <!-- Use jQuery to hide advanced options -->
@@ -73,9 +73,14 @@
                             Simple form not received from server
                         </div>
                         {% endif %}
-                        <div class="modal-footer">
+                        <div class="modal-footer row d-flex align-items-end">
+                            <div class="col">
+                                <a class="btn btn-success" data-bs-toggle="modal" href="#createChatModalL" role="button">Use advanced config</a>
+                            </div>
+                            <div class="col-auto">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                             <button type="submit" class="btn btn-primary">Create Chat</button>
+                            </div>
                         </div>
                     </div>
                 </form>
@@ -85,7 +90,7 @@
 
     <div class="modal fade" id="createChatModalL" tabindex="-1" aria-labelledby="createChatModalLLabel"
         aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <form action="{% url 'gptutils:create_chat' %}" method="post">
                     <!-- Use jQuery to hide advanced options -->
@@ -126,9 +131,14 @@
                             Advanced form not received from server
                         </div>
                         {% endif %}
-                        <div class="modal-footer">
+                        <div class="modal-footer row d-flex align-items-end">
+                            <div class="col">
+                                <a class="btn btn-success" data-bs-toggle="modal" href="#createChatModalS" role="button">Use simple config</a>
+                            </div>
+                            <div class="col-auto">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                             <button type="submit" class="btn btn-primary">Create Chat</button>
+                            </div>
                         </div>
                     </div>
                 </form>
@@ -136,18 +146,21 @@
         </div>
     </div>
 
+    <div class="modal fade" id="editChatModal" tabindex="-1" aria-labelledby="editChatModalLabel" aria-hidden="true">
+    </div>
+
     <main class="container-fluid fill-height">
         <div class="h-100 row g-2">
             <aside class="col-sm-3 blog-sidebar mt-3 mb-3">
                 <!--  style="max-width: 490px;" -->
                 <div class="h-100 card">
-                    <div class="card-header d-flex justify-content-end"style="color:red;">
-                        <a data-bs-toggle="modal" href="#createChatModalS" role="button" >
+                    <div class="card-header d-flex justify-content-end" style="color:red;">
+                        <a data-bs-toggle="modal" href="#createChatModalS" role="button">
                             {% svg_tags 'plus-circle' '' 32 'var(--bs-secondary)' %}
                         </a>
                     </div>
                     <div class="card-body">
-                        <ul class="h-100 w-100 list-group list-group-flush" style="overflow-y: hidden;">
+                        <ul class="h-100 w-100 list-group list-group-flush" style="overflow-y: scroll;">
                             {% if conversations_list %}
                             {% for conv in conversations_list %}
                             <li class="list-group-item">
@@ -159,14 +172,12 @@
                                             {{ conv.title }}
                                         </a>
                                     </span>
-                                    
-                                    <!-- have a button POST a click via AJAX -->
-                                    <a hx-get="{% url 'gptutils:edit_chat' conv.id %}" hx-target="#createChatModalL" hx-swap="afterend">
-                                        {% svg_tags 'gear' '' 20 'var(--bs-danger)' %}
-                                    </a>
 
-                                    <a href="/">
-                                        {% svg_tags 'gear' '' 20 'var(--bs-secondary)' %}</a>
+                                    <!-- have a button POST a click via AJAX -->
+                                    <div hx-get="{% url 'gptutils:edit_chat' conv.id %}" hx-target="#editChatModal"
+                                        hx-swap="outerHTML">
+                                        {% svg_tags 'gear' '' 20 'var(--bs-secondary)' %}
+                                    </div>
                                 </div>
                             </li>
                             {% endfor %}
@@ -186,36 +197,41 @@
                         {{cur_conversation.title}} : {{cur_conversation.model}}
                     </div>
                     {% endif %}
-                    <div class="card-body">
+                    <div class="card-body" style="overflow-y: scroll;
+                    display: flex;
+                    flex-direction: column-reverse;">
                         <!-- Render conversation info -->
                         {% if messages_list %}
                         {% for message in messages_list %}
                         {% if message.role == 'user' %}
-                        <div class="row d-flex justify-content-end">
-                            <div class="col-1">
-                            </div>
+                        <div class="row d-flex justify-content-end pe-2 ps-5">
                             <div class="col-auto">
-                                <div class="user-msg alert alert-primary" role="alert">
-                                    {{message.text}}
-                                    {% if message.image %}
-                                    <img src="{{ message.image.url }}" alt="image send on message {{message.id}}"
-                                        style=" border-radius: 25px;" />
-                                    {% endif %}
-                                    <a class="edit-icon" href="/">
-                            {% svg_tags 'pen' '' 10 'var(--bs-primary)' %}</a>
+                                <div class="alert alert-primary" role="alert">
+                                    <div class="msg-edit-form" id="msg-edit-{{message.id}}"></div>
+                                    <div class="user-msg" id="msg-{{message.id}}">
+                                        {{message.text}}
+                                        {% if message.image %}
+                                        <img src="{{ message.image.url }}" alt="image send on message {{message.id}}"
+                                            style=" border-radius: 25px;" />
+                                        {% endif %}
+                                        <!-- have a button POST a click via AJAX -->
+                                        <div class="edit-icon" id="edit-msg-{{message.id}}"
+                                            hx-get="{% url 'gptutils:edit_message' message.id %}"
+                                            hx-target="#msg-edit-{{message.id}}" hx-swap="outerHTML">
+                                            {% svg_tags 'pen' '' 10 'var(--bs-secondary)' %}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         {% elif message.role == 'assistant' %}
-                        <div class="row">
-                            <div class="col-auto">
+                        <div class="row ps-2 pe-5">
+                            <div class="col-auto ">
                                 <div class="alert alert-secondary" role="alert">
                                     <div class="col-auto">
                                         {{message.text}}
                                     </div>
                                 </div>
-                            </div>
-                            <div class="col-1">
                             </div>
                         </div>
                         {% endif %}
@@ -244,7 +260,7 @@
                         <!-- inline form reference: https://getbootstrap.com/docs/5.3/forms/layout/#inline-forms -->
                         {% if cur_conversation %}
                         <form class="row g-3 align-items-center justify-content-end" id="ajax-send"
-                            action="{% url 'gptutils:get_chat' cur_conversation.id %}" method="post">
+                            action="{% url 'gptutils:get_chat' cur_conversation.id %}" method="post" enctype="multipart/form-data" >
                             {% else %}
                             <form class="row g-3 align-items-center justify-content-end"
                                 action="{% url 'gptutils:fast_chat'%}" method="post">
@@ -294,6 +310,14 @@
         var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
             return new bootstrap.Popover(popoverTriggerEl)
         })
+    </script>
+
+    <!-- hide other form on requesting new form -->
+
+    <script>
+        $('edit-icon').click(function () {
+            $('msg-edit-form').hide();
+        });
     </script>
 </body>
 

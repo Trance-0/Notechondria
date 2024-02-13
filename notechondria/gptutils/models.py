@@ -1,10 +1,11 @@
 import base64
-import random
+import logging
 from django.db import models
 from django.utils.timezone import now
 from creators.models import Creator
 from django.utils.translation import gettext_lazy as _
 
+logger = logging.getLogger("django")
 
 # Create your models here.
 class GPTModelChoices(models.TextChoices):
@@ -41,7 +42,7 @@ class Conversation(models.Model):
         null=False,
     )
     # plan for chat room in near future
-    param = models.CharField(max_length=1024,null=True)
+    param = models.CharField(max_length=255,null=True)
     sharing_id = models.CharField(max_length=36,unique=True,null=False)
     title = models.CharField(max_length=100, null=True)
 
@@ -61,7 +62,7 @@ class Conversation(models.Model):
     temperature = models.DecimalField(default=0.9, max_length=3, max_digits=2, decimal_places=2, null=False)
     memory_size = models.IntegerField(default=3, null=False)
     # The maximum number of tokens to generate in the chat completion.
-    max_token = models.IntegerField(default=500, null=False)
+    max_tokens = models.IntegerField(default=500, null=False)
     timeout = models.IntegerField(default=600, null=False)
     # Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency
     # in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
@@ -76,6 +77,11 @@ class Conversation(models.Model):
     def __str__(self):
         """for better list display"""
         return f"{self.title}: {self.model}"
+    
+    def is_visual_model(self):
+        return (self.model == GPTModelChoices.GPT4_V or 
+                                    self.model == GPTModelChoices.GPT4_VH or
+                                    self.model == GPTModelChoices.GPT4_VL)
     
     # the following function cannot be created here due to reference recursion
     # def created(self)->datetime:
@@ -112,12 +118,14 @@ class Message(models.Model):
     image = models.ImageField(upload_to="message_pic",blank=True, null=True)
     # file field is currently unsupported
     file = models.FileField(upload_to="message_file",blank=True, null=True)
-    text = models.CharField(max_length=2048, blank=True, null=True)
+    file_id = models.CharField(max_length=255, blank=True, null=True)
+    # unlimited size for PostgreSQL, the max_length value have to be set for other databases.
+    text = models.TextField(blank=True, null=True)
 
     def __str__(self) -> str:
-        return f'{self.conversation_id.title}: {self.created}'
+        return f'{self.text[:min(len(self.text),50)]}: {self.created}'
 
-    def to_json(self):
+    def to_dict(self):
         def encode_image(image_path):
             """Function to encode the image"""
             with open(image_path, "rb") as image_file:
@@ -129,9 +137,12 @@ class Message(models.Model):
                     ]}
         if self.text:
             message["content"].append({"type": "text", "text": self.text})
-        if self.image:
-            base64_image = encode_image(self.image)
+        # skip image processing when model is not visual one.
+        if self.image and self.conversation_id.is_visual_model():
+            base64_image = encode_image(self.image.path)
+            logger.debug(base64_image)
+            image_ext=self.image.path.split(".")[-1]
             message["content"].append({"type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},"detail": "auto" if len(self.conversation_id.model.split(":"))==1 else self.conversation_id.model.split(":")[1] })
+                        "image_url": {"url": f"data:image/{image_ext};base64,{base64_image}"},"detail": "auto" if len(self.conversation_id.model.split(":"))==1 else self.conversation_id.model.split(":")[1] })
         # if self.file:
         return message
