@@ -1,6 +1,8 @@
+from datetime import datetime
+from django.utils import timezone
 import logging
 import random
-from django.http import JsonResponse
+from django.http import JsonResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
 
@@ -8,7 +10,7 @@ from django.contrib import messages
 from creators.models import Creator
 from .forms import ConversationFormS, ConversationFormL, MessageForm
 from .models import Conversation, Message, GPTModelChoices, MessageRoleChoices
-from .gpt_request_parser import generate_message,add_token
+from .gpt_request_parser import generate_message,add_token, generate_stream_message
 
 logger=logging.getLogger()
 
@@ -21,6 +23,17 @@ logger=logging.getLogger()
 #     # get list of conversations
 #     return render(request, "conversation.html", {"user":owner_id })
 
+####################################################################
+# Cheat sheet for filtering in django model:
+# Greater than:
+# Person.objects.filter(age__gt=20)
+# Greater than or equal to:
+# Person.objects.filter(age__gte=20)
+# Less than:
+# Person.objects.filter(age__lt=20)
+# Less than or equal to:
+# Person.objects.filter(age__lte=20)
+####################################################################
 
 @login_required
 def gptutils(request):
@@ -52,7 +65,7 @@ def get_chat(request, conv_pk):
         message_instance.conversation_id = cur_conversation
         response={}
         if cur_conversation.model==GPTModelChoices.PLAIN:
-            messages_list=Message.objects.filter(conversation_id=conv_pk).order_by("-created")
+            messages_list=Message.objects.filter(conversation_id=conv_pk).order_by("-created")[:10]
             is_last_user=len(messages_list)==0 or messages_list[0].role==MessageRoleChoices.USER
             if is_last_user:
                 message_instance.role=MessageRoleChoices.ASSISTANT
@@ -63,13 +76,25 @@ def get_chat(request, conv_pk):
             response=generate_message(cur_conversation)
         if "error" in response:
             messages.error(request, f"open-ai error: {response}")
+
+    # processing get request from htmx
+    if request.META.get('HTTP_HX_REQUEST'):
+        # if request is get, then render new message for infinite scroll
+        if request.method=="GET":
+            # for the timezone, since our app is running in UTC, remember to change it if you want other timezone.
+            after_time=datetime.strptime(request.GET.get("after",""),"%Y-%m-%d %H:%M[:%S[.%f][%Z]").replace(tzinfo=timezone.utc)
+            messages_list = Message.objects.filter(conversation_id=conv_pk).filter(created__lt=after_time).order_by("-created")[:10]
+            context["messages_list"] = messages_list
+        # if request is post, then render new pair of message.
+        return render(request, "htmx_message_blocks.html", context=context)
+    
     # processing response
-    messages_list = Message.objects.filter(conversation_id=conv_pk).order_by("-created")
+    messages_list = Message.objects.filter(conversation_id=conv_pk).order_by("-created")[:10]
     context["messages_list"] = messages_list
     return render(request, "conversation.html", context=context)
 
 @login_required
-def stream_chat(request, conv_pk):
+async def stream_chat(request, conv_pk):
     """ send text request """
     logger.debug(f'request from user {request.user} for streaming response')
     # processing sending in AJAX (to be implement)
@@ -97,7 +122,7 @@ def stream_chat(request, conv_pk):
     # processing response
     messages_list = Message.objects.filter(conversation_id=conv_pk).order_by("created")
     context["messages_list"] = messages_list
-    return render(request, "conversation.html", context=context)
+    return StreamingHttpResponse(generate_stream_message(cur_conversation))
 
 
 @login_required
@@ -195,12 +220,27 @@ def edit_message(request,message_pk):
         else:
             message_instance=message_form.save()
             add_token(message_instance)
-            messages.success(request, f"edit form with name {message_instance.title}")
+            messages.success(request, f"Successfully edit the message {message_instance}")
             # delete message after message_instance
-            # some code
+            del_message_list=Message.objects.filter(conversation_id=message_instance.conversation_id).filter(created__gt=message_instance.created)
+            for i in del_message_list:
+                i.delete()
         return redirect("gptutils:get_chat", conv_pk=message_instance.conversation_id.id)
     return render(request,"htmx_edit_message_form.html",context={"edit_message_form":MessageForm(instance=message_instance)})
 
+def delete_message(request, message_pk):
+    """only processing post request for deleting message, including message with pk based on time"""
+    owner_id = get_object_or_404(Creator, user_id=request.user)
+    message_instance = get_object_or_404(Message, id=message_pk)
+    if message_instance.conversation_id.creator_id!=owner_id:
+        messages.error(request, f"You don't have access to the message")
+        return redirect("gptutils:main")
+    if request.method=="POST":
+        del_message_list=Message.objects.filter(conversation_id=message_instance.conversation_id).filter(created__gte=message_instance.created)
+        for i in del_message_list:
+            i.delete()
+        messages.success(request, f"successfully deleted message {message_instance}")
+    return redirect("gptutils:get_chat", conv_pk=message_instance.conversation_id.id)
 
 @login_required
 def delete_chat(request, conv_pk):

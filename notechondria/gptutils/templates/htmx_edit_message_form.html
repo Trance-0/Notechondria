@@ -1,5 +1,5 @@
 {% if edit_message_form%}
-<div class="msg-edit-form" id="msg-edit-{{edit_message_form.instance.id}}">
+<div class="msg-edit-form w-100" id="msg-edit-{{edit_message_form.instance.id}}">
     <form class="row g-3 align-items-center justify-content-end"
         action="{% url 'gptutils:edit_message' edit_message_form.instance.id%}" method="post" enctype="multipart/form-data">
         {% csrf_token %}
@@ -28,7 +28,10 @@
         {% endfor %}
         <div class="col-auto">
             <div class="col-auto">
-                <button type="submit" class="btn btn-primary mb-3">Save</button>
+                <button type="submit" class="btn btn-primary mb-3" hx-confirm="Are you sure you wish to edit the message? All the successive message will be lost!">Save</button>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-danger mb-3" hx-post="{% url 'gptutils:delete_message' edit_message_form.instance.id %}" hx-confirm="Are you sure you wish to edit the message? All the successive message will be lost!">Delete</button>
             </div>
             <div class="col-auto">
                 <button class="btn btn-secondary edit-icon">Cancel</button>

@@ -1,4 +1,5 @@
 import base64
+from django.utils import timezone
 import logging
 from django.db import models
 from django.utils.timezone import now
@@ -124,6 +125,14 @@ class Message(models.Model):
 
     def __str__(self) -> str:
         return f'{self.text[:min(len(self.text),50)]}: {self.created}'
+    
+    def created_url(self) -> str:
+        """helper function to safely parse created datetime"""
+        return self.created.strftime("%Y-%m-%d %H:%M[:%S[.%f][%Z]")
+    
+    def created_local(self) -> str:
+        local_timezone = self.created.astimezone(timezone.get_current_timezone())
+        return local_timezone
 
     def to_dict(self):
         def encode_image(image_path):

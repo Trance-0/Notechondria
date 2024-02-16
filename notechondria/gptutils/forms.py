@@ -170,5 +170,5 @@ class MessageForm(forms.ModelForm):
         for visible in self.visible_fields():
             visible.field.widget.attrs["class"] = "form-control"
         if self.instance.pk!=None:
-            self.fields['text'].widget.attrs['rows'] = 3
-            self.fields['text'].help_text = "To remove the message, please save the message as empty."
+            self.fields['text'].widget.attrs['rows'] = 6
+            self.fields['text'].widget.attrs["class"] = "form-control w-100"

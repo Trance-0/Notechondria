@@ -89,6 +89,11 @@ TEMPLATES = [
     },
 ]
 
+# Session settings
+# https://docs.djangoproject.com/en/3.2/ref/settings/#std-setting-SESSION_COOKIE_AGE
+# We set to at most 3 days
+SESSION_COOKIE_AGE=259200
+
 WSGI_APPLICATION = 'notechondria.wsgi.application'
 
 # Logging

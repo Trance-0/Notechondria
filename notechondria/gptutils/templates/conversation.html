@@ -147,6 +147,7 @@
     </div>
 
     <div class="modal fade" id="editChatModal" tabindex="-1" aria-labelledby="editChatModalLabel" aria-hidden="true">
+        <!-- just a place holder for htmx to find -->
     </div>
 
     <main class="container-fluid fill-height">
@@ -168,7 +169,7 @@
                                     <span class="d-inline-block" tabindex="0" data-bs-toggle="popover"
                                         data-bs-trigger="hover focus" data-bs-content="Model name: {{conv.model}}">
                                         <a class="btn btn-light" type="button"
-                                            href="{% url 'gptutils:get_chat' conv.pk %}">
+                                            href="{% url 'gptutils:get_chat' conv.id %}">
                                             {{ conv.title }}
                                         </a>
                                     </span>
@@ -178,6 +179,8 @@
                                         hx-swap="outerHTML">
                                         {% svg_tags 'gear' '' 20 'var(--bs-secondary)' %}
                                     </div>
+
+
                                 </div>
                             </li>
                             {% endfor %}
@@ -203,38 +206,63 @@
                         <!-- Render conversation info -->
                         {% if messages_list %}
                         {% for message in messages_list %}
-                        {% if message.role == 'user' %}
-                        <div class="row d-flex justify-content-end pe-2 ps-5">
-                            <div class="col-auto">
-                                <div class="alert alert-primary" role="alert">
-                                    <div class="msg-edit-form" id="msg-edit-{{message.id}}"></div>
-                                    <div class="user-msg" id="msg-{{message.id}}">
-                                        {{message.text}}
-                                        {% if message.image %}
-                                        <img src="{{ message.image.url }}" alt="image send on message {{message.id}}"
-                                            style=" border-radius: 25px;" />
-                                        {% endif %}
-                                        <!-- have a button POST a click via AJAX -->
-                                        <div class="edit-icon" id="edit-msg-{{message.id}}"
-                                            hx-get="{% url 'gptutils:edit_message' message.id %}"
-                                            hx-target="#msg-edit-{{message.id}}" hx-swap="outerHTML">
-                                            {% svg_tags 'pen' '' 10 'var(--bs-secondary)' %}
+                        {% if forloop.last %}
+                        <!-- Load 10 more message if scroll to end -->
+                            <div 
+                                hx-trigger="intersect once"
+                                hx-get="{% url 'gptutils:get_chat' cur_conversation.id %}?after={{message.created_url}}"
+                                hx-swap="afterend"
+                            >
+                        {% else %}
+                            <div>
+                        {% endif %}
+                            {% if message.role == 'user' %}
+                            <div class="row d-flex justify-content-end pe-2 ps-5">
+                                <div class="col-auto">
+                                    <div class="alert alert-primary" role="alert">
+                                        <div class="text-muted">{{message.created_local}}</div>
+                                        <div class="msg-edit-form" id="msg-edit-{{message.id}}"></div>
+                                        <div class="user-msg" id="msg-{{message.id}}">
+                                            {{message.text|slice:"0:600"}}
+                                            {% if message.text|length > 600 %}
+                                            <div class="collapse" id="collapseMessage-{{message.id}}">{{message.text|slice:"600:"}}</div>
+                                            <a class="link-dark" data-bs-toggle="collapse" href="#collapseMessage-{{message.id}}" role="button" aria-expanded="false" aria-controls="collapseMessage-{{message.id}}">
+                                                ...
+                                            </a>
+                                            {% endif %}
+                                            {% if message.image %}
+                                            <img src="{{ message.image.url }}" alt="image send on message {{message.id}}"
+                                            class="image-fluid" style=" border-radius: 25px;" />
+                                            {% endif %}
+                                            <!-- have a button POST a click via AJAX -->
+                                            <div class="edit-icon" id="edit-msg-{{message.id}}"
+                                                hx-get="{% url 'gptutils:edit_message' message.id %}"
+                                                hx-target="#msg-edit-{{message.id}}" hx-swap="outerHTML">
+                                                {% svg_tags 'pen' '' 10 'var(--bs-secondary)' %}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        {% elif message.role == 'assistant' %}
-                        <div class="row ps-2 pe-5">
-                            <div class="col-auto ">
-                                <div class="alert alert-secondary" role="alert">
-                                    <div class="col-auto">
-                                        {{message.text}}
+                            {% elif message.role == 'assistant' %}
+                            <div class="row ps-2 pe-5">
+                                <div class="col-auto ">
+                                    <div class="alert alert-secondary" role="alert">
+                                        <div class="text-muted">{{message.created_local}}</div>
+                                        <div class="col-auto">
+                                            {{message.text|slice:"0:600"}}
+                                            {% if message.text|length > 600 %}
+                                            <div class="collapse" id="collapseMessage-{{message.id}}">{{message.text|slice:"600:"}}</div>
+                                            <a class="link-dark" data-bs-toggle="collapse" href="#collapseMessage-{{message.id}}" role="button" aria-expanded="false" aria-controls="collapseMessage-{{message.id}}">
+                                                ...
+                                            </a>
+                                            {% endif %}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        {% endif %}
+                            {% endif %}
+                            </div>
                         {% endfor %}
                         {% else %}
                         {% if cur_conversation %}
@@ -259,11 +287,10 @@
                         {% if message_form %}
                         <!-- inline form reference: https://getbootstrap.com/docs/5.3/forms/layout/#inline-forms -->
                         {% if cur_conversation %}
-                        <form class="row g-3 align-items-center justify-content-end" id="ajax-send"
-                            action="{% url 'gptutils:get_chat' cur_conversation.id %}" method="post" enctype="multipart/form-data" >
+                        <form class="row g-3 align-items-center justify-content-end" hx-post="{% url 'gptutils:get_chat' cur_conversation.id %}" hx-encoding="multipart/form-data" >
                             {% else %}
                             <form class="row g-3 align-items-center justify-content-end"
-                                action="{% url 'gptutils:fast_chat'%}" method="post">
+                                hx-post="{% url 'gptutils:fast_chat'%}" hx-encoding="multipart/form-data" >
                                 {% endif %}
                                 {% csrf_token %}
                                 <!-- Django overkill form -->

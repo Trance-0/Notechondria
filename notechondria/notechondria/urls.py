@@ -17,6 +17,8 @@ from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path,re_path
 from django.views.static import serve
+from django.views.generic import RedirectView
+from django.contrib.staticfiles.storage import staticfiles_storage
 from . import views
 
 urlpatterns = [
@@ -29,6 +31,10 @@ urlpatterns = [
     path('about/',views.about,name="about"),
     path('search/',views.about,name="search"),
     path('admin/', admin.site.urls),
+    path(
+        "favicon.ico",
+        RedirectView.as_view(url=staticfiles_storage.url("images/favicon.ico")),
+    ),
 ]
 
 # ... the rest of your URLconf goes here ...
