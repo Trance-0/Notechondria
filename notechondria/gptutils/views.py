@@ -64,20 +64,45 @@ def get_chat(request, conv_pk):
         message_instance = message_form.save(commit=False)
         message_instance.conversation_id = cur_conversation
         response={}
+
+        # processing plain request ajax
         if cur_conversation.model==GPTModelChoices.PLAIN:
-            messages_list=Message.objects.filter(conversation_id=conv_pk).order_by("-created")[:10]
+            # for plain message, we do nothing but return rendered new message 
+            messages_list=Message.objects.filter(conversation_id=conv_pk).order_by("-created")[:1]
             is_last_user=len(messages_list)==0 or messages_list[0].role==MessageRoleChoices.USER
             if is_last_user:
                 message_instance.role=MessageRoleChoices.ASSISTANT
             message_instance.save()
+            context["messages_list"] = [message_instance]
+            # if request is post, then render new pair of message.
+            if request.META.get('HTTP_HX_REQUEST'):
+                return render(request, "htmx_message_blocks.html", context=context)
+        
+        # for other AI model, we test for streaming, streaming is an ajax only feature.
+        message_instance.save()
+        is_streaming=request.POST.get("streaming",False)
+        if is_streaming:
+            # create dummy message, text cannot be null, so we set it to blank?
+            dummy_message=Message.objects.create(conversation_id=cur_conversation,role=MessageRoleChoices.ASSISTANT,text="")
+            context["user_msg"]=message_instance
+            context["assist_msg"]=dummy_message
+            return render(request, "htmx_message_pair_streaming.html", context=context)
         else:
-            message_instance.save()
             add_token(message_instance)
             response=generate_message(cur_conversation)
-        if "error" in response:
-            messages.error(request, f"open-ai error: {response}")
+            if "error" in response:
+                messages.error(request, f"open-ai error: {response}")
+                # if there is error, we cannot do ajax to notify user yet
+                # return render(request, "conversation.html", context=context)
+                context["messages_list"] = []
+                return render(request, "htmx_message_blocks.html", context=context)
+            if request.META.get('HTTP_HX_REQUEST'):
+                # get most recent message, you can save this query but I don't care.
+                context["messages_list"] = Message.objects.filter(conversation_id=conv_pk).order_by("-created")[:2]
+                return render(request, "htmx_message_blocks.html", context=context)
+        # all post request for this function terminates here.
 
-    # processing get request from htmx
+    # processing get request from htmx (infinite scroll section requests)
     if request.META.get('HTTP_HX_REQUEST'):
         # if request is get, then render new message for infinite scroll
         if request.method=="GET":
@@ -85,43 +110,24 @@ def get_chat(request, conv_pk):
             after_time=datetime.strptime(request.GET.get("after",""),"%Y-%m-%d %H:%M[:%S[.%f][%Z]").replace(tzinfo=timezone.utc)
             messages_list = Message.objects.filter(conversation_id=conv_pk).filter(created__lt=after_time).order_by("-created")[:10]
             context["messages_list"] = messages_list
-        # if request is post, then render new pair of message.
-        return render(request, "htmx_message_blocks.html", context=context)
+            # specify infinite scroll 
+            context["infinite_scroll"] = True
+            return render(request, "htmx_message_blocks.html", context=context)
     
-    # processing response
+    # processing response normally, non ajax
     messages_list = Message.objects.filter(conversation_id=conv_pk).order_by("-created")[:10]
     context["messages_list"] = messages_list
     return render(request, "conversation.html", context=context)
 
 @login_required
-async def stream_chat(request, conv_pk):
-    """ send text request """
-    logger.debug(f'request from user {request.user} for streaming response')
-    # processing sending in AJAX (to be implement)
-    context = __get_basic_context(request)
+def get_stream_chat(request, conv_pk):
+    """ send text request based on streaming, this function is a bit complex if we add login request, so we directly allow all the users to make request with strict permission check"""
+    owner_id = get_object_or_404(Creator, user_id=request.user)
     cur_conversation = get_object_or_404(Conversation, id=conv_pk)
-    context["cur_conversation"] = cur_conversation
-    context["is_visual_model"] = cur_conversation.is_visual_model()
-    if cur_conversation.creator_id != context["user"]:
-        messages.error(request, f"no permission for edit the conversation")
+    logger.debug(f'requested streaming chat instance edit form with id {conv_pk}')
+    if cur_conversation.creator_id!=owner_id:
+        messages.error(request, f"You don't have access to streaming the chat")
         return redirect("gptutils:main")
-    if request.method == "POST":
-        # permission check
-        message_form = MessageForm(request.POST, request.FILES)
-        if not message_form.is_valid():
-            for key, value in message_form.errors.items():
-                messages.error(request, f"validation error on field {key}:{[error for error in value]}")
-            return redirect("gptutils:get_chat", conv_pk=conv_pk)
-        message_instance = message_form.save(commit=False)
-        message_instance.conversation_id = cur_conversation
-        message_instance.save()
-        add_token(message_instance)
-        response_json=generate_message(cur_conversation)
-        if "error" in response_json:
-            messages.error(request, f"open-ai error: {response_json}")
-    # processing response
-    messages_list = Message.objects.filter(conversation_id=conv_pk).order_by("created")
-    context["messages_list"] = messages_list
     return StreamingHttpResponse(generate_stream_message(cur_conversation))
 
 
@@ -151,7 +157,9 @@ def create_chat(request):
 
 @login_required
 def fast_chat(request):
-    """create chat based on conversation form received from user"""
+    """create chat based on conversation form received from user
+    I don't want to do any ajax on this section cause it costs a lot of work and don't have much improvement.
+    """
     # test for user
     owner_id = get_object_or_404(Creator, user_id=request.user)
     if request.method == "POST":
@@ -202,7 +210,9 @@ def edit_chat(request,conv_pk):
 
 @login_required
 def edit_message(request,message_pk):
-    """redirect to edit message form for htmx request return form only"""
+    """redirect to edit message form for htmx request return form only
+    for the purpose of returning error and large query operations, this page will not be ajax under post request
+    """
     # test for user
     owner_id = get_object_or_404(Creator, user_id=request.user)
     message_instance = get_object_or_404(Message, id=message_pk)
@@ -229,7 +239,9 @@ def edit_message(request,message_pk):
     return render(request,"htmx_edit_message_form.html",context={"edit_message_form":MessageForm(instance=message_instance)})
 
 def delete_message(request, message_pk):
-    """only processing post request for deleting message, including message with pk based on time"""
+    """only processing post request for deleting message, including message with pk based on time
+    for the purpose of returning error and large query operations, this page will not be ajax under post request
+    """
     owner_id = get_object_or_404(Creator, user_id=request.user)
     message_instance = get_object_or_404(Message, id=message_pk)
     if message_instance.conversation_id.creator_id!=owner_id:
@@ -244,7 +256,9 @@ def delete_message(request, message_pk):
 
 @login_required
 def delete_chat(request, conv_pk):
-    """delete chat request, only processing post request only, the get request is referring to edit_chat"""
+    """delete chat request, only processing post request only, the get request is referring to edit_chat
+    for the purpose of returning error and large query operations, this page will not be ajax under post request
+    """
     if request.method == "POST":
         # validate ownership
         chat_instance = get_object_or_404(Conversation, id=conv_pk)
@@ -285,6 +299,7 @@ def __generate_chat_id() -> str:
 
 
 def __get_basic_context(request) -> dict:
+    """return basic context environment for gptutils module"""
     context = {}
     context["user"] = Creator.objects.get(user_id=request.user)
     context["create_form_simple"] = ConversationFormS()

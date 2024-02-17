@@ -48,11 +48,13 @@ def generate_message(conversation:Conversation):
     return response
 
 def generate_stream_message(conversation:Conversation):
+    """generate stream message needs to have a dummy message for AI input, the AI message will store in the dummy message"""
     global client
 
-    messages_list=Message.objects.filter(conversation_id=conversation).order_by("-created")[:conversation.memory_size]
+    messages_list=Message.objects.filter(conversation_id=conversation).order_by("-created")[:conversation.memory_size+1]
+    dummy_message=messages_list[0]
     model_name=conversation.model.split(':')[0]
-    payload=[i.to_dict() for i in messages_list]
+    payload=[i.to_dict() for i in messages_list[1:]]
     response=None
     try:
         stream = client.chat.completions.create(
@@ -69,10 +71,10 @@ def generate_stream_message(conversation:Conversation):
             if chunk.choices[0].delta.content is not None:
                 response.append(chunk.choices[0].delta.content)
                 yield chunk.choices[0].delta.content
-        response_message=Message.objects.create(conversation_id=conversation,role=MessageRoleChoices.ASSISTANT,text="".join(response))
+        dummy_message.text="".join(response)
         # token calculation (approximate)
         conversation.total_completion_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
-        add_token(response_message)
+        add_token(dummy_message)
         for message in messages_list:
             add_token(message)
     except Exception as e:

@@ -1,0 +1,7 @@
+{% load static %}
+
+{% if is_offline %}
+    <script src="{% static 'htmx/htmx.sse.js' %}"></script>
+{% else %}
+    <script src="https://unpkg.com/htmx.org/dist/ext/sse.js"></script>
+{% endif %}

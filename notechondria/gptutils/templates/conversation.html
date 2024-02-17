@@ -8,7 +8,7 @@
 
     <style>
         .fill-height {
-            height: calc(100vh - 72px);
+            height: calc(100vh - 82px);
             /* Adjust the navbar height as needed */
         }
 
@@ -25,6 +25,8 @@
 
     {% include "resource_header.html" %}
 
+    <!-- use htmx sse extension -->
+    {% include "htmx_sse_header.html" %}
 </head>
 
 <body class="h-100" style="height: 100vh">
@@ -179,8 +181,6 @@
                                         hx-swap="outerHTML">
                                         {% svg_tags 'gear' '' 20 'var(--bs-secondary)' %}
                                     </div>
-
-
                                 </div>
                             </li>
                             {% endfor %}
@@ -205,6 +205,9 @@
                     flex-direction: column-reverse;">
                         <!-- Render conversation info -->
                         {% if messages_list %}
+                    <div id="latest-message">
+                        <!-- place to add new message for ajax post request -->
+                    </div>
                         {% for message in messages_list %}
                         {% if forloop.last %}
                         <!-- Load 10 more message if scroll to end -->
@@ -223,9 +226,9 @@
                                         <div class="text-muted">{{message.created_local}}</div>
                                         <div class="msg-edit-form" id="msg-edit-{{message.id}}"></div>
                                         <div class="user-msg" id="msg-{{message.id}}">
-                                            {{message.text|slice:"0:600"}}
-                                            {% if message.text|length > 600 %}
-                                            <div class="collapse" id="collapseMessage-{{message.id}}">{{message.text|slice:"600:"}}</div>
+                                            {{message.body|linebreaks}}
+                                            {% if message.extras|linebreaks%}
+                                            <div class="collapse" id="collapseMessage-{{message.id}}">{{message.extras|linebreaks}}</div>
                                             <a class="link-dark" data-bs-toggle="collapse" href="#collapseMessage-{{message.id}}" role="button" aria-expanded="false" aria-controls="collapseMessage-{{message.id}}">
                                                 ...
                                             </a>
@@ -234,12 +237,27 @@
                                             <img src="{{ message.image.url }}" alt="image send on message {{message.id}}"
                                             class="image-fluid" style=" border-radius: 25px;" />
                                             {% endif %}
-                                            <!-- have a button POST a click via AJAX -->
-                                            <div class="edit-icon" id="edit-msg-{{message.id}}"
-                                                hx-get="{% url 'gptutils:edit_message' message.id %}"
-                                                hx-target="#msg-edit-{{message.id}}" hx-swap="outerHTML">
-                                                {% svg_tags 'pen' '' 10 'var(--bs-secondary)' %}
+                                            <!-- begin for menu of user input -->
+                                            <div class="edit-icon mt-2">
+                                                <div class=" row align-items-center">
+                                                    <div class="col-auto">
+                                                        <!-- have a button POST a click via AJAX -->
+                                                        <div id="edit-msg-{{message.id}}"
+                                                            hx-get="{% url 'gptutils:edit_message' message.id %}"
+                                                            hx-target="#msg-edit-{{message.id}}" hx-swap="outerHTML">
+                                                            {% svg_tags 'pen' '' 10 'var(--bs-secondary)' %}
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-auto">
+                                                        <form action="" method="post">
+                                                            <a type="submit">
+                                                            {% svg_tags 'arrow-counterclockwise' '' 10 'var(--bs-secondary)' %}
+                                                            </a>
+                                                        </form>
+                                                    </div>
+                                                </div>
                                             </div>
+                                            <!-- end for menu of user input -->
                                         </div>
                                     </div>
                                 </div>
@@ -250,9 +268,9 @@
                                     <div class="alert alert-secondary" role="alert">
                                         <div class="text-muted">{{message.created_local}}</div>
                                         <div class="col-auto">
-                                            {{message.text|slice:"0:600"}}
-                                            {% if message.text|length > 600 %}
-                                            <div class="collapse" id="collapseMessage-{{message.id}}">{{message.text|slice:"600:"}}</div>
+                                            {{message.body|linebreaks}}
+                                            {% if message.extras %}
+                                            <div class="collapse" id="collapseMessage-{{message.id}}">{{message.extras|linebreaks}}</div>
                                             <a class="link-dark" data-bs-toggle="collapse" href="#collapseMessage-{{message.id}}" role="button" aria-expanded="false" aria-controls="collapseMessage-{{message.id}}">
                                                 ...
                                             </a>
@@ -287,10 +305,11 @@
                         {% if message_form %}
                         <!-- inline form reference: https://getbootstrap.com/docs/5.3/forms/layout/#inline-forms -->
                         {% if cur_conversation %}
-                        <form class="row g-3 align-items-center justify-content-end" hx-post="{% url 'gptutils:get_chat' cur_conversation.id %}" hx-encoding="multipart/form-data" >
+                        <form class="row g-3 align-items-center justify-content-end" hx-post="{% url 'gptutils:get_chat' cur_conversation.id %}" hx-encoding="multipart/form-data" hx-target="#latest-message" hx-swap="afterend">
                             {% else %}
+                            <!-- no ajax for fast chat yet, I don't have much time, LOL -->
                             <form class="row g-3 align-items-center justify-content-end"
-                                hx-post="{% url 'gptutils:fast_chat'%}" hx-encoding="multipart/form-data" >
+                                action="{% url 'gptutils:fast_chat'%}" method="post" enctype="multipart/form-data" >
                                 {% endif %}
                                 {% csrf_token %}
                                 <!-- Django overkill form -->
@@ -298,6 +317,8 @@
                                 {% for hidden in message_form.hidden_fields %}
                                 {{ hidden }}
                                 {% endfor %}
+                                <!-- streaming, comment the code below if the page or function is malfunctioned -->
+                                <input type="hidden" name="streaming" value="true">
                                 <!-- Include the visible fields  -->
                                 {% for field in message_form.visible_fields %}
                                 {% if field.name == "text" %}
@@ -317,7 +338,7 @@
                                 {% endif %}
                                 {% endfor %}
                                 <div class="col-auto">
-                                    <button type="submit" class="btn btn-primary">Send</button>
+                                    <button type="submit" class="btn btn-primary submit-button">Send</button>
                                 </div>
                             </form>
                             {% endif %}
@@ -342,9 +363,17 @@
     <!-- hide other form on requesting new form -->
 
     <script>
-        $('edit-icon').click(function () {
-            $('msg-edit-form').hide();
+        // still a lot of bug in it
+        $("edit-icon").click(function () {
+            $("msg-edit-form").hide();
         });
+    </script>
+
+    <!-- deactivate submit button after submission -->
+    <script>
+        $("submit-button").click(function(){
+            $("submit-button").prop("disabled",true);
+        })
     </script>
 </body>
 

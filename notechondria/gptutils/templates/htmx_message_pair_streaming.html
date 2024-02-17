@@ -1,0 +1,59 @@
+{% load svg_tags %}
+
+<!-- Render latest pair of information -->
+<div class="row d-flex justify-content-end pe-2 ps-5">
+    <div class="col-auto">
+        {% if user_msg %}
+        <div class="alert alert-primary" role="alert">
+            <div class="text-muted">{{user_msg.created_local}}</div>
+            <div class="msg-edit-form" id="msg-edit-{{message.id}}"></div>
+            <div class="user-msg" id="msg-{{message.id}}">
+                {{user_msg.body|linebreaks}}
+                {% if user_msg.extras %}
+                <div class="collapse" id="collapseMessage-{{user_msg.id}}">{{user_msg.extras|linebreaks}}</div>
+                <a class="link-dark" data-bs-toggle="collapse" href="#collapseMessage-{{user_msg.id}}" role="button"
+                    aria-expanded="false" aria-controls="collapseMessage-{{message.id}}">
+                    ...
+                </a>
+                {% endif %}
+                {% if message.image %}
+                <img src="{{ user_msg.image.url }}" alt="image send on message {{user_msg.id}}" class="image-fluid"
+                    style=" border-radius: 25px;" />
+                {% endif %}
+                <!-- have a button POST a click via AJAX -->
+                <div class="edit-icon" id="edit-msg-{{user_msg.id}}"
+                    hx-get="{% url 'gptutils:edit_message' user_msg.id %}" hx-target="#msg-edit-{{user_msg.id}}"
+                    hx-swap="outerHTML">
+                    {% svg_tags 'pen' '' 10 'var(--bs-secondary)' %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-danger" role="alert">
+            No user message received from server.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row ps-2 pe-5">
+    <div class="col-auto">
+        {% if assist_msg %}
+        <div class="alert alert-secondary" role="alert">
+            <div class="text-muted">{{assist_msg.created_local}}</div>
+            <div class="col-auto">
+                <div hx-get="{% url 'gptutils:get_stream_chat' assist_msg.conversation_id.id %}" hx-trigger="load"
+                    hx-sse="true">
+
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-danger" role="alert">
+            No assistant message received from server.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% include "message_display.html"%}

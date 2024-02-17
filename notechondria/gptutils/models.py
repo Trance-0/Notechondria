@@ -8,21 +8,26 @@ from django.utils.translation import gettext_lazy as _
 
 logger = logging.getLogger("django")
 
+# Some local variables
+MESSAGE_COLLAPSE_SIZE=800
+
 # Create your models here.
 class GPTModelChoices(models.TextChoices):
     """User group choices, may be more efficient if use django internal group"""
 
     # gpt4-v
-    GPT4_V = "gpt-4-vision-preview", _("GPT 4 Vision with auto resolution")
-    GPT4_VH = "gpt-4-vision-preview:high", _("GPT 4 Vision with high resolution")
-    GPT4_VL = "gpt-4-vision-preview:low", _("GPT 4 Vision with low resolution")
+    GPT4V_1106 = "gpt-4-1106-vision-preview", _("GPT 4 Vision with auto resolution 128K (2023 Nov)")
+    GPT4VH_1106 = "gpt-4-1106-vision-preview:high", _("GPT 4 Vision with high resolution 128K (2023 Nov)")
+    GPT4VL_1106 = "gpt-4-1106-vision-preview:low", _("GPT 4 Vision with low resolution 128K (2023 Nov)")
     # gpt4-chat
-    GPT4_1106 = "gpt-4-1106-preview", _("GPT 4 Nov preview")
-    GPT4_32K = "gpt-4-32k", _("GPT 4 32K model")
+    GPT4_0125 = "gpt-4-0125-preview", _("GPT 4 latest preview 128K (2024 Jan)")
+    GPT4_1106 = "gpt-4-1106-preview", _("GPT 4 preview 128K (2023 Nov)")
+    GPT4_0613 = "gpt-4-0613", _("GPT 4 classic 8K (2023 Jun)")
     # gpt3-chat
-    GPT3_1106 = "gpt-3.5-turbo-1106", _("GPT 3.5 Nov preview")
-    GPT3_16K = "gpt-3.5-turbo-16k", _("GPT 3.5 16K model")
-    GPT3_T = "gpt-3.5-turbo", _("GPT 3 turbo model")
+    GPT3_0125 = "gpt-3.5-turbo-0125", _("GPT 3.5 latest preview 16K (2024 Jan)")
+    GPT3_1106 = "gpt-3.5-turbo-1106", _("GPT 3.5 preview 16K (2023 Nov)")
+    GPT3_0613 = "gpt-3.5-turbo-0613", _("GPT 3.5 classic 4K (2023 Jun) depreciated")
+    GPT3_16K = "gpt-3.5-turbo-16k", _("GPT 3.5 16K model (2023 Jun) depreciated")
     # plain-chat room
     PLAIN = "plain-chat", _("Plain chat room for testing")
     # tts
@@ -80,9 +85,9 @@ class Conversation(models.Model):
         return f"{self.title}: {self.model}"
     
     def is_visual_model(self):
-        return (self.model == GPTModelChoices.GPT4_V or 
-                                    self.model == GPTModelChoices.GPT4_VH or
-                                    self.model == GPTModelChoices.GPT4_VL)
+        return (self.model == GPTModelChoices.GPT4V_1106 or 
+                                    self.model == GPTModelChoices.GPT4VH_1106 or
+                                    self.model == GPTModelChoices.GPT4VL_1106)
     
     # the following function cannot be created here due to reference recursion
     # def created(self)->datetime:
@@ -126,6 +131,10 @@ class Message(models.Model):
     def __str__(self) -> str:
         return f'{self.text[:min(len(self.text),50)]}: {self.created}'
     
+    def __corrected_split_index(self)->int:
+        corrected_idx=self.text.find(' ',MESSAGE_COLLAPSE_SIZE)
+        return MESSAGE_COLLAPSE_SIZE if corrected_idx==-1 or corrected_idx-MESSAGE_COLLAPSE_SIZE>30 else corrected_idx
+    
     def created_url(self) -> str:
         """helper function to safely parse created datetime"""
         return self.created.strftime("%Y-%m-%d %H:%M[:%S[.%f][%Z]")
@@ -133,6 +142,18 @@ class Message(models.Model):
     def created_local(self) -> str:
         local_timezone = self.created.astimezone(timezone.get_current_timezone())
         return local_timezone
+    
+    def body(self)->str:
+        if len(self.text)<=MESSAGE_COLLAPSE_SIZE:
+            return self.text
+        # get space near MESSAGE_COLLAPSE_SIZE
+        return self.text[:self.__corrected_split_index()]
+
+    def extras(self)->str:
+        if len(self.text)<=MESSAGE_COLLAPSE_SIZE:
+            return None
+        # get space near MESSAGE_COLLAPSE_SIZE
+        return self.text[self.__corrected_split_index():]
 
     def to_dict(self):
         def encode_image(image_path):
