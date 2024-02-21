@@ -20,9 +20,9 @@
                 <div class="text-muted">{{message.created_local}}</div>
                 <div class="msg-edit-form" id="msg-edit-{{message.id}}"></div>
                 <div class="user-msg" id="msg-{{message.id}}">
-                    {{message.body|linebreaks}}
-                    {% if message.extras %}
-                    <div class="collapse" id="collapseMessage-{{message.id}}">{{message.extras|linebreaks}}</div>
+                    {{message.body|linebreaksbr}}
+                    {% if message.extras != None %}
+                    <div class="collapse" id="collapseMessage-{{message.id}}">{{message.extras|linebreaksbr}}</div>
                     <a class="link-dark" data-bs-toggle="collapse" href="#collapseMessage-{{message.id}}" role="button" aria-expanded="false" aria-controls="collapseMessage-{{message.id}}">
                         ...
                     </a>
@@ -31,12 +31,27 @@
                     <img src="{{ message.image.url }}" alt="image send on message {{message.id}}"
                     class="image-fluid"  style=" border-radius: 25px;" />
                     {% endif %}
-                    <!-- have a button POST a click via AJAX -->
-                    <div class="edit-icon" id="edit-msg-{{message.id}}"
-                        hx-get="{% url 'gptutils:edit_message' message.id %}"
-                        hx-target="#msg-edit-{{message.id}}" hx-swap="outerHTML">
-                        {% svg_tags 'pen' '' 10 'var(--bs-secondary)' %}
+                    <!-- begin for menu of user input -->
+                    <div class="edit-icon ">
+                        <div class=" row align-items-center">
+                            <div class="col-auto">
+                                <!-- have a button POST a click via AJAX -->
+                                <div id="edit-msg-{{message.id}}"
+                                    hx-get="{% url 'gptutils:edit_message' message.id %}"
+                                    hx-target="#msg-edit-{{message.id}}" hx-swap="outerHTML">
+                                    {% svg_tags 'pen' '' 10 'var(--bs-secondary)' %}
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <form action="" method="post">
+                                    <a type="submit">
+                                    {% svg_tags 'arrow-counterclockwise' '' 10 'var(--bs-secondary)' %}
+                                    </a>
+                                </form>
+                            </div>
+                        </div>
                     </div>
+                    <!-- end for menu of user input -->
                 </div>
             </div>
         </div>
@@ -47,9 +62,9 @@
             <div class="alert alert-secondary" role="alert">
                 <div class="text-muted">{{message.created_local}}</div>
                 <div class="col-auto">
-                    {{message.body|linebreaks}}
-                    {% if message.extras %}
-                    <div class="collapse" id="collapseMessage-{{message.id}}">{{message.extras|linebreaks}}</div>
+                    {{message.body|linebreaksbr}}
+                    {% if message.extras != None %}
+                    <div class="collapse" id="collapseMessage-{{message.id}}">{{message.extras|linebreaksbr}}</div>
                     <a class="link-dark" data-bs-toggle="collapse" href="#collapseMessage-{{message.id}}" role="button" aria-expanded="false" aria-controls="collapseMessage-{{message.id}}">
                         ...
                     </a>

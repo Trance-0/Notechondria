@@ -16,9 +16,9 @@ class GPTModelChoices(models.TextChoices):
     """User group choices, may be more efficient if use django internal group"""
 
     # gpt4-v
-    GPT4V_1106 = "gpt-4-1106-vision-preview", _("GPT 4 Vision with auto resolution 128K (2023 Nov)")
-    GPT4VH_1106 = "gpt-4-1106-vision-preview:high", _("GPT 4 Vision with high resolution 128K (2023 Nov)")
-    GPT4VL_1106 = "gpt-4-1106-vision-preview:low", _("GPT 4 Vision with low resolution 128K (2023 Nov)")
+    GPT4V_1106 = "gpt-4-vision-preview", _("GPT 4 Vision with auto resolution 128K (2023 Nov)")
+    GPT4VH_1106 = "gpt-4-vision-preview:high", _("GPT 4 Vision with high resolution 128K (2023 Nov)")
+    GPT4VL_1106 = "gpt-4-vision-preview:low", _("GPT 4 Vision with low resolution 128K (2023 Nov)")
     # gpt4-chat
     GPT4_0125 = "gpt-4-0125-preview", _("GPT 4 latest preview 128K (2024 Jan)")
     GPT4_1106 = "gpt-4-1106-preview", _("GPT 4 preview 128K (2023 Nov)")
@@ -85,9 +85,8 @@ class Conversation(models.Model):
         return f"{self.title}: {self.model}"
     
     def is_visual_model(self):
-        return (self.model == GPTModelChoices.GPT4V_1106 or 
-                                    self.model == GPTModelChoices.GPT4VH_1106 or
-                                    self.model == GPTModelChoices.GPT4VL_1106)
+        visual_models=[GPTModelChoices.GPT4V_1106,GPTModelChoices.GPT4VH_1106,GPTModelChoices.GPT4VL_1106]
+        return self.model in visual_models
     
     # the following function cannot be created here due to reference recursion
     # def created(self)->datetime:
@@ -173,6 +172,6 @@ class Message(models.Model):
             logger.debug(base64_image)
             image_ext=self.image.path.split(".")[-1]
             message["content"].append({"type": "image_url",
-                        "image_url": {"url": f"data:image/{image_ext};base64,{base64_image}"},"detail": "auto" if len(self.conversation_id.model.split(":"))==1 else self.conversation_id.model.split(":")[1] })
+                        "image_url": {"url": f"data:image/{image_ext};base64,{base64_image}","detail": "auto" if len(self.conversation_id.model.split(":"))==1 else self.conversation_id.model.split(":")[1] }})
         # if self.file:
         return message

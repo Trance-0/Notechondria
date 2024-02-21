@@ -18,6 +18,7 @@ urlpatterns = [
     path('chat/create/fast',views.fast_chat,name='fast_chat'),
     path('chat/edit_message/<int:message_pk>',views.edit_message,name='edit_message'),
     path('chat/delete_message/<int:message_pk>',views.delete_message,name='delete_message'),
+    path('chat/resend_message/<int:message_pk>',views.resend_message,name='resend_message'),
 ]
 # redirect media request to media root
 if settings.DEBUG:

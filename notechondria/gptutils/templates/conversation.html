@@ -226,19 +226,19 @@
                                         <div class="text-muted">{{message.created_local}}</div>
                                         <div class="msg-edit-form" id="msg-edit-{{message.id}}"></div>
                                         <div class="user-msg" id="msg-{{message.id}}">
-                                            {{message.body|linebreaks}}
-                                            {% if message.extras|linebreaks%}
-                                            <div class="collapse" id="collapseMessage-{{message.id}}">{{message.extras|linebreaks}}</div>
+                                            {{message.body|linebreaksbr}}
+                                            {% if message.extras  != None %}
+                                            <div class="collapse" id="collapseMessage-{{message.id}}">{{message.extras|linebreaksbr}}</div>
                                             <a class="link-dark" data-bs-toggle="collapse" href="#collapseMessage-{{message.id}}" role="button" aria-expanded="false" aria-controls="collapseMessage-{{message.id}}">
                                                 ...
                                             </a>
                                             {% endif %}
                                             {% if message.image %}
                                             <img src="{{ message.image.url }}" alt="image send on message {{message.id}}"
-                                            class="image-fluid" style=" border-radius: 25px;" />
+                                            class="image-fluid rounded" />
                                             {% endif %}
                                             <!-- begin for menu of user input -->
-                                            <div class="edit-icon mt-2">
+                                            <div class="edit-icon ">
                                                 <div class=" row align-items-center">
                                                     <div class="col-auto">
                                                         <!-- have a button POST a click via AJAX -->
@@ -249,10 +249,12 @@
                                                         </div>
                                                     </div>
                                                     <div class="col-auto">
-                                                        <form action="" method="post">
-                                                            <a type="submit">
+                                                        <form action="{% url 'gptutils:resend_message' message.id %}" method="post">
+                                                            <!-- csrf_token for request -->
+                                                            {% csrf_token %}
+                                                            <button class="btn btn-link" type="submit">
                                                             {% svg_tags 'arrow-counterclockwise' '' 10 'var(--bs-secondary)' %}
-                                                            </a>
+                                                            </button>
                                                         </form>
                                                     </div>
                                                 </div>
@@ -268,9 +270,9 @@
                                     <div class="alert alert-secondary" role="alert">
                                         <div class="text-muted">{{message.created_local}}</div>
                                         <div class="col-auto">
-                                            {{message.body|linebreaks}}
-                                            {% if message.extras %}
-                                            <div class="collapse" id="collapseMessage-{{message.id}}">{{message.extras|linebreaks}}</div>
+                                            {{message.body|linebreaksbr}}
+                                            {% if message.extras != None %}
+                                            <div class="collapse" id="collapseMessage-{{message.id}}">{{message.extras|linebreaksbr}}</div>
                                             <a class="link-dark" data-bs-toggle="collapse" href="#collapseMessage-{{message.id}}" role="button" aria-expanded="false" aria-controls="collapseMessage-{{message.id}}">
                                                 ...
                                             </a>
@@ -328,7 +330,7 @@
                                     </label>
                                     {{ field }}
                                 </div>
-                                {% elif field.name == "image" and is_visual_model %}
+                                {% elif field.name == "image" and cur_conversation.is_visual_model %}
                                 <div class="col-3">
                                     <label for="{{ field.id_for_label }}" class="visually-hidden">
                                         {{ field.label }}

@@ -235,8 +235,37 @@ def edit_message(request,message_pk):
             del_message_list=Message.objects.filter(conversation_id=message_instance.conversation_id).filter(created__gt=message_instance.created)
             for i in del_message_list:
                 i.delete()
+            # generate response from latest message
+            ai_response=generate_message(message_instance.conversation_id)
+            if "error" in ai_response:
+                messages.warning(request,f"Error when generating response {ai_response['error']}")
         return redirect("gptutils:get_chat", conv_pk=message_instance.conversation_id.id)
     return render(request,"htmx_edit_message_form.html",context={"edit_message_form":MessageForm(instance=message_instance)})
+
+@login_required
+def resend_message(request,message_pk):
+    """redirect to edit message form for htmx request return form only
+    for the purpose of returning error and large query operations, this page will not be ajax under post request
+    """
+    # test for user
+    owner_id = get_object_or_404(Creator, user_id=request.user)
+    message_instance = get_object_or_404(Message, id=message_pk)
+    logger.debug(f'requested message instance resend with message id {message_pk}')
+    if message_instance.conversation_id.creator_id!=owner_id:
+        messages.error(request, f"You don't have access to the message")
+        return redirect("gptutils:main")
+    if request.method == "POST":
+        add_token(message_instance)
+        messages.success(request, f"Successfully resend the message {message_instance}")
+        # delete message after message_instance
+        del_message_list=Message.objects.filter(conversation_id=message_instance.conversation_id).filter(created__gt=message_instance.created)
+        for i in del_message_list:
+            i.delete()
+        # generate response from latest message
+        ai_response=generate_message(message_instance.conversation_id)
+        if "error" in ai_response:
+            messages.warning(request,f"Error when generating response {ai_response['error']}")
+    return redirect("gptutils:get_chat", conv_pk=message_instance.conversation_id.id)
 
 def delete_message(request, message_pk):
     """only processing post request for deleting message, including message with pk based on time

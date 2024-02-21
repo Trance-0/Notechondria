@@ -31,7 +31,7 @@ import os
 
 from datetime import datetime
 
-audio_name="Anth160b_l12.m4a"
+audio_name="Anth160b_l14.m4a"
 
 time_stamp = hex(int(datetime.now().timestamp()))
 
@@ -50,20 +50,21 @@ audio_path=os.path.join(dir_path, audio_name)
 # | small  |   244 M    |     `small.en`     |      `small`       |     ~2 GB     |      ~6x       |
 # | medium |   769 M    |    `medium.en`     |      `medium`      |     ~5 GB     |      ~2x       |
 # | large  |   1550 M   |        N/A         |      `large`       |    ~10 GB     |       1x       |
-model = whisper.load_model("medium")
+model = whisper.load_model("large")
 
 # load audio and pad/trim it to fit 30 seconds
 audio = whisper.load_audio(audio_path)
 head_audio = whisper.pad_or_trim(audio)
 
 # make log-Mel spectrogram and move to the same device as the model
-mel = whisper.log_mel_spectrogram(head_audio).to(model.device)
+mel = whisper.log_mel_spectrogram(head_audio, n_mels=128).to(model.device)
 
 # detect the spoken language
 _, probs = model.detect_language(mel)
 print(f"Detected language: {max(probs, key=probs.get)}")
 
-result = model.transcribe(audio,verbose=False)
+# we can actually do a sse for the verbose output for the user to check if there are any mismatch in the context.
+result = model.transcribe(audio,verbose=True)
 
 # print the recognized text
 # print(result["text"])
@@ -71,7 +72,8 @@ result = model.transcribe(audio,verbose=False)
 
 res_dict=result["segments"]
 
-transcribe_dir=os.path.join(dir_path, f"whisper_{time_stamp}.txt")
+# transcribe_dir=os.path.join(dir_path, f"whisper_{time_stamp}.txt")
+transcribe_dir=os.path.join(dir_path, f"{audio_name.split('.')[0]}.txt")
 # open file in write mode
 with open(transcribe_dir, 'w+', encoding='utf-8') as f:
     f.write(result["text"])

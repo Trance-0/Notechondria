@@ -5,6 +5,7 @@
 import os
 import logging
 import tiktoken
+import json
 from openai import OpenAI
 from PIL import Image
 
@@ -22,7 +23,9 @@ def generate_message(conversation:Conversation):
     messages_list=Message.objects.filter(conversation_id=conversation).order_by("-created")[:conversation.memory_size]
     model_name=conversation.model.split(':')[0]
     payload=[i.to_dict() for i in messages_list]
-    logger.debug(conversation.creator_id,f"sent message{[str(i) for i in messages_list]}")
+    # Convert Python to JSON for printing
+    message_string='\n'.join([json.dumps(i.to_dict()) for i in messages_list])
+    logger.debug(conversation.creator_id,f"sent message as below: \n {message_string}")
     response=None
     try:
         response = client.chat.completions.create(
