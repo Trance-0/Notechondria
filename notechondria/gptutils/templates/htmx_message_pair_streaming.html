@@ -1,6 +1,26 @@
 {% load svg_tags %}
 
 <!-- Render latest pair of information -->
+<div class="row ps-2 pe-5">
+    <div class="col-auto">
+        {% if assist_msg %}
+        <div class="alert alert-secondary" role="alert">
+            <div class="text-muted">{{assist_msg.created_local}}</div>
+            <div class="col-auto">
+                <div hx-get="{% url 'gptutils:get_stream_chat' assist_msg.conversation_id.id %}" hx-trigger="load"
+                    hx-sse="true">
+
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-danger" role="alert">
+            No assistant message received from server.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
 <div class="row d-flex justify-content-end pe-2 ps-5">
     <div class="col-auto">
         {% if user_msg %}
@@ -33,9 +53,11 @@
                         </div>
                         <div class="col-auto">
                             <form action="{% url 'gptutils:resend_message' user_msg.id %}" method="post">
-                                <a type="submit">
+                                <!-- csrf_token for request -->
+                                {% csrf_token %}
+                                <button class="btn btn-link loading" type="submit">
                                 {% svg_tags 'arrow-counterclockwise' '' 10 'var(--bs-secondary)' %}
-                                </a>
+                                </button>
                             </form>
                         </div>
                     </div>
@@ -51,24 +73,5 @@
     </div>
 </div>
 
-<div class="row ps-2 pe-5">
-    <div class="col-auto">
-        {% if assist_msg %}
-        <div class="alert alert-secondary" role="alert">
-            <div class="text-muted">{{assist_msg.created_local}}</div>
-            <div class="col-auto">
-                <div hx-get="{% url 'gptutils:get_stream_chat' assist_msg.conversation_id.id %}" hx-trigger="load"
-                    hx-sse="true">
-
-                </div>
-            </div>
-        </div>
-        {% else %}
-        <div class="alert alert-danger" role="alert">
-            No assistant message received from server.
-        </div>
-        {% endif %}
-    </div>
-</div>
 
 {% include "message_display.html"%}

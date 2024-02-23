@@ -20,12 +20,13 @@ client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 def generate_message(conversation:Conversation):
     """ Generate function as the user designed in conversation"""
-    messages_list=Message.objects.filter(conversation_id=conversation).order_by("-created")[:conversation.memory_size]
+    # get last k message in ascending order
+    messages_list=list(reversed(Message.objects.filter(conversation_id=conversation).order_by("-created")[:conversation.memory_size]))
     model_name=conversation.model.split(':')[0]
     payload=[i.to_dict() for i in messages_list]
     # Convert Python to JSON for printing
-    message_string='\n'.join([json.dumps(i.to_dict()) for i in messages_list])
-    logger.debug(conversation.creator_id,f"sent message as below: \n {message_string}")
+    message_string=json.dumps(payload)
+    logger.info(u"{}: sent message as below: \n {}".format(conversation.creator_id,message_string))
     response=None
     try:
         response = client.chat.completions.create(
@@ -39,7 +40,7 @@ def generate_message(conversation:Conversation):
         )
     except Exception as e:
         response={"error":e}
-    logger.debug(response)
+    logger.info(response)
     # generate response msg to conversation
     if not "error" in response:
         # update token count (precise)
@@ -52,12 +53,14 @@ def generate_message(conversation:Conversation):
 
 def generate_stream_message(conversation:Conversation):
     """generate stream message needs to have a dummy message for AI input, the AI message will store in the dummy message"""
-    global client
-
-    messages_list=Message.objects.filter(conversation_id=conversation).order_by("-created")[:conversation.memory_size+1]
-    dummy_message=messages_list[0]
+    # get last k message in ascending order
+    messages_list=list(reversed(Message.objects.filter(conversation_id=conversation).order_by("-created")[:conversation.memory_size+1]))
+    dummy_message=messages_list[-1]
     model_name=conversation.model.split(':')[0]
-    payload=[i.to_dict() for i in messages_list[1:]]
+    payload=[i.to_dict() for i in messages_list[:-1]]
+    # Convert Python to JSON for printing
+    message_string=json.dumps(payload)
+    logger.info(u"{}: sent streaming message as below: \n {}".format(conversation.creator_id,message_string))
     response=None
     try:
         stream = client.chat.completions.create(
@@ -78,6 +81,9 @@ def generate_stream_message(conversation:Conversation):
         # token calculation (approximate)
         conversation.total_completion_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
         add_token(dummy_message)
+        logger.info(u"{}: get streaming message as below: \n {}".format(conversation.creator_id,dummy_message))
+        # save dummy message
+        dummy_message.save()
         for message in messages_list:
             add_token(message)
     except Exception as e:
@@ -153,8 +159,8 @@ def __num_tokens_from_text(text:str, model="gpt-3.5-turbo-0613"):
 #         headers=headers,
 #         json=payload,
 #     )
-#     logger.debug(payload)
-#     logger.debug(response.json())
+#     logger.info(payload)
+#     logger.info(response.json())
 #     json_res = response.json()
 #     # generate response msg to conversation
 #     if not "error" in response:

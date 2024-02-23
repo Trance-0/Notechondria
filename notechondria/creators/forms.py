@@ -4,6 +4,8 @@ Escape from forms
 With django built-in validation and everything else!
 https://docs.djangoproject.com/en/4.2/topics/forms/
 """
+from pathlib import Path
+from django.conf import settings
 from django.utils.timezone import now
 from PIL import Image
 from django import forms
@@ -249,7 +251,7 @@ class RegisterForm(forms.ModelForm):
             resized_image = img_validator.clean(
                 Image.open(self.cleaned_data.get("image"))
             )
-            # overwrite origional image
+            # overwrite original image by generate it to a new name
             resized_image.save(creator_instance.image.path)
         # reduce use of registration code by one
         reg_code=VerificationCode.objects.get(code=self.cleaned_data.get("register_code"))
@@ -329,6 +331,9 @@ class EditForm(forms.ModelForm):
             self.fields["email"].initial = self.instance.user_id.email
             self.fields["password"].required = False
             self.fields["repassword"].required = False
+            # ban auto fill
+            self.fields["password"].widget.attrs["autocomplete"]="new-password"
+            self.fields["repassword"].widget.attrs["autocomplete"]="new-password"
 
     # custom validation
     def clean(self):

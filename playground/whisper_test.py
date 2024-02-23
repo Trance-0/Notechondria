@@ -31,50 +31,52 @@ import os
 
 from datetime import datetime
 
-audio_name="Anth160b_l14.m4a"
+audio_names=["Anth160b_l15_p2.m4a","Anth160b_l15_p1.m4a"]
 
-time_stamp = hex(int(datetime.now().timestamp()))
+for audio_name in audio_names:
 
-dir_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
+    time_stamp = hex(int(datetime.now().timestamp()))
 
-if not os.path.exists(dir_path):
-    os.makedirs(dir_path)
+    dir_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
 
-audio_path=os.path.join(dir_path, audio_name)
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
 
-# choices are
-# |  Size  | Parameters | English-only model | Multilingual model | Required VRAM | Relative speed |
-# |:------:|:----------:|:------------------:|:------------------:|:-------------:|:--------------:|
-# |  tiny  |    39 M    |     `tiny.en`      |       `tiny`       |     ~1 GB     |      ~32x      |
-# |  base  |    74 M    |     `base.en`      |       `base`       |     ~1 GB     |      ~16x      |
-# | small  |   244 M    |     `small.en`     |      `small`       |     ~2 GB     |      ~6x       |
-# | medium |   769 M    |    `medium.en`     |      `medium`      |     ~5 GB     |      ~2x       |
-# | large  |   1550 M   |        N/A         |      `large`       |    ~10 GB     |       1x       |
-model = whisper.load_model("large")
+    audio_path=os.path.join(dir_path, audio_name)
 
-# load audio and pad/trim it to fit 30 seconds
-audio = whisper.load_audio(audio_path)
-head_audio = whisper.pad_or_trim(audio)
+    # choices are
+    # |  Size  | Parameters | English-only model | Multilingual model | Required VRAM | Relative speed |
+    # |:------:|:----------:|:------------------:|:------------------:|:-------------:|:--------------:|
+    # |  tiny  |    39 M    |     `tiny.en`      |       `tiny`       |     ~1 GB     |      ~32x      |
+    # |  base  |    74 M    |     `base.en`      |       `base`       |     ~1 GB     |      ~16x      |
+    # | small  |   244 M    |     `small.en`     |      `small`       |     ~2 GB     |      ~6x       |
+    # | medium |   769 M    |    `medium.en`     |      `medium`      |     ~5 GB     |      ~2x       |
+    # | large  |   1550 M   |        N/A         |      `large`       |    ~10 GB     |       1x       |
+    model = whisper.load_model("large")
 
-# make log-Mel spectrogram and move to the same device as the model
-mel = whisper.log_mel_spectrogram(head_audio, n_mels=128).to(model.device)
+    # load audio and pad/trim it to fit 30 seconds
+    audio = whisper.load_audio(audio_path)
+    head_audio = whisper.pad_or_trim(audio)
 
-# detect the spoken language
-_, probs = model.detect_language(mel)
-print(f"Detected language: {max(probs, key=probs.get)}")
+    # make log-Mel spectrogram and move to the same device as the model
+    mel = whisper.log_mel_spectrogram(head_audio, n_mels=128).to(model.device)
 
-# we can actually do a sse for the verbose output for the user to check if there are any mismatch in the context.
-result = model.transcribe(audio,verbose=True)
+    # detect the spoken language
+    _, probs = model.detect_language(mel)
+    print(f"Detected language: {max(probs, key=probs.get)}")
 
-# print the recognized text
-# print(result["text"])
-# print(result["segments"])
+    # we can actually do a sse for the verbose output for the user to check if there are any mismatch in the context.
+    result = model.transcribe(audio,verbose=True)
 
-res_dict=result["segments"]
+    # print the recognized text
+    # print(result["text"])
+    # print(result["segments"])
 
-# transcribe_dir=os.path.join(dir_path, f"whisper_{time_stamp}.txt")
-transcribe_dir=os.path.join(dir_path, f"{audio_name.split('.')[0]}.txt")
-# open file in write mode
-with open(transcribe_dir, 'w+', encoding='utf-8') as f:
-    f.write(result["text"])
+    res_dict=result["segments"]
+
+    # transcribe_dir=os.path.join(dir_path, f"whisper_{time_stamp}.txt")
+    transcribe_dir=os.path.join(dir_path, f"{audio_name.split('.')[0]}.txt")
+    # open file in write mode
+    with open(transcribe_dir, 'w+', encoding='utf-8') as f:
+        f.write(result["text"])
 

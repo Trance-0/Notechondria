@@ -13,11 +13,22 @@ please save the origional database and edit for postgre
 """
 
 from datetime import timedelta
+import os
 from django.conf import settings
 from django.db import models
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from django.utils.crypto import get_random_string
+
+def user_profile_path(instance, filename):
+    """ 
+    file will be uploaded to MEDIA_ROOT/user_<id>/<filename>
+    https://docs.djangoproject.com/en/dev/ref/models/fields/#django.db.models.FileField.upload_to
+    """
+    # return "profile_pic/user_{0}/{1}".format(instance.user.id, filename)
+    # we save only one latest image.
+    _name, extension = os.path.splitext(filename)
+    return "user_upload/user_{0}/profile_pic/profile_latest{1}".format(instance.user_id.id, extension)
 
 class UserGroupChoices(models.TextChoices):
     """User group choices, may be more efficient if use django internal group"""
@@ -37,7 +48,7 @@ class Creator(models.Model):
         on_delete=models.CASCADE,
         null=False,
     )
-    image = models.ImageField(upload_to='profile_pic', default='profile_pic/default.jpg')
+    image = models.ImageField(upload_to=user_profile_path, default='profile_pic/person-circle.svg')
     motto = models.CharField(max_length=100, null=True)
     reputation = models.IntegerField(default=0, null=False)
     exp = models.IntegerField(default=0, null=False)
@@ -83,3 +94,6 @@ class VerificationCode(models.Model):
     )
     function = models.CharField(max_length=255, default="",null=True)
     max_use = models.IntegerField(default=1, null=False)
+
+    def __str__(self):
+        return f'{self.code}:{self.function}'

@@ -107,19 +107,20 @@ LOGGING = {
         'console': {
             'level': 'INFO',
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose'
+            'formatter': 'verbose',
         },
         # print level in log file
         'file': {
-            'level': 'DEBUG',
+            'level': 'INFO',
             'class': 'logging.FileHandler',
             'filename': f"{os.getenv('DJANGO_LOG_FILE_NAME', 'logs')}-{datetime.now().strftime('%Y%m%d')}.log",
             'formatter': 'verbose',
+            'encoding':'utf8',
         },
     },
     'formatters': {
         'verbose': {
-            'format': '%(levelname)s [%(asctime)s] %(name)s.%(funcName)s:%(lineno)s- %(message)s',
+            'format': u'%(levelname)s [%(asctime)s] %(name)s.%(funcName)s:%(lineno)s- %(message)r',
         },
     },
     'loggers': {

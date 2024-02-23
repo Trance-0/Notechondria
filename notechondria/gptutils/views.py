@@ -45,7 +45,7 @@ def gptutils(request):
 @login_required
 def get_chat(request, conv_pk):
     """ send text request when request is get, return the chat page, when is post, add new message and set completion"""
-    logger.debug(f'request from user {request.user}')
+    logger.info(f'request from user {request.user}')
     # processing sending in AJAX (to be implement)
     context = __get_basic_context(request)
     cur_conversation = get_object_or_404(Conversation, id=conv_pk)
@@ -124,7 +124,7 @@ def get_stream_chat(request, conv_pk):
     """ send text request based on streaming, this function is a bit complex if we add login request, so we directly allow all the users to make request with strict permission check"""
     owner_id = get_object_or_404(Creator, user_id=request.user)
     cur_conversation = get_object_or_404(Conversation, id=conv_pk)
-    logger.debug(f'requested streaming chat instance edit form with id {conv_pk}')
+    logger.info(f'requested streaming chat instance edit form with id {conv_pk}')
     if cur_conversation.creator_id!=owner_id:
         messages.error(request, f"You don't have access to streaming the chat")
         return redirect("gptutils:main")
@@ -190,7 +190,7 @@ def edit_chat(request,conv_pk):
     # test for user
     owner_id = get_object_or_404(Creator, user_id=request.user)
     chat_instance = get_object_or_404(Conversation, id=conv_pk)
-    logger.debug(f'requested chat instance edit form with id {conv_pk}')
+    logger.info(f'requested chat instance edit form with id {conv_pk}')
     if chat_instance.creator_id!=owner_id:
         messages.error(request, f"You don't have access to the chat")
         return redirect("gptutils:main")
@@ -216,7 +216,7 @@ def edit_message(request,message_pk):
     # test for user
     owner_id = get_object_or_404(Creator, user_id=request.user)
     message_instance = get_object_or_404(Message, id=message_pk)
-    logger.debug(f'requested message instance edit form with id {message_pk}')
+    logger.info(f'requested message instance edit form with id {message_pk}')
     if message_instance.conversation_id.creator_id!=owner_id:
         messages.error(request, f"You don't have access to the message")
         return redirect("gptutils:main")
@@ -229,16 +229,25 @@ def edit_message(request,message_pk):
             messages.error(request, f"The message requesting for change did not match.")
         else:
             message_instance=message_form.save()
-            add_token(message_instance)
-            messages.success(request, f"Successfully edit the message {message_instance}")
-            # delete message after message_instance
-            del_message_list=Message.objects.filter(conversation_id=message_instance.conversation_id).filter(created__gt=message_instance.created)
-            for i in del_message_list:
-                i.delete()
-            # generate response from latest message
-            ai_response=generate_message(message_instance.conversation_id)
-            if "error" in ai_response:
-                messages.warning(request,f"Error when generating response {ai_response['error']}")
+            if message_instance.conversation_id.model==GPTModelChoices.PLAIN:
+                add_token(message_instance)
+                # delete message after message_instance
+                del_message_list=Message.objects.filter(conversation_id=message_instance.conversation_id).filter(created__gt=message_instance.created)
+                for i in del_message_list:
+                    i.delete()
+                messages.success(request, f"Successfully edit the message {message_instance}")
+            else:
+                add_token(message_instance)
+                # delete message after message_instance
+                del_message_list=Message.objects.filter(conversation_id=message_instance.conversation_id).filter(created__gt=message_instance.created)
+                for i in del_message_list:
+                    i.delete()
+                # generate response from latest message
+                ai_response=generate_message(message_instance.conversation_id)
+                if "error" in ai_response:
+                    messages.warning(request,f"Error when generating response {ai_response['error']}")
+                else:
+                    messages.success(request, f"Successfully edit the message {message_instance}")
         return redirect("gptutils:get_chat", conv_pk=message_instance.conversation_id.id)
     return render(request,"htmx_edit_message_form.html",context={"edit_message_form":MessageForm(instance=message_instance)})
 
@@ -250,21 +259,29 @@ def resend_message(request,message_pk):
     # test for user
     owner_id = get_object_or_404(Creator, user_id=request.user)
     message_instance = get_object_or_404(Message, id=message_pk)
-    logger.debug(f'requested message instance resend with message id {message_pk}')
+    logger.info(f'requested message instance resend with message id {message_pk}')
     if message_instance.conversation_id.creator_id!=owner_id:
         messages.error(request, f"You don't have access to the message")
         return redirect("gptutils:main")
     if request.method == "POST":
-        add_token(message_instance)
-        messages.success(request, f"Successfully resend the message {message_instance}")
-        # delete message after message_instance
-        del_message_list=Message.objects.filter(conversation_id=message_instance.conversation_id).filter(created__gt=message_instance.created)
-        for i in del_message_list:
-            i.delete()
-        # generate response from latest message
-        ai_response=generate_message(message_instance.conversation_id)
-        if "error" in ai_response:
-            messages.warning(request,f"Error when generating response {ai_response['error']}")
+        if message_instance.conversation_id.model==GPTModelChoices.PLAIN:
+            # delete message after message_instance
+            del_message_list=Message.objects.filter(conversation_id=message_instance.conversation_id).filter(created__gt=message_instance.created)
+            for i in del_message_list:
+                i.delete()
+            # generate response from latest message
+            messages.success(request, f"Successfully resend the message {message_instance}")
+        else:
+            # delete message after message_instance
+            del_message_list=Message.objects.filter(conversation_id=message_instance.conversation_id).filter(created__gt=message_instance.created)
+            for i in del_message_list:
+                i.delete()
+            # generate response from latest message
+            ai_response=generate_message(message_instance.conversation_id)
+            if "error" in ai_response:
+                messages.warning(request,f"Error when generating response {ai_response['error']}")
+            else:
+                messages.success(request, f"Successfully resend the message {message_instance}")
     return redirect("gptutils:get_chat", conv_pk=message_instance.conversation_id.id)
 
 def delete_message(request, message_pk):

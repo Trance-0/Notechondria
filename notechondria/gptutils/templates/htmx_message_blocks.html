@@ -43,10 +43,12 @@
                                 </div>
                             </div>
                             <div class="col-auto">
-                                <form action="" method="post">
-                                    <a type="submit">
+                                <form action="{% url 'gptutils:resend_message' message.id %}" method="post">
+                                    <!-- csrf_token for request -->
+                                    {% csrf_token %}
+                                    <button class="btn btn-link loading" type="submit">
                                     {% svg_tags 'arrow-counterclockwise' '' 10 'var(--bs-secondary)' %}
-                                    </a>
+                                    </button>
                                 </form>
                             </div>
                         </div>

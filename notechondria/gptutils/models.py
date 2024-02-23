@@ -1,4 +1,5 @@
 import base64
+import os
 from django.utils import timezone
 import logging
 from django.db import models
@@ -105,6 +106,26 @@ class MessageRoleChoices(models.TextChoices):
     USER = "user", _("User message")
     ASSISTANT = "assistant", _("Model message")
 
+def message_image_path(instance, filename):
+    """ 
+    file will be uploaded to MEDIA_ROOT/user_<id>/<filename>
+    https://docs.djangoproject.com/en/dev/ref/models/fields/#django.db.models.FileField.upload_to
+    """
+    # return "profile_pic/user_{0}/{1}".format(instance.user.id, filename)
+    # we save only one latest image.
+    _name, extension = os.path.splitext(filename)
+    return "user_upload/user_{0}/conversations/chat_{1}/msg_{2}_img{3}".format(instance.conversation_id.creator_id.user_id.id, instance.conversation_id.id, instance.id, extension)
+
+def message_file_path(instance, filename):
+    """ 
+    file will be uploaded to MEDIA_ROOT/user_<id>/<filename>
+    https://docs.djangoproject.com/en/dev/ref/models/fields/#django.db.models.FileField.upload_to
+    """
+    # return "profile_pic/user_{0}/{1}".format(instance.user.id, filename)
+    # we save only one latest image.
+    _name, extension = os.path.splitext(filename)
+    return "user_upload/user_{0}/conversations/chat_{1}/msg_{2}_file{3}".format(instance.conversation_id.creator_id.user_id.id, instance.conversation_id.id, instance.id, extension)
+
 
 class Message(models.Model):
     """Message model for each user"""
@@ -120,9 +141,9 @@ class Message(models.Model):
         choices=MessageRoleChoices.choices,
         default=MessageRoleChoices.USER,
     )
-    image = models.ImageField(upload_to="message_pic",blank=True, null=True)
+    image = models.ImageField(upload_to=message_image_path,blank=True, null=True)
     # file field is currently unsupported
-    file = models.FileField(upload_to="message_file",blank=True, null=True)
+    file = models.FileField(upload_to=message_file_path,blank=True, null=True)
     file_id = models.CharField(max_length=255, blank=True, null=True)
     # unlimited size for PostgreSQL, the max_length value have to be set for other databases.
     text = models.TextField(blank=True, null=True)
@@ -169,7 +190,7 @@ class Message(models.Model):
         # skip image processing when model is not visual one.
         if self.image and self.conversation_id.is_visual_model():
             base64_image = encode_image(self.image.path)
-            logger.debug(base64_image)
+            logger.info(base64_image)
             image_ext=self.image.path.split(".")[-1]
             message["content"].append({"type": "image_url",
                         "image_url": {"url": f"data:image/{image_ext};base64,{base64_image}","detail": "auto" if len(self.conversation_id.model.split(":"))==1 else self.conversation_id.model.split(":")[1] }})

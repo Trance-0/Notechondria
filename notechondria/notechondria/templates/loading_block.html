@@ -1,0 +1,42 @@
+<!-- To use this block, you need to import bootstrap, since the block contains js scripts, please put it to the end of html-->
+
+<!-- Modal for blocking user input -->
+<div class="modal fade" id="loadingBackDrop" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+    aria-labelledby="loadingBackdropLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="staticBackdropLabel">Loading</h5>
+            </div>
+            <div class="modal-body">
+                You have submit a request with query that cannot be done in one second, please wait until the page
+                reload.
+                <div class="alert alert-info mt-2" role="alert">
+                    <h4 class="alert-heading">Do you know?</h4>
+                    <p>You can enslave the developer to build ajax request to smooth your experience when ever you
+                        see this page! Send a message to them so that he would be so annoying that they will do the coding!</p>
+                  </div>
+                <hr>
+                
+                <div class="alert alert-info mt-2" role="alert">
+                    <h4 class="alert-heading">Do you know?</h4>
+                    <p>You can torture the developer by asking them to build a <strong> loading bar </strong> to see your estimated waiting time if you think your waiting is too long.</p>
+                  </div>
+                <hr>
+                 
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- code for activate loading window for every button with loading attribute -->
+<script>
+    var loadingModal = new bootstrap.Modal(document.getElementById('loadingBackDrop'), {
+        keyboard: false
+    })
+    $(".loading").click(function () {
+        loadingModal.show();
+    });
+</script>

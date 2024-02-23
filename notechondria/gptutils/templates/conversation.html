@@ -252,7 +252,7 @@
                                                         <form action="{% url 'gptutils:resend_message' message.id %}" method="post">
                                                             <!-- csrf_token for request -->
                                                             {% csrf_token %}
-                                                            <button class="btn btn-link" type="submit">
+                                                            <button class="btn btn-link loading" type="submit">
                                                             {% svg_tags 'arrow-counterclockwise' '' 10 'var(--bs-secondary)' %}
                                                             </button>
                                                         </form>
@@ -362,18 +362,21 @@
         })
     </script>
 
+    
+    {% include "loading_block.html" %}
+
     <!-- hide other form on requesting new form -->
 
     <script>
         // still a lot of bug in it
-        $("edit-icon").click(function () {
+        $(".edit-icon").click(function () {
             $("msg-edit-form").hide();
         });
     </script>
 
     <!-- deactivate submit button after submission -->
     <script>
-        $("submit-button").click(function(){
+        $(".submit-button").click(function(){
             $("submit-button").prop("disabled",true);
         })
     </script>
