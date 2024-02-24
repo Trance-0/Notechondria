@@ -148,7 +148,7 @@
         </div>
     </div>
 
-    <div class="modal fade" id="editChatModal" tabindex="-1" aria-labelledby="editChatModalLabel" aria-hidden="true">
+    <div id="editChatModals">
         <!-- just a place holder for htmx to find -->
     </div>
 
@@ -177,7 +177,7 @@
                                     </span>
 
                                     <!-- have a button POST a click via AJAX -->
-                                    <div hx-get="{% url 'gptutils:edit_chat' conv.id %}" hx-target="#editChatModal"
+                                    <div hx-get="{% url 'gptutils:edit_chat' conv.id %}" hx-target="#editChatModals"
                                         hx-swap="outerHTML">
                                         {% svg_tags 'gear' '' 20 'var(--bs-secondary)' %}
                                     </div>
@@ -235,10 +235,10 @@
                                             {% endif %}
                                             {% if message.image %}
                                             <img src="{{ message.image.url }}" alt="image send on message {{message.id}}"
-                                            class="image-fluid rounded" />
+                                            class="img-fluid rounded" />
                                             {% endif %}
                                             <!-- begin for menu of user input -->
-                                            <div class="edit-icon ">
+                                            <div class="edit-icon">
                                                 <div class=" row align-items-center">
                                                     <div class="col-auto">
                                                         <!-- have a button POST a click via AJAX -->
@@ -370,16 +370,17 @@
     <script>
         // still a lot of bug in it
         $(".edit-icon").click(function () {
-            $("msg-edit-form").hide();
+            $(".user-msg").show();
+            $(".msg-edit-form").hide();
         });
     </script>
 
     <!-- deactivate submit button after submission -->
-    <script>
+    <!-- <script>
         $(".submit-button").click(function(){
-            $("submit-button").prop("disabled",true);
+            $(".submit-button").prop("disabled",true);
         })
-    </script>
+    </script> -->
 </body>
 
 <!-- TODO: create footer here -->

@@ -68,7 +68,7 @@ def register_request(request):
             username=form.cleaned_data["user_name"]
             password=form.cleaned_data["password"]
             code_val=form.cleaned_data["register_code"]
-            form.save()
+            form.save(commit=True)
             # redirect to a new URL:
             messages.info(request, "User registration success")
             user = authenticate(username=username, password=password)
@@ -140,7 +140,7 @@ def edit_profile(request, username):
             if user is not None:
                 login(request, user)
             # redirect to a new URL:
-            messages.success(request, "edit profile success")
+            messages.success(request, "Edit profile success. If the profile image did not change automatically after edit, please try to reload page cache. (ctrl+F5 for chrome)")
             return redirect("creators:profile", username=username)
         if profile_form.errors:
             for key, value in profile_form.errors.items():

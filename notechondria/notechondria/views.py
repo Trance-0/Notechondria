@@ -6,9 +6,13 @@ Also, you can modify models here (back-end)
 from django.shortcuts import render
 from django.contrib import messages
 from django.conf import settings
+import logging
+
+logger = logging.getLogger("django")
 
 def home(request):
     """render default home page"""
+    logger.info(f'detected debug mode in django: {settings.DEBUG}')
     return render(request,'index.html',{})
 
 def about(request):

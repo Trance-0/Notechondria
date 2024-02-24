@@ -7,9 +7,10 @@
         <div class="alert alert-secondary" role="alert">
             <div class="text-muted">{{assist_msg.created_local}}</div>
             <div class="col-auto">
-                <div hx-get="{% url 'gptutils:get_stream_chat' assist_msg.conversation_id.id %}" hx-trigger="load"
-                    hx-sse="true">
-
+                <div hx-ext="sse" sse-connect="{% url 'gptutils:get_stream_chat' assist_msg.conversation_id.id %}" hx-trigger="load" hx-swap="innerHTML">
+                    <div class="spinner-grow spinner-grow-sm" role="status">
+                        <span class="sr-only">Loading...</span>
+                      </div>
                 </div>
             </div>
         </div>
@@ -37,7 +38,7 @@
                 </a>
                 {% endif %}
                 {% if user_msg.image %}
-                <img src="{{ user_msg.image.url }}" alt="image send on message {{user_msg.id}}" class="image-fluid"
+                <img src="{{ user_msg.image.url }}" alt="image send on message {{user_msg.id}}" class="img-fluid"
                     style=" border-radius: 25px;" />
                 {% endif %}
                 <!-- begin for menu of user input -->

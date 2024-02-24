@@ -284,6 +284,7 @@ def resend_message(request,message_pk):
                 messages.success(request, f"Successfully resend the message {message_instance}")
     return redirect("gptutils:get_chat", conv_pk=message_instance.conversation_id.id)
 
+@login_required
 def delete_message(request, message_pk):
     """only processing post request for deleting message, including message with pk based on time
     for the purpose of returning error and large query operations, this page will not be ajax under post request

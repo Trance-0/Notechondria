@@ -1,64 +1,122 @@
-<div class="modal fade" id="editChatModal" tabindex="-1" aria-labelledby="editChatModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            {% if edit_chat_form %}
-            <form action="{% url 'gptutils:edit_chat' edit_chat_form.instance.id %}" method="post">
-                <!-- Use jQuery to hide advanced options -->
+<div id="editChatModals">
+    <!-- just a place holder for htmx to find -->
+    <div class="modal fade" id="deleteChatModal" tabindex="-1" aria-labelledby="deleteChatModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                {% if edit_chat_form %}
                 <div class="modal-header">
-                    <h5 class="modal-title" id="editChatModalLabel">Edit Chat
-                    </h5>
+                    <h5 class="modal-title" id="deleteChatModalLabel">Delete chat</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    {% csrf_token %}
-                    <!-- Django overkill form -->
-                    <!-- Include the hidden fields -->
-                    {% for hidden in edit_chat_form.hidden_fields %}
-                    {{ hidden }}
-                    {% endfor %}
-                    <!-- Include the visible fields  -->
-                    {% for field in edit_chat_form.visible_fields %}
-                    <div class="mb-3">
-                        {%if field.errors%}
-                        <div class="alert alert-danger">
-                            {% for error in field.errors %}
-                            {{ error }}
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                        <label for="{{ field.id_for_label }}" class="form-label">
-                            {{ field.label }}
-                        </label>
-                        {{ field }}
-                        {% if field.help_text %}
-                        <div class="form-text">{{ field.help_text|safe }}</div>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
-                    <div class="modal-footer row d-flex align-items-end">
-                        <div class="col">
-                            <button type="button" class="btn btn-danger" hx-post="{% url 'gptutils:delete_chat' edit_chat_form.instance.id %}" hx-confirm="Are you sure you wish to delete this chat?">Delete Chat</button>
-                        </div>
-                        <div class="col-auto">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-primary">Save</button>
-                        </div>
-                    </div>
+                    Are you sure you wish to <strong>DELETE</strong> this chat? All the successive message will be lost!
+                    There is currently no way to restore it.
                 </div>
-            </form>
-            {% else %}
-            <div class="alert alert-warning ms-3 me-3 mt-3" role="alert">
-                Edit chat form not received from server
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-target="#editChatModal" data-bs-toggle="modal"
+                        data-bs-dismiss="modal">Back to edit</button>
+
+                    <form action="{% url 'gptutils:delete_chat' edit_chat_form.instance.id %}" method="post">
+                        {% csrf_token %}
+                        <button class="btn btn-danger" id="delete-chat-button">Wait 5s</button>
+                    </form>
+                </div>
+
+                {% else %}
+                <div class="alert alert-warning ms-3 me-3 mt-3" role="alert">
+                    Edit chat form not received from server
+                </div>
+                {% endif %}
             </div>
-            {% endif %}
         </div>
     </div>
+
+    <div class="modal fade" id="editChatModal" tabindex="-1" aria-labelledby="editChatModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                {% if edit_chat_form %}
+                <form action="{% url 'gptutils:edit_chat' edit_chat_form.instance.id %}" method="post">
+                    <!-- Use jQuery to hide advanced options -->
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editChatModalLabel">Edit Chat
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        {% csrf_token %}
+                        <!-- Django overkill form -->
+                        <!-- Include the hidden fields -->
+                        {% for hidden in edit_chat_form.hidden_fields %}
+                        {{ hidden }}
+                        {% endfor %}
+                        <!-- Include the visible fields  -->
+                        {% for field in edit_chat_form.visible_fields %}
+                        <div class="mb-3">
+                            {%if field.errors%}
+                            <div class="alert alert-danger">
+                                {% for error in field.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <label for="{{ field.id_for_label }}" class="form-label">
+                                {{ field.label }}
+                            </label>
+                            {{ field }}
+                            {% if field.help_text %}
+                            <div class="form-text">{{ field.help_text|safe }}</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        <div class="modal-footer row d-flex align-items-end">
+                            <div class="col">
+                                <button type="button" class="btn btn-danger" id="deleteChatModalToggle"
+                                    data-bs-target="#deleteChatModal" data-bs-toggle="modal"
+                                    data-bs-dismiss="modal">Delete Chat</button>
+                            </div>
+                            <div class="col-auto">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="submit" class="btn btn-primary">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                {% else %}
+                <div class="alert alert-warning ms-3 me-3 mt-3" role="alert">
+                    Edit chat form not received from server
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- load modal on default -->
+
+    <script>
+        $(document).ready(function () {
+            $('#editChatModal').modal('show');
+        });
+
+        $("#deleteChatModalToggle").click(function () {
+            $('#delete-chat-button').prop('disabled', true);
+            setTimeout(function () {
+                $("#delete-chat-button").html('Wait 4s');
+            }, 1000);
+            setTimeout(function () {
+                $("#delete-chat-button").html('Wait 3s');
+            }, 2000);
+            setTimeout(function () {
+                $("#delete-chat-button").html('Wait 2s');
+            }, 3000);
+            setTimeout(function () {
+                $("#delete-chat-button").html('Wait 1s');
+            }, 4000);
+            setTimeout(function () {
+                $("#delete-chat-button").prop('disabled', false);
+                $("#delete-chat-button").html('Delete');
+            }, 5000);
+
+        });
+    </script>
 </div>
-
-<!-- load modal on default -->
-
-<script>
-$(document).ready(function() {
-    $('#editChatModal').modal('show');
-  });
-  </script>

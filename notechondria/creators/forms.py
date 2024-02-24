@@ -4,8 +4,9 @@ Escape from forms
 With django built-in validation and everything else!
 https://docs.djangoproject.com/en/4.2/topics/forms/
 """
-from pathlib import Path
+import os
 from django.conf import settings
+from django.templatetags.static import static
 from django.utils.timezone import now
 from PIL import Image
 from django import forms
@@ -19,6 +20,9 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.core.validators import EmailValidator
 from .models import Creator, VerificationCode, VerificationChoices
+import logging
+
+logger = logging.getLogger("django")
 
 
 class RepassValidator:
@@ -69,7 +73,7 @@ class ResizedImageValidator:
         cropped_image = image.crop(
             (self.x, self.y, self.width + self.x, self.height + self.y)
         )
-        return cropped_image.resize(resize, Image.ANTIALIAS)
+        return cropped_image.resize(resize, Image.Resampling.LANCZOS)
 
     def get_help_text(self):
         """return standard help_text"""
@@ -236,8 +240,9 @@ class RegisterForm(forms.ModelForm):
         # the user will not be save automatically
         user.save()
         creator_instance.user_id = user
-        # save image first
-        creator_instance.save()
+        # save default image first
+        creator_instance.image = Image.open(os.path.join(settings.STATIC_ROOT,"images","person-circle.png"))
+        creator_instance.save(commit=commit)
         if self.cleaned_data.get("image"):
             # load image
             img_validator = ResizedImageValidator(
@@ -381,6 +386,7 @@ class EditForm(forms.ModelForm):
         creator_instance = super(EditForm, self).save(commit=commit)
 
         if self.cleaned_data.get("new_image"):
+            logger.info(f'received new image {self.cleaned_data.get("new_image")}')
             # load image
             img_validator = ResizedImageValidator(
                 self.cleaned_data.get("x"),

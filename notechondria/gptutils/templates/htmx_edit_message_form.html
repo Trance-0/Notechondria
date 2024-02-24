@@ -1,4 +1,28 @@
 {% if edit_message_form%}
+<!-- Modal -->
+<div class="modal fade" id="delete-{{edit_message_form.instance.id}}-Modal" tabindex="-1" aria-labelledby="delete-{{edit_message_form.instance.id}}-ModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        
+        <div class="modal-content">
+            <div class="modal-header">
+            <h5 class="modal-title" id="delete-{{edit_message_form.instance.id}}-ModalLabel">Delete message</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you wish to <strong>DELETE</strong> the message? All the successive message will be lost! There is currently no way to restore it.
+            </div>
+            <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+            
+            <form action="{% url 'gptutils:delete_message' edit_message_form.instance.id %}" method="post">
+                {% csrf_token %}
+                <button class="btn btn-danger" id="delete-{{edit_message_form.instance.id}}-button">Wait 5s</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="msg-edit-form w-100" id="msg-edit-{{edit_message_form.instance.id}}">
     <form class="row justify-content-end mt-2" id="message-edit-{{edit_message_form.instance.id}}-form"
         action="{% url 'gptutils:edit_message' edit_message_form.instance.id%}" method="post" enctype="multipart/form-data">
@@ -32,12 +56,12 @@
             <button type="submit" class="btn btn-primary mt-2" form="message-edit-{{edit_message_form.instance.id}}-form" hx-confirm="Are you sure you wish to edit the message? All the successive message will be lost!">Save</button>
         </div>
         <div class="col-auto">
-            <form action="{% url 'gptutils:delete_message' edit_message_form.instance.id %}" method="post">
-                <button class="btn btn-danger mt-2" hx-post= hx-confirm="Are you sure you wish to edit the message? All the successive message will be lost!">Delete</button>
-            </form>
+            <button type="button" class="btn btn-danger mt-2" data-bs-toggle="modal" data-bs-target="#delete-{{edit_message_form.instance.id}}-Modal" id="delete-{{edit_message_form.instance.id}}-ModalToggle">
+                Delete
+              </button>
         </div>
         <div class="col-auto">
-            <button class="btn btn-secondary edit-icon mt-2">Cancel</button>
+            <button class="btn btn-secondary mt-2" id="cancel-edit-{{edit_message_form.instance.id}}">Cancel</button>
         </div>
     </div>
 </div>
@@ -48,6 +72,32 @@
     $(document).ready(function () {
         $('#msg-{{edit_message_form.instance.id}}').hide();
         $('#msg-edit-{{edit_message_form.instance.id}}').show();
+    });
+
+    $("#cancel-edit-{{edit_message_form.instance.id}}").click(function () {
+        $('#msg-{{edit_message_form.instance.id}}').show();
+        $('#msg-edit-{{edit_message_form.instance.id}}').hide();
+    });
+
+    $("#delete-{{edit_message_form.instance.id}}-ModalToggle").click(function (){
+        $('#delete-{{edit_message_form.instance.id}}-button').prop('disabled', true);
+        setTimeout(function(){
+            $("#delete-{{edit_message_form.instance.id}}-button").html('Wait 4s');
+        }, 1000);
+        setTimeout(function(){
+            $("#delete-{{edit_message_form.instance.id}}-button").html('Wait 3s');
+        }, 2000);
+        setTimeout(function(){
+            $("#delete-{{edit_message_form.instance.id}}-button").html('Wait 2s');
+        }, 3000);
+        setTimeout(function(){
+            $("#delete-{{edit_message_form.instance.id}}-button").html('Wait 1s');
+        }, 4000);
+        setTimeout(function(){
+            $("#delete-{{edit_message_form.instance.id}}-button").prop('disabled', false);
+            $("#delete-{{edit_message_form.instance.id}}-button").html('Delete');
+        }, 5000);
+
     });
 </script>
 

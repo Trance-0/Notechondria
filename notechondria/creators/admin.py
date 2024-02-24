@@ -12,12 +12,12 @@ from .models import Creator,VerificationCode
 
 
 class MemberInline(admin.TabularInline):
-    """Line per creator in admin view and one extra for convinience"""
+    """Line per creator in admin view and one extra for convenience"""
     model=Creator
     extra=1
 
 class ActivationCodeInline(admin.StackedInline):
-    """Line per creator in admin view and one extra for convinience"""
+    """Line per creator in admin view and one extra for convenience"""
     model=VerificationCode
     extra=1
 

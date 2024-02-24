@@ -15,10 +15,10 @@ from pathlib import Path
 from dotenv import load_dotenv
 from datetime import datetime
 
-load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+load_dotenv(os.path.join(BASE_DIR,'.env'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -27,7 +27,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG = False
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS").split(" ")
 
@@ -65,6 +66,9 @@ if DEBUG:
     import socket  # only if you haven't already imported this
     hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
     INTERNAL_IPS = [ip[: ip.rfind(".")] + ".1" for ip in ips] + ["127.0.0.1", "10.0.2.2"]
+
+# add trusted CDN
+CSRF_TRUSTED_ORIGINS = [f"http://localhost:{os.getenv('NGINX_PORT', 80)}"]
 
 ROOT_URLCONF = 'notechondria.urls'
 
@@ -113,7 +117,8 @@ LOGGING = {
         'file': {
             'level': 'INFO',
             'class': 'logging.FileHandler',
-            'filename': f"{os.getenv('DJANGO_LOG_FILE_NAME', 'logs')}-{datetime.now().strftime('%Y%m%d')}.log",
+            # if you need to store it outside of current project folder, remove the join base part.
+            'filename': os.path.join(BASE_DIR,os.path.join("logs",f"{os.getenv('DJANGO_LOG_FILE_NAME', 'logs')}-{datetime.now().strftime('%Y%m%d')}.log")),
             'formatter': 'verbose',
             'encoding':'utf8',
         },
@@ -145,8 +150,7 @@ DATABASES = {
         'NAME': 'postgres',
         'USER': os.getenv('POSTGRE_USERNAME'),
         'PASSWORD': os.getenv('POSTGRE_PASSWORD'),
-        # 'HOST': os.getenv('POSTGRE_HOST'),
-        'HOST': "localhost",
+        'HOST': "localhost" if DEBUG else os.getenv('POSTGRE_HOST'),
         'PORT': os.getenv('POSTGRE_PORT')
     }
 }
@@ -203,7 +207,7 @@ STATICFILES_DIRS = [
 ]
 
 # this is the location where collect static will run, set it to the service directory of static url in production
-STATIC_ROOT = os.path.join(BASE_DIR, 'productionfiles/')
+STATIC_ROOT = os.path.join(BASE_DIR, 'productionfiles/') if DEBUG else os.getenv('PRODUCTION_STATIC_ROOT')
 
 # Image files (jpg, jpeg)
 # reference: https://djangocentral.com/uploading-images-with-django/
@@ -212,7 +216,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'productionfiles/')
 MEDIA_URL = '/media/'
 
 # Path where media is stored
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media') if DEBUG else os.getenv('PRODUCTION_MEDIA_ROOT')
 
 # Offline development tag
 OFFLINE = False

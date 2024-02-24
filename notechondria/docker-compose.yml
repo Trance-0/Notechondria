@@ -1,22 +1,26 @@
-version: '0.1'
+version: '0.2'
 
 volumes:
   postgres-data:
   notechondria-data:
+  static_volume:
+  media_volume:
 networks:
   notechondria-back:
 
 services:
   app:
-    image: trancezero/notechondria:v0.1
+    image: trancezero/notechondria:v0.2
     build:
       context: .
       dockerfile: Dockerfile
     command: gunicorn notechondria.wsgi:application --bind 0.0.0.0:8000
     volumes:
-      - notechondria-data:/usr/src/app/
+      - notechondria-data:/home/notechondria
+      - static_volume:/home/staticfiles
+      - media_volume:/home/mediafiles
     ports:
-      - 8001:8000
+      - ${DJANGO_PORT}:8000
     depends_on:
       - db
     networks:
@@ -30,6 +34,20 @@ services:
       - POSTGRES_PASSWORD=${POSTGRE_PASSWORD}
       - POSTGRES_DB=${POSTGRE_HOST}
     ports:
+      # port 5432 for connection on local computer
       - 5432:5432
+    networks:
+      - notechondria-back
+  nginx:
+    image: trancezero/nginx
+    build: ./nginx
+    volumes:
+      - static_volume:/home/staticfiles
+      - media_volume:/home/mediafiles
+    ports:
+      # port for debugging nginx on local computer
+      - ${NGINX_PORT}:80
+    depends_on:
+      - app
     networks:
       - notechondria-back

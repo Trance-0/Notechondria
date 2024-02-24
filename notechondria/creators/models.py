@@ -48,7 +48,7 @@ class Creator(models.Model):
         on_delete=models.CASCADE,
         null=False,
     )
-    image = models.ImageField(upload_to=user_profile_path, default='profile_pic/person-circle.svg')
+    image = models.ImageField(upload_to=user_profile_path, null=False)
     motto = models.CharField(max_length=100, null=True)
     reputation = models.IntegerField(default=0, null=False)
     exp = models.IntegerField(default=0, null=False)
@@ -68,7 +68,7 @@ class Creator(models.Model):
         default=UserGroupChoices.NORMAL,
     )
 
-    # user status is detemined by the group in user attribute
+    # user status is determined by the group in user attribute
 
     def __str__(self):
         """for better list display"""
@@ -85,7 +85,9 @@ class VerificationCode(models.Model):
     """This is the activation code that will be used for create user."""
 
     code = models.CharField(max_length=255, unique=True, null=True, blank=True)
-    expire_date = models.DateTimeField(auto_now=True,null=False)
+    # editable datetime field with auto-now
+    # https://stackoverflow.com/a/18752680/14110380
+    expire_date = models.DateTimeField(default=now,null=False)
     usage = models.CharField(
         null=False,
         max_length=1,
