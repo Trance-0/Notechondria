@@ -6,6 +6,7 @@ import os
 import logging
 import tiktoken
 import json
+import html
 from openai import OpenAI
 from PIL import Image
 
@@ -76,7 +77,7 @@ def generate_stream_message(conversation:Conversation):
         for chunk in stream:
             if chunk.choices[0].delta.content is not None:
                 response.append(chunk.choices[0].delta.content)
-                yield chunk.choices[0].delta.content
+                yield html.escape(chunk.choices[0].delta.content).replace('\n','<br>')
         dummy_message.text="".join(response)
         # token calculation (approximate)
         conversation.total_completion_tokens += 3  # every reply is primed with <|start|>assistant<|message|>

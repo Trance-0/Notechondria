@@ -77,11 +77,12 @@
                         {% endif %}
                         <div class="modal-footer row d-flex align-items-end">
                             <div class="col">
-                                <a class="btn btn-success" data-bs-toggle="modal" href="#createChatModalL" role="button">Use advanced config</a>
+                                <a class="btn btn-success" data-bs-toggle="modal" href="#createChatModalL"
+                                    role="button">Use advanced config</a>
                             </div>
                             <div class="col-auto">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="submit" class="btn btn-primary">Create Chat</button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="submit" class="btn btn-primary">Create Chat</button>
                             </div>
                         </div>
                     </div>
@@ -135,11 +136,12 @@
                         {% endif %}
                         <div class="modal-footer row d-flex align-items-end">
                             <div class="col">
-                                <a class="btn btn-success" data-bs-toggle="modal" href="#createChatModalS" role="button">Use simple config</a>
+                                <a class="btn btn-success" data-bs-toggle="modal" href="#createChatModalS"
+                                    role="button">Use simple config</a>
                             </div>
                             <div class="col-auto">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="submit" class="btn btn-primary">Create Chat</button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="submit" class="btn btn-primary">Create Chat</button>
                             </div>
                         </div>
                     </div>
@@ -205,152 +207,173 @@
                     flex-direction: column-reverse;">
                         <!-- Render conversation info -->
                         {% if messages_list %}
-                    <div id="latest-message">
-                        <!-- place to add new message for ajax post request -->
-                    </div>
+                        <div id="latest-message">
+                            <!-- place to add new message for ajax post request -->
+                        </div>
                         {% for message in messages_list %}
                         {% if forloop.last %}
                         <!-- Load 10 more message if scroll to end -->
-                            <div 
-                                hx-trigger="intersect once"
-                                hx-get="{% url 'gptutils:get_chat' cur_conversation.id %}?after={{message.created_url}}"
-                                hx-swap="afterend"
-                            >
-                        {% else %}
+                        <div hx-trigger="intersect once"
+                            hx-get="{% url 'gptutils:get_chat' cur_conversation.id %}?after={{message.created_url}}"
+                            hx-swap="afterend">
+                            {% else %}
                             <div>
-                        {% endif %}
-                            {% if message.role == 'user' %}
-                            <div class="row d-flex justify-content-end pe-2 ps-5">
-                                <div class="col-auto">
-                                    <div class="alert alert-primary" role="alert">
-                                        <div class="text-muted">{{message.created_local}}</div>
-                                        <div class="msg-edit-form" id="msg-edit-{{message.id}}"></div>
-                                        <div class="user-msg" id="msg-{{message.id}}">
-                                            {{message.body|linebreaksbr}}
-                                            {% if message.extras  != None %}
-                                            <div class="collapse" id="collapseMessage-{{message.id}}">{{message.extras|linebreaksbr}}</div>
-                                            <a class="link-dark" data-bs-toggle="collapse" href="#collapseMessage-{{message.id}}" role="button" aria-expanded="false" aria-controls="collapseMessage-{{message.id}}">
-                                                ...
-                                            </a>
-                                            {% endif %}
-                                            {% if message.image %}
-                                            <img src="{{ message.image.url }}" alt="image send on message {{message.id}}"
-                                            class="img-fluid rounded" />
-                                            {% endif %}
-                                            <!-- begin for menu of user input -->
-                                            <div class="edit-icon">
-                                                <div class=" row align-items-center">
-                                                    <div class="col-auto">
-                                                        <!-- have a button POST a click via AJAX -->
-                                                        <div id="edit-msg-{{message.id}}"
-                                                            hx-get="{% url 'gptutils:edit_message' message.id %}"
-                                                            hx-target="#msg-edit-{{message.id}}" hx-swap="outerHTML">
-                                                            {% svg_tags 'pen' '' 10 'var(--bs-secondary)' %}
+                                {% endif %}
+                                {% if message.role == 'user' %}
+                                <div class="row d-flex justify-content-end pe-2 ps-5">
+                                    <div class="col-auto">
+                                        <div class="alert alert-primary" role="alert">
+                                            <div class="text-muted">{{message.created_local}}</div>
+                                            <div class="msg-edit-form" id="msg-edit-{{message.id}}"></div>
+                                            <div class="user-msg" id="msg-{{message.id}}">
+                                                {{message.body|linebreaksbr}}
+                                                {% if message.extras != None %}
+                                                <div class="collapse" id="collapseMessage-{{message.id}}">
+                                                    {{message.extras|linebreaksbr}}</div>
+                                                <a class="link-dark" data-bs-toggle="collapse"
+                                                    href="#collapseMessage-{{message.id}}" role="button"
+                                                    aria-expanded="false"
+                                                    aria-controls="collapseMessage-{{message.id}}">
+                                                    ...
+                                                </a>
+                                                {% endif %}
+                                                {% if message.image %}
+                                                <img src="{{ message.image.url }}"
+                                                    alt="image send on message {{message.id}}"
+                                                    class="img-fluid rounded" />
+                                                {% endif %}
+                                                <!-- begin for menu of user input -->
+                                                <div class="edit-icon">
+                                                    <div class=" row align-items-center">
+                                                        <div class="col-auto">
+                                                            <!-- have a button POST a click via AJAX -->
+                                                            <div id="edit-msg-{{message.id}}"
+                                                                hx-get="{% url 'gptutils:edit_message' message.id %}"
+                                                                hx-target="#msg-edit-{{message.id}}"
+                                                                hx-swap="outerHTML">
+                                                                {% svg_tags 'pen' '' 10 'var(--bs-secondary)' %}
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-auto">
+                                                            <form
+                                                                action="{% url 'gptutils:resend_message' message.id %}"
+                                                                method="post">
+                                                                <!-- csrf_token for request -->
+                                                                {% csrf_token %}
+                                                                <button class="btn btn-link loading" type="submit">
+                                                                    {% svg_tags 'arrow-counterclockwise' '' 10 'var(--bs-secondary)' %}
+                                                                </button>
+                                                            </form>
                                                         </div>
                                                     </div>
-                                                    <div class="col-auto">
-                                                        <form action="{% url 'gptutils:resend_message' message.id %}" method="post">
-                                                            <!-- csrf_token for request -->
-                                                            {% csrf_token %}
-                                                            <button class="btn btn-link loading" type="submit">
-                                                            {% svg_tags 'arrow-counterclockwise' '' 10 'var(--bs-secondary)' %}
-                                                            </button>
-                                                        </form>
-                                                    </div>
                                                 </div>
+                                                <!-- end for menu of user input -->
                                             </div>
-                                            <!-- end for menu of user input -->
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                            {% elif message.role == 'assistant' %}
-                            <div class="row ps-2 pe-5">
-                                <div class="col-auto ">
-                                    <div class="alert alert-secondary" role="alert">
-                                        <div class="text-muted">{{message.created_local}}</div>
-                                        <div class="col-auto">
-                                            {{message.body|linebreaksbr}}
-                                            {% if message.extras != None %}
-                                            <div class="collapse" id="collapseMessage-{{message.id}}">{{message.extras|linebreaksbr}}</div>
-                                            <a class="link-dark" data-bs-toggle="collapse" href="#collapseMessage-{{message.id}}" role="button" aria-expanded="false" aria-controls="collapseMessage-{{message.id}}">
-                                                ...
-                                            </a>
-                                            {% endif %}
+                                {% elif message.role == 'assistant' %}
+                                <div class="row ps-2 pe-5">
+                                    <div class="col-auto ">
+                                        <div class="alert alert-secondary" role="alert">
+                                            <div class="text-muted">{{message.created_local}}</div>
+                                            <div class="col-auto">
+                                                {{message.body|linebreaksbr}}
+                                                {% if message.extras != None %}
+                                                <div class="collapse" id="collapseMessage-{{message.id}}">
+                                                    {{message.extras|linebreaksbr}}</div>
+                                                <a class="link-dark" data-bs-toggle="collapse"
+                                                    href="#collapseMessage-{{message.id}}" role="button"
+                                                    aria-expanded="false"
+                                                    aria-controls="collapseMessage-{{message.id}}">
+                                                    ...
+                                                </a>
+                                                {% endif %}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
+                                {% endif %}
                             </div>
-                            {% endif %}
-                            </div>
-                        {% endfor %}
-                        {% else %}
-                        {% if cur_conversation %}
-
-                        <div class="h-100 position-relative">
-                            <div class="position-absolute top-50 start-50 translate-middle">
-                                Send a message to begin conversation.
-                            </div>
-                        </div>
-                        {% else %}
-                        <div class="h-100 position-relative">
-                            <div class="position-absolute top-50 start-50 translate-middle">
-                                <a class="link-dark" data-bs-toggle="modal" href="#createChatModalL" role="button">
-                                    Create a chat with advanced configuration
-                                </a>
-                            </div>
-                        </div>
-                        {%endif%}
-                        {%endif%}
-                    </div>
-                    <div class="card-footer">
-                        {% if message_form %}
-                        <!-- inline form reference: https://getbootstrap.com/docs/5.3/forms/layout/#inline-forms -->
-                        {% if cur_conversation %}
-                        <form class="row g-3 align-items-center justify-content-end" hx-post="{% url 'gptutils:get_chat' cur_conversation.id %}" hx-encoding="multipart/form-data" hx-target="#latest-message" hx-swap="afterend">
+                            {% endfor %}
                             {% else %}
-                            <!-- no ajax for fast chat yet, I don't have much time, LOL -->
-                            <form class="row g-3 align-items-center justify-content-end"
-                                action="{% url 'gptutils:fast_chat'%}" method="post" enctype="multipart/form-data" >
-                                {% endif %}
-                                {% csrf_token %}
-                                <!-- Django overkill form -->
-                                <!-- Include the hidden fields -->
-                                {% for hidden in message_form.hidden_fields %}
-                                {{ hidden }}
-                                {% endfor %}
-                                <!-- streaming, comment the code below if the page or function is malfunctioned -->
-                                <input type="hidden" name="streaming" value="true">
-                                <!-- Include the visible fields  -->
-                                {% for field in message_form.visible_fields %}
-                                {% if field.name == "text" %}
-                                <div class="col">
-                                    <label for="{{ field.id_for_label }}" class="visually-hidden">
-                                        {{ field.label }}
-                                    </label>
-                                    {{ field }}
-                                </div>
-                                {% elif field.name == "image" and cur_conversation.is_visual_model %}
-                                <div class="col-3">
-                                    <label for="{{ field.id_for_label }}" class="visually-hidden">
-                                        {{ field.label }}
-                                    </label>
-                                    {{ field }}
-                                </div>
-                                {% endif %}
-                                {% endfor %}
-                                <div class="col-auto">
-                                    <button type="submit" class="btn btn-primary submit-button">Send</button>
-                                </div>
-                            </form>
-                            {% endif %}
-                    </div>
-                </div>
-                <form>
+                            {% if cur_conversation %}
 
-                </form>
+                            <div class="h-100 position-relative">
+                                <div class="position-absolute top-50 start-50 translate-middle">
+                                    Send a message to begin conversation.
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="h-100 position-relative">
+                                <div class="position-absolute top-50 start-50 translate-middle">
+                                    <a class="link-dark" data-bs-toggle="modal" href="#createChatModalL" role="button">
+                                        Create a chat with advanced configuration
+                                    </a>
+                                </div>
+                            </div>
+                            {%endif%}
+                            {%endif%}
+                        </div>
+                        <div class="card-footer">
+                            {% if message_form %}
+                            <!-- inline form reference: https://getbootstrap.com/docs/5.3/forms/layout/#inline-forms -->
+                            {% if cur_conversation %}
+                            <form class="row g-3 align-items-center justify-content-end"
+                                hx-post="{% url 'gptutils:get_chat' cur_conversation.id %}"
+                                hx-encoding="multipart/form-data" hx-target="#latest-message" hx-swap="afterend">
+                                {% else %}
+                                <!-- no ajax for fast chat yet, I don't have much time, LOL -->
+                                <form class="row g-3 align-items-center justify-content-end"
+                                    action="{% url 'gptutils:fast_chat'%}" method="post" enctype="multipart/form-data">
+                                    {% endif %}
+
+                                    {% csrf_token %}
+                                    <!-- Django overkill form -->
+                                    <!-- Include the hidden fields -->
+                                    {% for hidden in message_form.hidden_fields %}
+                                    {{ hidden }}
+                                    {% endfor %}
+                                    <!-- streaming, comment the code below if the page or function is malfunctioned -->
+                                    <input type="hidden" name="streaming" value="true">
+                                    <!-- Include the visible fields  -->
+                                    {% for field in message_form.visible_fields %}
+                                    {% if field.name == "text" %}
+                                    <div class="col">
+                                        <label for="{{ field.id_for_label }}" class="visually-hidden">
+                                            {{ field.label }}
+                                        </label>
+                                        {{ field }}
+                                    </div>
+                                    {% elif field.name == "image" and cur_conversation.is_visual_model %}
+                                    <div class="col-3">
+                                        <label for="{{ field.id_for_label }}" class="visually-hidden">
+                                            {{ field.label }}
+                                        </label>
+                                        {{ field }}
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                    <div class="col-auto">
+
+                                        {% if cur_conversation %}
+                                        <button type="submit" class="btn btn-primary submit-button">Send</button>
+                                        {% else %}
+                                        <!-- fast chat loading page -->
+                                        <button type="submit"
+                                            class="btn btn-primary submit-button loading">Send</button>
+
+                                        {% endif %}
+                                    </div>
+                                </form>
+                                {% endif %}
+                        </div>
+                    </div>
+                    <form>
+
+                    </form>
+                </div>
             </div>
-        </div>
     </main>
 
     <!-- enable popover -->
@@ -362,7 +385,7 @@
         })
     </script>
 
-    
+
     {% include "loading_block.html" %}
 
     <!-- hide other form on requesting new form -->

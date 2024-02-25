@@ -1,0 +1,29 @@
+<!-- reference: https://github.com/microsoft/monaco-editor/blob/main/samples/browser-script-editor/index.html -->
+{% load static %}
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <link
+        rel="stylesheet"
+        data-name="vs/editor/editor.main"
+        href="{% static '/monaco-editor/min/vs/editor/editor.main.css' %}"
+    />
+</head>
+<body>
+    <h2>Monaco Editor Sync Loading Sample</h2>
+    <div id="codeEditor" style="width: 800px; height: 600px; border: 1px solid grey"></div>
+
+    <script>
+        var require = { paths: { vs: "{% static '/monaco-editor/min/vs' %}" } };
+    </script>
+    <script src="{% static '/monaco-editor/min/vs/loader.js' %}"></script>
+    <script src="{% static '/monaco-editor/min/vs/editor/editor.main.nls.js' %}"></script>
+    <script src="{% static '/monaco-editor/min/vs/editor/editor.main.js' %}"></script>
+
+    <script>
+        var editor = monaco.editor.create(document.getElementById('codeEditor'), {
+            value: ['function x() {', '\tconsole.log("Hello world!");', '}'].join('\n'),
+            language: 'javascript'
+        });
+    </script>
+</body>

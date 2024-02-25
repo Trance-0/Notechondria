@@ -1,0 +1,23 @@
+{% load static %}
+
+    <link
+        rel="stylesheet"
+        data-name="vs/editor/editor.main"
+        href="{% static '/monaco-editor/min/vs/editor/editor.main.css' %}"
+    />
+    <div id="codeEditor" style="width: 100%; height: calc(100vh - 135px);"></div>
+
+    <script>
+        var require = { paths: { vs: "{% static '/monaco-editor/min/vs' %}" } };
+    </script>
+    <script src="{% static '/monaco-editor/min/vs/loader.js' %}"></script>
+    <script src="{% static '/monaco-editor/min/vs/editor/editor.main.nls.js' %}"></script>
+    <script src="{% static '/monaco-editor/min/vs/editor/editor.main.js' %}"></script>
+
+    <script>
+        var editor = monaco.editor.create(document.getElementById('codeEditor'), {
+            value: ['function x() {', '\tconsole.log("Hello world!");', '}'].join('\n'),
+            language: 'javascript'
+        });
+        editor.getAction('editor.action.formatDocument').run()
+    </script>

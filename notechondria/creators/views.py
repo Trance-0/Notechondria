@@ -67,7 +67,7 @@ def register_request(request):
         if form.is_valid():
             username=form.cleaned_data["user_name"]
             password=form.cleaned_data["password"]
-            code_val=form.cleaned_data["register_code"]
+            # if you don't set commit as true, you need to save by yourself, which makes it no sense to write save function by yourself.
             form.save(commit=True)
             # redirect to a new URL:
             messages.info(request, "User registration success")
@@ -75,10 +75,10 @@ def register_request(request):
             # impossible to happen, don't know why someone will write this.
             if user is not None:
                 login(request, user)
-            # reduce usage of registration code, and the code must be valid or it will not pass the test
-            code_instance=get_object_or_404(VerificationCode,code=code_val)
-            code_instance.max_use-=1
-            code_instance.save()
+            # reduce usage of registration code (already done on form save), and the code must be valid or it will not pass the test
+            # code_instance=get_object_or_404(VerificationCode,code=code_val)
+            # code_instance.max_use-=1
+            # code_instance.save()
             return redirect("home")
         if form.errors:
             for key, value in form.errors.items():

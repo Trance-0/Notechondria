@@ -31,9 +31,10 @@ urlpatterns = [
     path('about/',views.about,name="about"),
     path('search/',views.about,name="search"),
     path('admin/', admin.site.urls),
+    # setting icon
     path(
         "favicon.ico",
-        RedirectView.as_view(url=staticfiles_storage.url("images/favicon.ico")),
+        RedirectView.as_view(url=staticfiles_storage.url("images/bug-fill.ico" if settings.DEBUG else "images/bar-chart-steps.ico")),
     ),
 ]
 
@@ -49,3 +50,15 @@ if settings.DEBUG:
             },
         ),
     ]
+
+# config for monaco-editor js
+# self-made solution for: django.request.log_response:241- 'Not Found: /min-maps/vs/base/common/worker/simpleWorker.nls.js.map'
+urlpatterns += [
+    re_path(
+        r"^min-maps/(?P<path>.*)$",
+        serve,
+        {
+            "document_root": settings.STATIC_ROOT+"monaco-editor/min-maps/",
+        },
+    ),
+]

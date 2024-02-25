@@ -10,13 +10,13 @@ class Note(models.Model):
      # This objects contains the username, password, first_name, last_name, and email of member.
     creator_id = models.ForeignKey(
         Creator,
-        # when conversation is deleteted, wheather the creator should also be deleted
+        # when conversation is deleted, whether the creator should also be deleted
         on_delete=models.CASCADE,
         null=False,
     )
     sharing_id = models.CharField(max_length=36,unique=True,null=False)
-    title = models.CharField(max_length=100, null=True)
-
+    title = models.CharField(max_length=100, default="Untitled Ep", null=False)
+    description=models.CharField(max_length=600,unique=True,null=False)
     # last_use and date_created automatically created, for these field, create one time value to timezone.now()
     date_created=models.DateTimeField(auto_now_add=True,null=False)
     last_edit=models.DateTimeField(auto_now=True,null=False)
@@ -65,6 +65,7 @@ class NoteBlock(models.Model):
     note_id=models.ForeignKey(
         Note,
         on_delete=models.CASCADE,
+        null=True,
     )
     tags=models.ManyToManyField(Tag)
     block_type=models.CharField(

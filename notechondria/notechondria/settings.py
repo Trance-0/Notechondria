@@ -115,6 +115,8 @@ LOGGING = {
         },
         # print level in log file
         'file': {
+            # de-comment the line below for detailed (super detailed) debug in django
+            # 'level': 'DEBUG',
             'level': 'INFO',
             'class': 'logging.FileHandler',
             # if you need to store it outside of current project folder, remove the join base part.

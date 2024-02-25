@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <style>
+        .fill-height {
+            height: calc(100vh - 82px);
+            /* Adjust the navbar height as needed */
+        }
+    </style>
+
+    {% load static %}
+
+    {% include "resource_header.html" %}
+</head>
+
+<body>
+
+    {% include "navbar.html" %}
+
+    <main class="container align-items-center fill-height">
+        <div class="row g-2 h-100">
+            <div class="col-9 mt-3 h-100">
+                <div class="card mb-3 h-100">
+                    <div class="card-header">
+                        <nav>
+                            <div class="nav nav-tabs card-header-tabs" id="nav-tab" role="tablist">
+                                <button class="nav-link" id="nav-block-tab" data-bs-toggle="tab"
+                                    data-bs-target="#nav-block-edit" type="button" role="tab"
+                                    aria-controls="nav-block-edit" aria-selected="true">
+                                    Block editor
+                                </button>
+                                <button class="nav-link active" id="nav-text-tab" data-bs-toggle="tab"
+                                    data-bs-target="#nav-text-edit" type="button" role="tab"
+                                    aria-controls="nav-text-edit" aria-selected="false">
+                                    Text editor
+                                </button>
+                                <button class="nav-link" id="nav-file-tab" data-bs-toggle="tab"
+                                    data-bs-target="#nav-file-gen" type="button" role="tab" aria-controls="nav-file-gen"
+                                    aria-selected="false" disabled>
+                                    Generate from file
+                                </button>
+                            </div>
+                        </nav>
+                    </div>
+                    <div class="tab-content" id="nav-tabContent">
+                        <div class="tab-pane fade" id="nav-block-edit" role="tabpanel"
+                            aria-labelledby="nav-block-tab" tabindex="0">
+                            <div class="card-body">
+                                {% include "note_block_editor.html" %}
+                            </div>
+                        </div>
+                        <div class="tab-pane fade show active" id="nav-text-edit" role="tabpanel" aria-labelledby="nav-text-tab"
+                            tabindex="0">
+                            {% include "note_code_editor.html" %}
+                        </div>
+                        <div class="tab-pane fade" id="nav-file-gen" role="tabpanel" aria-labelledby="nav-file-tab"
+                            tabindex="0">
+                            <div class="card-body">
+                                {% include "note_file_editor.html" %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <aside class="col-auto blog-sidebar mt-3 mb-3 h-100">
+                <!-- Render basic user info -->
+                <div class="card h-100 mb-3">
+                    <div class="card-body">
+                        side panel to be implemented
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+</body>
+
+<!-- TODO: create footer here -->

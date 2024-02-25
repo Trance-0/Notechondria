@@ -2,7 +2,7 @@ from datetime import datetime
 from django.utils import timezone
 import logging
 import random
-from django.http import JsonResponse, StreamingHttpResponse
+from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
 

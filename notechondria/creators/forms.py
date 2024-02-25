@@ -6,7 +6,9 @@ https://docs.djangoproject.com/en/4.2/topics/forms/
 """
 import os
 from django.conf import settings
-from django.templatetags.static import static
+from io import BytesIO
+from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.core.files.base import ContentFile
 from django.utils.timezone import now
 from PIL import Image
 from django import forms
@@ -241,8 +243,21 @@ class RegisterForm(forms.ModelForm):
         user.save()
         creator_instance.user_id = user
         # save default image first
-        creator_instance.image = Image.open(os.path.join(settings.STATIC_ROOT,"images","person-circle.png"))
-        creator_instance.save(commit=commit)
+        # https://stackoverflow.com/questions/32945292/how-to-save-pillow-image-object-to-django-imagefield
+        default_image_file= Image.open(os.path.join(settings.STATIC_ROOT,"images","person-circle.png"))
+        buffer = BytesIO()
+        default_image_file.save(fp=buffer, format='PNG')
+        default_image= ContentFile(buffer.getvalue())
+        img_name="profile_latest.png"
+        creator_instance.image.save(img_name, InMemoryUploadedFile(
+            default_image,       # file
+            None,               # field_name
+            img_name,           # file name
+            'image/png',       # content_type
+            default_image.tell,  # size
+            None)               # content_type_extra
+        )
+        creator_instance = super(RegisterForm, self).save(commit=commit)
         if self.cleaned_data.get("image"):
             # load image
             img_validator = ResizedImageValidator(
