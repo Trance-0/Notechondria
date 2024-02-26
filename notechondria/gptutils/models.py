@@ -141,10 +141,10 @@ class Message(models.Model):
         choices=MessageRoleChoices.choices,
         default=MessageRoleChoices.USER,
     )
-    image = models.ImageField(upload_to=message_image_path,blank=True, null=True)
+    image = models.ImageField(upload_to=message_image_path, blank=True, null=True)
     # file field is currently unsupported
-    file = models.FileField(upload_to=message_file_path,blank=True, null=True)
-    file_id = models.CharField(max_length=255, blank=True, null=True)
+    file = models.FileField(upload_to=message_file_path, blank=True, null=True)
+    file_id = models.CharField(max_length=255, null=True)
     # unlimited size for PostgreSQL, the max_length value have to be set for other databases.
     text = models.TextField(blank=True, null=True)
 

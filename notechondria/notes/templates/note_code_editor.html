@@ -16,8 +16,8 @@
 
     <script>
         var editor = monaco.editor.create(document.getElementById('codeEditor'), {
-            value: ['function x() {', '\tconsole.log("Hello world!");', '}'].join('\n'),
-            language: 'javascript'
+            value: ['# Example code editor', 'this section will be labeled as example', ''].join('\n'),
+            language: 'markdown'
         });
         editor.getAction('editor.action.formatDocument').run()
     </script>

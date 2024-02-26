@@ -1,0 +1,63 @@
+<div class="modal fade" id="createQuickNoteModal" data-bs-keyboard="false" tabindex="-1"
+    aria-labelledby="staticBackdropLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <!-- Use jQuery to hide advanced options -->
+            <div class="modal-header">
+                <h5 class="modal-title" id="createQuickNoteModalLabel">Create A new note
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            {% if note_form %}
+            <form action="{% url 'notes:create_note' %}" method="post" enctype="multipart/form-data">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <!-- Django overkill form -->
+                    <!-- Include the hidden fields -->
+                    {% for hidden in note_form.hidden_fields %}
+                    {{ hidden }}
+                    {% endfor %}
+                    <!-- Include the visible fields  -->
+                    {% for field in note_form.visible_fields %}
+                    <div class="mb-3">
+                        {%if field.errors%}
+                        <div class="alert alert-danger">
+                            {% for error in field.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <label for="{{ field.id_for_label }}" class="form-label">
+                            {{ field.label }}
+                        </label>
+                        {{ field }}
+                        {% if field.help_text %}
+                        <div class="form-text">{{ field.help_text|safe }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="modal-footer">
+                    <div class=" row">
+                        <div class="col-auto">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Create Note</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+            {% else %}
+            <div class="modal-body">
+                <div class="alert alert-danger" role="alert">
+                    Note form not received from server
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<script>
+    $(document).ready(function () {
+        $('#createQuickNoteModal').modal('show');
+    });
+</script>

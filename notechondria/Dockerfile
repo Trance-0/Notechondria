@@ -4,6 +4,8 @@ FROM python:3.9.18-bullseye as builder
 # configurations
 ENV HOME=/home
 ENV APP_HOME=/home/notechondria
+ENV PRODUCTION_MEDIA_ROOT=/home/mediafiles
+ENV PRODUCTION_STATIC_ROOT=/home/staticfiles
 RUN mkdir ${APP_HOME}
 
 # install dependencies

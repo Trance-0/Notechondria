@@ -35,14 +35,14 @@
     <div class="modal fade" id="editChatModal" tabindex="-1" aria-labelledby="editChatModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
+                <!-- Use jQuery to hide advanced options -->
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editChatModalLabel">Edit Chat
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
                 {% if edit_chat_form %}
                 <form action="{% url 'gptutils:edit_chat' edit_chat_form.instance.id %}" method="post">
-                    <!-- Use jQuery to hide advanced options -->
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="editChatModalLabel">Edit Chat
-                        </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
                     <div class="modal-body">
                         {% csrf_token %}
                         <!-- Django overkill form -->
@@ -69,11 +69,14 @@
                             {% endif %}
                         </div>
                         {% endfor %}
-                        <div class="modal-footer row d-flex align-items-end">
+                    </div>
+                    <div class="modal-footer">
+                        <div class="row w-100 justify-content-between">
                             <div class="col">
                                 <button type="button" class="btn btn-danger" id="deleteChatModalToggle"
                                     data-bs-target="#deleteChatModal" data-bs-toggle="modal"
-                                    data-bs-dismiss="modal">Delete Chat</button>
+                                    data-bs-dismiss="modal">Delete
+                                    Chat</button>
                             </div>
                             <div class="col-auto">
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -83,40 +86,43 @@
                     </div>
                 </form>
                 {% else %}
-                <div class="alert alert-warning ms-3 me-3 mt-3" role="alert">
-                    Edit chat form not received from server
+                <div class="modal-body">
+                    <div class="alert alert-warning ms-3 me-3 mt-3" role="alert">
+                        Edit chat form not received from server
+                    </div>
                 </div>
                 {% endif %}
             </div>
         </div>
     </div>
+</div>
 
-    <!-- load modal on default -->
+<!-- load modal on default -->
 
-    <script>
-        $(document).ready(function () {
-            $('#editChatModal').modal('show');
-        });
+<script>
+    $(document).ready(function () {
+        $('#editChatModal').modal('show');
+    });
 
-        $("#deleteChatModalToggle").click(function () {
-            $('#delete-chat-button').prop('disabled', true);
-            setTimeout(function () {
-                $("#delete-chat-button").html('Wait 4s');
-            }, 1000);
-            setTimeout(function () {
-                $("#delete-chat-button").html('Wait 3s');
-            }, 2000);
-            setTimeout(function () {
-                $("#delete-chat-button").html('Wait 2s');
-            }, 3000);
-            setTimeout(function () {
-                $("#delete-chat-button").html('Wait 1s');
-            }, 4000);
-            setTimeout(function () {
-                $("#delete-chat-button").prop('disabled', false);
-                $("#delete-chat-button").html('Delete');
-            }, 5000);
+    $("#deleteChatModalToggle").click(function () {
+        $('#delete-chat-button').prop('disabled', true);
+        setTimeout(function () {
+            $("#delete-chat-button").html('Wait 4s');
+        }, 1000);
+        setTimeout(function () {
+            $("#delete-chat-button").html('Wait 3s');
+        }, 2000);
+        setTimeout(function () {
+            $("#delete-chat-button").html('Wait 2s');
+        }, 3000);
+        setTimeout(function () {
+            $("#delete-chat-button").html('Wait 1s');
+        }, 4000);
+        setTimeout(function () {
+            $("#delete-chat-button").prop('disabled', false);
+            $("#delete-chat-button").html('Delete');
+        }, 5000);
 
-        });
-    </script>
+    });
+</script>
 </div>

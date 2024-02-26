@@ -1,0 +1,94 @@
+<div class="modal fade" id="createQuickNoteBlockModal" data-bs-keyboard="false" tabindex="-1"
+    aria-labelledby="staticBackdropLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createQuickNoteBlockModalLabel">Create A new note block
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            {% if noteblock_form %}
+            <form action="{% url 'notes:create_noteblock' %}" method="post" , enctype="multipart/form-data">
+                <div class="modal-body">
+                    <!-- Use jQuery to hide advanced options -->
+                    {% csrf_token %}
+                    <!-- Django overkill form -->
+                    <!-- Include the hidden fields -->
+                    {% for hidden in noteblock_form.hidden_fields %}
+                    {{ hidden }}
+                    {% endfor %}
+                    <!-- Include the visible fields  -->
+                    {% for field in noteblock_form.visible_fields %}
+                    <div class="mb-3">
+                        {%if field.errors%}
+                        <div class="alert alert-danger">
+                            {% for error in field.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <label for="{{ field.id_for_label }}" class="form-label">
+                            {{ field.label }}
+                        </label>
+                        {{ field }}
+                        {% if field.help_text %}
+                        <div class="form-text">{{ field.help_text|safe }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="modal-footer">
+                    <div class="row">
+                        <div class="col-auto">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Create NoteBlock</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+            {% else %}
+            <div class="modal-body">
+                <div class="alert alert-danger" role="alert">
+                    NoteBlock form not received from server
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function () {
+        $("#createQuickNoteBlockModal").modal("show");
+        toggleWidgets("T");
+    });
+    $("#id_block_type").on("change", function () {
+        toggleWidgets(this.value);
+        // alert("change detected");
+    });
+
+    function toggleWidgets(option) {
+        // hide all 
+        $(".type-based-widgets").parent().hide();
+        $("#id_text").attr("rows", "6");
+        // show by condition
+        switch (option) {
+            case "C":
+                $("#id_code_language_choice").parent().show();
+                break;
+            case "I":
+                $("#id_text").attr("rows", "1");
+                $("#id_image").parent().show();
+                break;
+            case "F":
+                $("#id_text").attr("rows", "1");
+                $("#id_file").parent().show();
+                break;
+            case "U":
+                $("#id_text").attr("rows", "1");
+                break;
+            case "S":
+                $("#id_text").attr("rows", "3");
+        }
+    }
+</script>

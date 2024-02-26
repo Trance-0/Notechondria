@@ -30,8 +30,10 @@
                                 Notes
                             </a>
                             <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="{%url 'notes:add_snippets' %}">Add snippets</a></li>
-                                <li><a class="dropdown-item" href="{%url 'notes:add_notes' %}">Create notes</a></li>
+                                <li><div class="dropdown-item" hx-get="{%url 'notes:create_noteblock' %}" hx-target="#noteModal"
+                                    hx-swap="innerHTML">Add snippets</div></li>
+                                <li><div class="dropdown-item" hx-get="{%url 'notes:create_note' %}" hx-target="#noteModal"
+                                    hx-swap="innerHTML">Create notes</div></li>
                             </ul>
                         </li>
                         <!-- Extra dropdown -->
@@ -77,3 +79,7 @@
 <!-- nav-bar placeholder -->
 
 <div style="height: 70px;"></div>
+
+<div id="noteModal">
+    <!-- Some dirty code to place modals created by note module -->
+</div>
