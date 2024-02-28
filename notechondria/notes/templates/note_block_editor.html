@@ -7,12 +7,7 @@
   <div class="card-body">
     <form action="{% url 'notes:create_noteblock' %}" method="post" , enctype="multipart/form-data">
       <!-- Use jQuery to hide advanced options -->
-      <div class="modal-header">
-        <h5 class="modal-title" id="createQuickNoteBlockModalLabel">Create A new note block
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
+      <div class="card-body">
         {% csrf_token %}
         <!-- Django overkill form -->
         <!-- Include the hidden fields -->

@@ -10,7 +10,7 @@ networks:
 
 services:
   app:
-    image: trancezero/notechondria:v0.2
+    image: trancezero/notechondria:v0.2.1
     build:
       context: .
       dockerfile: Dockerfile

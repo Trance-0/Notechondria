@@ -19,6 +19,12 @@ api_key = os.getenv("OPENAI_API_KEY")
 
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
+def __short_text(text,max_length:int=200):
+    """ server head and tail of text"""
+    if len(text)>max_length:
+        return text[max_length//2:]+"..."+text[:-max_length//2]
+    return text
+
 def generate_message(conversation:Conversation):
     """ Generate function as the user designed in conversation"""
     # get last k message in ascending order
@@ -27,7 +33,7 @@ def generate_message(conversation:Conversation):
     payload=[i.to_dict() for i in messages_list]
     # Convert Python to JSON for printing
     message_string=json.dumps(payload)
-    logger.info(u"{}: sent message as below: \n {}".format(conversation.creator_id,message_string))
+    logger.info(u"{}: sent message as below: \n {}".format(conversation.creator_id,__short_text(message_string)))
     response=None
     try:
         response = client.chat.completions.create(
@@ -82,9 +88,10 @@ def generate_stream_message(conversation:Conversation):
         # token calculation (approximate)
         conversation.total_completion_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
         add_token(dummy_message)
-        logger.info(u"{}: get streaming message as below: \n {}".format(conversation.creator_id,dummy_message))
+        logger.info(u"{}: get streaming message as below: \n {}".format(conversation.creator_id,__short_text(dummy_message)))
         # save dummy message
         dummy_message.save()
+        logger.info(u"dummy message saved with following text: {}".format(__short_text(dummy_message.text)))
         for message in messages_list:
             add_token(message)
     except Exception as e:

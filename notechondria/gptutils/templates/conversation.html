@@ -299,7 +299,7 @@
                             {% else %}
                             {% if cur_conversation %}
 
-                            <div class="h-100 position-relative">
+                            <div class="h-100 position-relative" id="latest-message">
                                 <div class="position-absolute top-50 start-50 translate-middle">
                                     Send a message to begin conversation.
                                 </div>
@@ -321,7 +321,7 @@
                             {% if cur_conversation %}
                             <form class="row g-3 align-items-center justify-content-end"
                                 hx-post="{% url 'gptutils:get_chat' cur_conversation.id %}"
-                                hx-encoding="multipart/form-data" hx-target="#latest-message" hx-swap="afterend">
+                                hx-encoding="multipart/form-data" hx-target="#latest-message" hx-swap="outerHTML">
                                 {% else %}
                                 <!-- no ajax for fast chat yet, I don't have much time, LOL -->
                                 <form class="row g-3 align-items-center justify-content-end"
@@ -369,9 +369,6 @@
                                 {% endif %}
                         </div>
                     </div>
-                    <form>
-
-                    </form>
                 </div>
             </div>
     </main>

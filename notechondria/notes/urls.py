@@ -12,6 +12,6 @@ urlpatterns = [
     path('blocks/new',views.create_block,name='create_noteblock'),
     path('notes/new',views.create_note,name='create_note'),
     path('collections/edit/<int:note_id>',views.edit_note,name='edit_note'),
-    path('collections/',views.get_note,name='list_notes'),
-    path('collections/<int:note_id>',views.get_note,name='view_notes'),
+    path('collections/',views.list_notes,name='list_notes'),
+    path('collections/<int:note_id>',views.view_note,name='view_note'),
 ]

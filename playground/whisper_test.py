@@ -31,7 +31,7 @@ import os
 
 from datetime import datetime
 
-audio_names=["Anth160b_l15_p2.m4a","Anth160b_l15_p1.m4a"]
+audio_names=["Anth160b_l16.m4a"]
 
 for audio_name in audio_names:
 

@@ -9,8 +9,10 @@ from creators.models import Creator
 class Note(models.Model):
     """
     Note is a collection of Note blocks, default order maintained by Note index. 
+
+    Sharing will be implemented in future version.
     """
-     # This objects contains the username, password, first_name, last_name, and email of member.
+    # This objects contains the username, password, first_name, last_name, and email of member.
     creator_id = models.ForeignKey(
         Creator,
         # when conversation is deleted, whether the creator should also be deleted
@@ -23,6 +25,9 @@ class Note(models.Model):
     # last_use and date_created automatically created, for these field, create one time value to timezone.now()
     date_created=models.DateTimeField(auto_now_add=True,null=False)
     last_edit=models.DateTimeField(auto_now=True,null=False)
+
+    def __str__(self) -> str:
+        return f"{self.title}, created by {self.creator_id}"
 
 class NoteBlockTypeChoices(models.TextChoices):
     """NoteBlockTypeChoices, need a parser for rendering"""
@@ -61,6 +66,7 @@ class NoteBlock(models.Model):
         on_delete=models.CASCADE,
         null=False,
     )
+    # the note_id should only be assigned once to reference the first note the note block is in.
     note_id=models.ForeignKey(
         Note,
         on_delete=models.CASCADE,
@@ -82,7 +88,7 @@ class NoteBlock(models.Model):
     # unlimited size for PostgreSQL, the max_length value have to be set for other databases.
     text = models.TextField(blank=True, null=True)
 
-    # extra arguments for rendering special features
+    # extra arguments for rendering special features like feature image or coding language
     args=models.CharField(max_length=256,unique=True,null=False)
 
     # last_use and date_created automatically created, for these field, create one time value to timezone.now()
@@ -103,6 +109,17 @@ class NoteIndex(models.Model):
         on_delete=models.CASCADE,
         null=False,
     )
+    
+    def get_noteblocks(self):
+        return self.objects.filter(note_id=self.note_id).order_by("index")
+
+    def get_image(self):
+        """ we will implement get image for feature image only in later versions."""
+        noteblocks=self.get_noteblocks()
+        for block in noteblocks:
+            if block.block_tye==NoteBlockTypeChoices.IMAGES:
+                return block
+        return None
 
 class Tag(models.Model):
     name=models.CharField(max_length=36,unique=True,null=False)

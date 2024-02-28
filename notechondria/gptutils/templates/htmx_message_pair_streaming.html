@@ -1,5 +1,9 @@
 {% load svg_tags %}
 
+<div id="latest-message">
+    <!-- place to add new message for ajax post request -->
+</div>
+
 <!-- Render latest pair of information -->
 <div class="row ps-2 pe-5">
     <div class="col-auto">
@@ -27,13 +31,13 @@
         {% if user_msg %}
         <div class="alert alert-primary" role="alert">
             <div class="text-muted">{{user_msg.created_local}}</div>
-            <div class="msg-edit-form" id="msg-edit-{{message.id}}"></div>
-            <div class="user-msg" id="msg-{{message.id}}">
+            <div class="msg-edit-form" id="msg-edit-{{user_msg.id}}"></div>
+            <div class="user-msg" id="msg-{{user_msg.id}}">
                 {{user_msg.body|linebreaksbr}}
                 {% if user_msg.extras != None %}
                 <div class="collapse" id="collapseMessage-{{user_msg.id}}">{{user_msg.extras|linebreaksbr}}</div>
                 <a class="link-dark" data-bs-toggle="collapse" href="#collapseMessage-{{user_msg.id}}" role="button"
-                    aria-expanded="false" aria-controls="collapseMessage-{{message.id}}">
+                    aria-expanded="false" aria-controls="collapseMessage-{{user_msg.id}}">
                     ...
                 </a>
                 {% endif %}

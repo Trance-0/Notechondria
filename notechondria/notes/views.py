@@ -8,7 +8,7 @@ from django.forms import modelformset_factory
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
 from creators.models import Creator
-from .models import Note, NoteBlock, NoteIndex, Tag, ValidationRecord
+from .models import Note, NoteBlock, NoteIndex, Tag, ValidationRecord, NoteBlockTypeChoices, NoteIndex
 from .forms import NoteForm, NoteBlockForm
 from django.contrib import messages
 
@@ -18,9 +18,14 @@ logger=logging.getLogger()
 
 @login_required
 def list_notes(request):
-    """ render list of notes for user"""
-
-    return redirect("home")
+    """ render list of notes for user, only get request, search will using post requests"""
+    context={}
+    owner_id = get_object_or_404(Creator, user_id=request.user)
+    # in this step, we only add user's notes
+    note_list= NoteIndex.objects.filter(note_id__creator_id=owner_id)
+    # for other queries, use NoteIndex.objects.union()
+    context["note_list"]=note_list
+    return render(request,"note_list.html",context=context)
 
 
 # model-formsets reference: https://docs.djangoproject.com/en/4.2/topics/forms/modelforms/#model-formsets
@@ -96,8 +101,14 @@ def create_note(request):
         note_instance=note_form.save(commit=False)
         note_instance.creator_id=owner_id
         note_instance.sharing_id=__generate_note_id()
-        
         note_instance.save()
+        # create header noteblock
+        note_block_instance=NoteBlock.objects.create(creator_id=owner_id,
+                                                     note_id=note_instance,
+                                                     block_type=NoteBlockTypeChoices.TITLE,
+                                                     is_AI_generated=False)
+        # create handler
+        NoteIndex.objects.create(note_id=note_instance,index=0,noteblock_id=note_block_instance)
         messages.success(request, f'Create note with title: {note_instance.title} success!')
         return redirect("notes:edit_note",note_id=note_instance.id)
     return render(request,"htmx_create_note.html",context={"note_form" :NoteForm()})
@@ -129,11 +140,6 @@ def create_block(request):
 # view note or snippets
 
 @login_required
-def get_note(request):
+def view_note(request):
     """ render list of notes"""
-    raise Exception('Not impelemented yet')
-
-@login_required
-def view_notes(request):
-    """ render list of notes"""
-    raise Exception('Not impelemented yet')
+    raise Exception('Not implemented yet')

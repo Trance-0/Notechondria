@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <style>
+        .fill-height {
+            height: calc(100vh - 102px);
+            /* Adjust the navbar height as needed */
+        }
+    </style>
+
+    {% load static %}
+
+    {% include "resource_header.html" %}
+</head>
+
+<body>
+
+    {% include "navbar.html" %}
+
+    <main class="container mt-3 align-items-center fill-height">
+        <div class="row g-2 h-100">
+            <div class="col-md-9 h-100">
+                {% if note_list %}
+                {% for note_handle in note_list %}
+                <div class="card mb-3">
+                    {% if note_handle.get_image != None %}
+                    <img src="{{note_handle.get_image.image}}" class="card-img-top"
+                        alt="{{note_handle.get_image.text}}">
+                    {% endif %}
+                    <div class="card-body">
+                        <h2 class="card-title mt-3">{{note_handle.note_id.title}}</h2>
+                        <h5 class="card-subtitle mt-3">{{note_handle.note_id.creator_id}}</h5>
+                        <p>{{note_handle.note_id.description}}</p>
+                        <div class="row">
+                            <!-- render edit button for owner -->
+                            {% if request.user == note_handle.note_id.creator.user_id %}
+                            <div class="col-md-2">
+                                <a class="btn btn-secondary"
+                                    href="{% url 'notes:edit_note' note_handle.note_id %}">Edit</a>
+                            </div>
+                            {% endif %}
+                            <div class="col-md-2">
+                                <a class="btn btn-primary"
+                                    href="{% url 'notes:view_note' note_handle.note_id %}">View</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                <!-- infinite scroll section to be implemented -->
+                {% else %}
+                <div class="card mb-3">
+                    <div class="card-body text-center">
+                        You don't have any note stored in our server yet, please try to create one
+                        <div class="d-flex justify-content-center">
+                            <div class="btn btn-primary mt-3" hx-get="{%url 'notes:create_note' %}" hx-target="#noteModal"
+                                hx-swap="innerHTML">Create notes</div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <aside class="col-md-3 blog-sidebar">
+                <!-- Render basic user info -->
+                <div class="card h-100 mb-3">
+                    <div class="card-body">
+                        side panel to be implemented
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+</body>
+
+<!-- TODO: create footer here -->
