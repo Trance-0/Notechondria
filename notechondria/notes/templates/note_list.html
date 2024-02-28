@@ -34,17 +34,22 @@
                         <h2 class="card-title mt-3">{{note_handle.note_id.title}}</h2>
                         <h5 class="card-subtitle mt-3">{{note_handle.note_id.creator_id}}</h5>
                         <p>{{note_handle.note_id.description}}</p>
-                        <div class="row">
+                        <div class="row justify-content-between">
                             <!-- render edit button for owner -->
-                            {% if request.user == note_handle.note_id.creator.user_id %}
-                            <div class="col-md-2">
+                            {% if request.user == note_handle.note_id.creator_id.user_id %}
+                            <div class="col-2 me-2">
                                 <a class="btn btn-secondary"
-                                    href="{% url 'notes:edit_note' note_handle.note_id %}">Edit</a>
+                                    href="{% url 'notes:edit_note' note_handle.note_id.id %}">Edit</a>
                             </div>
+                            {% else %}
+                            <div class="col-auto">
+                                <!-- place holder for edit button -->
+                                &nbsp;
+                                </div>
                             {% endif %}
-                            <div class="col-md-2">
+                            <div class="col-2">
                                 <a class="btn btn-primary"
-                                    href="{% url 'notes:view_note' note_handle.note_id %}">View</a>
+                                    href="{% url 'notes:view_note' note_handle.note_id.id %}">View</a>
                             </div>
                         </div>
                     </div>

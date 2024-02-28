@@ -53,6 +53,7 @@ def edit_note(request, note_id):
         # success
         messages.success(request,"edit note block success")
         context["note_form"]=note_form
+    # process get request
     else:
         # test if note exist
         note_instance = get_object_or_404(Note, pk=note_id)
@@ -140,6 +141,6 @@ def create_block(request):
 # view note or snippets
 
 @login_required
-def view_note(request):
+def view_note(request,note_id):
     """ render list of notes"""
     raise Exception('Not implemented yet')

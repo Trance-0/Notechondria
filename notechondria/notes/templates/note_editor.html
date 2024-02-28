@@ -67,10 +67,45 @@
             </div>
 
             <aside class="col-auto blog-sidebar mt-3 mb-3 h-100">
-                <!-- Render basic user info -->
+                <!-- The side panel is used to render meta data for notes, note list would be render separately.-->
                 <div class="card h-100 mb-3">
                     <div class="card-body">
-                        side panel to be implemented
+                        <form action="{% url 'notes:create_noteblock' %}" method="post" , enctype="multipart/form-data">
+                            <!-- Use jQuery to hide advanced options -->
+                            {% csrf_token %}
+                            <!-- Django overkill form -->
+                            <!-- Include the hidden fields -->
+                            {% for hidden in note_form.hidden_fields %}
+                            {{ hidden }}
+                            {% endfor %}
+                            <!-- Include the visible fields  -->
+                            {% for field in note_form.visible_fields %}
+                            <div class="mb-3">
+                              {%if field.errors%}
+                              <div class="alert alert-danger">
+                                {% for error in field.errors %}
+                                {{ error }}
+                                {% endfor %}
+                              </div>
+                              {% endif %}
+                              <label for="{{ field.id_for_label }}" class="form-label">
+                                {{ field.label }}
+                              </label>
+                              {{ field }}
+                              {% if field.help_text %}
+                              <div class="form-text">{{ field.help_text|safe }}</div>
+                              {% endif %}
+                            </div>
+                            {% endfor %}
+                            <div class="modal-footer row justify-content-between">
+                              <div class="col-auto">
+                                <button type="button" class="btn btn-danger" data-bs-dismiss="deleteNoteBlockModal">Delete</button>
+                              </div>
+                              <div class="col-auto">
+                                <button type="submit" class="btn btn-primary">Create NoteBlock</button>
+                              </div>
+                            </div>
+                          </form>
                     </div>
                 </div>
             </aside>

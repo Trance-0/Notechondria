@@ -1,53 +1,12 @@
 {% if noteblocks_list%}
+<!-- add noteblock button on the top -->
 {% for blocks in noteblocks_list%}
-<div class="card mt-3">
-  <div class="card-header">
-    Content type: {{block.instance.block_type}}
-  </div>
-  <div class="card-body">
-    <form action="{% url 'notes:create_noteblock' %}" method="post" , enctype="multipart/form-data">
-      <!-- Use jQuery to hide advanced options -->
-      <div class="card-body">
-        {% csrf_token %}
-        <!-- Django overkill form -->
-        <!-- Include the hidden fields -->
-        {% for hidden in note_form.hidden_fields %}
-        {{ hidden }}
-        {% endfor %}
-        <!-- Include the visible fields  -->
-        {% for field in note_form.visible_fields %}
-        <div class="mb-3">
-          {%if field.errors%}
-          <div class="alert alert-danger">
-            {% for error in field.errors %}
-            {{ error }}
-            {% endfor %}
-          </div>
-          {% endif %}
-          <label for="{{ field.id_for_label }}" class="form-label">
-            {{ field.label }}
-          </label>
-          {{ field }}
-          {% if field.help_text %}
-          <div class="form-text">{{ field.help_text|safe }}</div>
-          {% endif %}
-        </div>
-        {% endfor %}
-        <div class="modal-footer row d-flex align-items-end">
-          <div class="col-auto">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            <button type="submit" class="btn btn-primary">Create NoteBlock</button>
-          </div>
-        </div>
-      </div>
-    </form>
-  </div>
-</div>
-{% endfor %}
+<!-- do htmx for each block -->
 {% else %}
+<!-- default card -->
 <div class="card">
   <div class="card-header">
-    Here I am
+    You don't have any noteblock in tis note, If you are not intentionally deleting the title, then the website must have some bugs.
   </div>
   <div class="card-body">
     <blockquote class="blockquote mb-0">
