@@ -1,41 +1,68 @@
+{% load static%}
+
 <!-- This template will only be called for note block editor to render noteblocks -->
-{% if note_form.instance %}
-<form action="{% url 'notes:edit_noteblock' %}" method="post" , enctype="multipart/form-data">
-    {% else %}
-    <form action="{% url 'notes:create_noteblock' %}" method="post" , enctype="multipart/form-data">
-    {% endif %}
-    <!-- Use jQuery to hide advanced options -->
-    {% csrf_token %}
-    <!-- Django overkill form -->
-    <!-- Include the hidden fields -->
-    {% for hidden in note_form.hidden_fields %}
-    {{ hidden }}
-    {% endfor %}
-    <!-- Include the visible fields  -->
-    {% for field in note_form.visible_fields %}
-    <div class="mb-3">
-      {%if field.errors%}
-      <div class="alert alert-danger">
-        {% for error in field.errors %}
-        {{ error }}
+{% if noteblock_form %}
+{% if noteblock_form.instance %}
+
+<form hx-post="{% url 'notes:insert_noteblock' noteblock_form.instance.id %}",hx-swap="outerHTML">
+</form>
+
+<form hx-post="{% url 'notes:edit_noteblock' noteblock_form.instance.id %}" ,
+hx-encoding="multipart/form-data",hx-swap="outerHTML">
+    <div class="card mb-3">
+      <div class="card-header">
+        Last saved: {{noteblock_form.instance.last_edit}}
+      </div>
+      <div class="card-body">
+        <!-- Use jQuery to hide advanced options -->
+        {% csrf_token %}
+        <!-- Django overkill form -->
+        <!-- Include the hidden fields -->
+        {% for hidden in noteblock_form.hidden_fields %}
+        {{ hidden }}
+        {% endfor %}
+        <!-- Include the visible fields  -->
+        {% for field in noteblock_form.visible_fields %}
+        <div class="mb-3">
+          {%if field.errors%}
+          <div class="alert alert-danger">
+            {% for error in field.errors %}
+            {{ error }}
+            {% endfor %}
+          </div>
+          {% endif %}
+          <label for="{{ field.id_for_label }}" class="form-label">
+            {{ field.label }}
+          </label>
+          {{ field }}
+          {% if field.help_text %}
+          <div class="form-text">{{ field.help_text|safe }}</div>
+          {% endif %}
+        </div>
         {% endfor %}
       </div>
-      {% endif %}
-      <label for="{{ field.id_for_label }}" class="form-label">
-        {{ field.label }}
-      </label>
-      {{ field }}
-      {% if field.help_text %}
-      <div class="form-text">{{ field.help_text|safe }}</div>
-      {% endif %}
-    </div>
-    {% endfor %}
-    <div class="modal-footer row justify-content-between">
-      <div class="col-auto">
-        <button type="button" class="btn btn-danger" data-bs-dismiss="deleteNoteBlockModal">Delete</button>
+      <div class="card-footer ">
+        <div class="row justify-content-between">
+          <div class="col-auto">
+            <button type="button" class="btn btn-danger" data-bs-dismiss="deleteNoteBlockModal">Delete</button>
+          </div>
+          <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Save NoteBlock</button>
+          </div>
+        </div>
       </div>
-      <div class="col-auto">
-        <button type="submit" class="btn btn-primary">Create NoteBlock</button>
-      </div>
-    </div>
   </form>
+
+  <script src="{% static 'notechondria/js/toggle-noteblock-widgets.js' %}"></script>
+  {% else %}
+  <div class="alert alert-danger mt-3 ms-3 me-3">
+    Note block instance not found.
+  </div>
+  {% endif %}
+  {% else %}
+  <div class="alert alert-danger mt-3 ms-3 me-3">
+    Note block not found.
+  </div>
+  {% endif %}
+
+  {% include "message_display.html"%}

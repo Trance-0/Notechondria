@@ -21,7 +21,7 @@ class NoteForm(forms.ModelForm):
 
         if you are lazy enough, you can also load meta,
         reference: https://docs.djangoproject.com/en/4.2/ref/forms/fields/
-        (search for 'Meta')
+        (search for "Meta")
         """
 
         model = Note
@@ -49,25 +49,31 @@ class NoteBlockForm(forms.ModelForm):
     # name of type based widgets
     TYPE_BASED_WIDGETS=["image","file","coding_language_choice"]
 
-    text = forms.CharField(widget=forms.Textarea(attrs={'rows':1}))
+    text = forms.CharField(widget=forms.Textarea())
+    is_AI_generated = forms.BooleanField(widget=forms.CheckboxInput(),
+                                         help_text="this check means if any of the contents in the noteblock is not your original thoughts, it is fine to make mistakes, but not to pollute your dataset.",required=False)
     image = forms.ImageField(required=False)
     file = forms.FileField(required=False)
     coding_language_choice=forms.ChoiceField(choices=SUPPORTING_LANGUAGE)
+    index=forms.IntegerField(widget=forms.HiddenInput())
     
     class Meta:
         """Load meta data for multiple field to generate form
 
         if you are lazy enough, you can also load meta,
         reference: https://docs.djangoproject.com/en/4.2/ref/forms/fields/
-        (search for 'Meta')
+        (search for "Meta")
         """
         model = NoteBlock
         fields = [
             # block type should render differently by ajax
             "block_type",
+            "is_AI_generated",
             "image",
             "file",
             "coding_language_choice",
+            "text",
+            "index"
         ]
 
     def __init__(self, *args, **kwargs):
@@ -76,13 +82,20 @@ class NoteBlockForm(forms.ModelForm):
         """
         super(NoteBlockForm, self).__init__(*args, **kwargs)
         for visible in self.visible_fields():
+            if "class" in visible.field.widget.attrs:
+                visible.field.widget.attrs["class"] += " form-control"
             visible.field.widget.attrs["class"] = "form-control"
-        self.fields['text'].widget.attrs['rows'] = 6
-        self.fields['text'].widget.attrs["class"] += " w-100"
+        # set text attribute
+        self.fields["text"].widget.attrs["rows"] = 6
+        self.fields["text"].widget.attrs["class"] += " w-100"
+        # set is ai generated attribute
+        self.fields["is_AI_generated"].widget.attrs["class"]+="form-check-input"
+        self.fields["is_AI_generated"].widget.attrs["type"]="checkbox"
+        self.fields["is_AI_generated"].label="Is AI generated"
         # add class to type based widgets
         for widget_name in self.TYPE_BASED_WIDGETS:
             self.fields[widget_name].widget.attrs["class"]+=" type-based-widgets"
         if self.instance.pk!=None:
             # load default variable based on block type
             if self.instance.block_type== NoteBlockTypeChoices.CODE:
-                self.fields['coding_language_choice'].initial = self.instance.args
+                self.fields["coding_language_choice"].initial = self.instance.args

@@ -100,6 +100,7 @@ class ConversationFormL(forms.ModelForm):
             MaxValueValidator(2),
             MinValueValidator(-2)
         ])
+    system_prompt=forms.CharField(help_text="The message that attached at the head of message file for each request you send to openAI, this prompt will be send for each message, so you'd better to keep it short, or leave it blank if you want",widget=forms.Textarea(attrs={'rows':3}),required=False)
 
     class Meta:
         """Load meta data for multiple field to generate form
@@ -118,7 +119,8 @@ class ConversationFormL(forms.ModelForm):
                    "max_tokens",
                    "timeout",
                    "frequency_penalty",
-                   "presence_penalty"]
+                   "presence_penalty",
+                   "system_prompt"]
 
     def __init__(self, *args, **kwargs):
         """add extra arguments for each input,

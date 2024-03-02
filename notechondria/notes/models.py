@@ -89,11 +89,14 @@ class NoteBlock(models.Model):
     text = models.TextField(blank=True, null=True)
 
     # extra arguments for rendering special features like feature image or coding language
-    args=models.CharField(max_length=256,unique=True,null=False)
+    args=models.CharField(max_length=256,null=False)
 
     # last_use and date_created automatically created, for these field, create one time value to timezone.now()
     date_created=models.DateTimeField(auto_now_add=True,null=False)
     last_edit=models.DateTimeField(auto_now=True,null=False)
+
+    def __str__(self) -> str:
+        return f'{self.text[:100] if self.text else ""}:{self.date_created}'
 
 class NoteIndex(models.Model):
     note_id = models.ForeignKey(
@@ -120,6 +123,9 @@ class NoteIndex(models.Model):
             if block.block_tye==NoteBlockTypeChoices.IMAGES:
                 return block
         return None
+    
+    def __str__(self)->str:
+        return f"{self.note_id.title}[{self.noteblock_id}],on page {self.index}"
 
 class Tag(models.Model):
     name=models.CharField(max_length=36,unique=True,null=False)

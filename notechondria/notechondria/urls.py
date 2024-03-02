@@ -29,6 +29,7 @@ urlpatterns = [
     path('creators/', include(('creators.urls','creators'),namespace='creators')),
     path('gptutils/', include(('gptutils.urls','recipes'),namespace='gptutils')),
     path('about/',views.about,name="about"),
+    path('dashboard/',views.dashboard,name="dashboard"),
     path('search/',views.about,name="search"),
     path('admin/', admin.site.urls),
     # setting icon

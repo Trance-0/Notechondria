@@ -31,6 +31,10 @@ def generate_message(conversation:Conversation):
     messages_list=list(reversed(Message.objects.filter(conversation_id=conversation).order_by("-created")[:conversation.memory_size]))
     model_name=conversation.model.split(':')[0]
     payload=[i.to_dict() for i in messages_list]
+    # add system prompt
+    system_prompt=conversation.get_system_prompt_dict()
+    if system_prompt!=None:
+        payload.insert(0,system_prompt)
     # Convert Python to JSON for printing
     message_string=json.dumps(payload)
     logger.info(u"{}: sent message as below: \n {}".format(conversation.creator_id,__short_text(message_string)))
@@ -65,6 +69,10 @@ def generate_stream_message(conversation:Conversation):
     dummy_message=messages_list[-1]
     model_name=conversation.model.split(':')[0]
     payload=[i.to_dict() for i in messages_list[:-1]]
+    # add system prompt
+    system_prompt=conversation.get_system_prompt_dict()
+    if system_prompt!=None:
+        payload.insert(0,system_prompt)
     # Convert Python to JSON for printing
     message_string=json.dumps(payload)
     logger.info(u"{}: sent streaming message as below: \n {}".format(conversation.creator_id,message_string))

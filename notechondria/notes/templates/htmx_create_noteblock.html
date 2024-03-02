@@ -1,3 +1,5 @@
+{% load static %}
+
 <div class="modal fade" id="createQuickNoteBlockModal" data-bs-keyboard="false" tabindex="-1"
     aria-labelledby="staticBackdropLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -53,42 +55,10 @@
                 </div>
             </div>
             {% endif %}
+
+            {% include "message_display.html"%}
         </div>
     </div>
 </div>
 
-<script>
-    $(document).ready(function () {
-        $("#createQuickNoteBlockModal").modal("show");
-        toggleWidgets("T");
-    });
-    $("#id_block_type").on("change", function () {
-        toggleWidgets(this.value);
-        // alert("change detected");
-    });
-
-    function toggleWidgets(option) {
-        // hide all 
-        $(".type-based-widgets").parent().hide();
-        $("#id_text").attr("rows", "6");
-        // show by condition
-        switch (option) {
-            case "C":
-                $("#id_code_language_choice").parent().show();
-                break;
-            case "I":
-                $("#id_text").attr("rows", "1");
-                $("#id_image").parent().show();
-                break;
-            case "F":
-                $("#id_text").attr("rows", "1");
-                $("#id_file").parent().show();
-                break;
-            case "U":
-                $("#id_text").attr("rows", "1");
-                break;
-            case "S":
-                $("#id_text").attr("rows", "3");
-        }
-    }
-</script>
+<script src="{% static 'notechondria/js/toggle-noteblock-widgets.js' %}"></script>

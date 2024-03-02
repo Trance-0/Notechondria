@@ -80,6 +80,9 @@ class Conversation(models.Model):
 
     total_prompt_tokens=models.IntegerField(default=0, null=False)
     total_completion_tokens=models.IntegerField(default=0, null=False)
+    # add system prompt
+    # unlimited size for PostgreSQL, the max_length value have to be set for other databases.
+    system_prompt = models.TextField(blank=True, null=True)
 
     def __str__(self):
         """for better list display"""
@@ -88,6 +91,14 @@ class Conversation(models.Model):
     def is_visual_model(self):
         visual_models=[GPTModelChoices.GPT4V_1106,GPTModelChoices.GPT4VH_1106,GPTModelChoices.GPT4VL_1106]
         return self.model in visual_models
+    
+    def get_system_prompt_dict(self):
+        if self.system_prompt and self.system_prompt!="":
+            return {
+                "role": MessageRoleChoices.SYSTEM,
+                "content": [{"type": "text", "text": self.system_prompt}
+                    ]}
+        return None
     
     # the following function cannot be created here due to reference recursion
     # def created(self)->datetime:

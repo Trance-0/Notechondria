@@ -19,6 +19,10 @@ def about(request):
     """render static about page"""
     return render(request,'about.html',{})
 
+def dashboard(request):
+    """render static about page"""
+    return render(request,'dashboard.html',{})
+
 def search(request):
     """render dynamic search page, process get requests only"""
     messages.warning(request, "function not implemented.")

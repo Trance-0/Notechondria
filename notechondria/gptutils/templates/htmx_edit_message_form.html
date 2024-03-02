@@ -24,7 +24,7 @@
 </div>
 
 <div class="msg-edit-form w-100" id="msg-edit-{{edit_message_form.instance.id}}">
-    <form class="row justify-content-end mt-2" id="message-edit-{{edit_message_form.instance.id}}-form"
+    <form class="row justify-content-end mt-2 w-100" id="message-edit-{{edit_message_form.instance.id}}-form"
         action="{% url 'gptutils:edit_message' edit_message_form.instance.id%}" method="post" enctype="multipart/form-data">
         {% csrf_token %}
         <!-- Django overkill form -->
@@ -35,7 +35,7 @@
         <!-- Include the visible fields  -->
         {% for field in edit_message_form.visible_fields %}
         {% if field.name == "text" %}
-        <div class="col">
+        <div class="col-9">
             <label for="{{ field.id_for_label }}" class="visually-hidden">
                 {{ field.label }}
             </label>
@@ -106,3 +106,5 @@
     Edit message form not received from server
 </div>
 {% endif %}
+
+{% include "message_display.html"%}

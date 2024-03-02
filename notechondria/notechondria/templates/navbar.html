@@ -30,6 +30,7 @@
                                 Notes
                             </a>
                             <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{%url 'notes:list_notes' %}">My notes</a></li>
                                 <li><div class="dropdown-item" hx-get="{%url 'notes:create_noteblock' %}" hx-target="#noteModal"
                                     hx-swap="innerHTML">Add snippets</div></li>
                                 <li><div class="dropdown-item" hx-get="{%url 'notes:create_note' %}" hx-target="#noteModal"
@@ -54,7 +55,7 @@
                     <form class="d-flex ms-auto me-auto" action="{% url 'search' %}" role="search" method="post">
                         {% csrf_token %}
                         <input class="form-control me-2" type="text" name="query"
-                            placeholder="{% if query%}{{query}}{% else %}Enter to start serach{%endif%}">
+                            placeholder="{% if query%}{{query}}{% else %}Enter to start search{%endif%}">
                         <button class="btn btn btn-outline-success" type="submit">Search</button>
                     </form>
 

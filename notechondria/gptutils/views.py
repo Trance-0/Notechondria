@@ -1,7 +1,7 @@
 from datetime import datetime
 from django.utils import timezone
 import logging
-import random
+from notechondria.utils import generate_unique_id, get_object_or_None,load_form_error_to_messages
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
@@ -44,7 +44,18 @@ def gptutils(request):
 
 @login_required
 def get_chat(request, conv_pk):
-    """ send text request when request is get, return the chat page, when is post, add new message and set completion"""
+    """ send text request when request is get, return the chat page, when is post, add new message and set completion
+    
+    Args:
+        conv_pk: primary key for Conversation objects
+
+    Returns:
+        request.POST:
+            streaming: return htmx message pair for streaming (100ms)
+            non-streaming: reload page until request to openAI is complete (5s on average)
+        request.GET:
+            streaming: return infinite scrolling result (default load 10 more messages)
+    """
     logger.info(f'request from user {request.user}')
     # processing sending in AJAX (to be implement)
     context = __get_basic_context(request)
@@ -58,9 +69,8 @@ def get_chat(request, conv_pk):
         # permission check
         message_form = MessageForm(request.POST, request.FILES)
         if not message_form.is_valid():
-            for key, value in message_form.errors.items():
-                messages.error(request, f"validation error on field {key}:{[error for error in value]}")
-            return redirect("gptutils:get_chat", conv_pk=conv_pk)
+            load_form_error_to_messages(request,message_form)
+            return render(request, "conversation.html", context=context)
         message_instance = message_form.save(commit=False)
         message_instance.conversation_id = cur_conversation
         response={}
@@ -108,7 +118,7 @@ def get_chat(request, conv_pk):
         if request.method=="GET":
             # for the timezone, since our app is running in UTC, remember to change it if you want other timezone.
             after_time=datetime.strptime(request.GET.get("after",""),"%Y-%m-%d %H:%M[:%S[.%f][%Z]").replace(tzinfo=timezone.utc)
-            messages_list = Message.objects.filter(conversation_id=conv_pk).filter(created__lt=after_time).order_by("-created")[:10]
+            messages_list = Message.objects.filter(conversation_id=conv_pk,created__lt=after_time).order_by("-created")[:10]
             context["messages_list"] = messages_list
             # specify infinite scroll 
             context["infinite_scroll"] = True
@@ -121,19 +131,37 @@ def get_chat(request, conv_pk):
 
 @login_required
 def get_stream_chat(request, conv_pk):
-    """ send text request based on streaming, this function is a bit complex if we add login request, so we directly allow all the users to make request with strict permission check"""
-    owner_id = get_object_or_404(Creator, user_id=request.user)
-    cur_conversation = get_object_or_404(Conversation, id=conv_pk)
+    """ send text request based on streaming, this function is a bit complex if we add login request
+    so we directly allow all the users to make request with strict permission check
+
+    Args:
+        conv_pk: primary key for Conversation objects
+    """
+    owner_id = get_object_or_None(Creator, user_id=request.user)
+    if owner_id==None:
+        yield "User not found."
+        return
+    cur_conversation = get_object_or_None(Conversation, id=conv_pk)
+    if cur_conversation==None:
+        yield "Conversation not found."
+        return
     logger.info(f'requested streaming chat instance edit form with id {conv_pk}')
     if cur_conversation.creator_id!=owner_id:
-        messages.error(request, f"You don't have access to streaming the chat")
-        return redirect("gptutils:main")
+        yield "You don't have permission to streaming this conversation."
+        return
     return StreamingHttpResponse(generate_stream_message(cur_conversation))
 
 
 @login_required
 def create_chat(request):
-    """create chat based on conversation form received from user"""
+    """create chat based on conversation form received from user
+    
+    Args:
+        request.POST only.
+
+    Returns:
+        redirect to char page if creation is success, else back to gptutils main page.
+    """
     # test for user
     owner_id = get_object_or_404(Creator, user_id=request.user)
     if request.method == "POST":
@@ -147,18 +175,24 @@ def create_chat(request):
         )
         if chat_form.is_valid():
             chat_instance = chat_form.save(commit=False)
-            chat_instance.sharing_id = __generate_chat_id()
+            chat_instance.sharing_id = generate_unique_id(Conversation,"sharing_id")
             chat_instance.creator_id = owner_id
             chat_instance.save()
             return redirect("gptutils:get_chat", conv_pk=chat_instance.id)
         else:
-            messages.warning(request,f"invalid parameters found")
+            load_form_error_to_messages(request,chat_form)
     return redirect("gptutils:main")
 
 @login_required
 def fast_chat(request):
     """create chat based on conversation form received from user
     I don't want to do any ajax on this section cause it costs a lot of work and don't have much improvement.
+    
+    Args:
+        request.POST only.
+
+    Returns:
+        redirect to char page if creation is success, else back to gptutils main page.
     """
     # test for user
     owner_id = get_object_or_404(Creator, user_id=request.user)
@@ -170,7 +204,7 @@ def fast_chat(request):
             return redirect("gptutils:main")
         message_instance = message_form.save(commit=False)
         cur_conversation=Conversation.objects.create(creator_id=owner_id,
-                                                     sharing_id=__generate_chat_id(),
+                                                     sharing_id=generate_unique_id(Conversation,"sharing_id"),
                                                      model=GPTModelChoices.GPT4_V if message_instance.image else GPTModelChoices.GPT4_1106)
         message_instance.conversation_id = cur_conversation
         message_instance.save()
@@ -198,8 +232,7 @@ def edit_chat(request,conv_pk):
         chat_form = ConversationFormL(request.POST, request.FILES,instance=chat_instance)
         # check instance consistency
         if not chat_form.is_valid():
-            for key, value in chat_form.errors.items():
-                messages.error(request, f"validation error on field {key}:{[error for error in value]}")
+            load_form_error_to_messages(request,chat_form)
         elif chat_form.instance.id!=conv_pk:
             messages.error(request, f"The chat requesting for change did not match.")
         else:
@@ -211,20 +244,27 @@ def edit_chat(request,conv_pk):
 @login_required
 def edit_message(request,message_pk):
     """redirect to edit message form for htmx request return form only
-    for the purpose of returning error and large query operations, this page will not be ajax under post request
+    for the purpose of returning error and large query operations, this page 
+    will not be ajax under post request
+
+    Args:
+        message_pk: primary key for Message object
+
+    Returns:
+        request.POST: redirect to page until the text is fully generated.
+        request.GET: return htmx edit message form 
     """
-    # test for user
-    owner_id = get_object_or_404(Creator, user_id=request.user)
-    message_instance = get_object_or_404(Message, id=message_pk)
-    logger.info(f'requested message instance edit form with id {message_pk}')
-    if message_instance.conversation_id.creator_id!=owner_id:
-        messages.error(request, f"You don't have access to the message")
-        return redirect("gptutils:main")
     if request.method == "POST":
+        # test for user
+        owner_id = get_object_or_404(Creator, user_id=request.user)
+        message_instance = get_object_or_404(Message, id=message_pk)
+        logger.info(f'requested message instance edit form with id {message_pk}')
+        if message_instance.conversation_id.creator_id!=owner_id:
+            messages.error(request, f"You don't have access to the message")
+            return redirect("gptutils:main")
         message_form = MessageForm(request.POST, request.FILES,instance=message_instance)
         if not message_form.is_valid():
-            for key, value in message_form.errors.items():
-                messages.error(request, f"validation error on field {key}:{[error for error in value]}")
+            load_form_error_to_messages(request,message_form)    
         elif message_form.instance.id!=message_pk:
             messages.error(request, f"The message requesting for change did not match.")
         else:
@@ -249,6 +289,20 @@ def edit_message(request,message_pk):
                 else:
                     messages.success(request, f"Successfully edit the message {message_instance}")
         return redirect("gptutils:get_chat", conv_pk=message_instance.conversation_id.id)
+    # get request:
+    # test for user
+    owner_id = get_object_or_None(Creator, user_id=request.user)
+    if owner_id ==None:
+        messages.error(request,"User not found.")
+        return render(request,"htmx_edit_message_form.html")
+    message_instance = get_object_or_404(Message, id=message_pk)
+    if message_instance ==None:
+        messages.error(request,"Message not found.")
+        return render(request,"htmx_edit_message_form.html")
+    logger.info(f'requested message instance edit form with id {message_pk}')
+    if message_instance.conversation_id.creator_id!=owner_id:
+        messages.error(request, f"You don't have access to the message")
+        return render(request,"htmx_edit_message_form.html")
     return render(request,"htmx_edit_message_form.html",context={"edit_message_form":MessageForm(instance=message_instance)})
 
 @login_required
@@ -266,14 +320,14 @@ def resend_message(request,message_pk):
     if request.method == "POST":
         if message_instance.conversation_id.model==GPTModelChoices.PLAIN:
             # delete message after message_instance
-            del_message_list=Message.objects.filter(conversation_id=message_instance.conversation_id).filter(created__gt=message_instance.created)
+            del_message_list=Message.objects.filter(conversation_id=message_instance.conversation_id, created__gt=message_instance.created)
             for i in del_message_list:
                 i.delete()
             # generate response from latest message
             messages.success(request, f"Successfully resend the message {message_instance}")
         else:
             # delete message after message_instance
-            del_message_list=Message.objects.filter(conversation_id=message_instance.conversation_id).filter(created__gt=message_instance.created)
+            del_message_list=Message.objects.filter(conversation_id=message_instance.conversation_id,created__gt=message_instance.created)
             for i in del_message_list:
                 i.delete()
             # generate response from latest message
@@ -295,7 +349,7 @@ def delete_message(request, message_pk):
         messages.error(request, f"You don't have access to the message")
         return redirect("gptutils:main")
     if request.method=="POST":
-        del_message_list=Message.objects.filter(conversation_id=message_instance.conversation_id).filter(created__gte=message_instance.created)
+        del_message_list=Message.objects.filter(conversation_id=message_instance.conversation_id, created__gte=message_instance.created)
         for i in del_message_list:
             i.delete()
         messages.success(request, f"successfully deleted message {message_instance}")
@@ -318,32 +372,6 @@ def delete_chat(request, conv_pk):
         else:
             messages.warning(request,f"Current user don't have the permission to delete the chat")
     return redirect("gptutils:main", conv_pk=conv_pk)
-
-
-def __generate_chat_id() -> str:
-    """Generate random key with length
-
-    Attribute:
-        characters: the character set of
-
-    Args:
-        length: default generate code with length 10
-
-    Returns:
-        random string with give size
-
-    """
-    characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-"
-    n = len(characters)
-    res = ""
-    for _ in range(8):
-        res += characters[random.randint(0, n - 1)]
-    while Conversation.objects.filter(sharing_id=res).exists():
-        res = ""
-        for _ in range(8):
-            res += characters[random.randint(0, n - 1)]
-    return res
-
 
 def __get_basic_context(request) -> dict:
     """return basic context environment for gptutils module"""
