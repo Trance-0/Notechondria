@@ -1,42 +1,88 @@
 {% load static %}
 {% if noteblocks_list%}
 <!-- render block editor for note block -->
-<!-- add noteblock button on the top -->
-{% for blocks in noteblocks_list%}
 
+<!-- add noteblock button on the bottom -->
+<form class="sortable" hx-post="{% url 'notes:reorder_blocks' note_form.instance.id %}" hx-trigger="end">
+ 
+  {% csrf_token %}
+  <div class="htmx-indicator">Updating...</div>
 
-<form hx-post="{% url 'notes:insert_noteblock' blocks.noteblock_id.id %}",hx-swap="outerHTML">
-</form>
+  {% for blocks in noteblocks_list%}
 
-<!-- do htmx for each block -->
-<div hx-get="{% url 'notes:edit_noteblock' blocks.noteblock_id.id %}" hx-swap="outerHTML" hx-trigger="load">
-  <!-- placeholder card, reference:https://getbootstrap.com/docs/5.3/components/placeholders/ -->
-  <div class="card" aria-hidden="true">
-    <img src="{% static 'images/blank_grey.png' %}" class="card-img-top" style="max-height: 100px;" alt="placeholder image">
-    <div class="card-body">
-      <h5 class="card-title placeholder-glow">
-        <span class="placeholder col-6"></span>
-      </h5>
-      <p class="card-text placeholder-glow">
-        <span class="placeholder col-7"></span>
-        <span class="placeholder col-4"></span>
-        <span class="placeholder col-4"></span>
-        <span class="placeholder col-6"></span>
-        <span class="placeholder col-8"></span>
-      </p>
-      <a href="#" tabindex="-1" class="btn btn-primary disabled placeholder col-6"></a>
+  <div>
+
+    <input type='hidden' name='item' value='{{blocks.index}}' />
+
+    <form hx-post="{% url 'notes:insert_noteblock' blocks.noteblock_id.id %}" ,hx-swap="outerHTML">
+    </form>
+
+    <!-- do htmx for each block -->
+    <div hx-get="{% url 'notes:edit_noteblock' blocks.noteblock_id.id %}" hx-swap="outerHTML" hx-trigger="load">
+      <!-- placeholder card, reference:https://getbootstrap.com/docs/5.3/components/placeholders/ -->
+      <div class="card" aria-hidden="true">
+        <img src="{% static 'images/blank_grey.png' %}" class="card-img-top" style="max-height: 100px;"
+          alt="placeholder image">
+        <div class="card-body">
+          <h5 class="card-title placeholder-glow">
+            <span class="placeholder col-6"></span>
+          </h5>
+          <p class="card-text placeholder-glow">
+            <span class="placeholder col-7"></span>
+            <span class="placeholder col-4"></span>
+            <span class="placeholder col-4"></span>
+            <span class="placeholder col-6"></span>
+            <span class="placeholder col-8"></span>
+          </p>
+          <a href="#" tabindex="-1" class="btn btn-primary disabled placeholder col-6"></a>
+        </div>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- add insert button -->
-{% endfor %}
+  <!-- add insert button -->
+  {% endfor %}
+</form>
+
+<!-- init script for htmx sortable -->
+<script>
+  htmx.onLoad(function (content) {
+    var sortables = content.querySelectorAll(".sortable");
+    for (var i = 0; i < sortables.length; i++) {
+      var sortable = sortables[i];
+      var sortableInstance = new Sortable(sortable, {
+        animation: 150,
+        ghostClass: 'blue-background-class',
+
+        // Make the `.htmx-indicator` unsortable
+        filter: ".htmx-indicator",
+        onMove: function (evt) {
+          return evt.related.className.indexOf('htmx-indicator') === -1;
+        },
+
+        // Disable sorting on the `end` event
+        onEnd: function (evt) {
+          this.option("disabled", true);
+        }
+      });
+
+      // Re-enable sorting on the `htmx:afterSwap` event
+      sortable.addEventListener("htmx:afterSwap", function () {
+        sortableInstance.option("disabled", false);
+      });
+    }
+  })
+</script>
 {% elif noteblock %}
+
+<!-- render for single noteblock -->
+
 {% else %}
 <!-- default card -->
 <div class="card">
   <div class="card-header">
-    You don't have any data in the noteblock or note requested. If you are not intentionally deleting the title, then the website must have some bugs.
+    You don't have any data in the noteblock or note requested. If you are not intentionally deleting the title, then
+    the website must have some bugs.
   </div>
   <div class="card-body">
     <blockquote class="blockquote mb-0">

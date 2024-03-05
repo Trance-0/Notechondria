@@ -55,7 +55,9 @@ class NoteBlockForm(forms.ModelForm):
     image = forms.ImageField(required=False)
     file = forms.FileField(required=False)
     coding_language_choice=forms.ChoiceField(choices=SUPPORTING_LANGUAGE)
-    index=forms.IntegerField(widget=forms.HiddenInput())
+    index=forms.IntegerField(widget=forms.HiddenInput(),required=False)
+    # note_id=forms.IntegerField(widget=forms.HiddenInput())
+    # creator_id=forms.IntegerField(widget=forms.HiddenInput())
     
     class Meta:
         """Load meta data for multiple field to generate form
@@ -73,7 +75,9 @@ class NoteBlockForm(forms.ModelForm):
             "file",
             "coding_language_choice",
             "text",
-            "index"
+            "index",
+            # "note_id",
+            # "creator_id"
         ]
 
     def __init__(self, *args, **kwargs):
@@ -99,3 +103,15 @@ class NoteBlockForm(forms.ModelForm):
             # load default variable based on block type
             if self.instance.block_type== NoteBlockTypeChoices.CODE:
                 self.fields["coding_language_choice"].initial = self.instance.args
+
+    def save(self, commit: bool = ...) -> NoteBlock:
+        noteblock_instance=super(NoteBlockForm, self).save(commit=False)
+        # fill args and others based on block_type
+        block_type=self.cleaned_data["block_type"] 
+        if block_type== "C":
+            noteblock_instance.args=self.cleaned_data["coding_language_choice"]
+        elif block_type=="I":
+            noteblock_instance.image=self.cleaned_data["image"]
+        elif block_type=="F":
+            noteblock_instance.file=self.cleaned_data["file"]
+        return super().save(commit)

@@ -83,10 +83,10 @@ def edit_note(request, note_id):
 
 @login_required
 def edit_block(request, noteblock_id):
-    """Edit single block using htmx, also responsible for adding new noteblock if noteblock_id given is -1.
+    """Edit single block using htmx, also responsible for adding new noteblock if noteblock_id given is -1 (create dummy block with handles on note).
     
     Args:
-        noteblock_id: id of NoteBlock object, -1 if to create a new block
+        noteblock_id: id of NoteBlock object, creation of note block on the process is handled by insert_block function
 
     Returns:
         request: return saved htmx form
@@ -101,12 +101,31 @@ def edit_block(request, noteblock_id):
     # create new noteblock
     noteblock_form = NoteBlockForm()
     if request.method=="POST":
+        noteblock_form=NoteBlockForm(request.POST,request.FILES)
         # we might at feature photo form each post, so just assume have files
         if not noteblock_form.is_valid():
             load_form_error_to_messages(request,noteblock_form)
+            return render(request,"htmx_edit_noteblock.html",context=context)
+        noteblock_instance=noteblock_form.save(commit=False)
+        noteblock_instance.is_AI_generated=request.POST.get('is_AI_generated', '')=='on'
+        # test creator id
+        prev_instance=get_object_or_None(NoteBlock,pk=noteblock_id)
+        # creator_id= get_object_or_None(Creator, user_id=noteblock_form.cleaned_data["creator_id"])
+        # if creator_id!=owner_id:
+        #     messages.error(request,"Incorrect permission found, we have not implement ownership transfer yet.")
+        #     return render(request,"htmx_edit_noteblock.html",context=context)
+        noteblock_instance.creator_id=prev_instance.creator_id
+        # test note id
+        # note_id=get_object_or_None(Note,pk=noteblock_form.cleaned_data["note_id"])
+        # if note_id!=prev_instance.note_id:
+        #     messages.error(request,"Incorrect note found, we have not implement note transfer yet.")
+        #     return render(request,"htmx_edit_noteblock.html",context=context)
+        noteblock_instance.note_id=prev_instance.note_id
+        noteblock_instance.save()
+        noteblock_form = NoteBlockForm(instance=noteblock_instance,auto_id=f"nb_{noteblock_instance.id}_id_%s")
     # render get request
     # update if there exists an instance for requested
-    if noteblock_id!=-1:
+    else:
         noteblock_instance=get_object_or_None(NoteBlock,pk=noteblock_id)
         if noteblock_instance==None:
             messages.error("Noteblock with id not found")
@@ -115,7 +134,14 @@ def edit_block(request, noteblock_id):
         if noteblock_instance.creator_id!=owner_id:
             messages.error("You don't have permission to edit this noteblock")
             return render(request,"htmx_edit_noteblock.html",context=context)
-        noteblock_form = NoteBlockForm(instance=noteblock_instance)
+        noteblock_form = NoteBlockForm(instance=noteblock_instance,auto_id=f"nb_{noteblock_instance.id}_id_%s")
+    context["noteblock_form"]=noteblock_form
+    return render(request,"htmx_edit_noteblock.html",context=context)
+
+@login_required
+def insert_block(request, noteblock_id):
+    context={}
+    noteblock_form = NoteBlockForm()
     context["noteblock_form"]=noteblock_form
     return render(request,"htmx_edit_noteblock.html",context=context)
 
@@ -185,11 +211,22 @@ def create_block(request):
     return render(request,"htmx_create_noteblock.html",context=context)
 
 @login_required
-def reorder_blocks(request):
+def reorder_blocks(request,note_id):
     """ sortable to setup order of noteblocks in note.
     reference: https://htmx.org/examples/sortable/
     
     """
+    context={}
+    # reordering
+
+    # test if note exist
+    note_instance = get_object_or_None(Note, pk=note_id)
+    context["note_form"] = NoteForm(instance=note_instance)
+    # noteblocks
+    if note_instance!=None:
+        note_indexes= NoteIndex.objects.filter(note_id=note_instance).order_by("index")
+        context["noteblocks_list"] = note_indexes
+    return render(request, "note_block_editor.html",context)
 
 # view note or snippets
 

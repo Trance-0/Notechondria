@@ -1,39 +1,63 @@
 $(document).ready(function () {
-    $("#createQuickNoteBlockModal").modal("show");
+    // since the script will be activate multiple time with in the same page, we need to do reg for each, sample regex:https://stackoverflow.com/questions/11173188/jquery-select-id-with-word-as-prefix-and-counter-as-suffix
+    // console.log($('select[id^="nb"][id$="id_block_type"]'));
+    $('select[id^="nb"][id$="id_block_type"]').filter(
+        function(){
+            // console.log(this.id);
+            var prefix=this.id.match(/^nb_\d+_/)[0];
+            // console.log(prefix);
+            var blockType = $("#"+prefix+"id_block_type").find(":selected").val();
+            toggleWidgets(blockType,prefix);
+        });
+
+    // the default is for create_noteblock_htmx
     var blockType = $("#id_block_type").find(":selected").val();
     // console.log(blockType);
     toggleWidgets(blockType);
     // add class to widget
     $("#id_is_AI_generated").parent().addClass("form-check");
+
+    // section for edit_noteblock_htmx, id given by "nb_{noteid}_field_name"
 });
+
+$('select[id^="nb"][id$="id_block_type"]').on("change", function () {
+    var prefix=this.id.match(/^nb_\d+_/)[0];
+    // console.log(prefix);
+    var blockType = $("#"+prefix+"id_block_type").find(":selected").val();
+    toggleWidgets(blockType,prefix);
+    // alert("change detected");
+});
+
 $("#id_block_type").on("change", function () {
     toggleWidgets(this.value);
     // alert("change detected");
 });
 
-function toggleWidgets(option) {
+function toggleWidgets(option,prefix="") {
     // hide all 
     $(".type-based-widgets").parent().hide();
-    $("#id_text").attr("rows", "6");
+    $("#"+prefix+"id_text").attr("rows", "6");
+    // console.log(option);
     // show by condition
     switch (option) {
         case "C":
-            $("#id_code_language_choice").parent().show();
+            $("#"+prefix+"id_coding_language_choice").parent().show();
             break;
         case "T":
-            $("#id_text").attr("rows", "1");
+            $("#"+prefix+"id_text").attr("rows", "1");
+            break;
         case "I":
-            $("#id_text").attr("rows", "1");
-            $("#id_image").parent().show();
+            $("#"+prefix+"id_text").attr("rows", "1");
+            $("#"+prefix+"id_image").parent().show();
             break;
         case "F":
-            $("#id_text").attr("rows", "1");
-            $("#id_file").parent().show();
+            $("#"+prefix+"id_text").attr("rows", "1");
+            $("#"+prefix+"id_file").parent().show();
             break;
         case "U":
-            $("#id_text").attr("rows", "1");
+            $("#"+prefix+"id_text").attr("rows", "1");
             break;
         case "S":
-            $("#id_text").attr("rows", "3");
+            $("#"+prefix+"id_text").attr("rows", "3");
     }
 }

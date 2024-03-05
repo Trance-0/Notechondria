@@ -14,6 +14,9 @@
     {% load static %}
 
     {% include "resource_header.html" %}
+
+    {% include "sortable.html"%}
+
 </head>
 
 <body>
@@ -45,15 +48,15 @@
                             </div>
                         </nav>
                     </div>
-                    <div class="tab-content" id="nav-tabContent">
-                        <div class="tab-pane fade" id="nav-block-edit" role="tabpanel"
-                            aria-labelledby="nav-block-tab" tabindex="0">
+                    <div class="tab-content" style="overflow-y: scroll;" id="nav-tabContent">
+                        <div class="tab-pane fade" id="nav-block-edit" role="tabpanel" aria-labelledby="nav-block-tab"
+                            tabindex="0">
                             <div class="card-body">
                                 {% include "note_block_editor.html" %}
                             </div>
                         </div>
-                        <div class="tab-pane fade show active" id="nav-text-edit" role="tabpanel" aria-labelledby="nav-text-tab"
-                            tabindex="0">
+                        <div class="tab-pane fade show active" id="nav-text-edit" role="tabpanel"
+                            aria-labelledby="nav-text-tab" tabindex="0">
                             {% include "note_code_editor.html" %}
                         </div>
                         <div class="tab-pane fade" id="nav-file-gen" role="tabpanel" aria-labelledby="nav-file-tab"
@@ -70,42 +73,53 @@
                 <!-- The side panel is used to render meta data for notes, note list would be render separately.-->
                 <div class="card h-100 mb-3">
                     <div class="card-body">
-                        <form action="{% url 'notes:create_noteblock' %}" method="post" , enctype="multipart/form-data">
-                            <!-- Use jQuery to hide advanced options -->
-                            {% csrf_token %}
-                            <!-- Django overkill form -->
-                            <!-- Include the hidden fields -->
-                            {% for hidden in note_form.hidden_fields %}
-                            {{ hidden }}
-                            {% endfor %}
-                            <!-- Include the visible fields  -->
-                            {% for field in note_form.visible_fields %}
-                            <div class="mb-3">
-                              {%if field.errors%}
-                              <div class="alert alert-danger">
-                                {% for error in field.errors %}
-                                {{ error }}
+                        {% if note_form %}
+                        <form action="{% url 'notes:edit_note' note_form.instance.id %}" method="post" enctype="multipart/form-data">
+                            <div class="modal-body">
+                                {% csrf_token %}
+                                <!-- Django overkill form -->
+                                <!-- Include the hidden fields -->
+                                {% for hidden in note_form.hidden_fields %}
+                                {{ hidden }}
                                 {% endfor %}
-                              </div>
-                              {% endif %}
-                              <label for="{{ field.id_for_label }}" class="form-label">
-                                {{ field.label }}
-                              </label>
-                              {{ field }}
-                              {% if field.help_text %}
-                              <div class="form-text">{{ field.help_text|safe }}</div>
-                              {% endif %}
+                                <!-- Include the visible fields  -->
+                                {% for field in note_form.visible_fields %}
+                                <div class="mb-3">
+                                    {%if field.errors%}
+                                    <div class="alert alert-danger">
+                                        {% for error in field.errors %}
+                                        {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                    <label for="{{ field.id_for_label }}" class="form-label">
+                                        {{ field.label }}
+                                    </label>
+                                    {{ field }}
+                                    {% if field.help_text %}
+                                    <div class="form-text">{{ field.help_text|safe }}</div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
                             </div>
-                            {% endfor %}
-                            <div class="modal-footer row justify-content-between">
-                              <div class="col-auto">
-                                <button type="button" class="btn btn-danger" data-bs-dismiss="deleteNoteBlockModal">Delete</button>
-                              </div>
-                              <div class="col-auto">
-                                <button type="submit" class="btn btn-primary">Create NoteBlock</button>
-                              </div>
+                            <div class="modal-footer">
+                                <div class=" row">
+                                    <div class="col-auto">
+                                        <button type="button" class="btn btn-secondary"
+                                            data-bs-dismiss="modal">Close</button>
+                                        <button type="submit" class="btn btn-primary">Create Note</button>
+                                    </div>
+                                </div>
                             </div>
-                          </form>
+                        </form>
+                        {% else %}
+                        <div class="modal-body">
+                            <div class="alert alert-danger" role="alert">
+                                Note form not received from server
+                            </div>
+                        </div>
+                        {% endif %}
+
                     </div>
                 </div>
             </aside>

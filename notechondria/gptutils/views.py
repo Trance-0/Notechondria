@@ -137,18 +137,18 @@ def get_stream_chat(request, conv_pk):
     Args:
         conv_pk: primary key for Conversation objects
     """
-    owner_id = get_object_or_None(Creator, user_id=request.user)
-    if owner_id==None:
-        yield "User not found."
-        return
+    # owner_id = get_object_or_None(Creator, user_id=request.user)
+    # if owner_id==None:
+    #     yield "User not found."
+    #     return
     cur_conversation = get_object_or_None(Conversation, id=conv_pk)
-    if cur_conversation==None:
-        yield "Conversation not found."
-        return
+    # if cur_conversation==None:
+    #     yield "Conversation not found."
+    #     return
     logger.info(f'requested streaming chat instance edit form with id {conv_pk}')
-    if cur_conversation.creator_id!=owner_id:
-        yield "You don't have permission to streaming this conversation."
-        return
+    # if cur_conversation.creator_id!=owner_id:
+    #     yield "You don't have permission to streaming this conversation."
+    #     return
     return StreamingHttpResponse(generate_stream_message(cur_conversation))
 
 

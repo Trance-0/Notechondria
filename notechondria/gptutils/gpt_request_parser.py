@@ -96,7 +96,7 @@ def generate_stream_message(conversation:Conversation):
         # token calculation (approximate)
         conversation.total_completion_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
         add_token(dummy_message)
-        logger.info(u"{}: get streaming message as below: \n {}".format(conversation.creator_id,__short_text(dummy_message)))
+        logger.info(u"{}: get streaming message as below: \n {}".format(conversation.creator_id,__short_text(dummy_message.text)))
         # save dummy message
         dummy_message.save()
         logger.info(u"dummy message saved with following text: {}".format(__short_text(dummy_message.text)))

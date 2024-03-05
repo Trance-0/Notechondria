@@ -89,7 +89,7 @@ class NoteBlock(models.Model):
     text = models.TextField(blank=True, null=True)
 
     # extra arguments for rendering special features like feature image or coding language
-    args=models.CharField(max_length=256,null=False)
+    args=models.CharField(max_length=256,null=True)
 
     # last_use and date_created automatically created, for these field, create one time value to timezone.now()
     date_created=models.DateTimeField(auto_now_add=True,null=False)

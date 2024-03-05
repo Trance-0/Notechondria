@@ -1,0 +1,11 @@
+{% load static %}
+
+{% if is_offline %}
+
+<script src="{% static 'sortable/Sortable.js' %}"></script>  
+
+{% else %}
+
+<script src="http://SortableJS.github.io/Sortable/Sortable.js"></script>
+
+{% endif %}
