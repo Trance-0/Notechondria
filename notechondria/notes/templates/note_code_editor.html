@@ -16,7 +16,13 @@
 
     <script>
         var editor = monaco.editor.create(document.getElementById('codeEditor'), {
-            value: ['# Example code editor', 'this section will be labeled as example', ''].join('\n'),
+            value: [`{% if noteblocks_list%}{% for blocks in noteblocks_list%}{{blocks.noteblock_id.get_md_str}}`,`{% endfor %}{% elif noteblock %}{% else %}
+You don't have any data in the noteblock or note requested. If you are not intentionally deleting the title, then the website must have some bugs."
+`,`
+>「自己嫌悪って言うのは、非常に非生産的な感情だと思って、止しちゃったんです。それから、（自分を）好きになりました。」
+`,`
+> -- 三島由紀夫
+{% endif %}`].join('\n'),
             language: 'markdown'
         });
         editor.getAction('editor.action.formatDocument').run()

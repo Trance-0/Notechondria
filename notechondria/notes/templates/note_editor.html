@@ -19,7 +19,7 @@
 
 </head>
 
-<body>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
     {% include "navbar.html" %}
 
@@ -74,41 +74,38 @@
                 <div class="card h-100 mb-3">
                     <div class="card-body">
                         {% if note_form %}
-                        <form action="{% url 'notes:edit_note' note_form.instance.id %}" method="post" enctype="multipart/form-data">
-                            <div class="modal-body">
-                                {% csrf_token %}
-                                <!-- Django overkill form -->
-                                <!-- Include the hidden fields -->
-                                {% for hidden in note_form.hidden_fields %}
-                                {{ hidden }}
-                                {% endfor %}
-                                <!-- Include the visible fields  -->
-                                {% for field in note_form.visible_fields %}
-                                <div class="mb-3">
-                                    {%if field.errors%}
-                                    <div class="alert alert-danger">
-                                        {% for error in field.errors %}
-                                        {{ error }}
-                                        {% endfor %}
-                                    </div>
-                                    {% endif %}
-                                    <label for="{{ field.id_for_label }}" class="form-label">
-                                        {{ field.label }}
-                                    </label>
-                                    {{ field }}
-                                    {% if field.help_text %}
-                                    <div class="form-text">{{ field.help_text|safe }}</div>
-                                    {% endif %}
+                        <h5 class="card-title">Note meta</h5>
+                        <form action="{% url 'notes:edit_note' note_form.instance.id %}" method="post"
+                            enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <!-- Django overkill form -->
+                            <!-- Include the hidden fields -->
+                            {% for hidden in note_form.hidden_fields %}
+                            {{ hidden }}
+                            {% endfor %}
+                            <!-- Include the visible fields  -->
+                            {% for field in note_form.visible_fields %}
+                            <div class="mb-3">
+                                {%if field.errors%}
+                                <div class="alert alert-danger">
+                                    {% for error in field.errors %}
+                                    {{ error }}
+                                    {% endfor %}
                                 </div>
-                                {% endfor %}
+                                {% endif %}
+                                <label for="{{ field.id_for_label }}" class="form-label">
+                                    {{ field.label }}
+                                </label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                <div class="form-text">{{ field.help_text|safe }}</div>
+                                {% endif %}
                             </div>
-                            <div class="modal-footer">
-                                <div class=" row">
-                                    <div class="col-auto">
-                                        <button type="button" class="btn btn-secondary"
-                                            data-bs-dismiss="modal">Close</button>
-                                        <button type="submit" class="btn btn-primary">Create Note</button>
-                                    </div>
+                            {% endfor %}
+                            <div class=" row">
+                                <div class="col-auto">
+                                    <button type="submit" class="btn btn-primary">Save meta</button>
+                                    <!-- add a save all here -->
                                 </div>
                             </div>
                         </form>
@@ -119,6 +116,8 @@
                             </div>
                         </div>
                         {% endif %}
+                        <h5 class="card-title mt-3"> Upload file or image </h5>
+                        <!-- customize form for upload file or image to target noteblock -->
 
                     </div>
                 </div>

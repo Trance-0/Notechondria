@@ -30,14 +30,6 @@ def user_profile_path(instance, filename):
     _name, extension = os.path.splitext(filename)
     return "user_upload/user_{0}/profile_pic/profile_latest{1}".format(instance.user_id.id, extension)
 
-class UserGroupChoices(models.TextChoices):
-    """User group choices, may be more efficient if use django internal group"""
-
-    ADMIN = "A", _("Admin")
-    MANAGER = "M", _("Manager")
-    NORMAL = "N", _("Normal")
-
-
 class Creator(models.Model):
     """for django built-in authentication: https://docs.djangoproject.com/en/4.2/ref/contrib/auth/"""
 
@@ -60,13 +52,6 @@ class Creator(models.Model):
     last_login=models.DateTimeField(auto_now=True, null=False)
     # Automatically set the field to now when the object is first created. 
     date_joined=models.DateTimeField(auto_now_add=True, null=False)
-
-    user_group = models.CharField(
-        null=False,
-        max_length=1,
-        choices=UserGroupChoices.choices,
-        default=UserGroupChoices.NORMAL,
-    )
 
     # user status is determined by the group in user attribute
 

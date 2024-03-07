@@ -97,6 +97,37 @@ class NoteBlock(models.Model):
 
     def __str__(self) -> str:
         return f'{self.text[:100] if self.text else ""}:{self.date_created}'
+    
+    def get_md_str(self) ->str:
+        type=self.block_type
+        if type==NoteBlockTypeChoices.TEXT:
+            return self.text
+        elif type==NoteBlockTypeChoices.URL:
+            return f'[{self.text}]({self.args})'
+        elif type==NoteBlockTypeChoices.TITLE:
+            return f'# {self.text}'
+        elif type==NoteBlockTypeChoices.SUBTITLE:
+            return f'{self.args} {self.text}'
+        elif type==NoteBlockTypeChoices.EXAMPLE:
+            return f'Example:     \n {self.text}'
+        elif type==NoteBlockTypeChoices.PROOF:
+            return f'Proof:     \n {self.text}'
+        elif type==NoteBlockTypeChoices.CODE:
+            return f'```{self.args}\n{self.text}\n```'
+        elif type==NoteBlockTypeChoices.QUOTE:
+            if self.args:
+                return f'>{self.text}\n> -- cited from: {self.args}'
+            return f'>{self.text}'
+        elif type==NoteBlockTypeChoices.IMAGES:
+            return f'![{self.text}]({self.image.url})'
+        elif type==NoteBlockTypeChoices.FILES:
+            return f'[{self.text}]({self.file.url})'
+        elif type==NoteBlockTypeChoices.LIST:
+            return self.text
+        elif type==NoteBlockTypeChoices.HTML:
+            return self.text
+        else:
+            return f'<-- Unsupported type: {type}--> {self.text}'
 
 class NoteIndex(models.Model):
     note_id = models.ForeignKey(
@@ -123,6 +154,9 @@ class NoteIndex(models.Model):
             if block.block_tye==NoteBlockTypeChoices.IMAGES:
                 return block
         return None
+    
+    def is_root_handle(self):
+        return self.noteblock_id.note_id==self.note_id
     
     def __str__(self)->str:
         return f"{self.note_id.title}[{self.noteblock_id}],on page {self.index}"
