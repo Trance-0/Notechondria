@@ -317,6 +317,68 @@ def reorder_blocks(request,note_id):
     context["noteblocks_list"] = note_indexes
     return render(request, "note_block_editor_core.html",context)
 
+@login_required
+def delete_block(request, noteblock_id):
+    """ delete noteblock or noteIndex with given value, used in note_block_editor for NOTEBLOCK, also used as deletion for NOTEBLOCK in note_block_editor for NOTE
+
+    Attributes:
+        noteblock_id: the id for the note to delete
+
+    Returns:
+        request.GET: htmx note block editor template.
+        request.POST: redirect page to index
+    """
+    owner_id,noteblock_instance=check_is_creator(request, NoteBlock, "delete noteblock" ,pk=noteblock_id)
+    if request.method=="POST":
+        note_instance=noteblock_instance.note_id
+        if owner_id==None:
+            if note_instance:
+                return redirect("notes:edit_note",note_id=note_instance.id)
+            else:
+                return redirect("notes:notes")
+        noteblock_instance.delete()
+        messages.success(request,"delete block success")
+        if note_instance:
+            return redirect("notes:edit_note",note_id=note_instance.id)
+        else:
+            return redirect("notes:notes")
+    else:
+        if owner_id==None:
+            return redirect("notes:notes")
+       
+    return redirect("notes:edit_note",note_id=note_instance.id)
+
+@login_required
+def delete_blockIndex(request, noteIndex_id):
+    """ delete noteblock or noteIndex with given value, used in note_block_editor for NOTE
+
+    Attributes:
+        noteIndex_id: the id for the note to delete
+
+    Returns:
+        request.GET: htmx note block editor template.
+        request.POST: redirect page to editor with given note
+    """
+    # load note
+    noteIndex_instance=get_object_or_None(NoteIndex,pk=noteIndex_id)
+    if noteIndex_instance==None:
+        messages.error(request, "NoteIndex not found")
+        if request.method=="POST":
+            return redirect("notes:edit_note",note_id=note_instance.id)
+        else:
+            return render(request, "htmx_block_remove.html")
+    owner_id,note_instance=check_is_creator(request, Note, "delete noteblock reference", pk=noteIndex_instance.note_id.id)
+    if request.method=="POST":
+        if owner_id==None:
+            return redirect("notes:edit_note",note_id=note_instance.id)
+        noteIndex_instance.delete()
+        messages.success(request,"delete block index success")
+        return redirect("notes:edit_note",note_id=note_instance.id)
+    # process get request
+    else:
+        if owner_id!=None:
+            return render(request, "htmx_block_remove.html", context={"blocks":noteIndex_instance})
+        return render(request, "htmx_block_remove.html")
 # view note or snippets
 
 @login_required

@@ -25,7 +25,7 @@
 
     <main class="container-fluid align-items-center fill-height">
         <div class="row g-2 h-100">
-            <div class="col-9 mt-3 h-100">
+            <div class="col-md-9 mt-3 h-100">
                 <div class="card mb-3 h-100">
                     <div class="card-header">
                         <nav>
@@ -69,7 +69,7 @@
                 </div>
             </div>
 
-            <aside class="col-auto blog-sidebar mt-3 mb-3 h-100">
+            <aside class="col-md-3 blog-sidebar mt-3 mb-3 h-100">
                 <!-- The side panel is used to render meta data for notes, note list would be render separately.-->
                 <div class="card h-100 mb-3">
                     <div class="card-body">
@@ -118,7 +118,31 @@
                         {% endif %}
                         <h5 class="card-title mt-3"> Upload file or image </h5>
                         <!-- customize form for upload file or image to target noteblock -->
-
+                        <input id="myinput" class="form-control" type="file" onchange="encode();" />
+                        <div id="dummy">
+                        </div>
+                        <div>
+                        <textarea class="form-control mt-3" rows=10 id="txt" readonly>
+                        </textarea>
+                        </div>
+                        <script>
+                        function encode() {
+                            var selectedfile = document.getElementById("myinput").files;
+                            if (selectedfile.length > 0) {
+                            var imageFile = selectedfile[0];
+                            var fileReader = new FileReader();
+                            fileReader.onload = function(fileLoadedEvent) {
+                                var srcData = fileLoadedEvent.target.result;
+                                var newImage = document.createElement('img');
+                                newImage.className+="card-img mt-3"
+                                newImage.src = srcData;
+                                document.getElementById("dummy").innerHTML = newImage.outerHTML;
+                                document.getElementById("txt").value = document.getElementById("dummy").innerHTML;
+                            }
+                            fileReader.readAsDataURL(imageFile);
+                            }
+                        }
+                        </script>
                     </div>
                 </div>
             </aside>

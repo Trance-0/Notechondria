@@ -1,0 +1,66 @@
+<div class="modal fade" id="deleteBlockModal" tabindex="-1" aria-labelledby="deleteBlockModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            {% if blocks %}
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteBlockModalLabel">Delete chat</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you wish to <strong>DELETE</strong> this block? All the successive message will be lost!
+                There is currently no way to restore it.
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-dismiss="modal">Cancel</button>
+
+                <form action="{% url 'notes:delete_noteblock' blocks.noteblock_id.id %}" method="post">
+                    {% csrf_token %}
+                    <button class="btn btn-danger" id="delete-block-button">Wait 5s</button>
+                </form>
+                <form action="{% url 'notes:delete_blockIndex' blocks.id %}" method="post">
+                    {% csrf_token %}
+                    <button class="btn btn-warning" id="delete-reference-button">Wait 3s</button>
+                </form>
+            </div>
+            {% endif %}
+            {% include "message_display.html"%}
+        </div>
+    </div>
+
+    <script>
+        // show on load
+
+        $(document).ready(function () {
+            $('#deleteBlockModal').modal('show');
+
+            $('#delete-block-button').prop('disabled', true);
+            setTimeout(function () {
+                $("#delete-block-button").html('Wait 4s');
+            }, 1000);
+            setTimeout(function () {
+                $("#delete-block-button").html('Wait 3s');
+            }, 2000);
+            setTimeout(function () {
+                $("#delete-block-button").html('Wait 2s');
+            }, 3000);
+            setTimeout(function () {
+                $("#delete-block-button").html('Wait 1s');
+            }, 4000);
+            setTimeout(function () {
+                $("#delete-block-button").prop('disabled', false);
+                $("#delete-block-button").html('Delete Block');
+            }, 5000);
+
+            $('#delete-reference-button').prop('disabled', true);
+            setTimeout(function () {
+                $("#delete-reference-button").html('Wait 2s');
+            }, 1000);
+            setTimeout(function () {
+                $("#delete-reference-button").html('Wait 1s');
+            }, 2000);
+            setTimeout(function () {
+                $("#delete-reference-button").prop('disabled', false);
+                $("#delete-reference-button").html('Delete Reference');
+            }, 3000);
+        });
+    </script>

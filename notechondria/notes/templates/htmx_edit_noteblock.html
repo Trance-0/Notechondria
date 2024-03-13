@@ -4,7 +4,8 @@
   {% if noteblock_form.instance %}
 
   {% if noteblock_handle %}
-
+  
+  </div>
   <form hx-post="{% url 'notes:edit_noteblock' noteblock_handle.id %}" hx-encoding="multipart/form-data"
     hx-target="#block-editor" hx-vals="unset" hx-swap="outerHTML">
     <div class="card mb-3">
@@ -39,7 +40,7 @@
       <div class="card-footer">
         <div class="row justify-content-between">
           <div class="col-auto">
-            <button type="button" class="btn btn-danger" data-bs-dismiss="deleteNoteBlockModal">Delete</button>
+            <div hx-get="{% url 'notes:delete_blockIndex' noteblock_handle.id %}" class="btn btn-danger" hx-target="#noteblock-delete" hx-swap="innerHTML">Delete</div>
           </div>
           <div class="col-auto">
             <div class="row">
