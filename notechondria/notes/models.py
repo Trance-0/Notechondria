@@ -156,6 +156,7 @@ class NoteIndex(models.Model):
         return None
     
     def is_root_handle(self):
+        """ return if the noteIndex is the index the source of noteblock in note"""
         return self.noteblock_id.note_id==self.note_id
     
     def __str__(self)->str:

@@ -1,8 +1,9 @@
 from datetime import datetime
 from django.utils import timezone
 import logging
-from notechondria.utils import generate_unique_id, get_object_or_None,load_form_error_to_messages
+from notechondria.utils import check_is_creator, generate_unique_id, get_object_or_None,load_form_error_to_messages
 from django.http import StreamingHttpResponse
+from django.views.decorators.http import require_POST,require_GET
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
 
@@ -36,6 +37,7 @@ logger=logging.getLogger()
 ####################################################################
 
 @login_required
+@require_GET
 def gptutils(request):
     """render main chat page"""
     context=__get_basic_context(request)
@@ -184,6 +186,7 @@ def create_chat(request):
     return redirect("gptutils:main")
 
 @login_required
+@require_POST
 def fast_chat(request):
     """create chat based on conversation form received from user
     I don't want to do any ajax on this section cause it costs a lot of work and don't have much improvement.
@@ -196,37 +199,31 @@ def fast_chat(request):
     """
     # test for user
     owner_id = get_object_or_404(Creator, user_id=request.user)
-    if request.method == "POST":
-        # permission check
-        message_form = MessageForm(request.POST, request.FILES)
-        if not message_form.is_valid():
-            messages.error(request, f"invalid message")
-            return redirect("gptutils:main")
-        message_instance = message_form.save(commit=False)
-        cur_conversation=Conversation.objects.create(creator_id=owner_id,
-                                                     sharing_id=generate_unique_id(Conversation,"sharing_id"),
-                                                     model=GPTModelChoices.GPT4_V if message_instance.image else GPTModelChoices.GPT4_1106)
-        message_instance.conversation_id = cur_conversation
-        message_instance.save()
-        add_token(message_instance)
-        ai_response=generate_message(cur_conversation)
-        if not "error" in ai_response:
-            return redirect("gptutils:get_chat", conv_pk=cur_conversation.id)
-        else:
-            messages.warning(request,f"Error when generating response {ai_response['error']}")
+    message_form = MessageForm(request.POST, request.FILES)
+    if not message_form.is_valid():
+        messages.error(request, f"invalid message")
+        return redirect("gptutils:main")
+    message_instance = message_form.save(commit=False)
+    cur_conversation=Conversation.objects.create(creator_id=owner_id,
+                                                    sharing_id=generate_unique_id(Conversation,"sharing_id"),
+                                                    model=GPTModelChoices.GPT4_V if message_instance.image else GPTModelChoices.GPT4_1106)
+    message_instance.conversation_id = cur_conversation
+    message_instance.save()
+    add_token(message_instance)
+    ai_response=generate_message(cur_conversation)
+    if not "error" in ai_response:
+        return redirect("gptutils:get_chat", conv_pk=cur_conversation.id)
     else:
-        messages.warning(request,f"invalid parameters found")
+        messages.warning(request,f"Error when generating response {ai_response['error']}")
     return redirect("gptutils:main")
 
 @login_required
 def edit_chat(request,conv_pk):
     """redirect to edit chat form for htmx request return form only"""
     # test for user
-    owner_id = get_object_or_404(Creator, user_id=request.user)
-    chat_instance = get_object_or_404(Conversation, id=conv_pk)
+    owner_id,chat_instance =check_is_creator(request,Conversation, "edit conversation", id=conv_pk)
     logger.info(f'requested chat instance edit form with id {conv_pk}')
-    if chat_instance.creator_id!=owner_id:
-        messages.error(request, f"You don't have access to the chat")
+    if owner_id==None:
         return redirect("gptutils:main")
     if request.method == "POST":
         chat_form = ConversationFormL(request.POST, request.FILES,instance=chat_instance)
@@ -256,10 +253,9 @@ def edit_message(request,message_pk):
     """
     if request.method == "POST":
         # test for user
-        owner_id = get_object_or_404(Creator, user_id=request.user)
-        message_instance = get_object_or_404(Message, id=message_pk)
+        owner_id,message_instance = check_is_creator(request, Message, "edit message", id=message_pk)
         logger.info(f'requested message instance edit form with id {message_pk}')
-        if message_instance.conversation_id.creator_id!=owner_id:
+        if owner_id==None:
             messages.error(request, f"You don't have access to the message")
             return redirect("gptutils:main")
         message_form = MessageForm(request.POST, request.FILES,instance=message_instance)
@@ -291,87 +287,75 @@ def edit_message(request,message_pk):
         return redirect("gptutils:get_chat", conv_pk=message_instance.conversation_id.id)
     # get request:
     # test for user
-    owner_id = get_object_or_None(Creator, user_id=request.user)
+    owner_id,message_instance = check_is_creator(request, Message, "edit message", id=message_pk)
     if owner_id ==None:
-        messages.error(request,"User not found.")
-        return render(request,"htmx_edit_message_form.html")
-    message_instance = get_object_or_404(Message, id=message_pk)
-    if message_instance ==None:
-        messages.error(request,"Message not found.")
         return render(request,"htmx_edit_message_form.html")
     logger.info(f'requested message instance edit form with id {message_pk}')
-    if message_instance.conversation_id.creator_id!=owner_id:
-        messages.error(request, f"You don't have access to the message")
-        return render(request,"htmx_edit_message_form.html")
     return render(request,"htmx_edit_message_form.html",context={"edit_message_form":MessageForm(instance=message_instance)})
 
 @login_required
+@require_POST
 def resend_message(request,message_pk):
     """redirect to edit message form for htmx request return form only
     for the purpose of returning error and large query operations, this page will not be ajax under post request
     """
     # test for user
-    owner_id = get_object_or_404(Creator, user_id=request.user)
-    message_instance = get_object_or_404(Message, id=message_pk)
+    owner_id,message_instance = check_is_creator(request, Message, "resend message", id=message_pk)
     logger.info(f'requested message instance resend with message id {message_pk}')
-    if message_instance.conversation_id.creator_id!=owner_id:
-        messages.error(request, f"You don't have access to the message")
+    if owner_id==None:
         return redirect("gptutils:main")
-    if request.method == "POST":
-        if message_instance.conversation_id.model==GPTModelChoices.PLAIN:
-            # delete message after message_instance
-            del_message_list=Message.objects.filter(conversation_id=message_instance.conversation_id, created__gt=message_instance.created)
-            for i in del_message_list:
-                i.delete()
-            # generate response from latest message
-            messages.success(request, f"Successfully resend the message {message_instance}")
+    if message_instance.conversation_id.model==GPTModelChoices.PLAIN:
+        # delete message after message_instance
+        del_message_list=Message.objects.filter(conversation_id=message_instance.conversation_id, created__gt=message_instance.created)
+        for i in del_message_list:
+            i.delete()
+        # generate response from latest message
+        messages.success(request, f"Successfully resend the message {message_instance}")
+    else:
+        # delete message after message_instance
+        del_message_list=Message.objects.filter(conversation_id=message_instance.conversation_id,created__gt=message_instance.created)
+        for i in del_message_list:
+            i.delete()
+        # generate response from latest message
+        ai_response=generate_message(message_instance.conversation_id)
+        if "error" in ai_response:
+            messages.warning(request,f"Error when generating response {ai_response['error']}")
         else:
-            # delete message after message_instance
-            del_message_list=Message.objects.filter(conversation_id=message_instance.conversation_id,created__gt=message_instance.created)
-            for i in del_message_list:
-                i.delete()
-            # generate response from latest message
-            ai_response=generate_message(message_instance.conversation_id)
-            if "error" in ai_response:
-                messages.warning(request,f"Error when generating response {ai_response['error']}")
-            else:
-                messages.success(request, f"Successfully resend the message {message_instance}")
+            messages.success(request, f"Successfully resend the message {message_instance}")
     return redirect("gptutils:get_chat", conv_pk=message_instance.conversation_id.id)
 
 @login_required
+@require_POST
 def delete_message(request, message_pk):
     """only processing post request for deleting message, including message with pk based on time
     for the purpose of returning error and large query operations, this page will not be ajax under post request
     """
-    owner_id = get_object_or_404(Creator, user_id=request.user)
     message_instance = get_object_or_404(Message, id=message_pk)
-    if message_instance.conversation_id.creator_id!=owner_id:
-        messages.error(request, f"You don't have access to the message")
+    if message_instance==None:
+        messages.error("Message for deletion not found.")
         return redirect("gptutils:main")
-    if request.method=="POST":
-        del_message_list=Message.objects.filter(conversation_id=message_instance.conversation_id, created__gte=message_instance.created)
-        for i in del_message_list:
-            i.delete()
-        messages.success(request, f"successfully deleted message {message_instance}")
-    return redirect("gptutils:get_chat", conv_pk=message_instance.conversation_id.id)
+    owner_id,conversation_instance = check_is_creator(request, Conversation, pk=message_instance.conversation_id)
+    if owner_id==None:
+        return redirect("gptutils:main")
+    del_message_list=Message.objects.filter(conversation_id=conversation_instance, created__gte=message_instance.created)
+    for i in del_message_list:
+        i.delete()
+    messages.success(request, f"successfully deleted message {message_instance}")
+    return redirect("gptutils:get_chat", conv_pk=conversation_instance)
 
 @login_required
 def delete_chat(request, conv_pk):
     """delete chat request, only processing post request only, the get request is referring to edit_chat
     for the purpose of returning error and large query operations, this page will not be ajax under post request
     """
-    if request.method == "POST":
-        # validate ownership
-        chat_instance = get_object_or_404(Conversation, id=conv_pk)
-        owner_id = get_object_or_404(Creator, user_id=request.user)
-        # check permission
-        if chat_instance.creator_id == owner_id:
-            messages.success(request,f"Successfully delete the chat with title {chat_instance.title}")
-            chat_instance.delete()
-            return redirect("gptutils:main")
-        else:
-            messages.warning(request,f"Current user don't have the permission to delete the chat")
-    return redirect("gptutils:main", conv_pk=conv_pk)
+    # validate ownership
+    owner_id,chat_instance = check_is_creator(request, Conversation, "delete conversation", pk=conv_pk)
+    # check permission
+    if owner_id==None:
+        return redirect("gptutils:main", conv_pk=conv_pk)
+    messages.success(request,f"Successfully delete the chat with title {chat_instance.title}")
+    chat_instance.delete()
+    return redirect("gptutils:main")
 
 def __get_basic_context(request) -> dict:
     """return basic context environment for gptutils module"""

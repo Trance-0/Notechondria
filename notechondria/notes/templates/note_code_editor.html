@@ -1,29 +1,95 @@
 {% load static %}
+<div id="code-editor">
+<link rel="stylesheet" data-name="vs/editor/editor.main"
+    href="{% static '/monaco-editor/min/vs/editor/editor.main.css' %}" />
 
-    <link
-        rel="stylesheet"
-        data-name="vs/editor/editor.main"
-        href="{% static '/monaco-editor/min/vs/editor/editor.main.css' %}"
-    />
-    <div id="codeEditor" style="width: 100%; height: calc(100vh - 135px);"></div>
+<script>
+    var require = { paths: { vs: "{% static '/monaco-editor/min/vs' %}" } };
+</script>
+<script src="{% static '/monaco-editor/min/vs/loader.js' %}"></script>
+<script src="{% static '/monaco-editor/min/vs/editor/editor.main.nls.js' %}"></script>
+<script src="{% static '/monaco-editor/min/vs/editor/editor.main.js' %}"></script>
 
-    <script>
-        var require = { paths: { vs: "{% static '/monaco-editor/min/vs' %}" } };
-    </script>
-    <script src="{% static '/monaco-editor/min/vs/loader.js' %}"></script>
-    <script src="{% static '/monaco-editor/min/vs/editor/editor.main.nls.js' %}"></script>
-    <script src="{% static '/monaco-editor/min/vs/editor/editor.main.js' %}"></script>
 
-    <script>
-        var editor = monaco.editor.create(document.getElementById('codeEditor'), {
-            value: [`{% if noteblocks_list%}{% for blocks in noteblocks_list%}{{blocks.noteblock_id.get_md_str}}`,`{% endfor %}{% elif noteblock %}{% else %}
-You don't have any data in the noteblock or note requested. If you are not intentionally deleting the title, then the website must have some bugs."
-`,`
->「自己嫌悪って言うのは、非常に非生産的な感情だと思って、止しちゃったんです。それから、（自分を）好きになりました。」
-`,`
-> -- 三島由紀夫
-{% endif %}`].join('\n'),
+
+<!-- load extra script to replace default text (ajax, sorry) -->
+
+{% if note_form%}
+<!-- if the editor is for note -->
+{% if note_md %}
+<script>
+    var markdownText = `{{note_md}}`;
+    $(document).ready(function () {
+        window.editor = monaco.editor.create(document.getElementById('codeEditor'), {
+            value: markdownText,
             language: 'markdown'
         });
         editor.getAction('editor.action.formatDocument').run()
-    </script>
+    window.editor.onDidChangeModelContent(e => {
+        console.log(window.editor.getValue());
+    });
+    })
+</script>
+{% else %}
+<script>
+    var markdownText = [`You don't have any data in the note requested. If you are not intentionally deleting the title, then the website must have some bugs."`, `>「自己嫌悪って言うのは、非常に非生産的な感情だと思って、止しちゃったんです。それから、（自分を）好きになりました。」`, `> -- 三島由紀夫`].join('\n');
+    $(document).ready(function () {
+        window.editor = monaco.editor.create(document.getElementById('codeEditor'), {
+            value: markdownText,
+            language: 'markdown'
+        });
+        editor.getAction('editor.action.formatDocument').run()
+    })
+</script>
+{% endif %}
+<div id="auto-save" , hx-vals='js:{"note_content":window.editor.getValue(), "method":"code"}'
+    hx-post="{% url 'notes:edit_note' note_form.instance.id %}" hx-trigger="window.editor.onDidChangeModelContent from:body", hx-target="#code-editor", hx-swap="none">
+    <div id="codeEditor" style="width: 100%; height: calc(100vh - 135px);"></div>
+</div>
+
+{% elif note_block_form%}
+<!-- if the editor is for noteblock -->
+{% if noteblock_md %}
+<script>
+    var markdownText = `{{noteblock_md}}`;
+    $(document).ready(function () {
+        var editor = monaco.editor.create(document.getElementById('codeEditor'), {
+            value: markdownText,
+            language: 'markdown'
+        });
+        editor.getAction('editor.action.formatDocument').run()
+    })
+</script>
+{% else %}
+<script>
+    var markdownText = [`You don't have any data in the noteblock requested. If you are not intentionally deleting the title, then the website must have some bugs."`, `>「自己嫌悪って言うのは、非常に非生産的な感情だと思って、止しちゃったんです。それから、（自分を）好きになりました。」`, `> -- 三島由紀夫`].join('\n');
+    editor.getModel().setValue(markdownText);
+    $(document).ready(function () {
+        var editor = monaco.editor.create(document.getElementById('codeEditor'), {
+            value: markdownText,
+            language: 'markdown'
+        });
+        editor.getAction('editor.action.formatDocument').run()
+    })
+</script>
+{% endif %}
+<div id="auto-save" hx-vals='js:{"note_content":window.editor.getValue(), "method":"code"}'
+    hx-post="{% url 'notes:edit_noteblock' note_block_form.instance.id %}" hx-trigger="every 60s", hx-target="#code-editor", hx-swap="none">
+    <div id="codeEditor" style="width: 100%; height: calc(100vh - 135px);"></div>
+</div>
+{% else %}
+
+<div id="codeEditor" style="width: 100%; height: calc(100vh - 135px);"></div>
+<script>
+    editor.getModel().setValue(markdownText);
+    $(document).ready(function () {
+        var editor = monaco.editor.create(document.getElementById('codeEditor'), {
+            value: "No input value found!",
+            language: 'markdown'
+        });
+        editor.getAction('editor.action.formatDocument').run()
+    })
+</script>
+{% endif %}
+
+</div>

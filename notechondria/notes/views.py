@@ -6,9 +6,10 @@ import json
 import logging
 
 from django.http import HttpResponseNotFound
-from notechondria.utils import get_object_or_None,generate_unique_id,load_form_error_to_messages
+from django.views.decorators.http import require_POST, require_GET
+from notechondria.utils import get_object_or_None,generate_unique_id,load_form_error_to_messages,check_is_creator
 from django.shortcuts import get_object_or_404, redirect, render
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.decorators import login_required
 from creators.models import Creator
 from .models import Note, NoteBlock, NoteIndex, Tag, ValidationRecord, NoteBlockTypeChoices, NoteIndex
 from .forms import NoteForm, NoteBlockForm
@@ -19,6 +20,7 @@ logger=logging.getLogger()
 # Create your views here.
 
 @login_required
+@require_GET
 def list_notes(request):
     """ render list of notes for user, search will using post requests
 
@@ -43,6 +45,7 @@ def list_notes(request):
 @login_required
 def edit_note(request, note_id):
     """I will not use formset because there are too many restrictions and don't support many to many field.
+    this function supports for block editor and code editor
     
     Args:
         note_id: id of Note
@@ -51,41 +54,54 @@ def edit_note(request, note_id):
         request: return note editor with note meta form, noteIndex as handlers.
     
     """
-    # load basic context
-    owner_id = get_object_or_404(Creator, user_id=request.user)
     context={}
+    # load basic context
+    owner_id,note_instance=check_is_creator(request, Note, "edit", pk=note_id)
+    # test ownership
+    if owner_id==None:
+        messages.warning(request,"You don't have access to this page.")
+        return redirect("home")
     if request.method == "POST":
-        # we might at feature photo form each post, so just assume have files
-        note_form = NoteForm(
-            request.POST, request.FILES, instance=get_object_or_404(Note, pk=note_id)
-        )
-        if not note_form.is_valid():
-            for key, value in note_form.errors.items():
-                messages.error(request, f"validation error on field {key}:{[error for error in value]}")
-            return redirect("notes:edit_note", note_id=note_id)
-        note_instance = note_form.save(commit=False)
-        # test ownership
-        if note_instance.owner_id != owner_id:
-            messages.warning(request,"You don't have access to this page.")
-            return redirect("home")
-        note_instance.save()
-        # success
-        messages.success(request,"edit note block success")
-        context["note_form"]=note_form
+        # default save method is for block_editor
+        save_method=request.POST.get("method", "form")
+        if save_method=="form":
+            # we might at feature photo form each post, so just assume have files
+            note_form = NoteForm(
+                request.POST, request.FILES, instance=note_instance
+            )
+            if not note_form.is_valid():
+                for key, value in note_form.errors.items():
+                    messages.error(request, f"validation error on field {key}:{[error for error in value]}")
+                return redirect("notes:edit_note", note_id=note_id)
+            note_instance = note_form.save(commit=False)
+            note_instance.save()
+            # success
+            messages.success(request,"edit note block success")
+            context["note_form"]=note_form
+        elif save_method=="code":
+            # debug
+            logger.info(request.POST)
+            
+            # test if note exist
+            context["note_form"] = NoteForm(instance=note_instance)
+            note_indexes= NoteIndex.objects.filter(note_id=note_instance).order_by("index")
+            context["noteblocks_list"] = note_indexes
+            context["note_md"]='\n'.join([i.noteblock_id.get_md_str() for i in note_indexes])
+            return render(request,"note_code_editor.html",context=context)
     # process get request
     else:
         # test if note exist
-        note_instance = get_object_or_404(Note, pk=note_id)
         context["note_form"] = NoteForm(instance=note_instance)
         # noteblocks
         note_indexes= NoteIndex.objects.filter(note_id=note_instance).order_by("index")
         context["noteblocks_list"] = note_indexes
+        context["note_md"]='\n'.join([i.noteblock_id.get_md_str() for i in note_indexes])
     return render(request,"note_editor.html",context=context)
 
 @login_required
-def edit_block(request, note_handle_id):
-    """Edit single block using htmx, also responsible for adding new noteblock if noteblock_id given is -1 (create dummy block with handles on note).
-    
+def edit_block(request, noteblock_id):
+    """Edit single block using htmx, not responsible for edit block reference (NoteIndex) and this feature should be implement in the future.
+
     Args:
         note_handle_id: id of NoteBlock handle object, creation of note block on the process is handled by insert_block function, if the current handle is not root handle, then we may return a **reference form** (to be implemented)
 
@@ -94,57 +110,60 @@ def edit_block(request, note_handle_id):
     
     """
     context={}
-    owner_id= get_object_or_None(Creator, user_id=request.user)
-    # early terminate
+    owner_id,prev_instance=check_is_creator(request, NoteBlock, "edit", pk=noteblock_id)
     if owner_id==None:
-        messages.error(request,"User not found.")
-        return render(request,"htmx_edit_noteblock.html",context=context)
-    note_handle_instance=get_object_or_None(NoteIndex, pk=note_handle_id)
-    if note_handle_instance==None:
         return render(request,"htmx_edit_noteblock.html",context=context)
     # create new noteblock
     noteblock_form = NoteBlockForm()
-    # load noteblock parameters
-    prev_instance=note_handle_instance.noteblock_id
+    # load handle parameters
+    # check root handle
+    if prev_instance.note_id==None:
+        messages.error(request,"Noteblock is corrupted, note_id not found where it is expected to be found.")
+        return render(request,"htmx_edit_noteblock.html",context=context)
+    note_handle_instance=get_object_or_None(NoteIndex,note_id=prev_instance.note_id, noteblock_id=prev_instance)
     # load noteblock handle
     context["noteblock_handle"]=note_handle_instance
     if request.method=="POST":
-        noteblock_form=NoteBlockForm(request.POST,request.FILES,instance=prev_instance)
-        # we might at feature photo form each post, so just assume have files
-        if not noteblock_form.is_valid():
-            load_form_error_to_messages(request,noteblock_form)
-            return render(request,"htmx_edit_noteblock.html",context=context)
-        noteblock_instance=noteblock_form.save(commit=False)
-        noteblock_instance.is_AI_generated=request.POST.get('is_AI_generated', '')=='on'
-        # test creator id
-        # creator_id= get_object_or_None(Creator, user_id=noteblock_form.cleaned_data["creator_id"])
-        # if creator_id!=owner_id:
-        #     messages.error(request,"Incorrect permission found, we have not implement ownership transfer yet.")
-        #     return render(request,"htmx_edit_noteblock.html",context=context)
-        noteblock_instance.creator_id=prev_instance.creator_id
-        # test note id
-        # note_id=get_object_or_None(Note,pk=noteblock_form.cleaned_data["note_id"])
-        # if note_id!=prev_instance.note_id:
-        #     messages.error(request,"Incorrect note found, we have not implement note transfer yet.")
-        #     return render(request,"htmx_edit_noteblock.html",context=context)
-        noteblock_instance.note_id=prev_instance.note_id
-        noteblock_instance.save()
-        noteblock_form = NoteBlockForm(instance=noteblock_instance,auto_id=f"nb_{noteblock_instance.id}_id_%s")
+        save_method=request.POST.get("method", "form")
+        if save_method=="form":
+            noteblock_form=NoteBlockForm(request.POST,request.FILES,instance=prev_instance)
+            # we might at feature photo form each post, so just assume have files
+            if not noteblock_form.is_valid():
+                load_form_error_to_messages(request,noteblock_form)
+                return render(request,"htmx_edit_noteblock.html",context=context)
+            noteblock_instance=noteblock_form.save(commit=False)
+            noteblock_instance.is_AI_generated=request.POST.get('is_AI_generated', '')=='on'
+            # test creator id
+            # creator_id= get_object_or_None(Creator, user_id=noteblock_form.cleaned_data["creator_id"])
+            # if creator_id!=owner_id:
+            #     messages.error(request,"Incorrect permission found, we have not implement ownership transfer yet.")
+            #     return render(request,"htmx_edit_noteblock.html",context=context)
+            noteblock_instance.creator_id=prev_instance.creator_id
+            # test note id
+            # note_id=get_object_or_None(Note,pk=noteblock_form.cleaned_data["note_id"])
+            # if note_id!=prev_instance.note_id:
+            #     messages.error(request,"Incorrect note found, we have not implement note transfer yet.")
+            #     return render(request,"htmx_edit_noteblock.html",context=context)
+            noteblock_instance.note_id=prev_instance.note_id
+            noteblock_instance.save()
+            noteblock_form = NoteBlockForm(instance=noteblock_instance,auto_id=f"nb_{noteblock_instance.id}_id_%s")
+        elif save_method=="code":
+            # debug
+            logger.info(request.POST)
+            
+            context["noteblock_form"]=noteblock_form
+            context["noteblock_md"]=noteblock_form.instance.get_md_str()
+            return render(request,"note_code_editor.html",context=context)
     # render get request
     # update if there exists an instance for requested
     else:
-        if prev_instance==None:
-            messages.error("Noteblock with id not found")
-            return render(request,"htmx_edit_noteblock.html",context=context)
-        # check permission
-        if prev_instance.creator_id!=owner_id:
-            messages.error("You don't have permission to edit this noteblock")
-            return render(request,"htmx_edit_noteblock.html",context=context)
         noteblock_form = NoteBlockForm(instance=prev_instance,auto_id=f"nb_{prev_instance.id}_id_%s")
     context["noteblock_form"]=noteblock_form
+    context["noteblock_md"]=noteblock_form.instance.get_md_str()
     return render(request,"htmx_edit_noteblock.html",context=context)
 
 @login_required
+@require_POST
 def insert_block(request, note_id, noteblock_id):
     """insert before the noteblock_id and create new noteblock with handler, process post request only (security)
     No self referencing should be allowed, or the code needs to be change dramatically. and insert reference should be implement separately.
@@ -158,15 +177,8 @@ def insert_block(request, note_id, noteblock_id):
     """
     context={}
     if request.method=="POST":
-        owner_id= get_object_or_None(Creator, user_id=request.user)
-        # early terminate
+        owner_id,note_instance= check_is_creator(request, Note, "insert block", pk=note_id)
         if owner_id==None:
-            messages.error(request,"User not found.")
-            return render(request,"note_block_editor.html",context=context)
-        # load target note
-        note_instance=get_object_or_None(Note, pk=note_id)
-        if note_instance.creator_id!=owner_id:
-            messages.error(request,"You don't have permission to edit this page")
             return render(request,"note_block_editor.html",context=context)
         noteblock_handlers=list(NoteIndex.objects.filter(note_id=note_id).order_by("index"))
         new_block=NoteBlock.objects.create(creator_id=owner_id,note_id=note_instance,block_type=NoteBlockTypeChoices.TEXT,is_AI_generated=False,text="")
@@ -286,12 +298,11 @@ def reorder_blocks(request,note_id):
     # reordering
 
     # test if note exist
-    note_instance = get_object_or_None(Note, pk=note_id)
-    context["note_form"] = NoteForm(instance=note_instance)
-    # noteblocks
+    _,note_instance = check_is_creator(request, Note, "reorder", pk=note_id)
     if note_instance==None:
         messages.error("Note not found")
         return render(request, "note_block_editor_core.html",context)
+    context["note_form"] = NoteForm(instance=note_instance)
     note_indexes= list(NoteIndex.objects.filter(note_id=note_instance).order_by("index"))
     logger.info(f'received item: {request.POST.get("item")}')
     order_list=json.loads(request.POST.get("item"))

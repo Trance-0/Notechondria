@@ -14,7 +14,7 @@
     </form>
 
     <!-- do htmx for each block -->
-    <div hx-get="{% url 'notes:edit_noteblock' blocks.id %}" hx-swap="outerHTML"  hx-vals="unset" hx-trigger="load">
+    <div hx-get="{% url 'notes:edit_noteblock' blocks.noteblock_id.id %}" hx-swap="outerHTML"  hx-vals="unset" hx-trigger="intersect">
       <!-- placeholder card, reference:https://getbootstrap.com/docs/5.3/components/placeholders/ -->
       <div class="card mb-3" aria-hidden="true">
         <img src="{% static 'images/blank_grey.png' %}" class="card-img-top" style="max-height: 100px;"
