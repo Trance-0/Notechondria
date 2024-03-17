@@ -45,7 +45,7 @@
                             </div>
                         </nav>
                     </div>
-                    <div class="tab-content" id="nav-tabContent">
+                    <div class="tab-content" style="overflow: auto; padding-right: 1px;" id="nav-tabContent">
                         <div class="tab-pane fade show active" id="nav-note" role="tabpanel" aria-labelledby="nav-note"
                             tabindex="0">
                             <div class="card-body">
@@ -55,7 +55,7 @@
                                     <div class="col">
                                         <div class="card mb-3">
                                             {% if note_handle.get_image != None %}
-                                            <img src="{{note_handle.get_image.image}}" class="card-img-top"
+                                            <img src="{{note_handle.get_image.image.url}}" class="card-img-top"
                                                 alt="{{note_handle.get_image.text}}">
                                             {% endif %}
                                             <div class="card-body">
@@ -110,7 +110,7 @@
                                     <div class="col">
                                         <div class="card mb-3">
                                             {% if noteblock.image and noteblock.image != None %}
-                                            <img src="{{noteblock.image}}" class="card-img-top"
+                                            <img src="{{noteblock.image.url}}" class="card-img-top"
                                                 alt="{{noteblock.text}}">
                                             {% endif %}
                                             <div class="card-body">

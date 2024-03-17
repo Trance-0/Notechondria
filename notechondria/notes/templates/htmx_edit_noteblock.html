@@ -1,38 +1,62 @@
 {% load static%}
-  <!-- This template will only be called for note block editor to render noteblocks -->
-  {% if noteblock_form %}
-  {% if noteblock_form.instance %}
+<!-- This template will only be called for note block editor to render noteblocks -->
+{% if noteblock_form %}
+{% if noteblock_form.instance %}
 
-  {% if noteblock_handle %}
-  
-  </div>
-  <form hx-post="{% url 'notes:edit_noteblock' noteblock_handle.id %}" hx-encoding="multipart/form-data"
-    hx-target="#block-editor" hx-vals="unset" hx-swap="outerHTML">
-    <div class="card mb-3">
-      <div class="card-body">
-        <!-- Use jQuery to hide advanced options -->
-        {% csrf_token %}
-        <!-- Django overkill form -->
-        <!-- Include the hidden fields -->
-        {% for hidden in noteblock_form.hidden_fields %}
-        {{ hidden }}
-        {% endfor %}
-        <!-- Include the visible fields  -->
-        {% for field in noteblock_form.visible_fields %}
-        <div class="mb-3">
-          {%if field.errors%}
+{% if noteblock_handle %}
+
+</div>
+<form hx-post="{% url 'notes:edit_noteblock' noteblock_handle.noteblock_id.id %}" hx-encoding="multipart/form-data"
+  hx-vals="unset" hx-swap="outerHTML">
+  <div class="card mb-3">
+    <div class="card-body row">
+      <!-- Use jQuery to hide advanced options -->
+      {% csrf_token %}
+      <!-- Django overkill form -->
+      <!-- Include the hidden fields -->
+      {% for hidden in noteblock_form.hidden_fields %}
+      {{ hidden }}
+      {% endfor %}
+      <!-- Include the visible fields  -->
+      {% for field in noteblock_form.visible_fields %}
+      <!-- {{ field.name }} -->
+      {% if field.name == "block_type" %}
+      <div class="mb-3 col-md-6">
+        {% elif field.name == "is_AI_generated"%}
+        
+      <div class="mb-3 col-md-6 align-self-end">
+        {% else %}
+        <div class="mb-3 col-md-12">
+          {% endif %}
+          {% if field.errors %}
           <div class="alert alert-danger">
             {% for error in field.errors %}
             {{ error }}
             {% endfor %}
           </div>
           {% endif %}
-          <label for="{{ field.id_for_label }}" class="form-label">
-            {{ field.label }}
-          </label>
-          {{ field }}
-          {% if field.help_text %}
-          <div class="form-text">{{ field.help_text|safe }}</div>
+          {% if field.name == 'is_AI_generated' %}
+          <div class="form-check">
+            {% endif %}
+            {% if field.help_text %}
+            <span class="d-inline-block" tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus"
+              data-bs-content="{{ field.help_text|safe }}">
+              <label for="{{ field.id_for_label }}"
+                class="{% if field.name == 'is_AI_generated' %} form-check-label {% else %}form-label{% endif %}">
+                {{ field.label }}
+              </label>
+              {{ field }}
+            </span>
+            {% else %}
+            <label for="{{ field.id_for_label }}"
+              class="{% if field.name == 'is_AI_generated' %} form-check-label {% else %}form-label{% endif %}">
+              {{ field.label }}
+            </label>
+            {{ field }}
+            {% endif %}
+
+            {% if field.name == 'is_AI_generated' %}
+          </div>
           {% endif %}
         </div>
         {% endfor %}
@@ -40,7 +64,8 @@
       <div class="card-footer">
         <div class="row justify-content-between">
           <div class="col-auto">
-            <div hx-get="{% url 'notes:delete_blockIndex' noteblock_handle.id %}" class="btn btn-danger" hx-target="#noteblock-delete" hx-swap="innerHTML">Delete</div>
+            <div hx-get="{% url 'notes:delete_blockIndex' noteblock_handle.id %}" class="btn btn-danger"
+              hx-target="#noteblock-delete" hx-swap="innerHTML">Delete</div>
           </div>
           <div class="col-auto">
             <div class="row">
@@ -52,23 +77,33 @@
           </div>
         </div>
       </div>
-  </form>
+</form>
 
-  <script src="{% static 'notechondria/js/toggle-noteblock-widgets.js' %}"></script>
-  {% else %}
-  <div class="alert alert-danger mt-3 ms-3 me-3">
-    Note block handle not found.
-  </div>
-  {% endif %}
-  {% else %}
-  <div class="alert alert-danger mt-3 ms-3 me-3">
-    Note block instance not found.
-  </div>
-  {% endif %}
-  {% else %}
-  <div class="alert alert-danger mt-3 ms-3 me-3">
-    Note block not found.
-  </div>
-  {% endif %}
+<script src="{% static 'notechondria/js/toggle-noteblock-widgets.js' %}"></script>
 
-  {% include "message_display.html"%}
+<!-- enable popover -->
+
+<script>
+  var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
+  var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+    return new bootstrap.Popover(popoverTriggerEl)
+  })
+</script>
+
+{% else %}
+<div class="alert alert-danger mt-3 ms-3 me-3">
+  Note block handle not found.
+</div>
+{% endif %}
+{% else %}
+<div class="alert alert-danger mt-3 ms-3 me-3">
+  Note block instance not found.
+</div>
+{% endif %}
+{% else %}
+<div class="alert alert-danger mt-3 ms-3 me-3">
+  Note block not found.
+</div>
+{% endif %}
+
+{% include "message_display.html"%}

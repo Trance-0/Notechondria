@@ -1,3 +1,153 @@
-<!-- Note block render using pure html -->
-{% if noteblock_list %}
-{% else %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    {% if note%}
+    <title>  </title>
+    <style>
+        .fill-height {
+            height: calc(100vh - 82px);
+            /* Adjust the navbar height as needed */
+        }
+    </style>
+
+    {% load static %}
+
+    {% include "resource_header.html" %}
+
+</head>
+
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+
+    {% include "navbar.html" %}
+
+    <main class="container-fluid align-items-center fill-height">
+        <div class="row g-2 h-100">
+            <div class="col-md-9 mt-3 h-100">
+                <div class="card mb-3 h-100">
+                    <div class="card-header">
+                        <nav>
+                            <div class="nav nav-tabs card-header-tabs" id="nav-tab" role="tablist">
+                                <button class="nav-link" id="nav-block-tab" data-bs-toggle="tab"
+                                    data-bs-target="#nav-block-edit" type="button" role="tab"
+                                    aria-controls="nav-block-edit" aria-selected="true">
+                                    Block editor
+                                </button>
+                                <button class="nav-link active" id="nav-text-tab" data-bs-toggle="tab"
+                                    data-bs-target="#nav-text-edit" type="button" role="tab"
+                                    aria-controls="nav-text-edit" aria-selected="false">
+                                    Text editor
+                                </button>
+                                <button class="nav-link" id="nav-file-tab" data-bs-toggle="tab"
+                                    data-bs-target="#nav-file-gen" type="button" role="tab" aria-controls="nav-file-gen"
+                                    aria-selected="false" disabled>
+                                    Generate from file
+                                </button>
+                            </div>
+                        </nav>
+                    </div>
+                    <div class="tab-content" style="overflow: auto; padding-right: 1px;" id="nav-tabContent">
+                        <div class="tab-pane fade" id="nav-block-edit" role="tabpanel" aria-labelledby="nav-block-tab"
+                            tabindex="0">
+                            <div class="card-body">
+                                {% include "note_block_editor.html" %}
+                            </div>
+                        </div>
+                        <div class="tab-pane fade show active" id="nav-text-edit" role="tabpanel"
+                            aria-labelledby="nav-text-tab" tabindex="0">
+                            {% include "note_code_editor.html" %}
+                        </div>
+                        <div class="tab-pane fade" id="nav-file-gen" role="tabpanel" aria-labelledby="nav-file-tab"
+                            tabindex="0">
+                            <div class="card-body">
+                                {% include "note_file_editor.html" %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <aside class="col-md-3 blog-sidebar mt-3 mb-3 h-100">
+                <!-- The side panel is used to render meta data for notes, note list would be render separately.-->
+                <div class="card h-100 mb-3">
+                    <div class="card-body">
+                        {% if note_form %}
+                        <h5 class="card-title">Note meta</h5>
+                        <form action="{% url 'notes:edit_note' note_form.instance.id %}" method="post"
+                            enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <!-- Django overkill form -->
+                            <!-- Include the hidden fields -->
+                            {% for hidden in note_form.hidden_fields %}
+                            {{ hidden }}
+                            {% endfor %}
+                            <!-- Include the visible fields  -->
+                            {% for field in note_form.visible_fields %}
+                            <div class="mb-3">
+                                {%if field.errors%}
+                                <div class="alert alert-danger">
+                                    {% for error in field.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <label for="{{ field.id_for_label }}" class="form-label">
+                                    {{ field.label }}
+                                </label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                <div class="form-text">{{ field.help_text|safe }}</div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                            <div class=" row">
+                                <div class="col-auto">
+                                    <button type="submit" class="btn btn-primary">Save meta</button>
+                                    <!-- add a save all here -->
+                                </div>
+                            </div>
+                        </form>
+                        {% else %}
+                        <div class="modal-body">
+                            <div class="alert alert-danger" role="alert">
+                                Note form not received from server
+                            </div>
+                        </div>
+                        {% endif %}
+                        <h5 class="card-title mt-3"> Upload file or image </h5>
+                        <!-- customize form for upload file or image to target noteblock -->
+                        <input id="myinput" class="form-control" type="file" onchange="encode();" />
+                        <div id="dummy">
+                        </div>
+                        <div>
+                            <textarea class="form-control mt-3" rows=10 id="txt" readonly>
+                        </textarea>
+                        </div>
+                        <script>
+                            function encode() {
+                                var selectedfile = document.getElementById("myinput").files;
+                                if (selectedfile.length > 0) {
+                                    var imageFile = selectedfile[0];
+                                    var fileReader = new FileReader();
+                                    fileReader.onload = function (fileLoadedEvent) {
+                                        var srcData = fileLoadedEvent.target.result;
+                                        var newImage = document.createElement('img');
+                                        newImage.className += "card-img mt-3"
+                                        newImage.src = srcData;
+                                        document.getElementById("dummy").innerHTML = newImage.outerHTML;
+                                        document.getElementById("txt").value = document.getElementById("dummy").innerHTML;
+                                    }
+                                    fileReader.readAsDataURL(imageFile);
+                                }
+                            }
+                        </script>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+</body>
+
+<!-- TODO: create footer here -->

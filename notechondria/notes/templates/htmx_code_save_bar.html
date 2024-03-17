@@ -1,0 +1,47 @@
+<div id="auto-save-bar">
+    <!-- load extra script to replace default text, triggered by editor event-->
+    <form class="row gy-2 gx-3 align-items-center" hx-post="{% url 'notes:edit_note' note_form.instance.id %}" hx-trigger="editorChanged delay:1000ms from:body, submit" hx-vals="js:{method:code,md_str:window.editor.getValue()}" hx-swap="outerHTML" hx-target="auto-save-bar">
+        <button type="submit">Save</button>
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckChecked" checked>
+            <label class="form-check-label" for="flexSwitchCheckChecked">Auto save</label>
+          </div>
+        <div class="col-auto">
+            <div id="saveStatus" class="alert alert-secondary d-inline-flex align-items-center">No change detected</div>
+        </div>
+    </form>
+    <!-- auto save script-->
+<script>
+    // reference: https://stackoverflow.com/a/37055590
+    var $status = $('#saveStatus'),
+        timeoutId;
+
+
+    editor.onDidChangeModelContent(e => { // or keyup to detect backspaces
+        $status.attr('class', 'alert alert-warning').text('Changes pending');
+
+        console.log(window.editor.getValue());
+        // If a timer was already started, clear it.
+        if (timeoutId) clearTimeout(timeoutId);
+
+        // Set timer that will save comment when it fires.
+        timeoutId = setTimeout(function () {
+            // Make ajax call to save data.
+            $status.attr('class', 'alert alert-success').text('Changes saved');
+        }, 3000);
+    });
+</script>
+</div>
+{% if note_form%}
+    <!-- if the editor is for note -->
+    {% if note_md %}
+
+    {% else %}
+    {% endif %}
+    {% elif note_block_form%}
+    <!-- if the editor is for noteblock -->
+    {% if noteblock_md %}
+
+    {% else %}
+    {% endif %}
+{% endif %}

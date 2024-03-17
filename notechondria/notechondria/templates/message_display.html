@@ -1,20 +1,13 @@
 {% if messages %}
 {% for message in messages %}
-<style>
-    /* reference: https://stackoverflow.com/a/21388637 */
-    .error-message {
-        animation: fadeOut 2s forwards;
-        animation-delay: 3s;
-    }
-
-    @keyframes fadeOut {
-        from {opacity: 1;}
-        to {opacity: 0;}
-    }
-</style>
 <div
-    class="{% if message.tags %}{% if message.tags == 'debug' %}alert alert-light{% elif message.tags == 'error'%}alert alert-danger{% else %}alert alert-{{message.tags}}{% endif %}{% endif %} mt-3 ms-3 me-3 error-message">
+    class="{% if message.tags %}{% if message.tags == 'debug' %}alert alert-light{% elif message.tags == 'error'%}alert alert-danger{% else %}alert alert-{{message.tags}}{% endif %}{% endif %} mt-3 ms-3 me-3" id="message-{{forloop.counter0}}">
     {{ message }}
+    <script>
+        setTimeout(function() {
+            $('#message-{{forloop.counter0}}').fadeOut('fast');
+        }, 1000*"{{forloop.counter0}}");
+    </script>
 </div>
 {% endfor %}
 {% endif %}

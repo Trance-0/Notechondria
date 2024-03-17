@@ -44,7 +44,7 @@ class NoteBlockTypeChoices(models.TextChoices):
     # humanities
     QUOTE = "Q", _("Quote")
     IMAGES = "I", _("Images")
-    FILES = "F", _("Files")
+    # FILES = "F", _("Files")
     LIST = "L", _("List")
     # embedded elements
     HTML = "H", _("HTML")
@@ -56,7 +56,7 @@ def note_file_path(instance, filename):
 
     A note block can only have one file or image, you need to validate that in form
     """
-    return "user_upload/user_{0}/notes/noteblock_{2}/{3}".format(instance.conversation_id.creator_id.user_id.id, instance.conversation_id.id, instance.id, filename)
+    return "user_upload/user_{0}/notes/noteblock_{1}/{2}".format(instance.creator_id.user_id.id, instance.id, filename)
 
 
 class NoteBlock(models.Model):
@@ -109,21 +109,24 @@ class NoteBlock(models.Model):
         elif type==NoteBlockTypeChoices.SUBTITLE:
             return f'{self.args} {self.text}'
         elif type==NoteBlockTypeChoices.EXAMPLE:
-            return f'Example:     \n {self.text}'
+            return f'Example:     \n{self.text}'
         elif type==NoteBlockTypeChoices.PROOF:
-            return f'Proof:     \n {self.text}'
+            return f'Proof:     \n{self.text}'
         elif type==NoteBlockTypeChoices.CODE:
-            return f'```{self.args}\n{self.text}\n```'
+            return f'\`\`\`{self.args}\n{self.text}\n\`\`\`'
         elif type==NoteBlockTypeChoices.QUOTE:
             if self.args:
                 return f'>{self.text}\n> -- cited from: {self.args}'
-            return f'>{self.text}'
+            return f'> {self.text}'
         elif type==NoteBlockTypeChoices.IMAGES:
-            return f'![{self.text}]({self.image.url})'
-        elif type==NoteBlockTypeChoices.FILES:
-            return f'[{self.text}]({self.file.url})'
+            if self.image.url!="/media/False":
+                return f'![{self.text}]({self.image.url})'
+            else:
+                return f'![{self.text}]()'
+        # elif type==NoteBlockTypeChoices.FILES:
+        #     return f'[{self.text}]({self.file.url})'
         elif type==NoteBlockTypeChoices.LIST:
-            return self.text
+            return "* ".join(self.text.split('\n'))
         elif type==NoteBlockTypeChoices.HTML:
             return self.text
         else:

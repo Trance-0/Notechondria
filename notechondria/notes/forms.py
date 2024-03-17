@@ -8,7 +8,7 @@ from PIL import Image
 from django import forms
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
-from django.core.validators import MaxValueValidator, MinValueValidator
+from django.core.validators import URLValidator
 from django.contrib.auth.models import User
 from .models import NoteBlock,Note,NoteBlockTypeChoices
 
@@ -46,8 +46,13 @@ class NoteBlockForm(forms.ModelForm):
         ("javascript", _("JavaScript")),
     )
 
+    SUBTITLE_LEVEL=(("##", _("Chapter title")),
+        ("###", _("Section title")),
+        ("####", _("Subsection title")),
+    )
+
     # name of type based widgets
-    TYPE_BASED_WIDGETS=["image","file","coding_language_choice"]
+    TYPE_BASED_WIDGETS=["image","file","coding_language_choice","subtitle_choice","url"]
 
     text = forms.CharField(widget=forms.Textarea())
     is_AI_generated = forms.BooleanField(widget=forms.CheckboxInput(),
@@ -55,7 +60,9 @@ class NoteBlockForm(forms.ModelForm):
     image = forms.ImageField(required=False)
     file = forms.FileField(required=False)
     coding_language_choice=forms.ChoiceField(choices=SUPPORTING_LANGUAGE)
-    index=forms.IntegerField(widget=forms.HiddenInput(),required=False)
+    subtitle_choice=forms.ChoiceField(choices=SUBTITLE_LEVEL)
+    url=forms.CharField(validators=[URLValidator],required=False)
+    # index=forms.IntegerField(widget=forms.HiddenInput(),required=False)
     # note_id=forms.IntegerField(widget=forms.HiddenInput())
     # creator_id=forms.IntegerField(widget=forms.HiddenInput())
     
@@ -74,8 +81,10 @@ class NoteBlockForm(forms.ModelForm):
             "image",
             "file",
             "coding_language_choice",
+            "subtitle_choice",
             "text",
-            "index",
+            # "index",
+            "url",
             # "note_id",
             # "creator_id"
         ]
@@ -93,7 +102,7 @@ class NoteBlockForm(forms.ModelForm):
         self.fields["text"].widget.attrs["rows"] = 6
         self.fields["text"].widget.attrs["class"] += " w-100"
         # set is ai generated attribute
-        self.fields["is_AI_generated"].widget.attrs["class"]+="form-check-input"
+        self.fields["is_AI_generated"].widget.attrs["class"]="form-check-input"
         self.fields["is_AI_generated"].widget.attrs["type"]="checkbox"
         self.fields["is_AI_generated"].label="Is AI generated"
         # add class to type based widgets
@@ -102,14 +111,22 @@ class NoteBlockForm(forms.ModelForm):
         if self.instance.pk!=None:
             # load default variable based on block type
             if self.instance.block_type== NoteBlockTypeChoices.CODE:
-                self.fields["coding_language_choice"].initial = self.instance.args
+                self.fields["coding_language_choice"].initial = self.instance.args  
+            elif self.instance.block_type== NoteBlockTypeChoices.SUBTITLE:
+                self.fields["subtitle_choice"].initial = self.instance.args
+            elif self.instance.block_type==NoteBlockTypeChoices.URL:
+                self.fields["url"].initial = self.instance.args
 
     def save(self, commit: bool = ...) -> NoteBlock:
         noteblock_instance=super(NoteBlockForm, self).save(commit=False)
         # fill args and others based on block_type
         block_type=self.cleaned_data["block_type"] 
-        if block_type== "C":
+        if block_type == "C":
             noteblock_instance.args=self.cleaned_data["coding_language_choice"]
+        elif block_type == "U":
+            noteblock_instance.args=self.cleaned_data["url"]
+        elif block_type == "S":
+            noteblock_instance.args=self.cleaned_data["subtitle_choice"]
         elif block_type=="I":
             noteblock_instance.image=self.cleaned_data["image"]
         elif block_type=="F":

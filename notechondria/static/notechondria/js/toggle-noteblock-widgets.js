@@ -6,38 +6,44 @@ $(document).ready(function () {
             // console.log(this.id);
             var prefix=this.id.match(/^nb_\d+_/)[0];
             // console.log(prefix);
-            var blockType = $("#"+prefix+"id_block_type").find(":selected").val();
-            toggleWidgets(blockType,prefix);
+            var block= $("#"+prefix+"id_block_type")
+            var blockType = block.find(":selected").val();
+            // console.log(blockType);
+            toggleWidgets(block.parent().parent(),blockType,prefix);
         });
 
     // the default is for create_noteblock_htmx
-    var blockType = $("#id_block_type").find(":selected").val();
-    // console.log(blockType);
-    toggleWidgets(blockType);
-    // add class to widget
-    $("#id_is_AI_generated").parent().addClass("form-check");
-
+    var block=$("#id_block_type")
+    var blockType = block.find(":selected").val();
+    if (blockType!==undefined){
+        // console.log("model form block type: "+blockType);
+        toggleWidgets(block.parent().parent(),blockType);
+        // add class to widget
+        $("#id_is_AI_generated").parent().addClass("form-check");
+    }
     // section for edit_noteblock_htmx, id given by "nb_{noteid}_field_name"
 });
 
 $('select[id^="nb"][id$="id_block_type"]').on("change", function () {
     var prefix=this.id.match(/^nb_\d+_/)[0];
     // console.log(prefix);
-    var blockType = $("#"+prefix+"id_block_type").find(":selected").val();
-    toggleWidgets(blockType,prefix);
-    // alert("change detected");
+    var block=$("#"+prefix+"id_block_type")
+    var blockType = block.find(":selected").val();
+    // console.log("change on block form detected");
+    toggleWidgets(block.parent().parent(),blockType,prefix);
 });
 
 $("#id_block_type").on("change", function () {
-    toggleWidgets(this.value);
-    // alert("change detected");
+    // console.log("change on model form detected");
+    toggleWidgets(this.parent().parent(),this.value);
 });
 
-function toggleWidgets(option,prefix="") {
+function toggleWidgets(rootDiv,option,prefix="") {
+    // console.log("received parent: "+rootDiv.className)
     // hide all 
-    $(".type-based-widgets").parent().hide();
+    rootDiv.find(".type-based-widgets").parent().hide();
     $("#"+prefix+"id_text").attr("rows", "6");
-    // console.log(option);
+    // console.log("received option and prefix:"+option+prefix);
     // show by condition
     switch (option) {
         case "C":
@@ -56,8 +62,10 @@ function toggleWidgets(option,prefix="") {
             break;
         case "U":
             $("#"+prefix+"id_text").attr("rows", "1");
+            $("#"+prefix+"id_url").parent().show();
             break;
         case "S":
             $("#"+prefix+"id_text").attr("rows", "3");
+            $("#"+prefix+"id_subtitle_choice").parent().show();
     }
 }

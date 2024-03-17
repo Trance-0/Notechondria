@@ -76,4 +76,19 @@
     </div>
   </div>
   {% endif %}
+
+<!-- auto resize textarea, but not useful -->
+
+  <script>
+    $("textarea").each(function () {
+    this.setAttribute("style", "height:" + (this.scrollHeight) + "px;overflow-y:scroll;");
+    }).on("input", function () {
+    this.style.height = 0;
+    // console.log(this.scrollHeight);
+    this.style.height = Math.min(300,(this.scrollHeight)) + "px";
+    });
+</script>
+
+
+
 </div>

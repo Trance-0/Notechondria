@@ -4,6 +4,7 @@ Also, you can modify models here (back-end)
 """
 import json
 import logging
+import re
 
 from django.http import HttpResponseNotFound
 from django.views.decorators.http import require_POST, require_GET
@@ -35,7 +36,7 @@ def list_notes(request):
     # for other queries, use NoteIndex.objects.union()
     context["note_list"]=note_list
     # and user's noteblock
-    noteblock_list= NoteBlock.objects.filter(creator_id=owner_id)
+    noteblock_list= NoteBlock.objects.filter(creator_id=owner_id,note_id=None)
     # for other queries, use NoteIndex.objects.union()
     context["noteblock_list"]=noteblock_list
     return render(request,"note_list.html",context=context)
@@ -86,7 +87,7 @@ def edit_note(request, note_id):
             context["note_form"] = NoteForm(instance=note_instance)
             note_indexes= NoteIndex.objects.filter(note_id=note_instance).order_by("index")
             context["noteblocks_list"] = note_indexes
-            context["note_md"]='\n'.join([i.noteblock_id.get_md_str() for i in note_indexes])
+            context["note_md"]='\n\n'.join([i.noteblock_id.get_md_str() for i in note_indexes])
             return render(request,"note_code_editor.html",context=context)
     # process get request
     else:
@@ -95,7 +96,7 @@ def edit_note(request, note_id):
         # noteblocks
         note_indexes= NoteIndex.objects.filter(note_id=note_instance).order_by("index")
         context["noteblocks_list"] = note_indexes
-        context["note_md"]='\n'.join([i.noteblock_id.get_md_str() for i in note_indexes])
+        context["note_md"]='\n\n'.join([i.noteblock_id.get_md_str() for i in note_indexes])
     return render(request,"note_editor.html",context=context)
 
 @login_required
@@ -145,6 +146,8 @@ def edit_block(request, noteblock_id):
             #     messages.error(request,"Incorrect note found, we have not implement note transfer yet.")
             #     return render(request,"htmx_edit_noteblock.html",context=context)
             noteblock_instance.note_id=prev_instance.note_id
+            # sanitize noteblock string
+            noteblock_instance.text=re.sub(r'(\r\n.?)+', r'\r\n', noteblock_instance.text)
             noteblock_instance.save()
             noteblock_form = NoteBlockForm(instance=noteblock_instance,auto_id=f"nb_{noteblock_instance.id}_id_%s")
         elif save_method=="code":
@@ -188,6 +191,7 @@ def insert_block(request, note_id, noteblock_id):
             # messages.success("insert section on end success")
             # reload context
             context["noteblocks_list"]=NoteIndex.objects.filter(note_id=note_id).order_by("index")
+            context["note_form"]=NoteForm(instance=note_instance)
             return render(request,"note_block_editor.html",context=context)
         
         # do normal moving and insert
@@ -245,6 +249,7 @@ def create_note(request):
         note_block_instance=NoteBlock.objects.create(creator_id=owner_id,
                                                      note_id=note_instance,
                                                      block_type=NoteBlockTypeChoices.TITLE,
+                                                     text=re.sub(r'(\r\n.?)+', r'\r\n', note_instance.title),
                                                      is_AI_generated=False)
         # create handler
         NoteIndex.objects.create(note_id=note_instance,index=0,noteblock_id=note_block_instance)
@@ -268,15 +273,16 @@ def create_block(request):
         messages.error(request,"User not found!")
         return render(request,"message_display.html")
     if request.method=="POST":
-        noteBlock_form=NoteBlockForm(request.POST,request.FILES)
-        context["noteblock_form"]=noteBlock_form
-        if not noteBlock_form.is_valid():
+        noteblock_form=NoteBlockForm(request.POST,request.FILES)
+        context["noteblock_form"]=noteblock_form
+        if not noteblock_form.is_valid():
             messages.error(request, f"invalid note block form submitted.")
             return redirect("notes:list_notes")
-        noteBlock_instance=noteBlock_form.save(commit=False)
-        noteBlock_instance.creator_id=owner_id
-        noteBlock_instance=noteBlock_instance.save()
-        messages.success(request, f'Create noteblock: {noteBlock_instance} success!')
+        noteblock_instance=noteblock_form.save(commit=False)
+        noteblock_instance.creator_id=owner_id
+        noteblock_instance.text=re.sub(r'(\r\n.?)+', r'\r\n', noteblock_instance.text)
+        noteblock_instance=noteblock_instance.save()
+        messages.success(request, f'Create noteblock: {noteblock_instance} success!')
         return redirect("notes:list_notes")
     else:
         context["noteblock_form"]=NoteBlockForm()
@@ -371,6 +377,11 @@ def delete_blockIndex(request, noteIndex_id):
     if request.method=="POST":
         if owner_id==None:
             return redirect("notes:edit_note",note_id=note_instance.id)
+        # remove note_id for noteblock
+        noteblock_instance=noteIndex_instance.noteblock_id
+        if noteblock_instance.creator_id==owner_id:
+            noteblock_instance.note_id=None
+            noteblock_instance.save()
         noteIndex_instance.delete()
         messages.success(request,"delete block index success")
         return redirect("notes:edit_note",note_id=note_instance.id)
