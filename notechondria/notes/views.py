@@ -2,6 +2,7 @@
 This is where you handle requests (front-end)
 Also, you can modify models here (back-end)
 """
+import datetime
 import json
 import logging
 import re
@@ -15,6 +16,7 @@ from creators.models import Creator
 from .models import Note, NoteBlock, NoteIndex, Tag, ValidationRecord, NoteBlockTypeChoices, NoteIndex
 from .forms import NoteForm, NoteBlockForm
 from django.contrib import messages
+from .mark_down_parser import md_to_html
 
 logger=logging.getLogger()
 
@@ -64,7 +66,7 @@ def edit_note(request, note_id):
         return redirect("home")
     if request.method == "POST":
         # default save method is for block_editor
-        save_method=request.POST.get("method", "form")
+        save_method=request.POST.get("save_method", "form")
         if save_method=="form":
             # we might at feature photo form each post, so just assume have files
             note_form = NoteForm(
@@ -81,14 +83,13 @@ def edit_note(request, note_id):
             context["note_form"]=note_form
         elif save_method=="code":
             # debug
-            logger.info(request.POST)
-            
+            # logger.info(request.POST)
+            md_str=request.POST.get("md_str", None)
+            logger.info(md_to_html(md_str))
             # test if note exist
             context["note_form"] = NoteForm(instance=note_instance)
-            note_indexes= NoteIndex.objects.filter(note_id=note_instance).order_by("index")
-            context["noteblocks_list"] = note_indexes
-            context["note_md"]='\n\n'.join([i.noteblock_id.get_md_str() for i in note_indexes])
-            return render(request,"note_code_editor.html",context=context)
+            context["savetime"]=datetime.datetime.now()
+            return render(request,"htmx_code_save_bar.html",context=context)
     # process get request
     else:
         # test if note exist

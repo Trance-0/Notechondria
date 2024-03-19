@@ -13,9 +13,11 @@
     <style>
         #codeEditor {
             width: 100%;
-            height: calc(100vh - 135px);
+            height: calc(100vh - 185px);
         }
     </style>
+
+{% include 'htmx_code_save_bar.html'%}
 
     <div id="codeEditor"></div>
     <script>
@@ -87,6 +89,5 @@
     {% endif %}
 {% endif %}
 
-{% include 'htmx_code_save_bar.html'%}
 
 </div>
