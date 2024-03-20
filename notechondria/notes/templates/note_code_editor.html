@@ -1,4 +1,5 @@
 {% load static %}
+{% load md_str_esc %}
 <div id="code-editor">
     <link rel="stylesheet" data-name="vs/editor/editor.main"
         href="{% static '/monaco-editor/min/vs/editor/editor.main.css' %}" />
@@ -58,7 +59,16 @@
     <!-- if the editor is for note -->
     {% if note_md %}
     <script>
-        var markdownText = `{{note_md|safe}}`;
+        var markdownText = `{{note_md|md_str_esc|safe}}`;
+        // post processing in js
+        markdownText=markdownText.replaceAll('&quot;','"');
+        markdownText=markdownText.replaceAll('&lt;','<');
+        markdownText=markdownText.replaceAll('&gt;','>');
+        markdownText=markdownText.replaceAll('&bs;','\\');
+        markdownText=markdownText.replaceAll('&bt;','`');
+        markdownText=markdownText.replaceAll('&#x27;',"'");
+        markdownText=markdownText.replaceAll('&amp;','&');
+        // post processing done
         editor.getModel().setValue(markdownText);
         editor.getAction('editor.action.formatDocument').run()
     </script>

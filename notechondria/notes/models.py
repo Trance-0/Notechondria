@@ -113,11 +113,13 @@ class NoteBlock(models.Model):
         elif type==NoteBlockTypeChoices.PROOF:
             return f'Proof:     \n{self.text}'
         elif type==NoteBlockTypeChoices.CODE:
-            return f'\`\`\`{self.args}\n{self.text}\n\`\`\`'
+            return f'```{self.args}\n{self.text}\n```'
         elif type==NoteBlockTypeChoices.QUOTE:
+            quote_token=[ f'> {i}\n' for i in self.text.split('\n')]
+            quote_str="".join(quote_token)
             if self.args:
-                return f'>{self.text}\n> -- cited from: {self.args}'
-            return f'> {self.text}'
+                return f'{quote_str}> -- cited from: {self.args}'
+            return quote_str.rstrip('\n')
         elif type==NoteBlockTypeChoices.IMAGES:
             if self.image.url!="/media/False":
                 return f'![{self.text}]({self.image.url})'

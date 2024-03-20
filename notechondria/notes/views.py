@@ -16,7 +16,7 @@ from creators.models import Creator
 from .models import Note, NoteBlock, NoteIndex, Tag, ValidationRecord, NoteBlockTypeChoices, NoteIndex
 from .forms import NoteForm, NoteBlockForm
 from django.contrib import messages
-from .mark_down_parser import md_to_html
+from .mark_down_parser import md_to_html,clean_block_string
 
 logger=logging.getLogger()
 
@@ -148,7 +148,7 @@ def edit_block(request, noteblock_id):
             #     return render(request,"htmx_edit_noteblock.html",context=context)
             noteblock_instance.note_id=prev_instance.note_id
             # sanitize noteblock string
-            noteblock_instance.text=re.sub(r'(\r\n.?)+', r'\r\n', noteblock_instance.text)
+            noteblock_instance.text=clean_block_string(noteblock_instance.text,noteblock_instance.block_type)
             noteblock_instance.save()
             noteblock_form = NoteBlockForm(instance=noteblock_instance,auto_id=f"nb_{noteblock_instance.id}_id_%s")
         elif save_method=="code":

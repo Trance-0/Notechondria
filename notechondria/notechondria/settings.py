@@ -88,6 +88,7 @@ TEMPLATES = [
             ],
             'libraries': {
                 'svg_tags': 'notechondria.templatetags.svg_tags',
+                'md_str_esc': 'notechondria.templatetags.md_str_esc',
             }
         },
     },
