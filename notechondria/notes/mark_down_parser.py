@@ -4,27 +4,67 @@
 
 import regex as re
 from .models import Note, NoteBlock, NoteIndex, NoteBlockTypeChoices
+from creators.models import Creator
 
-# house rule for markdown regex matching, the order matters
-md_rules = [
-    (NoteBlockTypeChoices.CODE, "(^\`{3}.*\s)((.*\s)*)(^\`{3}\s{2})"),
-    (NoteBlockTypeChoices.TITLE, "(^#{1}\h)(.*\s{2})"),
-    (NoteBlockTypeChoices.URL, "(^\[.*\])(\((http)(?:s)?(\:\/\/).*\)\s{2})"),
-    (NoteBlockTypeChoices.SUBTITLE, "(^#{2,4}\h)(.*\s{2})"),
-    (NoteBlockTypeChoices.EXAMPLE, "(^Example:\s*)(.*\s{2})"),
-    (NoteBlockTypeChoices.PROOF, "(^Proof:\s*)(.*\s{2})"),
-    (NoteBlockTypeChoices.QUOTE, "(^>\h+)(.*\s{2})"),
-    (NoteBlockTypeChoices.IMAGES, "(^!\[.*\])(.*\s{2})"),
-    (NoteBlockTypeChoices.LIST, ""),
-]
+class BlockGenerator:
+    """custom generator for each block type 
+    """
+    
+    # rules for rendering single line blocks
+    __single_line_blocks = [
+        NoteBlockTypeChoices.TITLE,
+        NoteBlockTypeChoices.URL,
+        NoteBlockTypeChoices.SUBTITLE,
+        NoteBlockTypeChoices.IMAGES,
+    ]
 
-# rules for rendering single line blocks
-single_line_blocks = [
-    NoteBlockTypeChoices.TITLE,
-    NoteBlockTypeChoices.URL,
-    NoteBlockTypeChoices.SUBTITLE,
-    NoteBlockTypeChoices.IMAGES,
-]
+    # house rule for markdown regex matching, the order matters
+    __md_rules = {
+        NoteBlockTypeChoices.CODE:("^`{3}","^`{3}"),
+        NoteBlockTypeChoices.EXAMPLE: ("^Example:\s*",""),
+        NoteBlockTypeChoices.PROOF: ("(^Proof:\s*)",""),
+        NoteBlockTypeChoices.TITLE: "(^#{1}\h)(?<text>.*)",
+        NoteBlockTypeChoices.URL: "^\[(?<text>.*)\]\((?<args>(http)(?:s)?(\:\/\/).*)\)",
+        NoteBlockTypeChoices.SUBTITLE: "(?<args>^#{2,4})\h(?<text>.*)",
+        NoteBlockTypeChoices.IMAGES: ("^!\[(?<text>.*)\]\((?<images>.*)\)"),
+        NoteBlockTypeChoices.QUOTE: ("(^>\h+)(.*\s{2})"),
+        NoteBlockTypeChoices.LIST: (""),
+    }
+
+
+    def __init__ (self,block_type:NoteBlockTypeChoices):
+        if block_type not in self.__md_rules.keys():
+            raise Exception(f"Unsupported block type: {block_type}")
+        if block_type in self.__single_line_blocks:
+            self.head=self.__md_rules[block_type]
+        else:
+            self.head, self.end=self.__md_rules[block_type]
+        self.block_type=block_type
+    
+    def __arg_required(self):
+        arg_required_choices=[NoteBlockTypeChoices.CODE,
+                              NoteBlockTypeChoices.URL,
+                              NoteBlockTypeChoices.SUBTITLE,
+                              Note]
+        return self.block_type in arg_required_choices
+    
+    def isBlock(self,md_str):
+        return re.match(md_str,self.head)!=None
+
+    def load_content(self,md_str:list[str]):
+        return False
+
+    def load_block(self,creator:Creator, note:Note=None):
+        if self.text==None:
+            raise Exception('Please call load content before load block!')
+        # create new block instance only (we have no way to track old blocks), delete original blocks before load
+        block_instance=NoteBlock.objects.create(creator_id=creator,
+                                                note_id=note,
+                                                block_type=self.block_type,
+                                                text=self.text)
+
+
+
 
 def clean_block_string(md_str: str, block_type: NoteBlockTypeChoices):
     # single line blocks
