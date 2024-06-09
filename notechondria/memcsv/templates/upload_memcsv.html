@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+
+
+<head>
+    <title>Notechondria login</title>
+    <meta charset="UTF-8">
+    {% load static %}      
+    {% include "resource_header.html" %}
+</head>
+
+
+<body>
+    {% include "navbar.html" %}
+         
+     <form action="{% url 'memcsv:upload_memcsv' %}" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label for="file"> Select a file: </label>
+        <input type="file" id="file" name="file">
+        <button type="submit"> Upload </button>
+     </form>
+</body>
+
+

@@ -46,11 +46,14 @@ INSTALLED_APPS = [
     'gptutils',
     'notes',
     'creators',
+    'memcsv',
     # debugger
-    'debug_toolbar'
+    'debug_toolbar',
+    'rest_framework'
 ]
 
 MIDDLEWARE = [
+    
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',

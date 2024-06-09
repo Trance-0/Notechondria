@@ -28,6 +28,7 @@ urlpatterns = [
     path('notes/', include(('notes.urls','notes'),namespace='notes')),
     path('creators/', include(('creators.urls','creators'),namespace='creators')),
     path('gptutils/', include(('gptutils.urls','recipes'),namespace='gptutils')),
+    path("memcsv/",include(("memcsv.urls","memcsv"),namespace='memcsv')),
     path('about/',views.about,name="about"),
     path('dashboard/',views.dashboard,name="dashboard"),
     path('search/',views.about,name="search"),
@@ -37,6 +38,8 @@ urlpatterns = [
         "favicon.ico",
         RedirectView.as_view(url=staticfiles_storage.url("images/bug-fill.ico" if settings.DEBUG else "images/bar-chart-steps.ico")),
     ),
+    path('api-auth/', include('rest_framework.urls')),
+   
 ]
 
 # ... the rest of your URLconf goes here ...
