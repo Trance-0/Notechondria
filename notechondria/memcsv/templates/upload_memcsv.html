@@ -15,8 +15,9 @@
          
      <form action="{% url 'memcsv:upload_memcsv' %}" method="post" enctype="multipart/form-data">
         {% csrf_token %}
-        <label for="file"> Select a file: </label>
-        <input type="file" id="file" name="file">
+        {{form.as_p}}         
+
+        {% comment %} render as paragraph {{ }} means render as text {% endcomment %}
         <button type="submit"> Upload </button>
      </form>
 </body>

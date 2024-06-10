@@ -8,7 +8,7 @@ from .models import MemCSV
 class MemCSVForm(forms.ModelForm):
     class Meta:
         model = MemCSV
-        fields = ['title', 'csv_file']  #these are the two feilds we use to instantiate
+        fields = ['csv_file','title']  #these are the two feilds we use to instantiate
         
         
         

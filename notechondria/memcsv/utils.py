@@ -34,19 +34,17 @@ def __cols_selection_validation(vals,input_str):
 
 
 def process_csv(file_path ,memcsv_instance):
-    file = default_storage.open(file_path, mode='r', encoding='utf-8')
-    reader = csv.reader(file, delimiter=';')
+    # Open the file using Django's default storage system in text mode
+    with default_storage.open(file_path, mode='r') as file:
+        # Create a CSV reader object with a semicolon delimiter
+        reader = csv.reader(file, delimiter=';')
+        
+        for row in reader:
+            japanese, english = row
 
-    
-    
-    for row in reader:
-        japanese, english = row
-
-        # Create WordDict entry with the relationship to memcsv_instance
-        WordDict.objects.create(
-            japanese=japanese,
-            english=english,
-            memcsv=memcsv_instance  # Ensure this field matches the ForeignKey field in your model
+            # Create WordDict entry with the relationship to memcsv_instance
+            WordDict.objects.create(
+                Japanese_Key=japanese,
+                English_Value =english,
+                container=memcsv_instance  # Ensure this field matches the ForeignKey field in your model
             )
-    
-    file.close()

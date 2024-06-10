@@ -7,6 +7,7 @@ from openai import OpenAI
 from dotenv import load_dotenv, find_dotenv
 from .models import  WordDict
 from .utils import process_csv
+from notechondria.utils import check_is_creator,get_object_or_None
 
 
 # Django import
@@ -65,20 +66,30 @@ def upload_memcsv(request):
             # I mannual set these variables because I feel that giving the user the ability to fill in what they claim their id is doesn't seem like a good securitiy approach.
             
             memcsv_instance = form.save(commit=False) 
+            
+            
+            memcsv_instance.csv_file.name=memcsv_instance.title# change storage name
+            
+            
             # Creates a model instance. 
             # For ModelForms save usually creates a model instance with the data bounded to the form and then save it to the data base. 
             # Here it creates the instance without saving it to the database
-                
-            memcsv_instance.creator_id = request.user.creator_id 
+            
+            
+            owner_id= get_object_or_None(Creator, user_id=request.user)
+            
+            memcsv_instance.creator_id = owner_id
+            
+
             # marked the instance of file upload with its user
             # If we dont use form.save(commit=False) we can also use "form.instance.creator_id = request.user"
             # the instance attribute holds a reference to the model instance that the form is either representing or will be representing so you can also use
-            
-            memcsv_instance.sharing_id = request.user.sharing_id 
+          
+           # memcsv_instance.sharing_id = owner_id
        
             # This will automatically be saved to the model since I created the form according to the model as a modelfrom
             
-            memcsv_instance.save(commit=True)  
+            memcsv_instance.save()   #commit=True
             # Access the file through the instance csv_file feild since each instance can only have one file as defined in the model
             file_path = memcsv_instance.csv_file.path  
             
@@ -97,7 +108,7 @@ def upload_memcsv(request):
                 # The default settings.py created by django-admin startproject has SessionMiddleware activated.(I haven't checked yet)
                 # https://docs.djangoproject.com/en/5.0/topics/http/sessions/
                 
-                return  HttpResponse("Sucess?") #change 
+                return HttpResponse("Sucess?") #change 
             
             #I am directing it to input_training for now since it is the only implemented one
                 # later I will redirect to a selelction form to redirect to other two urls for input and selection training. Or I can simply have multiple
@@ -113,7 +124,7 @@ def upload_memcsv(request):
             messages.error(request, "There was an error processing your form. Please check your input and try again.")
    
     else:
-         form = MemCSVForm() # No changes to data base
+        form = MemCSVForm() # No changes to data base
 
     return render(request, 'upload_memcsv.html', context={'form': form})  # This wiil re-render the upload page since user failed and they can attempt to upload again
 
