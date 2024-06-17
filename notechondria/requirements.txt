@@ -31,7 +31,7 @@ networkx==3.2.1
 numba==0.59.0
 numpy==1.26.4
 openai==1.12.0
-openai-whisper @ git+https://github.com/openai/whisper.git@ba3f3cd54b0e5b8ce1ab3de13e32122d0d5f98ab
+# openai-whisper @ git+https://github.com/openai/whisper.git@ba3f3cd54b0e5b8ce1ab3de13e32122d0d5f98ab
 packaging==23.2
 pillow==10.2.0
 pipreqs==0.4.13
