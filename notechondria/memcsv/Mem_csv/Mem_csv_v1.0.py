@@ -74,7 +74,7 @@ def input_training(row_replacement=False):
         ans=input(f'Type the {cur_val_name} of [{question_df[cur_key_name].to_string(index=False)}] \n')
         print('correct answer: ',question_df[cur_val_name].to_string(index=False))
         if not ans==question_df[cur_val_name].to_string(index=False):
-            need_help=input(f'is your answer correct? type anything to get help from GPT teachter.')
+            need_help=input(f'is your answer correct? type anything to get help from GPT teacher.')
             if len(need_help)>0:
                 help_count+=1
                 print('loading response from openAI, this might take a while...')
@@ -105,6 +105,9 @@ def selection_training(options=5,random_row=True):
                 cur_val_name=random.choice(df.columns.values)
         else:
             cur_val_name=random.choice(val_cols)
+            
+            
+
 
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
