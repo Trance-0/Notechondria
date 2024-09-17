@@ -10,5 +10,6 @@
         "probs",
         "repassword",
         "tqdm"
-    ]
+    ],
+    "cmake.ignoreCMakeListsMissing": true
 }
