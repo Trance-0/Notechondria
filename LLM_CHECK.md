@@ -41,3 +41,4 @@ Use this checklist at the end of each modification round.
 - Documented that public-repo Pipeline SCM jobs should not keep unnecessary Git credentials attached in Jenkins job configuration.
 - Fixed the test stage so `settings_test` no longer depends on the production entrypoint or a live postgres container.
 - Added a database preflight for deploys and an optional `DB_AUTO_REINIT_IF_MISMATCH=True` path for disposable environments with mismatched persistent postgres volumes.
+- Added a reminder that containerized test commands should set `DJANGO_SETTINGS_MODULE` and `PYTHONPATH` explicitly when import resolution is environment-sensitive.

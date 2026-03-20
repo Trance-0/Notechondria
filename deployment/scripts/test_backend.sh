@@ -12,4 +12,4 @@ fi
 cd "$PROJECT_DIR/backend"
 
 docker compose --env-file "$ENV_PATH" build app
-docker compose --env-file "$ENV_PATH" run --rm --no-deps --entrypoint sh app -lc 'python manage.py test --settings=notechondria.settings_test'
+docker compose --env-file "$ENV_PATH" run --rm --no-deps --entrypoint sh app -lc 'export PYTHONPATH=/home/notechondria:$PYTHONPATH; export DJANGO_SETTINGS_MODULE=notechondria.settings_test; python manage.py test'
