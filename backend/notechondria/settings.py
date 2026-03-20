@@ -167,8 +167,8 @@ DATABASES = {
         'NAME': os.getenv('POSTGRE_DB', 'postgres'),
         'USER': os.getenv('POSTGRE_USERNAME'),
         'PASSWORD': os.getenv('POSTGRE_PASSWORD'),
-        'HOST': "localhost" if DEBUG else os.getenv('POSTGRE_HOST'),
-        'PORT': os.getenv('POSTGRE_PORT')
+        'HOST': os.getenv('POSTGRE_HOST', 'localhost'),
+        'PORT': os.getenv('POSTGRE_PORT', '5432'),
     }
 }
 

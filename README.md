@@ -81,6 +81,7 @@ Optional integrations such as `debug_toolbar`, `rest_framework`, and `memcsv` ar
 * Put deployment variables in `Properties Content`.
 * Keep `DJANGO_ALLOWED_HOSTS` comma-separated.
 * Keep `DJANGO_ALLOWED_HOSTS_COMPOSE` space-separated.
+* For Docker deployment, keep `POSTGRE_HOST=db` even if `DJANGO_DEBUG=True`; container networking must use the Compose service name, not `localhost`.
 
 Example:
 

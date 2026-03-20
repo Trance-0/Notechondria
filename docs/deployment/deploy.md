@@ -60,6 +60,7 @@ Important formatting notes:
 - `DJANGO_ALLOWED_HOSTS` should stay comma-separated for human editing.
 - `DJANGO_ALLOWED_HOSTS_COMPOSE` should stay space-separated because the Docker Compose app service passes it to Django as `ALLOWED_HOSTS`.
 - Do not wrap the values in quotes in `Properties Content`.
+- For Docker deployment, set `POSTGRE_HOST=db`. Do not switch database host to `localhost` just because `DJANGO_DEBUG=True`; inside the app container, PostgreSQL is reached through the Compose service network.
 
 Jenkins must provide at least:
 

@@ -50,3 +50,4 @@ Use this checklist at the end of each modification round.
 - Added a reminder that every package referenced by `INSTALLED_APPS` must exist in `backend/requirements.txt`, and fresh CI builds should not rely on cached images when debugging dependency drift.
 - Added a reminder that Django URL includes must be guarded consistently with optional `INSTALLED_APPS` entries, or tests and deploys can fail even after settings remove those apps.
 - Added a reminder that CI image rebuilds should use `--pull --no-cache` when the goal is to eliminate stale dependency and base-image state during Jenkins debugging.
+- Added a reminder that Docker service networking must never be tied to `DEBUG`; database host resolution should come from env (`POSTGRE_HOST=db` in Compose), not a `localhost` fallback triggered by debug mode.
