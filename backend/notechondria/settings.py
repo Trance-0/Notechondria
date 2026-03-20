@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 import os
+import importlib.util
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import datetime
@@ -46,11 +47,13 @@ INSTALLED_APPS = [
     'gptutils',
     'notes',
     'creators',
-    'memcsv',
     # debugger
     'debug_toolbar',
     'rest_framework'
 ]
+
+if importlib.util.find_spec("memcsv") is not None:
+    INSTALLED_APPS.append("memcsv")
 
 MIDDLEWARE = [
     

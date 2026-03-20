@@ -46,3 +46,4 @@ Use this checklist at the end of each modification round.
 - Added a reminder that filesystem paths used by Django settings, especially log directories, must match the directories created in the image or be created at runtime before logging initializes.
 - Added a reminder that code should not assume runtime assets live under `STATIC_ROOT` unless `collectstatic` has definitely run; source static fallbacks need to exist for debug/test paths.
 - Separated host-exposed ports from fixed in-container service ports so the stack can avoid occupied host ports without breaking in-stack routing.
+- Added a reminder that optional Django apps must be guarded consistently in both `INSTALLED_APPS` and URL includes, otherwise boot can fail on missing modules that are not actually required for deployment.

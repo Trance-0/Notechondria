@@ -28,7 +28,6 @@ urlpatterns = [
     path('notes/', include(('notes.urls','notes'),namespace='notes')),
     path('creators/', include(('creators.urls','creators'),namespace='creators')),
     path('gptutils/', include(('gptutils.urls','recipes'),namespace='gptutils')),
-    path("memcsv/",include(("memcsv.urls","memcsv"),namespace='memcsv')),
     path('about/',views.about,name="about"),
     path('dashboard/',views.dashboard,name="dashboard"),
     path('search/',views.about,name="search"),
@@ -41,6 +40,9 @@ urlpatterns = [
     path('api-auth/', include('rest_framework.urls')),
    
 ]
+
+if "memcsv" in settings.INSTALLED_APPS:
+    urlpatterns.append(path("memcsv/", include(("memcsv.urls", "memcsv"), namespace='memcsv')))
 
 # ... the rest of your URLconf goes here ...
 # regex the path request with media in current directory
