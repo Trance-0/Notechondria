@@ -153,6 +153,8 @@ If you later change `POSTGRE_USERNAME` or `POSTGRE_DB` in Jenkins but keep the s
 1. keep the Jenkins credential aligned with the already-initialized database role/database, or
 2. remove the existing `notechondria` postgres volume and let the cluster initialize again with the new env values.
 
+The pipeline now validates database access over TCP with the configured username and password before deploying the app container. That check is meant to catch password mismatches before Django reaches `manage.py migrate`.
+
 For disposable Jenkins environments, you can set:
 
 ```properties

@@ -37,7 +37,7 @@ wait_for_db() {
 }
 
 db_auth_works() {
-  docker compose --env-file "$ENV_PATH" exec -T db sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "select 1"' >/dev/null 2>&1
+  docker compose --env-file "$ENV_PATH" exec -T db sh -lc 'PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "select 1"' >/dev/null 2>&1
 }
 
 if ! wait_for_db; then

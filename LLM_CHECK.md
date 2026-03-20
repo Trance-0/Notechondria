@@ -51,3 +51,4 @@ Use this checklist at the end of each modification round.
 - Added a reminder that Django URL includes must be guarded consistently with optional `INSTALLED_APPS` entries, or tests and deploys can fail even after settings remove those apps.
 - Added a reminder that CI image rebuilds should use `--pull --no-cache` when the goal is to eliminate stale dependency and base-image state during Jenkins debugging.
 - Added a reminder that Docker service networking must never be tied to `DEBUG`; database host resolution should come from env (`POSTGRE_HOST=db` in Compose), not a `localhost` fallback triggered by debug mode.
+- Added a reminder that database preflight checks must verify the same TCP username/password path the app uses, not just local-socket readiness from inside the postgres container.

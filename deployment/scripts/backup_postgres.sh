@@ -23,10 +23,8 @@ docker compose --env-file "$ENV_PATH" exec -T db sh -lc '
   done
 '
 
-if ! docker compose --env-file "$ENV_PATH" exec -T db psql \
-  -U postgres \
-  -d postgres \
-  -tAc "select 1" >/dev/null 2>&1; then
+if ! docker compose --env-file "$ENV_PATH" exec -T db sh -lc \
+  'PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "select 1"' >/dev/null 2>&1; then
   cat <<EOF
 Skipping backup because PostgreSQL is not initialized for the configured role/database yet.
 Configured values come from the Docker Compose environment file:
