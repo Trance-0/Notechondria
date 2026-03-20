@@ -8,6 +8,10 @@ ENV PRODUCTION_MEDIA_ROOT=/home/mediafiles
 ENV PRODUCTION_STATIC_ROOT=/home/staticfiles
 RUN mkdir ${APP_HOME}
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends netcat-openbsd \
+    && rm -rf /var/lib/apt/lists/*
+
 # install dependencies
 WORKDIR $HOME 
 RUN pip install --upgrade pip
