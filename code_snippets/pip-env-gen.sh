@@ -1,1 +1,1 @@
-pip freeze > ../notechondria/requirements.txt
+pip freeze > ../backend/requirements.txt

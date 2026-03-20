@@ -1,0 +1,34 @@
+{
+  "course": {
+    "id": "canvas-self-study-101",
+    "title": "Canvas-like Self-Study Tracking",
+    "description": "An example course template with modules, assignments, and tracking metadata.",
+    "owner": "example-owner",
+    "visibility": "private",
+    "tags": [
+      "self-study",
+      "productivity"
+    ],
+    "planning_horizon_days": 90
+  },
+  "modules": [
+    {
+      "id": "module-01",
+      "title": "Getting Started",
+      "summary": "Introduce the learning workflow and setup expectations.",
+      "content": "modules/01-getting-started.md"
+    }
+  ],
+  "assignments": [
+    {
+      "id": "assignment-01",
+      "title": "First Reflection",
+      "due_in_days": 7,
+      "content": "assignments/A1.md",
+      "rubric": "assignments/A1.rubric.yaml"
+    }
+  ],
+  "assets": [
+    "assets/README.md"
+  ]
+}

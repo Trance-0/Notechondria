@@ -20,3 +20,21 @@ Some of the key features of the app include:
 We will not share or sell any data with others because the developer is the app's main user.
 
 We will not use your knowledge to feed the AI, we use open API and ensure that your original ideas and thoughts will not be used for training.
+
+## Repository layout
+
+* `backend/` - Django backend services and infrastructure.
+* `frontend/` - Flutter client application.
+* `docs/` - Product documentation, MVP scope, and planning references.
+* `course_template/` - Canonical git course template for import/export and validation.
+
+
+## Operations and integration docs
+
+* API spec and example requests: `docs/api/backend_api_spec.md`
+* Deployment instructions: `docs/deployment/deploy.md`
+* GitHub App integration guide: `docs/integrations/github_app_integration.md`
+* CI/CD pipeline definition: `Jenkinsfile`
+* Environment template: `sample.env`
+* Build-from-scratch prompt report: `CODEX.md`
+* LLM delivery checklist: `LLM_CHECK.md`

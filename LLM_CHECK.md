@@ -1,0 +1,32 @@
+# LLM_CHECK
+
+Use this checklist at the end of each modification round.
+
+## Common mistakes seen in prior rounds
+
+1. Claiming UI capture work without a runnable Flutter toolchain.
+2. Adding docs or scripts without checking that file paths still match the current repo layout.
+3. Writing pipeline and shell scripts whose argument order does not actually line up.
+4. Leaving visible text encoding artifacts in UI copy.
+5. Reporting success without clearly separating verified work from unverified work.
+6. Expanding scope without checking whether there were already user changes in the worktree.
+
+## Round-end checklist
+
+- Confirm every command or test reported as passed was actually run in the current environment.
+- Confirm every command or test not run is called out explicitly with the reason.
+- Confirm docs reference current paths such as `backend/`, `frontend/`, `docs/`, and `deployment/`.
+- Confirm CI files and scripts agree on invocation syntax and environment variable names.
+- Confirm UI strings are plain, intentional, and free of mojibake or placeholder artifacts.
+- Confirm `.gitignore` ignores local junk without hiding required tracked source files.
+- Confirm no unrelated user changes were reverted.
+
+## Current round log
+
+- Fixed Jenkins deploy invocation to pass `project_dir` and `env_path` in the order required by `deployment/scripts/deploy_backend.sh`.
+- Fixed a visible separator encoding issue in the Flutter front page subtitle.
+- Made the selected course stateful across course, learner, and activity views.
+- Expanded Flutter widget coverage for course selection flow.
+- Added `CODEX.md` and updated repo links.
+- Backend verification was blocked because the available `python.exe` resolves to the Windows Store shim rather than a runnable interpreter.
+- Flutter verification was attempted through the installed `flutter.bat`, but the command did not complete within the allotted timeout in this environment.
