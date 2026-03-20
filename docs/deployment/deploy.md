@@ -121,6 +121,7 @@ Jenkins only needs Docker access. It does not need host `python` or host `pg_dum
 The Django container talks to PostgreSQL through the internal Compose service host `db`.
 Deployment readiness waits at most 300 seconds before failing and stopping the web containers.
 The test stage does not use the postgres container; it runs Django tests with `settings_test` directly in an app container without the production entrypoint.
+The app service must not mount a named volume over `/home/notechondria`, because that path contains the Django code copied into the image during build.
 
 ### PostgreSQL volume behavior
 

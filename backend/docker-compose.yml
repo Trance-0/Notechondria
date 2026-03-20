@@ -2,7 +2,6 @@ name: notechondria
 
 volumes:
   postgres-data:
-  notechondria-data:
   static_volume:
   media_volume:
 networks:
@@ -35,7 +34,6 @@ services:
       GITHUB_APP_WEBHOOK_SECRET: ${GITHUB_APP_WEBHOOK_SECRET}
     command: gunicorn notechondria.wsgi:application --bind 0.0.0.0:8000
     volumes:
-      - notechondria-data:/home/notechondria
       - static_volume:/home/staticfiles
       - media_volume:/home/mediafiles
     ports:

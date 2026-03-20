@@ -64,6 +64,7 @@ This repository is set up for a Jenkins Pipeline job that:
 * Set the branch to `codex`.
 * If the repository is public, leave SCM credentials empty. The credentials shown in Jenkins logs come from the job SCM configuration, not from the Jenkinsfile.
 * Enable `GitHub hook trigger for GITScm polling` if you want GitHub push webhooks to trigger the build.
+* Do not mount a persistent Docker volume over the application code directory `/home/notechondria`; the built image already contains the backend code there.
 
 ### Environment Injector setup
 
