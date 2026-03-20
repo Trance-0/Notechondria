@@ -10,10 +10,6 @@ if [[ ! -f "$ENV_PATH" ]]; then
   exit 1
 fi
 
-set -a
-source "$ENV_PATH"
-set +a
-
 mkdir -p "$BACKUP_DIR"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="$BACKUP_DIR/notechondria_${TIMESTAMP}.sql"
@@ -22,19 +18,19 @@ cd "$PROJECT_DIR/backend"
 
 docker compose --env-file "$ENV_PATH" up -d db
 docker compose --env-file "$ENV_PATH" exec -T db sh -lc '
-  until pg_isready -U "'"${POSTGRE_USERNAME}"'" -d "'"${POSTGRE_DB:-postgres}"'" >/dev/null 2>&1; do
+  until pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1; do
     sleep 1
   done
 '
 
 if ! docker compose --env-file "$ENV_PATH" exec -T db psql \
-  -U "${POSTGRE_USERNAME}" \
-  -d "${POSTGRE_DB:-postgres}" \
+  -U postgres \
+  -d postgres \
   -tAc "select 1" >/dev/null 2>&1; then
   cat <<EOF
 Skipping backup because PostgreSQL is not initialized for the configured role/database yet.
-Configured user: ${POSTGRE_USERNAME}
-Configured database: ${POSTGRE_DB:-postgres}
+Configured values come from the Docker Compose environment file:
+$ENV_PATH
 
 This usually means the persistent Docker volume was initialized earlier with different POSTGRE_* values.
 Either:
@@ -47,9 +43,6 @@ EOF
   exit 0
 fi
 
-docker compose --env-file "$ENV_PATH" exec -T db pg_dump \
-  -U "${POSTGRE_USERNAME}" \
-  -d "${POSTGRE_DB:-postgres}" \
-  -F p > "$BACKUP_FILE"
+docker compose --env-file "$ENV_PATH" exec -T db sh -lc 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -F p' > "$BACKUP_FILE"
 
 echo "Backup created at $BACKUP_FILE"

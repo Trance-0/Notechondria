@@ -22,6 +22,8 @@ Recommended setup with the Environment Injector plugin:
 7. Save the job.
 8. Run one manual build to verify the injected variables reach the pipeline.
 
+If your repository is public, remove SCM credentials from the Pipeline SCM job configuration. The Jenkinsfile does not require repository credentials by itself.
+
 The pipeline writes those injected variables to `${WORKSPACE}/.env.deploy` through `deployment/scripts/prepare_env.sh`.
 
 Example `Properties Content`:
@@ -49,6 +51,12 @@ GITHUB_APP_CLIENT_SECRET=
 GITHUB_APP_PRIVATE_KEY_PATH=
 GITHUB_APP_WEBHOOK_SECRET=
 ```
+
+Important formatting notes:
+
+- `DJANGO_ALLOWED_HOSTS` should stay comma-separated for human editing.
+- `DJANGO_ALLOWED_HOSTS_COMPOSE` should stay space-separated because the Docker Compose app service passes it to Django as `ALLOWED_HOSTS`.
+- Do not wrap the values in quotes in `Properties Content`.
 
 Jenkins must provide at least:
 
