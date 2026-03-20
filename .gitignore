@@ -84,6 +84,10 @@ frontend/.packages
 frontend/build/
 frontend/test_driver/
 
+# Vendored editor development bundles not required at runtime
+backend/static/monaco-editor/dev/
+backend/static/monaco-editor/esm/
+
 # Allow tracked template and source files
 !sample.env
 !frontend/lib/

@@ -69,6 +69,20 @@ The relevant files are:
 - `deployment/scripts/backup_postgres.sh`
 - `deployment/scripts/deploy_backend.sh`
 
+### Windows Jenkins checkout note
+
+If Jenkins runs on Windows and checkout still fails before the pipeline starts, enable Git long-path support on the Jenkins host and keep the workspace path short.
+
+Recommended host setting:
+
+```powershell
+git config --system core.longpaths true
+```
+
+If needed, also move the Jenkins workspace root to a shorter directory such as `C:\Jenkins`.
+
+This repository now keeps only the Monaco `min/` runtime bundle under `backend/static/monaco-editor/` to reduce checkout path depth.
+
 ## 6) Frontend web build (when Flutter is available)
 
 ```bash
