@@ -1,7 +1,5 @@
 name: notechondria
 
-version: '0.2'
-
 volumes:
   postgres-data:
   notechondria-data:
@@ -57,6 +55,11 @@ services:
     ports:
       # port 5432 for connection on local computer
       - ${POSTGRE_PORT}:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRE_USERNAME} -d ${POSTGRE_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
     networks:
       - notechondria-back
   nginx:

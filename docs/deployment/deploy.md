@@ -80,6 +80,18 @@ The Docker Compose stack is named `notechondria` and contains separate container
 
 Jenkins only needs Docker access. It does not need host `python` or host `pg_dump`.
 
+### PostgreSQL volume behavior
+
+The `db` container uses a persistent Docker volume. PostgreSQL reads `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` only when the data directory is initialized the first time.
+
+If you later change `POSTGRE_USERNAME` or `POSTGRE_DB` in Jenkins but keep the same Docker volume, the container will start with the old cluster state and the new role may not exist. In that case you must do one of these:
+
+1. keep the Jenkins credential aligned with the already-initialized database role/database, or
+2. remove the existing `notechondria` postgres volume and let the cluster initialize again with the new env values.
+
+For a first smoke deployment, `sample.test.env` now uses the default `postgres` role/database to reduce that mismatch risk.
+On a first deployment, the backup step may skip automatically because there is no usable database state yet. That is expected and does not block the rest of the pipeline.
+
 ### Windows Jenkins checkout note
 
 If Jenkins runs on Windows and checkout still fails before the pipeline starts, enable Git long-path support on the Jenkins host and keep the workspace path short.

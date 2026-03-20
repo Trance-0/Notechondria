@@ -33,3 +33,4 @@ Use this checklist at the end of each modification round.
 - Switched Jenkins backup and test execution to Docker-native scripts so the host no longer needs `pg_dump` or `python`.
 - Fixed Docker deployment mismatches: compose stack naming, separate `db` service usage, database name wiring, and app env injection.
 - Re-truncated the sample deployment secret to `dwMlZWVt...jpZOJG2z` after it had previously been written too broadly.
+- Updated the backup step to skip cleanly on first deployment when the database role/database does not exist yet, instead of failing the whole pipeline.
