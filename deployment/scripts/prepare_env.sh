@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+OUTPUT_PATH=${1:-.env.deploy}
+SOURCE_PATH=${2:-}
+
+mkdir -p "$(dirname "$OUTPUT_PATH")"
+
+if [[ -n "$SOURCE_PATH" && -f "$SOURCE_PATH" ]]; then
+  cp "$SOURCE_PATH" "$OUTPUT_PATH"
+else
+  : "${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY is required when no source env file is provided}"
+  : "${POSTGRE_USERNAME:?POSTGRE_USERNAME is required when no source env file is provided}"
+  : "${POSTGRE_PASSWORD:?POSTGRE_PASSWORD is required when no source env file is provided}"
+  : "${POSTGRE_HOST:?POSTGRE_HOST is required when no source env file is provided}"
+  : "${POSTGRE_PORT:?POSTGRE_PORT is required when no source env file is provided}"
+  : "${POSTGRE_DB:?POSTGRE_DB is required when no source env file is provided}"
+
+  cat > "$OUTPUT_PATH" <<EOF
+DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+DJANGO_DEBUG=${DJANGO_DEBUG:-False}
+DJANGO_PORT=${DJANGO_PORT:-8000}
+DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+DJANGO_LOG_LEVEL=${DJANGO_LOG_LEVEL:-INFO}
+DJANGO_LOG_FILE_NAME=${DJANGO_LOG_FILE_NAME:-notechondria}
+POSTGRE_USERNAME=${POSTGRE_USERNAME}
+POSTGRE_PASSWORD=${POSTGRE_PASSWORD}
+POSTGRE_HOST=${POSTGRE_HOST}
+POSTGRE_PORT=${POSTGRE_PORT}
+POSTGRE_DB=${POSTGRE_DB}
+NGINX_PORT=${NGINX_PORT:-80}
+PRODUCTION_STATIC_ROOT=${PRODUCTION_STATIC_ROOT:-/home/staticfiles/}
+PRODUCTION_MEDIA_ROOT=${PRODUCTION_MEDIA_ROOT:-/home/mediafiles/}
+OPENAI_API_KEY=${OPENAI_API_KEY:-}
+GITHUB_APP_ID=${GITHUB_APP_ID:-}
+GITHUB_APP_CLIENT_ID=${GITHUB_APP_CLIENT_ID:-}
+GITHUB_APP_CLIENT_SECRET=${GITHUB_APP_CLIENT_SECRET:-}
+GITHUB_APP_PRIVATE_KEY_PATH=${GITHUB_APP_PRIVATE_KEY_PATH:-}
+GITHUB_APP_WEBHOOK_SECRET=${GITHUB_APP_WEBHOOK_SECRET:-}
+EOF
+fi
+
+chmod 600 "$OUTPUT_PATH"
+echo "Deployment env prepared at $OUTPUT_PATH"

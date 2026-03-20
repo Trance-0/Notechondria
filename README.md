@@ -36,5 +36,6 @@ We will not use your knowledge to feed the AI, we use open API and ensure that y
 * GitHub App integration guide: `docs/integrations/github_app_integration.md`
 * CI/CD pipeline definition: `Jenkinsfile`
 * Environment template: `sample.env`
+* Test deployment env example: `sample.test.env`
 * Build-from-scratch prompt report: `CODEX.md`
 * LLM delivery checklist: `LLM_CHECK.md`

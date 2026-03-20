@@ -8,10 +8,12 @@ pipeline {
 
   environment {
     PROJECT_DIR = '/var/lib/jenkins/workspace/Notechondria'
-    ENV_FILE = '.env'
+    ENV_FILE = '.env.deploy'
     BACKUP_DIR = '/var/backups/notechondria'
     DEPLOY_SCRIPT = 'deployment/scripts/deploy_backend.sh'
     BACKUP_SCRIPT = 'deployment/scripts/backup_postgres.sh'
+    PREPARE_ENV_SCRIPT = 'deployment/scripts/prepare_env.sh'
+    JENKINS_ENV_CREDENTIAL_ID = 'notechondria-deploy-env'
   }
 
   triggers {
@@ -22,6 +24,14 @@ pipeline {
     stage('Checkout') {
       steps {
         checkout scm
+      }
+    }
+
+    stage('Prepare Environment') {
+      steps {
+        withCredentials([file(credentialsId: "${JENKINS_ENV_CREDENTIAL_ID}", variable: 'JENKINS_ENV_FILE')]) {
+          sh 'bash ${PREPARE_ENV_SCRIPT} ${PROJECT_DIR}/${ENV_FILE} ${JENKINS_ENV_FILE}'
+        }
       }
     }
 
