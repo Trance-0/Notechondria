@@ -107,6 +107,9 @@ WSGI_APPLICATION = 'notechondria.wsgi.application'
 # Logging
 # https://docs.djangoproject.com/en/4.2/topics/logging/
 
+LOG_DIR = os.path.join(BASE_DIR, "logs")
+os.makedirs(LOG_DIR, exist_ok=True)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -124,7 +127,7 @@ LOGGING = {
             'level': 'INFO',
             'class': 'logging.FileHandler',
             # if you need to store it outside of current project folder, remove the join base part.
-            'filename': os.path.join(BASE_DIR,os.path.join("logs",f"{os.getenv('DJANGO_LOG_FILE_NAME', 'logs')}-{datetime.now().strftime('%Y%m%d')}.log")),
+            'filename': os.path.join(LOG_DIR, f"{os.getenv('DJANGO_LOG_FILE_NAME', 'logs')}-{datetime.now().strftime('%Y%m%d')}.log"),
             'formatter': 'verbose',
             'encoding':'utf8',
         },
@@ -153,7 +156,7 @@ LOGGING = {
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
+        'NAME': os.getenv('POSTGRE_DB', 'postgres'),
         'USER': os.getenv('POSTGRE_USERNAME'),
         'PASSWORD': os.getenv('POSTGRE_PASSWORD'),
         'HOST': "localhost" if DEBUG else os.getenv('POSTGRE_HOST'),

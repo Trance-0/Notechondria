@@ -32,7 +32,7 @@ RUN mkdir $HOME/staticfiles
 RUN mkdir $HOME/mediafiles
 
 # make log directory
-RUN mkdir ${APP_HOME}/log
+RUN mkdir -p ${APP_HOME}/logs
 
 EXPOSE 8000
 

@@ -27,6 +27,20 @@ import logging
 logger = logging.getLogger("django")
 
 
+def get_default_profile_image_path() -> str:
+    """Resolve the packaged default avatar from collected or source static files."""
+    candidates = [
+        os.path.join(settings.STATIC_ROOT, "images", "person-circle.png") if settings.STATIC_ROOT else None,
+        os.path.join(settings.BASE_DIR, "static", "images", "person-circle.png"),
+    ]
+
+    for candidate in candidates:
+        if candidate and os.path.exists(candidate):
+            return candidate
+
+    raise FileNotFoundError("Default profile image not found in static assets.")
+
+
 class RepassValidator:
     """validate if the user enter the password correctly"""
 
@@ -244,7 +258,7 @@ class RegisterForm(forms.ModelForm):
         creator_instance.user_id = user
         # save default image first
         # https://stackoverflow.com/questions/32945292/how-to-save-pillow-image-object-to-django-imagefield
-        default_image_file= Image.open(os.path.join(settings.STATIC_ROOT,"images","person-circle.png"))
+        default_image_file = Image.open(get_default_profile_image_path())
         buffer = BytesIO()
         default_image_file.save(fp=buffer, format='PNG')
         default_image= ContentFile(buffer.getvalue())
