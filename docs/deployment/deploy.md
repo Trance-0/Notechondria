@@ -31,17 +31,18 @@ Example `Properties Content`:
 ```properties
 DJANGO_SECRET_KEY=replace-with-real-secret
 DJANGO_DEBUG=False
-DJANGO_PORT=8000
 DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,app.example.com
 DJANGO_ALLOWED_HOSTS_COMPOSE=localhost 127.0.0.1 app.example.com
 DJANGO_LOG_LEVEL=INFO
 DJANGO_LOG_FILE_NAME=notechondria
+APP_HOST_PORT=9080
+BACKEND_HOST_PORT=9090
+DB_HOST_PORT=9032
 POSTGRE_USERNAME=postgres
 POSTGRE_PASSWORD=replace-with-real-password
 POSTGRE_HOST=db
 POSTGRE_PORT=5432
 POSTGRE_DB=postgres
-NGINX_PORT=80
 PRODUCTION_STATIC_ROOT=/home/staticfiles/
 PRODUCTION_MEDIA_ROOT=/home/mediafiles/
 OPENAI_API_KEY=
@@ -62,6 +63,9 @@ Jenkins must provide at least:
 
 - `DJANGO_SECRET_KEY`
 - `DJANGO_ALLOWED_HOSTS_COMPOSE`
+- `APP_HOST_PORT`
+- `BACKEND_HOST_PORT`
+- `DB_HOST_PORT`
 - `POSTGRE_USERNAME`
 - `POSTGRE_PASSWORD`
 - `POSTGRE_HOST`
@@ -119,6 +123,18 @@ The Docker Compose stack is named `notechondria` and contains separate container
 
 Jenkins only needs Docker access. It does not need host `python` or host `pg_dump`.
 The Django container talks to PostgreSQL through the internal Compose service host `db`.
+Internal container ports stay fixed:
+
+- `app` listens on `8000`
+- `db` listens on `5432`
+- `nginx` listens on `80`
+
+Only the host-exposed ports are configurable:
+
+- `APP_HOST_PORT` maps host -> `nginx:80`
+- `BACKEND_HOST_PORT` maps host -> `app:8000`
+- `DB_HOST_PORT` maps host -> `db:5432`
+
 Deployment readiness waits at most 300 seconds before failing and stopping the web containers.
 The test stage does not use the postgres container; it runs Django tests with `settings_test` directly in an app container without the production entrypoint.
 The app service must not mount a named volume over `/home/notechondria`, because that path contains the Django code copied into the image during build.

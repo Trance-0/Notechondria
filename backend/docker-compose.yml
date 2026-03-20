@@ -37,7 +37,7 @@ services:
       - static_volume:/home/staticfiles
       - media_volume:/home/mediafiles
     ports:
-      - ${DJANGO_PORT}:8000
+      - ${BACKEND_HOST_PORT:-9090}:8000
     depends_on:
       - db
     healthcheck:
@@ -57,7 +57,7 @@ services:
       - POSTGRES_DB=${POSTGRE_DB}
     ports:
       # port 5432 for connection on local computer
-      - ${POSTGRE_PORT}:5432
+      - ${DB_HOST_PORT:-9032}:5432
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRE_USERNAME} -d ${POSTGRE_DB}"]
       interval: 5s
@@ -72,8 +72,8 @@ services:
       - static_volume:/home/staticfiles
       - media_volume:/home/mediafiles
     ports:
-      # port for debugging nginx on local computer
-      - ${NGINX_PORT}:80
+      # host-facing web port
+      - ${APP_HOST_PORT:-9080}:80
     depends_on:
       - app
     networks:
