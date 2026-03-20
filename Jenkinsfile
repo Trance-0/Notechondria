@@ -12,6 +12,7 @@ pipeline {
     BACKUP_DIR = '/var/backups/notechondria'
     DEPLOY_SCRIPT = 'deployment/scripts/deploy_backend.sh'
     BACKUP_SCRIPT = 'deployment/scripts/backup_postgres.sh'
+    TEST_SCRIPT = 'deployment/scripts/test_backend.sh'
     PREPARE_ENV_SCRIPT = 'deployment/scripts/prepare_env.sh'
     JENKINS_ENV_CREDENTIAL_ID = 'notechondria-deploy-env'
   }
@@ -37,13 +38,13 @@ pipeline {
 
     stage('Backup Database') {
       steps {
-        sh 'bash ${BACKUP_SCRIPT} ${PROJECT_DIR}/${ENV_FILE} ${BACKUP_DIR}'
+        sh 'bash ${BACKUP_SCRIPT} ${PROJECT_DIR}/${ENV_FILE} ${BACKUP_DIR} ${PROJECT_DIR}'
       }
     }
 
     stage('Test') {
       steps {
-        sh 'python backend/manage.py test --settings=notechondria.settings_test'
+        sh 'bash ${TEST_SCRIPT} ${PROJECT_DIR} ${PROJECT_DIR}/${ENV_FILE}'
       }
     }
 

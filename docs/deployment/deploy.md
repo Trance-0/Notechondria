@@ -49,7 +49,7 @@ docker compose exec app python manage.py collectstatic --noinput
 
 ```bash
 cd /workspace/Notechondria
-python backend/manage.py test --settings=notechondria.settings_test
+bash deployment/scripts/test_backend.sh /workspace/Notechondria /workspace/Notechondria/.env.deploy
 ```
 
 ## 5) Jenkins pipeline flow
@@ -58,16 +58,27 @@ The pipeline now runs in this order:
 
 1. Checkout source.
 2. Generate `${PROJECT_DIR}/.env.deploy` from Jenkins credentials.
-3. Back up PostgreSQL using that env file.
-4. Run tests.
-5. Deploy with Docker Compose.
+3. Start the `db` service and back up PostgreSQL from the database container.
+4. Run backend tests in Docker using the `app` image and the same stack env file.
+5. Deploy the `notechondria` Docker Compose stack.
 
 The relevant files are:
 
 - `Jenkinsfile`
 - `deployment/scripts/prepare_env.sh`
 - `deployment/scripts/backup_postgres.sh`
+- `deployment/scripts/test_backend.sh`
 - `deployment/scripts/deploy_backend.sh`
+
+### Compose stack shape
+
+The Docker Compose stack is named `notechondria` and contains separate containers for:
+
+- `app`: Django/gunicorn backend
+- `db`: PostgreSQL 15
+- `nginx`: reverse proxy/static serving
+
+Jenkins only needs Docker access. It does not need host `python` or host `pg_dump`.
 
 ### Windows Jenkins checkout note
 

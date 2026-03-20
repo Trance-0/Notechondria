@@ -30,3 +30,6 @@ Use this checklist at the end of each modification round.
 - Added `CODEX.md` and updated repo links.
 - Backend verification was blocked because the available `python.exe` resolves to the Windows Store shim rather than a runnable interpreter.
 - Flutter verification was attempted through the installed `flutter.bat`, but the command did not complete within the allotted timeout in this environment.
+- Switched Jenkins backup and test execution to Docker-native scripts so the host no longer needs `pg_dump` or `python`.
+- Fixed Docker deployment mismatches: compose stack naming, separate `db` service usage, database name wiring, and app env injection.
+- Re-truncated the sample deployment secret to `dwMlZWVt...jpZOJG2z` after it had previously been written too broadly.
