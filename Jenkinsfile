@@ -7,7 +7,6 @@ pipeline {
   }
 
   environment {
-    PROJECT_DIR = '/var/lib/jenkins/workspace/Notechondria'
     ENV_FILE = '.env.deploy'
     BACKUP_DIR = '/var/backups/notechondria'
     DEPLOY_SCRIPT = 'deployment/scripts/deploy_backend.sh'
@@ -31,26 +30,26 @@ pipeline {
     stage('Prepare Environment') {
       steps {
         withCredentials([file(credentialsId: "${JENKINS_ENV_CREDENTIAL_ID}", variable: 'JENKINS_ENV_FILE')]) {
-          sh 'bash ${PREPARE_ENV_SCRIPT} ${PROJECT_DIR}/${ENV_FILE} ${JENKINS_ENV_FILE}'
+          sh 'bash ${PREPARE_ENV_SCRIPT} "${WORKSPACE}/${ENV_FILE}" "${JENKINS_ENV_FILE}"'
         }
       }
     }
 
     stage('Backup Database') {
       steps {
-        sh 'bash ${BACKUP_SCRIPT} ${PROJECT_DIR}/${ENV_FILE} ${BACKUP_DIR} ${PROJECT_DIR}'
+        sh 'bash ${BACKUP_SCRIPT} "${WORKSPACE}/${ENV_FILE}" "${BACKUP_DIR}" "${WORKSPACE}"'
       }
     }
 
     stage('Test') {
       steps {
-        sh 'bash ${TEST_SCRIPT} ${PROJECT_DIR} ${PROJECT_DIR}/${ENV_FILE}'
+        sh 'bash ${TEST_SCRIPT} "${WORKSPACE}" "${WORKSPACE}/${ENV_FILE}"'
       }
     }
 
     stage('Build and Deploy') {
       steps {
-        sh 'bash ${DEPLOY_SCRIPT} ${PROJECT_DIR} ${PROJECT_DIR}/${ENV_FILE}'
+        sh 'bash ${DEPLOY_SCRIPT} "${WORKSPACE}" "${WORKSPACE}/${ENV_FILE}"'
       }
     }
   }
