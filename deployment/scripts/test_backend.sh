@@ -12,5 +12,4 @@ fi
 cd "$PROJECT_DIR/backend"
 
 docker compose --env-file "$ENV_PATH" build app
-docker compose --env-file "$ENV_PATH" up -d db
-docker compose --env-file "$ENV_PATH" run --rm app python manage.py test --settings=notechondria.settings_test
+docker compose --env-file "$ENV_PATH" run --rm --no-deps --entrypoint sh app -lc 'python manage.py test --settings=notechondria.settings_test'

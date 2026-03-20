@@ -104,6 +104,7 @@ The relevant files are:
 - `Jenkinsfile`
 - `deployment/scripts/prepare_env.sh`
 - `deployment/scripts/backup_postgres.sh`
+- `deployment/scripts/ensure_db_ready.sh`
 - `deployment/scripts/test_backend.sh`
 - `deployment/scripts/wait_for_stack.sh`
 - `deployment/scripts/deploy_backend.sh`
@@ -119,6 +120,7 @@ The Docker Compose stack is named `notechondria` and contains separate container
 Jenkins only needs Docker access. It does not need host `python` or host `pg_dump`.
 The Django container talks to PostgreSQL through the internal Compose service host `db`.
 Deployment readiness waits at most 300 seconds before failing and stopping the web containers.
+The test stage does not use the postgres container; it runs Django tests with `settings_test` directly in an app container without the production entrypoint.
 
 ### PostgreSQL volume behavior
 
@@ -128,6 +130,14 @@ If you later change `POSTGRE_USERNAME` or `POSTGRE_DB` in Jenkins but keep the s
 
 1. keep the Jenkins credential aligned with the already-initialized database role/database, or
 2. remove the existing `notechondria` postgres volume and let the cluster initialize again with the new env values.
+
+For disposable Jenkins environments, you can set:
+
+```properties
+DB_AUTO_REINIT_IF_MISMATCH=True
+```
+
+This allows the deploy step to remove and recreate the `notechondria_postgres-data` volume automatically if the configured credentials do not match the existing cluster.
 
 For a first smoke deployment, `sample.test.env` now uses the default `postgres` role/database to reduce that mismatch risk.
 On a first deployment, the backup step may skip automatically because there is no usable database state yet. That is expected and does not block the rest of the pipeline.

@@ -14,6 +14,7 @@ pipeline {
     TEST_SCRIPT = 'deployment/scripts/test_backend.sh'
     PREPARE_ENV_SCRIPT = 'deployment/scripts/prepare_env.sh'
     WAIT_SCRIPT = 'deployment/scripts/wait_for_stack.sh'
+    DB_READY_SCRIPT = 'deployment/scripts/ensure_db_ready.sh'
     WAIT_TIMEOUT_SECONDS = '300'
   }
 
@@ -48,7 +49,7 @@ pipeline {
 
     stage('Build and Deploy') {
       steps {
-        sh 'bash ${DEPLOY_SCRIPT} "${WORKSPACE}" "${WORKSPACE}/${ENV_FILE}" "${WORKSPACE}/${WAIT_SCRIPT}" "${WAIT_TIMEOUT_SECONDS}"'
+        sh 'bash ${DEPLOY_SCRIPT} "${WORKSPACE}" "${WORKSPACE}/${ENV_FILE}" "${WORKSPACE}/${WAIT_SCRIPT}" "${WAIT_TIMEOUT_SECONDS}" "${WORKSPACE}/${DB_READY_SCRIPT}"'
       }
     }
   }

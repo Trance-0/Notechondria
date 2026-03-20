@@ -1,5 +1,5 @@
 # pull official base image
-FROM python:3.9.18-bullseye as builder
+FROM python:3.9.18-bullseye AS builder
 
 # configurations
 ENV HOME=/home

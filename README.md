@@ -98,6 +98,7 @@ GITHUB_APP_CLIENT_ID=
 GITHUB_APP_CLIENT_SECRET=
 GITHUB_APP_PRIVATE_KEY_PATH=
 GITHUB_APP_WEBHOOK_SECRET=
+DB_AUTO_REINIT_IF_MISMATCH=False
 ```
 
 See [`docs/deployment/deploy.md`](D:\Documents\Github\Notechondria\docs\deployment\deploy.md) for the fuller deployment flow.
