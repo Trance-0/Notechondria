@@ -22,8 +22,6 @@ from django.contrib.staticfiles.storage import staticfiles_storage
 from . import views
 
 urlpatterns = [
-    # debugger url: https://django-debug-toolbar.readthedocs.io/en/latest/installation.html
-    path("__debug__/", include("debug_toolbar.urls")),
     path('',views.home,name="home"),
     path('notes/', include(('notes.urls','notes'),namespace='notes')),
     path('creators/', include(('creators.urls','creators'),namespace='creators')),
@@ -37,9 +35,13 @@ urlpatterns = [
         "favicon.ico",
         RedirectView.as_view(url=staticfiles_storage.url("images/bug-fill.ico" if settings.DEBUG else "images/bar-chart-steps.ico")),
     ),
-    path('api-auth/', include('rest_framework.urls')),
-   
 ]
+
+if "debug_toolbar" in settings.INSTALLED_APPS:
+    urlpatterns.insert(0, path("__debug__/", include("debug_toolbar.urls")))
+
+if "rest_framework" in settings.INSTALLED_APPS:
+    urlpatterns.append(path('api-auth/', include('rest_framework.urls')))
 
 if "memcsv" in settings.INSTALLED_APPS:
     urlpatterns.append(path("memcsv/", include(("memcsv.urls", "memcsv"), namespace='memcsv')))

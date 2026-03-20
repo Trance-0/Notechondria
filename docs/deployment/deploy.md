@@ -51,6 +51,8 @@ GITHUB_APP_CLIENT_ID=
 GITHUB_APP_CLIENT_SECRET=
 GITHUB_APP_PRIVATE_KEY_PATH=
 GITHUB_APP_WEBHOOK_SECRET=
+APP_IMAGE=trancezero/notechondria:build-${BUILD_NUMBER}
+NGINX_IMAGE=trancezero/nginx:build-${BUILD_NUMBER}
 ```
 
 Important formatting notes:
@@ -101,7 +103,8 @@ The pipeline now runs in this order:
 2. Generate `${WORKSPACE}/.env.deploy` from Jenkins-injected environment variables.
 3. Start the `db` service and back up PostgreSQL from the database container.
 4. Run backend tests in Docker using the `app` image and the same stack env file.
-5. Deploy the `notechondria` Docker Compose stack.
+5. Build fresh `app` and `nginx` images without Docker cache.
+6. Deploy the `notechondria` Docker Compose stack with recreated containers.
 
 The relevant files are:
 
@@ -138,6 +141,7 @@ Only the host-exposed ports are configurable:
 Deployment readiness waits at most 300 seconds before failing and stopping the web containers.
 The test stage does not use the postgres container; it runs Django tests with `settings_test` directly in an app container without the production entrypoint.
 The app service must not mount a named volume over `/home/notechondria`, because that path contains the Django code copied into the image during build.
+The Jenkins build can tag images with the current build number using `APP_IMAGE` and `NGINX_IMAGE`, for example `trancezero/notechondria:build-${BUILD_NUMBER}`.
 
 ### PostgreSQL volume behavior
 

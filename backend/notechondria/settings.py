@@ -47,10 +47,13 @@ INSTALLED_APPS = [
     'gptutils',
     'notes',
     'creators',
-    # debugger
-    'debug_toolbar',
-    'rest_framework'
 ]
+
+if importlib.util.find_spec("debug_toolbar") is not None:
+    INSTALLED_APPS.append("debug_toolbar")
+
+if importlib.util.find_spec("rest_framework") is not None:
+    INSTALLED_APPS.append("rest_framework")
 
 if importlib.util.find_spec("memcsv") is not None:
     INSTALLED_APPS.append("memcsv")
@@ -64,8 +67,10 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
 ]
+
+if "debug_toolbar" in INSTALLED_APPS:
+    MIDDLEWARE.append('debug_toolbar.middleware.DebugToolbarMiddleware')
 
 # internal ip for debug_toolbar
 if DEBUG:

@@ -48,7 +48,9 @@ This repository is set up for a Jenkins Pipeline job that:
 * checks out the `codex` branch,
 * injects deployment variables before the build,
 * renders `.env.deploy` in the workspace,
-* runs backup/test/deploy through Docker only.
+* runs backup/test/deploy through Docker only,
+* builds fresh `app` and `nginx` images for each Jenkins build using the current `BUILD_NUMBER`,
+* forces no-cache Docker rebuilds and fresh container recreation on each deployment run.
 
 ### Required plugins
 
@@ -56,6 +58,11 @@ This repository is set up for a Jenkins Pipeline job that:
 * GitHub plugin: [plugins.jenkins.io/github](https://plugins.jenkins.io/github/)
 * Docker Pipeline plugin: [plugins.jenkins.io/docker-workflow](https://plugins.jenkins.io/docker-workflow/)
 * Environment Injector plugin: [plugins.jenkins.io/envinject](https://plugins.jenkins.io/envinject/)
+
+### Backend package note
+
+The Docker image installs Python dependencies from [`backend/requirements.txt`](D:\Documents\Github\Notechondria\backend\requirements.txt). That file now includes `djangorestframework`, which is required because Django loads `rest_framework` in `INSTALLED_APPS`.
+Optional integrations such as `debug_toolbar`, `rest_framework`, and `memcsv` are also guarded in Django settings and URL routing, so test-only settings do not fail on URL imports after those apps are removed.
 
 ### Job setup
 
@@ -100,6 +107,8 @@ GITHUB_APP_CLIENT_ID=
 GITHUB_APP_CLIENT_SECRET=
 GITHUB_APP_PRIVATE_KEY_PATH=
 GITHUB_APP_WEBHOOK_SECRET=
+APP_IMAGE=trancezero/notechondria:build-${BUILD_NUMBER}
+NGINX_IMAGE=trancezero/nginx:build-${BUILD_NUMBER}
 DB_AUTO_REINIT_IF_MISMATCH=False
 ```
 

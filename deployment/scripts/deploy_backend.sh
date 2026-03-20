@@ -15,8 +15,8 @@ fi
 cd "$PROJECT_DIR/backend"
 
 bash "$DB_READY_SCRIPT" "$PROJECT_DIR" "$ENV_PATH" "$WAIT_TIMEOUT_SECONDS"
-docker compose --env-file "$ENV_PATH" pull || true
-docker compose --env-file "$ENV_PATH" up --build -d
+docker compose --env-file "$ENV_PATH" build --pull --no-cache app nginx
+docker compose --env-file "$ENV_PATH" up -d --force-recreate
 bash "$WAIT_SCRIPT" "$PROJECT_DIR" "$ENV_PATH" "$WAIT_TIMEOUT_SECONDS"
 docker compose --env-file "$ENV_PATH" exec -T app python manage.py collectstatic --noinput
 
