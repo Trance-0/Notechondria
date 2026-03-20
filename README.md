@@ -37,5 +37,6 @@ We will not use your knowledge to feed the AI, we use open API and ensure that y
 * CI/CD pipeline definition: `Jenkinsfile`
 * Environment template: `sample.env`
 * Test deployment env example: `sample.test.env`
+* Jenkins environment injection guide: `docs/deployment/deploy.md`
 * Build-from-scratch prompt report: `CODEX.md`
 * LLM delivery checklist: `LLM_CHECK.md`

@@ -8,12 +8,13 @@ pipeline {
 
   environment {
     ENV_FILE = '.env.deploy'
-    BACKUP_DIR = '/var/backups/notechondria'
+    BACKUP_DIR = 'backups'
     DEPLOY_SCRIPT = 'deployment/scripts/deploy_backend.sh'
     BACKUP_SCRIPT = 'deployment/scripts/backup_postgres.sh'
     TEST_SCRIPT = 'deployment/scripts/test_backend.sh'
     PREPARE_ENV_SCRIPT = 'deployment/scripts/prepare_env.sh'
-    JENKINS_ENV_CREDENTIAL_ID = 'notechondria-deploy-env'
+    WAIT_SCRIPT = 'deployment/scripts/wait_for_stack.sh'
+    WAIT_TIMEOUT_SECONDS = '300'
   }
 
   triggers {
@@ -29,15 +30,13 @@ pipeline {
 
     stage('Prepare Environment') {
       steps {
-        withCredentials([file(credentialsId: "${JENKINS_ENV_CREDENTIAL_ID}", variable: 'JENKINS_ENV_FILE')]) {
-          sh 'bash ${PREPARE_ENV_SCRIPT} "${WORKSPACE}/${ENV_FILE}" "${JENKINS_ENV_FILE}"'
-        }
+        sh 'bash ${PREPARE_ENV_SCRIPT} "${WORKSPACE}/${ENV_FILE}"'
       }
     }
 
     stage('Backup Database') {
       steps {
-        sh 'bash ${BACKUP_SCRIPT} "${WORKSPACE}/${ENV_FILE}" "${BACKUP_DIR}" "${WORKSPACE}"'
+        sh 'bash ${BACKUP_SCRIPT} "${WORKSPACE}/${ENV_FILE}" "${WORKSPACE}/${BACKUP_DIR}" "${WORKSPACE}"'
       }
     }
 
@@ -49,7 +48,7 @@ pipeline {
 
     stage('Build and Deploy') {
       steps {
-        sh 'bash ${DEPLOY_SCRIPT} "${WORKSPACE}" "${WORKSPACE}/${ENV_FILE}"'
+        sh 'bash ${DEPLOY_SCRIPT} "${WORKSPACE}" "${WORKSPACE}/${ENV_FILE}" "${WORKSPACE}/${WAIT_SCRIPT}" "${WAIT_TIMEOUT_SECONDS}"'
       }
     }
   }

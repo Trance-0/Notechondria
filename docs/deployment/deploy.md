@@ -9,22 +9,51 @@
 
 ### Jenkins-injected deployment env
 
-Do not commit the real deployment `.env` file. Instead, store it in Jenkins as a secret file credential and let the pipeline materialize it during the build.
+Do not commit the real deployment `.env` file. Instead, inject deployment variables in Jenkins and let the pipeline materialize `.env.deploy` during the build.
 
-1. In Jenkins, create a credential of type `Secret file`.
-2. Give it the ID `notechondria-deploy-env`, or update `JENKINS_ENV_CREDENTIAL_ID` in `Jenkinsfile`.
-3. Put your deployment env content in that file using the keys shown in `sample.env`.
-4. The pipeline writes the file to `${PROJECT_DIR}/.env.deploy` through `deployment/scripts/prepare_env.sh`.
+Recommended setup with the Environment Injector plugin:
 
-If you prefer Jenkins environment variables over a secret file, the same script can render `${PROJECT_DIR}/.env.deploy` directly from build variables:
+1. Open the job configuration.
+2. Enable `Prepare an environment for the run`.
+3. Check `Keep Jenkins Environment Variables`.
+4. Check `Keep Jenkins Build Variables`.
+5. Leave `Override Build Parameters` enabled only if you intentionally want injected values to win over build parameters.
+6. Use `Properties Content` or `Properties File Path` to define the deployment variables using the keys shown in `sample.env`.
+7. Save the job.
+8. Run one manual build to verify the injected variables reach the pipeline.
 
-```bash
-bash deployment/scripts/prepare_env.sh /var/lib/jenkins/workspace/Notechondria/.env.deploy
+The pipeline writes those injected variables to `${WORKSPACE}/.env.deploy` through `deployment/scripts/prepare_env.sh`.
+
+Example `Properties Content`:
+
+```properties
+DJANGO_SECRET_KEY=replace-with-real-secret
+DJANGO_DEBUG=False
+DJANGO_PORT=8000
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,app.example.com
+DJANGO_ALLOWED_HOSTS_COMPOSE=localhost 127.0.0.1 app.example.com
+DJANGO_LOG_LEVEL=INFO
+DJANGO_LOG_FILE_NAME=notechondria
+POSTGRE_USERNAME=postgres
+POSTGRE_PASSWORD=replace-with-real-password
+POSTGRE_HOST=db
+POSTGRE_PORT=5432
+POSTGRE_DB=postgres
+NGINX_PORT=80
+PRODUCTION_STATIC_ROOT=/home/staticfiles/
+PRODUCTION_MEDIA_ROOT=/home/mediafiles/
+OPENAI_API_KEY=
+GITHUB_APP_ID=
+GITHUB_APP_CLIENT_ID=
+GITHUB_APP_CLIENT_SECRET=
+GITHUB_APP_PRIVATE_KEY_PATH=
+GITHUB_APP_WEBHOOK_SECRET=
 ```
 
-In that mode, Jenkins must provide at least:
+Jenkins must provide at least:
 
 - `DJANGO_SECRET_KEY`
+- `DJANGO_ALLOWED_HOSTS_COMPOSE`
 - `POSTGRE_USERNAME`
 - `POSTGRE_PASSWORD`
 - `POSTGRE_HOST`
@@ -57,7 +86,7 @@ bash deployment/scripts/test_backend.sh /workspace/Notechondria /workspace/Notec
 The pipeline now runs in this order:
 
 1. Checkout source.
-2. Generate `${PROJECT_DIR}/.env.deploy` from Jenkins credentials.
+2. Generate `${WORKSPACE}/.env.deploy` from Jenkins-injected environment variables.
 3. Start the `db` service and back up PostgreSQL from the database container.
 4. Run backend tests in Docker using the `app` image and the same stack env file.
 5. Deploy the `notechondria` Docker Compose stack.
@@ -68,6 +97,7 @@ The relevant files are:
 - `deployment/scripts/prepare_env.sh`
 - `deployment/scripts/backup_postgres.sh`
 - `deployment/scripts/test_backend.sh`
+- `deployment/scripts/wait_for_stack.sh`
 - `deployment/scripts/deploy_backend.sh`
 
 ### Compose stack shape
@@ -79,6 +109,8 @@ The Docker Compose stack is named `notechondria` and contains separate container
 - `nginx`: reverse proxy/static serving
 
 Jenkins only needs Docker access. It does not need host `python` or host `pg_dump`.
+The Django container talks to PostgreSQL through the internal Compose service host `db`.
+Deployment readiness waits at most 300 seconds before failing and stopping the web containers.
 
 ### PostgreSQL volume behavior
 

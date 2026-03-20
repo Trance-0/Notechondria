@@ -20,7 +20,7 @@ services:
       ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS_COMPOSE:-localhost 127.0.0.1}
       POSTGRE_USERNAME: ${POSTGRE_USERNAME}
       POSTGRE_PASSWORD: ${POSTGRE_PASSWORD}
-      POSTGRE_HOST: ${POSTGRE_HOST}
+      POSTGRE_HOST: db
       POSTGRE_PORT: ${POSTGRE_PORT}
       POSTGRE_DB: ${POSTGRE_DB}
       PRODUCTION_STATIC_ROOT: ${PRODUCTION_STATIC_ROOT}
@@ -42,6 +42,11 @@ services:
       - ${DJANGO_PORT}:8000
     depends_on:
       - db
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=5)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
     networks:
       - notechondria-back
   db:
