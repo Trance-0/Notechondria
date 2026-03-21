@@ -1,6 +1,7 @@
 from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 
 from rest_framework import permissions, serializers, status
 from rest_framework.response import Response
@@ -10,7 +11,23 @@ from creators.utils import ensure_creator
 from notechondria.utils import generate_unique_id
 
 from .mark_down_parser import clean_block_string
-from .models import Course, CourseMedia, Note, NoteBlock, NoteBlockTypeChoices, NoteIndex
+from .models import (
+    Course,
+    CourseMedia,
+    HeatmapActivityTypeChoices,
+    Note,
+    NoteBlock,
+    NoteBlockTypeChoices,
+    NoteIndex,
+    PlannerEvent,
+)
+from .services import (
+    block_word_count,
+    build_heatmap_payload,
+    note_word_count,
+    planner_event_payload,
+    record_note_activity,
+)
 
 
 def note_is_public(note: Note) -> bool:
@@ -149,6 +166,14 @@ class ReorderSerializer(serializers.Serializer):
     ordered_block_ids = serializers.ListField(child=serializers.IntegerField(), min_length=1)
 
 
+class PlannerEventWriteSerializer(serializers.Serializer):
+    title = serializers.CharField(max_length=120)
+    event_date = serializers.DateField()
+    difficulty_weight = serializers.IntegerField(min_value=1, required=False, default=1)
+    description = serializers.CharField(allow_blank=True, required=False, allow_null=True)
+    course_id = serializers.IntegerField(required=False, allow_null=True)
+
+
 class FrontPageApiView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -166,7 +191,20 @@ class FrontPageApiView(APIView):
                 Note.objects.filter(course_id=default_course).order_by("-last_edit")[:6],
                 many=True,
             ).data if default_course else [],
+            "collections": CourseSerializer(
+                Course.objects.prefetch_related("media_items").order_by("-is_default", "title")[:6],
+                many=True,
+            ).data,
         }
+        if request.user.is_authenticated:
+            payload["heatmap"] = build_heatmap_payload(ensure_creator(request.user))
+            payload["upcoming_events"] = [
+                planner_event_payload(event)
+                for event in PlannerEvent.objects.filter(
+                    creator_id=ensure_creator(request.user),
+                    event_date__gte=timezone.localdate(),
+                ).order_by("event_date", "title")[:8]
+            ]
         return Response(payload)
 
 
@@ -232,6 +270,7 @@ class NoteListCreateApiView(APIView):
             creator=creator,
             markdown=serializer.validated_data.get("markdown") or note.description or note.title,
         )
+        record_note_activity(note, note_word_count(note), HeatmapActivityTypeChoices.CREATED)
         return Response(NoteDetailSerializer(note).data, status=status.HTTP_201_CREATED)
 
 
@@ -255,7 +294,14 @@ class NoteDetailApiView(APIView):
                 setattr(note, field, serializer.validated_data[field])
         note.save()
         if "markdown" in serializer.validated_data:
+            before_words = note_word_count(note)
             replace_note_blocks(note, note.creator_id, serializer.validated_data["markdown"])
+            after_words = note_word_count(note)
+            record_note_activity(
+                note,
+                max(abs(after_words - before_words), after_words),
+                HeatmapActivityTypeChoices.EDITED,
+            )
         return Response(NoteDetailSerializer(note).data)
 
 
@@ -278,6 +324,7 @@ class NoteBlocksApiView(APIView):
             is_AI_generated=serializer.validated_data.get("is_AI_generated", False),
         )
         NoteIndex.objects.create(note_id=note, index=next_index, noteblock_id=block)
+        record_note_activity(note, block_word_count(block), HeatmapActivityTypeChoices.EDITED)
         return Response(NoteBlockSerializer(block).data, status=status.HTTP_201_CREATED)
 
 
@@ -288,6 +335,7 @@ class SingleBlockApiView(APIView):
         block = get_object_or_404(NoteBlock.objects.select_related("note_id", "creator_id__user_id"), pk=block_id)
         if block.creator_id.user_id_id != request.user.id:
             return Response({"detail": "Only the owner can update this block."}, status=status.HTTP_403_FORBIDDEN)
+        before_words = block_word_count(block)
         serializer = BlockWriteSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         for field in ["block_type", "args", "is_AI_generated"]:
@@ -296,13 +344,22 @@ class SingleBlockApiView(APIView):
         if "text" in serializer.validated_data:
             block.text = clean_block_string(serializer.validated_data["text"], block.block_type)
         block.save()
+        record_note_activity(
+            block.note_id,
+            max(abs(block_word_count(block) - before_words), block_word_count(block)),
+            HeatmapActivityTypeChoices.EDITED,
+        )
         return Response(NoteBlockSerializer(block).data)
 
     def delete(self, request, block_id):
         block = get_object_or_404(NoteBlock.objects.select_related("creator_id__user_id"), pk=block_id)
         if block.creator_id.user_id_id != request.user.id:
             return Response({"detail": "Only the owner can delete this block."}, status=status.HTTP_403_FORBIDDEN)
+        note = block.note_id
+        previous_words = block_word_count(block)
         block.delete()
+        if note is not None:
+            record_note_activity(note, previous_words, HeatmapActivityTypeChoices.EDITED)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -339,6 +396,58 @@ class ActivityApiView(APIView):
         else:
             notes = notes.filter(course_id__is_default=True)
         return Response(NoteSummarySerializer(notes[:10], many=True).data)
+
+
+class HeatmapApiView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        creator = ensure_creator(request.user)
+        return Response(build_heatmap_payload(creator))
+
+
+class PlannerEventListCreateApiView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        creator = ensure_creator(request.user)
+        events = PlannerEvent.objects.filter(creator_id=creator).order_by("event_date", "title")
+        return Response([planner_event_payload(event) for event in events])
+
+    def post(self, request):
+        creator = ensure_creator(request.user)
+        serializer = PlannerEventWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        course = None
+        if "course_id" in serializer.validated_data and serializer.validated_data["course_id"] is not None:
+            course = get_object_or_404(Course, pk=serializer.validated_data["course_id"])
+        event = PlannerEvent.objects.create(
+            creator_id=creator,
+            course_id=course,
+            title=serializer.validated_data["title"],
+            event_date=serializer.validated_data["event_date"],
+            difficulty_weight=serializer.validated_data.get("difficulty_weight", 1),
+            description=serializer.validated_data.get("description") or "",
+        )
+        return Response(planner_event_payload(event), status=status.HTTP_201_CREATED)
+
+
+class PlannerEventDetailApiView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, event_id):
+        creator = ensure_creator(request.user)
+        event = get_object_or_404(PlannerEvent, pk=event_id, creator_id=creator)
+        serializer = PlannerEventWriteSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        for field in ["title", "event_date", "difficulty_weight", "description"]:
+            if field in serializer.validated_data:
+                setattr(event, field, serializer.validated_data[field])
+        if "course_id" in serializer.validated_data:
+            course_id = serializer.validated_data["course_id"]
+            event.course_id = get_object_or_404(Course, pk=course_id) if course_id is not None else None
+        event.save()
+        return Response(planner_event_payload(event))
 
 
 def create_blocks_from_markdown(note: Note, creator, markdown: str) -> None:

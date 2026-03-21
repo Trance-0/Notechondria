@@ -15,9 +15,12 @@ from notes.api import (
     CourseListApiView,
     CourseNotesApiView,
     FrontPageApiView,
+    HeatmapApiView,
     NoteBlocksApiView,
     NoteDetailApiView,
     NoteListCreateApiView,
+    PlannerEventDetailApiView,
+    PlannerEventListCreateApiView,
     ReorderBlocksApiView,
     SingleBlockApiView,
 )
@@ -41,5 +44,8 @@ urlpatterns = [
     path("notes/<int:note_id>/reorder/", ReorderBlocksApiView.as_view(), name="note-reorder"),
     path("blocks/<int:block_id>/", SingleBlockApiView.as_view(), name="block-detail"),
     path("activity/", ActivityApiView.as_view(), name="activity"),
+    path("heatmap/", HeatmapApiView.as_view(), name="heatmap"),
+    path("planner-events/", PlannerEventListCreateApiView.as_view(), name="planner-events"),
+    path("planner-events/<int:event_id>/", PlannerEventDetailApiView.as_view(), name="planner-event-detail"),
     path("settings/", SettingsApiView.as_view(), name="settings"),
 ]

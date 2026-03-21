@@ -1,4 +1,5 @@
 import os
+import logging
 from datetime import timedelta
 from io import BytesIO
 
@@ -12,6 +13,9 @@ from django.template.loader import render_to_string
 from django.utils.timezone import now
 
 from .models import Creator, VerificationChoices, VerificationCode
+
+
+logger = logging.getLogger("django")
 
 
 def get_default_profile_image_path() -> str:
@@ -56,7 +60,24 @@ def issue_registration_code(email: str) -> VerificationCode:
     )
 
 
-def send_registration_email(email: str, code: str) -> None:
+def smtp_is_configured() -> bool:
+    return bool(
+        settings.EMAIL_HOST
+        and settings.EMAIL_PORT
+        and settings.DEFAULT_FROM_EMAIL
+    )
+
+
+def log_manual_verification_code(email: str, code: str, reason: str) -> None:
+    logger.warning(
+        "SMTP verification fallback for %s. reason=%s verification_code=%s. Ask the user to contact an admin for the code.",
+        email,
+        reason,
+        code,
+    )
+
+
+def send_registration_email(email: str, code: str) -> dict:
     subject = "Verify your Notechondria account"
     body = render_to_string(
         "emails/verify_email.txt",
@@ -67,10 +88,30 @@ def send_registration_email(email: str, code: str) -> None:
             "frontend_verify_url": settings.FRONTEND_VERIFY_URL,
         },
     )
-    send_mail(
-        subject=subject,
-        message=body,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[email],
-        fail_silently=False,
-    )
+    if not smtp_is_configured():
+        log_manual_verification_code(email, code, "smtp_not_configured")
+        return {
+            "delivered": False,
+            "fallback": True,
+            "message": "SMTP is not configured. Contact an admin for the verification code.",
+        }
+    try:
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        return {
+            "delivered": True,
+            "fallback": False,
+            "message": "Verification email sent.",
+        }
+    except Exception as exc:
+        log_manual_verification_code(email, code, f"smtp_send_failed:{exc.__class__.__name__}")
+        return {
+            "delivered": False,
+            "fallback": True,
+            "message": "Email delivery failed. Contact an admin for the verification code.",
+        }

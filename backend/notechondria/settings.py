@@ -63,12 +63,6 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
 ]
 
-if DEBUG and env_bool("ENABLE_DEBUG_TOOLBAR", False):
-    INSTALLED_APPS.append("debug_toolbar")
-
-if env_bool("ENABLE_MEMCSV", False):
-    INSTALLED_APPS.append("memcsv")
-
 MIDDLEWARE = [
     
     'django.middleware.security.SecurityMiddleware',
@@ -79,15 +73,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
-if "debug_toolbar" in INSTALLED_APPS:
-    MIDDLEWARE.append('debug_toolbar.middleware.DebugToolbarMiddleware')
-
-# internal ip for debug_toolbar
-if DEBUG:
-    import socket  # only if you haven't already imported this
-    hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
-    INTERNAL_IPS = [ip[: ip.rfind(".")] + ".1" for ip in ips] + ["127.0.0.1", "10.0.2.2"]
 
 # add trusted CDN
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", f"http://localhost:{os.getenv('APP_HOST_PORT', '9080')}")
@@ -274,7 +259,3 @@ EMAIL_USE_SSL = env_bool("SMTP_USE_SSL", False)
 DEFAULT_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", EMAIL_HOST_USER or "no-reply@notechondria.local")
 EMAIL_VERIFICATION_TTL_HOURS = int(os.getenv("EMAIL_VERIFICATION_TTL_HOURS", "24"))
 FRONTEND_VERIFY_URL = os.getenv("FRONTEND_VERIFY_URL", "")
-
-DJANGO_ADMIN_SITE_HEADER = os.getenv("DJANGO_ADMIN_SITE_HEADER", "Notechondria Admin")
-DJANGO_ADMIN_SITE_TITLE = os.getenv("DJANGO_ADMIN_SITE_TITLE", DJANGO_ADMIN_SITE_HEADER)
-DJANGO_ADMIN_INDEX_TITLE = os.getenv("DJANGO_ADMIN_INDEX_TITLE", "Platform management")

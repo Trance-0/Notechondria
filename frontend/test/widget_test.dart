@@ -3,7 +3,7 @@ import 'package:frontend/main.dart';
 
 class FakeClient implements NotechondriaClient {
   @override
-  Future<List<Map<String, dynamic>>> getActivity() async => [
+  Future<List<Map<String, dynamic>>> getActivity({String? token}) async => [
         {
           'id': 1,
           'title': 'Project outcome',
@@ -29,13 +29,20 @@ class FakeClient implements NotechondriaClient {
       ];
 
   @override
-  Future<Map<String, dynamic>> getFrontPage() async => {
+  Future<Map<String, dynamic>> getFrontPage({String? token}) async => {
         'default_course': {
           'id': 7,
           'title': 'Vibe Coding 101',
           'description': 'Seeded notes from CODEX.md',
           'cover_image_url': '',
         },
+        'collections': [
+          {
+            'id': 7,
+            'title': 'Vibe Coding 101',
+            'description': 'Seeded notes from CODEX.md',
+          }
+        ],
         'recent_notes': [
           {
             'id': 11,
@@ -43,6 +50,18 @@ class FakeClient implements NotechondriaClient {
             'excerpt': 'Repository layout and build order.',
           }
         ],
+        'heatmap': {
+          'cells': List.generate(
+            21,
+            (index) => {
+              'date': '2026-03-${(index + 1).toString().padLeft(2, '0')}',
+              'kind': index < 10 ? 'past' : (index == 10 ? 'today' : 'future'),
+              'past_value': index < 10 ? 200 : 0,
+              'future_value': index > 10 ? 2 : 0,
+              'is_today': index == 10,
+            },
+          ),
+        },
       };
 
   @override
@@ -76,11 +95,20 @@ class FakeClient implements NotechondriaClient {
       };
 
   @override
+  Future<List<Map<String, dynamic>>> getPlannerEvents(String token) async => [];
+
+  @override
   Future<void> logout(String token) async {}
 
   @override
   Future<Map<String, dynamic>> register(String email, String password) async =>
       {'message': 'Verification email sent.'};
+
+  @override
+  Future<Map<String, dynamic>> createPlannerEvent(String token, Map<String, dynamic> payload) async => payload;
+
+  @override
+  Future<Map<String, dynamic>> updatePlannerEvent(String token, int eventId, Map<String, dynamic> payload) async => payload;
 
   @override
   Future<Map<String, dynamic>> updateSettings(String token, Map<String, dynamic> payload) async => {
@@ -103,6 +131,8 @@ void main() {
 
     expect(find.text('Front Page'), findsOneWidget);
     expect(find.text('Vibe Coding 101'), findsWidgets);
+    expect(find.text('Progress + plan heatmap'), findsOneWidget);
+    expect(find.text('Collections'), findsOneWidget);
     expect(find.text('Recent notes'), findsOneWidget);
     expect(find.text('Learner'), findsOneWidget);
     expect(find.text('Course'), findsOneWidget);
@@ -116,7 +146,7 @@ void main() {
 
     await tester.tap(find.text('Course'));
     await tester.pumpAndSettle();
-    expect(find.text('Course Selection'), findsOneWidget);
+    expect(find.text('Collections'), findsOneWidget);
 
     await tester.tap(find.text('Project outcome').first);
     await tester.pumpAndSettle();

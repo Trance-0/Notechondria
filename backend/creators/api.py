@@ -54,8 +54,8 @@ class RegisterSerializer(serializers.Serializer):
         user.save()
         ensure_creator(user)
         verification = issue_registration_code(email)
-        send_registration_email(email, verification.code)
-        return user
+        delivery = send_registration_email(email, verification.code)
+        return {"user": user, "delivery": delivery}
 
 
 class VerifyEmailSerializer(serializers.Serializer):
@@ -136,10 +136,13 @@ class RegisterApiView(APIView):
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = serializer.save()
+        result = serializer.save()
+        user = result["user"]
+        delivery = result["delivery"]
         return Response(
             {
-                "message": "Registration created. Check email for the verification code.",
+                "message": delivery["message"],
+                "delivery_fallback": delivery["fallback"],
                 "email": user.email,
             },
             status=status.HTTP_201_CREATED,
@@ -169,8 +172,13 @@ class ResendVerificationApiView(APIView):
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
         verification = issue_registration_code(email)
-        send_registration_email(email, verification.code)
-        return Response({"message": "Verification email sent."})
+        delivery = send_registration_email(email, verification.code)
+        return Response(
+            {
+                "message": delivery["message"],
+                "delivery_fallback": delivery["fallback"],
+            }
+        )
 
 
 class LoginApiView(APIView):

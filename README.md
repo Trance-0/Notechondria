@@ -62,7 +62,7 @@ This repository is set up for a Jenkins Pipeline job that:
 ### Backend package note
 
 The Docker image installs Python dependencies from [`backend/requirements.txt`](D:\Documents\Github\Notechondria\backend\requirements.txt). That file now includes `djangorestframework`, which is required because Django loads `rest_framework` in `INSTALLED_APPS`.
-Optional integrations such as `debug_toolbar`, `rest_framework`, and `memcsv` are also guarded in Django settings and URL routing, so test-only settings do not fail on URL imports after those apps are removed.
+Optional integrations such as `debug_toolbar`, `rest_framework` are also guarded in Django settings and URL routing, so test-only settings do not fail on URL imports after those apps are removed.
 
 ### Job setup
 

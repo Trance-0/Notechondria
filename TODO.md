@@ -19,11 +19,6 @@ Updated estimate time:
 | 5 hr             | 20 days                |
 | 8 hr             | 15 days                |
 
-## TODO
-
-- [ ] MemCSV testing app
-- [ ] Credit deduction for use of AI
-
 ## In progress
 
 - [ ] Finish note APP

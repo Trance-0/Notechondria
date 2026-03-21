@@ -18,12 +18,6 @@ urlpatterns = [
     ),
 ]
 
-if "debug_toolbar" in settings.INSTALLED_APPS:
-    urlpatterns.insert(0, path("__debug__/", include("debug_toolbar.urls")))
-
-if "memcsv" in settings.INSTALLED_APPS:
-    urlpatterns.append(path("memcsv/", include(("memcsv.urls", "memcsv"), namespace='memcsv')))
-
 # ... the rest of your URLconf goes here ...
 # regex the path request with media in current directory
 if settings.DEBUG:

@@ -1,10 +1,15 @@
+import json
+from datetime import timedelta
+
 from django.contrib.auth.models import User
+from django.utils import timezone
 from django.test import Client, RequestFactory, TestCase
 from django.contrib.messages.storage.fallback import FallbackStorage
+from rest_framework.authtoken.models import Token
 
 from creators.models import Creator
 from notechondria.utils import check_is_creator, generate_unique_id, get_object_or_None
-from .models import Course, Note, NoteBlock, NoteBlockTypeChoices
+from .models import Course, HeatmapActivity, Note, NoteBlock, NoteBlockTypeChoices, PlannerEvent
 
 
 class NoteBlockMarkdownTests(TestCase):
@@ -86,3 +91,68 @@ class NotesViewSmokeTests(TestCase):
         self.client.login(username='viewer', password='pw')
         response = self.client.get('/notes/notes/new')
         self.assertEqual(response.status_code, 200)
+
+
+class HeatmapApiTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='heatmap@example.com', password='pw')
+        self.creator = Creator.objects.create(user_id=self.user)
+        self.course = Course.objects.create(
+            creator_id=self.creator,
+            slug='heatmap-course',
+            title='Heatmap Course',
+        )
+        self.note = Note.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            sharing_id='heatmap-share',
+            title='Heatmap Note',
+        )
+        self.token = Token.objects.create(user=self.user)
+
+    def _auth_headers(self):
+        return {'HTTP_AUTHORIZATION': f'Token {self.token.key}'}
+
+    def test_heatmap_endpoint_contains_past_and_future_values(self):
+        HeatmapActivity.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            note_id=self.note,
+            word_count=320,
+        )
+        PlannerEvent.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            title='Demo event',
+            event_date=timezone.localdate() + timedelta(days=2),
+            difficulty_weight=3,
+        )
+
+        response = self.client.get('/api/v1/heatmap/', **self._auth_headers())
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        today_cell = next(cell for cell in payload['cells'] if cell['is_today'])
+        self.assertIn('past_value', today_cell)
+        future_cell = next(
+            cell for cell in payload['cells']
+            if cell['date'] == (timezone.localdate() + timedelta(days=2)).isoformat()
+        )
+        self.assertEqual(future_cell['future_value'], 3)
+
+    def test_planner_event_create_endpoint(self):
+        response = self.client.post(
+            '/api/v1/planner-events/',
+            data=json.dumps({
+                'title': 'Review sprint',
+                'event_date': (timezone.localdate() + timedelta(days=1)).isoformat(),
+                'difficulty_weight': 2,
+                'course_id': self.course.id,
+            }),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(PlannerEvent.objects.count(), 1)
