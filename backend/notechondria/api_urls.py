@@ -3,6 +3,8 @@ from django.urls import path
 from creators.api import (
     LoginApiView,
     LogoutApiView,
+    PasswordResetConfirmApiView,
+    PasswordResetRequestApiView,
     RegisterApiView,
     ResendVerificationApiView,
     SettingsApiView,
@@ -32,6 +34,8 @@ urlpatterns = [
     path("auth/verify-email/", VerifyEmailApiView.as_view(), name="verify-email"),
     path("auth/resend-verification/", ResendVerificationApiView.as_view(), name="resend-verification"),
     path("auth/login/", LoginApiView.as_view(), name="login"),
+    path("auth/password-reset/", PasswordResetRequestApiView.as_view(), name="password-reset"),
+    path("auth/password-reset/confirm/", PasswordResetConfirmApiView.as_view(), name="password-reset-confirm"),
     path("auth/logout/", LogoutApiView.as_view(), name="logout"),
     path("auth/session/", SessionApiView.as_view(), name="session"),
     path("front-page/", FrontPageApiView.as_view(), name="front-page"),

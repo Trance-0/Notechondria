@@ -50,8 +50,12 @@ PY
     fi
 fi
 
+mkdir -p "${PRODUCTION_STATIC_ROOT:-/home/staticfiles}"
+mkdir -p "${PRODUCTION_MEDIA_ROOT:-/home/mediafiles}"
+
 python manage.py migrate
 python manage.py bootstrap_platform
+echo "Collecting static files into ${PRODUCTION_STATIC_ROOT:-/home/staticfiles}"
 python manage.py collectstatic --noinput
 
 exec "$@"

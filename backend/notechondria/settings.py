@@ -34,6 +34,11 @@ def env_list(name: str, default: str = ""):
     normalized = raw.replace(",", " ")
     return [item.strip() for item in normalized.split() if item.strip()]
 
+
+def env_path(name: str, default):
+    raw = os.getenv(name)
+    return raw if raw else str(default)
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
@@ -64,9 +69,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'notechondria.middleware.ApiCorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -228,8 +233,8 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
 
-# this is the location where collect static will run, set it to the service directory of static url in production
-STATIC_ROOT = os.path.join(BASE_DIR, 'productionfiles/') if DEBUG else os.getenv('PRODUCTION_STATIC_ROOT')
+# keep Django and nginx pointed at the same static directory regardless of DEBUG
+STATIC_ROOT = env_path('PRODUCTION_STATIC_ROOT', BASE_DIR / 'productionfiles')
 
 # Image files (jpg, jpeg)
 # reference: https://djangocentral.com/uploading-images-with-django/
@@ -237,8 +242,8 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'productionfiles/') if DEBUG else os.getenv
 # Base url to serve media files
 MEDIA_URL = '/media/'
 
-# Path where media is stored
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media') if DEBUG else os.getenv('PRODUCTION_MEDIA_ROOT')
+# keep Django and nginx pointed at the same media directory regardless of DEBUG
+MEDIA_ROOT = env_path('PRODUCTION_MEDIA_ROOT', BASE_DIR / 'mediafiles')
 
 # Offline development tag
 OFFLINE = False

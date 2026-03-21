@@ -95,6 +95,14 @@ class FakeClient implements NotechondriaClient {
       };
 
   @override
+  Future<Map<String, dynamic>> requestPasswordReset(String email) async =>
+      {'message': 'Password reset email sent.'};
+
+  @override
+  Future<Map<String, dynamic>> confirmPasswordReset(String email, String code, String password) async =>
+      {'message': 'Password updated. You can now log in.'};
+
+  @override
   Future<List<Map<String, dynamic>>> getPlannerEvents(String token) async => [];
 
   @override
@@ -153,5 +161,21 @@ void main() {
 
     expect(find.text('Learner View'), findsOneWidget);
     expect(find.text('Repository layout and build order.'), findsOneWidget);
+  });
+
+  testWidgets('uses sidebar navigation on wide layouts', (tester) async {
+    tester.view.physicalSize = const Size(1600, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(NotechondriaApp(client: FakeClient()));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.text('Wide layout'), findsOneWidget);
   });
 }

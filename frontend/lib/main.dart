@@ -49,6 +49,8 @@ abstract class NotechondriaClient {
   Future<Map<String, dynamic>> register(String email, String password);
   Future<Map<String, dynamic>> verifyEmail(String email, String code);
   Future<Map<String, dynamic>> login(String email, String password);
+  Future<Map<String, dynamic>> requestPasswordReset(String email);
+  Future<Map<String, dynamic>> confirmPasswordReset(String email, String code, String password);
   Future<void> logout(String token);
   Future<Map<String, dynamic>> getSettings(String token);
   Future<Map<String, dynamic>> updateSettings(String token, Map<String, dynamic> payload);
@@ -179,11 +181,16 @@ class HttpNotechondriaClient implements NotechondriaClient {
     return data;
   }
 
-  Map<String, String> _headers({String? token}) {
+  Map<String, String> _headers({
+    String? token,
+    bool includeJsonContentType = false,
+  }) {
     final headers = {
       'Accept': 'application/json',
-      'Content-Type': 'application/json',
     };
+    if (includeJsonContentType) {
+      headers['Content-Type'] = 'application/json';
+    }
     if (token != null && token.isNotEmpty) {
       headers['Authorization'] = 'Token $token';
     }
@@ -233,7 +240,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/auth/register/');
     final response = await _httpClient.post(
       uri,
-      headers: _headers(),
+      headers: _headers(includeJsonContentType: true),
       body: jsonEncode({'email': email, 'password': password}),
     );
     return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'POST'));
@@ -244,7 +251,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/auth/verify-email/');
     final response = await _httpClient.post(
       uri,
-      headers: _headers(),
+      headers: _headers(includeJsonContentType: true),
       body: jsonEncode({'email': email, 'code': code}),
     );
     return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'POST'));
@@ -255,8 +262,30 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/auth/login/');
     final response = await _httpClient.post(
       uri,
-      headers: _headers(),
+      headers: _headers(includeJsonContentType: true),
       body: jsonEncode({'email': email, 'password': password}),
+    );
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'POST'));
+  }
+
+  @override
+  Future<Map<String, dynamic>> requestPasswordReset(String email) async {
+    final uri = _uri('/auth/password-reset/');
+    final response = await _httpClient.post(
+      uri,
+      headers: _headers(includeJsonContentType: true),
+      body: jsonEncode({'email': email}),
+    );
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'POST'));
+  }
+
+  @override
+  Future<Map<String, dynamic>> confirmPasswordReset(String email, String code, String password) async {
+    final uri = _uri('/auth/password-reset/confirm/');
+    final response = await _httpClient.post(
+      uri,
+      headers: _headers(includeJsonContentType: true),
+      body: jsonEncode({'email': email, 'code': code, 'password': password}),
     );
     return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'POST'));
   }
@@ -283,7 +312,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/settings/');
     final response = await _httpClient.patch(
       uri,
-      headers: _headers(token: token),
+      headers: _headers(token: token, includeJsonContentType: true),
       body: jsonEncode(payload),
     );
     return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'PATCH'));
@@ -308,7 +337,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/planner-events/');
     final response = await _httpClient.post(
       uri,
-      headers: _headers(token: token),
+      headers: _headers(token: token, includeJsonContentType: true),
       body: jsonEncode(payload),
     );
     return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'POST'));
@@ -323,7 +352,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/planner-events/$eventId/');
     final response = await _httpClient.patch(
       uri,
-      headers: _headers(token: token),
+      headers: _headers(token: token, includeJsonContentType: true),
       body: jsonEncode(payload),
     );
     return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'PATCH'));
@@ -340,9 +369,6 @@ class NotechondriaApp extends StatelessWidget {
     return MaterialApp(
       title: 'Notechondria',
       debugShowCheckedModeBanner: false,
-      builder: (context, child) {
-        return SelectionArea(child: child ?? const SizedBox.shrink());
-      },
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
@@ -389,6 +415,14 @@ class _AppShellState extends State<AppShell> {
     'Course View',
     'Activity View',
     'Settings',
+  ];
+
+  static const List<NavigationDestination> _destinations = [
+    NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Front'),
+    NavigationDestination(icon: Icon(Icons.menu_book_outlined), label: 'Learner'),
+    NavigationDestination(icon: Icon(Icons.school_outlined), label: 'Course'),
+    NavigationDestination(icon: Icon(Icons.timeline_outlined), label: 'Activity'),
+    NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'Settings'),
   ];
 
   @override
@@ -532,6 +566,30 @@ class _AppShellState extends State<AppShell> {
     }
   }
 
+  Future<ActionFeedback> _requestPasswordReset(String email) async {
+    try {
+      final result = await widget.client.requestPasswordReset(email);
+      return ActionFeedback(message: result['message']?.toString() ?? 'Password reset email sent.');
+    } catch (error) {
+      return ActionFeedback(
+        message: error.toString().replaceFirst('Exception: ', ''),
+        isError: true,
+      );
+    }
+  }
+
+  Future<ActionFeedback> _confirmPasswordReset(String email, String code, String password) async {
+    try {
+      final result = await widget.client.confirmPasswordReset(email, code, password);
+      return ActionFeedback(message: result['message']?.toString() ?? 'Password updated.');
+    } catch (error) {
+      return ActionFeedback(
+        message: error.toString().replaceFirst('Exception: ', ''),
+        isError: true,
+      );
+    }
+  }
+
   Future<void> _applyAuthPayload(Map<String, dynamic> payload) async {
     final token = payload['token']?.toString() ?? '';
     final user = Map<String, dynamic>.from(payload['user'] as Map? ?? {});
@@ -615,14 +673,131 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWideLayout = constraints.maxWidth >= 960;
+        if (isWideLayout) {
+          return _buildWideScaffold(context);
+        }
+        return _buildCompactScaffold();
+      },
+    );
+  }
+
+  Widget _buildCompactScaffold() {
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
         title: Text(_titles[_selectedIndex]),
         backgroundColor: Colors.transparent,
       ),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 250),
+      body: _buildBody(),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: _handleDestinationSelected,
+        destinations: _destinations,
+      ),
+    );
+  }
+
+  Widget _buildWideScaffold(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Row(
+          children: [
+            Container(
+              width: 240,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF3F4F6),
+                border: Border(
+                  right: BorderSide(color: Color(0xFFE5E7EB)),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Notechondria',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Wide layout',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: const Color(0xFF6B7280),
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: NavigationRail(
+                      selectedIndex: _selectedIndex,
+                      onDestinationSelected: _handleDestinationSelected,
+                      labelType: NavigationRailLabelType.all,
+                      backgroundColor: Colors.transparent,
+                      leading: const SizedBox.shrink(),
+                      destinations: const [
+                        NavigationRailDestination(
+                          icon: Icon(Icons.home_outlined),
+                          label: Text('Front'),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.menu_book_outlined),
+                          label: Text('Learner'),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.school_outlined),
+                          label: Text('Course'),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.timeline_outlined),
+                          label: Text('Activity'),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.settings_outlined),
+                          label: Text('Settings'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                    child: Text(
+                      _titles[_selectedIndex],
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ),
+                  Expanded(child: _buildBody()),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 250),
+      child: SelectionArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _errorMessage != null
@@ -634,22 +809,13 @@ class _AppShellState extends State<AppShell> {
                   )
                 : _buildPage(),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Front'),
-          NavigationDestination(icon: Icon(Icons.menu_book_outlined), label: 'Learner'),
-          NavigationDestination(icon: Icon(Icons.school_outlined), label: 'Course'),
-          NavigationDestination(icon: Icon(Icons.timeline_outlined), label: 'Activity'),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'Settings'),
-        ],
-      ),
     );
+  }
+
+  void _handleDestinationSelected(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
   }
 
   Widget _buildPage() {
@@ -659,9 +825,6 @@ class _AppShellState extends State<AppShell> {
           frontPage: _frontPage ?? const {},
           plannerEvents: _plannerEvents,
           isAuthenticated: _token != null,
-          onRegister: _register,
-          onVerify: _verify,
-          onLogin: _login,
           onCreatePlannerEvent: _createPlannerEvent,
           onOpenNote: _selectNote,
           onOpenCourse: _selectCourse,
@@ -688,6 +851,11 @@ class _AppShellState extends State<AppShell> {
           settings: _settings,
           onSave: _updateSettings,
           onLogout: _logout,
+          onRegister: _register,
+          onVerify: _verify,
+          onLogin: _login,
+          onRequestPasswordReset: _requestPasswordReset,
+          onConfirmPasswordReset: _confirmPasswordReset,
           apiBaseUrl: _httpClient?.baseUrl,
           debugSnapshotListenable: _httpClient?.debugSnapshot,
         );
@@ -702,9 +870,6 @@ class _FrontPage extends StatelessWidget {
     required this.frontPage,
     required this.plannerEvents,
     required this.isAuthenticated,
-    required this.onRegister,
-    required this.onVerify,
-    required this.onLogin,
     required this.onCreatePlannerEvent,
     required this.onOpenNote,
     required this.onOpenCourse,
@@ -713,9 +878,6 @@ class _FrontPage extends StatelessWidget {
   final Map<String, dynamic> frontPage;
   final List<Map<String, dynamic>> plannerEvents;
   final bool isAuthenticated;
-  final Future<ActionFeedback> Function(String email, String password) onRegister;
-  final Future<ActionFeedback> Function(String email, String code) onVerify;
-  final Future<ActionFeedback> Function(String email, String password) onLogin;
   final Future<ActionFeedback> Function(
     String title,
     DateTime eventDate,
@@ -757,10 +919,13 @@ class _FrontPage extends StatelessWidget {
             onCreatePlannerEvent: onCreatePlannerEvent,
           )
         else
-          _AuthPanel(
-            onRegister: onRegister,
-            onVerify: onVerify,
-            onLogin: onLogin,
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'Course materials are open to everyone. Use the Settings tab if you want to register, verify email, or log in.',
+              ),
+            ),
           ),
         const SizedBox(height: 20),
         Text('Collections', style: Theme.of(context).textTheme.titleLarge),
@@ -1319,6 +1484,11 @@ class _SettingsPage extends StatefulWidget {
     required this.settings,
     required this.onSave,
     required this.onLogout,
+    required this.onRegister,
+    required this.onVerify,
+    required this.onLogin,
+    required this.onRequestPasswordReset,
+    required this.onConfirmPasswordReset,
     this.apiBaseUrl,
     this.debugSnapshotListenable,
   });
@@ -1327,6 +1497,11 @@ class _SettingsPage extends StatefulWidget {
   final Map<String, dynamic>? settings;
   final Future<void> Function(String motto, String socialLink) onSave;
   final Future<void> Function() onLogout;
+  final Future<ActionFeedback> Function(String email, String password) onRegister;
+  final Future<ActionFeedback> Function(String email, String code) onVerify;
+  final Future<ActionFeedback> Function(String email, String password) onLogin;
+  final Future<ActionFeedback> Function(String email) onRequestPasswordReset;
+  final Future<ActionFeedback> Function(String email, String code, String password) onConfirmPasswordReset;
   final String? apiBaseUrl;
   final ValueListenable<ApiDebugSnapshot?>? debugSnapshotListenable;
 
@@ -1367,7 +1542,15 @@ class _SettingsPageState extends State<_SettingsPage> {
       padding: const EdgeInsets.all(20),
       children: [
         if (widget.profile == null || widget.settings == null) ...[
-          const Text('Sign in from the front page to manage account settings.'),
+          const Text('Use this tab to register, verify email, and log in. Course materials remain available without an account.'),
+          const SizedBox(height: 16),
+          _AuthHub(
+            onRegister: widget.onRegister,
+            onVerify: widget.onVerify,
+            onLogin: widget.onLogin,
+            onRequestPasswordReset: widget.onRequestPasswordReset,
+            onConfirmPasswordReset: widget.onConfirmPasswordReset,
+          ),
         ] else ...[
           ListTile(
             contentPadding: EdgeInsets.zero,
@@ -1406,121 +1589,93 @@ class _SettingsPageState extends State<_SettingsPage> {
   }
 }
 
-class _AuthPanel extends StatefulWidget {
-  const _AuthPanel({
+class _AuthHub extends StatelessWidget {
+  const _AuthHub({
     required this.onRegister,
     required this.onVerify,
     required this.onLogin,
+    required this.onRequestPasswordReset,
+    required this.onConfirmPasswordReset,
   });
 
   final Future<ActionFeedback> Function(String email, String password) onRegister;
   final Future<ActionFeedback> Function(String email, String code) onVerify;
   final Future<ActionFeedback> Function(String email, String password) onLogin;
+  final Future<ActionFeedback> Function(String email) onRequestPasswordReset;
+  final Future<ActionFeedback> Function(String email, String code, String password) onConfirmPasswordReset;
 
-  @override
-  State<_AuthPanel> createState() => _AuthPanelState();
-}
-
-class _AuthPanelState extends State<_AuthPanel> {
-  final _registerEmail = TextEditingController();
-  final _registerPassword = TextEditingController();
-  final _verifyEmail = TextEditingController();
-  final _verifyCode = TextEditingController();
-  final _loginEmail = TextEditingController();
-  final _loginPassword = TextEditingController();
-  ActionFeedback? _registerFeedback;
-  ActionFeedback? _verifyFeedback;
-  ActionFeedback? _loginFeedback;
-  bool _busy = false;
-
-  @override
-  void dispose() {
-    _registerEmail.dispose();
-    _registerPassword.dispose();
-    _verifyEmail.dispose();
-    _verifyCode.dispose();
-    _loginEmail.dispose();
-    _loginPassword.dispose();
-    super.dispose();
-  }
-
-  Future<void> _run(
-    Future<ActionFeedback> Function() action,
-    void Function(ActionFeedback feedback) setter,
-  ) async {
-    setState(() {
-      _busy = true;
-    });
-    final feedback = await action();
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _busy = false;
-      setter(feedback);
-    });
+  Future<void> _openDialog(BuildContext context, Widget dialog) {
+    return showDialog<void>(
+      context: context,
+      builder: (context) => dialog,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Card(
       elevation: 0,
-      color: const Color(0xFFFFF1E6),
+      color: const Color(0xFFF6F0E6),
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Email-only account flow', style: Theme.of(context).textTheme.titleLarge),
+            Text('Account', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
-            const Text('Register with email and password, verify with the code from SMTP, then sign in.'),
+            const Text('Use small dialogs for sign up, verification, login, and password reset.'),
             const SizedBox(height: 16),
-            _AuthSection(
-              title: 'Register',
-              fields: [
-                _AuthField(controller: _registerEmail, label: 'Email'),
-                _AuthField(controller: _registerPassword, label: 'Password', obscureText: true),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                FilledButton(
+                  onPressed: () => _openDialog(
+                    context,
+                    _EmailPasswordDialog(
+                      title: 'Sign up',
+                      description: 'Create an account with email and password. Verification code arrives by email or server log fallback.',
+                      submitLabel: 'Create account',
+                      onSubmit: onRegister,
+                    ),
+                  ),
+                  child: const Text('Sign up'),
+                ),
+                OutlinedButton(
+                  onPressed: () => _openDialog(
+                    context,
+                    _EmailCodeDialog(
+                      title: 'Verify email',
+                      description: 'Enter the verification code sent to your email.',
+                      submitLabel: 'Verify',
+                      onSubmit: onVerify,
+                    ),
+                  ),
+                  child: const Text('Verify email'),
+                ),
+                OutlinedButton(
+                  onPressed: () => _openDialog(
+                    context,
+                    _EmailPasswordDialog(
+                      title: 'Login',
+                      description: 'Sign in with your email and password.',
+                      submitLabel: 'Login',
+                      onSubmit: onLogin,
+                    ),
+                  ),
+                  child: const Text('Login'),
+                ),
+                TextButton(
+                  onPressed: () => _openDialog(
+                    context,
+                    _PasswordResetDialog(
+                      onRequestPasswordReset: onRequestPasswordReset,
+                      onConfirmPasswordReset: onConfirmPasswordReset,
+                    ),
+                  ),
+                  child: const Text('Forgot password'),
+                ),
               ],
-              actionLabel: _busy ? 'Working...' : 'Send verification email',
-              feedback: _registerFeedback,
-              onPressed: _busy
-                  ? null
-                  : () => _run(
-                        () => widget.onRegister(_registerEmail.text, _registerPassword.text),
-                        (feedback) => _registerFeedback = feedback,
-                      ),
-            ),
-            const SizedBox(height: 16),
-            _AuthSection(
-              title: 'Verify',
-              fields: [
-                _AuthField(controller: _verifyEmail, label: 'Email'),
-                _AuthField(controller: _verifyCode, label: 'Verification code'),
-              ],
-              actionLabel: _busy ? 'Working...' : 'Verify email',
-              feedback: _verifyFeedback,
-              onPressed: _busy
-                  ? null
-                  : () => _run(
-                        () => widget.onVerify(_verifyEmail.text, _verifyCode.text),
-                        (feedback) => _verifyFeedback = feedback,
-                      ),
-            ),
-            const SizedBox(height: 16),
-            _AuthSection(
-              title: 'Login',
-              fields: [
-                _AuthField(controller: _loginEmail, label: 'Email'),
-                _AuthField(controller: _loginPassword, label: 'Password', obscureText: true),
-              ],
-              actionLabel: _busy ? 'Working...' : 'Login',
-              feedback: _loginFeedback,
-              onPressed: _busy
-                  ? null
-                  : () => _run(
-                        () => widget.onLogin(_loginEmail.text, _loginPassword.text),
-                        (feedback) => _loginFeedback = feedback,
-                      ),
             ),
           ],
         ),
@@ -1529,66 +1684,297 @@ class _AuthPanelState extends State<_AuthPanel> {
   }
 }
 
-class _AuthSection extends StatelessWidget {
-  const _AuthSection({
+class _EmailPasswordDialog extends StatefulWidget {
+  const _EmailPasswordDialog({
     required this.title,
-    required this.fields,
-    required this.actionLabel,
-    required this.onPressed,
-    this.feedback,
+    required this.description,
+    required this.submitLabel,
+    required this.onSubmit,
   });
 
   final String title;
-  final List<_AuthField> fields;
-  final String actionLabel;
-  final VoidCallback? onPressed;
-  final ActionFeedback? feedback;
+  final String description;
+  final String submitLabel;
+  final Future<ActionFeedback> Function(String email, String password) onSubmit;
+
+  @override
+  State<_EmailPasswordDialog> createState() => _EmailPasswordDialogState();
+}
+
+class _EmailPasswordDialogState extends State<_EmailPasswordDialog> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  ActionFeedback? _feedback;
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    setState(() {
+      _submitting = true;
+      _feedback = null;
+    });
+    final feedback = await widget.onSubmit(_emailController.text, _passwordController.text);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _submitting = false;
+      _feedback = feedback;
+    });
+    if (!feedback.isError && widget.title == 'Login') {
+      Navigator.of(context).pop();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
-        for (final field in fields)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: TextField(
-              controller: field.controller,
-              obscureText: field.obscureText,
-              decoration: InputDecoration(
-                labelText: field.label,
-                border: const OutlineInputBorder(),
-              ),
+    return AlertDialog(
+      title: Text(widget.title),
+      content: SizedBox(
+        width: 360,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.description),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _emailController,
+              decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
             ),
-          ),
-        FilledButton(onPressed: onPressed, child: Text(actionLabel)),
-        if (feedback != null) ...[
-          const SizedBox(height: 8),
-          Text(
-            feedback!.message,
-            style: TextStyle(
-              color: feedback!.isError ? const Color(0xFFB91C1C) : const Color(0xFF166534),
-              fontWeight: FontWeight.w600,
+            const SizedBox(height: 12),
+            TextField(
+              controller: _passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder()),
             ),
-          ),
-        ],
+            if (_feedback != null) ...[
+              const SizedBox(height: 12),
+              _FeedbackText(feedback: _feedback!),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: _submitting ? null : () => Navigator.of(context).pop(), child: const Text('Close')),
+        FilledButton(onPressed: _submitting ? null : _submit, child: Text(_submitting ? 'Working...' : widget.submitLabel)),
       ],
     );
   }
 }
 
-class _AuthField {
-  const _AuthField({
-    required this.controller,
-    required this.label,
-    this.obscureText = false,
+class _EmailCodeDialog extends StatefulWidget {
+  const _EmailCodeDialog({
+    required this.title,
+    required this.description,
+    required this.submitLabel,
+    required this.onSubmit,
   });
 
-  final TextEditingController controller;
-  final String label;
-  final bool obscureText;
+  final String title;
+  final String description;
+  final String submitLabel;
+  final Future<ActionFeedback> Function(String email, String code) onSubmit;
+
+  @override
+  State<_EmailCodeDialog> createState() => _EmailCodeDialogState();
+}
+
+class _EmailCodeDialogState extends State<_EmailCodeDialog> {
+  final _emailController = TextEditingController();
+  final _codeController = TextEditingController();
+  ActionFeedback? _feedback;
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _codeController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    setState(() {
+      _submitting = true;
+      _feedback = null;
+    });
+    final feedback = await widget.onSubmit(_emailController.text, _codeController.text);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _submitting = false;
+      _feedback = feedback;
+    });
+    if (!feedback.isError) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: SizedBox(
+        width: 360,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.description),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _emailController,
+              decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _codeController,
+              decoration: const InputDecoration(labelText: 'Code', border: OutlineInputBorder()),
+            ),
+            if (_feedback != null) ...[
+              const SizedBox(height: 12),
+              _FeedbackText(feedback: _feedback!),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: _submitting ? null : () => Navigator.of(context).pop(), child: const Text('Close')),
+        FilledButton(onPressed: _submitting ? null : _submit, child: Text(_submitting ? 'Working...' : widget.submitLabel)),
+      ],
+    );
+  }
+}
+
+class _PasswordResetDialog extends StatefulWidget {
+  const _PasswordResetDialog({
+    required this.onRequestPasswordReset,
+    required this.onConfirmPasswordReset,
+  });
+
+  final Future<ActionFeedback> Function(String email) onRequestPasswordReset;
+  final Future<ActionFeedback> Function(String email, String code, String password) onConfirmPasswordReset;
+
+  @override
+  State<_PasswordResetDialog> createState() => _PasswordResetDialogState();
+}
+
+class _PasswordResetDialogState extends State<_PasswordResetDialog> {
+  final _emailController = TextEditingController();
+  final _codeController = TextEditingController();
+  final _passwordController = TextEditingController();
+  ActionFeedback? _feedback;
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _codeController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _run(Future<ActionFeedback> Function() action, {bool closeOnSuccess = false}) async {
+    setState(() {
+      _submitting = true;
+      _feedback = null;
+    });
+    final feedback = await action();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _submitting = false;
+      _feedback = feedback;
+    });
+    if (closeOnSuccess && !feedback.isError) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Forgot password'),
+      content: SizedBox(
+        width: 380,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Request a reset code, then set a new password in the same dialog.'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _emailController,
+              decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: _submitting
+                  ? null
+                  : () => _run(() => widget.onRequestPasswordReset(_emailController.text)),
+              child: Text(_submitting ? 'Working...' : 'Send reset code'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _codeController,
+              decoration: const InputDecoration(labelText: 'Reset code', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'New password', border: OutlineInputBorder()),
+            ),
+            if (_feedback != null) ...[
+              const SizedBox(height: 12),
+              _FeedbackText(feedback: _feedback!),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: _submitting ? null : () => Navigator.of(context).pop(), child: const Text('Close')),
+        FilledButton(
+          onPressed: _submitting
+              ? null
+              : () => _run(
+                    () => widget.onConfirmPasswordReset(
+                      _emailController.text,
+                      _codeController.text,
+                      _passwordController.text,
+                    ),
+                    closeOnSuccess: true,
+                  ),
+          child: Text(_submitting ? 'Working...' : 'Update password'),
+        ),
+      ],
+    );
+  }
+}
+
+class _FeedbackText extends StatelessWidget {
+  const _FeedbackText({required this.feedback});
+
+  final ActionFeedback feedback;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      feedback.message,
+      style: TextStyle(
+        color: feedback.isError ? const Color(0xFFB91C1C) : const Color(0xFF166534),
+        fontWeight: FontWeight.w600,
+      ),
+    );
+  }
 }
 
 class _ErrorState extends StatelessWidget {

@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 
 from .models import Creator, VerificationChoices, VerificationCode, user_profile_path
-from .utils import send_registration_email
+from .utils import send_password_reset_email, send_registration_email
 
 
 class CreatorModelTests(TestCase):
@@ -31,6 +31,22 @@ class CreatorModelTests(TestCase):
         settings.DEFAULT_FROM_EMAIL = ''
         try:
             result = send_registration_email('demo@example.com', 'code-123')
+        finally:
+            settings.EMAIL_HOST = previous_host
+            settings.DEFAULT_FROM_EMAIL = previous_from
+
+        self.assertFalse(result['delivered'])
+        self.assertTrue(result['fallback'])
+        logger.warning.assert_called_once()
+
+    @patch('creators.utils.logger')
+    def test_send_password_reset_email_falls_back_to_logs_when_smtp_missing(self, logger):
+        previous_host = settings.EMAIL_HOST
+        previous_from = settings.DEFAULT_FROM_EMAIL
+        settings.EMAIL_HOST = ''
+        settings.DEFAULT_FROM_EMAIL = ''
+        try:
+            result = send_password_reset_email('demo@example.com', 'code-456')
         finally:
             settings.EMAIL_HOST = previous_host
             settings.DEFAULT_FROM_EMAIL = previous_from

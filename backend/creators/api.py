@@ -8,7 +8,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import VerificationChoices, VerificationCode
-from .utils import ensure_creator, issue_registration_code, send_registration_email
+from .utils import (
+    ensure_creator,
+    issue_password_reset_code,
+    issue_registration_code,
+    send_password_reset_email,
+    send_registration_email,
+)
 
 
 def auth_payload(user: User):
@@ -130,6 +136,41 @@ class SettingsSerializer(serializers.Serializer):
         return instance
 
 
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        user = User.objects.filter(email__iexact=value).first()
+        if user is None:
+            raise serializers.ValidationError("No account found for this email.")
+        return value.lower()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    code = serializers.CharField()
+    password = serializers.CharField(write_only=True, min_length=9)
+
+    def validate(self, attrs):
+        email = attrs["email"].lower()
+        code = attrs["code"]
+        verification = VerificationCode.objects.filter(
+            code=code,
+            function=f"password_reset:{email}",
+            usage=VerificationChoices.FUNCTION,
+            max_use__gt=0,
+            expire_date__gt=now(),
+        ).first()
+        if verification is None:
+            raise serializers.ValidationError("Invalid or expired reset code.")
+        user = User.objects.filter(email__iexact=email).first()
+        if user is None:
+            raise serializers.ValidationError("No account found for this email.")
+        attrs["user"] = user
+        attrs["verification"] = verification
+        return attrs
+
+
 class RegisterApiView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -188,6 +229,39 @@ class LoginApiView(APIView):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         return Response(auth_payload(serializer.validated_data["user"]))
+
+
+class PasswordResetRequestApiView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+        verification = issue_password_reset_code(email)
+        delivery = send_password_reset_email(email, verification.code)
+        return Response(
+            {
+                "message": delivery["message"],
+                "delivery_fallback": delivery["fallback"],
+                "email": email,
+            }
+        )
+
+
+class PasswordResetConfirmApiView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data["user"]
+        verification = serializer.validated_data["verification"]
+        user.set_password(serializer.validated_data["password"])
+        user.save(update_fields=["password"])
+        verification.max_use = 0
+        verification.save(update_fields=["max_use"])
+        return Response({"message": "Password updated. You can now log in."})
 
 
 class LogoutApiView(APIView):
