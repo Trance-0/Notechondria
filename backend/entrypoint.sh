@@ -21,5 +21,7 @@ then
 fi
 
 python manage.py migrate
+python manage.py bootstrap_platform
+python manage.py collectstatic --noinput
 
 exec "$@"

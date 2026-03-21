@@ -1,0 +1,14 @@
+{
+  "slug": "vibe-coding-101",
+  "title": "Vibe Coding 101",
+  "description": "A seeded starter course that turns the project build report into working study notes for the Flutter front page.",
+  "cover_image": "media/vibe-coding-101-cover.svg",
+  "media": [
+    {
+      "title": "Vibe Coding 101 cover",
+      "description": "Minimal synthwave notebook art for the default course.",
+      "path": "media/vibe-coding-101-cover.svg",
+      "source": "Generated from the project theme"
+    }
+  ]
+}

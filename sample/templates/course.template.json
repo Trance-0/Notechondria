@@ -1,0 +1,14 @@
+{
+  "slug": "course-slug",
+  "title": "Course Title",
+  "description": "Short course description for the front page and catalog.",
+  "cover_image": "media/course-cover.svg",
+  "media": [
+    {
+      "title": "Course cover",
+      "description": "Hero image for the course landing page.",
+      "path": "media/course-cover.svg",
+      "source": "Generated in-repo"
+    }
+  ]
+}

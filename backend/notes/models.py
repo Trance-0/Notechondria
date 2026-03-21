@@ -6,6 +6,56 @@ from creators.models import Creator
 
 # Create your models here.
 
+
+def course_media_path(instance, filename):
+    return f"course_media/course_{instance.course_id_id}/{filename}"
+
+
+def course_cover_path(instance, filename):
+    return f"course_media/course_{instance.id or 'new'}/{filename}"
+
+
+class Course(models.Model):
+    creator_id = models.ForeignKey(
+        Creator,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    slug = models.SlugField(max_length=120, unique=True)
+    title = models.CharField(max_length=120, null=False)
+    description = models.TextField(blank=True, null=True)
+    cover_image = models.ImageField(upload_to=course_cover_path, blank=True, null=True)
+    is_default = models.BooleanField(default=False, null=False)
+    date_created = models.DateTimeField(auto_now_add=True, null=False)
+    last_edit = models.DateTimeField(auto_now=True, null=False)
+
+    class Meta:
+        ordering = ["title"]
+
+    def __str__(self) -> str:
+        return self.title
+
+
+class CourseMedia(models.Model):
+    course_id = models.ForeignKey(
+        Course,
+        related_name="media_items",
+        on_delete=models.CASCADE,
+        null=False,
+    )
+    title = models.CharField(max_length=120, null=False)
+    description = models.CharField(max_length=255, blank=True, null=True)
+    image = models.ImageField(upload_to=course_media_path, blank=True, null=True)
+    source = models.CharField(max_length=255, blank=True, null=True)
+    date_created = models.DateTimeField(auto_now_add=True, null=False)
+
+    class Meta:
+        ordering = ["date_created", "id"]
+
+    def __str__(self) -> str:
+        return f"{self.course_id.title}: {self.title}"
+
 class Note(models.Model):
     """
     Note is a collection of Note blocks, default order maintained by Note index. 
@@ -18,6 +68,13 @@ class Note(models.Model):
         # when conversation is deleted, whether the creator should also be deleted
         on_delete=models.CASCADE,
         null=False,
+    )
+    course_id = models.ForeignKey(
+        Course,
+        related_name="notes",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
     )
     sharing_id = models.CharField(max_length=36,unique=True,null=False)
     title = models.CharField(max_length=100, default="Untitled Ep", null=False)

@@ -2,7 +2,7 @@
 from django.contrib import admin
 
 # Register your models here.
-from .models import Note,NoteIndex,NoteBlock,Tag,ValidationRecord
+from .models import Course, CourseMedia, Note,NoteIndex,NoteBlock,Tag,ValidationRecord
 
 class NoteBlockInline(admin.StackedInline):
     """Line per message in admin view and one extra for convenience"""
@@ -24,6 +24,8 @@ class NoteAdmin(admin.ModelAdmin):
 
 # Add model to admin view
 admin.site.register(Note,NoteAdmin)
+admin.site.register(Course)
+admin.site.register(CourseMedia)
 admin.site.register(NoteBlock)
 admin.site.register(NoteIndex)
 admin.site.register(Tag)

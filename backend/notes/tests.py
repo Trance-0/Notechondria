@@ -4,14 +4,15 @@ from django.contrib.messages.storage.fallback import FallbackStorage
 
 from creators.models import Creator
 from notechondria.utils import check_is_creator, generate_unique_id, get_object_or_None
-from .models import Note, NoteBlock, NoteBlockTypeChoices
+from .models import Course, Note, NoteBlock, NoteBlockTypeChoices
 
 
 class NoteBlockMarkdownTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='bob', password='pw')
         self.creator = Creator.objects.create(user_id=self.user)
-        self.note = Note.objects.create(creator_id=self.creator, sharing_id='share1234', title='t')
+        self.course = Course.objects.create(creator_id=self.creator, slug='course-bob', title='Course Bob')
+        self.note = Note.objects.create(creator_id=self.creator, course_id=self.course, sharing_id='share1234', title='t')
 
     def test_code_block_markdown_render(self):
         block = NoteBlock.objects.create(
@@ -43,7 +44,8 @@ class NoteUtilitiesTests(TestCase):
         self.other_user = User.objects.create_user(username='other', password='pw')
         self.creator = Creator.objects.create(user_id=self.user)
         self.other_creator = Creator.objects.create(user_id=self.other_user)
-        self.note = Note.objects.create(creator_id=self.creator, sharing_id='shareA123', title='Title')
+        self.course = Course.objects.create(creator_id=self.creator, slug='course-owner', title='Course Owner')
+        self.note = Note.objects.create(creator_id=self.creator, course_id=self.course, sharing_id='shareA123', title='Title')
 
     def _attach_messages(self, request):
         setattr(request, 'session', self.client.session)

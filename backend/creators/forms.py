@@ -7,7 +7,6 @@ https://docs.djangoproject.com/en/4.2/topics/forms/
 import os
 from django.conf import settings
 from io import BytesIO
-from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.files.base import ContentFile
 from django.utils.timezone import now
 from PIL import Image
@@ -22,24 +21,10 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.core.validators import EmailValidator
 from .models import Creator, VerificationCode, VerificationChoices
+from .utils import get_default_profile_image_path
 import logging
 
 logger = logging.getLogger("django")
-
-
-def get_default_profile_image_path() -> str:
-    """Resolve the packaged default avatar from collected or source static files."""
-    candidates = [
-        os.path.join(settings.STATIC_ROOT, "images", "person-circle.png") if settings.STATIC_ROOT else None,
-        os.path.join(settings.BASE_DIR, "static", "images", "person-circle.png"),
-    ]
-
-    for candidate in candidates:
-        if candidate and os.path.exists(candidate):
-            return candidate
-
-    raise FileNotFoundError("Default profile image not found in static assets.")
-
 
 class RepassValidator:
     """validate if the user enter the password correctly"""
@@ -263,14 +248,7 @@ class RegisterForm(forms.ModelForm):
         default_image_file.save(fp=buffer, format='PNG')
         default_image= ContentFile(buffer.getvalue())
         img_name="profile_latest.png"
-        creator_instance.image.save(img_name, InMemoryUploadedFile(
-            default_image,       # file
-            None,               # field_name
-            img_name,           # file name
-            'image/png',       # content_type
-            default_image.tell,  # size
-            None)               # content_type_extra
-        )
+        creator_instance.image.save(img_name, default_image, save=False)
         creator_instance = super(RegisterForm, self).save(commit=commit)
         if self.cleaned_data.get("image"):
             # load image

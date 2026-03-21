@@ -1,37 +1,127 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/main.dart';
 
+class FakeClient implements NotechondriaClient {
+  @override
+  Future<List<Map<String, dynamic>>> getActivity() async => [
+        {
+          'id': 1,
+          'title': 'Project outcome',
+          'excerpt': 'Repository layout and build order.',
+        }
+      ];
+
+  @override
+  Future<List<Map<String, dynamic>>> getCourseNotes(int courseId) async => [
+        {
+          'id': 11,
+          'title': 'Project outcome',
+          'excerpt': 'Repository layout and build order.',
+        }
+      ];
+
+  @override
+  Future<List<Map<String, dynamic>>> getCourses() async => [
+        {
+          'id': 7,
+          'title': 'Vibe Coding 101',
+        }
+      ];
+
+  @override
+  Future<Map<String, dynamic>> getFrontPage() async => {
+        'default_course': {
+          'id': 7,
+          'title': 'Vibe Coding 101',
+          'description': 'Seeded notes from CODEX.md',
+          'cover_image_url': '',
+        },
+        'recent_notes': [
+          {
+            'id': 11,
+            'title': 'Project outcome',
+            'excerpt': 'Repository layout and build order.',
+          }
+        ],
+      };
+
+  @override
+  Future<Map<String, dynamic>> getNoteDetail(int noteId) async => {
+        'id': noteId,
+        'title': 'Project outcome',
+        'description': 'Repository layout and build order.',
+        'blocks': [
+          {
+            'block_type': 'T',
+            'text': 'Project outcome',
+          },
+          {
+            'block_type': 'N',
+            'text': 'Repository layout and build order.',
+          }
+        ],
+      };
+
+  @override
+  Future<Map<String, dynamic>> getSettings(String token) async => {
+        'email': 'demo@example.com',
+        'motto': 'Ship the thing.',
+        'social_link': 'https://example.com',
+      };
+
+  @override
+  Future<Map<String, dynamic>> login(String email, String password) async => {
+        'token': 'token',
+        'user': {'email': email}
+      };
+
+  @override
+  Future<void> logout(String token) async {}
+
+  @override
+  Future<Map<String, dynamic>> register(String email, String password) async =>
+      {'message': 'Verification email sent.'};
+
+  @override
+  Future<Map<String, dynamic>> updateSettings(String token, Map<String, dynamic> payload) async => {
+        'email': 'demo@example.com',
+        'motto': payload['motto'],
+        'social_link': payload['social_link'],
+      };
+
+  @override
+  Future<Map<String, dynamic>> verifyEmail(String email, String code) async => {
+        'token': 'token',
+        'user': {'email': email}
+      };
+}
+
 void main() {
-  testWidgets('renders navigation tabs and front page content', (tester) async {
-    await tester.pumpWidget(const NotechondriaApp());
+  testWidgets('renders seeded front page and navigation tabs', (tester) async {
+    await tester.pumpWidget(NotechondriaApp(client: FakeClient()));
+    await tester.pumpAndSettle();
 
     expect(find.text('Front Page'), findsOneWidget);
-    expect(find.text('Recommended First Course'), findsOneWidget);
+    expect(find.text('Vibe Coding 101'), findsWidgets);
+    expect(find.text('Recent notes'), findsOneWidget);
     expect(find.text('Learner'), findsOneWidget);
     expect(find.text('Course'), findsOneWidget);
     expect(find.text('Activity'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
   });
 
-  testWidgets('changes course selection and updates learner and activity views', (tester) async {
-    await tester.pumpWidget(const NotechondriaApp());
+  testWidgets('opens course note and shows learner markdown', (tester) async {
+    await tester.pumpWidget(NotechondriaApp(client: FakeClient()));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Course'));
     await tester.pumpAndSettle();
-
     expect(find.text('Course Selection'), findsOneWidget);
 
-    await tester.tap(find.text('Python Foundations'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Data Structures Interview Plan').last);
+    await tester.tap(find.text('Project outcome').first);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Learner'));
-    await tester.pumpAndSettle();
-    expect(find.text('Current focus: Data Structures Interview Plan'), findsOneWidget);
-
-    await tester.tap(find.text('Activity'));
-    await tester.pumpAndSettle();
-    expect(find.text('Recent activity for Data Structures Interview Plan'), findsOneWidget);
+    expect(find.text('Learner View'), findsOneWidget);
+    expect(find.text('Repository layout and build order.'), findsOneWidget);
   });
 }

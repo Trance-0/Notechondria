@@ -14,7 +14,7 @@ PASSWORD_HASHERS = [
 ]
 
 MIDDLEWARE = [m for m in MIDDLEWARE if m != 'debug_toolbar.middleware.DebugToolbarMiddleware']
-INSTALLED_APPS = [app for app in INSTALLED_APPS if app not in {'debug_toolbar', 'memcsv', 'rest_framework'}]
+INSTALLED_APPS = [app for app in INSTALLED_APPS if app not in {'debug_toolbar', 'memcsv'}]
 
 LOGGING = {
     'version': 1,

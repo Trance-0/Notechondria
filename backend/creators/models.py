@@ -84,3 +84,8 @@ class VerificationCode(models.Model):
 
     def __str__(self):
         return f'{self.code}:{self.function}'
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            self.code = get_random_string(32)
+        super().save(*args, **kwargs)

@@ -15,15 +15,17 @@ RUN apt-get update \
 # install dependencies
 WORKDIR $HOME 
 RUN pip install --upgrade pip
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip3 install -r requirements.txt --no-cache-dir
 
 # copy files
 WORKDIR ${APP_HOME}
-COPY . . 
+COPY backend/ .
+COPY sample /home/sample
+COPY CODEX.md /home/CODEX.md
 
 # add entrypoint to root
-ADD ./entrypoint.sh /entrypoint.sh
+ADD backend/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh 
 
 # create the appropriate directories for static and media file (nginx)

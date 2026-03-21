@@ -1,8 +1,9 @@
 from django.urls import include, path
-from . import views
+from . import api_views, views
 
 urlpatterns = [
-    path('', views.home, name='home'),
+    path('', api_views.health_check, name='home'),
+    path('api/v1/', include(('notechondria.api_urls', 'api'), namespace='api')),
     path('about/', views.about, name='about'),
     path('dashboard/', views.dashboard, name='dashboard'),
     path('search/', views.about, name='search'),

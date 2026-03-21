@@ -11,27 +11,39 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 import os
-import importlib.util
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import datetime
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+REPO_ROOT = BASE_DIR.parent
 
-load_dotenv(os.path.join(BASE_DIR,'.env'))
+load_dotenv(REPO_ROOT / ".env")
+load_dotenv(BASE_DIR / ".env", override=False)
+
+
+def env_bool(name: str, default: bool = False) -> bool:
+    return os.getenv(name, str(default)).lower() in {"1", "true", "yes", "on"}
+
+
+def env_list(name: str, default: str = ""):
+    raw = os.getenv(name, default)
+    if not raw:
+        return []
+    normalized = raw.replace(",", " ")
+    return [item.strip() for item in normalized.split() if item.strip()]
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY')
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY') or os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG = False
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
+DEBUG = env_bool('DJANGO_DEBUG', env_bool('DEBUG', False))
 
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS").split(" ")
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", os.getenv("ALLOWED_HOSTS", "localhost 127.0.0.1"))
 
 
 # Application definition
@@ -47,15 +59,14 @@ INSTALLED_APPS = [
     'gptutils',
     'notes',
     'creators',
+    'rest_framework',
+    'rest_framework.authtoken',
 ]
 
-if importlib.util.find_spec("debug_toolbar") is not None:
+if DEBUG and env_bool("ENABLE_DEBUG_TOOLBAR", False):
     INSTALLED_APPS.append("debug_toolbar")
 
-if importlib.util.find_spec("rest_framework") is not None:
-    INSTALLED_APPS.append("rest_framework")
-
-if importlib.util.find_spec("memcsv") is not None:
+if env_bool("ENABLE_MEMCSV", False):
     INSTALLED_APPS.append("memcsv")
 
 MIDDLEWARE = [
@@ -79,7 +90,7 @@ if DEBUG:
     INTERNAL_IPS = [ip[: ip.rfind(".")] + ".1" for ip in ips] + ["127.0.0.1", "10.0.2.2"]
 
 # add trusted CDN
-CSRF_TRUSTED_ORIGINS = [f"http://localhost:{os.getenv('APP_HOST_PORT', '9080')}"]
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", f"http://localhost:{os.getenv('APP_HOST_PORT', '9080')}")
 
 ROOT_URLCONF = 'notechondria.urls'
 
@@ -172,6 +183,15 @@ DATABASES = {
     }
 }
 
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.TokenAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.AllowAny",
+    ],
+}
+
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -243,3 +263,18 @@ OFFLINE = False
 LOGIN_URL="/creators/login"
 
 # LOGIN_REDIRECT_URL="/creators/profile"
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = os.getenv("SMTP_HOST", "")
+EMAIL_PORT = int(os.getenv("SMTP_PORT", "587"))
+EMAIL_HOST_USER = os.getenv("SMTP_USERNAME", "")
+EMAIL_HOST_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+EMAIL_USE_TLS = env_bool("SMTP_USE_TLS", True)
+EMAIL_USE_SSL = env_bool("SMTP_USE_SSL", False)
+DEFAULT_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", EMAIL_HOST_USER or "no-reply@notechondria.local")
+EMAIL_VERIFICATION_TTL_HOURS = int(os.getenv("EMAIL_VERIFICATION_TTL_HOURS", "24"))
+FRONTEND_VERIFY_URL = os.getenv("FRONTEND_VERIFY_URL", "")
+
+DJANGO_ADMIN_SITE_HEADER = os.getenv("DJANGO_ADMIN_SITE_HEADER", "Notechondria Admin")
+DJANGO_ADMIN_SITE_TITLE = os.getenv("DJANGO_ADMIN_SITE_TITLE", DJANGO_ADMIN_SITE_HEADER)
+DJANGO_ADMIN_INDEX_TITLE = os.getenv("DJANGO_ADMIN_INDEX_TITLE", "Platform management")
