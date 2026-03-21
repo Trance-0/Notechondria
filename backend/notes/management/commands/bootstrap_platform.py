@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -9,6 +10,9 @@ from creators.utils import ensure_creator
 from notes.api import split_markdown_sections
 from notes.models import Course, CourseMedia, Note, NoteBlock, NoteBlockTypeChoices, NoteIndex
 from notechondria.utils import generate_unique_id
+
+
+logger = logging.getLogger("django")
 
 
 class Command(BaseCommand):
@@ -43,9 +47,9 @@ class Command(BaseCommand):
             self.stdout.write("Skipping sample bootstrap because course or note data already exists.")
             return
 
-        sample_root = settings.BASE_DIR.parent / "sample" / "vibe-coding-101"
+        sample_root = self.resolve_sample_root()
         course_payload = json.loads((sample_root / "course.json").read_text(encoding="utf-8"))
-        code_source = (settings.BASE_DIR.parent / "CODEX.md").read_text(encoding="utf-8")
+        code_source = self.resolve_codex_path().read_text(encoding="utf-8")
         owner = User.objects.filter(is_superuser=True).order_by("id").first()
         if owner is None:
             owner, _ = User.objects.get_or_create(
@@ -68,8 +72,11 @@ class Command(BaseCommand):
         )
 
         cover_path = sample_root / course_payload["cover_image"]
-        with cover_path.open("rb") as cover_file:
-            course.cover_image.save(cover_path.name, File(cover_file), save=True)
+        if cover_path.exists():
+            with cover_path.open("rb") as cover_file:
+                course.cover_image.save(cover_path.name, File(cover_file), save=True)
+        else:
+            logger.warning("Sample course cover not found at %s. Continuing without cover image.", cover_path)
 
         for media_payload in course_payload.get("media", []):
             media = CourseMedia.objects.create(
@@ -79,8 +86,11 @@ class Command(BaseCommand):
                 source=media_payload.get("source", ""),
             )
             media_path = sample_root / media_payload["path"]
-            with media_path.open("rb") as media_file:
-                media.image.save(media_path.name, File(media_file), save=True)
+            if media_path.exists():
+                with media_path.open("rb") as media_file:
+                    media.image.save(media_path.name, File(media_file), save=True)
+            else:
+                logger.warning("Sample media not found at %s. Continuing without uploaded media asset.", media_path)
 
         for section in split_markdown_sections(code_source, fallback_title=course.title):
             note = Note.objects.create(
@@ -114,3 +124,32 @@ class Command(BaseCommand):
         import os
 
         return os.getenv(name, default)
+
+    @staticmethod
+    def resolve_sample_root():
+        candidates = [
+            settings.BASE_DIR.parent / "sample" / "vibe-coding-101",
+            settings.BASE_DIR / "sample" / "vibe-coding-101",
+            settings.BASE_DIR.parent.parent / "sample" / "vibe-coding-101",
+        ]
+        for candidate in candidates:
+            if (candidate / "course.json").exists():
+                return candidate
+        raise FileNotFoundError(
+            "Could not find sample/vibe-coding-101/course.json in expected runtime locations."
+        )
+
+    @staticmethod
+    def resolve_codex_path():
+        candidates = [
+            settings.BASE_DIR.parent / "CODEX.md",
+            settings.BASE_DIR / "CODEX.md",
+            settings.BASE_DIR.parent.parent / "CODEX.md",
+            settings.BASE_DIR.parent / "codex.md",
+            settings.BASE_DIR / "codex.md",
+            settings.BASE_DIR.parent.parent / "codex.md",
+        ]
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+        raise FileNotFoundError("Could not find CODEX.md in expected runtime locations.")
