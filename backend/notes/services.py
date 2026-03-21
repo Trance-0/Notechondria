@@ -1,13 +1,16 @@
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone as dt_timezone
+import urllib.request
 
 from django.db.models import Sum
 from django.utils import timezone
 
 from .models import (
+    CalendarFeed,
     HeatmapActivity,
     HeatmapActivityTypeChoices,
     Note,
     NoteBlock,
+    NoteVersion,
     NoteIndex,
     PlannerEvent,
 )
@@ -114,4 +117,140 @@ def planner_event_payload(event: PlannerEvent):
         "difficulty_weight": event.difficulty_weight,
         "description": event.description or "",
         "course_id": event.course_id_id,
+    }
+
+
+def note_preview_lines(note: Note, limit: int = 3):
+    lines = [line.strip() for line in (note.content or "").splitlines() if line.strip()]
+    return lines[:limit]
+
+
+def note_markdown(note: Note) -> str:
+    title = note.title or "Untitled"
+    body = note.content or ""
+    if body.startswith("# "):
+        return body
+    return f"# {title}\n\n{body}".strip()
+
+
+def snapshot_note_version(note: Note, reason: str = "manual") -> NoteVersion:
+    version = NoteVersion.objects.create(
+        note_id=note,
+        creator_id=note.creator_id,
+        title=note.title,
+        description=note.description or "",
+        content=note.content or "",
+        metadata_json=note.metadata_json or "",
+        editor_mode=note.editor_mode,
+        reason=reason,
+    )
+    prune_recent_versions(note)
+    return version
+
+
+def prune_recent_versions(note: Note) -> None:
+    versions = list(note.versions.order_by("-date_created"))
+    if len(versions) <= 12:
+        return
+    for version in versions[12:]:
+        version.delete()
+
+
+def restore_note_version(note: Note, version: NoteVersion) -> None:
+    note.title = version.title
+    note.description = version.description
+    note.content = version.content
+    note.metadata_json = version.metadata_json
+    note.editor_mode = version.editor_mode
+    note.save()
+
+
+def parse_ical_datetime(raw_value: str):
+    value = raw_value.strip()
+    if not value:
+        return None
+    if "T" not in value:
+        return datetime.strptime(value, "%Y%m%d").replace(tzinfo=dt_timezone.utc)
+    value = value.rstrip("Z")
+    dt = datetime.strptime(value, "%Y%m%dT%H%M%S")
+    return dt.replace(tzinfo=dt_timezone.utc)
+
+
+def read_calendar_feed(feed: CalendarFeed) -> str:
+    if feed.raw_ical:
+        return feed.raw_ical
+    if feed.source_url:
+        with urllib.request.urlopen(feed.source_url, timeout=10) as response:
+            return response.read().decode("utf-8")
+    return ""
+
+
+def parse_ical_events(raw_ical: str):
+    events = []
+    current = None
+    for raw_line in raw_ical.splitlines():
+        line = raw_line.strip()
+        if line == "BEGIN:VEVENT":
+            current = {}
+        elif line == "END:VEVENT":
+            if current:
+                events.append(current)
+            current = None
+        elif current is not None and ":" in line:
+            key, value = line.split(":", 1)
+            current[key.split(";")[0]] = value
+    return events
+
+
+def calendar_week_payload(creator, start_date=None):
+    start = start_date or timezone.localdate()
+    days = [start + timedelta(days=index) for index in range(7)]
+    payload = {day.isoformat(): [] for day in days}
+
+    planner_rows = PlannerEvent.objects.filter(
+        creator_id=creator,
+        event_date__gte=days[0],
+        event_date__lte=days[-1],
+    )
+    for event in planner_rows:
+        payload[event.event_date.isoformat()].append(
+            {
+                "title": event.title,
+                "kind": "plan",
+                "course_id": event.course_id_id,
+                "source_id": event.id,
+            }
+        )
+
+    for feed in CalendarFeed.objects.filter(creator_id=creator, is_enabled=True):
+        try:
+            raw_ical = read_calendar_feed(feed)
+        except Exception:
+            continue
+        for event in parse_ical_events(raw_ical):
+            dt_value = parse_ical_datetime(event.get("DTSTART", ""))
+            if dt_value is None:
+                continue
+            event_date = timezone.localtime(dt_value).date()
+            if event_date < days[0] or event_date > days[-1]:
+                continue
+            payload[event_date.isoformat()].append(
+                {
+                    "title": event.get("SUMMARY", feed.title),
+                    "kind": "calendar",
+                    "course_id": feed.course_id_id,
+                    "source_id": feed.id,
+                    "calendar_title": feed.title,
+                }
+            )
+
+    return {
+        "start_date": days[0].isoformat(),
+        "days": [
+            {
+                "date": day.isoformat(),
+                "events": payload[day.isoformat()],
+            }
+            for day in days
+        ],
     }

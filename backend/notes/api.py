@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -12,11 +13,13 @@ from notechondria.utils import generate_unique_id
 
 from .mark_down_parser import clean_block_string
 from .models import (
+    CalendarFeed,
     Course,
     CourseMedia,
     HeatmapActivityTypeChoices,
     Note,
     NoteBlock,
+    NoteVersion,
     NoteBlockTypeChoices,
     NoteIndex,
     PlannerEvent,
@@ -24,9 +27,14 @@ from .models import (
 from .services import (
     block_word_count,
     build_heatmap_payload,
+    calendar_week_payload,
     note_word_count,
+    note_markdown,
+    note_preview_lines,
     planner_event_payload,
     record_note_activity,
+    restore_note_version,
+    snapshot_note_version,
 )
 
 
@@ -84,10 +92,12 @@ class NoteBlockSerializer(serializers.ModelSerializer):
 
 class NoteSummarySerializer(serializers.ModelSerializer):
     excerpt = serializers.SerializerMethodField()
+    editor_mode = serializers.CharField(read_only=True)
+    preview_lines = serializers.SerializerMethodField()
 
     class Meta:
         model = Note
-        fields = ["id", "title", "description", "excerpt", "last_edit", "date_created"]
+        fields = ["id", "title", "description", "excerpt", "preview_lines", "editor_mode", "last_edit", "date_created", "course_id"]
 
     def get_excerpt(self, obj):
         first_text_block = (
@@ -98,16 +108,21 @@ class NoteSummarySerializer(serializers.ModelSerializer):
             .first()
         )
         if first_text_block is None:
-            return obj.description or ""
+            return (obj.content or obj.description or "")[:220]
         return first_text_block.text[:220]
+
+    def get_preview_lines(self, obj):
+        return note_preview_lines(obj)
 
 
 class NoteDetailSerializer(NoteSummarySerializer):
     blocks = serializers.SerializerMethodField()
     course = serializers.SerializerMethodField()
+    content = serializers.CharField(read_only=True)
+    metadata_json = serializers.CharField(read_only=True)
 
     class Meta(NoteSummarySerializer.Meta):
-        fields = NoteSummarySerializer.Meta.fields + ["course", "blocks"]
+        fields = NoteSummarySerializer.Meta.fields + ["course", "blocks", "content", "metadata_json"]
 
     def get_blocks(self, obj):
         ordered_blocks = [
@@ -149,10 +164,19 @@ class CourseSerializer(serializers.ModelSerializer):
 
 
 class NoteWriteSerializer(serializers.Serializer):
-    course_id = serializers.IntegerField(required=False)
+    course_id = serializers.IntegerField(required=False, allow_null=True)
     title = serializers.CharField(max_length=100)
     description = serializers.CharField(allow_blank=True, required=False, allow_null=True)
     markdown = serializers.CharField(allow_blank=True, required=False)
+    content = serializers.CharField(allow_blank=True, required=False)
+    metadata_json = serializers.CharField(allow_blank=True, required=False)
+    editor_mode = serializers.ChoiceField(choices=[("G", "gfm"), ("B", "blocks"), ("P", "plain_text")], required=False)
+
+
+class NoteVersionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NoteVersion
+        fields = ["id", "title", "description", "content", "metadata_json", "editor_mode", "reason", "date_created"]
 
 
 class BlockWriteSerializer(serializers.Serializer):
@@ -172,6 +196,31 @@ class PlannerEventWriteSerializer(serializers.Serializer):
     difficulty_weight = serializers.IntegerField(min_value=1, required=False, default=1)
     description = serializers.CharField(allow_blank=True, required=False, allow_null=True)
     course_id = serializers.IntegerField(required=False, allow_null=True)
+
+
+class CalendarFeedWriteSerializer(serializers.Serializer):
+    title = serializers.CharField(max_length=120)
+    source_kind = serializers.ChoiceField(choices=[("I", "import"), ("S", "subscribe")], required=False, default="I")
+    source_url = serializers.URLField(required=False, allow_blank=True)
+    raw_ical = serializers.CharField(required=False, allow_blank=True)
+    course_id = serializers.IntegerField(required=False, allow_null=True)
+    is_enabled = serializers.BooleanField(required=False, default=True)
+
+
+class CalendarFeedSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CalendarFeed
+        fields = [
+            "id",
+            "title",
+            "source_kind",
+            "source_url",
+            "is_enabled",
+            "course_id",
+            "last_sync",
+            "date_created",
+            "last_edit",
+        ]
 
 
 class FrontPageApiView(APIView):
@@ -238,14 +287,33 @@ class NoteListCreateApiView(APIView):
 
     def get(self, request):
         course_id = request.query_params.get("course_id")
+        query = request.query_params.get("q", "").strip()
+        limit = request.query_params.get("limit")
+        offset = int(request.query_params.get("offset", "0") or 0)
         notes = Note.objects.all()
         if course_id:
             notes = notes.filter(course_id_id=course_id)
+        if query:
+            notes = notes.filter(Q(title__icontains=query) | Q(content__icontains=query) | Q(description__icontains=query))
         if request.user.is_authenticated:
             notes = notes.filter(creator_id__user_id=request.user)
         else:
             notes = notes.filter(course_id__is_default=True)
-        return Response(NoteSummarySerializer(notes.order_by("-last_edit"), many=True).data)
+        notes = notes.order_by("-last_edit")
+        if limit is not None:
+            page_size = max(1, min(int(limit), 100))
+            total = notes.count()
+            rows = notes[offset: offset + page_size]
+            return Response(
+                {
+                    "results": NoteSummarySerializer(rows, many=True).data,
+                    "total": total,
+                    "offset": offset,
+                    "limit": page_size,
+                    "has_more": offset + page_size < total,
+                }
+            )
+        return Response(NoteSummarySerializer(notes, many=True).data)
 
     def post(self, request):
         if not request.user.is_authenticated:
@@ -264,11 +332,14 @@ class NoteListCreateApiView(APIView):
             sharing_id=generate_unique_id(Note, "sharing_id"),
             title=serializer.validated_data["title"],
             description=serializer.validated_data.get("description") or "",
+            content=serializer.validated_data.get("content") or serializer.validated_data.get("markdown") or "",
+            metadata_json=serializer.validated_data.get("metadata_json") or "",
+            editor_mode=serializer.validated_data.get("editor_mode") or creator.editor_mode,
         )
         create_blocks_from_markdown(
             note=note,
             creator=creator,
-            markdown=serializer.validated_data.get("markdown") or note.description or note.title,
+            markdown=note.content or note.description or note.title,
         )
         record_note_activity(note, note_word_count(note), HeatmapActivityTypeChoices.CREATED)
         return Response(NoteDetailSerializer(note).data, status=status.HTTP_201_CREATED)
@@ -289,13 +360,21 @@ class NoteDetailApiView(APIView):
             return Response({"detail": "Only the owner can update this note."}, status=status.HTTP_403_FORBIDDEN)
         serializer = NoteWriteSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        for field in ["title", "description"]:
+        for field in ["title", "description", "metadata_json", "editor_mode"]:
             if field in serializer.validated_data:
                 setattr(note, field, serializer.validated_data[field])
+        if "course_id" in serializer.validated_data:
+            course_id = serializer.validated_data["course_id"]
+            note.course_id = get_object_or_404(Course, pk=course_id) if course_id else None
+        if "content" in serializer.validated_data:
+            note.content = serializer.validated_data["content"]
         note.save()
-        if "markdown" in serializer.validated_data:
+        if "markdown" in serializer.validated_data or "content" in serializer.validated_data:
             before_words = note_word_count(note)
-            replace_note_blocks(note, note.creator_id, serializer.validated_data["markdown"])
+            replacement_markdown = serializer.validated_data.get("content") or serializer.validated_data.get("markdown") or note.content
+            note.content = replacement_markdown
+            note.save(update_fields=["content", "last_edit"])
+            replace_note_blocks(note, note.creator_id, replacement_markdown)
             after_words = note_word_count(note)
             record_note_activity(
                 note,
@@ -386,6 +465,41 @@ class ReorderBlocksApiView(APIView):
         return Response({"message": "Blocks reordered."})
 
 
+class NoteHistoryApiView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, note_id):
+        note = require_note_access(request, note_id)
+        if note.creator_id.user_id_id != request.user.id:
+            return Response({"detail": "Only the owner can view note history."}, status=status.HTTP_403_FORBIDDEN)
+        return Response(NoteVersionSerializer(note.versions.all()[:12], many=True).data)
+
+
+class NoteSnapshotApiView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, note_id):
+        note = require_note_access(request, note_id)
+        if note.creator_id.user_id_id != request.user.id:
+            return Response({"detail": "Only the owner can snapshot this note."}, status=status.HTTP_403_FORBIDDEN)
+        version = snapshot_note_version(note, reason=request.data.get("reason", "manual"))
+        return Response(NoteVersionSerializer(version).data, status=status.HTTP_201_CREATED)
+
+
+class NoteRestoreApiView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, note_id, version_id):
+        note = require_note_access(request, note_id)
+        if note.creator_id.user_id_id != request.user.id:
+            return Response({"detail": "Only the owner can restore this note."}, status=status.HTTP_403_FORBIDDEN)
+        version = get_object_or_404(NoteVersion, pk=version_id, note_id=note)
+        snapshot_note_version(note, reason="before_restore")
+        restore_note_version(note, version)
+        replace_note_blocks(note, note.creator_id, note.content or note_markdown(note))
+        return Response(NoteDetailSerializer(note).data)
+
+
 class ActivityApiView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -396,6 +510,14 @@ class ActivityApiView(APIView):
         else:
             notes = notes.filter(course_id__is_default=True)
         return Response(NoteSummarySerializer(notes[:10], many=True).data)
+
+
+class ActivityWeekApiView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        creator = ensure_creator(request.user)
+        return Response(calendar_week_payload(creator))
 
 
 class HeatmapApiView(APIView):
@@ -448,6 +570,56 @@ class PlannerEventDetailApiView(APIView):
             event.course_id = get_object_or_404(Course, pk=course_id) if course_id is not None else None
         event.save()
         return Response(planner_event_payload(event))
+
+
+class CalendarFeedListCreateApiView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        creator = ensure_creator(request.user)
+        return Response(CalendarFeedSerializer(CalendarFeed.objects.filter(creator_id=creator), many=True).data)
+
+    def post(self, request):
+        creator = ensure_creator(request.user)
+        serializer = CalendarFeedWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        course = None
+        if serializer.validated_data.get("course_id") is not None:
+            course = get_object_or_404(Course, pk=serializer.validated_data["course_id"])
+        feed = CalendarFeed.objects.create(
+            creator_id=creator,
+            course_id=course,
+            title=serializer.validated_data["title"],
+            source_kind=serializer.validated_data.get("source_kind", "I"),
+            source_url=serializer.validated_data.get("source_url") or "",
+            raw_ical=serializer.validated_data.get("raw_ical") or "",
+            is_enabled=serializer.validated_data.get("is_enabled", True),
+        )
+        return Response(CalendarFeedSerializer(feed).data, status=status.HTTP_201_CREATED)
+
+
+class CalendarFeedDetailApiView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, feed_id):
+        creator = ensure_creator(request.user)
+        feed = get_object_or_404(CalendarFeed, pk=feed_id, creator_id=creator)
+        serializer = CalendarFeedWriteSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        for field in ["title", "source_kind", "source_url", "raw_ical", "is_enabled"]:
+            if field in serializer.validated_data:
+                setattr(feed, field, serializer.validated_data[field])
+        if "course_id" in serializer.validated_data:
+            course_id = serializer.validated_data["course_id"]
+            feed.course_id = get_object_or_404(Course, pk=course_id) if course_id is not None else None
+        feed.save()
+        return Response(CalendarFeedSerializer(feed).data)
+
+    def delete(self, request, feed_id):
+        creator = ensure_creator(request.user)
+        feed = get_object_or_404(CalendarFeed, pk=feed_id, creator_id=creator)
+        feed.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 def create_blocks_from_markdown(note: Note, creator, markdown: str) -> None:

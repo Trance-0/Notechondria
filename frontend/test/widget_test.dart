@@ -2,6 +2,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/main.dart';
 
 class FakeClient implements NotechondriaClient {
+  List<Map<String, dynamic>> _notes = [
+    {
+      'id': 11,
+      'title': 'Project outcome',
+      'description': 'Repository layout and build order.',
+      'excerpt': 'Repository layout and build order.',
+      'preview_lines': ['Repository layout and build order.'],
+      'editor_mode': 'P',
+      'last_edit': '2026-03-21T12:00:00Z',
+      'date_created': '2026-03-20T12:00:00Z',
+      'course_id': 7,
+    }
+  ];
+
   @override
   Future<List<Map<String, dynamic>>> getActivity({String? token}) async => [
         {
@@ -69,6 +83,8 @@ class FakeClient implements NotechondriaClient {
         'id': noteId,
         'title': 'Project outcome',
         'description': 'Repository layout and build order.',
+        'content': '# Project outcome\n\nRepository layout and build order.',
+        'metadata_json': '{}',
         'blocks': [
           {
             'block_type': 'T',
@@ -86,6 +102,7 @@ class FakeClient implements NotechondriaClient {
         'email': 'demo@example.com',
         'motto': 'Ship the thing.',
         'social_link': 'https://example.com',
+        'editor_mode': 'P',
       };
 
   @override
@@ -106,6 +123,105 @@ class FakeClient implements NotechondriaClient {
   Future<List<Map<String, dynamic>>> getPlannerEvents(String token) async => [];
 
   @override
+  Future<Map<String, dynamic>> listNotes({String? token, String query = '', int offset = 0, int limit = 20}) async {
+    final rows = _notes
+        .where((note) => query.isEmpty || note['title'].toString().toLowerCase().contains(query.toLowerCase()))
+        .skip(offset)
+        .take(limit)
+        .toList();
+    return {
+      'results': rows,
+      'total': _notes.length,
+      'offset': offset,
+      'limit': limit,
+      'has_more': false,
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> createNote(String token, Map<String, dynamic> payload) async {
+    final note = {
+      'id': 99,
+      'title': payload['title'],
+      'description': payload['description'] ?? '',
+      'content': payload['content'] ?? '',
+      'metadata_json': payload['metadata_json'] ?? '{}',
+      'preview_lines': ['New note'],
+      'editor_mode': payload['editor_mode'] ?? 'P',
+      'last_edit': '2026-03-21T12:00:00Z',
+      'date_created': '2026-03-21T12:00:00Z',
+      'course_id': payload['course_id'],
+      'blocks': [
+        {'block_type': 'T', 'text': payload['title']},
+        {'block_type': 'N', 'text': payload['content'] ?? ''},
+      ],
+    };
+    _notes = [note, ..._notes];
+    return note;
+  }
+
+  @override
+  Future<Map<String, dynamic>> updateNote(String token, int noteId, Map<String, dynamic> payload) async => {
+        'id': noteId,
+        'title': payload['title'] ?? 'Project outcome',
+        'description': payload['description'] ?? '',
+        'content': payload['content'] ?? '',
+        'metadata_json': payload['metadata_json'] ?? '{}',
+        'preview_lines': ['Updated note'],
+        'editor_mode': payload['editor_mode'] ?? 'P',
+        'last_edit': '2026-03-21T12:10:00Z',
+        'date_created': '2026-03-21T12:00:00Z',
+        'course_id': payload['course_id'],
+        'blocks': [
+          {'block_type': 'T', 'text': payload['title'] ?? 'Project outcome'},
+          {'block_type': 'N', 'text': payload['content'] ?? ''},
+        ],
+      };
+
+  @override
+  Future<List<Map<String, dynamic>>> getNoteHistory(String token, int noteId) async => [
+        {
+          'id': 1,
+          'reason': 'quit',
+          'date_created': '2026-03-21T12:00:00Z',
+        }
+      ];
+
+  @override
+  Future<Map<String, dynamic>> snapshotNote(String token, int noteId, {String reason = 'manual'}) async => {
+        'id': 1,
+        'reason': reason,
+      };
+
+  @override
+  Future<Map<String, dynamic>> restoreNoteVersion(String token, int noteId, int versionId) async =>
+      await getNoteDetail(noteId);
+
+  @override
+  Future<Map<String, dynamic>> getActivityWeek(String token) async => {
+        'days': [
+          {
+            'date': '2026-03-21',
+            'events': [
+              {'title': 'Study block', 'kind': 'calendar'}
+            ]
+          }
+        ]
+      };
+
+  @override
+  Future<List<Map<String, dynamic>>> getCalendarFeeds(String token) async => [];
+
+  @override
+  Future<Map<String, dynamic>> createCalendarFeed(String token, Map<String, dynamic> payload) async => payload;
+
+  @override
+  Future<Map<String, dynamic>> updateCalendarFeed(String token, int feedId, Map<String, dynamic> payload) async => payload;
+
+  @override
+  Future<void> deleteCalendarFeed(String token, int feedId) async {}
+
+  @override
   Future<void> logout(String token) async {}
 
   @override
@@ -123,6 +239,7 @@ class FakeClient implements NotechondriaClient {
         'email': 'demo@example.com',
         'motto': payload['motto'],
         'social_link': payload['social_link'],
+        'editor_mode': payload['editor_mode'] ?? 'P',
       };
 
   @override
@@ -174,8 +291,8 @@ void main() {
     await tester.pumpWidget(NotechondriaApp(client: FakeClient()));
     await tester.pumpAndSettle();
 
-    expect(find.byType(NavigationRail), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
     expect(find.text('Wide layout'), findsOneWidget);
+    expect(find.text('Settings'), findsWidgets);
   });
 }

@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:http/http.dart' as http;
 
 void main() {
@@ -45,7 +48,18 @@ abstract class NotechondriaClient {
   Future<List<Map<String, dynamic>>> getCourses();
   Future<List<Map<String, dynamic>>> getCourseNotes(int courseId);
   Future<Map<String, dynamic>> getNoteDetail(int noteId);
+  Future<Map<String, dynamic>> listNotes({String? token, String query = '', int offset = 0, int limit = 20});
+  Future<Map<String, dynamic>> createNote(String token, Map<String, dynamic> payload);
+  Future<Map<String, dynamic>> updateNote(String token, int noteId, Map<String, dynamic> payload);
+  Future<List<Map<String, dynamic>>> getNoteHistory(String token, int noteId);
+  Future<Map<String, dynamic>> snapshotNote(String token, int noteId, {String reason = 'manual'});
+  Future<Map<String, dynamic>> restoreNoteVersion(String token, int noteId, int versionId);
   Future<List<Map<String, dynamic>>> getActivity({String? token});
+  Future<Map<String, dynamic>> getActivityWeek(String token);
+  Future<List<Map<String, dynamic>>> getCalendarFeeds(String token);
+  Future<Map<String, dynamic>> createCalendarFeed(String token, Map<String, dynamic> payload);
+  Future<Map<String, dynamic>> updateCalendarFeed(String token, int feedId, Map<String, dynamic> payload);
+  Future<void> deleteCalendarFeed(String token, int feedId);
   Future<Map<String, dynamic>> register(String email, String password);
   Future<Map<String, dynamic>> verifyEmail(String email, String code);
   Future<Map<String, dynamic>> login(String email, String password);
@@ -228,11 +242,120 @@ class HttpNotechondriaClient implements NotechondriaClient {
   }
 
   @override
+  Future<Map<String, dynamic>> listNotes({String? token, String query = '', int offset = 0, int limit = 20}) async {
+    final uri = _uri('/notes/').replace(
+      queryParameters: {
+        'limit': '$limit',
+        'offset': '$offset',
+        if (query.trim().isNotEmpty) 'q': query.trim(),
+      },
+    );
+    final response = await _httpClient.get(uri, headers: _headers(token: token));
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'GET'));
+  }
+
+  @override
+  Future<Map<String, dynamic>> createNote(String token, Map<String, dynamic> payload) async {
+    final uri = _uri('/notes/');
+    final response = await _httpClient.post(
+      uri,
+      headers: _headers(token: token, includeJsonContentType: true),
+      body: jsonEncode(payload),
+    );
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'POST'));
+  }
+
+  @override
+  Future<Map<String, dynamic>> updateNote(String token, int noteId, Map<String, dynamic> payload) async {
+    final uri = _uri('/notes/$noteId/');
+    final response = await _httpClient.patch(
+      uri,
+      headers: _headers(token: token, includeJsonContentType: true),
+      body: jsonEncode(payload),
+    );
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'PATCH'));
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getNoteHistory(String token, int noteId) async {
+    final uri = _uri('/notes/$noteId/history/');
+    final response = await _httpClient.get(uri, headers: _headers(token: token));
+    final data = await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
+    return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+  }
+
+  @override
+  Future<Map<String, dynamic>> snapshotNote(String token, int noteId, {String reason = 'manual'}) async {
+    final uri = _uri('/notes/$noteId/snapshot/');
+    final response = await _httpClient.post(
+      uri,
+      headers: _headers(token: token, includeJsonContentType: true),
+      body: jsonEncode({'reason': reason}),
+    );
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'POST'));
+  }
+
+  @override
+  Future<Map<String, dynamic>> restoreNoteVersion(String token, int noteId, int versionId) async {
+    final uri = _uri('/notes/$noteId/restore/$versionId/');
+    final response = await _httpClient.post(
+      uri,
+      headers: _headers(token: token, includeJsonContentType: true),
+      body: jsonEncode({}),
+    );
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'POST'));
+  }
+
+  @override
   Future<List<Map<String, dynamic>>> getActivity({String? token}) async {
     final uri = _uri('/activity/');
     final response = await _httpClient.get(uri, headers: _headers(token: token));
     final data = await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
     return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+  }
+
+  @override
+  Future<Map<String, dynamic>> getActivityWeek(String token) async {
+    final uri = _uri('/activity/week/');
+    final response = await _httpClient.get(uri, headers: _headers(token: token));
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'GET'));
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getCalendarFeeds(String token) async {
+    final uri = _uri('/calendar-feeds/');
+    final response = await _httpClient.get(uri, headers: _headers(token: token));
+    final data = await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
+    return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+  }
+
+  @override
+  Future<Map<String, dynamic>> createCalendarFeed(String token, Map<String, dynamic> payload) async {
+    final uri = _uri('/calendar-feeds/');
+    final response = await _httpClient.post(
+      uri,
+      headers: _headers(token: token, includeJsonContentType: true),
+      body: jsonEncode(payload),
+    );
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'POST'));
+  }
+
+  @override
+  Future<Map<String, dynamic>> updateCalendarFeed(String token, int feedId, Map<String, dynamic> payload) async {
+    final uri = _uri('/calendar-feeds/$feedId/');
+    final response = await _httpClient.patch(
+      uri,
+      headers: _headers(token: token, includeJsonContentType: true),
+      body: jsonEncode(payload),
+    );
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'PATCH'));
+  }
+
+  @override
+  Future<void> deleteCalendarFeed(String token, int feedId) async {
+    final uri = _uri('/calendar-feeds/$feedId/');
+    final response = await _httpClient.delete(uri, headers: _headers(token: token));
+    await _decode(response, uri: uri, method: 'DELETE');
   }
 
   @override
@@ -401,10 +524,17 @@ class _AppShellState extends State<AppShell> {
   Map<String, dynamic>? _frontPage;
   List<Map<String, dynamic>> _courses = const [];
   List<Map<String, dynamic>> _courseNotes = const [];
+  List<Map<String, dynamic>> _learnerNotes = const [];
   List<Map<String, dynamic>> _activity = const [];
   List<Map<String, dynamic>> _plannerEvents = const [];
+  List<Map<String, dynamic>> _calendarFeeds = const [];
+  Map<String, dynamic>? _activityWeek;
   Map<String, dynamic>? _selectedCourse;
   Map<String, dynamic>? _selectedNote;
+  bool _hasMoreLearnerNotes = true;
+  bool _isLoadingMoreNotes = false;
+  int _learnerNotesOffset = 0;
+  String _learnerSearchQuery = '';
 
   HttpNotechondriaClient? get _httpClient =>
       widget.client is HttpNotechondriaClient ? widget.client as HttpNotechondriaClient : null;
@@ -452,17 +582,31 @@ class _AppShellState extends State<AppShell> {
         }
       }
       List<Map<String, dynamic>> plannerEvents = const [];
+      List<Map<String, dynamic>> learnerNotes = const [];
+      List<Map<String, dynamic>> calendarFeeds = const [];
+      Map<String, dynamic>? activityWeek;
       if (_token != null && _token!.isNotEmpty) {
         plannerEvents = await widget.client.getPlannerEvents(_token!);
+        calendarFeeds = await widget.client.getCalendarFeeds(_token!);
+        activityWeek = await widget.client.getActivityWeek(_token!);
       }
+      final notePage = await widget.client.listNotes(token: _token, limit: 20, offset: 0);
+      learnerNotes = (notePage['results'] as List<dynamic>? ?? const [])
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
       setState(() {
         _frontPage = frontPage;
         _courses = courses;
         _activity = activity;
         _selectedCourse = selectedCourse;
         _courseNotes = courseNotes;
+        _learnerNotes = learnerNotes;
         _selectedNote = selectedNote;
         _plannerEvents = plannerEvents;
+        _calendarFeeds = calendarFeeds;
+        _activityWeek = activityWeek;
+        _hasMoreLearnerNotes = notePage['has_more'] == true;
+        _learnerNotesOffset = learnerNotes.length;
         _isLoading = false;
       });
     } catch (error) {
@@ -483,6 +627,42 @@ class _AppShellState extends State<AppShell> {
       _frontPage = frontPage;
       _plannerEvents = plannerEvents;
     });
+  }
+
+  Future<void> _loadLearnerNotes({bool reset = false, String? query}) async {
+    if (_isLoadingMoreNotes) {
+      return;
+    }
+    final effectiveQuery = query ?? _learnerSearchQuery;
+    final nextOffset = reset ? 0 : _learnerNotesOffset;
+    setState(() {
+      _isLoadingMoreNotes = true;
+      if (reset) {
+        _learnerSearchQuery = effectiveQuery;
+      }
+    });
+    try {
+      final page = await widget.client.listNotes(
+        token: _token,
+        query: effectiveQuery,
+        offset: nextOffset,
+        limit: 20,
+      );
+      final rows = (page['results'] as List<dynamic>? ?? const [])
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+      setState(() {
+        _learnerNotes = reset ? rows : [..._learnerNotes, ...rows];
+        _hasMoreLearnerNotes = page['has_more'] == true;
+        _learnerNotesOffset = (reset ? 0 : _learnerNotesOffset) + rows.length;
+        _isLoadingMoreNotes = false;
+      });
+    } catch (error) {
+      setState(() {
+        _isLoadingMoreNotes = false;
+        _errorMessage = error.toString().replaceFirst('Exception: ', '');
+      });
+    }
   }
 
   Future<void> _selectCourse(Map<String, dynamic> course) async {
@@ -514,7 +694,7 @@ class _AppShellState extends State<AppShell> {
       _isLoading = true;
     });
     try {
-      final detail = await widget.client.getNoteDetail(noteSummary['id'] as int);
+      final detail = await _fetchNoteDetail(noteSummary['id'] as int);
       setState(() {
         _selectedNote = detail;
         _selectedIndex = 1;
@@ -526,6 +706,14 @@ class _AppShellState extends State<AppShell> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<Map<String, dynamic>> _fetchNoteDetail(int noteId) async {
+    final detail = await widget.client.getNoteDetail(noteId);
+    setState(() {
+      _selectedNote = detail;
+    });
+    return detail;
   }
 
   Future<ActionFeedback> _register(String email, String password) async {
@@ -618,7 +806,7 @@ class _AppShellState extends State<AppShell> {
     _showMessage('Signed out.');
   }
 
-  Future<void> _updateSettings(String motto, String socialLink) async {
+  Future<void> _updateSettings(String motto, String socialLink, String editorMode) async {
     final token = _token;
     if (token == null || token.isEmpty) {
       return;
@@ -626,6 +814,7 @@ class _AppShellState extends State<AppShell> {
     final updated = await widget.client.updateSettings(token, {
       'motto': motto,
       'social_link': socialLink,
+      'editor_mode': editorMode,
     });
     setState(() {
       _settings = updated;
@@ -662,6 +851,172 @@ class _AppShellState extends State<AppShell> {
         isError: true,
       );
     }
+  }
+
+  Future<Map<String, dynamic>> _createNote({
+    String? markdown,
+    String? title,
+  }) async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      throw Exception('Sign in to create notes.');
+    }
+    final mode = _settings?['editor_mode']?.toString() ?? 'P';
+    final initialMarkdown = (markdown ?? '# ${title ?? 'Untitled note'}\n\n').trim();
+    final created = await widget.client.createNote(token, {
+      'title': title ?? _extractTitleFromMarkdown(initialMarkdown),
+      'description': _excerptFromMarkdown(initialMarkdown),
+      'content': initialMarkdown,
+      'editor_mode': mode,
+      'course_id': _selectedCourse?['id'],
+      'metadata_json': jsonEncode({'section': '', 'autosave': false}),
+    });
+    await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
+    setState(() {
+      _selectedNote = created;
+      _selectedIndex = 1;
+    });
+    return created;
+  }
+
+  Future<Map<String, dynamic>> _saveNote(int noteId, Map<String, dynamic> payload) async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      throw Exception('Sign in to save notes.');
+    }
+    final updated = await widget.client.updateNote(token, noteId, payload);
+    await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
+    setState(() {
+      _selectedNote = updated;
+    });
+    return updated;
+  }
+
+  Future<List<Map<String, dynamic>>> _getNoteHistory(int noteId) async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      return const [];
+    }
+    return widget.client.getNoteHistory(token, noteId);
+  }
+
+  Future<Map<String, dynamic>> _snapshotNote(int noteId, {String reason = 'manual'}) async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      throw Exception('Sign in to snapshot notes.');
+    }
+    return widget.client.snapshotNote(token, noteId, reason: reason);
+  }
+
+  Future<Map<String, dynamic>> _restoreNoteVersion(int noteId, int versionId) async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      throw Exception('Sign in to restore notes.');
+    }
+    final restored = await widget.client.restoreNoteVersion(token, noteId, versionId);
+    await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
+    setState(() {
+      _selectedNote = restored;
+    });
+    return restored;
+  }
+
+  Future<void> _importMarkdownNote() async {
+    try {
+      final file = await openFile(
+        acceptedTypeGroups: [
+          const XTypeGroup(label: 'Markdown', extensions: ['md', 'markdown', 'txt']),
+        ],
+      );
+      if (file == null) {
+        return;
+      }
+      final contents = await file.readAsString();
+      final created = await _createNote(markdown: contents, title: _extractTitleFromMarkdown(contents));
+      _showMessage("Imported '${created['title']}'.");
+    } catch (error) {
+      _showMessage(error.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<void> _exportNote(Map<String, dynamic> note) async {
+    try {
+      final detail = note['content'] != null ? note : await widget.client.getNoteDetail(note['id'] as int);
+      final location = await getSaveLocation(
+        suggestedName: '${detail['title'] ?? 'note'}.md',
+        acceptedTypeGroups: [
+          const XTypeGroup(label: 'Markdown', extensions: ['md']),
+        ],
+      );
+      if (location == null) {
+        return;
+      }
+      final bytes = Uint8List.fromList(utf8.encode(detail['content']?.toString() ?? _noteToMarkdown(detail)));
+      final file = XFile.fromData(bytes, name: '${detail['title'] ?? 'note'}.md', mimeType: 'text/markdown');
+      await file.saveTo(location.path);
+      _showMessage("Exported '${detail['title'] ?? 'note'}'.");
+    } catch (error) {
+      _showMessage(error.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<void> _refreshCalendarState() async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      return;
+    }
+    final feeds = await widget.client.getCalendarFeeds(token);
+    final week = await widget.client.getActivityWeek(token);
+    setState(() {
+      _calendarFeeds = feeds;
+      _activityWeek = week;
+    });
+  }
+
+  Future<void> _importCalendarFeed(String rawIcal, String title, {int? courseId}) async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      throw Exception('Sign in to import calendars.');
+    }
+    await widget.client.createCalendarFeed(token, {
+      'title': title,
+      'source_kind': 'I',
+      'raw_ical': rawIcal,
+      'course_id': courseId,
+    });
+    await _refreshCalendarState();
+  }
+
+  Future<void> _subscribeCalendarFeed(String title, String url, {int? courseId}) async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      throw Exception('Sign in to subscribe calendars.');
+    }
+    await widget.client.createCalendarFeed(token, {
+      'title': title,
+      'source_kind': 'S',
+      'source_url': url,
+      'course_id': courseId,
+    });
+    await _refreshCalendarState();
+  }
+
+  Future<void> _toggleCalendarFeed(Map<String, dynamic> feed, bool enabled) async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      return;
+    }
+    await widget.client.updateCalendarFeed(token, feed['id'] as int, {'is_enabled': enabled});
+    await _refreshCalendarState();
+  }
+
+  Future<void> _deleteCalendarFeed(Map<String, dynamic> feed) async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      return;
+    }
+    await widget.client.deleteCalendarFeed(token, feed['id'] as int);
+    await _refreshCalendarState();
   }
 
   void _showMessage(String message) {
@@ -738,34 +1093,44 @@ class _AppShellState extends State<AppShell> {
                     ),
                   ),
                   Expanded(
-                    child: NavigationRail(
-                      selectedIndex: _selectedIndex,
-                      onDestinationSelected: _handleDestinationSelected,
-                      labelType: NavigationRailLabelType.all,
-                      backgroundColor: Colors.transparent,
-                      leading: const SizedBox.shrink(),
-                      destinations: const [
-                        NavigationRailDestination(
-                          icon: Icon(Icons.home_outlined),
-                          label: Text('Front'),
-                        ),
-                        NavigationRailDestination(
-                          icon: Icon(Icons.menu_book_outlined),
-                          label: Text('Learner'),
-                        ),
-                        NavigationRailDestination(
-                          icon: Icon(Icons.school_outlined),
-                          label: Text('Course'),
-                        ),
-                        NavigationRailDestination(
-                          icon: Icon(Icons.timeline_outlined),
-                          label: Text('Activity'),
-                        ),
-                        NavigationRailDestination(
-                          icon: Icon(Icons.settings_outlined),
-                          label: Text('Settings'),
-                        ),
-                      ],
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Column(
+                        children: [
+                          _SidebarItem(
+                            icon: Icons.home_outlined,
+                            label: 'Front',
+                            selected: _selectedIndex == 0,
+                            onTap: () => _handleDestinationSelected(0),
+                          ),
+                          _SidebarItem(
+                            icon: Icons.menu_book_outlined,
+                            label: 'Learner',
+                            selected: _selectedIndex == 1,
+                            onTap: () => _handleDestinationSelected(1),
+                          ),
+                          _SidebarItem(
+                            icon: Icons.school_outlined,
+                            label: 'Course',
+                            selected: _selectedIndex == 2,
+                            onTap: () => _handleDestinationSelected(2),
+                          ),
+                          _SidebarItem(
+                            icon: Icons.timeline_outlined,
+                            label: 'Activity',
+                            selected: _selectedIndex == 3,
+                            onTap: () => _handleDestinationSelected(3),
+                          ),
+                          const Spacer(),
+                          _SidebarItem(
+                            icon: Icons.settings_outlined,
+                            label: 'Settings',
+                            selected: _selectedIndex == 4,
+                            onTap: () => _handleDestinationSelected(4),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -831,9 +1196,25 @@ class _AppShellState extends State<AppShell> {
         );
       case 1:
         return _LearnerPage(
-          selectedCourse: _selectedCourse,
+          notes: _learnerNotes,
+          courses: _courses,
           selectedNote: _selectedNote,
-          onOpenCourse: () => setState(() => _selectedIndex = 2),
+          editorMode: _settings?['editor_mode']?.toString() ?? 'P',
+          hasMoreNotes: _hasMoreLearnerNotes,
+          isLoadingMore: _isLoadingMoreNotes,
+          searchQuery: _learnerSearchQuery,
+          isAuthenticated: _token != null && _token!.isNotEmpty,
+          onSearchChanged: (value) => _loadLearnerNotes(reset: true, query: value),
+          onLoadMore: () => _loadLearnerNotes(),
+          onOpenNote: _selectNote,
+          onFetchNoteDetail: _fetchNoteDetail,
+          onCreateNote: _createNote,
+          onImportMarkdown: _importMarkdownNote,
+          onExportNote: _exportNote,
+          onSaveNote: _saveNote,
+          onGetNoteHistory: _getNoteHistory,
+          onSnapshotNote: _snapshotNote,
+          onRestoreNoteVersion: _restoreNoteVersion,
         );
       case 2:
         return _CoursePage(
@@ -844,7 +1225,14 @@ class _AppShellState extends State<AppShell> {
           onOpenNote: _selectNote,
         );
       case 3:
-        return _ActivityPage(activity: _activity, onOpenNote: _selectNote);
+        return _ActivityPage(
+          activity: _activity,
+          activityWeek: _activityWeek,
+          isAuthenticated: _token != null && _token!.isNotEmpty,
+          onOpenNote: _selectNote,
+          onImportCalendar: _importCalendarFeed,
+          onSubscribeCalendar: _subscribeCalendarFeed,
+        );
       case 4:
         return _SettingsPage(
           profile: _profile,
@@ -856,6 +1244,10 @@ class _AppShellState extends State<AppShell> {
           onLogin: _login,
           onRequestPasswordReset: _requestPasswordReset,
           onConfirmPasswordReset: _confirmPasswordReset,
+          calendarFeeds: _calendarFeeds,
+          courses: _courses,
+          onToggleCalendarFeed: _toggleCalendarFeed,
+          onDeleteCalendarFeed: _deleteCalendarFeed,
           apiBaseUrl: _httpClient?.baseUrl,
           debugSnapshotListenable: _httpClient?.debugSnapshot,
         );
@@ -1343,45 +1735,195 @@ class _PlannerEventComposerState extends State<_PlannerEventComposer> {
   }
 }
 
-class _LearnerPage extends StatelessWidget {
+class _LearnerPage extends StatefulWidget {
   const _LearnerPage({
-    required this.selectedCourse,
+    required this.notes,
+    required this.courses,
     required this.selectedNote,
-    required this.onOpenCourse,
+    required this.editorMode,
+    required this.hasMoreNotes,
+    required this.isLoadingMore,
+    required this.searchQuery,
+    required this.isAuthenticated,
+    required this.onSearchChanged,
+    required this.onLoadMore,
+    required this.onOpenNote,
+    required this.onFetchNoteDetail,
+    required this.onCreateNote,
+    required this.onImportMarkdown,
+    required this.onExportNote,
+    required this.onSaveNote,
+    required this.onGetNoteHistory,
+    required this.onSnapshotNote,
+    required this.onRestoreNoteVersion,
   });
 
-  final Map<String, dynamic>? selectedCourse;
+  final List<Map<String, dynamic>> notes;
+  final List<Map<String, dynamic>> courses;
   final Map<String, dynamic>? selectedNote;
-  final VoidCallback onOpenCourse;
+  final String editorMode;
+  final bool hasMoreNotes;
+  final bool isLoadingMore;
+  final String searchQuery;
+  final bool isAuthenticated;
+  final ValueChanged<String> onSearchChanged;
+  final Future<void> Function() onLoadMore;
+  final ValueChanged<Map<String, dynamic>> onOpenNote;
+  final Future<Map<String, dynamic>> Function(int noteId) onFetchNoteDetail;
+  final Future<Map<String, dynamic>> Function({String? markdown, String? title}) onCreateNote;
+  final Future<void> Function() onImportMarkdown;
+  final Future<void> Function(Map<String, dynamic> note) onExportNote;
+  final Future<Map<String, dynamic>> Function(int noteId, Map<String, dynamic> payload) onSaveNote;
+  final Future<List<Map<String, dynamic>>> Function(int noteId) onGetNoteHistory;
+  final Future<Map<String, dynamic>> Function(int noteId, {String reason}) onSnapshotNote;
+  final Future<Map<String, dynamic>> Function(int noteId, int versionId) onRestoreNoteVersion;
+
+  @override
+  State<_LearnerPage> createState() => _LearnerPageState();
+}
+
+class _LearnerPageState extends State<_LearnerPage> {
+  late final TextEditingController _searchController;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController(text: widget.searchQuery);
+  }
+
+  @override
+  void didUpdateWidget(covariant _LearnerPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.searchQuery != widget.searchQuery && _searchController.text != widget.searchQuery) {
+      _searchController.text = widget.searchQuery;
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _openEditor(Map<String, dynamic> noteSummary) async {
+    final detail = await widget.onFetchNoteDetail(noteSummary['id'] as int);
+    if (!mounted) {
+      return;
+    }
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _NoteEditorDialog(
+        note: detail,
+        courses: widget.courses,
+        editorMode: widget.editorMode,
+        onSave: widget.onSaveNote,
+        onSnapshot: widget.onSnapshotNote,
+        onGetHistory: widget.onGetNoteHistory,
+        onRestoreVersion: widget.onRestoreNoteVersion,
+      ),
+    );
+  }
+
+  Future<void> _createAndOpenNote() async {
+    final created = await widget.onCreateNote(title: 'Untitled note');
+    if (!mounted) {
+      return;
+    }
+    await _openEditor(created);
+  }
+
+  Future<void> _showComposerMenu(TapDownDetails? details) async {
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final selected = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromRect(
+        Rect.fromPoints(
+          details?.globalPosition ?? const Offset(0, 0),
+          details?.globalPosition ?? const Offset(0, 0),
+        ),
+        Offset.zero & overlay.size,
+      ),
+      items: const [
+        PopupMenuItem(value: 'new', child: Text('Create note')),
+        PopupMenuItem(value: 'import', child: Text('Import markdown')),
+      ],
+    );
+    if (selected == 'import') {
+      await widget.onImportMarkdown();
+    } else if (selected == 'new') {
+      await _createAndOpenNote();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (selectedNote == null) {
-      return Center(
-        child: FilledButton(
-          onPressed: onOpenCourse,
-          child: const Text('Open course notes'),
-        ),
-      );
-    }
-    return ListView(
-      padding: const EdgeInsets.all(20),
+    return Stack(
       children: [
-        Text(
-          selectedCourse?['title']?.toString() ?? 'Current course',
-          style: Theme.of(context).textTheme.titleLarge,
+        ListView(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+          children: [
+            TextField(
+              controller: _searchController,
+              onChanged: widget.onSearchChanged,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                hintText: 'Search recent notes',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (widget.selectedNote != null) ...[
+              _SelectedNotePanel(
+                note: widget.selectedNote!,
+                canEdit: widget.isAuthenticated,
+                onEdit: widget.isAuthenticated ? () => _openEditor(widget.selectedNote!) : null,
+              ),
+              const SizedBox(height: 20),
+            ],
+            Text('Recent notes', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            if (widget.notes.isEmpty)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    widget.isAuthenticated
+                        ? 'No notes yet. Use the add button to create one.'
+                        : 'Sign in to create and sync notes. Public course materials stay available without login.',
+                  ),
+                ),
+              ),
+            for (final note in widget.notes)
+              _LearnerNoteCard(
+                note: note,
+                canEdit: widget.isAuthenticated,
+                onOpen: () => widget.onOpenNote(note),
+                onEdit: () => _openEditor(note),
+                onExport: () => widget.onExportNote(note),
+              ),
+            if (widget.hasMoreNotes) ...[
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton(
+                  onPressed: widget.isLoadingMore ? null : widget.onLoadMore,
+                  child: Text(widget.isLoadingMore ? 'Loading...' : 'Load more'),
+                ),
+              ),
+            ],
+          ],
         ),
-        const SizedBox(height: 8),
-        Text(
-          selectedNote?['title']?.toString() ?? 'Selected note',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 16),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: SelectionArea(
-              child: MarkdownBody(data: _noteToMarkdown(selectedNote!)),
+        Positioned(
+          right: 24,
+          bottom: 24,
+          child: GestureDetector(
+            onLongPress: widget.isAuthenticated ? widget.onImportMarkdown : null,
+            onSecondaryTapDown: widget.isAuthenticated ? _showComposerMenu : null,
+            child: FloatingActionButton.extended(
+              onPressed: widget.isAuthenticated ? _createAndOpenNote : null,
+              icon: const Icon(Icons.add),
+              label: const Text('Add note'),
             ),
           ),
         ),
@@ -1448,20 +1990,671 @@ class _CoursePage extends StatelessWidget {
   }
 }
 
-class _ActivityPage extends StatelessWidget {
-  const _ActivityPage({
-    required this.activity,
-    required this.onOpenNote,
+class _SidebarItem extends StatelessWidget {
+  const _SidebarItem({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
   });
 
-  final List<Map<String, dynamic>> activity;
-  final ValueChanged<Map<String, dynamic>> onOpenNote;
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFFD1FAE5) : Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: selected ? const Color(0xFF065F46) : const Color(0xFF374151)),
+              const SizedBox(width: 12),
+              Text(
+                label,
+                style: TextStyle(
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: selected ? const Color(0xFF065F46) : const Color(0xFF374151),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LearnerNoteCard extends StatelessWidget {
+  const _LearnerNoteCard({
+    required this.note,
+    required this.canEdit,
+    required this.onOpen,
+    required this.onEdit,
+    required this.onExport,
+  });
+
+  final Map<String, dynamic> note;
+  final bool canEdit;
+  final VoidCallback onOpen;
+  final VoidCallback onEdit;
+  final Future<void> Function() onExport;
+
+  @override
+  Widget build(BuildContext context) {
+    final previewLines = (note['preview_lines'] as List<dynamic>? ?? const [])
+        .map((item) => item.toString())
+        .take(3)
+        .toList();
+    return Card(
+      child: InkWell(
+        onTap: onOpen,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      note['title']?.toString() ?? 'Untitled note',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    onSelected: (value) async {
+                      if (value == 'edit') {
+                        onEdit();
+                      } else if (value == 'export') {
+                        await onExport();
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      if (canEdit) const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                      const PopupMenuItem(value: 'export', child: Text('Export markdown')),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                previewLines.isEmpty ? (note['excerpt']?.toString() ?? '') : previewLines.join('\n'),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 14),
+              Align(
+                alignment: Alignment.bottomRight,
+                child: Text(
+                  _formatCompactTimestamp(note['last_edit']?.toString() ?? ''),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B7280)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SelectedNotePanel extends StatelessWidget {
+  const _SelectedNotePanel({
+    required this.note,
+    required this.canEdit,
+    this.onEdit,
+  });
+
+  final Map<String, dynamic> note;
+  final bool canEdit;
+  final VoidCallback? onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = note['content']?.toString().trim();
+    final body = (content == null || content.isEmpty) ? _noteToMarkdown(note) : content;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        note['title']?.toString() ?? 'Untitled note',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _formatCompactTimestamp(note['last_edit']?.toString() ?? ''),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B7280)),
+                      ),
+                    ],
+                  ),
+                ),
+                if (canEdit && onEdit != null)
+                  FilledButton.icon(
+                    onPressed: onEdit,
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text('Edit'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            MarkdownBody(data: body),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NoteEditorDialog extends StatefulWidget {
+  const _NoteEditorDialog({
+    required this.note,
+    required this.courses,
+    required this.editorMode,
+    required this.onSave,
+    required this.onSnapshot,
+    required this.onGetHistory,
+    required this.onRestoreVersion,
+  });
+
+  final Map<String, dynamic> note;
+  final List<Map<String, dynamic>> courses;
+  final String editorMode;
+  final Future<Map<String, dynamic>> Function(int noteId, Map<String, dynamic> payload) onSave;
+  final Future<Map<String, dynamic>> Function(int noteId, {String reason}) onSnapshot;
+  final Future<List<Map<String, dynamic>>> Function(int noteId) onGetHistory;
+  final Future<Map<String, dynamic>> Function(int noteId, int versionId) onRestoreVersion;
+
+  @override
+  State<_NoteEditorDialog> createState() => _NoteEditorDialogState();
+}
+
+class _NoteEditorDialogState extends State<_NoteEditorDialog> {
+  late final TextEditingController _titleController;
+  late final TextEditingController _bodyController;
+  Timer? _autosaveTimer;
+  DateTime? _lastSavedAt;
+  String? _saveError;
+  bool _dirty = false;
+  bool _saving = false;
+  late Map<String, dynamic> _note;
+  late Map<String, dynamic> _metadata;
+
+  @override
+  void initState() {
+    super.initState();
+    _note = Map<String, dynamic>.from(widget.note);
+    _metadata = _decodeNoteMetadata(_note['metadata_json']?.toString() ?? '');
+    _titleController = TextEditingController(text: _note['title']?.toString() ?? 'Untitled note');
+    _bodyController = TextEditingController(text: _bodyWithoutTitle(_note['content']?.toString() ?? ''));
+    _titleController.addListener(_handleChanged);
+    _bodyController.addListener(_handleChanged);
+  }
+
+  @override
+  void dispose() {
+    _autosaveTimer?.cancel();
+    _titleController.dispose();
+    _bodyController.dispose();
+    super.dispose();
+  }
+
+  void _handleChanged() {
+    _dirty = true;
+    _autosaveTimer?.cancel();
+    _autosaveTimer = Timer(const Duration(seconds: 10), () {
+      _save(reason: 'autosave');
+    });
+    setState(() {});
+  }
+
+  Future<void> _save({String reason = 'manual'}) async {
+    if (_saving) {
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _saveError = null;
+    });
+    try {
+      final updated = await widget.onSave(
+        _note['id'] as int,
+        {
+          'title': _titleController.text.trim().isEmpty ? 'Untitled note' : _titleController.text.trim(),
+          'description': _metadata['description'] ?? '',
+          'course_id': _metadata['course_id'],
+          'content': _composeMarkdown(_titleController.text, _bodyController.text),
+          'metadata_json': jsonEncode(_metadata),
+          'editor_mode': widget.editorMode,
+        },
+      );
+      _note = updated;
+      _dirty = false;
+      _lastSavedAt = DateTime.now();
+    } catch (error) {
+      _saveError = error.toString().replaceFirst('Exception: ', '');
+    }
+    if (mounted) {
+      setState(() {
+        _saving = false;
+      });
+    }
+  }
+
+  Future<void> _openDetails() async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => _NoteMetadataDialog(
+        note: _note,
+        courses: widget.courses,
+        metadata: _metadata,
+        onGetHistory: widget.onGetHistory,
+        onRestoreVersion: widget.onRestoreVersion,
+      ),
+    );
+    if (result == null) {
+      return;
+    }
+    final restoredRaw = result['restored_note'];
+    if (restoredRaw is Map) {
+      final restored = Map<String, dynamic>.from(restoredRaw);
+      final restoredMetadata = _decodeNoteMetadata(restored['metadata_json']?.toString() ?? '');
+      _autosaveTimer?.cancel();
+      setState(() {
+        _note = restored;
+        _metadata = restoredMetadata;
+        _titleController.text = restored['title']?.toString() ?? 'Untitled note';
+        _bodyController.text = _bodyWithoutTitle(restored['content']?.toString() ?? '');
+        _dirty = false;
+        _saveError = null;
+        _lastSavedAt = DateTime.now();
+      });
+      return;
+    }
+    final metadata = Map<String, dynamic>.from(result['metadata'] as Map? ?? result);
+    setState(() {
+      _metadata = metadata;
+    });
+    await _save(reason: 'metadata');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final showPreview = widget.editorMode == 'G';
+    final showFallbackBanner = widget.editorMode == 'B';
+    return Dialog.fullscreen(
+      child: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 8,
+                    child: TextField(
+                      controller: _titleController,
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+                      decoration: const InputDecoration(border: InputBorder.none, hintText: 'Title'),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: _SaveStatus(
+                        lastSavedAt: _lastSavedAt,
+                        errorMessage: _saveError,
+                        saving: _saving,
+                      ),
+                    ),
+                  ),
+                  IconButton(onPressed: _openDetails, icon: const Icon(Icons.more_horiz)),
+                  IconButton(
+                    onPressed: () async {
+                      _autosaveTimer?.cancel();
+                      if (_dirty) {
+                        await _save(reason: 'close');
+                        await widget.onSnapshot(_note['id'] as int, reason: 'quit');
+                      }
+                      if (mounted) {
+                        Navigator.of(context).pop();
+                      }
+                    },
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+            ),
+            if (showFallbackBanner)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Blocks mode currently uses the plain-text fallback editor.'),
+                ),
+              ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _bodyController,
+                        maxLines: null,
+                        expands: true,
+                        textAlignVertical: TextAlignVertical.top,
+                        decoration: const InputDecoration(
+                          hintText: 'Write your note...',
+                          border: OutlineInputBorder(),
+                          alignLabelWithHint: true,
+                        ),
+                      ),
+                    ),
+                    if (showPreview) ...[
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: MarkdownBody(data: _composeMarkdown(_titleController.text, _bodyController.text)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NoteMetadataDialog extends StatefulWidget {
+  const _NoteMetadataDialog({
+    required this.note,
+    required this.courses,
+    required this.metadata,
+    required this.onGetHistory,
+    required this.onRestoreVersion,
+  });
+
+  final Map<String, dynamic> note;
+  final List<Map<String, dynamic>> courses;
+  final Map<String, dynamic> metadata;
+  final Future<List<Map<String, dynamic>>> Function(int noteId) onGetHistory;
+  final Future<Map<String, dynamic>> Function(int noteId, int versionId) onRestoreVersion;
+
+  @override
+  State<_NoteMetadataDialog> createState() => _NoteMetadataDialogState();
+}
+
+class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
+  late final TextEditingController _descriptionController;
+  late final TextEditingController _sectionController;
+  int? _courseId;
+  late Future<List<Map<String, dynamic>>> _historyFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _descriptionController = TextEditingController(text: widget.metadata['description']?.toString() ?? widget.note['description']?.toString() ?? '');
+    _sectionController = TextEditingController(text: widget.metadata['section']?.toString() ?? '');
+    _courseId = (widget.metadata['course_id'] as num?)?.toInt() ?? (widget.note['course']?['id'] as num?)?.toInt();
+    _historyFuture = widget.onGetHistory(widget.note['id'] as int);
+  }
+
+  @override
+  void dispose() {
+    _descriptionController.dispose();
+    _sectionController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Note details'),
+      content: SizedBox(
+        width: 500,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              DropdownButtonFormField<int?>(
+                value: _courseId,
+                items: [
+                  const DropdownMenuItem<int?>(value: null, child: Text('No assigned course')),
+                  ...widget.courses.map(
+                    (course) => DropdownMenuItem<int?>(
+                      value: course['id'] as int,
+                      child: Text(course['title']?.toString() ?? 'Course'),
+                    ),
+                  ),
+                ],
+                onChanged: (value) => setState(() => _courseId = value),
+                decoration: const InputDecoration(labelText: 'Assigned course / plan', border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _sectionController,
+                decoration: const InputDecoration(labelText: 'Section', border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _descriptionController,
+                maxLines: 3,
+                decoration: const InputDecoration(labelText: 'Short description / comments', border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 16),
+              Text('Version history', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 220,
+                child: FutureBuilder<List<Map<String, dynamic>>>(
+                  future: _historyFuture,
+                  builder: (context, snapshot) {
+                    final rows = snapshot.data ?? const [];
+                    if (rows.isEmpty) {
+                      return const Text('No saved versions yet.');
+                    }
+                    return ListView(
+                      children: [
+                        for (final version in rows)
+                          ListTile(
+                            dense: true,
+                            title: Text(version['reason']?.toString() ?? 'Version'),
+                            subtitle: Text(_formatCompactTimestamp(version['date_created']?.toString() ?? '')),
+                            trailing: TextButton(
+                              onPressed: () async {
+                                final restored = await widget.onRestoreVersion(widget.note['id'] as int, version['id'] as int);
+                                if (mounted) {
+                                  Navigator.of(context).pop({
+                                    'metadata': {
+                                      'description': _descriptionController.text,
+                                      'section': _sectionController.text,
+                                      'course_id': _courseId,
+                                    },
+                                    'restored_note': restored,
+                                  });
+                                }
+                              },
+                              child: const Text('Restore'),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop({
+            'description': _descriptionController.text,
+            'section': _sectionController.text,
+            'course_id': _courseId,
+          }),
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}
+
+class _SaveStatus extends StatelessWidget {
+  const _SaveStatus({
+    required this.lastSavedAt,
+    required this.errorMessage,
+    required this.saving,
+  });
+
+  final DateTime? lastSavedAt;
+  final String? errorMessage;
+  final bool saving;
+
+  @override
+  Widget build(BuildContext context) {
+    if (saving) {
+      return const Text('Saving...');
+    }
+    if (errorMessage != null && errorMessage!.isNotEmpty) {
+      return Tooltip(
+        message: errorMessage!,
+        child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFF59E0B)),
+      );
+    }
+    return Text(
+      lastSavedAt == null ? 'Not saved' : 'Saved ${_formatTime(lastSavedAt!)}',
+      style: Theme.of(context).textTheme.bodySmall,
+    );
+  }
+}
+
+class _ActivityPage extends StatelessWidget {
+  const _ActivityPage({
+    required this.activity,
+    required this.activityWeek,
+    required this.isAuthenticated,
+    required this.onOpenNote,
+    required this.onImportCalendar,
+    required this.onSubscribeCalendar,
+  });
+
+  final List<Map<String, dynamic>> activity;
+  final Map<String, dynamic>? activityWeek;
+  final bool isAuthenticated;
+  final ValueChanged<Map<String, dynamic>> onOpenNote;
+  final Future<void> Function(String rawIcal, String title, {int? courseId}) onImportCalendar;
+  final Future<void> Function(String title, String url, {int? courseId}) onSubscribeCalendar;
+
+  @override
+  Widget build(BuildContext context) {
+    final weekDays = (activityWeek?['days'] as List<dynamic>? ?? const [])
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList();
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
+        Row(
+          children: [
+            Text('Week calendar', style: Theme.of(context).textTheme.titleLarge),
+            const Spacer(),
+            if (isAuthenticated) ...[
+              OutlinedButton(
+                onPressed: () => _showImportCalendarDialog(context, onImportCalendar),
+                child: const Text('Import iCal'),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton(
+                onPressed: () => _showSubscribeCalendarDialog(context, onSubscribeCalendar),
+                child: const Text('Subscribe'),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (weekDays.isEmpty)
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Sign in to see your study week calendar and subscribed calendars.'),
+            ),
+          )
+        else
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final day in weekDays)
+                  Container(
+                    width: 180,
+                    margin: const EdgeInsets.only(right: 12),
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _formatWeekDay(day['date']?.toString() ?? ''),
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 8),
+                            for (final event in (day['events'] as List<dynamic>? ?? const []))
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: event['kind'] == 'plan' ? const Color(0xFFDFF6E9) : const Color(0xFFE0F2FE),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(event['title']?.toString() ?? 'Event'),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 24),
         Text('Recent note activity', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
         for (final entry in activity)
@@ -1489,19 +2682,27 @@ class _SettingsPage extends StatefulWidget {
     required this.onLogin,
     required this.onRequestPasswordReset,
     required this.onConfirmPasswordReset,
+    required this.calendarFeeds,
+    required this.courses,
+    required this.onToggleCalendarFeed,
+    required this.onDeleteCalendarFeed,
     this.apiBaseUrl,
     this.debugSnapshotListenable,
   });
 
   final Map<String, dynamic>? profile;
   final Map<String, dynamic>? settings;
-  final Future<void> Function(String motto, String socialLink) onSave;
+  final Future<void> Function(String motto, String socialLink, String editorMode) onSave;
   final Future<void> Function() onLogout;
   final Future<ActionFeedback> Function(String email, String password) onRegister;
   final Future<ActionFeedback> Function(String email, String code) onVerify;
   final Future<ActionFeedback> Function(String email, String password) onLogin;
   final Future<ActionFeedback> Function(String email) onRequestPasswordReset;
   final Future<ActionFeedback> Function(String email, String code, String password) onConfirmPasswordReset;
+  final List<Map<String, dynamic>> calendarFeeds;
+  final List<Map<String, dynamic>> courses;
+  final Future<void> Function(Map<String, dynamic> feed, bool enabled) onToggleCalendarFeed;
+  final Future<void> Function(Map<String, dynamic> feed) onDeleteCalendarFeed;
   final String? apiBaseUrl;
   final ValueListenable<ApiDebugSnapshot?>? debugSnapshotListenable;
 
@@ -1512,12 +2713,14 @@ class _SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<_SettingsPage> {
   late final TextEditingController _mottoController;
   late final TextEditingController _socialController;
+  String _editorMode = 'P';
 
   @override
   void initState() {
     super.initState();
     _mottoController = TextEditingController(text: widget.settings?['motto']?.toString() ?? '');
     _socialController = TextEditingController(text: widget.settings?['social_link']?.toString() ?? '');
+    _editorMode = widget.settings?['editor_mode']?.toString() ?? 'P';
   }
 
   @override
@@ -1526,6 +2729,7 @@ class _SettingsPageState extends State<_SettingsPage> {
     if (oldWidget.settings != widget.settings) {
       _mottoController.text = widget.settings?['motto']?.toString() ?? '';
       _socialController.text = widget.settings?['social_link']?.toString() ?? '';
+      _editorMode = widget.settings?['editor_mode']?.toString() ?? 'P';
     }
   }
 
@@ -1566,9 +2770,26 @@ class _SettingsPageState extends State<_SettingsPage> {
             controller: _socialController,
             decoration: const InputDecoration(labelText: 'Social link'),
           ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: _editorMode,
+            items: const [
+              DropdownMenuItem(value: 'G', child: Text('GFM live preview')),
+              DropdownMenuItem(value: 'B', child: Text('Blocks fallback')),
+              DropdownMenuItem(value: 'P', child: Text('Plain text')),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() {
+                  _editorMode = value;
+                });
+              }
+            },
+            decoration: const InputDecoration(labelText: 'Editor mode', border: OutlineInputBorder()),
+          ),
           const SizedBox(height: 16),
           FilledButton(
-            onPressed: () => widget.onSave(_mottoController.text, _socialController.text),
+            onPressed: () => widget.onSave(_mottoController.text, _socialController.text, _editorMode),
             child: const Text('Save settings'),
           ),
           const SizedBox(height: 12),
@@ -1576,6 +2797,27 @@ class _SettingsPageState extends State<_SettingsPage> {
             onPressed: widget.onLogout,
             child: const Text('Logout'),
           ),
+          const SizedBox(height: 24),
+          Text('Calendars', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          if (widget.calendarFeeds.isEmpty)
+            const Text('No imported or subscribed calendars yet.')
+          else
+            for (final feed in widget.calendarFeeds)
+              Card(
+                child: ListTile(
+                  title: Text(feed['title']?.toString() ?? 'Calendar'),
+                  subtitle: Text(feed['source_kind']?.toString() == 'S' ? 'Subscription' : 'Imported iCal'),
+                  leading: Switch(
+                    value: feed['is_enabled'] == true,
+                    onChanged: (value) => widget.onToggleCalendarFeed(feed, value),
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => widget.onDeleteCalendarFeed(feed),
+                  ),
+                ),
+              ),
         ],
         const SizedBox(height: 24),
         Text('API debug', style: Theme.of(context).textTheme.titleMedium),
@@ -1658,8 +2900,9 @@ class _AuthHub extends StatelessWidget {
                     context,
                     _EmailPasswordDialog(
                       title: 'Login',
-                      description: 'Sign in with your email and password.',
+                      description: 'Sign in with your email and password. Admin username also works for the bootstrapped Django admin account.',
                       submitLabel: 'Login',
+                      emailLabel: 'Email or username',
                       onSubmit: onLogin,
                     ),
                   ),
@@ -1690,12 +2933,14 @@ class _EmailPasswordDialog extends StatefulWidget {
     required this.description,
     required this.submitLabel,
     required this.onSubmit,
+    this.emailLabel = 'Email',
   });
 
   final String title;
   final String description;
   final String submitLabel;
   final Future<ActionFeedback> Function(String email, String password) onSubmit;
+  final String emailLabel;
 
   @override
   State<_EmailPasswordDialog> createState() => _EmailPasswordDialogState();
@@ -1746,7 +2991,7 @@ class _EmailPasswordDialogState extends State<_EmailPasswordDialog> {
             const SizedBox(height: 16),
             TextField(
               controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: widget.emailLabel, border: const OutlineInputBorder()),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -2125,3 +3370,137 @@ String _noteToMarkdown(Map<String, dynamic> note) {
 }
 
 DateTime _dateOnly(DateTime value) => DateTime(value.year, value.month, value.day);
+
+String _composeMarkdown(String title, String body) {
+  final normalizedTitle = title.trim().isEmpty ? 'Untitled note' : title.trim();
+  final normalizedBody = _bodyWithoutTitle(body);
+  return '# $normalizedTitle\n\n$normalizedBody'.trim();
+}
+
+String _bodyWithoutTitle(String markdown) {
+  final lines = markdown.split('\n');
+  if (lines.isNotEmpty && lines.first.trim().startsWith('# ')) {
+    return lines.skip(1).join('\n').trimLeft();
+  }
+  return markdown;
+}
+
+String _extractTitleFromMarkdown(String markdown) {
+  for (final line in markdown.split('\n')) {
+    final trimmed = line.trim();
+    if (trimmed.startsWith('# ')) {
+      return trimmed.substring(2).trim();
+    }
+  }
+  return 'Untitled note';
+}
+
+String _excerptFromMarkdown(String markdown) {
+  final body = _bodyWithoutTitle(markdown).trim();
+  return body.length <= 180 ? body : '${body.substring(0, 180)}...';
+}
+
+Map<String, dynamic> _decodeNoteMetadata(String raw) {
+  if (raw.trim().isEmpty) {
+    return {};
+  }
+  try {
+    return Map<String, dynamic>.from(jsonDecode(raw) as Map);
+  } catch (_) {
+    return {};
+  }
+}
+
+String _formatCompactTimestamp(String raw) {
+  if (raw.isEmpty) {
+    return '';
+  }
+  final parsed = DateTime.tryParse(raw);
+  if (parsed == null) {
+    return raw;
+  }
+  final now = DateTime.now();
+  final local = parsed.toLocal();
+  final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+  if (local.isAfter(startOfWeek) && local.year == now.year) {
+    return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][local.weekday - 1];
+  }
+  if (local.year == now.year) {
+    return '${local.month.toString().padLeft(2, '0')}/${local.day.toString().padLeft(2, '0')}';
+  }
+  return '${(local.year % 100).toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}/${local.day.toString().padLeft(2, '0')}';
+}
+
+String _formatTime(DateTime value) {
+  final hour = value.hour % 12 == 0 ? 12 : value.hour % 12;
+  final suffix = value.hour >= 12 ? 'PM' : 'AM';
+  return '$hour:${value.minute.toString().padLeft(2, '0')} $suffix';
+}
+
+String _formatWeekDay(String raw) {
+  final parsed = DateTime.tryParse(raw);
+  if (parsed == null) {
+    return raw;
+  }
+  return '${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][parsed.weekday - 1]} ${parsed.month.toString().padLeft(2, '0')}/${parsed.day.toString().padLeft(2, '0')}';
+}
+
+Future<void> _showImportCalendarDialog(
+  BuildContext context,
+  Future<void> Function(String rawIcal, String title, {int? courseId}) onImport,
+) async {
+  final file = await openFile(
+    acceptedTypeGroups: [const XTypeGroup(label: 'iCal', extensions: ['ics'])],
+  );
+  if (file == null) {
+    return;
+  }
+  final rawIcal = await file.readAsString();
+  if (!context.mounted) {
+    return;
+  }
+  await onImport(rawIcal, file.name);
+}
+
+Future<void> _showSubscribeCalendarDialog(
+  BuildContext context,
+  Future<void> Function(String title, String url, {int? courseId}) onSubscribe,
+) async {
+  final titleController = TextEditingController();
+  final urlController = TextEditingController();
+  await showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Subscribe to calendar'),
+      content: SizedBox(
+        width: 360,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: urlController,
+              decoration: const InputDecoration(labelText: 'iCal URL', border: OutlineInputBorder()),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        FilledButton(
+          onPressed: () async {
+            await onSubscribe(titleController.text.trim().isEmpty ? 'Subscribed calendar' : titleController.text.trim(), urlController.text.trim());
+            if (context.mounted) {
+              Navigator.of(context).pop();
+            }
+          },
+          child: const Text('Subscribe'),
+        ),
+      ],
+    ),
+  );
+}

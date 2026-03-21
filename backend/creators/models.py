@@ -46,6 +46,16 @@ class Creator(models.Model):
     exp = models.IntegerField(default=0, null=False)
     social_link = models.URLField(max_length=255, blank=True, null=True)
     credit_remains = models.IntegerField(default=0, null=False)
+    editor_mode = models.CharField(
+        max_length=1,
+        choices=(
+            ("G", _("GFM")),
+            ("B", _("Blocks")),
+            ("P", _("Plain Text")),
+        ),
+        default="P",
+        null=False,
+    )
 
     # last_login and date_joined automatically created by user_id, for these field, create one time value to timezone.now()
     # The field is only automatically updated when calling Model.save().

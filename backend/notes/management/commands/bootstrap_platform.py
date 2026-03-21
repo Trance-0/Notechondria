@@ -93,12 +93,15 @@ class Command(BaseCommand):
                 logger.warning("Sample media not found at %s. Continuing without uploaded media asset.", media_path)
 
         for section in split_markdown_sections(code_source, fallback_title=course.title):
+            markdown_body = f"# {section['title']}\n\n{section['body']}".strip()
             note = Note.objects.create(
                 creator_id=creator,
                 course_id=course,
                 sharing_id=generate_unique_id(Note, "sharing_id"),
                 title=section["title"],
                 description=section["body"][:240],
+                content=markdown_body,
+                editor_mode="G",
             )
             title_block = NoteBlock.objects.create(
                 creator_id=creator,

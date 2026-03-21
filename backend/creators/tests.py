@@ -3,6 +3,7 @@ from unittest.mock import patch
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.test import TestCase
+from rest_framework.test import APIClient
 
 from .models import Creator, VerificationChoices, VerificationCode, user_profile_path
 from .utils import send_password_reset_email, send_registration_email
@@ -38,6 +39,39 @@ class CreatorModelTests(TestCase):
         self.assertFalse(result['delivered'])
         self.assertTrue(result['fallback'])
         logger.warning.assert_called_once()
+
+
+class AuthApiTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.admin = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='change-me',
+            is_active=True,
+            is_staff=True,
+            is_superuser=True,
+        )
+
+    def test_login_accepts_bootstrapped_admin_email(self):
+        response = self.client.post(
+            '/api/v1/auth/login/',
+            {'email': 'admin@example.com', 'password': 'change-me'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('token', response.json())
+
+    def test_login_accepts_bootstrapped_admin_username(self):
+        response = self.client.post(
+            '/api/v1/auth/login/',
+            {'email': 'admin', 'password': 'change-me'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('token', response.json())
 
     @patch('creators.utils.logger')
     def test_send_password_reset_email_falls_back_to_logs_when_smtp_missing(self, logger):

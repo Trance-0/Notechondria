@@ -150,12 +150,90 @@ class Note(models.Model):
     sharing_id = models.CharField(max_length=36,unique=True,null=False)
     title = models.CharField(max_length=100, default="Untitled Ep", null=False)
     description=models.CharField(max_length=600, blank=True,null=True)
+    content = models.TextField(blank=True, default="")
+    metadata_json = models.TextField(blank=True, default="")
+    editor_mode = models.CharField(
+        max_length=1,
+        choices=(
+            ("G", _("GFM")),
+            ("B", _("Blocks")),
+            ("P", _("Plain Text")),
+        ),
+        default="P",
+        null=False,
+    )
     # last_use and date_created automatically created, for these field, create one time value to timezone.now()
     date_created=models.DateTimeField(auto_now_add=True,null=False)
     last_edit=models.DateTimeField(auto_now=True,null=False)
 
     def __str__(self) -> str:
         return f"{self.title}, created by {self.creator_id}"
+
+
+class NoteVersion(models.Model):
+    note_id = models.ForeignKey(
+        Note,
+        related_name="versions",
+        on_delete=models.CASCADE,
+        null=False,
+    )
+    creator_id = models.ForeignKey(
+        Creator,
+        related_name="note_versions",
+        on_delete=models.CASCADE,
+        null=False,
+    )
+    title = models.CharField(max_length=100, null=False)
+    description = models.CharField(max_length=600, blank=True, null=True)
+    content = models.TextField(blank=True, default="")
+    metadata_json = models.TextField(blank=True, default="")
+    editor_mode = models.CharField(max_length=1, default="P", null=False)
+    reason = models.CharField(max_length=32, default="manual", null=False)
+    date_created = models.DateTimeField(auto_now_add=True, null=False)
+
+    class Meta:
+        ordering = ["-date_created", "-id"]
+
+    def __str__(self) -> str:
+        return f"{self.note_id.title}@{self.date_created}"
+
+
+class CalendarFeed(models.Model):
+    creator_id = models.ForeignKey(
+        Creator,
+        related_name="calendar_feeds",
+        on_delete=models.CASCADE,
+        null=False,
+    )
+    course_id = models.ForeignKey(
+        Course,
+        related_name="calendar_feeds",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    title = models.CharField(max_length=120, null=False)
+    source_kind = models.CharField(
+        max_length=1,
+        choices=(
+            ("I", _("Imported iCal")),
+            ("S", _("Subscribed iCal")),
+        ),
+        default="I",
+        null=False,
+    )
+    source_url = models.URLField(blank=True, null=True)
+    raw_ical = models.TextField(blank=True, default="")
+    is_enabled = models.BooleanField(default=True, null=False)
+    last_sync = models.DateTimeField(blank=True, null=True)
+    date_created = models.DateTimeField(auto_now_add=True, null=False)
+    last_edit = models.DateTimeField(auto_now=True, null=False)
+
+    class Meta:
+        ordering = ["title", "id"]
+
+    def __str__(self) -> str:
+        return self.title
 
 class NoteBlockTypeChoices(models.TextChoices):
     """NoteBlockTypeChoices, need a parser for rendering"""

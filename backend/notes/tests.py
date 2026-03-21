@@ -9,7 +9,7 @@ from rest_framework.authtoken.models import Token
 
 from creators.models import Creator
 from notechondria.utils import check_is_creator, generate_unique_id, get_object_or_None
-from .models import Course, HeatmapActivity, Note, NoteBlock, NoteBlockTypeChoices, PlannerEvent
+from .models import CalendarFeed, Course, HeatmapActivity, Note, NoteBlock, NoteBlockTypeChoices, NoteVersion, PlannerEvent
 
 
 class NoteBlockMarkdownTests(TestCase):
@@ -156,3 +156,56 @@ class HeatmapApiTests(TestCase):
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(PlannerEvent.objects.count(), 1)
+
+    def test_note_history_snapshot_and_restore(self):
+        self.note.content = '# Original\n\nOne'
+        self.note.save()
+
+        snapshot_response = self.client.post(
+            f'/api/v1/notes/{self.note.id}/snapshot/',
+            data=json.dumps({'reason': 'quit'}),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+        self.assertEqual(snapshot_response.status_code, 201)
+        version_id = snapshot_response.json()['id']
+
+        patch_response = self.client.patch(
+            f'/api/v1/notes/{self.note.id}/',
+            data=json.dumps({'content': '# Updated\n\nTwo'}),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+        self.assertEqual(patch_response.status_code, 200)
+
+        restore_response = self.client.post(
+            f'/api/v1/notes/{self.note.id}/restore/{version_id}/',
+            data=json.dumps({}),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+        self.assertEqual(restore_response.status_code, 200)
+        self.note.refresh_from_db()
+        self.assertIn('Original', self.note.content)
+        self.assertGreaterEqual(NoteVersion.objects.count(), 2)
+
+    def test_calendar_feed_and_week_activity(self):
+        response = self.client.post(
+            '/api/v1/calendar-feeds/',
+            data=json.dumps({
+                'title': 'Imported Calendar',
+                'source_kind': 'I',
+                'raw_ical': 'BEGIN:VCALENDAR\nBEGIN:VEVENT\nDTSTART:20260321T150000Z\nSUMMARY:Study block\nEND:VEVENT\nEND:VCALENDAR',
+                'course_id': self.course.id,
+            }),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(CalendarFeed.objects.count(), 1)
+
+        week_response = self.client.get('/api/v1/activity/week/', **self._auth_headers())
+        self.assertEqual(week_response.status_code, 200)
+        payload = week_response.json()
+        self.assertEqual(len(payload['days']), 7)
+        self.assertTrue(any(day['events'] for day in payload['days']))

@@ -16,6 +16,7 @@ Use this checklist at the end of each modification round.
 - Confirm every command or test reported as passed was actually run in the current environment.
 - Confirm every command or test not run is called out explicitly with the reason.
 - Confirm docs reference current paths such as `backend/`, `frontend/`, `docs/`, and `deployment/`.
+- Confirm `CODEX.md` was updated when the round materially changed architecture, product scope, or the prompt recipe needed to recreate the project.
 - Confirm CI files and scripts agree on invocation syntax and environment variable names.
 - Confirm UI strings are plain, intentional, and free of mojibake or placeholder artifacts.
 - Confirm `.gitignore` ignores local junk without hiding required tracked source files.
@@ -52,3 +53,4 @@ Use this checklist at the end of each modification round.
 - Added a reminder that CI image rebuilds should use `--pull --no-cache` when the goal is to eliminate stale dependency and base-image state during Jenkins debugging.
 - Added a reminder that Docker service networking must never be tied to `DEBUG`; database host resolution should come from env (`POSTGRE_HOST=db` in Compose), not a `localhost` fallback triggered by debug mode.
 - Added a reminder that database preflight checks must verify the same TCP username/password path the app uses, not just local-socket readiness from inside the postgres container.
+- Added a reminder that material project-shape changes must be recorded in `CODEX.md`, including how to prompt an AI run to recreate the new shape.

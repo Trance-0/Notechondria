@@ -29,6 +29,7 @@ def auth_payload(user: User):
             "motto": creator.motto or "",
             "social_link": creator.social_link or "",
             "image_url": creator.image.url if creator.image else "",
+            "editor_mode": creator.editor_mode,
         },
     }
 
@@ -89,14 +90,21 @@ class VerifyEmailSerializer(serializers.Serializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+    identifier = serializers.CharField(required=False)
+    email = serializers.CharField(required=False)
     password = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
-        email = attrs["email"].lower()
-        user = authenticate(username=email, password=attrs["password"])
+        identifier = (attrs.get("identifier") or attrs.get("email") or "").strip()
+        if not identifier:
+            raise serializers.ValidationError("Email or username is required.")
+        matched_user = User.objects.filter(email__iexact=identifier).first()
+        if matched_user is None:
+            matched_user = User.objects.filter(username__iexact=identifier).first()
+        username = matched_user.username if matched_user else identifier
+        user = authenticate(username=username, password=attrs["password"])
         if user is None:
-            raise serializers.ValidationError("Email/password mismatch.")
+            raise serializers.ValidationError("Email/username/password mismatch.")
         if not user.is_active:
             raise serializers.ValidationError("Email verification is still pending.")
         attrs["user"] = user
@@ -120,6 +128,14 @@ class SettingsSerializer(serializers.Serializer):
     motto = serializers.CharField(allow_blank=True, required=False, max_length=100)
     social_link = serializers.URLField(allow_blank=True, required=False)
     image_url = serializers.CharField(read_only=True)
+    editor_mode = serializers.ChoiceField(
+        choices=[
+            ("G", "gfm"),
+            ("B", "blocks"),
+            ("P", "plain_text"),
+        ],
+        required=False,
+    )
 
     def to_representation(self, instance):
         return {
@@ -127,11 +143,13 @@ class SettingsSerializer(serializers.Serializer):
             "motto": instance.motto or "",
             "social_link": instance.social_link or "",
             "image_url": instance.image.url if instance.image else "",
+            "editor_mode": instance.editor_mode,
         }
 
     def update(self, instance, validated_data):
         instance.motto = validated_data.get("motto", instance.motto)
         instance.social_link = validated_data.get("social_link", instance.social_link)
+        instance.editor_mode = validated_data.get("editor_mode", instance.editor_mode)
         instance.save()
         return instance
 
