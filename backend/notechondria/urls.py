@@ -8,6 +8,11 @@ from django.views.generic import RedirectView
 from django.contrib.staticfiles.storage import staticfiles_storage
 from . import api_views
 
+handler400 = "notechondria.api_views.api_bad_request"
+handler403 = "notechondria.api_views.api_permission_denied"
+handler404 = "notechondria.api_views.api_page_not_found"
+handler500 = "notechondria.api_views.api_server_error"
+
 urlpatterns = [
     path('', api_views.health_check, name="health-root"),
     path('api/v1/', include(('notechondria.api_urls', 'api'), namespace='api')),

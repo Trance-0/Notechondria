@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:http/http.dart' as http;
@@ -17,6 +18,26 @@ class ActionFeedback {
 
   final String message;
   final bool isError;
+}
+
+class ApiDebugSnapshot {
+  const ApiDebugSnapshot({
+    required this.method,
+    required this.url,
+    required this.statusCode,
+    required this.contentType,
+    required this.bodyPreview,
+    required this.looksLikeHtml,
+    this.note,
+  });
+
+  final String method;
+  final String url;
+  final int statusCode;
+  final String contentType;
+  final String bodyPreview;
+  final bool looksLikeHtml;
+  final String? note;
 }
 
 abstract class NotechondriaClient {
@@ -42,14 +63,45 @@ abstract class NotechondriaClient {
 
 class HttpNotechondriaClient implements NotechondriaClient {
   HttpNotechondriaClient({http.Client? httpClient})
-      : _httpClient = httpClient ?? http.Client();
-
-  static const String _baseUrl =
-      String.fromEnvironment('API_BASE_URL', defaultValue: '/api/v1');
+      : _httpClient = httpClient ?? http.Client(),
+        baseUrl = _normalizeBaseUrl(_resolveBaseUrl());
 
   final http.Client _httpClient;
+  final String baseUrl;
+  final ValueNotifier<ApiDebugSnapshot?> debugSnapshot = ValueNotifier(null);
 
-  Uri _uri(String path) => Uri.parse('$_baseUrl$path');
+  static String _resolveBaseUrl() {
+    const configured = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+    if (configured.isNotEmpty) {
+      return configured;
+    }
+    if (kIsWeb && Uri.base.scheme.startsWith('http')) {
+      final isLocalHost = Uri.base.host == 'localhost' || Uri.base.host == '127.0.0.1';
+      if (!isLocalHost) {
+        return Uri.base.origin;
+      }
+    }
+    return 'http://localhost:9080';
+  }
+
+  static String _normalizeBaseUrl(String raw) {
+    var value = raw.trim();
+    while (value.endsWith('/')) {
+      value = value.substring(0, value.length - 1);
+    }
+    if (value.endsWith('/api/v1')) {
+      return value;
+    }
+    if (value.endsWith('/api')) {
+      return '$value/v1';
+    }
+    return '$value/api/v1';
+  }
+
+  Uri _uri(String path) {
+    final normalizedPath = path.startsWith('/') ? path : '/$path';
+    return Uri.parse('$baseUrl$normalizedPath');
+  }
 
   String _stringifyErrors(dynamic data) {
     if (data is Map<String, dynamic>) {
@@ -67,14 +119,60 @@ class HttpNotechondriaClient implements NotechondriaClient {
     return data.toString();
   }
 
-  Future<dynamic> _decode(http.Response response) async {
+  String _previewBody(String body) {
+    final compact = body.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (compact.length <= 240) {
+      return compact;
+    }
+    return '${compact.substring(0, 240)}...';
+  }
+
+  String _formatDecodeError(Uri uri, http.Response response, bool looksLikeHtml) {
+    final target = '${response.request?.method ?? 'REQUEST'} ${uri.toString()}';
+    if (looksLikeHtml) {
+      return 'Expected JSON from $target but received HTML. Check API_BASE_URL and backend routing.';
+    }
+    return 'Expected JSON from $target but received an invalid response.';
+  }
+
+  Future<dynamic> _decode(
+    http.Response response, {
+    required Uri uri,
+    required String method,
+  }) async {
+    final body = response.body;
+    final contentType = response.headers['content-type'] ?? '';
+    final trimmed = body.trimLeft();
+    final looksLikeHtml = trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html') || trimmed.startsWith('<');
     if (response.body.isEmpty) {
       if (response.statusCode >= 400) {
         throw Exception('Request failed with ${response.statusCode}');
       }
       return {};
     }
-    final data = jsonDecode(response.body);
+    dynamic data;
+    try {
+      data = jsonDecode(body);
+    } on FormatException {
+      debugSnapshot.value = ApiDebugSnapshot(
+        method: method,
+        url: uri.toString(),
+        statusCode: response.statusCode,
+        contentType: contentType,
+        bodyPreview: _previewBody(body),
+        looksLikeHtml: looksLikeHtml,
+        note: looksLikeHtml ? 'The response body looks like HTML, not JSON.' : 'The response body is not valid JSON.',
+      );
+      throw Exception(_formatDecodeError(uri, response, looksLikeHtml));
+    }
+    debugSnapshot.value = ApiDebugSnapshot(
+      method: method,
+      url: uri.toString(),
+      statusCode: response.statusCode,
+      contentType: contentType,
+      bodyPreview: _previewBody(body),
+      looksLikeHtml: looksLikeHtml,
+    );
     if (response.statusCode >= 400) {
       throw Exception(_stringifyErrors(data));
     }
@@ -82,7 +180,10 @@ class HttpNotechondriaClient implements NotechondriaClient {
   }
 
   Map<String, String> _headers({String? token}) {
-    final headers = {'Content-Type': 'application/json'};
+    final headers = {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    };
     if (token != null && token.isNotEmpty) {
       headers['Authorization'] = 'Token $token';
     }
@@ -91,81 +192,87 @@ class HttpNotechondriaClient implements NotechondriaClient {
 
   @override
   Future<Map<String, dynamic>> getFrontPage({String? token}) async {
-    final response =
-        await _httpClient.get(_uri('/front-page/'), headers: _headers(token: token));
-    return Map<String, dynamic>.from(await _decode(response));
+    final uri = _uri('/front-page/');
+    final response = await _httpClient.get(uri, headers: _headers(token: token));
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'GET'));
   }
 
   @override
   Future<List<Map<String, dynamic>>> getCourses() async {
-    final response = await _httpClient.get(_uri('/courses/'));
-    final data = await _decode(response) as List<dynamic>;
+    final uri = _uri('/courses/');
+    final response = await _httpClient.get(uri, headers: _headers());
+    final data = await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
     return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
   @override
   Future<List<Map<String, dynamic>>> getCourseNotes(int courseId) async {
-    final response = await _httpClient.get(_uri('/courses/$courseId/notes/'));
-    final data = await _decode(response) as List<dynamic>;
+    final uri = _uri('/courses/$courseId/notes/');
+    final response = await _httpClient.get(uri, headers: _headers());
+    final data = await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
     return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
   @override
   Future<Map<String, dynamic>> getNoteDetail(int noteId) async {
-    final response = await _httpClient.get(_uri('/notes/$noteId/'));
-    return Map<String, dynamic>.from(await _decode(response));
+    final uri = _uri('/notes/$noteId/');
+    final response = await _httpClient.get(uri, headers: _headers());
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'GET'));
   }
 
   @override
   Future<List<Map<String, dynamic>>> getActivity({String? token}) async {
-    final response =
-        await _httpClient.get(_uri('/activity/'), headers: _headers(token: token));
-    final data = await _decode(response) as List<dynamic>;
+    final uri = _uri('/activity/');
+    final response = await _httpClient.get(uri, headers: _headers(token: token));
+    final data = await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
     return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
   @override
   Future<Map<String, dynamic>> register(String email, String password) async {
+    final uri = _uri('/auth/register/');
     final response = await _httpClient.post(
-      _uri('/auth/register/'),
+      uri,
       headers: _headers(),
       body: jsonEncode({'email': email, 'password': password}),
     );
-    return Map<String, dynamic>.from(await _decode(response));
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'POST'));
   }
 
   @override
   Future<Map<String, dynamic>> verifyEmail(String email, String code) async {
+    final uri = _uri('/auth/verify-email/');
     final response = await _httpClient.post(
-      _uri('/auth/verify-email/'),
+      uri,
       headers: _headers(),
       body: jsonEncode({'email': email, 'code': code}),
     );
-    return Map<String, dynamic>.from(await _decode(response));
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'POST'));
   }
 
   @override
   Future<Map<String, dynamic>> login(String email, String password) async {
+    final uri = _uri('/auth/login/');
     final response = await _httpClient.post(
-      _uri('/auth/login/'),
+      uri,
       headers: _headers(),
       body: jsonEncode({'email': email, 'password': password}),
     );
-    return Map<String, dynamic>.from(await _decode(response));
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'POST'));
   }
 
   @override
   Future<void> logout(String token) async {
-    final response =
-        await _httpClient.post(_uri('/auth/logout/'), headers: _headers(token: token));
-    await _decode(response);
+    final uri = _uri('/auth/logout/');
+    final response = await _httpClient.post(uri, headers: _headers(token: token));
+    await _decode(response, uri: uri, method: 'POST');
   }
 
   @override
   Future<Map<String, dynamic>> getSettings(String token) async {
-    final response =
-        await _httpClient.get(_uri('/settings/'), headers: _headers(token: token));
-    return Map<String, dynamic>.from(await _decode(response));
+    final uri = _uri('/settings/');
+    final response = await _httpClient.get(uri, headers: _headers(token: token));
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'GET'));
   }
 
   @override
@@ -173,21 +280,23 @@ class HttpNotechondriaClient implements NotechondriaClient {
     String token,
     Map<String, dynamic> payload,
   ) async {
+    final uri = _uri('/settings/');
     final response = await _httpClient.patch(
-      _uri('/settings/'),
+      uri,
       headers: _headers(token: token),
       body: jsonEncode(payload),
     );
-    return Map<String, dynamic>.from(await _decode(response));
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'PATCH'));
   }
 
   @override
   Future<List<Map<String, dynamic>>> getPlannerEvents(String token) async {
+    final uri = _uri('/planner-events/');
     final response = await _httpClient.get(
-      _uri('/planner-events/'),
+      uri,
       headers: _headers(token: token),
     );
-    final data = await _decode(response) as List<dynamic>;
+    final data = await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
     return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
@@ -196,12 +305,13 @@ class HttpNotechondriaClient implements NotechondriaClient {
     String token,
     Map<String, dynamic> payload,
   ) async {
+    final uri = _uri('/planner-events/');
     final response = await _httpClient.post(
-      _uri('/planner-events/'),
+      uri,
       headers: _headers(token: token),
       body: jsonEncode(payload),
     );
-    return Map<String, dynamic>.from(await _decode(response));
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'POST'));
   }
 
   @override
@@ -210,12 +320,13 @@ class HttpNotechondriaClient implements NotechondriaClient {
     int eventId,
     Map<String, dynamic> payload,
   ) async {
+    final uri = _uri('/planner-events/$eventId/');
     final response = await _httpClient.patch(
-      _uri('/planner-events/$eventId/'),
+      uri,
       headers: _headers(token: token),
       body: jsonEncode(payload),
     );
-    return Map<String, dynamic>.from(await _decode(response));
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'PATCH'));
   }
 }
 
@@ -229,6 +340,9 @@ class NotechondriaApp extends StatelessWidget {
     return MaterialApp(
       title: 'Notechondria',
       debugShowCheckedModeBanner: false,
+      builder: (context, child) {
+        return SelectionArea(child: child ?? const SizedBox.shrink());
+      },
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
@@ -265,6 +379,9 @@ class _AppShellState extends State<AppShell> {
   List<Map<String, dynamic>> _plannerEvents = const [];
   Map<String, dynamic>? _selectedCourse;
   Map<String, dynamic>? _selectedNote;
+
+  HttpNotechondriaClient? get _httpClient =>
+      widget.client is HttpNotechondriaClient ? widget.client as HttpNotechondriaClient : null;
 
   static const List<String> _titles = [
     'Front Page',
@@ -509,7 +626,12 @@ class _AppShellState extends State<AppShell> {
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _errorMessage != null
-                ? _ErrorState(message: _errorMessage!, onRetry: _loadInitialData)
+                ? _ErrorState(
+                    message: _errorMessage!,
+                    onRetry: _loadInitialData,
+                    apiBaseUrl: _httpClient?.baseUrl,
+                    debugSnapshot: _httpClient?.debugSnapshot.value,
+                  )
                 : _buildPage(),
       ),
       bottomNavigationBar: NavigationBar(
@@ -566,6 +688,8 @@ class _AppShellState extends State<AppShell> {
           settings: _settings,
           onSave: _updateSettings,
           onLogout: _logout,
+          apiBaseUrl: _httpClient?.baseUrl,
+          debugSnapshotListenable: _httpClient?.debugSnapshot,
         );
       default:
         return const SizedBox.shrink();
@@ -1091,7 +1215,9 @@ class _LearnerPage extends StatelessWidget {
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: MarkdownBody(data: _noteToMarkdown(selectedNote!)),
+            child: SelectionArea(
+              child: MarkdownBody(data: _noteToMarkdown(selectedNote!)),
+            ),
           ),
         ),
       ],
@@ -1193,12 +1319,16 @@ class _SettingsPage extends StatefulWidget {
     required this.settings,
     required this.onSave,
     required this.onLogout,
+    this.apiBaseUrl,
+    this.debugSnapshotListenable,
   });
 
   final Map<String, dynamic>? profile;
   final Map<String, dynamic>? settings;
   final Future<void> Function(String motto, String socialLink) onSave;
   final Future<void> Function() onLogout;
+  final String? apiBaseUrl;
+  final ValueListenable<ApiDebugSnapshot?>? debugSnapshotListenable;
 
   @override
   State<_SettingsPage> createState() => _SettingsPageState();
@@ -1233,37 +1363,43 @@ class _SettingsPageState extends State<_SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.profile == null || widget.settings == null) {
-      return const Center(
-        child: Text('Sign in from the front page to manage account settings.'),
-      );
-    }
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          title: Text(widget.profile?['email']?.toString() ?? ''),
-          subtitle: const Text('Verified account'),
-        ),
-        TextField(
-          controller: _mottoController,
-          decoration: const InputDecoration(labelText: 'Motto'),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _socialController,
-          decoration: const InputDecoration(labelText: 'Social link'),
-        ),
-        const SizedBox(height: 16),
-        FilledButton(
-          onPressed: () => widget.onSave(_mottoController.text, _socialController.text),
-          child: const Text('Save settings'),
-        ),
-        const SizedBox(height: 12),
-        OutlinedButton(
-          onPressed: widget.onLogout,
-          child: const Text('Logout'),
+        if (widget.profile == null || widget.settings == null) ...[
+          const Text('Sign in from the front page to manage account settings.'),
+        ] else ...[
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(widget.profile?['email']?.toString() ?? ''),
+            subtitle: const Text('Verified account'),
+          ),
+          TextField(
+            controller: _mottoController,
+            decoration: const InputDecoration(labelText: 'Motto'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _socialController,
+            decoration: const InputDecoration(labelText: 'Social link'),
+          ),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: () => widget.onSave(_mottoController.text, _socialController.text),
+            child: const Text('Save settings'),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton(
+            onPressed: widget.onLogout,
+            child: const Text('Logout'),
+          ),
+        ],
+        const SizedBox(height: 24),
+        Text('API debug', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        _ApiDebugCard(
+          apiBaseUrl: widget.apiBaseUrl,
+          snapshotListenable: widget.debugSnapshotListenable,
         ),
       ],
     );
@@ -1456,10 +1592,17 @@ class _AuthField {
 }
 
 class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
+  const _ErrorState({
+    required this.message,
+    required this.onRetry,
+    this.apiBaseUrl,
+    this.debugSnapshot,
+  });
 
   final String message;
   final Future<void> Function() onRetry;
+  final String? apiBaseUrl;
+  final ApiDebugSnapshot? debugSnapshot;
 
   @override
   Widget build(BuildContext context) {
@@ -1470,11 +1613,93 @@ class _ErrorState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            _ApiDebugSummary(
+              apiBaseUrl: apiBaseUrl,
+              snapshot: debugSnapshot,
+            ),
             const SizedBox(height: 12),
             FilledButton(
               onPressed: onRetry,
               child: const Text('Retry'),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ApiDebugCard extends StatelessWidget {
+  const _ApiDebugCard({
+    required this.apiBaseUrl,
+    required this.snapshotListenable,
+  });
+
+  final String? apiBaseUrl;
+  final ValueListenable<ApiDebugSnapshot?>? snapshotListenable;
+
+  @override
+  Widget build(BuildContext context) {
+    if (snapshotListenable == null) {
+      return _ApiDebugSummary(apiBaseUrl: apiBaseUrl, snapshot: null);
+    }
+    return ValueListenableBuilder<ApiDebugSnapshot?>(
+      valueListenable: snapshotListenable!,
+      builder: (context, snapshot, child) {
+        return _ApiDebugSummary(apiBaseUrl: apiBaseUrl, snapshot: snapshot);
+      },
+    );
+  }
+}
+
+class _ApiDebugSummary extends StatelessWidget {
+  const _ApiDebugSummary({
+    required this.apiBaseUrl,
+    required this.snapshot,
+  });
+
+  final String? apiBaseUrl;
+  final ApiDebugSnapshot? snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      color: const Color(0xFFF3F4F6),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('API base: ${apiBaseUrl ?? 'custom client'}', style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 8),
+            if (snapshot == null)
+              const Text('No API response captured yet.')
+            else ...[
+              Text('${snapshot!.method} ${snapshot!.url}', style: theme.textTheme.bodyMedium),
+              const SizedBox(height: 4),
+              Text(
+                'Status ${snapshot!.statusCode} | Content-Type: ${snapshot!.contentType.isEmpty ? 'unknown' : snapshot!.contentType}',
+                style: theme.textTheme.bodySmall,
+              ),
+              if (snapshot!.note != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  snapshot!.note!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: snapshot!.looksLikeHtml ? const Color(0xFFB91C1C) : const Color(0xFF92400E),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 8),
+              SelectableText(
+                snapshot!.bodyPreview.isEmpty ? '(empty body)' : snapshot!.bodyPreview,
+                style: theme.textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
+              ),
+            ],
           ],
         ),
       ),
