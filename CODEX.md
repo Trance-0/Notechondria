@@ -1,180 +1,316 @@
-# CODEX Build Report
+# CODEX Handoff
 
-This file summarizes a pragmatic way to rebuild the current Notechondria workspace from scratch with prompt-driven iterations.
+This file is the current engineer handoff for the Notechondria workspace. It is meant to transfer architecture decisions, deployment assumptions, product scope, and verification reality to the next engineer without relying on thread history.
 
-## 1. Project outcome
+## 1. Current status
 
-The repository is organized around:
+- The backend is now API-first Django REST Framework. Django is kept only for REST APIs, the default admin, and static/media handling behind nginx.
+- The frontend is now a Flutter app for web and desktop-style layouts. It is the primary user-facing interface.
+- The Flutter codebase has been split out of the previous oversized `frontend/lib/main.dart` into reusable libraries and page modules.
+- Deployment now supports separate backend and frontend Docker stacks, with Jenkins testing and deploying them in parallel.
+- The current codebase has moved significantly beyond the original Django-rendered UI, but not every recent change was runtime-verified in this environment. Treat the latest handoff as source-accurate but partially execution-unverified.
 
-- `backend/`: Django application, tests, Docker assets, deployment entrypoints.
-- `frontend/`: Flutter web/client MVP shell.
-- `docs/`: API, deployment, testing, and integration documentation.
-- `deployment/`: CI/CD helper scripts.
-- `course_template/`: course content template and validation target.
+## 2. Repository map
 
-## 2. Recommended build order
+- `backend/`: Django project, DRF APIs, admin, nginx/static/media wiring, Docker assets, backend tests.
+- `frontend/`: Flutter app, web container build, frontend tests, frontend nginx config.
+- `deployment/`: CI/CD shell scripts for env generation, testing, deployment, and wait logic.
+- `docs/`: deployment and project docs.
+- `sample/`: seeded example course content and media used to bootstrap an empty database.
+- `course_template/`: older course template artifacts; keep only if still useful for migration or examples.
+- `CODEX.md`: this handoff file.
+- `LLM_CHECK.md`: end-of-round safety checklist and accumulated pitfalls.
 
-Use this order when recreating or extending the project:
+## 3. Backend design
 
-1. Bootstrap repository structure and top-level docs.
-2. Build the Django backend as an API-first DRF service plus Django admin and nginx-served static/media.
-3. Add auth, note, course, activity, version-history, and calendar APIs, plus test-only Django settings and backend coverage.
-4. Add the Flutter shell with responsive navigation, public course viewing, and authenticated learner editing flows.
-5. Seed a sample default course from `sample/` and `CODEX.md` so an empty database has usable demo content.
-6. Add deployment docs, API docs, sample env, and GitHub App guidance.
-7. Add Jenkins pipeline and deployment scripts.
-8. Verify with backend tests and any locally available frontend tooling.
+### 3.1 Runtime shape
 
-## 2.1 Current product shape
+- Main Django settings live in `backend/notechondria/settings.py`.
+- Test settings live in `backend/notechondria/settings_test.py`.
+- API routing is centered under `backend/notechondria/api_urls.py`.
+- API-specific error handling and middleware live in `backend/notechondria/api_views.py` and `backend/notechondria/middleware.py`.
+- Core feature apps are `backend/creators/` and `backend/notes/`.
 
-The current project shape is:
+### 3.2 Auth and account workflow
 
-- Django backend kept as a REST API, Django admin, and static/media origin behind nginx.
-- Flutter frontend used as the primary user-facing app for web and desktop-style layouts.
-- Flutter frontend organized around a thin `lib/main.dart` entrypoint, shared `lib/core/` and `lib/components/`, plus per-surface modules under `lib/modules/`.
-- Deployment now includes a standalone Dockerized Flutter web frontend on `FRONTEND_HOST_PORT` and a Jenkins pipeline that tests and deploys backend/frontend in parallel after env preparation.
-- Backend deploy readiness now verifies that Django admin and DRF static assets exist in the shared nginx/app static volume before the stack is considered healthy.
-- Email/password registration with verification codes, SMTP delivery when configured, and server-log fallback when SMTP is missing or invalid.
-- Public viewing of seeded default-course materials without login.
-- Authenticated learner note creation, markdown import/export, autosave, note history snapshots, restore, note-session activity capture, planner activity, and calendar feed APIs.
-- Responsive Flutter layout with bottom navigation on narrow screens and a left sidebar on wide screens.
-- Front page recommendation feed for public notes, plus a centered GitHub-style heatmap for authenticated progress and plans.
-- Learner flow centered on recent notes, search, public/private note cards, dialog-based reading, and editor-mode switching between markdown preview, block fallback, and plain text.
-- Activity flow centered on a full week calendar with planner events, imported/subscribed iCal feeds, and note-edit sessions rendered as time windows.
-- Settings flow supporting compact auth dialogs, theme preset/theme mode changes, editable API base URL, and frontend/API debug surfaces.
+- Authentication uses DRF token auth.
+- Registration is email/password only.
+- Email verification is supported.
+- Password reset is supported.
+- SMTP is used when configured.
+- If SMTP is missing or invalid, registration and verification flows should not crash. Verification codes should fall back to server logs so an admin can recover them manually.
+- The initial Django admin user is bootstrapped from env:
+  - `DJANGO_SUPERUSER_USERNAME`
+  - `DJANGO_SUPERUSER_EMAIL`
+  - `DJANGO_SUPERUSER_PASSWORD`
+- Login was broadened so env-bootstrapped admin access can work with username as well as email.
 
-## 3. Prompt sequence
+### 3.3 Notes, courses, and activity
 
-These prompts are written so a future Codex run can recreate the same shape of work with less ambiguity.
+- Notes support recent-note listing, note detail, note history, and restore flows.
+- `GET /api/v1/notes/` is now authenticated-only and returns only non-deleted notes owned by the signed-in creator.
+- Public course viewing is intentionally available without login.
+- Notes now support soft delete via `deleted_at` plus recycle-bin list, restore, and empty-bin endpoints.
+- Notes also carry `client_draft_id` so frontend local-draft sync can be idempotent.
+- Course subscriptions are now first-class via `CourseSubscription`, with per-user `subscribed_at` and `last_opened_at`.
+- Course ordering is backend-canonical and synced across sessions/devices, not local-only.
+- Course opens, subscribes, and unsubscribes are appended to `CourseOperationLog` for ordering/audit history.
+- Planner events, heatmap activity, calendar feeds, and note-edit session activity exist on the backend.
+- Planner events now also support `is_completed` and `completed_at`, and the week payload exposes an urgency-sorted `deadlines` list for vertical layouts.
+- The activity model has moved toward calendar events rather than a separate recent-activity feed.
+- Recommendation behavior on the front page currently means public-note surfacing, not a sophisticated ranking system. Do not overstate the algorithm.
 
-### Prompt A: repository scaffold
+### 3.4 Sample bootstrap
 
-```text
-Create a maintainable project structure for a Django backend and Flutter frontend.
-Keep backend/, frontend/, docs/, deployment/, and course_template/ as first-level directories.
-Preserve existing code when present and avoid destructive git operations.
-```
+- Empty-database bootstrap seeds a default course named `Vibe Coding 101`.
+- Source material comes from `sample/` plus repository content such as `CODEX.md`.
+- Bootstrap logic lives under `backend/notes/management/commands/bootstrap_platform.py`.
+- Bootstrap was hardened so missing optional sample assets should not crash the app.
 
-### Prompt B: backend hardening
+### 3.5 Static, media, nginx, and startup rules
 
-```text
-Inspect the Django backend and add rigorous but efficient tests for creators, notes, and gptutils.
-Use a dedicated test settings module that runs on sqlite in memory and disables optional apps that are not required for CI.
-Prefer smoke tests for authenticated views and focused model/utility tests for behavior.
-```
+- nginx is the static/media origin in both debug-like and production-like container paths.
+- Shared volume targets are:
+  - static: `/home/staticfiles`
+  - media: `/home/mediafiles`
+- `backend/entrypoint.sh` is responsible for:
+  - database readiness
+  - migrations
+  - superuser bootstrap
+  - `collectstatic --clear`
+  - startup verification that required admin and DRF assets really exist in the shared static directory
+- `backend/docker-compose.yml` healthchecks depend on those static assets existing before the stack is treated as healthy.
+- This was added because earlier runs could appear "up" while admin and browsable DRF assets were still 404ing through nginx.
 
-### Prompt C: frontend MVP shell
+## 4. Frontend design
 
-```text
-Build a Flutter MVP shell for Notechondria with pages for front page, learner view, course view, activity view, and settings.
-Include a course selector and calendar-like task strips, and make the selected course flow through learner and activity views.
-Add widget tests that verify navigation and course-selection behavior.
-```
+### 4.1 Code organization
 
-### Prompt D: docs and operations
+- Thin entrypoint: `frontend/lib/main.dart`
+- Shared shell/state: `frontend/lib/app_shell.dart`
+- Shared helpers: `frontend/lib/core/`
+- Reusable widgets: `frontend/lib/components/`
+- Page modules:
+  - `frontend/lib/modules/front.dart`
+  - `frontend/lib/modules/learner.dart`
+  - `frontend/lib/modules/course.dart`
+  - `frontend/lib/modules/activity.dart`
+  - `frontend/lib/modules/settings.dart`
 
-```text
-Write concise operational docs for deployment, backend API usage with example requests, backend test scope, and GitHub App integration.
-Add sample.env with server environment variables required by Docker and optional integrations.
-Link the docs from the repository README.
-```
+### 4.2 Layout model
 
-### Prompt E: CI/CD
+- Narrow screens use bottom navigation.
+- Wide or horizontal screens use a left sidebar.
+- The wide layout should keep icon and label on the same row, with Settings anchored lower-left.
 
-```text
-Add a Jenkins pipeline for Django deployment triggered by GitHub webhook.
-Back up the PostgreSQL database before test/deploy stages.
-Place helper scripts under deployment/scripts and make sure script arguments match the Jenkinsfile invocation.
-```
+### 4.3 Product behavior currently intended
 
-### Prompt F: repo hygiene and review loop
+- Front page:
+  - public course material access
+  - auto-advancing course carousel seeded with three demo courses
+  - public-note recommendation surface rendered as a blog-style feed
+  - authenticated heatmap for progress and plans
+- Learner:
+  - signed-out local drafts and signed-in cloud notes are distinct surfaces
+  - local drafts remain local until manually synced after login
+  - recent notes as the primary signed-in surface
+  - search/filtering, with backend keyword+fuzzy search for cloud notes and local fuzzy filtering for drafts
+  - dialog-based note reading instead of a permanent full-note pane
+  - note creation, import/export, autosave, and version history
+  - editor-mode switching with plain, preview, and block modes
+  - delete-to-recycle-bin support
+- Course:
+  - subscribed courses are primary
+  - unsubscribed courses render as preview cards with metadata and subscribe actions
+  - wide-layout course ordering comes from backend-synced `last_opened_at`
+- Activity:
+  - horizontal layouts keep the week calendar
+  - vertical layouts use a Canvas-style urgency-sorted deadline list with completion checkboxes
+  - planner events, imported/subscribed iCal data, and note-edit session events
+- Settings:
+  - compact auth dialogs for sign up, verify, login, forgot password
+  - server profile fields for username/email/motto/social/editor mode/avatar
+  - local app settings for theme preset, theme mode, and API base URL, mirrored to the server profile with timestamps on login
+  - recycle bin, local stats, and one-click frontend log copy
+  - frontend/API debug surfaces
 
-```text
-Revise .gitignore so common OS junk, editor settings, local env files, Python caches, and Flutter build outputs are ignored.
-Create CODEX.md summarizing how to rebuild the project with prompts.
-Create LLM_CHECK.md listing common mistakes from prior rounds and use it as a final checklist before closing each modification round.
-```
+### 4.4 Recent frontend implementation notes
 
-### Prompt G: API-first Notechondria rebuild
+- Text selection/copy support was added, but an early global `SelectionArea` placement caused overlay crashes. Selection handling was then moved deeper into page content.
+- The Flutter client now tries to defend against HTML error pages being decoded as JSON by surfacing request/response debug information in the UI.
+- Local default API behavior is meant to target `http://localhost:9080/api/v1`.
+- The standalone web build also accepts `FRONTEND_API_BASE_URL`.
+- Imported markdown documents should leave description empty rather than copying the entire document body into the description field.
+- The learner add action should stay compact: icon-first, tooltip on hover, long-press import on supported platforms.
+- Local drafts are persisted with `shared_preferences` in `frontend/lib/core/local_store.dart`.
+- Avatar/media URLs should be resolved through `_resolveRemoteUrl(...)` because some backend media references can arrive as relative paths or malformed `file:///media/...` values.
+- Note-session creation/update must be treated as best-effort; editor open should not be blocked by a failed note-session API call.
+
+## 5. Deployment topology
+
+### 5.1 Backend stack
+
+- Compose file: `backend/docker-compose.yml`
+- Host-facing ports by default:
+  - nginx/app gateway: `9080` via `APP_HOST_PORT`
+  - direct Django app: `9090` via `BACKEND_HOST_PORT`
+  - postgres: `9032` via `DB_HOST_PORT`
+- The backend stack includes:
+  - `app`
+  - `db`
+  - `nginx`
+
+### 5.2 Frontend stack
+
+- Compose file: `frontend/docker-compose.yml`
+- Docker build file: `frontend/Dockerfile`
+- Frontend web container is exposed by default on `9060` via `FRONTEND_HOST_PORT`.
+- The frontend container builds Flutter web and serves the built output with nginx.
+- The Dockerfile was adjusted to avoid failing on existing host/container gid collisions. It now uses numeric ownership instead of trying to create a new group with a gid that may already exist.
+
+### 5.3 Jenkins pipeline
+
+- `Jenkinsfile` runs:
+  - env preparation
+  - database backup
+  - backend/frontend tests in parallel
+  - backend/frontend deploy in parallel
+- Deployment and test helpers live under `deployment/scripts/`.
+- Important scripts:
+  - `prepare_env.sh`
+  - `backup_postgres.sh`
+  - `test_backend.sh`
+  - `test_frontend.sh`
+  - `deploy_backend.sh`
+  - `deploy_frontend.sh`
+  - `wait_for_stack.sh`
+  - `wait_for_frontend.sh`
+  - `ensure_db_ready.sh`
+
+### 5.4 Environment contract
+
+Key env variables currently expected by the stack:
+
+- Django and backend:
+  - `DJANGO_SECRET_KEY`
+  - `DJANGO_DEBUG`
+  - `DJANGO_ALLOWED_HOSTS`
+  - `DJANGO_ALLOWED_HOSTS_COMPOSE`
+  - `DJANGO_CSRF_TRUSTED_ORIGINS`
+  - `DJANGO_LOG_LEVEL`
+  - `DJANGO_LOG_FILE_NAME`
+  - `DJANGO_SUPERUSER_USERNAME`
+  - `DJANGO_SUPERUSER_EMAIL`
+  - `DJANGO_SUPERUSER_PASSWORD`
+- Database:
+  - `POSTGRE_USERNAME`
+  - `POSTGRE_PASSWORD`
+  - `POSTGRE_HOST`
+  - `POSTGRE_PORT`
+  - `POSTGRE_DB`
+  - `DB_AUTO_REINIT_IF_MISMATCH`
+- Ports:
+  - `APP_HOST_PORT`
+  - `BACKEND_HOST_PORT`
+  - `FRONTEND_HOST_PORT`
+  - `DB_HOST_PORT`
+- Static/media:
+  - `PRODUCTION_STATIC_ROOT`
+  - `PRODUCTION_MEDIA_ROOT`
+- SMTP and verification:
+  - `SMTP_HOST`
+  - `SMTP_PORT`
+  - `SMTP_USERNAME`
+  - `SMTP_PASSWORD`
+  - `SMTP_USE_TLS`
+  - `SMTP_USE_SSL`
+  - `SMTP_FROM_EMAIL`
+  - `EMAIL_VERIFICATION_TTL_HOURS`
+  - `FRONTEND_VERIFY_URL`
+- Frontend:
+  - `FRONTEND_API_BASE_URL`
+  - `FRONTEND_IMAGE`
+- Images:
+  - `APP_IMAGE`
+  - `NGINX_IMAGE`
+
+See `sample.env` and `deployment/scripts/prepare_env.sh` for the current authoritative defaults.
+
+## 6. Verification reality
+
+What was confirmed in this environment:
+
+- The repository layout and file split are present as described.
+- `dart format --set-exit-if-changed frontend/lib frontend/test` completed successfully in recent rounds.
+- Documentation, env defaults, Dockerfiles, Jenkinsfile, and deployment scripts were updated to match the current stack shape.
+
+What was not reliably verified in this environment:
+
+- Full backend Django test execution from the host.
+- Docker-backed backend runtime validation.
+- Full Flutter test and build completion.
+- `dart analyze` completion.
+
+Why verification was limited here:
+
+- The available local `python.exe` resolves to the Windows Store shim rather than a usable interpreter for direct backend runs.
+- Docker daemon access was denied in this environment, so containerized backend verification could not be completed.
+- Flutter tooling was partially usable for formatting, but longer runs such as `flutter test`, `flutter build web`, and `dart analyze` were blocked by timeout or Windows process-permission issues.
+
+Do not tell the next engineer that the whole stack is fully green. The safe statement is: current source structure is updated to the intended design, but runtime verification must be rerun in a working Docker + Flutter environment.
+
+## 7. Open risks and handoff watchlist
+
+- Reconfirm backend static serving after a clean rebuild. Earlier nginx 404s for Django admin and DRF assets were a real issue and were only recently hardened.
+- Reconfirm the standalone frontend Docker build and Jenkins frontend test stage after the non-root Dockerfile adjustments.
+- Reconfirm Flutter runtime behavior on both Chrome and Windows after the module split and settings/theme fixes.
+- Some advanced product goals are still rough or partial:
+  - offline-first local cache and sync are not a finished system
+  - block editing is not yet a polished Notion-level editor
+  - avatar upload/crop/reposition is not a finished flow
+  - recommendation logic is still basic
+- If the next round touches frontend routing or API paths, recheck CORS and JSON error responses together. Earlier failures came from mismatched assumptions across Flutter, nginx, and Django.
+
+## 8. Practical rebuild and recovery order
+
+Use this order when continuing the project:
+
+1. Start from `sample.env` and generate a deploy env with `deployment/scripts/prepare_env.sh` if needed.
+2. Rebuild and verify the backend stack first:
+   - migrations
+   - admin bootstrap
+   - sample bootstrap
+   - collected static assets through nginx
+   - backend tests
+3. Rebuild and verify the standalone frontend web container.
+4. Run Flutter locally against `http://localhost:9080/api/v1`.
+5. Recheck public course viewing, auth dialogs, learner note flows, activity calendar flows, and settings/API-debug flows.
+6. Only after local validation, trust Jenkins parallel test/deploy stages as the automation path.
+
+## 9. AI continuation prompt
+
+If an AI engineer needs to continue this project with minimal thread context, use a prompt close to this:
 
 ```text
 Inspect the existing Notechondria repository and preserve user changes.
-Rebuild it as an API-first Django REST Framework backend plus a Flutter frontend.
+Treat the current architecture as an API-first Django REST Framework backend plus a modular Flutter frontend.
 
-Backend requirements:
-- Keep Django serving only REST APIs, default Django admin, and static/media for nginx.
-- Use token auth.
-- Keep registration email+password only.
-- Add email verification and password reset using SMTP env settings, but fall back to logging verification codes when SMTP is missing or invalid.
-- Bootstrap the initial Django admin user from env.
-- Seed a default example course named "Vibe Coding 101" from sample/ and CODEX.md when the database is empty.
-- Expose APIs for front page, courses, notes, note history/restore, planner events, heatmap activity, calendar feeds, auth, and settings.
-- Add focused backend tests for the new APIs and edge cases.
-
-Frontend requirements:
-- Use Flutter as the primary app and target both narrow/mobile and wide/horizontal layouts.
-- Keep `lib/main.dart` thin and split reusable frontend logic into `lib/core/`, `lib/components/`, and per-page modules such as `front`, `learner`, `course`, `activity`, and `settings`.
-- Use bottom navigation on narrow screens and a left sidebar on wide screens.
-- Allow public viewing of seeded course materials without login.
-- Keep auth actions in Settings with compact dialog flows for sign up, verify, login, and forgot password.
-- Build the learner view around recent notes, search, markdown import/export, autosave, version history, and dialog-based note viewing instead of a permanent full-note pane.
-- Add a scrollable markdown preview with inline LaTeX math rendering, and prefer a notion-like block fallback editor if a richer editor is feasible without destabilizing the app.
-- Record note editing sessions and surface them in the activity calendar instead of a separate recent-activity list.
-- Add settings controls for theme presets, light/dark/system mode, API base URL, and visible frontend/API debug information.
-- Use the user's editor-mode setting, but prefer the simplest reliable fallback if a richer editor is too risky.
-- Add API debug surfaces so invalid JSON or HTML error pages are visible in the UI.
-
-Operational requirements:
-- Keep Docker/nginx/static/media wiring correct in both debug and non-debug paths.
-- Support a standalone Flutter web container build with env-driven `FRONTEND_API_BASE_URL`, `FRONTEND_HOST_PORT`, and parallel Jenkins backend/frontend deploy stages.
-- State clearly which checks were actually run and which were blocked.
-- Update CODEX.md and LLM_CHECK.md whenever the project shape changes materially.
+Continue from the current state rather than rebuilding from zero:
+- Django should serve REST APIs, default admin, and nginx-served static/media only.
+- Flutter is the primary user-facing app and is organized into a thin main entrypoint, shared core/components, and page modules for front, learner, course, activity, and settings.
+- Keep public course viewing available without login.
+- Keep auth centered in Settings using compact dialog flows.
+- Keep backend/frontend deployment separate, with Dockerized backend and standalone Dockerized Flutter web frontend.
+- Preserve env-driven ports, SMTP fallback-to-log behavior, admin bootstrap, seeded sample course content, and Jenkins parallel backend/frontend test+deploy stages.
+- When changing the project shape, update CODEX.md and LLM_CHECK.md.
+- State clearly what you actually verified versus what you could not verify.
 ```
 
-## 4. Environment bootstrap
+## 10. Round-end rules
 
-### Backend
+Every substantial round should end with:
 
-```bash
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r backend/requirements.txt
-copy sample.env .env
-set DJANGO_SETTINGS_MODULE=notechondria.settings_test
-python backend/manage.py test creators notes gptutils
-```
-
-### Docker deployment path
-
-```bash
-cd backend
-docker compose --env-file ../.env up --build -d
-docker compose exec app python manage.py migrate
-docker compose exec app python manage.py collectstatic --noinput
-```
-
-### Frontend
-
-```bash
-cd frontend
-flutter pub get
-flutter test
-flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:9080
-```
-
-## 5. Prompting rules that worked
-
-- Ask for inspection first when the repo may already be partially changed.
-- Ask for concrete deliverables, not just "improve the app."
-- Require verification steps and mention environment limitations explicitly.
-- Call out non-negotiable constraints such as no destructive git operations.
-- When adding CI scripts, require argument validation between the pipeline and the scripts.
-
-## 6. End-of-round expectation
-
-Every substantial modification round should end with:
-
-1. Targeted code/doc edits.
-2. Available test execution.
+1. Targeted source or doc edits that match the current repo structure.
+2. A clear statement of what was actually run and what was blocked.
 3. An `LLM_CHECK.md` pass against the new changes.
-4. A `CODEX.md` update when the round materially changes the product shape or the prompt recipe needed to recreate it.
+4. A `CODEX.md` update whenever architecture, deployment shape, or the safest continuation prompt changes materially.

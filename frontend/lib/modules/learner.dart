@@ -4,6 +4,7 @@ part of notechondria_frontend;
 class _LearnerPage extends StatefulWidget {
   const _LearnerPage({
     required this.notes,
+    required this.localDrafts,
     required this.courses,
     required this.selectedNote,
     required this.editorMode,
@@ -11,6 +12,7 @@ class _LearnerPage extends StatefulWidget {
     required this.isLoadingMore,
     required this.searchQuery,
     required this.isAuthenticated,
+    required this.apiBaseUrl,
     required this.onSearchChanged,
     required this.onLoadMore,
     required this.onOpenNote,
@@ -24,9 +26,14 @@ class _LearnerPage extends StatefulWidget {
     required this.onRestoreNoteVersion,
     required this.onStartNoteSession,
     required this.onFinishNoteSession,
+    required this.onDeleteNote,
+    required this.onSyncLocalDraft,
+    required this.onSyncAllLocalDrafts,
+    required this.onLogEvent,
   });
 
   final List<Map<String, dynamic>> notes;
+  final List<Map<String, dynamic>> localDrafts;
   final List<Map<String, dynamic>> courses;
   final Map<String, dynamic>? selectedNote;
   final String editorMode;
@@ -34,6 +41,7 @@ class _LearnerPage extends StatefulWidget {
   final bool isLoadingMore;
   final String searchQuery;
   final bool isAuthenticated;
+  final String? apiBaseUrl;
   final ValueChanged<String> onSearchChanged;
   final Future<void> Function() onLoadMore;
   final ValueChanged<Map<String, dynamic>> onOpenNote;
@@ -56,6 +64,11 @@ class _LearnerPage extends StatefulWidget {
       onStartNoteSession;
   final Future<void> Function(int? sessionId, {String? title, String? summary})
       onFinishNoteSession;
+  final Future<void> Function(Map<String, dynamic> note) onDeleteNote;
+  final Future<Map<String, dynamic>> Function(Map<String, dynamic> draft)
+      onSyncLocalDraft;
+  final Future<void> Function() onSyncAllLocalDrafts;
+  final ValueChanged<String> onLogEvent;
 
   @override
   State<_LearnerPage> createState() => _LearnerPageState();
@@ -85,12 +98,56 @@ class _LearnerPageState extends State<_LearnerPage> {
     super.dispose();
   }
 
+  double _localSearchScore(Map<String, dynamic> note, String query) {
+    final normalized = query.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      return 1;
+    }
+    final haystack = [
+      note['title']?.toString() ?? '',
+      note['description']?.toString() ?? '',
+      note['content']?.toString() ?? '',
+      (note['preview_lines'] as List<dynamic>? ?? const []).join(' '),
+    ].join(' ').toLowerCase();
+    if (haystack.contains(normalized)) {
+      return 100;
+    }
+    var cursor = 0;
+    var hits = 0;
+    for (final rune in normalized.runes) {
+      final char = String.fromCharCode(rune);
+      final next = haystack.indexOf(char, cursor);
+      if (next == -1) {
+        continue;
+      }
+      hits += 1;
+      cursor = next + 1;
+    }
+    final tokenHits = normalized
+        .split(RegExp(r'\s+'))
+        .where((token) => token.isNotEmpty && haystack.contains(token))
+        .length;
+    return (tokenHits * 10) + hits / math.max(1, normalized.length);
+  }
+
+  List<Map<String, dynamic>> _visibleLocalDrafts() {
+    final query = widget.searchQuery.trim();
+    final rows = widget.localDrafts
+        .where((note) => query.isEmpty || _localSearchScore(note, query) >= 0.6)
+        .toList();
+    rows.sort((a, b) =>
+        _localSearchScore(b, query).compareTo(_localSearchScore(a, query)));
+    return rows;
+  }
+
   /// Opens the note editor and records the note-edit session around the dialog.
   Future<void> _openEditor(Map<String, dynamic> noteSummary) async {
     final detail = await widget.onFetchNoteDetail(noteSummary['id'] as int);
     if (!mounted) {
       return;
     }
+    widget.onLogEvent(
+        "Editor opened for '${detail['title']?.toString() ?? 'Untitled note'}'.");
     final sessionId = await widget.onStartNoteSession(
       detail['id'] as int,
       detail['title']?.toString() ?? 'Untitled note',
@@ -107,6 +164,7 @@ class _LearnerPageState extends State<_LearnerPage> {
         onSnapshot: widget.onSnapshotNote,
         onGetHistory: widget.onGetNoteHistory,
         onRestoreVersion: widget.onRestoreNoteVersion,
+        onLogEvent: widget.onLogEvent,
       ),
     );
     final refreshed = await widget.onFetchNoteDetail(detail['id'] as int);
@@ -134,6 +192,7 @@ class _LearnerPageState extends State<_LearnerPage> {
     if (!mounted) {
       return;
     }
+    widget.onLogEvent('Created note shell ${created['id']}.');
     await _openEditor(created);
   }
 
@@ -162,6 +221,7 @@ class _LearnerPageState extends State<_LearnerPage> {
 
   @override
   Widget build(BuildContext context) {
+    final localDrafts = _visibleLocalDrafts();
     return Stack(
       children: [
         ListView(
@@ -172,39 +232,127 @@ class _LearnerPageState extends State<_LearnerPage> {
               onChanged: widget.onSearchChanged,
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.search),
-                hintText: 'Search recent notes',
+                hintText: widget.isAuthenticated
+                    ? 'Search your cloud notes'
+                    : 'Search local drafts',
                 border:
                     OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
               ),
             ),
             const SizedBox(height: 16),
-            Text('Recent notes', style: Theme.of(context).textTheme.titleLarge),
+            if (widget.isAuthenticated && localDrafts.isNotEmpty) ...[
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Unsynced local drafts',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          FilledButton.icon(
+                            onPressed: () {
+                              widget.onSyncAllLocalDrafts();
+                            },
+                            icon: const Icon(Icons.cloud_upload_outlined),
+                            label: const Text('Sync all'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Local drafts stay private by default. Sync uploads them as private cloud notes.',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            Text(
+              widget.isAuthenticated ? 'Recent notes' : 'Local drafts',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: 12),
-            if (widget.notes.isEmpty)
+            if (widget.isAuthenticated && widget.notes.isEmpty)
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Text(
-                    widget.isAuthenticated
-                        ? 'No notes yet. Use the add button to create one.'
-                        : 'Sign in to create and sync notes. Public course materials stay available without login.',
+                    localDrafts.isEmpty
+                        ? 'No cloud notes yet. Use the add button to create one.'
+                        : 'No synced cloud notes yet. Sync a local draft or create a new note.',
                   ),
                 ),
               ),
-            for (final note in widget.notes)
-              _LearnerNoteCard(
-                note: note,
-                canEdit: widget.isAuthenticated,
-                onOpen: () => _openViewer(note),
-                onEdit: () => _openEditor(note),
-                onExport: () => widget.onExportNote(note),
+            if (!widget.isAuthenticated && localDrafts.isEmpty)
+              const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    'No local drafts yet. Use the add button to create one and sync later after login.',
+                  ),
+                ),
               ),
-            if (widget.hasMoreNotes) ...[
+            if (!widget.isAuthenticated)
+              for (final note in localDrafts)
+                _LearnerNoteCard(
+                  note: note,
+                  apiBaseUrl: widget.apiBaseUrl,
+                  canEdit: true,
+                  isLocalDraft: true,
+                  onOpen: () => _openViewer(note),
+                  onEdit: () => _openEditor(note),
+                  onExport: () => widget.onExportNote(note),
+                  onDelete: () => widget.onDeleteNote(note),
+                ),
+            if (widget.isAuthenticated)
+              for (final note in widget.notes)
+                _LearnerNoteCard(
+                  note: note,
+                  apiBaseUrl: widget.apiBaseUrl,
+                  canEdit: true,
+                  onOpen: () => _openViewer(note),
+                  onEdit: () => _openEditor(note),
+                  onExport: () => widget.onExportNote(note),
+                  onDelete: () => widget.onDeleteNote(note),
+                ),
+            if (widget.isAuthenticated && localDrafts.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              Text('Local drafts', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 12),
+              for (final draft in localDrafts)
+                _LearnerNoteCard(
+                  note: draft,
+                  apiBaseUrl: widget.apiBaseUrl,
+                  canEdit: true,
+                  isLocalDraft: true,
+                  canSync: true,
+                  onOpen: () => _openViewer(draft),
+                  onEdit: () => _openEditor(draft),
+                  onExport: () => widget.onExportNote(draft),
+                  onDelete: () => widget.onDeleteNote(draft),
+                  onSync: () => widget.onSyncLocalDraft(draft),
+                ),
+            ],
+            if (widget.isAuthenticated && widget.hasMoreNotes) ...[
               const SizedBox(height: 12),
               Align(
                 alignment: Alignment.centerLeft,
                 child: OutlinedButton(
-                  onPressed: widget.isLoadingMore ? null : widget.onLoadMore,
+                  onPressed: widget.isLoadingMore
+                      ? null
+                      : () {
+                          widget.onLoadMore();
+                        },
                   child:
                       Text(widget.isLoadingMore ? 'Loading...' : 'Load more'),
                 ),
@@ -217,15 +365,15 @@ class _LearnerPageState extends State<_LearnerPage> {
           bottom: 24,
           child: Tooltip(
             message: widget.isAuthenticated
-                ? 'Create note. Long press to upload local documents.'
-                : 'Sign in to create or upload notes.',
+                ? 'Create note. Long press to import markdown.'
+                : 'Create a local draft. Long press to import markdown.',
             child: GestureDetector(
-              onLongPress:
-                  widget.isAuthenticated ? widget.onImportMarkdown : null,
-              onSecondaryTapDown:
-                  widget.isAuthenticated ? _showComposerMenu : null,
+              onLongPress: () {
+                widget.onImportMarkdown();
+              },
+              onSecondaryTapDown: _showComposerMenu,
               child: FloatingActionButton(
-                onPressed: widget.isAuthenticated ? _createAndOpenNote : null,
+                onPressed: _createAndOpenNote,
                 child: const Icon(Icons.add),
               ),
             ),
@@ -240,17 +388,27 @@ class _LearnerPageState extends State<_LearnerPage> {
 class _LearnerNoteCard extends StatelessWidget {
   const _LearnerNoteCard({
     required this.note,
+    required this.apiBaseUrl,
     required this.canEdit,
     required this.onOpen,
     required this.onEdit,
     required this.onExport,
+    required this.onDelete,
+    this.onSync,
+    this.isLocalDraft = false,
+    this.canSync = false,
   });
 
   final Map<String, dynamic> note;
+  final String? apiBaseUrl;
   final bool canEdit;
   final VoidCallback onOpen;
   final VoidCallback onEdit;
   final Future<void> Function() onExport;
+  final Future<void> Function() onDelete;
+  final Future<void> Function()? onSync;
+  final bool isLocalDraft;
+  final bool canSync;
 
   @override
   Widget build(BuildContext context) {
@@ -259,8 +417,20 @@ class _LearnerNoteCard extends StatelessWidget {
         .take(3)
         .toList();
     final isPublic = note['is_public'] == true;
+    final author = Map<String, dynamic>.from(note['author'] as Map? ?? const {});
+    final course = Map<String, dynamic>.from(note['course'] as Map? ?? const {});
+    final authorName = author['username']?.toString() ?? '';
+    final avatarFallback = authorName.isEmpty ? 'L' : authorName.substring(0, 1);
+    final avatarUrl = _resolveRemoteUrl(
+      author['image_url']?.toString() ?? '',
+      apiBaseUrl: apiBaseUrl,
+    );
     return Card(
-      color: isPublic ? const Color(0xFFF4FAFF) : const Color(0xFFE5E7EB),
+      color: isLocalDraft
+          ? Theme.of(context).colorScheme.surfaceVariant
+          : (isPublic
+              ? const Color(0xFFF4FAFF)
+              : Theme.of(context).colorScheme.surface),
       child: InkWell(
         onTap: onOpen,
         borderRadius: BorderRadius.circular(16),
@@ -272,19 +442,61 @@ class _LearnerNoteCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundImage:
+                        avatarUrl.isEmpty ? null : NetworkImage(avatarUrl),
+                    child: avatarUrl.isEmpty
+                        ? Text(
+                            avatarFallback.toUpperCase(),
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      note['title']?.toString() ?? 'Untitled note',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          note['title']?.toString() ?? 'Untitled note',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          [
+                            if (isLocalDraft)
+                              'Local draft'
+                            else if (isPublic)
+                              'Public'
+                            else
+                              'Private',
+                            if ((course['title']?.toString() ?? '').isNotEmpty)
+                              course['title'].toString(),
+                            _formatCompactTimestamp(
+                              note['last_edit']?.toString() ?? '',
+                            ),
+                          ].join(' • '),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                        ),
+                      ],
                     ),
                   ),
                   PopupMenuButton<String>(
                     onSelected: (value) async {
                       if (value == 'edit') {
                         onEdit();
+                      } else if (value == 'delete') {
+                        await onDelete();
+                      } else if (value == 'sync' && onSync != null) {
+                        await onSync!();
                       } else if (value == 'export') {
                         await onExport();
                       }
@@ -292,12 +504,28 @@ class _LearnerNoteCard extends StatelessWidget {
                     itemBuilder: (context) => [
                       if (canEdit)
                         const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                      if (canSync)
+                        const PopupMenuItem(value: 'sync', child: Text('Sync to cloud')),
                       const PopupMenuItem(
                           value: 'export', child: Text('Export markdown')),
+                      const PopupMenuItem(
+                          value: 'delete', child: Text('Delete')),
                     ],
                   ),
                 ],
               ),
+              if ((note['description']?.toString() ?? '').isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  note['description'].toString(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontStyle: FontStyle.italic,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ],
               const SizedBox(height: 8),
               Text(
                 previewLines.isEmpty
@@ -310,11 +538,15 @@ class _LearnerNoteCard extends StatelessWidget {
               Align(
                 alignment: Alignment.bottomRight,
                 child: Text(
-                  '${isPublic ? 'Public' : 'Private'} - ${_formatCompactTimestamp(note['last_edit']?.toString() ?? '')}',
+                  isLocalDraft
+                      ? 'Stored locally until you sync'
+                      : 'Course metadata stays editable from the editor details panel',
                   style: Theme.of(context)
                       .textTheme
                       .bodySmall
-                      ?.copyWith(color: const Color(0xFF6B7280)),
+                      ?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                 ),
               ),
             ],
@@ -354,6 +586,7 @@ class _NoteEditorDialog extends StatefulWidget {
     required this.onSnapshot,
     required this.onGetHistory,
     required this.onRestoreVersion,
+    required this.onLogEvent,
   });
 
   final Map<String, dynamic> note;
@@ -368,6 +601,7 @@ class _NoteEditorDialog extends StatefulWidget {
   final Future<List<Map<String, dynamic>>> Function(int noteId) onGetHistory;
   final Future<Map<String, dynamic>> Function(int noteId, int versionId)
       onRestoreVersion;
+  final ValueChanged<String> onLogEvent;
 
   @override
   State<_NoteEditorDialog> createState() => _NoteEditorDialogState();
@@ -387,6 +621,7 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
   late Map<String, dynamic> _note;
   late Map<String, dynamic> _metadata;
   late List<_BlockDraft> _blockDrafts;
+  late String _editorMode;
 
   @override
   void initState() {
@@ -400,6 +635,8 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
       text: _bodyWithoutTitle(_note['content']?.toString() ?? ''),
     );
     _blockDrafts = _buildInitialBlockDrafts(_note);
+    final noteEditorMode = _note['editor_mode']?.toString() ?? '';
+    _editorMode = noteEditorMode.isNotEmpty ? noteEditorMode : widget.editorMode;
     _titleController.addListener(_handleChanged);
     _bodyController.addListener(_handleChanged);
     for (final block in _blockDrafts) {
@@ -448,17 +685,20 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
           'description': _metadata['description'] ?? '',
           'course_id': _metadata['course_id'],
           'is_public': _metadata['is_public'] == true,
-          'content': widget.editorMode == 'B'
+          'content': _editorMode == 'B'
               ? _composeBlockMarkdown()
               : _composeMarkdown(_titleController.text, _bodyController.text),
-          if (widget.editorMode == 'B') 'blocks': _serializeBlocks(),
+          if (_editorMode == 'B') 'blocks': _serializeBlocks(),
           'metadata_json': jsonEncode(_metadata),
-          'editor_mode': widget.editorMode,
+          'editor_mode': _editorMode,
         },
       );
       _note = updated;
+      _editorMode = updated['editor_mode']?.toString() ?? _editorMode;
       _dirty = false;
       _lastSavedAt = DateTime.now();
+      widget.onLogEvent(
+          "Editor saved '${_note['title']?.toString() ?? 'Untitled note'}' via $reason.");
       if (reason == 'autosave' && autosaveLabel != null) {
         await widget.onSnapshot(_note['id'] as int, reason: autosaveLabel);
         _lastVersionSnapshotAt = DateTime.now();
@@ -474,12 +714,14 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
   }
 
   Future<void> _openDetails() async {
+    widget.onLogEvent('Opened note metadata dialog.');
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => _NoteMetadataDialog(
         note: _note,
         courses: widget.courses,
         metadata: _metadata,
+        allowPublicToggle: (_note['id'] as int? ?? -1) > 0,
         onGetHistory: widget.onGetHistory,
         onRestoreVersion: widget.onRestoreVersion,
       ),
@@ -496,6 +738,7 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
       setState(() {
         _note = restored;
         _metadata = restoredMetadata;
+        _editorMode = restored['editor_mode']?.toString() ?? _editorMode;
         _titleController.text =
             restored['title']?.toString() ?? 'Untitled note';
         _bodyController.text =
@@ -591,6 +834,32 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
   String _composeBlockMarkdown() {
     final rows = _serializeBlocks();
     return _markdownFromBlockDraftRows(rows);
+  }
+
+  String _previewMarkdown() {
+    if (_editorMode == 'B') {
+      return _composeBlockMarkdown();
+    }
+    return _composeMarkdown(_titleController.text, _bodyController.text);
+  }
+
+  void _setEditorMode(String mode) {
+    if (_editorMode == mode) {
+      return;
+    }
+    if (_editorMode == 'B' && mode != 'B') {
+      _bodyController.text = _bodyWithoutTitle(_composeBlockMarkdown());
+    } else if (_editorMode != 'B' && mode == 'B') {
+      _replaceBlockDrafts({
+        'content': _composeMarkdown(_titleController.text, _bodyController.text),
+        'blocks': const [],
+      });
+    }
+    setState(() {
+      _editorMode = mode;
+    });
+    widget.onLogEvent('Editor mode switched to $mode.');
+    _handleChanged();
   }
 
   void _addBlock({String type = 'N'}) {
@@ -781,7 +1050,7 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
           controller: _previewScrollController,
           padding: const EdgeInsets.all(16),
           child: MarkdownBody(
-            data: _composeMarkdown(_titleController.text, _bodyController.text),
+            data: _previewMarkdown(),
             selectable: true,
             builders: _markdownBuilders(),
             inlineSyntaxes: _markdownInlineSyntaxes(),
@@ -793,8 +1062,8 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final showPreview = widget.editorMode == 'G';
-    final showBlockEditor = widget.editorMode == 'B';
+    final showPreview = _editorMode == 'G';
+    final showBlockEditor = _editorMode == 'B';
     return Dialog.fullscreen(
       child: SafeArea(
         child: Column(
@@ -804,7 +1073,7 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
               child: Row(
                 children: [
                   Expanded(
-                    flex: 8,
+                    flex: 7,
                     child: TextField(
                       controller: _titleController,
                       style: Theme.of(context)
@@ -826,6 +1095,26 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                       ),
                     ),
                   ),
+                  SizedBox(
+                    width: 210,
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final mode in const ['P', 'G', 'B'])
+                          ChoiceChip(
+                            label: Text(
+                              mode == 'P'
+                                  ? 'Plain'
+                                  : (mode == 'G' ? 'Preview' : 'Blocks'),
+                            ),
+                            selected: _editorMode == mode,
+                            onSelected: (_) => _setEditorMode(mode),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   IconButton(
                       onPressed: _openDetails,
                       icon: const Icon(Icons.more_horiz)),
@@ -837,6 +1126,7 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                         await widget.onSnapshot(_note['id'] as int,
                             reason: 'quit');
                       }
+                      widget.onLogEvent('Editor closed.');
                       if (mounted) {
                         Navigator.of(context).pop();
                       }
@@ -959,6 +1249,7 @@ class _NoteMetadataDialog extends StatefulWidget {
     required this.note,
     required this.courses,
     required this.metadata,
+    required this.allowPublicToggle,
     required this.onGetHistory,
     required this.onRestoreVersion,
   });
@@ -966,6 +1257,7 @@ class _NoteMetadataDialog extends StatefulWidget {
   final Map<String, dynamic> note;
   final List<Map<String, dynamic>> courses;
   final Map<String, dynamic> metadata;
+  final bool allowPublicToggle;
   final Future<List<Map<String, dynamic>>> Function(int noteId) onGetHistory;
   final Future<Map<String, dynamic>> Function(int noteId, int versionId)
       onRestoreVersion;
@@ -1057,11 +1349,15 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
               const SizedBox(height: 12),
               SwitchListTile(
                 value: _isPublic,
-                onChanged: (value) => setState(() => _isPublic = value),
+                onChanged: widget.allowPublicToggle
+                    ? (value) => setState(() => _isPublic = value)
+                    : null,
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Public note'),
-                subtitle: const Text(
-                  'Public notes appear in the recommendation feed.',
+                subtitle: Text(
+                  widget.allowPublicToggle
+                      ? 'Public notes appear in the recommendation feed.'
+                      : 'Sync this note to the cloud before making it public.',
                 ),
               ),
               const SizedBox(height: 16),

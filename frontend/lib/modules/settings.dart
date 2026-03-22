@@ -1,10 +1,12 @@
 part of notechondria_frontend;
 
-/// Settings module for account controls, theme, API endpoint, and diagnostics.
 class _SettingsPage extends StatefulWidget {
   const _SettingsPage({
     required this.profile,
     required this.settings,
+    required this.localSettings,
+    required this.localStats,
+    required this.deletedNotes,
     required this.onSave,
     required this.onLogout,
     required this.onRegister,
@@ -12,10 +14,10 @@ class _SettingsPage extends StatefulWidget {
     required this.onLogin,
     required this.onRequestPasswordReset,
     required this.onConfirmPasswordReset,
-    required this.calendarFeeds,
-    required this.courses,
-    required this.onToggleCalendarFeed,
-    required this.onDeleteCalendarFeed,
+    required this.onRestoreDeletedNote,
+    required this.onEmptyDeletedNotes,
+    required this.onCopyLogs,
+    required this.onUploadAvatar,
     required this.uiLogs,
     this.apiBaseUrl,
     this.debugSnapshotListenable,
@@ -23,6 +25,9 @@ class _SettingsPage extends StatefulWidget {
 
   final Map<String, dynamic>? profile;
   final Map<String, dynamic>? settings;
+  final Map<String, dynamic> localSettings;
+  final Map<String, dynamic> localStats;
+  final List<Map<String, dynamic>> deletedNotes;
   final Future<ActionFeedback> Function(
     String username,
     String email,
@@ -44,11 +49,10 @@ class _SettingsPage extends StatefulWidget {
     String code,
     String password,
   ) onConfirmPasswordReset;
-  final List<Map<String, dynamic>> calendarFeeds;
-  final List<Map<String, dynamic>> courses;
-  final Future<void> Function(Map<String, dynamic> feed, bool enabled)
-      onToggleCalendarFeed;
-  final Future<void> Function(Map<String, dynamic> feed) onDeleteCalendarFeed;
+  final Future<void> Function(Map<String, dynamic> note) onRestoreDeletedNote;
+  final Future<void> Function() onEmptyDeletedNotes;
+  final Future<void> Function() onCopyLogs;
+  final Future<ActionFeedback> Function() onUploadAvatar;
   final List<String> uiLogs;
   final String? apiBaseUrl;
   final ValueListenable<ApiDebugSnapshot?>? debugSnapshotListenable;
@@ -68,6 +72,9 @@ class _SettingsPageState extends State<_SettingsPage> {
   String _themeMode = 'S';
   ActionFeedback? _saveFeedback;
   bool _saving = false;
+  bool _uploadingAvatar = false;
+
+  bool get _isAuthenticated => widget.profile != null && widget.settings != null;
 
   @override
   void initState() {
@@ -82,26 +89,25 @@ class _SettingsPageState extends State<_SettingsPage> {
           widget.profile?['email']?.toString() ??
           '',
     );
-    _mottoController = TextEditingController(
-      text: widget.settings?['motto']?.toString() ?? '',
-    );
+    _mottoController =
+        TextEditingController(text: widget.settings?['motto']?.toString() ?? '');
     _socialController = TextEditingController(
       text: widget.settings?['social_link']?.toString() ?? '',
     );
     _apiBaseController = TextEditingController(
-      text: widget.settings?['api_base_url']?.toString() ??
+      text: widget.localSettings['api_base_url']?.toString() ??
           widget.apiBaseUrl ??
           'http://localhost:9080/api/v1',
     );
     _editorMode = widget.settings?['editor_mode']?.toString() ?? 'P';
-    _themePreset = widget.settings?['theme_preset']?.toString() ?? 'teal';
-    _themeMode = widget.settings?['theme_mode']?.toString() ?? 'S';
+    _themePreset = widget.localSettings['theme_preset']?.toString() ?? 'teal';
+    _themeMode = widget.localSettings['theme_mode']?.toString() ?? 'S';
   }
 
   @override
   void didUpdateWidget(covariant _SettingsPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.settings != widget.settings) {
+    if (oldWidget.settings != widget.settings || oldWidget.profile != widget.profile) {
       _usernameController.text = widget.settings?['username']?.toString() ??
           widget.profile?['username']?.toString() ??
           '';
@@ -109,14 +115,15 @@ class _SettingsPageState extends State<_SettingsPage> {
           widget.profile?['email']?.toString() ??
           '';
       _mottoController.text = widget.settings?['motto']?.toString() ?? '';
-      _socialController.text =
-          widget.settings?['social_link']?.toString() ?? '';
-      _apiBaseController.text = widget.settings?['api_base_url']?.toString() ??
+      _socialController.text = widget.settings?['social_link']?.toString() ?? '';
+      _editorMode = widget.settings?['editor_mode']?.toString() ?? _editorMode;
+    }
+    if (oldWidget.localSettings != widget.localSettings) {
+      _apiBaseController.text = widget.localSettings['api_base_url']?.toString() ??
           widget.apiBaseUrl ??
           'http://localhost:9080/api/v1';
-      _editorMode = widget.settings?['editor_mode']?.toString() ?? 'P';
-      _themePreset = widget.settings?['theme_preset']?.toString() ?? 'teal';
-      _themeMode = widget.settings?['theme_mode']?.toString() ?? 'S';
+      _themePreset = widget.localSettings['theme_preset']?.toString() ?? 'teal';
+      _themeMode = widget.localSettings['theme_mode']?.toString() ?? 'S';
     }
   }
 
@@ -130,7 +137,6 @@ class _SettingsPageState extends State<_SettingsPage> {
     super.dispose();
   }
 
-  /// Persists the editable settings values and surfaces inline feedback.
   Future<void> _submitSettings() async {
     setState(() {
       _saving = true;
@@ -155,14 +161,35 @@ class _SettingsPageState extends State<_SettingsPage> {
     });
   }
 
+  Future<void> _handleAvatarUpload() async {
+    setState(() {
+      _uploadingAvatar = true;
+      _saveFeedback = null;
+    });
+    final feedback = await widget.onUploadAvatar();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _uploadingAvatar = false;
+      _saveFeedback = feedback;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final avatarUrl = _resolveRemoteUrl(
+      widget.profile?['image_url']?.toString() ??
+          widget.settings?['image_url']?.toString() ??
+          '',
+      apiBaseUrl: widget.localSettings['api_base_url']?.toString(),
+    );
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        if (widget.profile == null || widget.settings == null) ...[
+        if (!_isAuthenticated) ...[
           const Text(
-            'Use this tab to register, verify email, and log in. Course materials remain available without an account.',
+            'Use this tab to register, verify email, and log in. Local settings still apply without an account.',
           ),
           const SizedBox(height: 16),
           _AuthHub(
@@ -172,33 +199,46 @@ class _SettingsPageState extends State<_SettingsPage> {
             onRequestPasswordReset: widget.onRequestPasswordReset,
             onConfirmPasswordReset: widget.onConfirmPasswordReset,
           ),
+          const SizedBox(height: 24),
         ] else ...[
           Row(
             children: [
               CircleAvatar(
-                radius: 24,
-                backgroundImage:
-                    (widget.profile?['image_url']?.toString() ?? '').isNotEmpty
-                        ? NetworkImage(widget.profile!['image_url'].toString())
-                        : null,
-                child: (widget.profile?['image_url']?.toString() ?? '').isEmpty
-                    ? const Icon(Icons.person_outline)
-                    : null,
+                radius: 28,
+                backgroundImage: avatarUrl.isEmpty ? null : NetworkImage(avatarUrl),
+                child: avatarUrl.isEmpty ? const Icon(Icons.person_outline) : null,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    widget.profile?['username']?.toString() ??
-                        widget.profile?['email']?.toString() ??
-                        '',
-                  ),
-                  subtitle: const Text('Verified account'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.profile?['username']?.toString() ??
+                          widget.profile?['email']?.toString() ??
+                          '',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      widget.profile?['email']?.toString() ?? '',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
                 ),
+              ),
+              OutlinedButton.icon(
+                onPressed: _uploadingAvatar ? null : _handleAvatarUpload,
+                icon: const Icon(Icons.photo_camera_outlined),
+                label: Text(_uploadingAvatar ? 'Uploading...' : 'Edit avatar'),
               ),
             ],
           ),
+          const SizedBox(height: 18),
           TextField(
             controller: _usernameController,
             decoration: const InputDecoration(
@@ -240,9 +280,7 @@ class _SettingsPageState extends State<_SettingsPage> {
             ],
             onChanged: (value) {
               if (value != null) {
-                setState(() {
-                  _editorMode = value;
-                });
+                setState(() => _editorMode = value);
               }
             },
             decoration: const InputDecoration(
@@ -250,104 +288,192 @@ class _SettingsPageState extends State<_SettingsPage> {
               border: OutlineInputBorder(),
             ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _themePreset,
-                  items: _themePresetEntries.entries
-                      .map(
-                        (entry) => DropdownMenuItem<String>(
-                          value: entry.key,
-                          child: Text(entry.value),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => _themePreset = value);
-                    }
-                  },
-                  decoration: const InputDecoration(
-                    labelText: 'Theme preset',
-                    border: OutlineInputBorder(),
-                  ),
+          const SizedBox(height: 24),
+        ],
+        Text(
+          'Local app settings',
+          style: Theme.of(context)
+              .textTheme
+              .titleMedium
+              ?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: _themePreset,
+                items: _themePresetEntries.entries
+                    .map(
+                      (entry) => DropdownMenuItem<String>(
+                        value: entry.key,
+                        child: Text(entry.value),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _themePreset = value);
+                  }
+                },
+                decoration: const InputDecoration(
+                  labelText: 'Theme preset',
+                  border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _themeMode,
-                  items: const [
-                    DropdownMenuItem(value: 'S', child: Text('System')),
-                    DropdownMenuItem(value: 'L', child: Text('Light')),
-                    DropdownMenuItem(value: 'D', child: Text('Dark')),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => _themeMode = value);
-                    }
-                  },
-                  decoration: const InputDecoration(
-                    labelText: 'Theme mode',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _apiBaseController,
-            decoration: const InputDecoration(
-              labelText: 'API base URL',
-              hintText: 'http://localhost:9080/api/v1',
-              helperText: 'Full http:// or https:// endpoint for the REST API.',
-              border: OutlineInputBorder(),
             ),
-          ),
-          const SizedBox(height: 16),
-          if (_saveFeedback != null) ...[
-            _FeedbackText(feedback: _saveFeedback!),
-            const SizedBox(height: 12),
+            const SizedBox(width: 12),
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: _themeMode,
+                items: const [
+                  DropdownMenuItem(value: 'S', child: Text('System')),
+                  DropdownMenuItem(value: 'L', child: Text('Light')),
+                  DropdownMenuItem(value: 'D', child: Text('Dark')),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _themeMode = value);
+                  }
+                },
+                decoration: const InputDecoration(
+                  labelText: 'Theme mode',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
           ],
-          FilledButton(
-            onPressed: _saving ? null : _submitSettings,
-            child: Text(_saving ? 'Saving...' : 'Save settings'),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _apiBaseController,
+          decoration: const InputDecoration(
+            labelText: 'API base URL',
+            hintText: 'http://localhost:9080/api/v1',
+            helperText: 'Stored locally and mirrored to the profile on login.',
+            border: OutlineInputBorder(),
           ),
+        ),
+        const SizedBox(height: 16),
+        if (_saveFeedback != null) ...[
+          _FeedbackText(feedback: _saveFeedback!),
+          const SizedBox(height: 12),
+        ],
+        FilledButton(
+          onPressed: _saving ? null : _submitSettings,
+          child: Text(_saving ? 'Saving...' : 'Save settings'),
+        ),
+        if (_isAuthenticated) ...[
           const SizedBox(height: 12),
           OutlinedButton(
-            onPressed: widget.onLogout,
+            onPressed: () {
+              widget.onLogout();
+            },
             child: const Text('Logout'),
           ),
-          const SizedBox(height: 24),
-          Text('Calendars', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          if (widget.calendarFeeds.isEmpty)
-            const Text('No imported or subscribed calendars yet.')
-          else
-            for (final feed in widget.calendarFeeds)
-              Card(
-                child: ListTile(
-                  title: Text(feed['title']?.toString() ?? 'Calendar'),
-                  subtitle: Text(
-                    feed['source_kind']?.toString() == 'S'
-                        ? 'Subscription'
-                        : 'Imported iCal',
-                  ),
-                  leading: Switch(
-                    value: feed['is_enabled'] == true,
-                    onChanged: (value) =>
-                        widget.onToggleCalendarFeed(feed, value),
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () => widget.onDeleteCalendarFeed(feed),
-                  ),
+        ],
+        const SizedBox(height: 24),
+        Text(
+          'Recycle bin',
+          style: Theme.of(context)
+              .textTheme
+              .titleMedium
+              ?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        if (!_isAuthenticated)
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Sign in to restore deleted cloud notes.'),
+            ),
+          )
+        else if (widget.deletedNotes.isEmpty)
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Recycle bin is empty.'),
+            ),
+          )
+        else ...[
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () {
+                widget.onEmptyDeletedNotes();
+              },
+              child: const Text('Empty recycle bin'),
+            ),
+          ),
+          for (final note in widget.deletedNotes)
+            Card(
+              child: ListTile(
+                title: Text(note['title']?.toString() ?? 'Untitled note'),
+                subtitle: Text(
+                  note['description']?.toString() ??
+                      note['excerpt']?.toString() ??
+                      '',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: TextButton(
+                  onPressed: () {
+                    widget.onRestoreDeletedNote(note);
+                  },
+                  child: const Text('Restore'),
                 ),
               ),
+            ),
         ],
+        const SizedBox(height: 24),
+        Text(
+          'Stats',
+          style: Theme.of(context)
+              .textTheme
+              .titleMedium
+              ?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                _StatChip(
+                  label: 'Local drafts created',
+                  value:
+                      '${(widget.localStats['local_drafts_created'] as num?)?.toInt() ?? 0}',
+                ),
+                _StatChip(
+                  label: 'Drafts synced',
+                  value:
+                      '${(widget.localStats['local_drafts_synced'] as num?)?.toInt() ?? 0}',
+                ),
+                _StatChip(
+                  label: 'Avatar updates',
+                  value:
+                      '${(widget.localStats['avatar_updates'] as num?)?.toInt() ?? 0}',
+                ),
+                _StatChip(
+                  label: 'Settings saves',
+                  value:
+                      '${(widget.localStats['settings_saves'] as num?)?.toInt() ?? 0}',
+                ),
+                _StatChip(
+                  label: 'Logs copied',
+                  value:
+                      '${(widget.localStats['logs_copied'] as num?)?.toInt() ?? 0}',
+                ),
+                _StatChip(
+                  label: 'Last sync',
+                  value: widget.localStats['last_sync_at']?.toString() ?? 'Never',
+                ),
+              ],
+            ),
+          ),
+        ),
         const SizedBox(height: 24),
         Text('API debug', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
@@ -356,7 +482,21 @@ class _SettingsPageState extends State<_SettingsPage> {
           snapshotListenable: widget.debugSnapshotListenable,
         ),
         const SizedBox(height: 24),
-        Text('Frontend logs', style: Theme.of(context).textTheme.titleMedium),
+        Row(
+          children: [
+            Expanded(
+              child:
+                  Text('Frontend logs', style: Theme.of(context).textTheme.titleMedium),
+            ),
+            TextButton.icon(
+              onPressed: () {
+                widget.onCopyLogs();
+              },
+              icon: const Icon(Icons.copy_all_outlined),
+              label: const Text('Copy'),
+            ),
+          ],
+        ),
         const SizedBox(height: 8),
         Card(
           child: SizedBox(
@@ -376,7 +516,41 @@ class _SettingsPageState extends State<_SettingsPage> {
   }
 }
 
-/// Compact account action launcher used when the user is signed out.
+class _StatChip extends StatelessWidget {
+  const _StatChip({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 180),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceVariant,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _AuthHub extends StatelessWidget {
   const _AuthHub({
     required this.onRegister,
@@ -483,7 +657,6 @@ class _AuthHub extends StatelessWidget {
   }
 }
 
-/// Reusable dialog for email/password forms such as sign up and login.
 class _EmailPasswordDialog extends StatefulWidget {
   const _EmailPasswordDialog({
     required this.title,
@@ -584,7 +757,6 @@ class _EmailPasswordDialogState extends State<_EmailPasswordDialog> {
   }
 }
 
-/// Dialog for email verification codes.
 class _EmailCodeDialog extends StatefulWidget {
   const _EmailCodeDialog({
     required this.title,
@@ -682,7 +854,6 @@ class _EmailCodeDialogState extends State<_EmailCodeDialog> {
   }
 }
 
-/// Dialog for password reset request and confirmation.
 class _PasswordResetDialog extends StatefulWidget {
   const _PasswordResetDialog({
     required this.onRequestPasswordReset,
@@ -814,7 +985,6 @@ class _PasswordResetDialogState extends State<_PasswordResetDialog> {
   }
 }
 
-/// Shared inline feedback text used across settings dialogs.
 class _FeedbackText extends StatelessWidget {
   const _FeedbackText({required this.feedback});
 

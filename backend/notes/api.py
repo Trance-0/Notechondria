@@ -1,3 +1,6 @@
+import json
+import re
+from difflib import SequenceMatcher
 from datetime import datetime, timedelta, time
 
 from django.db import transaction
@@ -18,6 +21,9 @@ from .models import (
     CalendarFeed,
     Course,
     CourseMedia,
+    CourseOperationLog,
+    CourseOperationTypeChoices,
+    CourseSubscription,
     HeatmapActivityTypeChoices,
     Note,
     NoteActivitySession,
@@ -47,6 +53,80 @@ def note_is_public(note: Note) -> bool:
     return bool(note.is_public or (note.course_id and note.course_id.is_default))
 
 
+def absolute_media_url(request, raw_url: str) -> str:
+    if not raw_url:
+        return ""
+    if raw_url.startswith("http://") or raw_url.startswith("https://"):
+        return raw_url
+    if request is None:
+        return raw_url
+    return request.build_absolute_uri(raw_url)
+
+
+def creator_summary_payload(creator, request):
+    if creator is None:
+        return None
+    username = creator.user_id.username if creator.user_id_id else "unknown"
+    image_url = creator.image.url if creator.image else ""
+    return {
+        "id": creator.id,
+        "username": username,
+        "display_name": username,
+        "image_url": absolute_media_url(request, image_url),
+    }
+
+
+def active_subscription_map(creator):
+    if creator is None:
+        return {}
+    subscriptions = CourseSubscription.objects.filter(
+        creator_id=creator,
+        is_active=True,
+    ).select_related("course_id")
+    return {subscription.course_id_id: subscription for subscription in subscriptions}
+
+
+def course_sort_key(course, subscription_map):
+    subscription = subscription_map.get(course.id)
+    if subscription is not None:
+        opened = subscription.last_opened_at or subscription.subscribed_at or timezone.now()
+        return (0, -opened.timestamp(), course.title.lower())
+    default_rank = 0 if course.is_default else 1
+    return (1, default_rank, course.title.lower())
+
+
+def append_course_operation(creator, course, operation_type, metadata=None):
+    CourseOperationLog.objects.create(
+        creator_id=creator,
+        course_id=course,
+        operation_type=operation_type,
+        metadata_json="" if not metadata else json.dumps(metadata, sort_keys=True),
+    )
+
+
+def note_search_score(note: Note, query: str):
+    normalized = query.strip().lower()
+    if not normalized:
+        return (1.0, 1.0)
+    title = (note.title or "").lower()
+    description = (note.description or "").lower()
+    content = (note.content or "").lower()
+    searchable = " ".join([title, description, content]).strip()
+    tokens = [token for token in re.split(r"\s+", normalized) if token]
+    exact_hits = sum(1 for token in tokens if token in searchable)
+    title_hits = sum(1 for token in tokens if token in title)
+    fuzzy = max(
+        SequenceMatcher(None, normalized, title).ratio() if title else 0.0,
+        SequenceMatcher(None, normalized, description).ratio() if description else 0.0,
+        SequenceMatcher(None, normalized, content[:400]).ratio() if content else 0.0,
+        SequenceMatcher(None, normalized, searchable[:500]).ratio() if searchable else 0.0,
+    )
+    if exact_hits == 0 and fuzzy < 0.45:
+        return None
+    score = (exact_hits * 10.0) + (title_hits * 5.0) + fuzzy
+    return (score, fuzzy)
+
+
 def can_access_note(request, note: Note) -> bool:
     if note_is_public(note):
         return True
@@ -58,7 +138,10 @@ def can_access_note(request, note: Note) -> bool:
 
 
 def require_note_access(request, note_id: int) -> Note:
-    note = get_object_or_404(Note.objects.select_related("course_id", "creator_id__user_id"), pk=note_id)
+    note = get_object_or_404(
+        Note.objects.select_related("course_id", "creator_id__user_id").filter(deleted_at__isnull=True),
+        pk=note_id,
+    )
     if not can_access_note(request, note):
         raise serializers.ValidationError("You do not have access to this note.")
     return note
@@ -72,7 +155,8 @@ class CourseMediaSerializer(serializers.ModelSerializer):
         fields = ["id", "title", "description", "source", "image_url"]
 
     def get_image_url(self, obj):
-        return obj.image.url if obj.image else ""
+        request = self.context.get("request") if self.context else None
+        return absolute_media_url(request, obj.image.url if obj.image else "")
 
 
 class NoteBlockSerializer(serializers.ModelSerializer):
@@ -92,13 +176,16 @@ class NoteBlockSerializer(serializers.ModelSerializer):
         ]
 
     def get_image_url(self, obj):
-        return obj.image.url if obj.image else ""
+        request = self.context.get("request") if self.context else None
+        return absolute_media_url(request, obj.image.url if obj.image else "")
 
 
 class NoteSummarySerializer(serializers.ModelSerializer):
     excerpt = serializers.SerializerMethodField()
     editor_mode = serializers.CharField(read_only=True)
     preview_lines = serializers.SerializerMethodField()
+    author = serializers.SerializerMethodField()
+    course = serializers.SerializerMethodField()
 
     class Meta:
         model = Note
@@ -113,6 +200,8 @@ class NoteSummarySerializer(serializers.ModelSerializer):
             "last_edit",
             "date_created",
             "course_id",
+            "course",
+            "author",
         ]
 
     def get_excerpt(self, obj):
@@ -130,32 +219,47 @@ class NoteSummarySerializer(serializers.ModelSerializer):
     def get_preview_lines(self, obj):
         return note_preview_lines(obj)
 
+    def get_author(self, obj):
+        request = self.context.get("request") if self.context else None
+        return creator_summary_payload(obj.creator_id, request)
+
+    def get_course(self, obj):
+        if obj.course_id is None:
+            return None
+        return {
+            "id": obj.course_id.id,
+            "title": obj.course_id.title,
+            "slug": obj.course_id.slug,
+        }
+
 
 class NoteDetailSerializer(NoteSummarySerializer):
     blocks = serializers.SerializerMethodField()
-    course = serializers.SerializerMethodField()
     content = serializers.CharField(read_only=True)
     metadata_json = serializers.CharField(read_only=True)
 
     class Meta(NoteSummarySerializer.Meta):
-        fields = NoteSummarySerializer.Meta.fields + ["course", "blocks", "content", "metadata_json"]
+        fields = NoteSummarySerializer.Meta.fields + ["blocks", "content", "metadata_json"]
 
     def get_blocks(self, obj):
         ordered_blocks = [
             handle.noteblock_id
             for handle in NoteIndex.objects.filter(note_id=obj).select_related("noteblock_id").order_by("index")
         ]
-        return NoteBlockSerializer(ordered_blocks, many=True).data
-
-    def get_course(self, obj):
-        if obj.course_id is None:
-            return None
-        return {"id": obj.course_id.id, "title": obj.course_id.title, "slug": obj.course_id.slug}
+        return NoteBlockSerializer(
+            ordered_blocks,
+            many=True,
+            context=self.context,
+        ).data
 
 
 class CourseSerializer(serializers.ModelSerializer):
     cover_image_url = serializers.SerializerMethodField()
     recent_notes = serializers.SerializerMethodField()
+    owner = serializers.SerializerMethodField()
+    subscriber_count = serializers.SerializerMethodField()
+    is_subscribed = serializers.SerializerMethodField()
+    last_opened_at = serializers.SerializerMethodField()
     media = CourseMediaSerializer(source="media_items", many=True, read_only=True)
 
     class Meta:
@@ -167,16 +271,53 @@ class CourseSerializer(serializers.ModelSerializer):
             "description",
             "cover_image_url",
             "is_default",
+            "owner",
+            "subscriber_count",
+            "is_subscribed",
+            "last_opened_at",
             "recent_notes",
             "media",
         ]
 
     def get_cover_image_url(self, obj):
-        return obj.cover_image.url if obj.cover_image else ""
+        request = self.context.get("request") if self.context else None
+        return absolute_media_url(request, obj.cover_image.url if obj.cover_image else "")
 
     def get_recent_notes(self, obj):
-        recent_notes = obj.notes.order_by("-last_edit")[:5]
-        return NoteSummarySerializer(recent_notes, many=True).data
+        request = self.context.get("request") if self.context else None
+        recent_notes = obj.notes.filter(deleted_at__isnull=True).order_by("-last_edit")
+        if (
+            request is None
+            or not request.user.is_authenticated
+            or obj.creator_id is None
+            or obj.creator_id.user_id_id != request.user.id
+        ):
+            recent_notes = recent_notes.filter(Q(is_public=True) | Q(course_id__is_default=True))
+        return NoteSummarySerializer(
+            recent_notes[:5],
+            many=True,
+            context=self.context,
+        ).data
+
+    def get_owner(self, obj):
+        request = self.context.get("request") if self.context else None
+        return creator_summary_payload(obj.creator_id, request)
+
+    def get_subscriber_count(self, obj):
+        return CourseSubscription.objects.filter(course_id=obj, is_active=True).count()
+
+    def get_is_subscribed(self, obj):
+        subscription_map = self.context.get("subscription_map") if self.context else None
+        if subscription_map is None:
+            return False
+        return obj.id in subscription_map
+
+    def get_last_opened_at(self, obj):
+        subscription_map = self.context.get("subscription_map") if self.context else None
+        subscription = subscription_map.get(obj.id) if subscription_map else None
+        if subscription is None or subscription.last_opened_at is None:
+            return None
+        return subscription.last_opened_at.isoformat()
 
 
 class NoteWriteSerializer(serializers.Serializer):
@@ -187,6 +328,7 @@ class NoteWriteSerializer(serializers.Serializer):
     content = serializers.CharField(allow_blank=True, required=False)
     metadata_json = serializers.CharField(allow_blank=True, required=False)
     is_public = serializers.BooleanField(required=False)
+    client_draft_id = serializers.CharField(required=False, allow_blank=True, max_length=64)
     blocks = serializers.ListField(child=serializers.DictField(), required=False)
     editor_mode = serializers.ChoiceField(choices=[("G", "gfm"), ("B", "blocks"), ("P", "plain_text")], required=False)
 
@@ -221,6 +363,8 @@ class PlannerEventWriteSerializer(serializers.Serializer):
     difficulty_weight = serializers.IntegerField(min_value=1, required=False, default=1)
     description = serializers.CharField(allow_blank=True, required=False, allow_null=True)
     course_id = serializers.IntegerField(required=False, allow_null=True)
+    is_completed = serializers.BooleanField(required=False)
+    completed_at = serializers.DateTimeField(required=False, allow_null=True)
 
 
 class NoteSessionWriteSerializer(serializers.Serializer):
@@ -264,20 +408,43 @@ class FrontPageApiView(APIView):
         return JsonResponse({"status": "ok"})
 
     def get(self, request):
-        default_course = Course.objects.filter(is_default=True).prefetch_related("media_items").first()
-        if default_course is None:
-            default_course = Course.objects.order_by("title").first()
-        recommended_notes = Note.objects.filter(is_public=True).order_by("-last_edit")[:12]
+        creator = ensure_creator(request.user) if request.user.is_authenticated else None
+        subscription_map = active_subscription_map(creator)
+        courses = list(
+            Course.objects.select_related("creator_id__user_id")
+            .prefetch_related("media_items")
+            .all()
+        )
+        courses.sort(key=lambda course: course_sort_key(course, subscription_map))
+        carousel_courses = courses[:6]
+        default_course = next((course for course in carousel_courses if course.is_default), None)
+        if default_course is None and carousel_courses:
+            default_course = carousel_courses[0]
+        recommended_notes = Note.objects.filter(
+            is_public=True,
+            deleted_at__isnull=True,
+        ).select_related("course_id", "creator_id__user_id").order_by("-last_edit")[:12]
+        serializer_context = {
+            "request": request,
+            "subscription_map": subscription_map,
+        }
         payload = {
-            "default_course": CourseSerializer(default_course).data if default_course else None,
+            "default_course": CourseSerializer(default_course, context=serializer_context).data if default_course else None,
+            "carousel_courses": CourseSerializer(carousel_courses, many=True, context=serializer_context).data,
             "recent_notes": NoteSummarySerializer(
                 recommended_notes[:6],
                 many=True,
+                context={"request": request},
             ).data,
-            "recommended_notes": NoteSummarySerializer(recommended_notes, many=True).data,
-            "collections": CourseSerializer(
-                Course.objects.prefetch_related("media_items").order_by("-is_default", "title")[:6],
+            "recommended_notes": NoteSummarySerializer(
+                recommended_notes,
                 many=True,
+                context={"request": request},
+            ).data,
+            "collections": CourseSerializer(
+                carousel_courses,
+                many=True,
+                context=serializer_context,
             ).data,
         }
         if request.user.is_authenticated:
@@ -287,6 +454,7 @@ class FrontPageApiView(APIView):
                 for event in PlannerEvent.objects.filter(
                     creator_id=ensure_creator(request.user),
                     event_date__gte=timezone.localdate(),
+                    is_completed=False,
                 ).order_by("event_date", "title")[:8]
             ]
         return Response(payload)
@@ -296,16 +464,39 @@ class CourseListApiView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        courses = Course.objects.prefetch_related("media_items").order_by("-is_default", "title")
-        return Response(CourseSerializer(courses, many=True).data)
+        creator = ensure_creator(request.user) if request.user.is_authenticated else None
+        subscription_map = active_subscription_map(creator)
+        courses = list(
+            Course.objects.select_related("creator_id__user_id")
+            .prefetch_related("media_items")
+            .all()
+        )
+        courses.sort(key=lambda course: course_sort_key(course, subscription_map))
+        return Response(
+            CourseSerializer(
+                courses,
+                many=True,
+                context={"request": request, "subscription_map": subscription_map},
+            ).data
+        )
 
 
 class CourseDetailApiView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request, course_id):
-        course = get_object_or_404(Course.objects.prefetch_related("media_items"), pk=course_id)
-        return Response(CourseSerializer(course).data)
+        creator = ensure_creator(request.user) if request.user.is_authenticated else None
+        subscription_map = active_subscription_map(creator)
+        course = get_object_or_404(
+            Course.objects.select_related("creator_id__user_id").prefetch_related("media_items"),
+            pk=course_id,
+        )
+        return Response(
+            CourseSerializer(
+                course,
+                context={"request": request, "subscription_map": subscription_map},
+            ).data
+        )
 
 
 class CourseNotesApiView(APIView):
@@ -313,78 +504,126 @@ class CourseNotesApiView(APIView):
 
     def get(self, request, course_id):
         course = get_object_or_404(Course, pk=course_id)
-        notes = course.notes.order_by("-last_edit")
-        if not request.user.is_authenticated:
+        notes = course.notes.filter(deleted_at__isnull=True).select_related("course_id", "creator_id__user_id").order_by("-last_edit")
+        if (
+            not request.user.is_authenticated
+            or course.creator_id is None
+            or course.creator_id.user_id_id != request.user.id
+        ):
             notes = notes.filter(Q(is_public=True) | Q(course_id__is_default=True))
-        return Response(NoteSummarySerializer(notes, many=True).data)
+        return Response(
+            NoteSummarySerializer(notes, many=True, context={"request": request}).data
+        )
 
 
 class NoteListCreateApiView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        creator = ensure_creator(request.user)
         course_id = request.query_params.get("course_id")
         query = request.query_params.get("q", "").strip()
         limit = request.query_params.get("limit")
         offset = int(request.query_params.get("offset", "0") or 0)
-        notes = Note.objects.all()
+        notes = Note.objects.filter(
+            creator_id=creator,
+            deleted_at__isnull=True,
+        ).select_related("course_id", "creator_id__user_id")
         if course_id:
             notes = notes.filter(course_id_id=course_id)
         if query:
-            notes = notes.filter(Q(title__icontains=query) | Q(content__icontains=query) | Q(description__icontains=query))
-        if request.user.is_authenticated:
-            notes = notes.filter(creator_id__user_id=request.user)
+            ranked_notes = []
+            for note in notes:
+                score = note_search_score(note, query)
+                if score is None:
+                    continue
+                ranked_notes.append((score[0], timezone.localtime(note.last_edit), note))
+            ranked_notes.sort(key=lambda item: (-item[0], -item[1].timestamp(), item[2].title.lower()))
+            notes = [item[2] for item in ranked_notes]
         else:
-            notes = notes.filter(Q(is_public=True) | Q(course_id__is_default=True))
-        notes = notes.order_by("-last_edit")
+            notes = list(notes.order_by("-last_edit"))
         if limit is not None:
             page_size = max(1, min(int(limit), 100))
-            total = notes.count()
+            total = len(notes)
             rows = notes[offset: offset + page_size]
             return Response(
                 {
-                    "results": NoteSummarySerializer(rows, many=True).data,
+                    "results": NoteSummarySerializer(
+                        rows,
+                        many=True,
+                        context={"request": request},
+                    ).data,
                     "total": total,
                     "offset": offset,
                     "limit": page_size,
                     "has_more": offset + page_size < total,
                 }
             )
-        return Response(NoteSummarySerializer(notes, many=True).data)
+        return Response(NoteSummarySerializer(notes, many=True, context={"request": request}).data)
 
     def post(self, request):
-        if not request.user.is_authenticated:
-            return Response({"detail": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
         serializer = NoteWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         creator = ensure_creator(request.user)
         course = None
         if serializer.validated_data.get("course_id"):
             course = get_object_or_404(Course, pk=serializer.validated_data["course_id"])
-        elif Course.objects.filter(is_default=True).exists():
-            course = Course.objects.filter(is_default=True).first()
-        note = Note.objects.create(
-            creator_id=creator,
-            course_id=course,
-            sharing_id=generate_unique_id(Note, "sharing_id"),
-            title=serializer.validated_data["title"],
-            description=serializer.validated_data.get("description") or "",
-            is_public=serializer.validated_data.get("is_public", False),
-            content=serializer.validated_data.get("content") or serializer.validated_data.get("markdown") or "",
-            metadata_json=serializer.validated_data.get("metadata_json") or "",
-            editor_mode=serializer.validated_data.get("editor_mode") or creator.editor_mode,
-        )
+        client_draft_id = serializer.validated_data.get("client_draft_id") or None
+        existing = None
+        if client_draft_id:
+            existing = Note.objects.filter(
+                creator_id=creator,
+                client_draft_id=client_draft_id,
+            ).first()
+        if existing is not None:
+            note = existing
+            note.deleted_at = None
+            note.course_id = course
+            note.title = serializer.validated_data["title"]
+            note.description = serializer.validated_data.get("description") or ""
+            note.is_public = serializer.validated_data.get("is_public", False)
+            note.content = serializer.validated_data.get("content") or serializer.validated_data.get("markdown") or ""
+            note.metadata_json = serializer.validated_data.get("metadata_json") or ""
+            note.editor_mode = serializer.validated_data.get("editor_mode") or creator.editor_mode
+            note.save()
+        else:
+            note = Note.objects.create(
+                creator_id=creator,
+                course_id=course,
+                sharing_id=generate_unique_id(Note, "sharing_id"),
+                title=serializer.validated_data["title"],
+                description=serializer.validated_data.get("description") or "",
+                is_public=serializer.validated_data.get("is_public", False),
+                content=serializer.validated_data.get("content") or serializer.validated_data.get("markdown") or "",
+                metadata_json=serializer.validated_data.get("metadata_json") or "",
+                client_draft_id=client_draft_id,
+                editor_mode=serializer.validated_data.get("editor_mode") or creator.editor_mode,
+            )
         block_rows = serializer.validated_data.get("blocks")
         if block_rows:
             replace_note_blocks_from_payload(note, creator, block_rows)
+        elif existing is not None:
+            replace_note_blocks(
+                note=note,
+                creator=creator,
+                markdown=note.content or note.description or note.title,
+            )
         else:
             create_blocks_from_markdown(
                 note=note,
                 creator=creator,
                 markdown=note.content or note.description or note.title,
             )
-        record_note_activity(note, note_word_count(note), HeatmapActivityTypeChoices.CREATED)
-        return Response(NoteDetailSerializer(note).data, status=status.HTTP_201_CREATED)
+        record_note_activity(
+            note,
+            note_word_count(note),
+            HeatmapActivityTypeChoices.EDITED if existing is not None else HeatmapActivityTypeChoices.CREATED,
+        )
+        response_status = status.HTTP_200_OK if existing is not None else status.HTTP_201_CREATED
+        return Response(
+            NoteDetailSerializer(note, context={"request": request}).data,
+            status=response_status,
+        )
 
 
 class NoteDetailApiView(APIView):
@@ -392,7 +631,7 @@ class NoteDetailApiView(APIView):
 
     def get(self, request, note_id):
         note = require_note_access(request, note_id)
-        return Response(NoteDetailSerializer(note).data)
+        return Response(NoteDetailSerializer(note, context={"request": request}).data)
 
     def patch(self, request, note_id):
         if not request.user.is_authenticated:
@@ -428,7 +667,18 @@ class NoteDetailApiView(APIView):
                 max(abs(after_words - before_words), after_words),
                 HeatmapActivityTypeChoices.EDITED,
             )
-        return Response(NoteDetailSerializer(note).data)
+        return Response(NoteDetailSerializer(note, context={"request": request}).data)
+
+    def delete(self, request, note_id):
+        if not request.user.is_authenticated:
+            return Response({"detail": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
+        note = require_note_access(request, note_id)
+        if note.creator_id.user_id_id != request.user.id:
+            return Response({"detail": "Only the owner can delete this note."}, status=status.HTTP_403_FORBIDDEN)
+        note.deleted_at = timezone.now()
+        note.is_public = False
+        note.save(update_fields=["deleted_at", "is_public", "last_edit"])
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class NoteBlocksApiView(APIView):
@@ -452,7 +702,10 @@ class NoteBlocksApiView(APIView):
         NoteIndex.objects.create(note_id=note, index=next_index, noteblock_id=block)
         sync_note_content_from_blocks(note)
         record_note_activity(note, block_word_count(block), HeatmapActivityTypeChoices.EDITED)
-        return Response(NoteBlockSerializer(block).data, status=status.HTTP_201_CREATED)
+        return Response(
+            NoteBlockSerializer(block, context={"request": request}).data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class SingleBlockApiView(APIView):
@@ -477,7 +730,7 @@ class SingleBlockApiView(APIView):
             max(abs(block_word_count(block) - before_words), block_word_count(block)),
             HeatmapActivityTypeChoices.EDITED,
         )
-        return Response(NoteBlockSerializer(block).data)
+        return Response(NoteBlockSerializer(block, context={"request": request}).data)
 
     def delete(self, request, block_id):
         block = get_object_or_404(NoteBlock.objects.select_related("creator_id__user_id"), pk=block_id)
@@ -548,19 +801,125 @@ class NoteRestoreApiView(APIView):
         snapshot_note_version(note, reason="before_restore")
         restore_note_version(note, version)
         replace_note_blocks(note, note.creator_id, note.content or note_markdown(note))
-        return Response(NoteDetailSerializer(note).data)
+        return Response(NoteDetailSerializer(note, context={"request": request}).data)
+
+
+class DeletedNoteListApiView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        creator = ensure_creator(request.user)
+        notes = Note.objects.filter(
+            creator_id=creator,
+            deleted_at__isnull=False,
+        ).select_related("course_id", "creator_id__user_id").order_by("-deleted_at", "-last_edit")
+        return Response(
+            NoteSummarySerializer(notes, many=True, context={"request": request}).data
+        )
+
+
+class DeletedNoteRestoreApiView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, note_id):
+        creator = ensure_creator(request.user)
+        note = get_object_or_404(Note, pk=note_id, creator_id=creator, deleted_at__isnull=False)
+        note.deleted_at = None
+        note.save(update_fields=["deleted_at", "last_edit"])
+        return Response(NoteDetailSerializer(note, context={"request": request}).data)
+
+
+class DeletedNoteEmptyApiView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request):
+        creator = ensure_creator(request.user)
+        deleted_notes = Note.objects.filter(creator_id=creator, deleted_at__isnull=False)
+        deleted_count = deleted_notes.count()
+        deleted_notes.delete()
+        return Response({"deleted_count": deleted_count})
+
+
+class CourseSubscribeApiView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, course_id):
+        creator = ensure_creator(request.user)
+        course = get_object_or_404(Course, pk=course_id)
+        subscription, created = CourseSubscription.objects.get_or_create(
+            creator_id=creator,
+            course_id=course,
+            defaults={"is_active": True, "subscribed_at": timezone.now()},
+        )
+        if not created:
+            subscription.is_active = True
+            subscription.subscribed_at = timezone.now()
+            subscription.save(update_fields=["is_active", "subscribed_at", "last_edit"])
+        append_course_operation(creator, course, CourseOperationTypeChoices.SUBSCRIBE)
+        subscription_map = active_subscription_map(creator)
+        return Response(
+            CourseSerializer(
+                course,
+                context={"request": request, "subscription_map": subscription_map},
+            ).data
+        )
+
+    def delete(self, request, course_id):
+        creator = ensure_creator(request.user)
+        course = get_object_or_404(Course, pk=course_id)
+        subscription = get_object_or_404(
+            CourseSubscription,
+            creator_id=creator,
+            course_id=course,
+            is_active=True,
+        )
+        subscription.is_active = False
+        subscription.save(update_fields=["is_active", "last_edit"])
+        append_course_operation(creator, course, CourseOperationTypeChoices.UNSUBSCRIBE)
+        subscription_map = active_subscription_map(creator)
+        return Response(
+            CourseSerializer(
+                course,
+                context={"request": request, "subscription_map": subscription_map},
+            ).data
+        )
+
+
+class CourseOpenApiView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, course_id):
+        creator = ensure_creator(request.user)
+        course = get_object_or_404(Course, pk=course_id)
+        subscription = get_object_or_404(
+            CourseSubscription,
+            creator_id=creator,
+            course_id=course,
+            is_active=True,
+        )
+        subscription.last_opened_at = timezone.now()
+        subscription.save(update_fields=["last_opened_at", "last_edit"])
+        append_course_operation(creator, course, CourseOperationTypeChoices.OPEN)
+        subscription_map = active_subscription_map(creator)
+        return Response(
+            CourseSerializer(
+                course,
+                context={"request": request, "subscription_map": subscription_map},
+            ).data
+        )
 
 
 class ActivityApiView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        notes = Note.objects.order_by("-last_edit")
-        if request.user.is_authenticated:
-            notes = notes.filter(creator_id__user_id=request.user)
-        else:
-            notes = notes.filter(course_id__is_default=True)
-        return Response(NoteSummarySerializer(notes[:10], many=True).data)
+        if not request.user.is_authenticated:
+            return Response([])
+        notes = Note.objects.filter(
+            creator_id__user_id=request.user,
+            deleted_at__isnull=True,
+        ).select_related("course_id", "creator_id__user_id").order_by("-last_edit")
+        return Response(NoteSummarySerializer(notes[:10], many=True, context={"request": request}).data)
 
 
 class ActivityWeekApiView(APIView):
@@ -591,7 +950,7 @@ class PlannerEventListCreateApiView(APIView):
 
     def get(self, request):
         creator = ensure_creator(request.user)
-        events = PlannerEvent.objects.filter(creator_id=creator).order_by("event_date", "title")
+        events = PlannerEvent.objects.filter(creator_id=creator, is_completed=False).order_by("event_date", "title")
         return Response([planner_event_payload(event) for event in events])
 
     def post(self, request):
@@ -610,8 +969,13 @@ class PlannerEventListCreateApiView(APIView):
             ends_at=serializer.validated_data.get("ends_at"),
             difficulty_weight=serializer.validated_data.get("difficulty_weight", 1),
             description=serializer.validated_data.get("description") or "",
+            is_completed=serializer.validated_data.get("is_completed", False),
+            completed_at=serializer.validated_data.get("completed_at"),
         )
         normalize_planner_event_window(event)
+        if event.is_completed and event.completed_at is None:
+            event.completed_at = timezone.now()
+            event.save(update_fields=["completed_at", "last_edit"])
         return Response(planner_event_payload(event), status=status.HTTP_201_CREATED)
 
 
@@ -623,12 +987,25 @@ class PlannerEventDetailApiView(APIView):
         event = get_object_or_404(PlannerEvent, pk=event_id, creator_id=creator)
         serializer = PlannerEventWriteSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        for field in ["title", "event_date", "starts_at", "ends_at", "difficulty_weight", "description"]:
+        for field in [
+            "title",
+            "event_date",
+            "starts_at",
+            "ends_at",
+            "difficulty_weight",
+            "description",
+            "is_completed",
+            "completed_at",
+        ]:
             if field in serializer.validated_data:
                 setattr(event, field, serializer.validated_data[field])
         if "course_id" in serializer.validated_data:
             course_id = serializer.validated_data["course_id"]
             event.course_id = get_object_or_404(Course, pk=course_id) if course_id is not None else None
+        if "is_completed" in serializer.validated_data and serializer.validated_data["is_completed"] is True and event.completed_at is None:
+            event.completed_at = timezone.now()
+        if "is_completed" in serializer.validated_data and serializer.validated_data["is_completed"] is False:
+            event.completed_at = None
         event.save()
         normalize_planner_event_window(event)
         return Response(planner_event_payload(event))

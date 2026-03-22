@@ -1,22 +1,112 @@
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/main.dart';
 
 class FakeClient implements NotechondriaClient {
+  FakeClient();
+
   List<Map<String, dynamic>> _notes = [
-    {
-      'id': 11,
-      'title': 'Project outcome',
-      'description': 'Repository layout and build order.',
-      'excerpt': 'Repository layout and build order.',
-      'preview_lines': ['Repository layout and build order.'],
+    _sampleNote(
+      id: 11,
+      title: 'Project outcome',
+      description: 'Repository layout and build order.',
+      courseTitle: 'Vibe Coding 101',
+      isPublic: true,
+    ),
+  ];
+
+  List<Map<String, dynamic>> _deletedNotes = [];
+  List<Map<String, dynamic>> _courses = [
+    _sampleCourse(
+      id: 7,
+      title: 'Vibe Coding 101',
+      isSubscribed: true,
+      lastOpenedAt: '2026-03-21T10:00:00Z',
+    ),
+    _sampleCourse(
+      id: 8,
+      title: 'Meaning of Work in Age of AI',
+      isSubscribed: false,
+    ),
+    _sampleCourse(
+      id: 9,
+      title: 'Self-identity and Expression in Modern Arts',
+      isSubscribed: false,
+    ),
+  ];
+
+  static Map<String, dynamic> _sampleCourse({
+    required int id,
+    required String title,
+    bool isSubscribed = false,
+    String? lastOpenedAt,
+  }) {
+    return {
+      'id': id,
+      'slug': title.toLowerCase().replaceAll(' ', '-'),
+      'title': title,
+      'description': '$title preview description',
+      'cover_image_url': '',
+      'subscriber_count': 3,
+      'is_subscribed': isSubscribed,
+      'last_opened_at': lastOpenedAt,
+      'owner': {
+        'id': 1,
+        'username': 'CodeX',
+        'display_name': 'CodeX',
+        'image_url': '',
+      },
+      'recent_notes': [
+        _sampleNote(
+          id: id * 10,
+          title: '$title note',
+          description: 'Preview note',
+          courseTitle: title,
+          isPublic: true,
+        ),
+      ],
+      'media': const [],
+    };
+  }
+
+  static Map<String, dynamic> _sampleNote({
+    required int id,
+    required String title,
+    required String description,
+    required String courseTitle,
+    bool isPublic = false,
+  }) {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'excerpt': description,
+      'preview_lines': [description],
       'editor_mode': 'P',
-      'is_public': true,
+      'is_public': isPublic,
       'last_edit': '2026-03-21T12:00:00Z',
       'date_created': '2026-03-20T12:00:00Z',
       'course_id': 7,
-    }
-  ];
+      'course': {
+        'id': 7,
+        'title': courseTitle,
+        'slug': courseTitle.toLowerCase().replaceAll(' ', '-'),
+      },
+      'author': {
+        'id': 1,
+        'username': 'CodeX',
+        'display_name': 'CodeX',
+        'image_url': '',
+      },
+      'content': '# $title\n\n$description\n\nInline math: \$a^2+b^2=c^2\$',
+      'metadata_json': '{}',
+      'blocks': [
+        {'block_type': 'T', 'text': title},
+        {'block_type': 'N', 'text': description},
+      ],
+    };
+  }
 
   @override
   Future<List<Map<String, dynamic>>> getActivity({String? token}) async => [
@@ -28,53 +118,123 @@ class FakeClient implements NotechondriaClient {
       ];
 
   @override
-  Future<List<Map<String, dynamic>>> getCourseNotes(int courseId) async => [
-        {
-          'id': 11,
-          'title': 'Project outcome',
-          'excerpt': 'Repository layout and build order.',
-        }
-      ];
+  Future<Map<String, dynamic>> getActivityWeek(String token,
+          {String? startDate}) async =>
+      {
+        'days': [
+          {
+            'date': '2026-03-21',
+            'events': [
+              {
+                'title': 'Study block',
+                'kind': 'calendar',
+                'starts_at': '2026-03-21T14:00:00Z',
+                'ends_at': '2026-03-21T15:00:00Z',
+              }
+            ]
+          }
+        ],
+        'deadlines': [
+          {
+            'id': 22,
+            'title': 'Essay draft',
+            'description': 'Finish the argument outline.',
+            'event_date': '2026-03-22',
+            'starts_at': '2026-03-22T18:00:00Z',
+            'ends_at': '2026-03-22T19:00:00Z',
+            'difficulty_weight': 3,
+            'is_completed': false,
+            'urgency_score': 1.75,
+          }
+        ],
+      };
 
   @override
-  Future<List<Map<String, dynamic>>> getCourses() async => [
-        {
-          'id': 7,
-          'title': 'Vibe Coding 101',
-        }
-      ];
+  Future<List<Map<String, dynamic>>> getCalendarFeeds(String token) async => [];
+
+  @override
+  Future<Map<String, dynamic>> createCalendarFeed(
+          String token, Map<String, dynamic> payload) async =>
+      payload;
+
+  @override
+  Future<Map<String, dynamic>> updateCalendarFeed(
+          String token, int feedId, Map<String, dynamic> payload) async =>
+      payload;
+
+  @override
+  Future<void> deleteCalendarFeed(String token, int feedId) async {}
+
+  @override
+  Future<Map<String, dynamic>> createNote(
+      String token, Map<String, dynamic> payload) async {
+    final note = _sampleNote(
+      id: 99,
+      title: payload['title']?.toString() ?? 'Untitled note',
+      description: payload['description']?.toString() ?? '',
+      courseTitle: 'Vibe Coding 101',
+      isPublic: payload['is_public'] == true,
+    )
+      ..['content'] = payload['content'] ?? ''
+      ..['metadata_json'] = payload['metadata_json'] ?? '{}'
+      ..['client_draft_id'] = payload['client_draft_id'];
+    _notes = [note, ..._notes];
+    return note;
+  }
+
+  @override
+  Future<Map<String, dynamic>> createPlannerEvent(
+          String token, Map<String, dynamic> payload) async =>
+      payload;
+
+  @override
+  Future<void> deleteNote(String token, int noteId) async {
+    final match = _notes.firstWhere((note) => note['id'] == noteId);
+    _notes = _notes.where((note) => note['id'] != noteId).toList();
+    _deletedNotes = [match, ..._deletedNotes];
+  }
+
+  @override
+  Future<Map<String, dynamic>> emptyDeletedNotes(String token) async {
+    _deletedNotes = [];
+    return {'count': 0};
+  }
+
+  @override
+  Future<Map<String, dynamic>> login(String email, String password) async => {
+        'token': 'token',
+        'user': {'email': email, 'username': 'demo'}
+      };
+
+  @override
+  Future<void> logout(String token) async {}
+
+  @override
+  Future<Map<String, dynamic>> register(String email, String password) async =>
+      {'message': 'Verification email sent.'};
+
+  @override
+  Future<Map<String, dynamic>> verifyEmail(String email, String code) async => {
+        'token': 'token',
+        'user': {'email': email, 'username': 'demo'}
+      };
+
+  @override
+  Future<Map<String, dynamic>> requestPasswordReset(String email) async =>
+      {'message': 'Password reset email sent.'};
+
+  @override
+  Future<Map<String, dynamic>> confirmPasswordReset(
+          String email, String code, String password) async =>
+      {'message': 'Password updated. You can now log in.'};
 
   @override
   Future<Map<String, dynamic>> getFrontPage({String? token}) async => {
-        'default_course': {
-          'id': 7,
-          'title': 'Vibe Coding 101',
-          'description': 'Seeded notes from CODEX.md',
-          'cover_image_url': '',
-        },
-        'collections': [
-          {
-            'id': 7,
-            'title': 'Vibe Coding 101',
-            'description': 'Seeded notes from CODEX.md',
-          }
-        ],
-        'recent_notes': [
-          {
-            'id': 11,
-            'title': 'Project outcome',
-            'excerpt': 'Repository layout and build order.',
-            'is_public': true,
-          }
-        ],
-        'recommended_notes': [
-          {
-            'id': 11,
-            'title': 'Project outcome',
-            'excerpt': 'Repository layout and build order.',
-            'is_public': true,
-          }
-        ],
+        'default_course': _courses.first,
+        'carousel_courses': _courses,
+        'collections': _courses,
+        'recent_notes': _notes,
+        'recommended_notes': _notes,
         'heatmap': {
           'cells': List.generate(
             21,
@@ -90,23 +250,57 @@ class FakeClient implements NotechondriaClient {
       };
 
   @override
-  Future<Map<String, dynamic>> getNoteDetail(int noteId) async => {
-        'id': noteId,
-        'title': 'Project outcome',
-        'description': 'Repository layout and build order.',
-        'content': '# Project outcome\n\nRepository layout and build order.',
-        'metadata_json': '{}',
-        'blocks': [
-          {
-            'block_type': 'T',
-            'text': 'Project outcome',
-          },
-          {
-            'block_type': 'N',
-            'text': 'Repository layout and build order.',
-          }
-        ],
-      };
+  Future<List<Map<String, dynamic>>> getCourseNotes(int courseId,
+          {String? token}) async =>
+      _notes
+          .where((note) => (note['course'] as Map?)?['id'] == courseId)
+          .toList();
+
+  @override
+  Future<List<Map<String, dynamic>>> getCourses({String? token}) async => _courses;
+
+  @override
+  Future<Map<String, dynamic>> getCourseDetail(int courseId,
+          {String? token}) async =>
+      _courses.firstWhere((course) => course['id'] == courseId);
+
+  @override
+  Future<List<Map<String, dynamic>>> getDeletedNotes(String token) async =>
+      _deletedNotes;
+
+  @override
+  Future<Map<String, dynamic>> getNoteDetail(int noteId, {String? token}) async =>
+      _notes.firstWhere((note) => note['id'] == noteId, orElse: () {
+        return _sampleNote(
+          id: noteId,
+          title: 'Project outcome',
+          description: 'Repository layout and build order.',
+          courseTitle: 'Vibe Coding 101',
+          isPublic: true,
+        );
+      });
+
+  @override
+  Future<List<Map<String, dynamic>>> getNoteHistory(
+          String token, int noteId) async =>
+      [
+        {
+          'id': 1,
+          'reason': 'quit',
+          'date_created': '2026-03-21T12:00:00Z',
+        }
+      ];
+
+  @override
+  Future<List<Map<String, dynamic>>> getPlannerEvents(String token) async => [
+        {
+          'id': 22,
+          'title': 'Essay draft',
+          'event_date': '2026-03-22',
+          'difficulty_weight': 3,
+          'is_completed': false,
+        }
+      ];
 
   @override
   Future<Map<String, dynamic>> getSettings(String token) async => {
@@ -118,32 +312,23 @@ class FakeClient implements NotechondriaClient {
         'theme_preset': 'teal',
         'theme_mode': 'S',
         'api_base_url': 'http://localhost:9080/api/v1',
+        'app_settings': {
+          'theme_preset': 'teal',
+          'theme_mode': 'S',
+          'api_base_url': 'http://localhost:9080/api/v1',
+          'log_preferences': {},
+        },
+        'app_settings_updated_at': '2026-03-21T12:00:00Z',
+        'image_url': '',
       };
 
   @override
-  Future<Map<String, dynamic>> login(String email, String password) async => {
-        'token': 'token',
-        'user': {'email': email}
-      };
-
-  @override
-  Future<Map<String, dynamic>> requestPasswordReset(String email) async =>
-      {'message': 'Password reset email sent.'};
-
-  @override
-  Future<Map<String, dynamic>> confirmPasswordReset(
-          String email, String code, String password) async =>
-      {'message': 'Password updated. You can now log in.'};
-
-  @override
-  Future<List<Map<String, dynamic>>> getPlannerEvents(String token) async => [];
-
-  @override
-  Future<Map<String, dynamic>> listNotes(
-      {String? token,
-      String query = '',
-      int offset = 0,
-      int limit = 20}) async {
+  Future<Map<String, dynamic>> listNotes({
+    String? token,
+    String query = '',
+    int offset = 0,
+    int limit = 20,
+  }) async {
     final rows = _notes
         .where((note) =>
             query.isEmpty ||
@@ -164,58 +349,27 @@ class FakeClient implements NotechondriaClient {
   }
 
   @override
-  Future<Map<String, dynamic>> createNote(
-      String token, Map<String, dynamic> payload) async {
-    final note = {
-      'id': 99,
-      'title': payload['title'],
-      'description': payload['description'] ?? '',
-      'content': payload['content'] ?? '',
-      'metadata_json': payload['metadata_json'] ?? '{}',
-      'preview_lines': ['New note'],
-      'editor_mode': payload['editor_mode'] ?? 'P',
-      'last_edit': '2026-03-21T12:00:00Z',
-      'date_created': '2026-03-21T12:00:00Z',
-      'course_id': payload['course_id'],
-      'blocks': [
-        {'block_type': 'T', 'text': payload['title']},
-        {'block_type': 'N', 'text': payload['content'] ?? ''},
-      ],
-    };
+  Future<Map<String, dynamic>> openCourse(String token, int courseId) async {
+    _courses = _courses
+        .map((course) => course['id'] == courseId
+            ? {...course, 'last_opened_at': '2026-03-22T09:00:00Z'}
+            : course)
+        .toList();
+    return _courses.firstWhere((course) => course['id'] == courseId);
+  }
+
+  @override
+  Future<Map<String, dynamic>> restoreDeletedNote(String token, int noteId) async {
+    final note = _deletedNotes.firstWhere((item) => item['id'] == noteId);
+    _deletedNotes = _deletedNotes.where((item) => item['id'] != noteId).toList();
     _notes = [note, ..._notes];
     return note;
   }
 
   @override
-  Future<Map<String, dynamic>> updateNote(
-          String token, int noteId, Map<String, dynamic> payload) async =>
-      {
-        'id': noteId,
-        'title': payload['title'] ?? 'Project outcome',
-        'description': payload['description'] ?? '',
-        'content': payload['content'] ?? '',
-        'metadata_json': payload['metadata_json'] ?? '{}',
-        'preview_lines': ['Updated note'],
-        'editor_mode': payload['editor_mode'] ?? 'P',
-        'last_edit': '2026-03-21T12:10:00Z',
-        'date_created': '2026-03-21T12:00:00Z',
-        'course_id': payload['course_id'],
-        'blocks': [
-          {'block_type': 'T', 'text': payload['title'] ?? 'Project outcome'},
-          {'block_type': 'N', 'text': payload['content'] ?? ''},
-        ],
-      };
-
-  @override
-  Future<List<Map<String, dynamic>>> getNoteHistory(
-          String token, int noteId) async =>
-      [
-        {
-          'id': 1,
-          'reason': 'quit',
-          'date_created': '2026-03-21T12:00:00Z',
-        }
-      ];
+  Future<Map<String, dynamic>> restoreNoteVersion(
+          String token, int noteId, int versionId) async =>
+      getNoteDetail(noteId, token: token);
 
   @override
   Future<Map<String, dynamic>> snapshotNote(String token, int noteId,
@@ -226,36 +380,56 @@ class FakeClient implements NotechondriaClient {
       };
 
   @override
-  Future<Map<String, dynamic>> restoreNoteVersion(
-          String token, int noteId, int versionId) async =>
-      await getNoteDetail(noteId);
-
-  @override
-  Future<Map<String, dynamic>> getActivityWeek(String token,
-          {String? startDate}) async =>
-      {
-        'days': [
-          {
-            'date': '2026-03-21',
-            'events': [
-              {
-                'title': 'Study block',
-                'kind': 'calendar',
-                'starts_at': '2026-03-21T14:00:00Z',
-                'ends_at': '2026-03-21T15:00:00Z',
-              }
-            ]
-          }
-        ]
-      };
-
-  @override
-  Future<List<Map<String, dynamic>>> getCalendarFeeds(String token) async => [];
-
-  @override
   Future<Map<String, dynamic>> startNoteSession(
           String token, Map<String, dynamic> payload) async =>
       {'id': 1, ...payload};
+
+  @override
+  Future<Map<String, dynamic>> subscribeCourse(String token, int courseId) async {
+    _courses = _courses
+        .map((course) => course['id'] == courseId
+            ? {
+                ...course,
+                'is_subscribed': true,
+                'last_opened_at': '2026-03-22T09:00:00Z',
+              }
+            : course)
+        .toList();
+    return _courses.firstWhere((course) => course['id'] == courseId);
+  }
+
+  @override
+  Future<Map<String, dynamic>> unsubscribeCourse(
+      String token, int courseId) async {
+    _courses = _courses
+        .map((course) => course['id'] == courseId
+            ? {
+                ...course,
+                'is_subscribed': false,
+                'last_opened_at': null,
+              }
+            : course)
+        .toList();
+    return _courses.firstWhere((course) => course['id'] == courseId);
+  }
+
+  @override
+  Future<Map<String, dynamic>> updateNote(
+      String token, int noteId, Map<String, dynamic> payload) async {
+    final updated = {
+      ...await getNoteDetail(noteId, token: token),
+      ...payload,
+      'id': noteId,
+      'course': {
+        'id': payload['course_id'] ?? 7,
+        'title': 'Vibe Coding 101',
+        'slug': 'vibe-coding-101',
+      },
+      'last_edit': '2026-03-21T12:10:00Z',
+    };
+    _notes = _notes.map((note) => note['id'] == noteId ? updated : note).toList();
+    return updated;
+  }
 
   @override
   Future<Map<String, dynamic>> updateNoteSession(
@@ -263,40 +437,15 @@ class FakeClient implements NotechondriaClient {
       {'id': sessionId, ...payload};
 
   @override
-  Future<Map<String, dynamic>> createCalendarFeed(
-          String token, Map<String, dynamic> payload) async =>
-      payload;
-
-  @override
-  Future<Map<String, dynamic>> updateCalendarFeed(
-          String token, int feedId, Map<String, dynamic> payload) async =>
-      payload;
-
-  @override
-  Future<void> deleteCalendarFeed(String token, int feedId) async {}
-
-  @override
-  Future<void> logout(String token) async {}
-
-  @override
-  Future<Map<String, dynamic>> register(String email, String password) async =>
-      {'message': 'Verification email sent.'};
-
-  @override
-  Future<Map<String, dynamic>> createPlannerEvent(
-          String token, Map<String, dynamic> payload) async =>
-      payload;
-
-  @override
   Future<Map<String, dynamic>> updatePlannerEvent(
           String token, int eventId, Map<String, dynamic> payload) async =>
-      payload;
+      {'id': eventId, ...payload};
 
   @override
   Future<Map<String, dynamic>> updateSettings(
           String token, Map<String, dynamic> payload) async =>
       {
-        'email': 'demo@example.com',
+        'email': payload['email'] ?? 'demo@example.com',
         'username': payload['username'] ?? 'demo',
         'motto': payload['motto'],
         'social_link': payload['social_link'],
@@ -305,24 +454,37 @@ class FakeClient implements NotechondriaClient {
         'theme_mode': payload['theme_mode'] ?? 'S',
         'api_base_url':
             payload['api_base_url'] ?? 'http://localhost:9080/api/v1',
+        'app_settings': payload['app_settings'] ??
+            {
+              'theme_preset': payload['theme_preset'] ?? 'teal',
+              'theme_mode': payload['theme_mode'] ?? 'S',
+              'api_base_url':
+                  payload['api_base_url'] ?? 'http://localhost:9080/api/v1',
+              'log_preferences': {},
+            },
+        'app_settings_updated_at':
+            payload['app_settings_updated_at'] ?? '2026-03-21T12:00:00Z',
+        'image_url': '',
       };
 
   @override
-  Future<Map<String, dynamic>> verifyEmail(String email, String code) async => {
-        'token': 'token',
-        'user': {'email': email}
+  Future<Map<String, dynamic>> uploadAvatar(String token, XFile file) async =>
+      {
+        'email': 'demo@example.com',
+        'username': 'demo',
+        'image_url': '',
       };
 }
 
 void main() {
-  testWidgets('renders seeded front page and navigation tabs', (tester) async {
+  testWidgets('renders carousel and navigation tabs', (tester) async {
     await tester.pumpWidget(NotechondriaApp(client: FakeClient()));
     await tester.pumpAndSettle();
 
     expect(find.text('Front Page'), findsOneWidget);
+    expect(find.text('Courses'), findsOneWidget);
     expect(find.text('Vibe Coding 101'), findsWidgets);
-    expect(find.text('Progress + plan heatmap'), findsOneWidget);
-    expect(find.text('Recommended public notes'), findsOneWidget);
+    expect(find.text('Recent public notes'), findsOneWidget);
     expect(find.text('Learner'), findsOneWidget);
     expect(find.text('Course'), findsOneWidget);
     expect(find.text('Activity'), findsOneWidget);
@@ -335,40 +497,24 @@ void main() {
 
     await tester.tap(find.text('Course'));
     await tester.pumpAndSettle();
-    expect(find.text('Collections'), findsOneWidget);
+    expect(find.text('Subscribed courses'), findsOneWidget);
 
     await tester.tap(find.text('Project outcome').first);
     await tester.pumpAndSettle();
 
     expect(find.text('Project outcome'), findsWidgets);
-    expect(find.text('Repository layout and build order.'), findsOneWidget);
+    expect(find.textContaining('Repository layout and build order.'), findsOneWidget);
   });
 
-  testWidgets('opens recommended front-page note in reader dialog',
+  testWidgets('shows local draft creation affordance while signed out',
       (tester) async {
     await tester.pumpWidget(NotechondriaApp(client: FakeClient()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Project outcome').first);
+    await tester.tap(find.text('Learner'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Project outcome'), findsWidgets);
-    expect(find.text('Repository layout and build order.'), findsOneWidget);
-  });
-
-  testWidgets('uses sidebar navigation on wide layouts', (tester) async {
-    tester.view.physicalSize = const Size(1600, 900);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(() {
-      tester.view.resetPhysicalSize();
-      tester.view.resetDevicePixelRatio();
-    });
-
-    await tester.pumpWidget(NotechondriaApp(client: FakeClient()));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(NavigationBar), findsNothing);
-    expect(find.text('Wide layout'), findsOneWidget);
-    expect(find.text('Settings'), findsWidgets);
+    expect(find.text('Local drafts'), findsOneWidget);
+    expect(find.byType(FloatingActionButton), findsOneWidget);
   });
 }

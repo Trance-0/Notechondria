@@ -1,3 +1,4 @@
+import json
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.utils.timezone import now
@@ -5,6 +6,7 @@ from urllib.parse import urlparse
 
 from rest_framework import permissions, serializers, status
 from rest_framework.authtoken.models import Token
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -18,7 +20,33 @@ from .utils import (
 )
 
 
-def auth_payload(user: User):
+def absolute_media_url(request, raw_url: str) -> str:
+    if not raw_url:
+        return ""
+    if raw_url.startswith("http://") or raw_url.startswith("https://"):
+        return raw_url
+    if request is None:
+        return raw_url
+    return request.build_absolute_uri(raw_url)
+
+
+def creator_app_settings_payload(creator):
+    payload = {
+        "theme_preset": creator.theme_preset,
+        "theme_mode": creator.theme_mode,
+        "api_base_url": creator.api_base_url,
+    }
+    if creator.app_settings_json:
+        try:
+            decoded = json.loads(creator.app_settings_json)
+        except json.JSONDecodeError:
+            decoded = {}
+        if isinstance(decoded, dict):
+            payload.update(decoded)
+    return payload
+
+
+def auth_payload(user: User, request=None):
     token, _ = Token.objects.get_or_create(user=user)
     creator = ensure_creator(user)
     return {
@@ -30,11 +58,15 @@ def auth_payload(user: User):
             "display_name": user.username,
             "motto": creator.motto or "",
             "social_link": creator.social_link or "",
-            "image_url": creator.image.url if creator.image else "",
+            "image_url": absolute_media_url(request, creator.image.url if creator.image else ""),
             "editor_mode": creator.editor_mode,
             "theme_preset": creator.theme_preset,
             "theme_mode": creator.theme_mode,
             "api_base_url": creator.api_base_url,
+            "app_settings": creator_app_settings_payload(creator),
+            "app_settings_updated_at": creator.app_settings_updated_at.isoformat()
+            if creator.app_settings_updated_at
+            else None,
         },
     }
 
@@ -134,6 +166,7 @@ class SettingsSerializer(serializers.Serializer):
     motto = serializers.CharField(allow_blank=True, required=False, max_length=100)
     social_link = serializers.URLField(allow_blank=True, required=False)
     image_url = serializers.CharField(read_only=True)
+    avatar = serializers.ImageField(write_only=True, required=False)
     theme_preset = serializers.CharField(required=False, allow_blank=False, max_length=32)
     theme_mode = serializers.ChoiceField(
         choices=[
@@ -144,6 +177,8 @@ class SettingsSerializer(serializers.Serializer):
         required=False,
     )
     api_base_url = serializers.CharField(required=False, allow_blank=False, max_length=255)
+    app_settings = serializers.JSONField(required=False)
+    app_settings_updated_at = serializers.DateTimeField(required=False, allow_null=True)
     editor_mode = serializers.ChoiceField(
         choices=[
             ("G", "gfm"),
@@ -154,16 +189,21 @@ class SettingsSerializer(serializers.Serializer):
     )
 
     def to_representation(self, instance):
+        request = self.context.get("request") if self.context else None
         return {
             "username": instance.user_id.username,
             "email": instance.user_id.email,
             "motto": instance.motto or "",
             "social_link": instance.social_link or "",
-            "image_url": instance.image.url if instance.image else "",
+            "image_url": absolute_media_url(request, instance.image.url if instance.image else ""),
             "editor_mode": instance.editor_mode,
             "theme_preset": instance.theme_preset,
             "theme_mode": instance.theme_mode,
             "api_base_url": instance.api_base_url,
+            "app_settings": creator_app_settings_payload(instance),
+            "app_settings_updated_at": instance.app_settings_updated_at.isoformat()
+            if instance.app_settings_updated_at
+            else None,
         }
 
     def validate_username(self, value):
@@ -197,9 +237,28 @@ class SettingsSerializer(serializers.Serializer):
         instance.motto = validated_data.get("motto", instance.motto)
         instance.social_link = validated_data.get("social_link", instance.social_link)
         instance.editor_mode = validated_data.get("editor_mode", instance.editor_mode)
-        instance.theme_preset = validated_data.get("theme_preset", instance.theme_preset)
-        instance.theme_mode = validated_data.get("theme_mode", instance.theme_mode)
-        instance.api_base_url = validated_data.get("api_base_url", instance.api_base_url)
+        if "avatar" in validated_data:
+            instance.image = validated_data["avatar"]
+        app_settings = creator_app_settings_payload(instance)
+        if "app_settings" in validated_data and isinstance(validated_data["app_settings"], dict):
+            app_settings.update(validated_data["app_settings"])
+        if "theme_preset" in validated_data:
+            app_settings["theme_preset"] = validated_data["theme_preset"]
+        if "theme_mode" in validated_data:
+            app_settings["theme_mode"] = validated_data["theme_mode"]
+        if "api_base_url" in validated_data:
+            app_settings["api_base_url"] = validated_data["api_base_url"]
+        instance.theme_preset = app_settings.get("theme_preset", instance.theme_preset)
+        instance.theme_mode = app_settings.get("theme_mode", instance.theme_mode)
+        instance.api_base_url = app_settings.get("api_base_url", instance.api_base_url)
+        if (
+            "app_settings" in validated_data
+            or "theme_preset" in validated_data
+            or "theme_mode" in validated_data
+            or "api_base_url" in validated_data
+        ):
+            instance.app_settings_json = json.dumps(app_settings, sort_keys=True)
+            instance.app_settings_updated_at = validated_data.get("app_settings_updated_at") or now()
         instance.save()
         return instance
 
@@ -270,7 +329,7 @@ class VerifyEmailApiView(APIView):
         user.save(update_fields=["is_active"])
         verification.max_use = 0
         verification.save(update_fields=["max_use"])
-        return Response(auth_payload(user))
+        return Response(auth_payload(user, request=request))
 
 
 class ResendVerificationApiView(APIView):
@@ -296,7 +355,7 @@ class LoginApiView(APIView):
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        return Response(auth_payload(serializer.validated_data["user"]))
+        return Response(auth_payload(serializer.validated_data["user"], request=request))
 
 
 class PasswordResetRequestApiView(APIView):
@@ -346,21 +405,27 @@ class SessionApiView(APIView):
     def get(self, request):
         if not request.user or not request.user.is_authenticated:
             return Response({"authenticated": False})
-        payload = auth_payload(request.user)
+        payload = auth_payload(request.user, request=request)
         payload["authenticated"] = True
         return Response(payload)
 
 
 class SettingsApiView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
         creator = ensure_creator(request.user)
-        return Response(SettingsSerializer(creator).data)
+        return Response(SettingsSerializer(creator, context={"request": request}).data)
 
     def patch(self, request):
         creator = ensure_creator(request.user)
-        serializer = SettingsSerializer(instance=creator, data=request.data, partial=True)
+        serializer = SettingsSerializer(
+            instance=creator,
+            data=request.data,
+            partial=True,
+            context={"request": request},
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(SettingsSerializer(creator).data)
+        return Response(SettingsSerializer(creator, context={"request": request}).data)

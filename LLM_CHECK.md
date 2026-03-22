@@ -62,3 +62,8 @@ Use this checklist at the end of each modification round.
 - Hardened backend static serving so deploy readiness now depends on Django admin and DRF assets actually existing in the shared `/home/staticfiles` volume before nginx is treated as healthy.
 - Backend verification remained blocked in this environment because only the Windows Store `python.exe` shim is present and Docker daemon access is denied.
 - Flutter static verification succeeded only at the `dart format` parsing level; `dart analyze` still fails here with a Windows access-denied error while spawning `dartaotruntime.exe`.
+- Added backend models and APIs for synced course subscriptions/order (`CourseSubscription`, `CourseOperationLog`), note recycle bin, idempotent `client_draft_id` sync, planner completion state, and creator app-settings mirroring.
+- Reworked the Flutter shell toward distinct signed-out local drafts vs signed-in cloud notes, backend-synced course ordering, recycle-bin management, avatar upload, local stats, and local app-settings persistence.
+- Replaced the front page hero with a carousel-oriented surface and richer public-note cards, rewired course/activity/settings modules to the new backend payload shape, and added one-click frontend log copy plus stats UI.
+- Updated backend tests for auth-only notes, recycle bin flows, client-draft idempotency, course subscription/open ordering, planner completion filtering, and creator app-settings mirror responses.
+- Verification is still incomplete in this environment: `flutter analyze` and `dart analyze` both timed out here, so the latest Flutter integration should be treated as source-updated but not execution-verified.

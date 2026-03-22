@@ -109,6 +109,41 @@ String _formatTime(DateTime value) {
   return '$hour:${value.minute.toString().padLeft(2, '0')} $suffix';
 }
 
+String _apiOrigin(String? baseUrl) {
+  final candidate = (baseUrl ?? '').trim();
+  if (candidate.isEmpty) {
+    return '';
+  }
+  final parsed = Uri.tryParse(candidate);
+  if (parsed == null || !parsed.hasScheme || parsed.host.isEmpty) {
+    return '';
+  }
+  return parsed.replace(path: '', query: '', fragment: '').toString().replaceAll(RegExp(r'/$'), '');
+}
+
+String _resolveRemoteUrl(String raw, {String? apiBaseUrl}) {
+  final value = raw.trim();
+  if (value.isEmpty) {
+    return '';
+  }
+  final parsed = Uri.tryParse(value);
+  if (parsed != null && (parsed.scheme == 'http' || parsed.scheme == 'https')) {
+    return value;
+  }
+  var normalized = value;
+  if (parsed != null && parsed.scheme == 'file' && parsed.host.isEmpty) {
+    normalized = parsed.path;
+  }
+  final origin = _apiOrigin(apiBaseUrl);
+  if (origin.isEmpty) {
+    return normalized;
+  }
+  if (normalized.startsWith('/')) {
+    return '$origin$normalized';
+  }
+  return '$origin/$normalized';
+}
+
 /// Theme preset labels exposed in settings.
 const Map<String, String> _themePresetEntries = {
   'teal': 'Teal',
@@ -196,11 +231,16 @@ class _LatexInlineSyntax extends md.InlineSyntax {
 /// Renders LaTeX markdown elements with `flutter_math_fork`.
 class _LatexBuilder extends MarkdownElementBuilder {
   @override
-  Widget visitText(md.Text text, TextStyle? preferredStyle) {
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
     return Math.tex(
-      text.text,
+      element.textContent,
       mathStyle: MathStyle.text,
-      textStyle: preferredStyle,
+      textStyle: preferredStyle ?? parentStyle,
     );
   }
 }

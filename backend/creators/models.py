@@ -68,6 +68,8 @@ class Creator(models.Model):
         null=False,
     )
     api_base_url = models.CharField(max_length=255, default="http://localhost:9080/api/v1", null=False)
+    app_settings_json = models.TextField(blank=True, default="")
+    app_settings_updated_at = models.DateTimeField(blank=True, null=True)
 
     # last_login and date_joined automatically created by user_id, for these field, create one time value to timezone.now()
     # The field is only automatically updated when calling Model.save().

@@ -1,39 +1,121 @@
 part of notechondria_frontend;
 
-/// Front page module showing the hero, heatmap, and public recommendation feed.
-class _FrontPage extends StatelessWidget {
+/// Front page module showing the carousel, heatmap, and public recommendation feed.
+class _FrontPage extends StatefulWidget {
   const _FrontPage({
     required this.frontPage,
     required this.profile,
+    required this.apiBaseUrl,
     required this.onOpenNote,
+    required this.onOpenCourse,
   });
 
   final Map<String, dynamic> frontPage;
   final Map<String, dynamic>? profile;
+  final String? apiBaseUrl;
   final Future<void> Function(Map<String, dynamic> note) onOpenNote;
+  final Future<void> Function(Map<String, dynamic> course) onOpenCourse;
+
+  @override
+  State<_FrontPage> createState() => _FrontPageState();
+}
+
+class _FrontPageState extends State<_FrontPage> {
+  final PageController _pageController = PageController(viewportFraction: 0.92);
+  Timer? _autoSlideTimer;
+  int _currentPage = 0;
+
+  List<Map<String, dynamic>> get _carouselCourses {
+    final rows = (widget.frontPage['carousel_courses'] as List<dynamic>? ??
+            widget.frontPage['collections'] as List<dynamic>? ??
+            const [])
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList();
+    if (rows.isEmpty) {
+      final fallback =
+          widget.frontPage['default_course'] as Map<String, dynamic>? ?? const {};
+      if (fallback.isNotEmpty) {
+        rows.add(Map<String, dynamic>.from(fallback));
+      }
+    }
+    return rows;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _startAutoSlide();
+  }
+
+  @override
+  void didUpdateWidget(covariant _FrontPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.frontPage != widget.frontPage) {
+      _currentPage = 0;
+      _restartAutoSlide();
+    }
+  }
+
+  @override
+  void dispose() {
+    _autoSlideTimer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _startAutoSlide() {
+    _autoSlideTimer?.cancel();
+    _autoSlideTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      final courses = _carouselCourses;
+      if (!_pageController.hasClients || courses.length <= 1) {
+        return;
+      }
+      final nextPage = (_currentPage + 1) % courses.length;
+      _pageController.animateToPage(
+        nextPage,
+        duration: const Duration(milliseconds: 520),
+        curve: Curves.easeInOutCubic,
+      );
+    });
+  }
+
+  void _restartAutoSlide() {
+    if (_pageController.hasClients) {
+      _pageController.jumpToPage(0);
+    }
+    _startAutoSlide();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final defaultCourse =
-        frontPage['default_course'] as Map<String, dynamic>? ?? const {};
-    final heatmap = frontPage['heatmap'] as Map<String, dynamic>?;
+    final heatmap = widget.frontPage['heatmap'] as Map<String, dynamic>?;
     final recommendedNotes =
-        (frontPage['recommended_notes'] as List<dynamic>? ??
-                frontPage['recent_notes'] as List<dynamic>? ??
+        (widget.frontPage['recommended_notes'] as List<dynamic>? ??
+                widget.frontPage['recent_notes'] as List<dynamic>? ??
                 const [])
             .map((item) => Map<String, dynamic>.from(item as Map))
             .toList();
     final greetingName =
-        profile?['username']?.toString() ?? profile?['email']?.toString();
+        widget.profile?['username']?.toString() ?? widget.profile?['email']?.toString();
+    final carouselCourses = _carouselCourses;
 
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        _FrontHero(defaultCourse: defaultCourse),
+        _CourseCarousel(
+          courses: carouselCourses,
+          pageController: _pageController,
+          currentPage: _currentPage,
+          apiBaseUrl: widget.apiBaseUrl,
+          onPageChanged: (index) => setState(() => _currentPage = index),
+          onOpenCourse: widget.onOpenCourse,
+        ),
         if (greetingName != null && greetingName.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Text('Hello, $greetingName',
-              style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 20),
+          Text(
+            'Hello, $greetingName',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
         ],
         const SizedBox(height: 20),
         if (heatmap != null)
@@ -46,26 +128,24 @@ class _FrontPage extends StatelessWidget {
                   Text('Sign in to see the progress heatmap and future plan.'),
             ),
           ),
-        const SizedBox(height: 20),
-        const Card(
-          child: Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
-              'Public notes shown here come from the current recommendation feed. Use Course for collections and Activity for future events.',
-            ),
-          ),
+        const SizedBox(height: 24),
+        Text(
+          'Recent public notes',
+          style: Theme.of(context)
+              .textTheme
+              .titleLarge
+              ?.copyWith(fontWeight: FontWeight.w700),
         ),
-        const SizedBox(height: 20),
-        Text('Recommended public notes',
-            style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
         for (final note in recommendedNotes)
-          Card(
-            child: ListTile(
-              title: Text(note['title']?.toString() ?? 'Untitled note'),
-              subtitle: Text(note['excerpt']?.toString() ?? ''),
-              trailing: const Icon(Icons.arrow_forward_outlined),
-              onTap: () async => onOpenNote(note),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: _FrontNoteCard(
+              note: note,
+              apiBaseUrl: widget.apiBaseUrl,
+              onTap: () {
+                widget.onOpenNote(note);
+              },
             ),
           ),
       ],
@@ -73,54 +153,349 @@ class _FrontPage extends StatelessWidget {
   }
 }
 
-/// Hero banner for the seeded default course.
-class _FrontHero extends StatelessWidget {
-  const _FrontHero({required this.defaultCourse});
+class _CourseCarousel extends StatelessWidget {
+  const _CourseCarousel({
+    required this.courses,
+    required this.pageController,
+    required this.currentPage,
+    required this.apiBaseUrl,
+    required this.onPageChanged,
+    required this.onOpenCourse,
+  });
 
-  final Map<String, dynamic> defaultCourse;
+  final List<Map<String, dynamic>> courses;
+  final PageController pageController;
+  final int currentPage;
+  final String? apiBaseUrl;
+  final ValueChanged<int> onPageChanged;
+  final Future<void> Function(Map<String, dynamic> course) onOpenCourse;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0F172A), Color(0xFF1D4ED8), Color(0xFFEA580C)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    if (courses.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Courses',
+          style: Theme.of(context)
+              .textTheme
+              .titleLarge
+              ?.copyWith(fontWeight: FontWeight.w700),
         ),
-        borderRadius: BorderRadius.circular(28),
-      ),
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            defaultCourse['title']?.toString() ?? 'Default course',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 320,
+          child: PageView.builder(
+            controller: pageController,
+            itemCount: courses.length,
+            onPageChanged: onPageChanged,
+            itemBuilder: (context, index) {
+              final course = courses[index];
+              final coverUrl = _resolveRemoteUrl(
+                course['cover_image_url']?.toString() ?? '',
+                apiBaseUrl: apiBaseUrl,
+              );
+              final owner =
+                  Map<String, dynamic>.from(course['owner'] as Map? ?? const {});
+              return Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(28),
+                  onTap: () {
+                    onOpenCourse(course);
+                  },
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(28),
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xFF0F172A),
+                          Color(0xFF0F766E),
+                          Color(0xFFF59E0B),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.14),
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Text(
+                                    course['is_subscribed'] == true
+                                        ? 'Subscribed'
+                                        : 'Course Preview',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelLarge
+                                        ?.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                  ),
+                                ),
+                                const SizedBox(height: 18),
+                                Text(
+                                  course['title']?.toString() ?? 'Course',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineMedium
+                                      ?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  course['description']?.toString() ??
+                                      'Open the course to read notes and previews.',
+                                  maxLines: 4,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyLarge
+                                      ?.copyWith(
+                                        color: const Color(0xFFF8FAFC),
+                                        height: 1.45,
+                                      ),
+                                ),
+                                const Spacer(),
+                                Wrap(
+                                  spacing: 12,
+                                  runSpacing: 8,
+                                  children: [
+                                    _CarouselMetric(
+                                      label: 'Subscribers',
+                                      value:
+                                          '${course['subscriber_count'] ?? 0}',
+                                    ),
+                                    if ((owner['username']?.toString() ?? '')
+                                        .isNotEmpty)
+                                      _CarouselMetric(
+                                        label: 'By',
+                                        value: owner['username'].toString(),
+                                      ),
+                                    if ((course['last_opened_at']?.toString() ?? '')
+                                        .isNotEmpty)
+                                      _CarouselMetric(
+                                        label: 'Last Opened',
+                                        value: _formatCompactTimestamp(
+                                          course['last_opened_at'].toString(),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 20),
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(22),
+                              child: Container(
+                                color: Colors.white.withOpacity(0.1),
+                                child: coverUrl.isEmpty
+                                    ? Center(
+                                        child: Icon(
+                                          Icons.auto_stories_outlined,
+                                          size: 72,
+                                          color: Colors.white.withOpacity(0.9),
+                                        ),
+                                      )
+                                    : Image.network(
+                                        coverUrl,
+                                        fit: BoxFit.cover,
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
+              );
+            },
           ),
-          const SizedBox(height: 12),
-          Text(
-            defaultCourse['description']?.toString() ??
-                'Sample course data will appear here.',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: const Color(0xFFE0F2FE),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (var index = 0; index < courses.length; index++)
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                height: 8,
+                width: currentPage == index ? 28 : 8,
+                decoration: BoxDecoration(
+                  color: currentPage == index
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.surfaceVariant,
+                  borderRadius: BorderRadius.circular(999),
                 ),
-          ),
-          const SizedBox(height: 18),
-          if ((defaultCourse['cover_image_url']?.toString() ?? '').isNotEmpty)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: Image.network(
-                defaultCourse['cover_image_url'].toString(),
-                height: 220,
-                width: double.infinity,
-                fit: BoxFit.cover,
               ),
-            ),
-        ],
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _CarouselMetric extends StatelessWidget {
+  const _CarouselMetric({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: Colors.white.withOpacity(0.8),
+              ),
+        ),
+        Text(
+          value,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FrontNoteCard extends StatelessWidget {
+  const _FrontNoteCard({
+    required this.note,
+    required this.apiBaseUrl,
+    required this.onTap,
+  });
+
+  final Map<String, dynamic> note;
+  final String? apiBaseUrl;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final author = Map<String, dynamic>.from(note['author'] as Map? ?? const {});
+    final course = Map<String, dynamic>.from(note['course'] as Map? ?? const {});
+    final previewLines = (note['preview_lines'] as List<dynamic>? ?? const [])
+        .map((item) => item.toString())
+        .toList();
+    final authorName = author['username']?.toString() ?? '';
+    final avatarFallback = authorName.isEmpty ? 'N' : authorName.substring(0, 1);
+    final avatarUrl = _resolveRemoteUrl(
+      author['image_url']?.toString() ?? '',
+      apiBaseUrl: apiBaseUrl,
+    );
+    final subtitleParts = <String>[
+      if ((course['title']?.toString() ?? '').isNotEmpty) course['title'].toString(),
+    ];
+    return Card(
+      elevation: 0,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundImage:
+                        avatarUrl.isEmpty ? null : NetworkImage(avatarUrl),
+                    child: avatarUrl.isEmpty
+                        ? Text(
+                            avatarFallback.toUpperCase(),
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      authorName.isEmpty ? 'Anonymous' : authorName,
+                      style: Theme.of(context)
+                          .textTheme
+                          .labelLarge
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  Text(
+                    _formatCompactTimestamp(note['last_edit']?.toString() ?? ''),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Text(
+                note['title']?.toString() ?? 'Untitled note',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      height: 1.2,
+                    ),
+              ),
+              if (subtitleParts.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  subtitleParts.join(' · '),
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ],
+              if ((note['description']?.toString() ?? '').isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  note['description'].toString(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontStyle: FontStyle.italic,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ],
+              const SizedBox(height: 10),
+              Text(
+                previewLines.isEmpty
+                    ? (note['excerpt']?.toString() ?? '')
+                    : previewLines.join('\n'),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      height: 1.55,
+                    ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

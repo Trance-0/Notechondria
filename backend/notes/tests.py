@@ -9,7 +9,20 @@ from rest_framework.authtoken.models import Token
 
 from creators.models import Creator
 from notechondria.utils import check_is_creator, generate_unique_id, get_object_or_None
-from .models import CalendarFeed, Course, HeatmapActivity, Note, NoteActivitySession, NoteBlock, NoteBlockTypeChoices, NoteVersion, PlannerEvent
+from .models import (
+    CalendarFeed,
+    Course,
+    CourseOperationLog,
+    CourseOperationTypeChoices,
+    CourseSubscription,
+    HeatmapActivity,
+    Note,
+    NoteActivitySession,
+    NoteBlock,
+    NoteBlockTypeChoices,
+    NoteVersion,
+    PlannerEvent,
+)
 from .services import parse_ical_datetime
 
 
@@ -233,30 +246,44 @@ class HeatmapApiTests(TestCase):
         self.assertEqual(len(payload['days']), 7)
         self.assertTrue(any(day['events'] for day in payload['days']))
 
-    def test_public_notes_are_visible_without_login_and_private_notes_are_hidden(self):
-        public_note = Note.objects.create(
+    def test_notes_list_requires_authentication(self):
+        response = self.client.get('/api/v1/notes/')
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_authenticated_notes_list_excludes_deleted_and_other_users_notes(self):
+        other_user = User.objects.create_user(username='outside', password='pw')
+        other_creator = Creator.objects.create(user_id=other_user)
+        active_note = Note.objects.create(
             creator_id=self.creator,
             course_id=self.course,
-            sharing_id='public-share',
-            title='Public note',
-            is_public=True,
-            content='# Public note\n\nVisible.',
+            sharing_id='active-share',
+            title='Active note',
+            content='# Active note\n\nVisible.',
         )
-        private_note = Note.objects.create(
+        deleted_note = Note.objects.create(
             creator_id=self.creator,
             course_id=self.course,
-            sharing_id='private-share',
-            title='Private note',
-            is_public=False,
-            content='# Private note\n\nHidden.',
+            sharing_id='deleted-share',
+            title='Deleted note',
+            content='# Deleted note\n\nHidden.',
+            deleted_at=timezone.now(),
+        )
+        Note.objects.create(
+            creator_id=other_creator,
+            course_id=self.course,
+            sharing_id='other-share',
+            title='Other note',
+            content='# Other note\n\nHidden.',
         )
 
-        response = self.client.get('/api/v1/notes/')
+        response = self.client.get('/api/v1/notes/', **self._auth_headers())
 
         self.assertEqual(response.status_code, 200)
         titles = [row['title'] for row in response.json()]
-        self.assertIn(public_note.title, titles)
-        self.assertNotIn(private_note.title, titles)
+        self.assertIn(active_note.title, titles)
+        self.assertNotIn(deleted_note.title, titles)
+        self.assertNotIn('Other note', titles)
 
     def test_note_session_create_and_week_payload(self):
         starts_at = timezone.now().replace(hour=14, minute=0, second=0, microsecond=0)
@@ -308,6 +335,187 @@ class HeatmapApiTests(TestCase):
         titles = [row['title'] for row in response.json()['recommended_notes']]
         self.assertIn('Front public', titles)
         self.assertNotIn('Front private', titles)
+
+    def test_note_delete_restore_and_empty_recycle_bin(self):
+        note = Note.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            sharing_id='trash-share',
+            title='Trash me',
+            content='# Trash me\n\nSoon deleted.',
+        )
+
+        delete_response = self.client.delete(
+            f'/api/v1/notes/{note.id}/',
+            **self._auth_headers(),
+        )
+        self.assertEqual(delete_response.status_code, 204)
+        note.refresh_from_db()
+        self.assertIsNotNone(note.deleted_at)
+
+        deleted_response = self.client.get(
+            '/api/v1/notes/deleted/',
+            **self._auth_headers(),
+        )
+        self.assertEqual(deleted_response.status_code, 200)
+        self.assertEqual([row['title'] for row in deleted_response.json()], ['Trash me'])
+
+        restore_response = self.client.post(
+            f'/api/v1/notes/{note.id}/restore/',
+            data=json.dumps({}),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+        self.assertEqual(restore_response.status_code, 200)
+        note.refresh_from_db()
+        self.assertIsNone(note.deleted_at)
+
+        self.client.delete(f'/api/v1/notes/{note.id}/', **self._auth_headers())
+        empty_response = self.client.delete(
+            '/api/v1/notes/deleted/empty/',
+            **self._auth_headers(),
+        )
+        self.assertEqual(empty_response.status_code, 200)
+        self.assertEqual(empty_response.json()['count'], 1)
+        self.assertFalse(Note.objects.filter(id=note.id).exists())
+
+    def test_note_create_is_idempotent_for_client_draft_id(self):
+        payload = {
+            'title': 'Draft sync',
+            'description': 'Synced from local draft',
+            'content': '# Draft sync\n\nFirst upload.',
+            'client_draft_id': 'draft-abc',
+            'metadata_json': json.dumps({'section': 'one'}),
+        }
+
+        first_response = self.client.post(
+            '/api/v1/notes/',
+            data=json.dumps(payload),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+        second_response = self.client.post(
+            '/api/v1/notes/',
+            data=json.dumps(payload),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+
+        self.assertEqual(first_response.status_code, 201)
+        self.assertEqual(second_response.status_code, 200)
+        self.assertEqual(first_response.json()['id'], second_response.json()['id'])
+        self.assertEqual(
+            Note.objects.filter(creator_id=self.creator, client_draft_id='draft-abc').count(),
+            1,
+        )
+
+    def test_note_search_supports_keyword_and_fuzzy_matching(self):
+        Note.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            sharing_id='search-share',
+            title='Meaningful Structures',
+            content='# Meaningful Structures\n\nKeyword and fuzzy match target.',
+        )
+
+        response = self.client.get(
+            '/api/v1/notes/?q=meanng strctres',
+            **self._auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        titles = [row['title'] for row in response.json()]
+        self.assertIn('Meaningful Structures', titles)
+
+    def test_course_subscribe_open_and_ordering_are_synced(self):
+        course_a = Course.objects.create(
+            creator_id=self.creator,
+            slug='course-a',
+            title='Course A',
+        )
+        course_b = Course.objects.create(
+            creator_id=self.creator,
+            slug='course-b',
+            title='Course B',
+        )
+
+        subscribe_a = self.client.post(
+            f'/api/v1/courses/{course_a.id}/subscribe/',
+            data=json.dumps({}),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+        subscribe_b = self.client.post(
+            f'/api/v1/courses/{course_b.id}/subscribe/',
+            data=json.dumps({}),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+        self.assertEqual(subscribe_a.status_code, 200)
+        self.assertEqual(subscribe_b.status_code, 200)
+
+        open_response = self.client.post(
+            f'/api/v1/courses/{course_a.id}/open/',
+            data=json.dumps({}),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+        self.assertEqual(open_response.status_code, 200)
+
+        ordering_response = self.client.get('/api/v1/courses/', **self._auth_headers())
+        self.assertEqual(ordering_response.status_code, 200)
+        ordered_ids = [row['id'] for row in ordering_response.json()[:2]]
+        self.assertEqual(ordered_ids[0], course_a.id)
+        self.assertIn(course_b.id, ordered_ids)
+        self.assertTrue(
+            CourseSubscription.objects.filter(
+                creator_id=self.creator,
+                course_id=course_a,
+                is_active=True,
+            ).exists()
+        )
+        self.assertEqual(
+            CourseOperationLog.objects.filter(
+                creator_id=self.creator,
+                course_id=course_a,
+                operation_type=CourseOperationTypeChoices.OPEN,
+            ).count(),
+            1,
+        )
+
+    def test_planner_completion_removes_event_from_active_week_payloads(self):
+        event = PlannerEvent.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            title='Finish module',
+            event_date=timezone.localdate() + timedelta(days=1),
+            difficulty_weight=4,
+        )
+
+        patch_response = self.client.patch(
+            f'/api/v1/planner-events/{event.id}/',
+            data=json.dumps({'is_completed': True}),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+        self.assertEqual(patch_response.status_code, 200)
+        event.refresh_from_db()
+        self.assertTrue(event.is_completed)
+        self.assertIsNotNone(event.completed_at)
+
+        planner_response = self.client.get(
+            '/api/v1/planner-events/',
+            **self._auth_headers(),
+        )
+        self.assertEqual(planner_response.status_code, 200)
+        self.assertEqual(planner_response.json(), [])
+
+        week_response = self.client.get(
+            f'/api/v1/activity/week/?start_date={timezone.localdate().isoformat()}',
+            **self._auth_headers(),
+        )
+        self.assertEqual(week_response.status_code, 200)
+        self.assertEqual(week_response.json()['deadlines'], [])
 
 
 class CalendarParsingTests(TestCase):

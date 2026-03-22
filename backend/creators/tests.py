@@ -1,3 +1,5 @@
+import json
+from datetime import datetime, timezone as dt_timezone
 from unittest.mock import patch
 
 from django.conf import settings
@@ -100,6 +102,13 @@ class AuthApiTests(TestCase):
                 'theme_preset': 'amber',
                 'theme_mode': 'D',
                 'api_base_url': 'https://notes.example.com/api/v1',
+                'app_settings': {
+                    'theme_preset': 'amber',
+                    'theme_mode': 'D',
+                    'api_base_url': 'https://notes.example.com/api/v1',
+                    'log_preferences': {'frontend_logs': True},
+                },
+                'app_settings_updated_at': '2026-03-22T12:00:00Z',
             },
             format='json',
             HTTP_AUTHORIZATION=f'Token {token.key}',
@@ -107,10 +116,40 @@ class AuthApiTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.admin.refresh_from_db()
+        creator = Creator.objects.get(user_id=self.admin)
         self.assertEqual(self.admin.username, 'note-admin')
         self.assertEqual(self.admin.email, 'note-admin@example.com')
         self.assertEqual(response.json()['theme_preset'], 'amber')
         self.assertEqual(response.json()['theme_mode'], 'D')
+        self.assertEqual(response.json()['app_settings']['theme_preset'], 'amber')
+        self.assertEqual(response.json()['app_settings']['log_preferences']['frontend_logs'], True)
+        self.assertEqual(
+            json.loads(creator.app_settings_json)['api_base_url'],
+            'https://notes.example.com/api/v1',
+        )
+        self.assertTrue(response.json()['app_settings_updated_at'].startswith('2026-03-22T12:00:00'))
+
+    def test_settings_get_includes_app_settings_mirror(self):
+        token = Token.objects.create(user=self.admin)
+        creator = Creator.objects.create(user_id=self.admin)
+        creator.app_settings_json = json.dumps({
+            'theme_preset': 'rose',
+            'theme_mode': 'L',
+            'api_base_url': 'https://mirror.example.com/api/v1',
+            'log_preferences': {'copy_logs': True},
+        })
+        creator.app_settings_updated_at = datetime(2026, 3, 22, 12, 0, tzinfo=dt_timezone.utc)
+        creator.save()
+
+        response = self.client.get(
+            '/api/v1/settings/',
+            HTTP_AUTHORIZATION=f'Token {token.key}',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['app_settings']['theme_preset'], 'rose')
+        self.assertEqual(response.json()['app_settings']['log_preferences']['copy_logs'], True)
+        self.assertIn('app_settings_updated_at', response.json())
 
     def test_settings_reject_duplicate_username(self):
         other_user = User.objects.create_user(username='taken-name', email='taken@example.com', password='pw')

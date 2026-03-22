@@ -130,7 +130,19 @@ def planner_event_payload(event: PlannerEvent):
         "difficulty_weight": event.difficulty_weight,
         "description": event.description or "",
         "course_id": event.course_id_id,
+        "is_completed": event.is_completed,
+        "completed_at": event.completed_at.isoformat() if event.completed_at else None,
     }
+
+
+def planner_deadline_payload(event: PlannerEvent, now=None):
+    reference = now or timezone.now()
+    starts_at = event.starts_at or timezone.make_aware(datetime.combine(event.event_date, datetime.min.time().replace(hour=12)))
+    hours_remaining = max((starts_at - reference).total_seconds() / 3600.0, 1 / 60.0)
+    urgency = round(float(event.difficulty_weight) / hours_remaining, 4)
+    payload = planner_event_payload(event)
+    payload["urgency_score"] = urgency
+    return payload
 
 
 def note_preview_lines(note: Note, limit: int = 3):
@@ -258,6 +270,7 @@ def calendar_week_payload(creator, start_date=None):
         creator_id=creator,
         event_date__gte=days[0],
         event_date__lte=days[-1],
+        is_completed=False,
     )
     for event in planner_rows:
         payload[event.event_date.isoformat()].append(planner_event_payload(event) | {"kind": "plan", "source_id": event.id})
@@ -295,6 +308,22 @@ def calendar_week_payload(creator, start_date=None):
                 }
             )
 
+    active_deadlines = [
+        planner_deadline_payload(event)
+        for event in PlannerEvent.objects.filter(
+            creator_id=creator,
+            event_date__gte=timezone.localdate(),
+            is_completed=False,
+        ).order_by("starts_at", "event_date", "title")[:40]
+    ]
+    active_deadlines.sort(
+        key=lambda item: (
+            -float(item.get("urgency_score", 0)),
+            item.get("starts_at") or "",
+            item.get("title") or "",
+        )
+    )
+
     return {
         "start_date": days[0].isoformat(),
         "previous_week_start": (days[0] - timedelta(days=7)).isoformat(),
@@ -309,4 +338,5 @@ def calendar_week_payload(creator, start_date=None):
             }
             for day in days
         ],
+        "deadlines": active_deadlines,
     }

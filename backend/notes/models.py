@@ -1,5 +1,6 @@
 import os
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 
 from django.utils.translation import gettext_lazy as _
@@ -58,6 +59,73 @@ class CourseMedia(models.Model):
         return f"{self.course_id.title}: {self.title}"
 
 
+class CourseSubscription(models.Model):
+    creator_id = models.ForeignKey(
+        Creator,
+        related_name="course_subscriptions",
+        on_delete=models.CASCADE,
+        null=False,
+    )
+    course_id = models.ForeignKey(
+        Course,
+        related_name="subscriptions",
+        on_delete=models.CASCADE,
+        null=False,
+    )
+    is_active = models.BooleanField(default=True, null=False)
+    subscribed_at = models.DateTimeField(default=timezone.now, null=False)
+    last_opened_at = models.DateTimeField(blank=True, null=True)
+    date_created = models.DateTimeField(auto_now_add=True, null=False)
+    last_edit = models.DateTimeField(auto_now=True, null=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["creator_id", "course_id"],
+                name="unique_course_subscription_per_creator",
+            )
+        ]
+        ordering = ["-last_opened_at", "-subscribed_at", "-id"]
+
+    def __str__(self) -> str:
+        return f"{self.creator_id.user_id.username}:{self.course_id.title}"
+
+
+class CourseOperationTypeChoices(models.TextChoices):
+    SUBSCRIBE = "subscribe", _("Subscribe")
+    UNSUBSCRIBE = "unsubscribe", _("Unsubscribe")
+    OPEN = "open", _("Open")
+
+
+class CourseOperationLog(models.Model):
+    creator_id = models.ForeignKey(
+        Creator,
+        related_name="course_operation_logs",
+        on_delete=models.CASCADE,
+        null=False,
+    )
+    course_id = models.ForeignKey(
+        Course,
+        related_name="operation_logs",
+        on_delete=models.CASCADE,
+        null=False,
+    )
+    operation_type = models.CharField(
+        max_length=16,
+        choices=CourseOperationTypeChoices.choices,
+        null=False,
+    )
+    metadata_json = models.TextField(blank=True, default="")
+    occurred_at = models.DateTimeField(default=timezone.now, null=False)
+    date_created = models.DateTimeField(auto_now_add=True, null=False)
+
+    class Meta:
+        ordering = ["-occurred_at", "-id"]
+
+    def __str__(self) -> str:
+        return f"{self.creator_id.user_id.username}:{self.course_id.title}:{self.operation_type}"
+
+
 class PlannerEvent(models.Model):
     creator_id = models.ForeignKey(
         Creator,
@@ -78,6 +146,8 @@ class PlannerEvent(models.Model):
     ends_at = models.DateTimeField(blank=True, null=True)
     difficulty_weight = models.PositiveIntegerField(default=1, null=False)
     description = models.CharField(max_length=255, blank=True, null=True)
+    is_completed = models.BooleanField(default=False, null=False)
+    completed_at = models.DateTimeField(blank=True, null=True)
     date_created = models.DateTimeField(auto_now_add=True, null=False)
     last_edit = models.DateTimeField(auto_now=True, null=False)
 
@@ -155,6 +225,8 @@ class Note(models.Model):
     is_public = models.BooleanField(default=False, null=False)
     content = models.TextField(blank=True, default="")
     metadata_json = models.TextField(blank=True, default="")
+    client_draft_id = models.CharField(max_length=64, blank=True, null=True)
+    deleted_at = models.DateTimeField(blank=True, null=True)
     editor_mode = models.CharField(
         max_length=1,
         choices=(
@@ -168,6 +240,15 @@ class Note(models.Model):
     # last_use and date_created automatically created, for these field, create one time value to timezone.now()
     date_created=models.DateTimeField(auto_now_add=True,null=False)
     last_edit=models.DateTimeField(auto_now=True,null=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["creator_id", "client_draft_id"],
+                condition=Q(client_draft_id__isnull=False),
+                name="unique_note_client_draft_per_creator",
+            )
+        ]
 
     def __str__(self) -> str:
         return f"{self.title}, created by {self.creator_id}"

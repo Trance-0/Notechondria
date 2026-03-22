@@ -35,9 +35,10 @@ class ApiDebugSnapshot {
 /// Defines the frontend contract for all Notechondria REST operations.
 abstract class NotechondriaClient {
   Future<Map<String, dynamic>> getFrontPage({String? token});
-  Future<List<Map<String, dynamic>>> getCourses();
-  Future<List<Map<String, dynamic>>> getCourseNotes(int courseId);
-  Future<Map<String, dynamic>> getNoteDetail(int noteId);
+  Future<List<Map<String, dynamic>>> getCourses({String? token});
+  Future<Map<String, dynamic>> getCourseDetail(int courseId, {String? token});
+  Future<List<Map<String, dynamic>>> getCourseNotes(int courseId, {String? token});
+  Future<Map<String, dynamic>> getNoteDetail(int noteId, {String? token});
   Future<Map<String, dynamic>> listNotes({
     String? token,
     String query = '',
@@ -48,6 +49,10 @@ abstract class NotechondriaClient {
     String token,
     Map<String, dynamic> payload,
   );
+  Future<void> deleteNote(String token, int noteId);
+  Future<List<Map<String, dynamic>>> getDeletedNotes(String token);
+  Future<Map<String, dynamic>> restoreDeletedNote(String token, int noteId);
+  Future<Map<String, dynamic>> emptyDeletedNotes(String token);
   Future<Map<String, dynamic>> updateNote(
     String token,
     int noteId,
@@ -89,6 +94,9 @@ abstract class NotechondriaClient {
     int sessionId,
     Map<String, dynamic> payload,
   );
+  Future<Map<String, dynamic>> subscribeCourse(String token, int courseId);
+  Future<Map<String, dynamic>> unsubscribeCourse(String token, int courseId);
+  Future<Map<String, dynamic>> openCourse(String token, int courseId);
   Future<Map<String, dynamic>> register(String email, String password);
   Future<Map<String, dynamic>> verifyEmail(String email, String code);
   Future<Map<String, dynamic>> login(String email, String password);
@@ -104,6 +112,7 @@ abstract class NotechondriaClient {
     String token,
     Map<String, dynamic> payload,
   );
+  Future<Map<String, dynamic>> uploadAvatar(String token, XFile file);
   Future<List<Map<String, dynamic>>> getPlannerEvents(String token);
   Future<Map<String, dynamic>> createPlannerEvent(
     String token,
@@ -276,27 +285,42 @@ class HttpNotechondriaClient implements NotechondriaClient {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> getCourses() async {
+  Future<List<Map<String, dynamic>>> getCourses({String? token}) async {
     final uri = _uri('/courses/');
-    final response = await _httpClient.get(uri, headers: _headers());
+    final response =
+        await _httpClient.get(uri, headers: _headers(token: token));
     final data =
         await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
     return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
   @override
-  Future<List<Map<String, dynamic>>> getCourseNotes(int courseId) async {
+  Future<Map<String, dynamic>> getCourseDetail(int courseId,
+      {String? token}) async {
+    final uri = _uri('/courses/$courseId/');
+    final response =
+        await _httpClient.get(uri, headers: _headers(token: token));
+    return Map<String, dynamic>.from(
+      await _decode(response, uri: uri, method: 'GET'),
+    );
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getCourseNotes(int courseId,
+      {String? token}) async {
     final uri = _uri('/courses/$courseId/notes/');
-    final response = await _httpClient.get(uri, headers: _headers());
+    final response =
+        await _httpClient.get(uri, headers: _headers(token: token));
     final data =
         await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
     return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
   @override
-  Future<Map<String, dynamic>> getNoteDetail(int noteId) async {
+  Future<Map<String, dynamic>> getNoteDetail(int noteId, {String? token}) async {
     final uri = _uri('/notes/$noteId/');
-    final response = await _httpClient.get(uri, headers: _headers());
+    final response =
+        await _httpClient.get(uri, headers: _headers(token: token));
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'GET'),
     );
@@ -336,6 +360,47 @@ class HttpNotechondriaClient implements NotechondriaClient {
     );
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
+  Future<void> deleteNote(String token, int noteId) async {
+    final uri = _uri('/notes/$noteId/');
+    final response =
+        await _httpClient.delete(uri, headers: _headers(token: token));
+    await _decode(response, uri: uri, method: 'DELETE');
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getDeletedNotes(String token) async {
+    final uri = _uri('/notes/deleted/');
+    final response =
+        await _httpClient.get(uri, headers: _headers(token: token));
+    final data =
+        await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
+    return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+  }
+
+  @override
+  Future<Map<String, dynamic>> restoreDeletedNote(String token, int noteId) async {
+    final uri = _uri('/notes/$noteId/restore/');
+    final response = await _httpClient.post(
+      uri,
+      headers: _headers(token: token, includeJsonContentType: true),
+      body: jsonEncode({}),
+    );
+    return Map<String, dynamic>.from(
+      await _decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> emptyDeletedNotes(String token) async {
+    final uri = _uri('/notes/deleted/empty/');
+    final response =
+        await _httpClient.delete(uri, headers: _headers(token: token));
+    return Map<String, dynamic>.from(
+      await _decode(response, uri: uri, method: 'DELETE'),
     );
   }
 
@@ -515,6 +580,43 @@ class HttpNotechondriaClient implements NotechondriaClient {
   }
 
   @override
+  Future<Map<String, dynamic>> subscribeCourse(String token, int courseId) async {
+    final uri = _uri('/courses/$courseId/subscribe/');
+    final response = await _httpClient.post(
+      uri,
+      headers: _headers(token: token, includeJsonContentType: true),
+      body: jsonEncode({}),
+    );
+    return Map<String, dynamic>.from(
+      await _decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> unsubscribeCourse(
+      String token, int courseId) async {
+    final uri = _uri('/courses/$courseId/subscribe/');
+    final response =
+        await _httpClient.delete(uri, headers: _headers(token: token));
+    return Map<String, dynamic>.from(
+      await _decode(response, uri: uri, method: 'DELETE'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> openCourse(String token, int courseId) async {
+    final uri = _uri('/courses/$courseId/open/');
+    final response = await _httpClient.post(
+      uri,
+      headers: _headers(token: token, includeJsonContentType: true),
+      body: jsonEncode({}),
+    );
+    return Map<String, dynamic>.from(
+      await _decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
   Future<Map<String, dynamic>> register(String email, String password) async {
     final uri = _uri('/auth/register/');
     final response = await _httpClient.post(
@@ -612,6 +714,25 @@ class HttpNotechondriaClient implements NotechondriaClient {
       headers: _headers(token: token, includeJsonContentType: true),
       body: jsonEncode(payload),
     );
+    return Map<String, dynamic>.from(
+      await _decode(response, uri: uri, method: 'PATCH'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> uploadAvatar(String token, XFile file) async {
+    final uri = _uri('/settings/');
+    final request = http.MultipartRequest('PATCH', uri)
+      ..headers.addAll(_headers(token: token))
+      ..files.add(
+        http.MultipartFile.fromBytes(
+          'avatar',
+          await file.readAsBytes(),
+          filename: file.name,
+        ),
+      );
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'PATCH'),
     );

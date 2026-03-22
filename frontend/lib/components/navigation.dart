@@ -16,6 +16,10 @@ class _SidebarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final selectedBackground = colorScheme.primaryContainer;
+    final selectedForeground = colorScheme.onPrimaryContainer;
+    final idleForeground = colorScheme.onSurfaceVariant;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: InkWell(
@@ -24,23 +28,18 @@ class _SidebarItem extends StatelessWidget {
         child: Ink(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           decoration: BoxDecoration(
-            color: selected ? const Color(0xFFD1FAE5) : Colors.transparent,
+            color: selected ? selectedBackground : Colors.transparent,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
             children: [
-              Icon(icon,
-                  color: selected
-                      ? const Color(0xFF065F46)
-                      : const Color(0xFF374151)),
+              Icon(icon, color: selected ? selectedForeground : idleForeground),
               const SizedBox(width: 12),
               Text(
                 label,
                 style: TextStyle(
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  color: selected
-                      ? const Color(0xFF065F46)
-                      : const Color(0xFF374151),
+                  color: selected ? selectedForeground : idleForeground,
                 ),
               ),
             ],
