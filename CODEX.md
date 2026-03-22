@@ -33,6 +33,7 @@ The current project shape is:
 - Flutter frontend used as the primary user-facing app for web and desktop-style layouts.
 - Flutter frontend organized around a thin `lib/main.dart` entrypoint, shared `lib/core/` and `lib/components/`, plus per-surface modules under `lib/modules/`.
 - Deployment now includes a standalone Dockerized Flutter web frontend on `FRONTEND_HOST_PORT` and a Jenkins pipeline that tests and deploys backend/frontend in parallel after env preparation.
+- Backend deploy readiness now verifies that Django admin and DRF static assets exist in the shared nginx/app static volume before the stack is considered healthy.
 - Email/password registration with verification codes, SMTP delivery when configured, and server-log fallback when SMTP is missing or invalid.
 - Public viewing of seeded default-course materials without login.
 - Authenticated learner note creation, markdown import/export, autosave, note history snapshots, restore, note-session activity capture, planner activity, and calendar feed APIs.

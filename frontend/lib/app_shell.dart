@@ -522,6 +522,7 @@ class _AppShellState extends State<AppShell> {
   Future<Map<String, dynamic>> _createNote({
     String? markdown,
     String? title,
+    String? description,
   }) async {
     final token = _token;
     if (token == null || token.isEmpty) {
@@ -532,7 +533,7 @@ class _AppShellState extends State<AppShell> {
         (markdown ?? '# ${title ?? 'Untitled note'}\n\n').trim();
     final created = await widget.client.createNote(token, {
       'title': title ?? _extractTitleFromMarkdown(initialMarkdown),
-      'description': _excerptFromMarkdown(initialMarkdown),
+      'description': description ?? _excerptFromMarkdown(initialMarkdown),
       'content': initialMarkdown,
       'editor_mode': mode,
       'course_id': _selectedCourse?['id'],
@@ -605,7 +606,10 @@ class _AppShellState extends State<AppShell> {
       }
       final contents = await file.readAsString();
       final created = await _createNote(
-          markdown: contents, title: _extractTitleFromMarkdown(contents));
+        markdown: contents,
+        title: _extractTitleFromMarkdown(contents),
+        description: '',
+      );
       _showMessage("Imported '${created['title']}'.");
     } catch (error) {
       _showMessage(error.toString().replaceFirst('Exception: ', ''));

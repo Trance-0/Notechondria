@@ -215,15 +215,19 @@ class _LearnerPageState extends State<_LearnerPage> {
         Positioned(
           right: 24,
           bottom: 24,
-          child: GestureDetector(
-            onLongPress:
-                widget.isAuthenticated ? widget.onImportMarkdown : null,
-            onSecondaryTapDown:
-                widget.isAuthenticated ? _showComposerMenu : null,
-            child: FloatingActionButton.extended(
-              onPressed: widget.isAuthenticated ? _createAndOpenNote : null,
-              icon: const Icon(Icons.add),
-              label: const Text('Add note'),
+          child: Tooltip(
+            message: widget.isAuthenticated
+                ? 'Create note. Long press to upload local documents.'
+                : 'Sign in to create or upload notes.',
+            child: GestureDetector(
+              onLongPress:
+                  widget.isAuthenticated ? widget.onImportMarkdown : null,
+              onSecondaryTapDown:
+                  widget.isAuthenticated ? _showComposerMenu : null,
+              child: FloatingActionButton(
+                onPressed: widget.isAuthenticated ? _createAndOpenNote : null,
+                child: const Icon(Icons.add),
+              ),
             ),
           ),
         ),

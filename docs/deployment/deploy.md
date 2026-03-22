@@ -169,6 +169,7 @@ Only the host-exposed ports are configurable:
 - `DB_HOST_PORT` maps host -> `db:5432`
 
 Deployment readiness waits at most 300 seconds before failing and stopping the web containers.
+The backend entrypoint now runs `collectstatic --clear`, verifies that Django admin and DRF assets exist under `/home/staticfiles`, and the stack wait step now requires both `app` and `nginx` to report healthy before Jenkins treats the deployment as ready.
 The test stage does not use the postgres container; it runs Django tests with `settings_test` directly in an app container without the production entrypoint.
 The app service must not mount a named volume over `/home/notechondria`, because that path contains the Django code copied into the image during build.
 The Jenkins build can tag images with the current build number using `APP_IMAGE`, `NGINX_IMAGE`, and `FRONTEND_IMAGE`, for example `trancezero/notechondria:build-${BUILD_NUMBER}`.

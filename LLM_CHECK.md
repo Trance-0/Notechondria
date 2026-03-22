@@ -59,5 +59,6 @@ Use this checklist at the end of each modification round.
 - Split the oversized Flutter `main.dart` into a thin entrypoint, shared `core/` and `components/` libraries, plus dedicated `front`, `learner`, `course`, `activity`, and `settings` module files.
 - Fixed the week-activity calendar test to use a current-week iCal event instead of a stale hard-coded date, and broadened iCal datetime parsing to accept both second-level and minute-level timestamps.
 - Added standalone frontend Docker build/deploy files plus Jenkins parallel backend/frontend test and deploy stages, and extended deployment env generation with frontend/admin/SMTP variables needed by the current stack shape.
+- Hardened backend static serving so deploy readiness now depends on Django admin and DRF assets actually existing in the shared `/home/staticfiles` volume before nginx is treated as healthy.
 - Backend verification remained blocked in this environment because only the Windows Store `python.exe` shim is present and Docker daemon access is denied.
 - Flutter static verification succeeded only at the `dart format` parsing level; `dart analyze` still fails here with a Windows access-denied error while spawning `dartaotruntime.exe`.

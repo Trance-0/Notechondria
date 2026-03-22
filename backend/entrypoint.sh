@@ -56,6 +56,47 @@ mkdir -p "${PRODUCTION_MEDIA_ROOT:-/home/mediafiles}"
 python manage.py migrate
 python manage.py bootstrap_platform
 echo "Collecting static files into ${PRODUCTION_STATIC_ROOT:-/home/staticfiles}"
-python manage.py collectstatic --noinput
+python manage.py collectstatic --noinput --clear
+python - <<'PY'
+import os
+import shutil
+import sys
+from pathlib import Path
+
+import rest_framework
+from django.contrib import admin
+
+static_root = Path(os.getenv("PRODUCTION_STATIC_ROOT", "/home/staticfiles")).resolve()
+static_root.mkdir(parents=True, exist_ok=True)
+
+package_static_dirs = [
+    Path(admin.__file__).resolve().parent / "static" / "admin",
+    Path(rest_framework.__file__).resolve().parent / "static" / "rest_framework",
+]
+
+for source in package_static_dirs:
+    if not source.exists():
+        continue
+    destination = static_root / source.name
+    if destination.exists():
+        continue
+    shutil.copytree(source, destination)
+
+required_assets = [
+    static_root / "admin" / "css" / "base.css",
+    static_root / "admin" / "js" / "theme.js",
+    static_root / "rest_framework" / "css" / "bootstrap.min.css",
+    static_root / "rest_framework" / "js" / "default.js",
+]
+
+missing = [str(path) for path in required_assets if not path.exists()]
+if missing:
+    print("Static asset verification failed after collectstatic.")
+    for path in missing:
+        print(f"Missing: {path}")
+    sys.exit(1)
+
+print("Verified Django admin and DRF static assets are present.")
+PY
 
 exec "$@"

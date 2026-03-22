@@ -57,7 +57,7 @@ services:
     depends_on:
       - db
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=5)\""]
+      test: ["CMD-SHELL", "test -f /home/staticfiles/admin/css/base.css && test -f /home/staticfiles/rest_framework/css/bootstrap.min.css && python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=5)\""]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -92,5 +92,10 @@ services:
       - ${APP_HOST_PORT:-9080}:80
     depends_on:
       - app
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /home/staticfiles/admin/css/base.css && test -f /home/staticfiles/rest_framework/css/bootstrap.min.css"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
     networks:
       - notechondria-back
