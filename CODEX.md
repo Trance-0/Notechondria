@@ -62,9 +62,14 @@ This file is the current engineer handoff for the Notechondria workspace. It is 
 
 ### 3.4 Sample bootstrap
 
-- Empty-database bootstrap seeds a default course named `Vibe Coding 101`.
+- Empty-database bootstrap seeds three sample courses:
+  - `Vibe Coding 101`
+  - `Meaning of Work in Age of AI`
+  - `Self-identity and Expression in Modern Arts`
+- Bootstrap also creates a demo creator account named `CodeX` and logs the generated credentials during bootstrap.
 - Source material comes from `sample/` plus repository content such as `CODEX.md`.
 - Bootstrap logic lives under `backend/notes/management/commands/bootstrap_platform.py`.
+- Sample course metadata now lives in per-course directories under `sample/<slug>/course.json` with matching media assets in `sample/<slug>/media/`.
 - Bootstrap was hardened so missing optional sample assets should not crash the app.
 
 ### 3.5 Static, media, nginx, and startup rules
@@ -140,6 +145,7 @@ This file is the current engineer handoff for the Notechondria workspace. It is 
 - The Flutter client now tries to defend against HTML error pages being decoded as JSON by surfacing request/response debug information in the UI.
 - Local default API behavior is meant to target `http://localhost:9080/api/v1`.
 - The standalone web build also accepts `FRONTEND_API_BASE_URL`.
+- The standalone frontend container now defaults `FRONTEND_API_BASE_URL` to `/api/v1` and relies on frontend nginx to proxy `/api/`, `/admin/`, `/static/`, and `/media/` to `FRONTEND_BACKEND_ORIGIN`.
 - Imported markdown documents should leave description empty rather than copying the entire document body into the description field.
 - The learner add action should stay compact: icon-first, tooltip on hover, long-press import on supported platforms.
 - Local drafts are persisted with `shared_preferences` in `frontend/lib/core/local_store.dart`.
@@ -164,9 +170,10 @@ This file is the current engineer handoff for the Notechondria workspace. It is 
 
 - Compose file: `frontend/docker-compose.yml`
 - Docker build file: `frontend/Dockerfile`
-- Frontend web container is exposed by default on `9060` via `FRONTEND_HOST_PORT`.
+- Frontend web container is exposed by default on `9060` via `FRONTEND_HOST_PORT`, and also on `8080` via `FRONTEND_FLUTTER_HOST_PORT`.
 - The frontend container builds Flutter web and serves the built output with nginx.
-- The Dockerfile was adjusted to avoid failing on existing host/container gid collisions. It now uses numeric ownership instead of trying to create a new group with a gid that may already exist.
+- Flutter build steps run as root inside the build image because the preinstalled SDK under `/sdks/flutter` must be able to update its cache during `flutter pub get` and `flutter build web`.
+- Frontend nginx proxies `/api/`, `/admin/`, `/static/`, and `/media/` to `FRONTEND_BACKEND_ORIGIN`, while `/` serves the compiled Flutter `build/web` bundle.
 
 ### 5.3 Jenkins pipeline
 
@@ -213,6 +220,7 @@ Key env variables currently expected by the stack:
   - `APP_HOST_PORT`
   - `BACKEND_HOST_PORT`
   - `FRONTEND_HOST_PORT`
+  - `FRONTEND_FLUTTER_HOST_PORT`
   - `DB_HOST_PORT`
 - Static/media:
   - `PRODUCTION_STATIC_ROOT`
@@ -229,6 +237,7 @@ Key env variables currently expected by the stack:
   - `FRONTEND_VERIFY_URL`
 - Frontend:
   - `FRONTEND_API_BASE_URL`
+  - `FRONTEND_BACKEND_ORIGIN`
   - `FRONTEND_IMAGE`
 - Images:
   - `APP_IMAGE`

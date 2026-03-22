@@ -1,0 +1,14 @@
+{
+  "slug": "self-identity-and-expression-in-modern-arts",
+  "title": "Self-identity and Expression in Modern Arts",
+  "description": "A seeded humanities course about memory, performance, self-fashioning, and artistic expression across modern media.",
+  "cover_image": "media/self-identity-and-expression-in-modern-arts-cover.svg",
+  "media": [
+    {
+      "title": "Self-identity and Expression in Modern Arts cover",
+      "description": "Gallery-style cover art for the seeded modern arts course.",
+      "path": "media/self-identity-and-expression-in-modern-arts-cover.svg",
+      "source": "Generated from the project theme"
+    }
+  ]
+}

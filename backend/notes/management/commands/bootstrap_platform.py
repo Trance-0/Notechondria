@@ -17,7 +17,7 @@ logger = logging.getLogger("django")
 
 
 class Command(BaseCommand):
-    help = "Create env-driven admin user and seed the default sample course when the database is empty."
+    help = "Create env-driven admin user and seed the sample course catalog when the database is empty."
 
     def handle(self, *args, **options):
         self.bootstrap_admin()
@@ -48,9 +48,7 @@ class Command(BaseCommand):
             self.stdout.write("Skipping sample bootstrap because course or note data already exists.")
             return
 
-        sample_root = self.resolve_sample_root()
-        course_payload = json.loads((sample_root / "course.json").read_text(encoding="utf-8"))
-        cover_path = sample_root / course_payload["cover_image"]
+        sample_root = self.resolve_sample_base_root()
         code_source = self.resolve_codex_path().read_text(encoding="utf-8")
         owner = User.objects.filter(is_superuser=True).order_by("id").first()
         if owner is None:
@@ -85,23 +83,22 @@ class Command(BaseCommand):
         course_definitions = [
             {
                 "creator": creator,
-                "slug": course_payload["slug"],
-                "title": course_payload["title"],
-                "description": course_payload["description"],
+                "payload": self.load_course_payload(sample_root, "vibe-coding-101"),
                 "is_default": True,
                 "notes": [
                     {
                         "title": section["title"],
                         "body": section["body"],
                     }
-                    for section in split_markdown_sections(code_source, fallback_title=course_payload["title"])[:5]
+                    for section in split_markdown_sections(
+                        code_source,
+                        fallback_title="Vibe Coding 101",
+                    )[:5]
                 ],
             },
             {
                 "creator": demo_creator,
-                "slug": "meaning-of-work-in-age-of-ai",
-                "title": "Meaning of Work in Age of AI",
-                "description": "A sample seminar course about labor, purpose, and changing human contribution in AI-shaped economies.",
+                "payload": self.load_course_payload(sample_root, "meaning-of-work-in-age-of-ai"),
                 "is_default": False,
                 "notes": [
                     {
@@ -116,9 +113,10 @@ class Command(BaseCommand):
             },
             {
                 "creator": demo_creator,
-                "slug": "self-identity-and-expression-in-modern-arts",
-                "title": "Self-identity and Expression in Modern Arts",
-                "description": "A sample humanities course about identity, performance, memory, and medium in modern artistic practice.",
+                "payload": self.load_course_payload(
+                    sample_root,
+                    "self-identity-and-expression-in-modern-arts",
+                ),
                 "is_default": False,
                 "notes": [
                     {
@@ -134,23 +132,18 @@ class Command(BaseCommand):
         ]
 
         for definition in course_definitions:
+            payload = definition["payload"]
+            course_root = sample_root / payload["slug"]
             course = Course.objects.create(
                 creator_id=definition["creator"],
-                slug=definition["slug"],
-                title=definition["title"],
-                description=definition["description"],
+                slug=payload["slug"],
+                title=payload["title"],
+                description=payload.get("description"),
                 is_default=definition["is_default"],
             )
-            self.attach_course_cover(course, cover_path)
-            media = CourseMedia.objects.create(
-                course_id=course,
-                title=f"{course.title} cover",
-                description=f"Preview image for {course.title}.",
-                source="Seeded sample media",
-            )
-            if cover_path.exists():
-                with cover_path.open("rb") as media_file:
-                    media.image.save(cover_path.name, File(media_file), save=True)
+            cover_image = payload.get("cover_image")
+            self.attach_course_cover(course, course_root / cover_image if cover_image else None)
+            self.attach_course_media(course, course_root, payload)
             for note_payload in definition["notes"]:
                 self.create_seed_note(
                     creator=definition["creator"],
@@ -169,18 +162,25 @@ class Command(BaseCommand):
         return os.getenv(name, default)
 
     @staticmethod
-    def resolve_sample_root():
+    def resolve_sample_base_root():
         candidates = [
-            settings.BASE_DIR.parent / "sample" / "vibe-coding-101",
-            settings.BASE_DIR / "sample" / "vibe-coding-101",
-            settings.BASE_DIR.parent.parent / "sample" / "vibe-coding-101",
+            settings.BASE_DIR.parent / "sample",
+            settings.BASE_DIR / "sample",
+            settings.BASE_DIR.parent.parent / "sample",
         ]
         for candidate in candidates:
-            if (candidate / "course.json").exists():
+            if (candidate / "vibe-coding-101" / "course.json").exists():
                 return candidate
         raise FileNotFoundError(
             "Could not find sample/vibe-coding-101/course.json in expected runtime locations."
         )
+
+    @staticmethod
+    def load_course_payload(sample_root, slug: str):
+        course_path = sample_root / slug / "course.json"
+        if not course_path.exists():
+            raise FileNotFoundError(f"Could not find {course_path}.")
+        return json.loads(course_path.read_text(encoding="utf-8"))
 
     @staticmethod
     def resolve_codex_path():
@@ -198,11 +198,42 @@ class Command(BaseCommand):
         raise FileNotFoundError("Could not find CODEX.md in expected runtime locations.")
 
     def attach_course_cover(self, course: Course, cover_path):
-        if cover_path.exists():
+        if cover_path and cover_path.is_file():
             with cover_path.open("rb") as cover_file:
                 course.cover_image.save(cover_path.name, File(cover_file), save=True)
         else:
             logger.warning("Sample course cover not found at %s. Continuing without cover image.", cover_path)
+
+    def attach_course_media(self, course: Course, course_root, payload: dict):
+        media_items = payload.get("media") or []
+        if not media_items and payload.get("cover_image"):
+            media_items = [
+                {
+                    "title": f"{course.title} cover",
+                    "description": f"Preview image for {course.title}.",
+                    "path": payload["cover_image"],
+                    "source": "Seeded sample media",
+                }
+            ]
+
+        for media_payload in media_items:
+            media = CourseMedia.objects.create(
+                course_id=course,
+                title=media_payload.get("title") or f"{course.title} media",
+                description=media_payload.get("description"),
+                source=media_payload.get("source"),
+            )
+            media_ref = media_payload.get("path")
+            media_path = course_root / media_ref if media_ref else None
+            if media_path and media_path.is_file():
+                with media_path.open("rb") as media_file:
+                    media.image.save(media_path.name, File(media_file), save=True)
+            else:
+                logger.warning(
+                    "Sample course media not found at %s. Continuing without image for '%s'.",
+                    media_path,
+                    media.title,
+                )
 
     def create_seed_note(self, creator, course: Course, title: str, body: str):
         markdown_body = f"# {title}\n\n{body}".strip()

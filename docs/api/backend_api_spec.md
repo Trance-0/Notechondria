@@ -47,9 +47,10 @@ Authentication uses DRF token auth.
 On startup the backend runs `python manage.py bootstrap_platform`, which:
 
 - creates or updates the env-driven Django admin user
-- seeds `Vibe Coding 101` if the database is empty
-- builds the default course notes from `CODEX.md`
-- loads media metadata from the repository `sample/` directory
+- seeds three sample courses if the database is empty
+- creates a demo creator account named `CodeX` and logs the generated credentials
+- builds the default `Vibe Coding 101` notes from `CODEX.md`
+- loads per-course media metadata from the repository `sample/<slug>/` directories
 
 ## Example requests
 
