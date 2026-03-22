@@ -181,8 +181,10 @@ This file is the current engineer handoff for the Notechondria workspace. It is 
 - `Jenkinsfile` runs:
   - env preparation
   - database backup
-  - backend/frontend tests in parallel
-  - backend/frontend deploy in parallel
+  - an independent backend track: backend tests, then backend deploy
+  - an independent frontend track: frontend tests, then frontend deploy
+- The backend track is required.
+- The frontend track is isolated with `catchError`, so a frontend failure marks the Jenkins build unstable instead of blocking backend deployment.
 - Deployment and test helpers live under `deployment/scripts/`.
 - Important scripts:
   - `prepare_env.sh`
@@ -311,7 +313,7 @@ Continue from the current state rather than rebuilding from zero:
 - Keep public course viewing available without login.
 - Keep auth centered in Settings using compact dialog flows.
 - Keep backend/frontend deployment separate, with Dockerized backend and standalone Dockerized Flutter web frontend.
-- Preserve env-driven ports, SMTP fallback-to-log behavior, admin bootstrap, seeded sample course content, and Jenkins parallel backend/frontend test+deploy stages.
+- Preserve env-driven ports, SMTP fallback-to-log behavior, admin bootstrap, seeded sample course content, and the Jenkins split release tracks where backend can deploy even if the frontend track fails.
 - When changing the project shape, update CODEX.md and LLM_CHECK.md.
 - State clearly what you actually verified versus what you could not verify.
 ```

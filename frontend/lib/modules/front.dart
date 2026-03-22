@@ -235,81 +235,103 @@ class _CourseCarousel extends StatelessWidget {
                       child: Row(
                         children: [
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.14),
-                                    borderRadius: BorderRadius.circular(999),
-                                  ),
-                                  child: Text(
-                                    course['is_subscribed'] == true
-                                        ? 'Subscribed'
-                                        : 'Course Preview',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelLarge
-                                        ?.copyWith(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                  ),
-                                ),
-                                const SizedBox(height: 18),
-                                Text(
-                                  course['title']?.toString() ?? 'Course',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineMedium
-                                      ?.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  course['description']?.toString() ??
-                                      'Open the course to read notes and previews.',
-                                  maxLines: 4,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyLarge
-                                      ?.copyWith(
-                                        color: const Color(0xFFF8FAFC),
-                                        height: 1.45,
-                                      ),
-                                ),
-                                const Spacer(),
-                                Wrap(
-                                  spacing: 12,
-                                  runSpacing: 8,
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final compact = constraints.maxWidth < 340;
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    _CarouselMetric(
-                                      label: 'Subscribers',
-                                      value:
-                                          '${course['subscriber_count'] ?? 0}',
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: compact ? 8 : 10,
+                                        vertical: compact ? 5 : 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.14),
+                                        borderRadius:
+                                            BorderRadius.circular(999),
+                                      ),
+                                      child: Text(
+                                        course['is_subscribed'] == true
+                                            ? 'Subscribed'
+                                            : 'Course Preview',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelLarge
+                                            ?.copyWith(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                      ),
                                     ),
-                                    if ((owner['username']?.toString() ?? '')
-                                        .isNotEmpty)
-                                      _CarouselMetric(
-                                        label: 'By',
-                                        value: owner['username'].toString(),
-                                      ),
-                                    if ((course['last_opened_at']?.toString() ?? '')
-                                        .isNotEmpty)
-                                      _CarouselMetric(
-                                        label: 'Last Opened',
-                                        value: _formatCompactTimestamp(
-                                          course['last_opened_at'].toString(),
+                                    SizedBox(height: compact ? 12 : 18),
+                                    Text(
+                                      course['title']?.toString() ?? 'Course',
+                                      maxLines: compact ? 2 : 3,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: (compact
+                                              ? Theme.of(context)
+                                                  .textTheme
+                                                  .headlineSmall
+                                              : Theme.of(context)
+                                                  .textTheme
+                                                  .headlineMedium)
+                                          ?.copyWith(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                    ),
+                                    SizedBox(height: compact ? 8 : 12),
+                                    Text(
+                                      course['description']?.toString() ??
+                                          'Open the course to read notes and previews.',
+                                      maxLines: compact ? 3 : 4,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: (compact
+                                              ? Theme.of(context)
+                                                  .textTheme
+                                                  .bodyMedium
+                                              : Theme.of(context)
+                                                  .textTheme
+                                                  .bodyLarge)
+                                          ?.copyWith(
+                                            color: const Color(0xFFF8FAFC),
+                                            height: compact ? 1.3 : 1.45,
+                                          ),
+                                    ),
+                                    const Spacer(),
+                                    Wrap(
+                                      spacing: compact ? 8 : 12,
+                                      runSpacing: compact ? 6 : 8,
+                                      children: [
+                                        _CarouselMetric(
+                                          label: 'Subscribers',
+                                          value:
+                                              '${course['subscriber_count'] ?? 0}',
+                                          compact: compact,
                                         ),
-                                      ),
+                                        if ((owner['username']?.toString() ?? '')
+                                            .isNotEmpty)
+                                          _CarouselMetric(
+                                            label: 'By',
+                                            value: owner['username'].toString(),
+                                            compact: compact,
+                                          ),
+                                        if ((course['last_opened_at']?.toString() ?? '')
+                                            .isNotEmpty)
+                                          _CarouselMetric(
+                                            label: 'Last Opened',
+                                            value: _formatCompactTimestamp(
+                                              course['last_opened_at']
+                                                  .toString(),
+                                            ),
+                                            compact: compact,
+                                          ),
+                                      ],
+                                    ),
                                   ],
-                                ),
-                              ],
+                                );
+                              },
                             ),
                           ),
                           const SizedBox(width: 20),
@@ -367,10 +389,15 @@ class _CourseCarousel extends StatelessWidget {
 }
 
 class _CarouselMetric extends StatelessWidget {
-  const _CarouselMetric({required this.label, required this.value});
+  const _CarouselMetric({
+    required this.label,
+    required this.value,
+    this.compact = false,
+  });
 
   final String label;
   final String value;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -379,13 +406,21 @@ class _CarouselMetric extends StatelessWidget {
       children: [
         Text(
           label,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          style: (compact
+                  ? Theme.of(context).textTheme.labelSmall
+                  : Theme.of(context).textTheme.labelMedium)
+              ?.copyWith(
                 color: Colors.white.withOpacity(0.8),
               ),
         ),
         Text(
           value,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: (compact
+                  ? Theme.of(context).textTheme.titleSmall
+                  : Theme.of(context).textTheme.titleMedium)
+              ?.copyWith(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
               ),

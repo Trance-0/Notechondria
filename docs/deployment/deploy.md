@@ -128,8 +128,14 @@ The pipeline now runs in this order:
 1. Checkout source.
 2. Generate `${WORKSPACE}/.env.deploy` from Jenkins-injected environment variables.
 3. Start the `db` service and back up PostgreSQL from the database container.
-4. Run backend and frontend tests in parallel using Docker only.
-5. Build and deploy backend and frontend containers in parallel.
+4. Run the backend track: backend tests, then backend deploy.
+5. Run the frontend track independently: frontend tests, then frontend deploy.
+
+Track behavior:
+
+- The backend track is required for a green pipeline.
+- The frontend track is isolated and wrapped with `catchError`.
+- If the frontend track fails, Jenkins marks the build unstable, but the backend track can still deploy the latest backend changes for testing.
 
 The relevant files are:
 

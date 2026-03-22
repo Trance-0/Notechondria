@@ -2,6 +2,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/main.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FakeClient implements NotechondriaClient {
   FakeClient();
@@ -477,14 +478,27 @@ class FakeClient implements NotechondriaClient {
 }
 
 void main() {
-  Future<void> pumpAppReady(WidgetTester tester) async {
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 700));
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
+  Future<void> pumpUntilVisible(
+    WidgetTester tester,
+    Finder finder, {
+    int maxPumps = 80,
+    Duration step = const Duration(milliseconds: 100),
+  }) async {
+    for (var index = 0; index < maxPumps; index++) {
+      await tester.pump(step);
+      if (finder.evaluate().isNotEmpty) {
+        return;
+      }
+    }
+    fail('Timed out waiting for ${finder.description}.');
   }
 
-  Future<void> pumpTransition(WidgetTester tester) async {
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
+  Future<void> pumpAppReady(WidgetTester tester) async {
+    await pumpUntilVisible(tester, find.text('Vibe Coding 101'));
   }
 
   testWidgets('renders carousel and navigation tabs', (tester) async {
@@ -492,13 +506,25 @@ void main() {
     await pumpAppReady(tester);
 
     expect(find.text('Front Page'), findsOneWidget);
-    expect(find.text('Courses'), findsOneWidget);
     expect(find.text('Vibe Coding 101'), findsWidgets);
-    expect(find.text('Recent public notes'), findsOneWidget);
     expect(find.text('Learner'), findsOneWidget);
     expect(find.text('Course'), findsOneWidget);
     expect(find.text('Activity'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
+
+    final verticalScrollable = find.byWidgetPredicate(
+      (widget) =>
+          widget is Scrollable &&
+          (widget.axisDirection == AxisDirection.down ||
+              widget.axisDirection == AxisDirection.up),
+    );
+    await tester.scrollUntilVisible(
+      find.text('Recent public notes'),
+      240,
+      scrollable: verticalScrollable.first,
+    );
+    await tester.pump();
+    expect(find.text('Recent public notes'), findsOneWidget);
   });
 
   testWidgets('opens course note in reader dialog', (tester) async {
@@ -506,14 +532,29 @@ void main() {
     await pumpAppReady(tester);
 
     await tester.tap(find.text('Course'));
-    await pumpTransition(tester);
-    expect(find.text('Subscribed courses'), findsOneWidget);
+    await pumpUntilVisible(tester, find.text('Course previews'));
+    expect(find.text('Course previews'), findsOneWidget);
 
+    final verticalScrollable = find.byWidgetPredicate(
+      (widget) =>
+          widget is Scrollable &&
+          (widget.axisDirection == AxisDirection.down ||
+              widget.axisDirection == AxisDirection.up),
+    );
+    await tester.scrollUntilVisible(
+      find.text('Project outcome'),
+      240,
+      scrollable: verticalScrollable.first,
+    );
+    await tester.pump();
     await tester.tap(find.text('Project outcome').first);
-    await pumpTransition(tester);
+    await pumpUntilVisible(
+      tester,
+      find.textContaining('Repository layout and build order.'),
+    );
 
     expect(find.text('Project outcome'), findsWidgets);
-    expect(find.textContaining('Repository layout and build order.'), findsOneWidget);
+    expect(find.textContaining('Repository layout and build order.'), findsWidgets);
   });
 
   testWidgets('shows local draft creation affordance while signed out',
@@ -522,7 +563,7 @@ void main() {
     await pumpAppReady(tester);
 
     await tester.tap(find.text('Learner'));
-    await pumpTransition(tester);
+    await pumpUntilVisible(tester, find.text('Local drafts'));
 
     expect(find.text('Local drafts'), findsOneWidget);
     expect(find.byType(FloatingActionButton), findsOneWidget);

@@ -44,31 +44,29 @@ pipeline {
       }
     }
 
-    stage('Test') {
+    stage('Component Tracks') {
+      failFast false
       parallel {
-        stage('Backend Tests') {
-          steps {
-            sh 'bash ${TEST_SCRIPT} "${WORKSPACE}" "${WORKSPACE}/${ENV_FILE}"'
+        stage('Backend Track') {
+          stages {
+            stage('Backend Tests') {
+              steps {
+                sh 'bash ${TEST_SCRIPT} "${WORKSPACE}" "${WORKSPACE}/${ENV_FILE}"'
+              }
+            }
+            stage('Deploy Backend') {
+              steps {
+                sh 'bash ${DEPLOY_SCRIPT} "${WORKSPACE}" "${WORKSPACE}/${ENV_FILE}" "${WORKSPACE}/${WAIT_SCRIPT}" "${WAIT_TIMEOUT_SECONDS}" "${WORKSPACE}/${DB_READY_SCRIPT}"'
+              }
+            }
           }
         }
-        stage('Frontend Tests') {
+        stage('Frontend Track') {
           steps {
-            sh 'bash ${FRONTEND_TEST_SCRIPT} "${WORKSPACE}" "${WORKSPACE}/${ENV_FILE}"'
-          }
-        }
-      }
-    }
-
-    stage('Build and Deploy') {
-      parallel {
-        stage('Deploy Backend') {
-          steps {
-            sh 'bash ${DEPLOY_SCRIPT} "${WORKSPACE}" "${WORKSPACE}/${ENV_FILE}" "${WORKSPACE}/${WAIT_SCRIPT}" "${WAIT_TIMEOUT_SECONDS}" "${WORKSPACE}/${DB_READY_SCRIPT}"'
-          }
-        }
-        stage('Deploy Frontend') {
-          steps {
-            sh 'bash ${FRONTEND_DEPLOY_SCRIPT} "${WORKSPACE}" "${WORKSPACE}/${ENV_FILE}" "${WORKSPACE}/${FRONTEND_WAIT_SCRIPT}" "${WAIT_TIMEOUT_SECONDS}"'
+            catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+              sh 'bash ${FRONTEND_TEST_SCRIPT} "${WORKSPACE}" "${WORKSPACE}/${ENV_FILE}"'
+              sh 'bash ${FRONTEND_DEPLOY_SCRIPT} "${WORKSPACE}" "${WORKSPACE}/${ENV_FILE}" "${WORKSPACE}/${FRONTEND_WAIT_SCRIPT}" "${WAIT_TIMEOUT_SECONDS}"'
+            }
           }
         }
       }
@@ -79,8 +77,11 @@ pipeline {
     success {
       echo 'Deployment pipeline succeeded.'
     }
+    unstable {
+      echo 'Pipeline completed with warnings. Backend may have deployed while the frontend track failed.'
+    }
     failure {
-      echo 'Deployment pipeline failed. Check backup and test stages before retrying.'
+      echo 'Deployment pipeline failed. Check backend validation/deploy output before retrying.'
     }
   }
 }
