@@ -1,8 +1,10 @@
 import json
+import io
 import re
 from difflib import SequenceMatcher
 from datetime import datetime, timedelta, time
 
+from django.core.management import call_command
 from django.db import transaction
 from django.db.models import Q
 from django.http import JsonResponse
@@ -13,7 +15,7 @@ from rest_framework import permissions, serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from creators.utils import ensure_creator
+from creators.utils import ensure_creator, ensure_creator_avatar
 from notechondria.utils import generate_unique_id
 
 from .mark_down_parser import clean_block_string
@@ -32,6 +34,7 @@ from .models import (
     NoteBlockTypeChoices,
     NoteIndex,
     PlannerEvent,
+    RecycleBinEntry,
 )
 from .services import (
     block_word_count,
@@ -60,12 +63,22 @@ def absolute_media_url(request, raw_url: str) -> str:
         return raw_url
     if request is None:
         return raw_url
-    return request.build_absolute_uri(raw_url)
+    host = (
+        request.META.get("HTTP_X_FORWARDED_HOST")
+        or request.META.get("HTTP_HOST")
+        or request.get_host()
+    )
+    scheme = request.META.get("HTTP_X_FORWARDED_PROTO") or request.scheme
+    normalized = raw_url if raw_url.startswith("/") else f"/{raw_url}"
+    if host:
+        return f"{scheme}://{host}{normalized}"
+    return request.build_absolute_uri(normalized)
 
 
 def creator_summary_payload(creator, request):
     if creator is None:
         return None
+    creator = ensure_creator_avatar(creator)
     username = creator.user_id.username if creator.user_id_id else "unknown"
     image_url = creator.image.url if creator.image else ""
     return {
@@ -74,6 +87,13 @@ def creator_summary_payload(creator, request):
         "display_name": username,
         "image_url": absolute_media_url(request, image_url),
     }
+
+
+def deleted_note_summary_payload(entry: RecycleBinEntry, request):
+    payload = NoteSummarySerializer(entry.note_id, context={"request": request}).data
+    payload["deleted_at"] = entry.deleted_at.isoformat()
+    payload["recycle_bin_entry_id"] = entry.id
+    return payload
 
 
 def active_subscription_map(creator):
@@ -586,6 +606,7 @@ class NoteListCreateApiView(APIView):
             note.metadata_json = serializer.validated_data.get("metadata_json") or ""
             note.editor_mode = serializer.validated_data.get("editor_mode") or creator.editor_mode
             note.save()
+            RecycleBinEntry.objects.filter(creator_id=creator, note_id=note).delete()
         else:
             note = Note.objects.create(
                 creator_id=creator,
@@ -678,6 +699,22 @@ class NoteDetailApiView(APIView):
         note.deleted_at = timezone.now()
         note.is_public = False
         note.save(update_fields=["deleted_at", "is_public", "last_edit"])
+        RecycleBinEntry.objects.update_or_create(
+            creator_id=note.creator_id,
+            note_id=note,
+            defaults={
+                "item_type": "note",
+                "deleted_at": note.deleted_at,
+                "metadata_json": json.dumps(
+                    {
+                        "title": note.title,
+                        "description": note.description or "",
+                        "course_id": note.course_id_id,
+                    },
+                    sort_keys=True,
+                ),
+            },
+        )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -809,13 +846,11 @@ class DeletedNoteListApiView(APIView):
 
     def get(self, request):
         creator = ensure_creator(request.user)
-        notes = Note.objects.filter(
+        entries = RecycleBinEntry.objects.filter(
             creator_id=creator,
-            deleted_at__isnull=False,
-        ).select_related("course_id", "creator_id__user_id").order_by("-deleted_at", "-last_edit")
-        return Response(
-            NoteSummarySerializer(notes, many=True, context={"request": request}).data
-        )
+            note_id__deleted_at__isnull=False,
+        ).select_related("note_id__course_id", "note_id__creator_id__user_id")
+        return Response([deleted_note_summary_payload(entry, request) for entry in entries])
 
 
 class DeletedNoteRestoreApiView(APIView):
@@ -826,6 +861,7 @@ class DeletedNoteRestoreApiView(APIView):
         note = get_object_or_404(Note, pk=note_id, creator_id=creator, deleted_at__isnull=False)
         note.deleted_at = None
         note.save(update_fields=["deleted_at", "last_edit"])
+        RecycleBinEntry.objects.filter(creator_id=creator, note_id=note).delete()
         return Response(NoteDetailSerializer(note, context={"request": request}).data)
 
 
@@ -834,13 +870,46 @@ class DeletedNoteEmptyApiView(APIView):
 
     def delete(self, request):
         creator = ensure_creator(request.user)
-        deleted_notes = Note.objects.filter(creator_id=creator, deleted_at__isnull=False)
-        deleted_count = deleted_notes.count()
+        deleted_entries = RecycleBinEntry.objects.filter(
+            creator_id=creator,
+            note_id__deleted_at__isnull=False,
+        )
+        deleted_note_ids = list(deleted_entries.values_list("note_id_id", flat=True))
+        deleted_count = len(deleted_note_ids)
+        deleted_entries.delete()
+        deleted_notes = Note.objects.filter(id__in=deleted_note_ids)
         deleted_notes.delete()
         return Response({
             "count": deleted_count,
             "deleted_count": deleted_count,
         })
+
+
+class TemplateCourseRestoreApiView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        buffer = io.StringIO()
+        call_command("bootstrap_platform", stdout=buffer)
+        creator = ensure_creator(request.user)
+        subscription_map = active_subscription_map(creator)
+        courses = list(
+            Course.objects.select_related("creator_id__user_id")
+            .prefetch_related("media_items")
+            .all()
+        )
+        courses.sort(key=lambda course: course_sort_key(course, subscription_map))
+        return Response(
+            {
+                "message": "Template courses restored.",
+                "log": buffer.getvalue(),
+                "courses": CourseSerializer(
+                    courses,
+                    many=True,
+                    context={"request": request, "subscription_map": subscription_map},
+                ).data,
+            }
+        )
 
 
 class CourseSubscribeApiView(APIView):

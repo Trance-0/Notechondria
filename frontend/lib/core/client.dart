@@ -97,6 +97,7 @@ abstract class NotechondriaClient {
   Future<Map<String, dynamic>> subscribeCourse(String token, int courseId);
   Future<Map<String, dynamic>> unsubscribeCourse(String token, int courseId);
   Future<Map<String, dynamic>> openCourse(String token, int courseId);
+  Future<Map<String, dynamic>> restoreTemplateCourses(String token);
   Future<Map<String, dynamic>> register(String email, String password);
   Future<Map<String, dynamic>> verifyEmail(String email, String code);
   Future<Map<String, dynamic>> login(String email, String password);
@@ -606,6 +607,19 @@ class HttpNotechondriaClient implements NotechondriaClient {
   @override
   Future<Map<String, dynamic>> openCourse(String token, int courseId) async {
     final uri = _uri('/courses/$courseId/open/');
+    final response = await _httpClient.post(
+      uri,
+      headers: _headers(token: token, includeJsonContentType: true),
+      body: jsonEncode({}),
+    );
+    return Map<String, dynamic>.from(
+      await _decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> restoreTemplateCourses(String token) async {
+    final uri = _uri('/admin/template-courses/restore/');
     final response = await _httpClient.post(
       uri,
       headers: _headers(token: token, includeJsonContentType: true),

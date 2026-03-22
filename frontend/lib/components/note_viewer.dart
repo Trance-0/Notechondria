@@ -28,7 +28,8 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
     final subtitleParts = <String>[
       if ((author['username']?.toString() ?? '').isNotEmpty)
         author['username'].toString(),
-      if ((course['title']?.toString() ?? '').isNotEmpty) course['title'].toString(),
+      if ((course['title']?.toString() ?? '').isNotEmpty)
+        course['title'].toString(),
       if ((note['last_edit']?.toString() ?? '').isNotEmpty)
         _formatCompactTimestamp(note['last_edit'].toString()),
     ];
@@ -55,13 +56,14 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
                           if (subtitleParts.isNotEmpty) ...[
                             const SizedBox(height: 4),
                             Text(
-                              subtitleParts.join(' • '),
+                              subtitleParts.join(' | '),
                               style: Theme.of(context)
                                   .textTheme
                                   .bodySmall
                                   ?.copyWith(
-                                    color:
-                                        Theme.of(context).colorScheme.onSurfaceVariant,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
                                   ),
                             ),
                           ],
@@ -78,19 +80,30 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
               Expanded(
                 child: Card(
                   margin: const EdgeInsets.all(20),
-                  child: Scrollbar(
-                    controller: _scrollController,
-                    thumbVisibility: true,
-                    child: SingleChildScrollView(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.all(16),
-                      child: MarkdownBody(
-                        data: content,
-                        selectable: true,
-                        builders: _markdownBuilders(),
-                        inlineSyntaxes: _markdownInlineSyntaxes(),
-                      ),
-                    ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Scrollbar(
+                        controller: _scrollController,
+                        thumbVisibility: true,
+                        child: SingleChildScrollView(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.all(16),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minWidth: constraints.maxWidth > 32
+                                  ? constraints.maxWidth - 32
+                                  : constraints.maxWidth,
+                            ),
+                            child: MarkdownBody(
+                              data: content,
+                              selectable: true,
+                              builders: _markdownBuilders(),
+                              inlineSyntaxes: _markdownInlineSyntaxes(),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),

@@ -13,6 +13,7 @@ from rest_framework.views import APIView
 from .models import VerificationChoices, VerificationCode
 from .utils import (
     ensure_creator,
+    ensure_creator_avatar,
     issue_password_reset_code,
     issue_registration_code,
     send_password_reset_email,
@@ -27,7 +28,16 @@ def absolute_media_url(request, raw_url: str) -> str:
         return raw_url
     if request is None:
         return raw_url
-    return request.build_absolute_uri(raw_url)
+    host = (
+        request.META.get("HTTP_X_FORWARDED_HOST")
+        or request.META.get("HTTP_HOST")
+        or request.get_host()
+    )
+    scheme = request.META.get("HTTP_X_FORWARDED_PROTO") or request.scheme
+    normalized = raw_url if raw_url.startswith("/") else f"/{raw_url}"
+    if host:
+        return f"{scheme}://{host}{normalized}"
+    return request.build_absolute_uri(normalized)
 
 
 def creator_app_settings_payload(creator):
@@ -48,7 +58,7 @@ def creator_app_settings_payload(creator):
 
 def auth_payload(user: User, request=None):
     token, _ = Token.objects.get_or_create(user=user)
-    creator = ensure_creator(user)
+    creator = ensure_creator_avatar(ensure_creator(user))
     return {
         "token": token.key,
         "user": {
@@ -56,6 +66,8 @@ def auth_payload(user: User, request=None):
             "email": user.email,
             "username": user.username,
             "display_name": user.username,
+            "is_staff": user.is_staff,
+            "is_superuser": user.is_superuser,
             "motto": creator.motto or "",
             "social_link": creator.social_link or "",
             "image_url": absolute_media_url(request, creator.image.url if creator.image else ""),
@@ -193,6 +205,8 @@ class SettingsSerializer(serializers.Serializer):
         return {
             "username": instance.user_id.username,
             "email": instance.user_id.email,
+            "is_staff": instance.user_id.is_staff,
+            "is_superuser": instance.user_id.is_superuser,
             "motto": instance.motto or "",
             "social_link": instance.social_link or "",
             "image_url": absolute_media_url(request, instance.image.url if instance.image else ""),
@@ -221,10 +235,15 @@ class SettingsSerializer(serializers.Serializer):
         return value.lower()
 
     def validate_api_base_url(self, value):
-        parsed = urlparse(value.strip())
+        normalized = value.strip()
+        if normalized.startswith("/"):
+            return normalized
+        parsed = urlparse(normalized)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-            raise serializers.ValidationError("Use a full http:// or https:// API base URL.")
-        return value.strip()
+            raise serializers.ValidationError(
+                "Use an app-relative path like /api/v1 or a full http:// / https:// API base URL."
+            )
+        return normalized
 
     def update(self, instance, validated_data):
         user = instance.user_id
@@ -415,11 +434,11 @@ class SettingsApiView(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
-        creator = ensure_creator(request.user)
+        creator = ensure_creator_avatar(ensure_creator(request.user))
         return Response(SettingsSerializer(creator, context={"request": request}).data)
 
     def patch(self, request):
-        creator = ensure_creator(request.user)
+        creator = ensure_creator_avatar(ensure_creator(request.user))
         serializer = SettingsSerializer(
             instance=creator,
             data=request.data,

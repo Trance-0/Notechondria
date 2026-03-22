@@ -170,7 +170,7 @@ This file is the current engineer handoff for the Notechondria workspace. It is 
 
 - Compose file: `frontend/docker-compose.yml`
 - Docker build file: `frontend/Dockerfile`
-- Frontend web container is exposed by default on `9060` via `FRONTEND_HOST_PORT`, and also on `8080` via `FRONTEND_FLUTTER_HOST_PORT`.
+- Frontend web container is exposed by default on `9060` via `FRONTEND_HOST_PORT`.
 - The frontend container builds Flutter web and serves the built output with nginx.
 - Flutter build steps now run as a non-root numeric user inside the build image.
 - The Dockerfile explicitly `chown`s `/sdks/flutter`, `/app`, and `/home/frontend` before switching users so the Flutter SDK cache remains writable without triggering the Flutter root warning.
@@ -223,7 +223,6 @@ Key env variables currently expected by the stack:
   - `APP_HOST_PORT`
   - `BACKEND_HOST_PORT`
   - `FRONTEND_HOST_PORT`
-  - `FRONTEND_FLUTTER_HOST_PORT`
   - `DB_HOST_PORT`
 - Static/media:
   - `PRODUCTION_STATIC_ROOT`

@@ -33,7 +33,7 @@ DJANGO_SECRET_KEY=replace-with-real-secret
 DJANGO_DEBUG=False
 DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,app.example.com
 DJANGO_ALLOWED_HOSTS_COMPOSE=localhost 127.0.0.1 app.example.com
-DJANGO_CSRF_TRUSTED_ORIGINS=http://localhost:9080,http://localhost:9060,http://localhost:8080
+DJANGO_CSRF_TRUSTED_ORIGINS=http://localhost:9080,http://localhost:9060
 DJANGO_LOG_LEVEL=INFO
 DJANGO_LOG_FILE_NAME=notechondria
 DJANGO_SUPERUSER_USERNAME=admin
@@ -42,7 +42,6 @@ DJANGO_SUPERUSER_PASSWORD=change-me
 APP_HOST_PORT=9080
 BACKEND_HOST_PORT=9090
 FRONTEND_HOST_PORT=9060
-FRONTEND_FLUTTER_HOST_PORT=8080
 DB_HOST_PORT=9032
 POSTGRE_USERNAME=postgres
 POSTGRE_PASSWORD=replace-with-real-password
@@ -87,7 +86,6 @@ Jenkins must provide at least:
 - `APP_HOST_PORT`
 - `BACKEND_HOST_PORT`
 - `FRONTEND_HOST_PORT`
-- `FRONTEND_FLUTTER_HOST_PORT`
 - `DB_HOST_PORT`
 - `POSTGRE_USERNAME`
 - `POSTGRE_PASSWORD`
@@ -175,7 +173,6 @@ Only the host-exposed ports are configurable:
 - `APP_HOST_PORT` maps host -> `nginx:80`
 - `BACKEND_HOST_PORT` maps host -> `app:8000`
 - `FRONTEND_HOST_PORT` maps host -> `frontend:80`
-- `FRONTEND_FLUTTER_HOST_PORT` maps host -> `frontend:80`
 - `DB_HOST_PORT` maps host -> `db:5432`
 
 Deployment readiness waits at most 300 seconds before failing and stopping the web containers.
@@ -227,7 +224,7 @@ cd frontend
 docker compose --env-file ../.env up --build -d
 ```
 
-The frontend container builds Flutter web with `FRONTEND_API_BASE_URL`, serves the resulting static site through nginx on `FRONTEND_HOST_PORT` and `FRONTEND_FLUTTER_HOST_PORT`, and proxies `/api`, `/admin`, `/static`, and `/media` to `FRONTEND_BACKEND_ORIGIN`.
+The frontend container builds Flutter web with `FRONTEND_API_BASE_URL`, serves the resulting static site through nginx on `FRONTEND_HOST_PORT`, and proxies `/api`, `/admin`, `/static`, and `/media` to `FRONTEND_BACKEND_ORIGIN`.
 
 ## 7) Test deployment template
 

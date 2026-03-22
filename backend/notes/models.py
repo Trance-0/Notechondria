@@ -254,6 +254,47 @@ class Note(models.Model):
         return f"{self.title}, created by {self.creator_id}"
 
 
+class RecycleBinItemTypeChoices(models.TextChoices):
+    NOTE = "note", _("Note")
+
+
+class RecycleBinEntry(models.Model):
+    creator_id = models.ForeignKey(
+        Creator,
+        related_name="recycle_bin_entries",
+        on_delete=models.CASCADE,
+        null=False,
+    )
+    note_id = models.ForeignKey(
+        Note,
+        related_name="recycle_bin_entries",
+        on_delete=models.CASCADE,
+        null=False,
+    )
+    item_type = models.CharField(
+        max_length=16,
+        choices=RecycleBinItemTypeChoices.choices,
+        default=RecycleBinItemTypeChoices.NOTE,
+        null=False,
+    )
+    deleted_at = models.DateTimeField(default=timezone.now, null=False)
+    metadata_json = models.TextField(blank=True, default="")
+    date_created = models.DateTimeField(auto_now_add=True, null=False)
+    last_edit = models.DateTimeField(auto_now=True, null=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["creator_id", "note_id"],
+                name="unique_recycle_bin_note_per_creator",
+            )
+        ]
+        ordering = ["-deleted_at", "-id"]
+
+    def __str__(self) -> str:
+        return f"{self.creator_id.user_id.username}:{self.item_type}:{self.note_id.title}"
+
+
 class NoteVersion(models.Model):
     note_id = models.ForeignKey(
         Note,

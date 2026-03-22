@@ -115,6 +115,8 @@ class _AppShellState extends State<AppShell> {
         icon: Icon(Icons.settings_outlined), label: 'Settings'),
   ];
 
+  bool _showWidePageHeader(int index) => index >= 3;
+
   @override
   void initState() {
     super.initState();
@@ -638,6 +640,9 @@ class _AppShellState extends State<AppShell> {
           'motto': updated['motto'],
           'social_link': updated['social_link'],
           'image_url': updated['image_url'],
+          'is_staff': updated['is_staff'] ?? _profile?['is_staff'],
+          'is_superuser':
+              updated['is_superuser'] ?? _profile?['is_superuser'],
         };
       });
       _showMessage('Settings updated.');
@@ -716,6 +721,9 @@ class _AppShellState extends State<AppShell> {
           'image_url': updated['image_url'],
           'username': updated['username'] ?? _profile?['username'],
           'email': updated['email'] ?? _profile?['email'],
+          'is_staff': updated['is_staff'] ?? _profile?['is_staff'],
+          'is_superuser':
+              updated['is_superuser'] ?? _profile?['is_superuser'],
         };
       });
       _appendUiLog('Avatar updated.');
@@ -1232,6 +1240,29 @@ class _AppShellState extends State<AppShell> {
     _showMessage('Frontend logs copied.');
   }
 
+  Future<ActionFeedback> _restoreTemplateCourses() async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      return const ActionFeedback(
+        message: 'Sign in with an admin account first.',
+        isError: true,
+      );
+    }
+    try {
+      final result = await widget.client.restoreTemplateCourses(token);
+      await _loadInitialData();
+      final message =
+          result['message']?.toString() ?? 'Template courses restored.';
+      _appendUiLog(message);
+      _showMessage(message);
+      return ActionFeedback(message: message);
+    } catch (error) {
+      final message = error.toString().replaceFirst('Exception: ', '');
+      _appendUiLog('Template restore failed: $message');
+      return ActionFeedback(message: message, isError: true);
+    }
+  }
+
   void _showMessage(String message) {
     if (!mounted) {
       return;
@@ -1383,16 +1414,19 @@ class _AppShellState extends State<AppShell> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-                    child: Text(
-                      _titles[_selectedIndex],
-                      style:
-                          Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
+                  if (_showWidePageHeader(_selectedIndex))
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                      child: Text(
+                        _titles[_selectedIndex],
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
                     ),
-                  ),
                   Expanded(child: _buildBody()),
                 ],
               ),
@@ -1436,6 +1470,7 @@ class _AppShellState extends State<AppShell> {
           apiBaseUrl: _httpClient?.baseUrl,
           onOpenNote: _openNoteViewer,
           onOpenCourse: _selectCourse,
+          onRestoreTemplateCourses: _restoreTemplateCourses,
         );
       case 1:
         return _LearnerPage(
@@ -1490,6 +1525,9 @@ class _AppShellState extends State<AppShell> {
           onSubscribeCalendar: _subscribeCalendarFeed,
           onNavigateWeek: (direction) => _loadActivityWeek(
             startDate: _activityWeekStart.add(Duration(days: direction * 7)),
+          ),
+          onShiftStartDay: (dayDelta) => _loadActivityWeek(
+            startDate: _activityWeekStart.add(Duration(days: dayDelta)),
           ),
           onTogglePlannerEventCompletion: _togglePlannerEventCompletion,
         );

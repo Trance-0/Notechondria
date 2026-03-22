@@ -8,6 +8,7 @@ class _FrontPage extends StatefulWidget {
     required this.apiBaseUrl,
     required this.onOpenNote,
     required this.onOpenCourse,
+    required this.onRestoreTemplateCourses,
   });
 
   final Map<String, dynamic> frontPage;
@@ -15,6 +16,7 @@ class _FrontPage extends StatefulWidget {
   final String? apiBaseUrl;
   final Future<void> Function(Map<String, dynamic> note) onOpenNote;
   final Future<void> Function(Map<String, dynamic> course) onOpenCourse;
+  final Future<ActionFeedback> Function() onRestoreTemplateCourses;
 
   @override
   State<_FrontPage> createState() => _FrontPageState();
@@ -107,6 +109,7 @@ class _FrontPageState extends State<_FrontPage> {
             .toList();
     final greetingName =
         widget.profile?['username']?.toString() ?? widget.profile?['email']?.toString();
+    final isAdmin = widget.profile?['is_superuser'] == true;
     final carouselCourses = _carouselCourses;
 
     return ListView(
@@ -117,8 +120,10 @@ class _FrontPageState extends State<_FrontPage> {
           pageController: _pageController,
           currentPage: _currentPage,
           apiBaseUrl: widget.apiBaseUrl,
+          showRestoreButton: isAdmin,
           onPageChanged: (index) => setState(() => _currentPage = index),
           onOpenCourse: widget.onOpenCourse,
+          onRestoreTemplateCourses: widget.onRestoreTemplateCourses,
         ),
         if (greetingName != null && greetingName.isNotEmpty) ...[
           const SizedBox(height: 20),
@@ -169,16 +174,20 @@ class _CourseCarousel extends StatelessWidget {
     required this.pageController,
     required this.currentPage,
     required this.apiBaseUrl,
+    required this.showRestoreButton,
     required this.onPageChanged,
     required this.onOpenCourse,
+    required this.onRestoreTemplateCourses,
   });
 
   final List<Map<String, dynamic>> courses;
   final PageController pageController;
   final int currentPage;
   final String? apiBaseUrl;
+  final bool showRestoreButton;
   final ValueChanged<int> onPageChanged;
   final Future<void> Function(Map<String, dynamic> course) onOpenCourse;
+  final Future<ActionFeedback> Function() onRestoreTemplateCourses;
 
   @override
   Widget build(BuildContext context) {
@@ -188,14 +197,25 @@ class _CourseCarousel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Courses',
-          style: Theme.of(context)
-              .textTheme
-              .titleLarge
-              ?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 12),
+        if (showRestoreButton)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () async {
+                  final feedback = await onRestoreTemplateCourses();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(feedback.message)),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.restart_alt_outlined),
+                label: const Text('Restore templates'),
+              ),
+            ),
+          ),
         SizedBox(
           height: 320,
           child: PageView.builder(
@@ -457,8 +477,12 @@ class _FrontNoteCard extends StatelessWidget {
     final subtitleParts = <String>[
       if ((course['title']?.toString() ?? '').isNotEmpty) course['title'].toString(),
     ];
+    final theme = Theme.of(context);
     return Card(
       elevation: 0,
+      color: theme.brightness == Brightness.dark
+          ? theme.colorScheme.surfaceVariant.withOpacity(0.42)
+          : theme.colorScheme.surfaceVariant.withOpacity(0.22),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
@@ -469,15 +493,10 @@ class _FrontNoteCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  CircleAvatar(
+                  _RemoteAvatar(
                     radius: 18,
-                    backgroundImage:
-                        avatarUrl.isEmpty ? null : NetworkImage(avatarUrl),
-                    child: avatarUrl.isEmpty
-                        ? Text(
-                            avatarFallback.toUpperCase(),
-                          )
-                        : null,
+                    imageUrl: avatarUrl,
+                    fallbackLabel: avatarFallback,
                   ),
                   const SizedBox(width: 10),
                   Expanded(

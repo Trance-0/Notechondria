@@ -112,11 +112,18 @@ String _formatTime(DateTime value) {
 String _apiOrigin(String? baseUrl) {
   final candidate = (baseUrl ?? '').trim();
   if (candidate.isEmpty) {
-    return '';
+    return Uri.base.hasScheme && Uri.base.host.isNotEmpty ? Uri.base.origin : '';
   }
   final parsed = Uri.tryParse(candidate);
-  if (parsed == null || !parsed.hasScheme || parsed.host.isEmpty) {
-    return '';
+  if (parsed == null) {
+    return Uri.base.hasScheme && Uri.base.host.isNotEmpty ? Uri.base.origin : '';
+  }
+  if (!parsed.hasScheme || parsed.host.isEmpty) {
+    return candidate.startsWith('/') &&
+            Uri.base.hasScheme &&
+            Uri.base.host.isNotEmpty
+        ? Uri.base.origin
+        : '';
   }
   return parsed.replace(path: '', query: '', fragment: '').toString().replaceAll(RegExp(r'/$'), '');
 }
@@ -127,16 +134,28 @@ String _resolveRemoteUrl(String raw, {String? apiBaseUrl}) {
     return '';
   }
   final parsed = Uri.tryParse(value);
+  final origin = _apiOrigin(apiBaseUrl);
+  final originUri = origin.isEmpty ? null : Uri.tryParse(origin);
   if (parsed != null && (parsed.scheme == 'http' || parsed.scheme == 'https')) {
+    if (originUri != null &&
+        parsed.host == originUri.host &&
+        !parsed.hasPort &&
+        originUri.hasPort) {
+      final defaultPort = parsed.scheme == 'https' ? 443 : 80;
+      if (originUri.port != defaultPort) {
+        return parsed.replace(port: originUri.port).toString();
+      }
+    }
     return value;
   }
   var normalized = value;
   if (parsed != null && parsed.scheme == 'file' && parsed.host.isEmpty) {
     normalized = parsed.path;
   }
-  final origin = _apiOrigin(apiBaseUrl);
   if (origin.isEmpty) {
-    return normalized;
+    return normalized.startsWith('/media/') || normalized.startsWith('/static/')
+        ? normalized
+        : '';
   }
   if (normalized.startsWith('/')) {
     return '$origin$normalized';

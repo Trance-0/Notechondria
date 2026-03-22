@@ -38,6 +38,7 @@ from notes.api import (
     PlannerEventListCreateApiView,
     ReorderBlocksApiView,
     SingleBlockApiView,
+    TemplateCourseRestoreApiView,
 )
 
 
@@ -57,6 +58,7 @@ urlpatterns = [
     path("courses/<int:course_id>/notes/", CourseNotesApiView.as_view(), name="course-notes"),
     path("courses/<int:course_id>/subscribe/", CourseSubscribeApiView.as_view(), name="course-subscribe"),
     path("courses/<int:course_id>/open/", CourseOpenApiView.as_view(), name="course-open"),
+    path("admin/template-courses/restore/", TemplateCourseRestoreApiView.as_view(), name="template-course-restore"),
     path("notes/", NoteListCreateApiView.as_view(), name="note-list-create"),
     path("notes/deleted/", DeletedNoteListApiView.as_view(), name="deleted-note-list"),
     path("notes/deleted/empty/", DeletedNoteEmptyApiView.as_view(), name="deleted-note-empty"),

@@ -6,17 +6,20 @@ import regex as re
 from .models import Note, NoteBlock, NoteIndex, NoteBlockTypeChoices
 from creators.models import Creator
 
+SINGLE_LINE_BLOCKS = [
+    NoteBlockTypeChoices.TITLE,
+    NoteBlockTypeChoices.URL,
+    NoteBlockTypeChoices.SUBTITLE,
+    NoteBlockTypeChoices.IMAGES,
+]
+
+
 class BlockGenerator:
     """custom generator for each block type 
     """
     
     # rules for rendering single line blocks
-    __single_line_blocks = [
-        NoteBlockTypeChoices.TITLE,
-        NoteBlockTypeChoices.URL,
-        NoteBlockTypeChoices.SUBTITLE,
-        NoteBlockTypeChoices.IMAGES,
-    ]
+    __single_line_blocks = SINGLE_LINE_BLOCKS
 
     # house rule for markdown regex matching, the order matters
     __md_rules = {
@@ -68,7 +71,7 @@ class BlockGenerator:
 
 def clean_block_string(md_str: str, block_type: NoteBlockTypeChoices):
     # single line blocks
-    if block_type in single_line_blocks:
+    if block_type in SINGLE_LINE_BLOCKS:
         return re.sub(r"([\r\n]+)", r" ", md_str)
     else:
         return re.sub(r"([\r\n]{2,})", r"\n", md_str)

@@ -10,6 +10,7 @@ Use this checklist at the end of each modification round.
 4. Leaving visible text encoding artifacts in UI copy.
 5. Reporting success without clearly separating verified work from unverified work.
 6. Expanding scope without checking whether there were already user changes in the worktree.
+7. Assuming a host port such as `80`, `443`, `8080`, or any other port is free without first confirming it on the target machine; you do not know the host machine state, so never assign host ports on assumption.
 
 ## Round-end checklist
 
@@ -21,6 +22,7 @@ Use this checklist at the end of each modification round.
 - Confirm UI strings are plain, intentional, and free of mojibake or placeholder artifacts.
 - Confirm `.gitignore` ignores local junk without hiding required tracked source files.
 - Confirm no unrelated user changes were reverted.
+- Confirm every host port assignment was explicitly verified for the target machine instead of assuming a common port is available; you have no knowledge of host port availability until it is checked.
 
 ## Current round log
 
@@ -68,7 +70,7 @@ Use this checklist at the end of each modification round.
 - Updated backend tests for auth-only notes, recycle bin flows, client-draft idempotency, course subscription/open ordering, planner completion filtering, and creator app-settings mirror responses.
 - Fixed two follow-up CI failures by returning `count` from the recycle-bin empty endpoint and marking `/sdks/flutter` as a Git safe directory inside the frontend Docker build before `flutter pub get`.
 - Changed the frontend Docker build back to a non-root user and explicitly granted that user ownership of `/sdks/flutter`, `/app`, and `/home/frontend` so Flutter can update its cache without the root warning or the earlier `engine.stamp` permission failure.
-- Added frontend nginx proxying for `/api`, `/admin`, `/static`, and `/media`, plus an extra host port (`FRONTEND_FLUTTER_HOST_PORT=8080`) so the standalone frontend can be reached on both the project port and a standard Flutter-style web port.
+- Removed the extra frontend host-port mapping and standardized the standalone frontend back onto `FRONTEND_HOST_PORT=9060`; do not assume ports like `8080`, `80`, or `443` are unused on an unknown host.
 - Added real sample directories and cover metadata for `meaning-of-work-in-age-of-ai` and `self-identity-and-expression-in-modern-arts`, and updated bootstrap to load each course from `sample/<slug>/course.json`.
 - Fixed a Flutter null-safety compile break in `frontend/lib/app_shell.dart` by separating local-draft saves from authenticated cloud-note saves before calling `updateNote(...)`.
 - Fixed Flutter widget-test timeouts caused by the 30-second front-page carousel timer by disabling auto-slide under test bindings and making `widget_test.dart` use bounded pumps instead of `pumpAndSettle()`.

@@ -22,6 +22,7 @@ from .models import (
     NoteBlockTypeChoices,
     NoteVersion,
     PlannerEvent,
+    RecycleBinEntry,
 )
 from .services import parse_ical_datetime
 
@@ -352,6 +353,10 @@ class HeatmapApiTests(TestCase):
         self.assertEqual(delete_response.status_code, 204)
         note.refresh_from_db()
         self.assertIsNotNone(note.deleted_at)
+        self.assertEqual(
+            RecycleBinEntry.objects.filter(creator_id=self.creator, note_id=note).count(),
+            1,
+        )
 
         deleted_response = self.client.get(
             '/api/v1/notes/deleted/',
@@ -369,6 +374,9 @@ class HeatmapApiTests(TestCase):
         self.assertEqual(restore_response.status_code, 200)
         note.refresh_from_db()
         self.assertIsNone(note.deleted_at)
+        self.assertFalse(
+            RecycleBinEntry.objects.filter(creator_id=self.creator, note_id=note).exists()
+        )
 
         self.client.delete(f'/api/v1/notes/{note.id}/', **self._auth_headers())
         empty_response = self.client.delete(
@@ -378,6 +386,7 @@ class HeatmapApiTests(TestCase):
         self.assertEqual(empty_response.status_code, 200)
         self.assertEqual(empty_response.json()['count'], 1)
         self.assertFalse(Note.objects.filter(id=note.id).exists())
+        self.assertFalse(RecycleBinEntry.objects.filter(creator_id=self.creator).exists())
 
     def test_note_create_is_idempotent_for_client_draft_id(self):
         payload = {
@@ -516,6 +525,37 @@ class HeatmapApiTests(TestCase):
         )
         self.assertEqual(week_response.status_code, 200)
         self.assertEqual(week_response.json()['deadlines'], [])
+
+    def test_admin_can_restore_template_courses_into_partial_catalog(self):
+        Course.objects.filter(id=self.course.id).delete()
+        Note.objects.filter(creator_id=self.creator).delete()
+        existing = Course.objects.create(
+            creator_id=self.creator,
+            slug='vibe-coding-101',
+            title='Vibe Coding 101',
+        )
+        admin = User.objects.create_user(
+            username='admin-restorer',
+            email='admin-restorer@example.com',
+            password='pw',
+            is_active=True,
+            is_staff=True,
+            is_superuser=True,
+        )
+        admin_token = Token.objects.create(user=admin)
+
+        response = self.client.post(
+            '/api/v1/admin/template-courses/restore/',
+            data=json.dumps({}),
+            content_type='application/json',
+            HTTP_AUTHORIZATION=f'Token {admin_token.key}',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        slugs = list(Course.objects.order_by('slug').values_list('slug', flat=True))
+        self.assertIn(existing.slug, slugs)
+        self.assertIn('meaning-of-work-in-age-of-ai', slugs)
+        self.assertIn('self-identity-and-expression-in-modern-arts', slugs)
 
 
 class CalendarParsingTests(TestCase):

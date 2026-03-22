@@ -39,7 +39,7 @@ class _ApiDebugSummary extends StatelessWidget {
     final theme = Theme.of(context);
     return Card(
       elevation: 0,
-      color: const Color(0xFFF3F4F6),
+      color: theme.colorScheme.surfaceVariant,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -64,8 +64,8 @@ class _ApiDebugSummary extends StatelessWidget {
                   snapshot!.note!,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: snapshot!.looksLikeHtml
-                        ? const Color(0xFFB91C1C)
-                        : const Color(0xFF92400E),
+                        ? theme.colorScheme.error
+                        : theme.colorScheme.tertiary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

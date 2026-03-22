@@ -176,6 +176,79 @@ class _SettingsPageState extends State<_SettingsPage> {
     });
   }
 
+  Future<void> _openRecycleBinDialog() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Recycle bin'),
+        content: SizedBox(
+          width: 560,
+          child: widget.deletedNotes.isEmpty
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Text('Recycle bin is empty.'),
+                )
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () async {
+                          await widget.onEmptyDeletedNotes();
+                          if (context.mounted) {
+                            Navigator.of(context).pop();
+                          }
+                        },
+                        child: const Text('Empty recycle bin'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 320,
+                      child: ListView(
+                        shrinkWrap: true,
+                        children: [
+                          for (final note in widget.deletedNotes)
+                            Card(
+                              child: ListTile(
+                                title: Text(
+                                  note['title']?.toString() ?? 'Untitled note',
+                                ),
+                                subtitle: Text(
+                                  note['description']?.toString() ??
+                                      note['excerpt']?.toString() ??
+                                      '',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                trailing: TextButton(
+                                  onPressed: () async {
+                                    await widget.onRestoreDeletedNote(note);
+                                    if (context.mounted) {
+                                      Navigator.of(context).pop();
+                                    }
+                                  },
+                                  child: const Text('Restore'),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final avatarUrl = _resolveRemoteUrl(
@@ -203,10 +276,10 @@ class _SettingsPageState extends State<_SettingsPage> {
         ] else ...[
           Row(
             children: [
-              CircleAvatar(
+              _RemoteAvatar(
                 radius: 28,
-                backgroundImage: avatarUrl.isEmpty ? null : NetworkImage(avatarUrl),
-                child: avatarUrl.isEmpty ? const Icon(Icons.person_outline) : null,
+                imageUrl: avatarUrl,
+                fallbackLabel: widget.profile?['username']?.toString() ?? '',
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -381,50 +454,26 @@ class _SettingsPageState extends State<_SettingsPage> {
               ?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
-        if (!_isAuthenticated)
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('Sign in to restore deleted cloud notes.'),
-            ),
-          )
-        else if (widget.deletedNotes.isEmpty)
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('Recycle bin is empty.'),
-            ),
-          )
-        else ...[
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () {
-                widget.onEmptyDeletedNotes();
-              },
-              child: const Text('Empty recycle bin'),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    !_isAuthenticated
+                        ? 'Sign in to manage deleted cloud notes.'
+                        : '${widget.deletedNotes.length} note(s) currently in the recycle bin.',
+                  ),
+                ),
+                OutlinedButton(
+                  onPressed: !_isAuthenticated ? null : _openRecycleBinDialog,
+                  child: const Text('Open recycle bin'),
+                ),
+              ],
             ),
           ),
-          for (final note in widget.deletedNotes)
-            Card(
-              child: ListTile(
-                title: Text(note['title']?.toString() ?? 'Untitled note'),
-                subtitle: Text(
-                  note['description']?.toString() ??
-                      note['excerpt']?.toString() ??
-                      '',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                trailing: TextButton(
-                  onPressed: () {
-                    widget.onRestoreDeletedNote(note);
-                  },
-                  child: const Text('Restore'),
-                ),
-              ),
-            ),
-        ],
+        ),
         const SizedBox(height: 24),
         Text(
           'Stats',
@@ -582,7 +631,7 @@ class _AuthHub extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 0,
-      color: const Color(0xFFF6F0E6),
+      color: Theme.of(context).colorScheme.surfaceVariant,
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(

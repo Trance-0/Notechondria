@@ -12,6 +12,7 @@ from .models import (
     NoteBlock,
     NoteIndex,
     PlannerEvent,
+    RecycleBinEntry,
     Tag,
     ValidationRecord,
 )
@@ -41,6 +42,7 @@ admin.site.register(CourseMedia)
 admin.site.register(CourseSubscription)
 admin.site.register(CourseOperationLog)
 admin.site.register(PlannerEvent)
+admin.site.register(RecycleBinEntry)
 admin.site.register(HeatmapActivity)
 admin.site.register(NoteBlock)
 admin.site.register(NoteIndex)

@@ -373,6 +373,8 @@ class _LearnerPageState extends State<_LearnerPage> {
               },
               onSecondaryTapDown: _showComposerMenu,
               child: FloatingActionButton(
+                key: const Key('learner-add-note-fab'),
+                shape: const CircleBorder(),
                 onPressed: _createAndOpenNote,
                 child: const Icon(Icons.add),
               ),
@@ -429,7 +431,15 @@ class _LearnerNoteCard extends StatelessWidget {
       color: isLocalDraft
           ? Theme.of(context).colorScheme.surfaceVariant
           : (isPublic
-              ? const Color(0xFFF4FAFF)
+              ? Theme.of(context).brightness == Brightness.dark
+                  ? Theme.of(context)
+                      .colorScheme
+                      .secondaryContainer
+                      .withOpacity(0.34)
+                  : Theme.of(context)
+                      .colorScheme
+                      .secondaryContainer
+                      .withOpacity(0.42)
               : Theme.of(context).colorScheme.surface),
       child: InkWell(
         onTap: onOpen,
@@ -442,15 +452,10 @@ class _LearnerNoteCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircleAvatar(
+                  _RemoteAvatar(
                     radius: 18,
-                    backgroundImage:
-                        avatarUrl.isEmpty ? null : NetworkImage(avatarUrl),
-                    child: avatarUrl.isEmpty
-                        ? Text(
-                            avatarFallback.toUpperCase(),
-                          )
-                        : null,
+                    imageUrl: avatarUrl,
+                    fallbackLabel: avatarFallback,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -478,7 +483,7 @@ class _LearnerNoteCard extends StatelessWidget {
                             _formatCompactTimestamp(
                               note['last_edit']?.toString() ?? '',
                             ),
-                          ].join(' • '),
+                          ].join(' | '),
                           style:
                               Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: Theme.of(context)
@@ -984,7 +989,14 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                 child: Card(
                   margin: const EdgeInsets.only(bottom: 12),
                   color: _activeBlockIndex == index
-                      ? const Color(0xFFE0F2FE)
+                      ? Theme.of(context)
+                          .colorScheme
+                          .primaryContainer
+                          .withOpacity(
+                            Theme.of(context).brightness == Brightness.dark
+                                ? 0.44
+                                : 0.72,
+                          )
                       : null,
                   child: Padding(
                     padding: const EdgeInsets.all(12),
@@ -1049,11 +1061,22 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
         child: SingleChildScrollView(
           controller: _previewScrollController,
           padding: const EdgeInsets.all(16),
-          child: MarkdownBody(
-            data: _previewMarkdown(),
-            selectable: true,
-            builders: _markdownBuilders(),
-            inlineSyntaxes: _markdownInlineSyntaxes(),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return ConstrainedBox(
+                constraints: BoxConstraints(
+                  minWidth: constraints.maxWidth > 32
+                      ? constraints.maxWidth - 32
+                      : constraints.maxWidth,
+                ),
+                child: MarkdownBody(
+                  data: _previewMarkdown(),
+                  selectable: true,
+                  builders: _markdownBuilders(),
+                  inlineSyntaxes: _markdownInlineSyntaxes(),
+                ),
+              );
+            },
           ),
         ),
       ),
@@ -1096,22 +1119,24 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                     ),
                   ),
                   SizedBox(
-                    width: 210,
-                    child: Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        for (final mode in const ['P', 'G', 'B'])
-                          ChoiceChip(
-                            label: Text(
-                              mode == 'P'
-                                  ? 'Plain'
-                                  : (mode == 'G' ? 'Preview' : 'Blocks'),
-                            ),
-                            selected: _editorMode == mode,
-                            onSelected: (_) => _setEditorMode(mode),
-                          ),
+                    width: 190,
+                    child: DropdownButtonFormField<String>(
+                      value: _editorMode,
+                      items: const [
+                        DropdownMenuItem(value: 'P', child: Text('Plain')),
+                        DropdownMenuItem(value: 'G', child: Text('Preview')),
+                        DropdownMenuItem(value: 'B', child: Text('Blocks')),
                       ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          _setEditorMode(value);
+                        }
+                      },
+                      decoration: const InputDecoration(
+                        labelText: 'Editor mode',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),

@@ -44,10 +44,6 @@ class Command(BaseCommand):
         self.stdout.write(f"{'Created' if created else 'Updated'} admin user '{username}'.")
 
     def bootstrap_sample_content(self):
-        if Course.objects.exists() or Note.objects.exists():
-            self.stdout.write("Skipping sample bootstrap because course or note data already exists.")
-            return
-
         sample_root = self.resolve_sample_base_root()
         code_source = self.resolve_codex_path().read_text(encoding="utf-8")
         owner = User.objects.filter(is_superuser=True).order_by("id").first()
@@ -64,21 +60,35 @@ class Command(BaseCommand):
         creator = ensure_creator(owner) if owner else None
         demo_email = f"codex-{get_random_string(8).lower()}@notechondria.local"
         demo_password = get_random_string(18)
-        demo_user = User.objects.create_user(
+        demo_user, demo_created = User.objects.get_or_create(
             username="CodeX",
-            email=demo_email,
-            password=demo_password,
-            is_active=True,
+            defaults={
+                "email": demo_email,
+                "is_active": True,
+            },
         )
+        if demo_created:
+            demo_user.set_password(demo_password)
+            demo_user.save(update_fields=["password"])
+            self.stdout.write(
+                f"Seeded demo user 'CodeX' with email '{demo_email}' and password '{demo_password}'."
+            )
+            logger.warning(
+                "Seeded demo user CodeX credentials email=%s password=%s",
+                demo_email,
+                demo_password,
+            )
+        else:
+            if not demo_user.is_active:
+                demo_user.is_active = True
+                demo_user.save(update_fields=["is_active"])
+            if not demo_user.email:
+                demo_user.email = demo_email
+                demo_user.save(update_fields=["email"])
+            self.stdout.write(
+                f"Reused existing demo user 'CodeX' with email '{demo_user.email}'."
+            )
         demo_creator = ensure_creator(demo_user)
-        self.stdout.write(
-            f"Seeded demo user 'CodeX' with email '{demo_email}' and password '{demo_password}'."
-        )
-        logger.warning(
-            "Seeded demo user CodeX credentials email=%s password=%s",
-            demo_email,
-            demo_password,
-        )
 
         course_definitions = [
             {
@@ -134,25 +144,34 @@ class Command(BaseCommand):
         for definition in course_definitions:
             payload = definition["payload"]
             course_root = sample_root / payload["slug"]
-            course = Course.objects.create(
-                creator_id=definition["creator"],
+            course, created = Course.objects.get_or_create(
                 slug=payload["slug"],
-                title=payload["title"],
-                description=payload.get("description"),
-                is_default=definition["is_default"],
+                defaults={
+                    "creator_id": definition["creator"],
+                    "title": payload["title"],
+                    "description": payload.get("description"),
+                    "is_default": definition["is_default"],
+                },
             )
+            course.creator_id = course.creator_id or definition["creator"]
+            course.title = payload["title"]
+            course.description = payload.get("description")
+            course.is_default = definition["is_default"]
+            course.save()
             cover_image = payload.get("cover_image")
-            self.attach_course_cover(course, course_root / cover_image if cover_image else None)
+            if not course.cover_image:
+                self.attach_course_cover(course, course_root / cover_image if cover_image else None)
             self.attach_course_media(course, course_root, payload)
             for note_payload in definition["notes"]:
-                self.create_seed_note(
-                    creator=definition["creator"],
-                    course=course,
-                    title=note_payload["title"],
-                    body=note_payload["body"],
-                )
+                if not course.notes.filter(title=note_payload["title"]).exists():
+                    self.create_seed_note(
+                        creator=definition["creator"],
+                        course=course,
+                        title=note_payload["title"],
+                        body=note_payload["body"],
+                    )
             self.stdout.write(
-                f"Seeded sample course '{course.title}' with {course.notes.count()} note(s)."
+                f"{'Created' if created else 'Updated'} sample course '{course.title}' with {course.notes.count()} note(s)."
             )
 
     @staticmethod
@@ -217,11 +236,15 @@ class Command(BaseCommand):
             ]
 
         for media_payload in media_items:
+            title = media_payload.get("title") or f"{course.title} media"
+            source = media_payload.get("source")
+            if CourseMedia.objects.filter(course_id=course, title=title, source=source).exists():
+                continue
             media = CourseMedia.objects.create(
                 course_id=course,
-                title=media_payload.get("title") or f"{course.title} media",
+                title=title,
                 description=media_payload.get("description"),
-                source=media_payload.get("source"),
+                source=source,
             )
             media_ref = media_payload.get("path")
             media_path = course_root / media_ref if media_ref else None

@@ -2,6 +2,7 @@ import os
 
 from django.conf import settings
 from django.contrib import admin
+from django.contrib.staticfiles.views import serve as staticfiles_serve
 from django.urls import include, path, re_path
 from django.views.static import serve
 from django.views.generic import RedirectView
@@ -23,18 +24,22 @@ urlpatterns = [
     ),
 ]
 
-# ... the rest of your URLconf goes here ...
-# regex the path request with media in current directory
-if settings.DEBUG:
-    urlpatterns += [
-        re_path(
-            r"^media/(?P<path>.*)$",
-            serve,
-            {
-                "document_root": settings.MEDIA_ROOT,
-            },
-        ),
-    ]
+urlpatterns += [
+    re_path(
+        r"^media/(?P<path>.*)$",
+        serve,
+        {
+            "document_root": settings.MEDIA_ROOT,
+        },
+    ),
+    re_path(
+        r"^static/(?P<path>.*)$",
+        staticfiles_serve,
+        {
+            "insecure": True,
+        },
+    ),
+]
 
 # config for monaco-editor js
 # self-made solution for: django.request.log_response:241- 'Not Found: /min-maps/vs/base/common/worker/simpleWorker.nls.js.map'

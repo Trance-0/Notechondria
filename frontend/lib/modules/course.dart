@@ -1,7 +1,6 @@
 part of notechondria_frontend;
 
-/// Course module for subscribed collections and public previews.
-class _CoursePage extends StatelessWidget {
+class _CoursePage extends StatefulWidget {
   const _CoursePage({
     required this.courses,
     required this.selectedCourse,
@@ -25,93 +24,223 @@ class _CoursePage extends StatelessWidget {
   final Future<Map<String, dynamic>> Function(int noteId) onFetchNoteDetail;
 
   @override
-  Widget build(BuildContext context) {
+  State<_CoursePage> createState() => _CoursePageState();
+}
+
+class _CoursePageState extends State<_CoursePage> {
+  late final TextEditingController _searchController;
+  String _scope = 'public';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+    _scope = widget.isAuthenticated ? 'subscribed' : 'public';
+  }
+
+  @override
+  void didUpdateWidget(covariant _CoursePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.isAuthenticated && _scope != 'public') {
+      setState(() => _scope = 'public');
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<Map<String, dynamic>> _visibleCourses() {
     final subscribed =
-        courses.where((course) => course['is_subscribed'] == true).toList();
-    final previews =
-        courses.where((course) => course['is_subscribed'] != true).toList();
-    final activeCourse = selectedCourse ??
-        (subscribed.isNotEmpty ? subscribed.first : (courses.isNotEmpty ? courses.first : null));
+        widget.courses.where((course) => course['is_subscribed'] == true).toList();
+    var rows = <Map<String, dynamic>>[];
+    if (_scope == 'subscribed') {
+      rows = subscribed;
+    } else if (_scope == 'mine') {
+      return const [];
+    } else {
+      rows = List<Map<String, dynamic>>.from(widget.courses);
+    }
+    final query = _searchController.text.trim().toLowerCase();
+    if (_scope == 'public' && query.isNotEmpty) {
+      rows = rows.where((course) {
+        final title = course['title']?.toString().toLowerCase() ?? '';
+        final description =
+            course['description']?.toString().toLowerCase() ?? '';
+        return title.contains(query) || description.contains(query);
+      }).toList();
+    }
+    return rows;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleCourses = _visibleCourses();
+    final scopeOptions = <Map<String, String>>[
+      {
+        'value': 'public',
+        'label': 'Public courses',
+        'compact': 'Public',
+      },
+      if (widget.isAuthenticated)
+        {
+          'value': 'subscribed',
+          'label': 'Subscribed courses',
+          'compact': 'Subscribed',
+        },
+      if (widget.isAuthenticated)
+        {
+          'value': 'mine',
+          'label': 'My courses',
+          'compact': 'Mine',
+        },
+    ];
+    final activeCourse = visibleCourses.firstWhere(
+      (course) => course['id'] == widget.selectedCourse?['id'],
+      orElse: () =>
+          visibleCourses.isNotEmpty ? visibleCourses.first : <String, dynamic>{},
+    );
+    final hasActiveCourse = activeCourse.isNotEmpty;
+    final noteRows = widget.selectedCourse?['id'] == activeCourse['id']
+        ? widget.notes
+        : const <Map<String, dynamic>>[];
 
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        if (activeCourse != null)
-          _CourseHeaderCard(
-            course: activeCourse,
-            apiBaseUrl: apiBaseUrl,
-            isAuthenticated: isAuthenticated,
-            onOpen: () => onCourseChanged(activeCourse),
-            onSubscribe: () {
-              onSubscribe(activeCourse);
-            },
-            onUnsubscribe: () {
-              onUnsubscribe(activeCourse);
-            },
-          ),
-        const SizedBox(height: 24),
-        Text(
-          isAuthenticated ? 'Subscribed courses' : 'Course previews',
-          style: Theme.of(context)
-              .textTheme
-              .titleLarge
-              ?.copyWith(fontWeight: FontWeight.w800),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 900;
+            final selector = DropdownButtonFormField<String>(
+              key: const Key('course-scope-selector'),
+              value: _scope,
+              isExpanded: true,
+              selectedItemBuilder: (context) => scopeOptions
+                  .map(
+                    (option) => Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        compact ? option['compact']! : option['label']!,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
+                  .toList(),
+              items: [
+                for (final option in scopeOptions)
+                  DropdownMenuItem(
+                    value: option['value'],
+                    child: Text(option['label']!),
+                  ),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _scope = value);
+                }
+              },
+              decoration: const InputDecoration(
+                labelText: 'Course list',
+                border: OutlineInputBorder(),
+              ),
+            );
+            final scopeContent = _scope == 'public'
+                ? TextField(
+                    key: const Key('course-public-search'),
+                    controller: _searchController,
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search),
+                      hintText: 'Search public courses',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                  )
+                : Text(
+                    _scope == 'subscribed'
+                        ? 'Your synced subscribed courses.'
+                        : 'My courses is not available yet. Course creation is disabled.',
+                    maxLines: compact ? 2 : 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  );
+            if (compact) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  scopeContent,
+                  const SizedBox(height: 12),
+                  selector,
+                ],
+              );
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: scopeContent),
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 240,
+                  child: selector,
+                ),
+              ],
+            );
+          },
         ),
-        const SizedBox(height: 12),
-        if (isAuthenticated && subscribed.isEmpty)
+        const SizedBox(height: 20),
+        if (_scope == 'mine')
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'My courses is not implemented yet. Users cannot create courses in the current build.',
+              ),
+            ),
+          )
+        else if (!hasActiveCourse)
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
-                previews.isEmpty
-                    ? 'No courses available yet.'
-                    : 'You are not subscribed to any course yet. Preview a course below and subscribe to bring it into your synced sidebar order.',
+                _scope == 'subscribed'
+                    ? 'No subscribed courses yet. Switch to public courses and subscribe to one first.'
+                    : 'No public courses matched the current search.',
               ),
             ),
+          )
+        else ...[
+          _CourseHeaderCard(
+            course: activeCourse,
+            apiBaseUrl: widget.apiBaseUrl,
+            isAuthenticated: widget.isAuthenticated,
+            onOpen: () => widget.onCourseChanged(activeCourse),
+            onSubscribe: () => widget.onSubscribe(activeCourse),
+            onUnsubscribe: () => widget.onUnsubscribe(activeCourse),
           ),
-        if (isAuthenticated)
-          for (final course in subscribed)
+          const SizedBox(height: 20),
+          for (final course in visibleCourses)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: _CourseListCard(
                 course: course,
-                apiBaseUrl: apiBaseUrl,
-                actionLabel: 'Unsubscribe',
-                onTap: () => onCourseChanged(course),
+                apiBaseUrl: widget.apiBaseUrl,
+                actionLabel: course['is_subscribed'] == true
+                    ? 'Unsubscribe'
+                    : (widget.isAuthenticated ? 'Subscribe' : 'Open'),
+                onTap: () => widget.onCourseChanged(course),
                 onAction: () {
-                  onUnsubscribe(course);
-                },
-              ),
-            ),
-        if (previews.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          Text(
-            'Public previews',
-            style: Theme.of(context)
-                .textTheme
-                .titleLarge
-                ?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 12),
-          for (final course in previews)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _CourseListCard(
-                course: course,
-                apiBaseUrl: apiBaseUrl,
-                actionLabel: isAuthenticated ? 'Subscribe' : 'Sign in',
-                onTap: () => onCourseChanged(course),
-                onAction: () {
-                  if (isAuthenticated) {
-                    onSubscribe(course);
+                  if (course['is_subscribed'] == true) {
+                    widget.onUnsubscribe(course);
+                  } else if (widget.isAuthenticated) {
+                    widget.onSubscribe(course);
                   } else {
-                    onCourseChanged(course);
+                    widget.onCourseChanged(course);
                   }
                 },
               ),
             ),
-        ],
-        if (activeCourse != null) ...[
           const SizedBox(height: 24),
           Text(
             'Course notes',
@@ -121,18 +250,20 @@ class _CoursePage extends StatelessWidget {
                 ?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
-          if (notes.isEmpty)
+          if (noteRows.isEmpty)
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
-                  activeCourse['is_subscribed'] == true
-                      ? 'No notes in this course yet.'
-                      : 'Preview is available, but notes are limited until you subscribe or open a public course feed.',
+                  widget.selectedCourse?['id'] == activeCourse['id']
+                      ? (activeCourse['is_subscribed'] == true
+                          ? 'No notes in this course yet.'
+                          : 'Open a public course to browse its public notes, or subscribe to keep it in your synced list.')
+                      : 'Select a course from the list to load its notes.',
                 ),
               ),
             ),
-          for (final note in notes)
+          for (final note in noteRows)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Card(
@@ -141,7 +272,8 @@ class _CoursePage extends StatelessWidget {
                   subtitle: Text(note['excerpt']?.toString() ?? ''),
                   trailing: const Icon(Icons.arrow_forward_outlined),
                   onTap: () async {
-                    final detail = await onFetchNoteDetail(note['id'] as int);
+                    final detail =
+                        await widget.onFetchNoteDetail(note['id'] as int);
                     if (context.mounted) {
                       await showDialog<void>(
                         context: context,
