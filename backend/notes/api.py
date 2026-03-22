@@ -837,7 +837,10 @@ class DeletedNoteEmptyApiView(APIView):
         deleted_notes = Note.objects.filter(creator_id=creator, deleted_at__isnull=False)
         deleted_count = deleted_notes.count()
         deleted_notes.delete()
-        return Response({"deleted_count": deleted_count})
+        return Response({
+            "count": deleted_count,
+            "deleted_count": deleted_count,
+        })
 
 
 class CourseSubscribeApiView(APIView):

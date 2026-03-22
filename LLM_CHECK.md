@@ -66,4 +66,5 @@ Use this checklist at the end of each modification round.
 - Reworked the Flutter shell toward distinct signed-out local drafts vs signed-in cloud notes, backend-synced course ordering, recycle-bin management, avatar upload, local stats, and local app-settings persistence.
 - Replaced the front page hero with a carousel-oriented surface and richer public-note cards, rewired course/activity/settings modules to the new backend payload shape, and added one-click frontend log copy plus stats UI.
 - Updated backend tests for auth-only notes, recycle bin flows, client-draft idempotency, course subscription/open ordering, planner completion filtering, and creator app-settings mirror responses.
+- Fixed two follow-up CI failures by returning `count` from the recycle-bin empty endpoint and marking `/sdks/flutter` as a Git safe directory inside the frontend Docker build before `flutter pub get`.
 - Verification is still incomplete in this environment: `flutter analyze` and `dart analyze` both timed out here, so the latest Flutter integration should be treated as source-updated but not execution-verified.

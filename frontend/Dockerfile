@@ -11,7 +11,9 @@ COPY pubspec.yaml pubspec.lock ./
 RUN chown -R ${FRONTEND_UID}:${FRONTEND_GID} /app
 USER ${FRONTEND_UID}:${FRONTEND_GID}
 ENV HOME=/home/frontend
-RUN flutter config --enable-web && flutter pub get
+RUN git config --global --add safe.directory /sdks/flutter \
+    && flutter config --enable-web \
+    && flutter pub get
 
 USER root
 COPY . .
