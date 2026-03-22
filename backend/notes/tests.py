@@ -1,5 +1,5 @@
 import json
-from datetime import timedelta
+from datetime import datetime, time, timedelta, timezone as dt_timezone
 
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -10,6 +10,7 @@ from rest_framework.authtoken.models import Token
 from creators.models import Creator
 from notechondria.utils import check_is_creator, generate_unique_id, get_object_or_None
 from .models import CalendarFeed, Course, HeatmapActivity, Note, NoteActivitySession, NoteBlock, NoteBlockTypeChoices, NoteVersion, PlannerEvent
+from .services import parse_ical_datetime
 
 
 class NoteBlockMarkdownTests(TestCase):
@@ -196,12 +197,25 @@ class HeatmapApiTests(TestCase):
         self.assertGreaterEqual(NoteVersion.objects.count(), 2)
 
     def test_calendar_feed_and_week_activity(self):
+        week_start = timezone.localdate()
+        starts_at = datetime.combine(
+            week_start + timedelta(days=1),
+            time(hour=15, minute=0),
+            tzinfo=dt_timezone.utc,
+        )
         response = self.client.post(
             '/api/v1/calendar-feeds/',
             data=json.dumps({
                 'title': 'Imported Calendar',
                 'source_kind': 'I',
-                'raw_ical': 'BEGIN:VCALENDAR\nBEGIN:VEVENT\nDTSTART:20260321T150000Z\nSUMMARY:Study block\nEND:VEVENT\nEND:VCALENDAR',
+                'raw_ical': (
+                    'BEGIN:VCALENDAR\n'
+                    'BEGIN:VEVENT\n'
+                    f'DTSTART:{starts_at.strftime("%Y%m%dT%H%M%SZ")}\n'
+                    'SUMMARY:Study block\n'
+                    'END:VEVENT\n'
+                    'END:VCALENDAR'
+                ),
                 'course_id': self.course.id,
             }),
             content_type='application/json',
@@ -210,7 +224,10 @@ class HeatmapApiTests(TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(CalendarFeed.objects.count(), 1)
 
-        week_response = self.client.get('/api/v1/activity/week/', **self._auth_headers())
+        week_response = self.client.get(
+            f'/api/v1/activity/week/?start_date={week_start.isoformat()}',
+            **self._auth_headers(),
+        )
         self.assertEqual(week_response.status_code, 200)
         payload = week_response.json()
         self.assertEqual(len(payload['days']), 7)
@@ -291,3 +308,13 @@ class HeatmapApiTests(TestCase):
         titles = [row['title'] for row in response.json()['recommended_notes']]
         self.assertIn('Front public', titles)
         self.assertNotIn('Front private', titles)
+
+
+class CalendarParsingTests(TestCase):
+    def test_parse_ical_datetime_accepts_minute_precision(self):
+        parsed = parse_ical_datetime('20260321T1500Z')
+
+        self.assertEqual(parsed.tzinfo, dt_timezone.utc)
+        self.assertEqual(parsed.year, 2026)
+        self.assertEqual(parsed.hour, 15)
+        self.assertEqual(parsed.minute, 0)

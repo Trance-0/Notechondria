@@ -24,7 +24,7 @@ We will not use your knowledge to feed the AI, we use open API and ensure that y
 ## Repository layout
 
 * `backend/` - Django backend services and infrastructure.
-* `frontend/` - Flutter client application.
+* `frontend/` - Flutter client application and standalone web container build.
 * `docs/` - Product documentation, MVP scope, and planning references.
 * `course_template/` - Canonical git course template for import/export and validation.
 
@@ -49,7 +49,9 @@ This repository is set up for a Jenkins Pipeline job that:
 * injects deployment variables before the build,
 * renders `.env.deploy` in the workspace,
 * runs backup/test/deploy through Docker only,
+* runs backend and frontend test/deploy stages in parallel after environment preparation,
 * builds fresh `app` and `nginx` images for each Jenkins build using the current `BUILD_NUMBER`,
+* builds a fresh standalone Flutter web image for each Jenkins build,
 * forces no-cache Docker rebuilds and fresh container recreation on each deployment run.
 
 ### Required plugins
@@ -94,6 +96,7 @@ DJANGO_LOG_LEVEL=INFO
 DJANGO_LOG_FILE_NAME=notechondria-test
 APP_HOST_PORT=9080
 BACKEND_HOST_PORT=9090
+FRONTEND_HOST_PORT=9060
 DB_HOST_PORT=9032
 POSTGRE_USERNAME=postgres
 POSTGRE_PASSWORD=postgres
@@ -108,8 +111,10 @@ GITHUB_APP_CLIENT_ID=
 GITHUB_APP_CLIENT_SECRET=
 GITHUB_APP_PRIVATE_KEY_PATH=
 GITHUB_APP_WEBHOOK_SECRET=
+FRONTEND_API_BASE_URL=http://localhost:9080/api/v1
 APP_IMAGE=trancezero/notechondria:build-${BUILD_NUMBER}
 NGINX_IMAGE=trancezero/nginx:build-${BUILD_NUMBER}
+FRONTEND_IMAGE=trancezero/notechondria-frontend:build-${BUILD_NUMBER}
 DB_AUTO_REINIT_IF_MISMATCH=False
 ```
 

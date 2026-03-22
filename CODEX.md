@@ -32,6 +32,7 @@ The current project shape is:
 - Django backend kept as a REST API, Django admin, and static/media origin behind nginx.
 - Flutter frontend used as the primary user-facing app for web and desktop-style layouts.
 - Flutter frontend organized around a thin `lib/main.dart` entrypoint, shared `lib/core/` and `lib/components/`, plus per-surface modules under `lib/modules/`.
+- Deployment now includes a standalone Dockerized Flutter web frontend on `FRONTEND_HOST_PORT` and a Jenkins pipeline that tests and deploys backend/frontend in parallel after env preparation.
 - Email/password registration with verification codes, SMTP delivery when configured, and server-log fallback when SMTP is missing or invalid.
 - Public viewing of seeded default-course materials without login.
 - Authenticated learner note creation, markdown import/export, autosave, note history snapshots, restore, note-session activity capture, planner activity, and calendar feed APIs.
@@ -124,6 +125,7 @@ Frontend requirements:
 
 Operational requirements:
 - Keep Docker/nginx/static/media wiring correct in both debug and non-debug paths.
+- Support a standalone Flutter web container build with env-driven `FRONTEND_API_BASE_URL`, `FRONTEND_HOST_PORT`, and parallel Jenkins backend/frontend deploy stages.
 - State clearly which checks were actually run and which were blocked.
 - Update CODEX.md and LLM_CHECK.md whenever the project shape changes materially.
 ```

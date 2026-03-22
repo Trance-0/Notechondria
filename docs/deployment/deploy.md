@@ -33,10 +33,15 @@ DJANGO_SECRET_KEY=replace-with-real-secret
 DJANGO_DEBUG=False
 DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,app.example.com
 DJANGO_ALLOWED_HOSTS_COMPOSE=localhost 127.0.0.1 app.example.com
+DJANGO_CSRF_TRUSTED_ORIGINS=http://localhost:9080,http://localhost:9060
 DJANGO_LOG_LEVEL=INFO
 DJANGO_LOG_FILE_NAME=notechondria
+DJANGO_SUPERUSER_USERNAME=admin
+DJANGO_SUPERUSER_EMAIL=admin@example.com
+DJANGO_SUPERUSER_PASSWORD=change-me
 APP_HOST_PORT=9080
 BACKEND_HOST_PORT=9090
+FRONTEND_HOST_PORT=9060
 DB_HOST_PORT=9032
 POSTGRE_USERNAME=postgres
 POSTGRE_PASSWORD=replace-with-real-password
@@ -46,6 +51,16 @@ POSTGRE_DB=postgres
 PRODUCTION_STATIC_ROOT=/home/staticfiles/
 PRODUCTION_MEDIA_ROOT=/home/mediafiles/
 OPENAI_API_KEY=
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USERNAME=
+SMTP_PASSWORD=
+SMTP_USE_TLS=True
+SMTP_USE_SSL=False
+SMTP_FROM_EMAIL=no-reply@example.com
+EMAIL_VERIFICATION_TTL_HOURS=24
+FRONTEND_VERIFY_URL=http://localhost:9060/#/verify
+FRONTEND_API_BASE_URL=http://localhost:9080/api/v1
 GITHUB_APP_ID=
 GITHUB_APP_CLIENT_ID=
 GITHUB_APP_CLIENT_SECRET=
@@ -53,6 +68,7 @@ GITHUB_APP_PRIVATE_KEY_PATH=
 GITHUB_APP_WEBHOOK_SECRET=
 APP_IMAGE=trancezero/notechondria:build-${BUILD_NUMBER}
 NGINX_IMAGE=trancezero/nginx:build-${BUILD_NUMBER}
+FRONTEND_IMAGE=trancezero/notechondria-frontend:build-${BUILD_NUMBER}
 ```
 
 Important formatting notes:
@@ -68,6 +84,7 @@ Jenkins must provide at least:
 - `DJANGO_ALLOWED_HOSTS_COMPOSE`
 - `APP_HOST_PORT`
 - `BACKEND_HOST_PORT`
+- `FRONTEND_HOST_PORT`
 - `DB_HOST_PORT`
 - `POSTGRE_USERNAME`
 - `POSTGRE_PASSWORD`
@@ -79,6 +96,11 @@ Jenkins must provide at least:
 
 ```bash
 cd backend
+docker compose --env-file ../.env up --build -d
+```
+
+```bash
+cd frontend
 docker compose --env-file ../.env up --build -d
 ```
 
@@ -103,9 +125,8 @@ The pipeline now runs in this order:
 1. Checkout source.
 2. Generate `${WORKSPACE}/.env.deploy` from Jenkins-injected environment variables.
 3. Start the `db` service and back up PostgreSQL from the database container.
-4. Run backend tests in Docker using the `app` image and the same stack env file.
-5. Build fresh `app` and `nginx` images without Docker cache.
-6. Deploy the `notechondria` Docker Compose stack with recreated containers.
+4. Run backend and frontend tests in parallel using Docker only.
+5. Build and deploy backend and frontend containers in parallel.
 
 The relevant files are:
 
@@ -114,8 +135,11 @@ The relevant files are:
 - `deployment/scripts/backup_postgres.sh`
 - `deployment/scripts/ensure_db_ready.sh`
 - `deployment/scripts/test_backend.sh`
+- `deployment/scripts/test_frontend.sh`
 - `deployment/scripts/wait_for_stack.sh`
+- `deployment/scripts/wait_for_frontend.sh`
 - `deployment/scripts/deploy_backend.sh`
+- `deployment/scripts/deploy_frontend.sh`
 
 ### Compose stack shape
 
@@ -124,6 +148,10 @@ The Docker Compose stack is named `notechondria` and contains separate container
 - `app`: Django/gunicorn backend
 - `db`: PostgreSQL 15
 - `nginx`: reverse proxy/static serving
+
+The standalone frontend Compose stack is named `notechondria-frontend` and contains:
+
+- `frontend`: nginx-served Flutter web build
 
 Jenkins only needs Docker access. It does not need host `python` or host `pg_dump`.
 The Django container talks to PostgreSQL through the internal Compose service host `db`.
@@ -137,12 +165,13 @@ Only the host-exposed ports are configurable:
 
 - `APP_HOST_PORT` maps host -> `nginx:80`
 - `BACKEND_HOST_PORT` maps host -> `app:8000`
+- `FRONTEND_HOST_PORT` maps host -> `frontend:80`
 - `DB_HOST_PORT` maps host -> `db:5432`
 
 Deployment readiness waits at most 300 seconds before failing and stopping the web containers.
 The test stage does not use the postgres container; it runs Django tests with `settings_test` directly in an app container without the production entrypoint.
 The app service must not mount a named volume over `/home/notechondria`, because that path contains the Django code copied into the image during build.
-The Jenkins build can tag images with the current build number using `APP_IMAGE` and `NGINX_IMAGE`, for example `trancezero/notechondria:build-${BUILD_NUMBER}`.
+The Jenkins build can tag images with the current build number using `APP_IMAGE`, `NGINX_IMAGE`, and `FRONTEND_IMAGE`, for example `trancezero/notechondria:build-${BUILD_NUMBER}`.
 
 ### PostgreSQL volume behavior
 
@@ -180,15 +209,14 @@ If needed, also move the Jenkins workspace root to a shorter directory such as `
 
 This repository now keeps only the Monaco `min/` runtime bundle under `backend/static/monaco-editor/` to reduce checkout path depth.
 
-## 6) Frontend web build (when Flutter is available)
+## 6) Frontend web build (standalone container)
 
 ```bash
 cd frontend
-flutter pub get
-flutter build web
+docker compose --env-file ../.env up --build -d
 ```
 
-Serve `frontend/build/web` using nginx or object storage/CDN.
+The frontend container builds Flutter web with `FRONTEND_API_BASE_URL` and serves the resulting static site through nginx on `FRONTEND_HOST_PORT`.
 
 ## 7) Test deployment template
 

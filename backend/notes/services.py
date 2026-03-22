@@ -211,9 +211,16 @@ def parse_ical_datetime(raw_value: str):
         return None
     if "T" not in value:
         return datetime.strptime(value, "%Y%m%d").replace(tzinfo=dt_timezone.utc)
-    value = value.rstrip("Z")
-    dt = datetime.strptime(value, "%Y%m%dT%H%M%S")
-    return dt.replace(tzinfo=dt_timezone.utc)
+    is_utc = value.endswith("Z")
+    normalized = value.rstrip("Z")
+    for fmt in ("%Y%m%dT%H%M%S", "%Y%m%dT%H%M"):
+        try:
+            dt = datetime.strptime(normalized, fmt)
+            tzinfo = dt_timezone.utc if is_utc else timezone.get_current_timezone()
+            return dt.replace(tzinfo=tzinfo)
+        except ValueError:
+            continue
+    raise ValueError(f"Unsupported iCal datetime format: {raw_value}")
 
 
 def read_calendar_feed(feed: CalendarFeed) -> str:
