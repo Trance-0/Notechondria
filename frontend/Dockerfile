@@ -1,15 +1,23 @@
 FROM ghcr.io/cirruslabs/flutter:stable AS frontend_base
 
+ARG FRONTEND_UID=1000
+ARG FRONTEND_GID=1000
+
 WORKDIR /app
 
-ENV HOME=/root
+RUN mkdir -p /home/frontend /app \
+    && chown -R ${FRONTEND_UID}:${FRONTEND_GID} /home/frontend /app /sdks/flutter
+
+USER ${FRONTEND_UID}:${FRONTEND_GID}
+
+ENV HOME=/home/frontend
 RUN git config --global --add safe.directory /sdks/flutter \
     && flutter config --enable-web
 
-COPY pubspec.yaml pubspec.lock ./
+COPY --chown=${FRONTEND_UID}:${FRONTEND_GID} pubspec.yaml pubspec.lock ./
 RUN flutter pub get
 
-COPY . .
+COPY --chown=${FRONTEND_UID}:${FRONTEND_GID} . .
 
 FROM frontend_base AS frontend_test
 

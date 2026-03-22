@@ -172,7 +172,8 @@ This file is the current engineer handoff for the Notechondria workspace. It is 
 - Docker build file: `frontend/Dockerfile`
 - Frontend web container is exposed by default on `9060` via `FRONTEND_HOST_PORT`, and also on `8080` via `FRONTEND_FLUTTER_HOST_PORT`.
 - The frontend container builds Flutter web and serves the built output with nginx.
-- Flutter build steps run as root inside the build image because the preinstalled SDK under `/sdks/flutter` must be able to update its cache during `flutter pub get` and `flutter build web`.
+- Flutter build steps now run as a non-root numeric user inside the build image.
+- The Dockerfile explicitly `chown`s `/sdks/flutter`, `/app`, and `/home/frontend` before switching users so the Flutter SDK cache remains writable without triggering the Flutter root warning.
 - Frontend nginx proxies `/api/`, `/admin/`, `/static/`, and `/media/` to `FRONTEND_BACKEND_ORIGIN`, while `/` serves the compiled Flutter `build/web` bundle.
 
 ### 5.3 Jenkins pipeline
