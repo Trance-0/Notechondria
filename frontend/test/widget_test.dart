@@ -477,9 +477,19 @@ class FakeClient implements NotechondriaClient {
 }
 
 void main() {
+  Future<void> pumpAppReady(WidgetTester tester) async {
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 700));
+  }
+
+  Future<void> pumpTransition(WidgetTester tester) async {
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+  }
+
   testWidgets('renders carousel and navigation tabs', (tester) async {
     await tester.pumpWidget(NotechondriaApp(client: FakeClient()));
-    await tester.pumpAndSettle();
+    await pumpAppReady(tester);
 
     expect(find.text('Front Page'), findsOneWidget);
     expect(find.text('Courses'), findsOneWidget);
@@ -493,14 +503,14 @@ void main() {
 
   testWidgets('opens course note in reader dialog', (tester) async {
     await tester.pumpWidget(NotechondriaApp(client: FakeClient()));
-    await tester.pumpAndSettle();
+    await pumpAppReady(tester);
 
     await tester.tap(find.text('Course'));
-    await tester.pumpAndSettle();
+    await pumpTransition(tester);
     expect(find.text('Subscribed courses'), findsOneWidget);
 
     await tester.tap(find.text('Project outcome').first);
-    await tester.pumpAndSettle();
+    await pumpTransition(tester);
 
     expect(find.text('Project outcome'), findsWidgets);
     expect(find.textContaining('Repository layout and build order.'), findsOneWidget);
@@ -509,10 +519,10 @@ void main() {
   testWidgets('shows local draft creation affordance while signed out',
       (tester) async {
     await tester.pumpWidget(NotechondriaApp(client: FakeClient()));
-    await tester.pumpAndSettle();
+    await pumpAppReady(tester);
 
     await tester.tap(find.text('Learner'));
-    await tester.pumpAndSettle();
+    await pumpTransition(tester);
 
     expect(find.text('Local drafts'), findsOneWidget);
     expect(find.byType(FloatingActionButton), findsOneWidget);

@@ -877,7 +877,7 @@ class _AppShellState extends State<AppShell> {
 
   Future<Map<String, dynamic>> _saveNote(
       int noteId, Map<String, dynamic> payload) async {
-    if (noteId < 0 || _token == null || _token!.isEmpty) {
+    if (noteId < 0) {
       final existing = _localDrafts.firstWhere(
         (item) => item['id'] == noteId,
         orElse: () => <String, dynamic>{},
@@ -909,6 +909,9 @@ class _AppShellState extends State<AppShell> {
       return updated;
     }
     final token = _token;
+    if (token == null || token.isEmpty) {
+      throw Exception('Sign in to save cloud notes.');
+    }
     final updated = await widget.client.updateNote(token, noteId, payload);
     await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
     setState(() {

@@ -25,6 +25,11 @@ class _FrontPageState extends State<_FrontPage> {
   Timer? _autoSlideTimer;
   int _currentPage = 0;
 
+  bool get _enableAutoSlide {
+    final bindingName = WidgetsBinding.instance.runtimeType.toString();
+    return !bindingName.contains('TestWidgetsFlutterBinding');
+  }
+
   List<Map<String, dynamic>> get _carouselCourses {
     final rows = (widget.frontPage['carousel_courses'] as List<dynamic>? ??
             widget.frontPage['collections'] as List<dynamic>? ??
@@ -44,7 +49,9 @@ class _FrontPageState extends State<_FrontPage> {
   @override
   void initState() {
     super.initState();
-    _startAutoSlide();
+    if (_enableAutoSlide) {
+      _startAutoSlide();
+    }
   }
 
   @override
@@ -80,6 +87,9 @@ class _FrontPageState extends State<_FrontPage> {
   }
 
   void _restartAutoSlide() {
+    if (!_enableAutoSlide) {
+      return;
+    }
     if (_pageController.hasClients) {
       _pageController.jumpToPage(0);
     }

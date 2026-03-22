@@ -70,4 +70,6 @@ Use this checklist at the end of each modification round.
 - Changed the frontend Docker build back to a non-root user and explicitly granted that user ownership of `/sdks/flutter`, `/app`, and `/home/frontend` so Flutter can update its cache without the root warning or the earlier `engine.stamp` permission failure.
 - Added frontend nginx proxying for `/api`, `/admin`, `/static`, and `/media`, plus an extra host port (`FRONTEND_FLUTTER_HOST_PORT=8080`) so the standalone frontend can be reached on both the project port and a standard Flutter-style web port.
 - Added real sample directories and cover metadata for `meaning-of-work-in-age-of-ai` and `self-identity-and-expression-in-modern-arts`, and updated bootstrap to load each course from `sample/<slug>/course.json`.
+- Fixed a Flutter null-safety compile break in `frontend/lib/app_shell.dart` by separating local-draft saves from authenticated cloud-note saves before calling `updateNote(...)`.
+- Fixed Flutter widget-test timeouts caused by the 30-second front-page carousel timer by disabling auto-slide under test bindings and making `widget_test.dart` use bounded pumps instead of `pumpAndSettle()`.
 - Verification is still incomplete in this environment: `flutter analyze` and `dart analyze` both timed out here, so the latest Flutter integration should be treated as source-updated but not execution-verified.
