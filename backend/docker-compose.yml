@@ -6,6 +6,8 @@ volumes:
   media_volume:
 networks:
   notechondria-back:
+  notechondria-shared:
+    name: ${NOTECHONDRIA_SHARED_NETWORK:-notechondria-shared}
 
 services:
   app:
@@ -63,6 +65,7 @@ services:
       retries: 12
     networks:
       - notechondria-back
+      - notechondria-shared
   db:
     image: postgres:15
     volumes:
@@ -98,4 +101,4 @@ services:
       timeout: 5s
       retries: 12
     networks:
-      - notechondria-back
+      - notechondria-shared

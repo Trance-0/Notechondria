@@ -61,7 +61,8 @@ SMTP_FROM_EMAIL=no-reply@example.com
 EMAIL_VERIFICATION_TTL_HOURS=24
 FRONTEND_VERIFY_URL=http://localhost:9060/#/verify
 FRONTEND_API_BASE_URL=/api/v1
-FRONTEND_BACKEND_ORIGIN=http://host.docker.internal:9080
+FRONTEND_BACKEND_ORIGIN=http://nginx
+NOTECHONDRIA_SHARED_NETWORK=notechondria-shared
 GITHUB_APP_ID=
 GITHUB_APP_CLIENT_ID=
 GITHUB_APP_CLIENT_SECRET=
@@ -160,6 +161,12 @@ The standalone frontend Compose stack is named `notechondria-frontend` and conta
 
 - `frontend`: nginx-served Flutter web build
 
+The backend and standalone frontend stacks are connected through a shared Docker network:
+
+- `NOTECHONDRIA_SHARED_NETWORK`, default `notechondria-shared`
+- backend `app` and backend `nginx` join that network
+- frontend `frontend` joins that network and proxies backend traffic to the backend `nginx` service name `http://nginx`
+
 Jenkins only needs Docker access. It does not need host `python` or host `pg_dump`.
 The Django container talks to PostgreSQL through the internal Compose service host `db`.
 Internal container ports stay fixed:
@@ -224,7 +231,7 @@ cd frontend
 docker compose --env-file ../.env up --build -d
 ```
 
-The frontend container builds Flutter web with `FRONTEND_API_BASE_URL`, serves the resulting static site through nginx on `FRONTEND_HOST_PORT`, and proxies `/api`, `/admin`, `/static`, and `/media` to `FRONTEND_BACKEND_ORIGIN`.
+The frontend container builds Flutter web with `FRONTEND_API_BASE_URL`, serves the resulting static site through nginx on `FRONTEND_HOST_PORT`, and proxies `/api`, `/admin`, `/static`, and `/media` to `FRONTEND_BACKEND_ORIGIN` over the shared Docker network. The default backend origin is `http://nginx`, not a host-local address like `localhost` or `host.docker.internal`.
 
 ## 7) Test deployment template
 

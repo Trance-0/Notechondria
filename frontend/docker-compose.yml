@@ -1,5 +1,10 @@
 name: notechondria-frontend
 
+networks:
+  notechondria-shared:
+    external: true
+    name: ${NOTECHONDRIA_SHARED_NETWORK:-notechondria-shared}
+
 services:
   frontend:
     image: ${FRONTEND_IMAGE:-trancezero/notechondria-frontend:latest}
@@ -9,11 +14,11 @@ services:
       args:
         API_BASE_URL: ${FRONTEND_API_BASE_URL:-/api/v1}
     environment:
-      FRONTEND_BACKEND_ORIGIN: ${FRONTEND_BACKEND_ORIGIN:-http://host.docker.internal:9080}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      FRONTEND_BACKEND_ORIGIN: ${FRONTEND_BACKEND_ORIGIN:-http://nginx}
     ports:
       - ${FRONTEND_HOST_PORT:-9060}:80
+    networks:
+      - notechondria-shared
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/healthz || exit 1"]
       interval: 10s

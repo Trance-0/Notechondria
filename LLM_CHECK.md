@@ -39,6 +39,7 @@ Use this checklist at the end of each modification round.
 - Updated the backup step to skip cleanly on first deployment when the database role/database does not exist yet, instead of failing the whole pipeline.
 - Added a reminder that any tool referenced by container scripts, such as `nc` in `entrypoint.sh`, must be installed in the image build.
 - Added a reminder that container wait logic must have an explicit timeout, and internal Compose service connections should use service names like `db` rather than host-local addresses.
+- Added a reminder that standalone frontend and backend Docker stacks must share an explicit Docker network for service-to-service proxying; do not point container-to-container traffic at host `localhost` or `host.docker.internal` unless that routing was actually verified on the target machine.
 - Switched Jenkins env loading to Environment Injector style variables rendered by `prepare_env.sh`, so the pipeline no longer depends on a secret-file credential being wired correctly.
 - Removed shell `source` parsing from the backup script because Environment Injector values can contain spaces, which breaks naive `.env` sourcing.
 - Documented that public-repo Pipeline SCM jobs should not keep unnecessary Git credentials attached in Jenkins job configuration.

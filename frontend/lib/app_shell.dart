@@ -115,7 +115,9 @@ class _AppShellState extends State<AppShell> {
         icon: Icon(Icons.settings_outlined), label: 'Settings'),
   ];
 
-  bool _showWidePageHeader(int index) => index >= 3;
+  bool _showWidePageHeader(int index) => index == 4;
+
+  bool _showCompactPageHeader(int index) => index != 3;
 
   @override
   void initState() {
@@ -252,6 +254,74 @@ class _AppShellState extends State<AppShell> {
       _appendUiLog(
           'Initial load failed: ${error.toString().replaceFirst('Exception: ', '')}');
     }
+  }
+
+  Map<String, dynamic> _storeLocalDraft(
+    Map<String, dynamic> draft, {
+    bool incrementCreated = false,
+  }) {
+    final existingIndex =
+        _localDrafts.indexWhere((item) => item['id'] == draft['id']);
+    final nextDrafts = List<Map<String, dynamic>>.from(_localDrafts);
+    if (existingIndex >= 0) {
+      nextDrafts[existingIndex] = draft;
+      nextDrafts.insert(0, nextDrafts.removeAt(existingIndex));
+    } else {
+      nextDrafts.insert(0, draft);
+    }
+    _localDrafts = List<Map<String, dynamic>>.unmodifiable(nextDrafts);
+    if (incrementCreated) {
+      _localStats = {
+        ..._localStats,
+        'local_drafts_created':
+            ((_localStats['local_drafts_created'] as num?)?.toInt() ?? 0) + 1,
+      };
+    }
+    return draft;
+  }
+
+  Map<String, dynamic> _buildOfflineFallbackDraft({
+    Map<String, dynamic>? sourceNote,
+    required Map<String, dynamic> payload,
+  }) {
+    final sourceId = (sourceNote?['id'] as num?)?.toInt();
+    final existingIndex = sourceId == null
+        ? -1
+        : _localDrafts.indexWhere((item) {
+            final metadata =
+                _decodeNoteMetadata(item['metadata_json']?.toString() ?? '{}');
+            return (metadata['offline_source_note_id'] as num?)?.toInt() ==
+                sourceId;
+          });
+    final existingDraft =
+        existingIndex >= 0 ? Map<String, dynamic>.from(_localDrafts[existingIndex]) : null;
+    final metadata = _decodeNoteMetadata(
+      payload['metadata_json']?.toString() ??
+          sourceNote?['metadata_json']?.toString() ??
+          '{}',
+    );
+    if (sourceId != null) {
+      metadata['offline_source_note_id'] = sourceId;
+    }
+    return _buildLocalDraft(
+      id: (existingDraft?['id'] as num?)?.toInt(),
+      clientDraftId: existingDraft?['client_draft_id']?.toString(),
+      createdAt: existingDraft?['date_created']?.toString() ??
+          sourceNote?['date_created']?.toString(),
+      title: payload['title']?.toString() ??
+          sourceNote?['title']?.toString() ??
+          'Untitled note',
+      description: payload['description']?.toString() ??
+          sourceNote?['description']?.toString() ??
+          '',
+      content: payload['content']?.toString() ??
+          sourceNote?['content']?.toString() ??
+          '# Untitled note\n\n',
+      editorMode: payload['editor_mode']?.toString() ??
+          sourceNote?['editor_mode']?.toString() ??
+          'P',
+      metadataJson: jsonEncode(metadata),
+    );
   }
 
   Future<void> _refreshFrontPageData() async {
@@ -650,8 +720,30 @@ class _AppShellState extends State<AppShell> {
       return const ActionFeedback(message: 'Settings updated.');
     } catch (error) {
       final message = error.toString().replaceFirst('Exception: ', '');
-      _appendUiLog('Settings update failed: $message');
-      return ActionFeedback(message: message, isError: true);
+      setState(() {
+        _settings = {
+          ...?_settings,
+          'username': username,
+          'email': email,
+          'motto': motto,
+          'social_link': socialLink,
+          'editor_mode': editorMode,
+          'theme_preset': themePreset,
+          'theme_mode': themeMode,
+          'api_base_url': apiBaseUrl,
+        };
+        _profile = {
+          ...?_profile,
+          'username': username.isEmpty ? _profile?['username'] : username,
+          'email': email.isEmpty ? _profile?['email'] : email,
+          'motto': motto,
+          'social_link': socialLink,
+        };
+      });
+      _appendUiLog('Cloud settings sync failed, kept local settings: $message');
+      return ActionFeedback(
+        message: 'Local settings saved. Cloud sync pending: $message',
+      );
     }
   }
 
@@ -866,7 +958,7 @@ class _AppShellState extends State<AppShell> {
       });
       return draft;
     }
-    final created = await widget.client.createNote(token, {
+    final payload = {
       'title': title ?? _extractTitleFromMarkdown(initialMarkdown),
       'description': description ?? _excerptFromMarkdown(initialMarkdown),
       'content': initialMarkdown,
@@ -874,13 +966,31 @@ class _AppShellState extends State<AppShell> {
       'course_id': null,
       'client_draft_id': clientDraftId,
       'metadata_json': jsonEncode({'section': '', 'autosave': false}),
-    });
-    await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
-    setState(() {
-      _selectedNote = created;
-      _selectedIndex = 1;
-    });
-    return created;
+    };
+    try {
+      final created = await widget.client.createNote(token, payload);
+      await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
+      setState(() {
+        _selectedNote = created;
+        _selectedIndex = 1;
+      });
+      return created;
+    } catch (error) {
+      final draft = _storeLocalDraft(
+        _buildOfflineFallbackDraft(payload: payload),
+        incrementCreated: true,
+      );
+      await _persistLocalDrafts();
+      await _persistLocalStats();
+      final message = error.toString().replaceFirst('Exception: ', '');
+      setState(() {
+        _selectedNote = draft;
+        _selectedIndex = 1;
+      });
+      _appendUiLog('Cloud create failed, saved local draft instead: $message');
+      _showMessage('Backend unavailable. Saved as a local draft.');
+      return draft;
+    }
   }
 
   Future<Map<String, dynamic>> _saveNote(
@@ -920,12 +1030,32 @@ class _AppShellState extends State<AppShell> {
     if (token == null || token.isEmpty) {
       throw Exception('Sign in to save cloud notes.');
     }
-    final updated = await widget.client.updateNote(token, noteId, payload);
-    await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
-    setState(() {
-      _selectedNote = updated;
-    });
-    return updated;
+    try {
+      final updated = await widget.client.updateNote(token, noteId, payload);
+      await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
+      setState(() {
+        _selectedNote = updated;
+      });
+      return updated;
+    } catch (error) {
+      final sourceNote = _selectedNote?['id'] == noteId
+          ? Map<String, dynamic>.from(_selectedNote!)
+          : null;
+      final fallbackDraft = _storeLocalDraft(
+        _buildOfflineFallbackDraft(
+          sourceNote: sourceNote,
+          payload: payload,
+        ),
+      );
+      await _persistLocalDrafts();
+      final message = error.toString().replaceFirst('Exception: ', '');
+      setState(() {
+        _selectedNote = fallbackDraft;
+      });
+      _appendUiLog('Cloud save failed, kept local draft instead: $message');
+      _showMessage('Backend unavailable. Changes were saved locally.');
+      return fallbackDraft;
+    }
   }
 
   Future<List<Map<String, dynamic>>> _getNoteHistory(int noteId) async {
@@ -1288,7 +1418,9 @@ class _AppShellState extends State<AppShell> {
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
-        title: Text(_titles[_selectedIndex]),
+        title: _showCompactPageHeader(_selectedIndex)
+            ? Text(_titles[_selectedIndex])
+            : null,
         backgroundColor: Colors.transparent,
       ),
       body: _buildBody(),
@@ -1395,7 +1527,7 @@ class _AppShellState extends State<AppShell> {
                               ),
                             ),
                           ],
-                          const SizedBox(height: 12),
+                          const Spacer(),
                           _SidebarItem(
                             icon: Icons.settings_outlined,
                             label: 'Settings',
@@ -1443,14 +1575,56 @@ class _AppShellState extends State<AppShell> {
       child: SelectionArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
-            : _errorMessage != null
-                ? _ErrorState(
-                    message: _errorMessage!,
-                    onRetry: _loadInitialData,
-                    apiBaseUrl: _httpClient?.baseUrl,
-                    debugSnapshot: _httpClient?.debugSnapshot.value,
-                  )
-                : _buildPage(),
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_errorMessage != null)
+                    Material(
+                      color: Theme.of(context).colorScheme.errorContainer,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.cloud_off_outlined,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onErrorContainer,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _errorMessage!,
+                                style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onErrorContainer,
+                                ),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: _loadInitialData,
+                              child: const Text('Retry'),
+                            ),
+                            IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  _errorMessage = null;
+                                });
+                              },
+                              icon: const Icon(Icons.close),
+                              tooltip: 'Dismiss',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  Expanded(child: _buildPage()),
+                ],
+              ),
       ),
     );
   }
