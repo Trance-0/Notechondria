@@ -9,7 +9,7 @@ from rest_framework.authtoken.models import Token
 
 from creators.models import Creator
 from notechondria.utils import check_is_creator, generate_unique_id, get_object_or_None
-from .models import CalendarFeed, Course, HeatmapActivity, Note, NoteBlock, NoteBlockTypeChoices, NoteVersion, PlannerEvent
+from .models import CalendarFeed, Course, HeatmapActivity, Note, NoteActivitySession, NoteBlock, NoteBlockTypeChoices, NoteVersion, PlannerEvent
 
 
 class NoteBlockMarkdownTests(TestCase):
@@ -119,6 +119,7 @@ class HeatmapApiTests(TestCase):
             creator_id=self.creator,
             course_id=self.course,
             note_id=self.note,
+            activity_type='C',
             word_count=320,
         )
         PlannerEvent.objects.create(
@@ -135,6 +136,7 @@ class HeatmapApiTests(TestCase):
         payload = response.json()
         today_cell = next(cell for cell in payload['cells'] if cell['is_today'])
         self.assertIn('past_value', today_cell)
+        self.assertEqual(today_cell['past_value'], 3)
         future_cell = next(
             cell for cell in payload['cells']
             if cell['date'] == (timezone.localdate() + timedelta(days=2)).isoformat()
@@ -142,11 +144,14 @@ class HeatmapApiTests(TestCase):
         self.assertEqual(future_cell['future_value'], 3)
 
     def test_planner_event_create_endpoint(self):
+        starts_at = timezone.now().replace(hour=14, minute=0, second=0, microsecond=0) + timedelta(days=1)
         response = self.client.post(
             '/api/v1/planner-events/',
             data=json.dumps({
                 'title': 'Review sprint',
                 'event_date': (timezone.localdate() + timedelta(days=1)).isoformat(),
+                'starts_at': starts_at.isoformat(),
+                'ends_at': (starts_at + timedelta(hours=2)).isoformat(),
                 'difficulty_weight': 2,
                 'course_id': self.course.id,
             }),
@@ -156,6 +161,7 @@ class HeatmapApiTests(TestCase):
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(PlannerEvent.objects.count(), 1)
+        self.assertEqual(response.json()['starts_at'][:13], starts_at.isoformat()[:13])
 
     def test_note_history_snapshot_and_restore(self):
         self.note.content = '# Original\n\nOne'
@@ -209,3 +215,79 @@ class HeatmapApiTests(TestCase):
         payload = week_response.json()
         self.assertEqual(len(payload['days']), 7)
         self.assertTrue(any(day['events'] for day in payload['days']))
+
+    def test_public_notes_are_visible_without_login_and_private_notes_are_hidden(self):
+        public_note = Note.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            sharing_id='public-share',
+            title='Public note',
+            is_public=True,
+            content='# Public note\n\nVisible.',
+        )
+        private_note = Note.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            sharing_id='private-share',
+            title='Private note',
+            is_public=False,
+            content='# Private note\n\nHidden.',
+        )
+
+        response = self.client.get('/api/v1/notes/')
+
+        self.assertEqual(response.status_code, 200)
+        titles = [row['title'] for row in response.json()]
+        self.assertIn(public_note.title, titles)
+        self.assertNotIn(private_note.title, titles)
+
+    def test_note_session_create_and_week_payload(self):
+        starts_at = timezone.now().replace(hour=14, minute=0, second=0, microsecond=0)
+        response = self.client.post(
+            '/api/v1/note-sessions/',
+            data=json.dumps({
+                'note_id': self.note.id,
+                'title': self.note.title,
+                'summary': 'Writing summary',
+                'started_at': starts_at.isoformat(),
+                'ended_at': (starts_at + timedelta(hours=1)).isoformat(),
+            }),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(NoteActivitySession.objects.count(), 1)
+
+        week_response = self.client.get(
+            f'/api/v1/activity/week/?start_date={timezone.localdate().isoformat()}',
+            **self._auth_headers(),
+        )
+        self.assertEqual(week_response.status_code, 200)
+        events = [event for day in week_response.json()['days'] for event in day['events']]
+        self.assertTrue(any(event['kind'] == 'note_session' for event in events))
+
+    def test_front_page_recommendations_only_return_public_notes(self):
+        Note.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            sharing_id='front-public',
+            title='Front public',
+            is_public=True,
+            content='# Front public\n\nVisible on front page.',
+        )
+        Note.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            sharing_id='front-private',
+            title='Front private',
+            is_public=False,
+            content='# Front private\n\nShould stay hidden.',
+        )
+
+        response = self.client.get('/api/v1/front-page/')
+
+        self.assertEqual(response.status_code, 200)
+        titles = [row['title'] for row in response.json()['recommended_notes']]
+        self.assertIn('Front public', titles)
+        self.assertNotIn('Front private', titles)

@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone as dt_timezone
 import urllib.request
 
-from django.db.models import Sum
+from django.db.models import Count, Max, Sum
 from django.utils import timezone
 
 from .models import (
@@ -9,6 +9,7 @@ from .models import (
     HeatmapActivity,
     HeatmapActivityTypeChoices,
     Note,
+    NoteActivitySession,
     NoteBlock,
     NoteVersion,
     NoteIndex,
@@ -57,9 +58,10 @@ def build_heatmap_payload(creator, center_date=None, days_before=182, days_after
             creator_id=creator,
             activity_date__gte=start_date,
             activity_date__lte=today,
+            activity_type=HeatmapActivityTypeChoices.CREATED,
         )
         .values("activity_date")
-        .annotate(total_words=Sum("word_count"))
+        .annotate(created_notes=Count("id"), peak_words=Max("word_count"))
     )
     future_rows = (
         PlannerEvent.objects.filter(
@@ -71,7 +73,14 @@ def build_heatmap_payload(creator, center_date=None, days_before=182, days_after
         .annotate(total_weight=Sum("difficulty_weight"))
     )
 
-    past_map = {row["activity_date"]: int(row["total_words"] or 0) for row in past_rows}
+    past_map = {}
+    for row in past_rows:
+        created_notes = int(row["created_notes"] or 0)
+        peak_words = int(row["peak_words"] or 0)
+        word_grade = min(4, max(0, peak_words // 100))
+        if peak_words > 0 and word_grade == 0:
+            word_grade = 1
+        past_map[row["activity_date"]] = min(4, max(created_notes, word_grade))
     future_map = {row["event_date"]: int(row["total_weight"] or 0) for row in future_rows}
 
     cells = []
@@ -91,7 +100,7 @@ def build_heatmap_payload(creator, center_date=None, days_before=182, days_after
                 "kind": cell_kind,
                 "past_value": past_value,
                 "future_value": future_value,
-                "intensity": past_value if current <= today else future_value,
+                "intensity": past_value if current <= today else min(4, future_value),
                 "is_today": current == today,
             }
         )
@@ -110,10 +119,14 @@ def build_heatmap_payload(creator, center_date=None, days_before=182, days_after
 
 
 def planner_event_payload(event: PlannerEvent):
+    starts_at = event.starts_at or timezone.make_aware(datetime.combine(event.event_date, datetime.min.time().replace(hour=12)))
+    ends_at = event.ends_at or (starts_at + timedelta(hours=1))
     return {
         "id": event.id,
         "title": event.title,
         "event_date": event.event_date.isoformat(),
+        "starts_at": starts_at.isoformat(),
+        "ends_at": ends_at.isoformat(),
         "difficulty_weight": event.difficulty_weight,
         "description": event.description or "",
         "course_id": event.course_id_id,
@@ -122,6 +135,8 @@ def planner_event_payload(event: PlannerEvent):
 
 def note_preview_lines(note: Note, limit: int = 3):
     lines = [line.strip() for line in (note.content or "").splitlines() if line.strip()]
+    if lines and lines[0].startswith("# "):
+        lines = lines[1:]
     return lines[:limit]
 
 
@@ -163,6 +178,31 @@ def restore_note_version(note: Note, version: NoteVersion) -> None:
     note.metadata_json = version.metadata_json
     note.editor_mode = version.editor_mode
     note.save()
+
+
+def version_label(version: NoteVersion) -> str:
+    reason = (version.reason or "").lower()
+    if reason == "autosave_1m":
+        return "AutoSave-1m"
+    if reason == "autosave_10m":
+        return "AutoSave-10m"
+    if reason == "autosave_1h":
+        return "AutoSave-1h"
+    return timezone.localtime(version.date_created).strftime("%Y-%m-%d %H:%M")
+
+
+def note_session_payload(session: NoteActivitySession):
+    ends_at = session.ended_at or (session.started_at + timedelta(minutes=15))
+    return {
+        "id": session.id,
+        "title": session.title,
+        "kind": "note_session",
+        "note_id": session.note_id_id,
+        "course_id": session.note_id.course_id_id,
+        "summary": session.summary,
+        "starts_at": session.started_at.isoformat(),
+        "ends_at": ends_at.isoformat(),
+    }
 
 
 def parse_ical_datetime(raw_value: str):
@@ -213,14 +253,15 @@ def calendar_week_payload(creator, start_date=None):
         event_date__lte=days[-1],
     )
     for event in planner_rows:
-        payload[event.event_date.isoformat()].append(
-            {
-                "title": event.title,
-                "kind": "plan",
-                "course_id": event.course_id_id,
-                "source_id": event.id,
-            }
-        )
+        payload[event.event_date.isoformat()].append(planner_event_payload(event) | {"kind": "plan", "source_id": event.id})
+
+    session_rows = NoteActivitySession.objects.filter(
+        creator_id=creator,
+        started_at__date__gte=days[0],
+        started_at__date__lte=days[-1],
+    ).select_related("note_id")
+    for session in session_rows:
+        payload[timezone.localtime(session.started_at).date().isoformat()].append(note_session_payload(session))
 
     for feed in CalendarFeed.objects.filter(creator_id=creator, is_enabled=True):
         try:
@@ -228,10 +269,11 @@ def calendar_week_payload(creator, start_date=None):
         except Exception:
             continue
         for event in parse_ical_events(raw_ical):
-            dt_value = parse_ical_datetime(event.get("DTSTART", ""))
-            if dt_value is None:
+            starts_at = parse_ical_datetime(event.get("DTSTART", ""))
+            if starts_at is None:
                 continue
-            event_date = timezone.localtime(dt_value).date()
+            ends_at = parse_ical_datetime(event.get("DTEND", "")) or (starts_at + timedelta(hours=1))
+            event_date = timezone.localtime(starts_at).date()
             if event_date < days[0] or event_date > days[-1]:
                 continue
             payload[event_date.isoformat()].append(
@@ -241,15 +283,22 @@ def calendar_week_payload(creator, start_date=None):
                     "course_id": feed.course_id_id,
                     "source_id": feed.id,
                     "calendar_title": feed.title,
+                    "starts_at": starts_at.isoformat(),
+                    "ends_at": ends_at.isoformat(),
                 }
             )
 
     return {
         "start_date": days[0].isoformat(),
+        "previous_week_start": (days[0] - timedelta(days=7)).isoformat(),
+        "next_week_start": (days[0] + timedelta(days=7)).isoformat(),
         "days": [
             {
                 "date": day.isoformat(),
-                "events": payload[day.isoformat()],
+                "events": sorted(
+                    payload[day.isoformat()],
+                    key=lambda item: item.get("starts_at", f"{day.isoformat()}T23:59:00"),
+                ),
             }
             for day in days
         ],

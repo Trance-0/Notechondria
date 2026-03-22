@@ -54,3 +54,8 @@ Use this checklist at the end of each modification round.
 - Added a reminder that Docker service networking must never be tied to `DEBUG`; database host resolution should come from env (`POSTGRE_HOST=db` in Compose), not a `localhost` fallback triggered by debug mode.
 - Added a reminder that database preflight checks must verify the same TCP username/password path the app uses, not just local-socket readiness from inside the postgres container.
 - Added a reminder that material project-shape changes must be recorded in `CODEX.md`, including how to prompt an AI run to recreate the new shape.
+- Reworked the Flutter learner flow so recent notes stay primary, note reading happens in dialogs, and the markdown preview is explicitly scrollable to avoid overflow regressions.
+- Added inline LaTeX markdown rendering, week-calendar activity views, note-session calendar events, theme/API-base settings, and frontend/API debug surfaces.
+- Split the oversized Flutter `main.dart` into a thin entrypoint, shared `core/` and `components/` libraries, plus dedicated `front`, `learner`, `course`, `activity`, and `settings` module files.
+- Backend verification remained blocked in this environment because only the Windows Store `python.exe` shim is present and Docker daemon access is denied.
+- Flutter static verification succeeded only at the `dart format` parsing level; `dart analyze` still fails here with a Windows access-denied error while spawning `dartaotruntime.exe`.

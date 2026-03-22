@@ -3,6 +3,7 @@ from unittest.mock import patch
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.test import TestCase
+from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
 from .models import Creator, VerificationChoices, VerificationCode, user_profile_path
@@ -88,3 +89,51 @@ class AuthApiTests(TestCase):
         self.assertFalse(result['delivered'])
         self.assertTrue(result['fallback'])
         logger.warning.assert_called_once()
+
+    def test_settings_update_supports_username_theme_and_api_base(self):
+        token = Token.objects.create(user=self.admin)
+        response = self.client.patch(
+            '/api/v1/settings/',
+            {
+                'username': 'note-admin',
+                'email': 'note-admin@example.com',
+                'theme_preset': 'amber',
+                'theme_mode': 'D',
+                'api_base_url': 'https://notes.example.com/api/v1',
+            },
+            format='json',
+            HTTP_AUTHORIZATION=f'Token {token.key}',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.admin.refresh_from_db()
+        self.assertEqual(self.admin.username, 'note-admin')
+        self.assertEqual(self.admin.email, 'note-admin@example.com')
+        self.assertEqual(response.json()['theme_preset'], 'amber')
+        self.assertEqual(response.json()['theme_mode'], 'D')
+
+    def test_settings_reject_duplicate_username(self):
+        other_user = User.objects.create_user(username='taken-name', email='taken@example.com', password='pw')
+        Token.objects.create(user=other_user)
+        token = Token.objects.create(user=self.admin)
+        response = self.client.patch(
+            '/api/v1/settings/',
+            {'username': 'taken-name'},
+            format='json',
+            HTTP_AUTHORIZATION=f'Token {token.key}',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('username', response.json())
+
+    def test_settings_reject_invalid_api_base_url(self):
+        token = Token.objects.create(user=self.admin)
+        response = self.client.patch(
+            '/api/v1/settings/',
+            {'api_base_url': 'localhost:9080/api/v1'},
+            format='json',
+            HTTP_AUTHORIZATION=f'Token {token.key}',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('api_base_url', response.json())

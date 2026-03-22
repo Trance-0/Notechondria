@@ -31,10 +31,15 @@ The current project shape is:
 
 - Django backend kept as a REST API, Django admin, and static/media origin behind nginx.
 - Flutter frontend used as the primary user-facing app for web and desktop-style layouts.
+- Flutter frontend organized around a thin `lib/main.dart` entrypoint, shared `lib/core/` and `lib/components/`, plus per-surface modules under `lib/modules/`.
 - Email/password registration with verification codes, SMTP delivery when configured, and server-log fallback when SMTP is missing or invalid.
 - Public viewing of seeded default-course materials without login.
-- Authenticated learner note creation, markdown import/export, autosave, note history snapshots, restore, planner activity, and calendar feed APIs.
+- Authenticated learner note creation, markdown import/export, autosave, note history snapshots, restore, note-session activity capture, planner activity, and calendar feed APIs.
 - Responsive Flutter layout with bottom navigation on narrow screens and a left sidebar on wide screens.
+- Front page recommendation feed for public notes, plus a centered GitHub-style heatmap for authenticated progress and plans.
+- Learner flow centered on recent notes, search, public/private note cards, dialog-based reading, and editor-mode switching between markdown preview, block fallback, and plain text.
+- Activity flow centered on a full week calendar with planner events, imported/subscribed iCal feeds, and note-edit sessions rendered as time windows.
+- Settings flow supporting compact auth dialogs, theme preset/theme mode changes, editable API base URL, and frontend/API debug surfaces.
 
 ## 3. Prompt sequence
 
@@ -106,10 +111,14 @@ Backend requirements:
 
 Frontend requirements:
 - Use Flutter as the primary app and target both narrow/mobile and wide/horizontal layouts.
+- Keep `lib/main.dart` thin and split reusable frontend logic into `lib/core/`, `lib/components/`, and per-page modules such as `front`, `learner`, `course`, `activity`, and `settings`.
 - Use bottom navigation on narrow screens and a left sidebar on wide screens.
 - Allow public viewing of seeded course materials without login.
 - Keep auth actions in Settings with compact dialog flows for sign up, verify, login, and forgot password.
-- Build the learner view around recent notes, search, markdown import/export, autosave, version history, and a readable selected-note panel.
+- Build the learner view around recent notes, search, markdown import/export, autosave, version history, and dialog-based note viewing instead of a permanent full-note pane.
+- Add a scrollable markdown preview with inline LaTeX math rendering, and prefer a notion-like block fallback editor if a richer editor is feasible without destabilizing the app.
+- Record note editing sessions and surface them in the activity calendar instead of a separate recent-activity list.
+- Add settings controls for theme presets, light/dark/system mode, API base URL, and visible frontend/API debug information.
 - Use the user's editor-mode setting, but prefer the simplest reliable fallback if a richer editor is too risky.
 - Add API debug surfaces so invalid JSON or HTML error pages are visible in the UI.
 

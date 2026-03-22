@@ -74,6 +74,8 @@ class PlannerEvent(models.Model):
     )
     title = models.CharField(max_length=120, null=False)
     event_date = models.DateField(null=False, default=timezone.localdate)
+    starts_at = models.DateTimeField(blank=True, null=True)
+    ends_at = models.DateTimeField(blank=True, null=True)
     difficulty_weight = models.PositiveIntegerField(default=1, null=False)
     description = models.CharField(max_length=255, blank=True, null=True)
     date_created = models.DateTimeField(auto_now_add=True, null=False)
@@ -150,6 +152,7 @@ class Note(models.Model):
     sharing_id = models.CharField(max_length=36,unique=True,null=False)
     title = models.CharField(max_length=100, default="Untitled Ep", null=False)
     description=models.CharField(max_length=600, blank=True,null=True)
+    is_public = models.BooleanField(default=False, null=False)
     content = models.TextField(blank=True, default="")
     metadata_json = models.TextField(blank=True, default="")
     editor_mode = models.CharField(
@@ -234,6 +237,33 @@ class CalendarFeed(models.Model):
 
     def __str__(self) -> str:
         return self.title
+
+
+class NoteActivitySession(models.Model):
+    creator_id = models.ForeignKey(
+        Creator,
+        related_name="note_activity_sessions",
+        on_delete=models.CASCADE,
+        null=False,
+    )
+    note_id = models.ForeignKey(
+        Note,
+        related_name="activity_sessions",
+        on_delete=models.CASCADE,
+        null=False,
+    )
+    title = models.CharField(max_length=120, null=False)
+    summary = models.CharField(max_length=255, blank=True, default="")
+    started_at = models.DateTimeField(default=timezone.now, null=False)
+    ended_at = models.DateTimeField(blank=True, null=True)
+    date_created = models.DateTimeField(auto_now_add=True, null=False)
+    last_edit = models.DateTimeField(auto_now=True, null=False)
+
+    class Meta:
+        ordering = ["-started_at", "-id"]
+
+    def __str__(self) -> str:
+        return f"{self.title}@{self.started_at}"
 
 class NoteBlockTypeChoices(models.TextChoices):
     """NoteBlockTypeChoices, need a parser for rendering"""

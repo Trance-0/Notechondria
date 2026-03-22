@@ -56,6 +56,18 @@ class Creator(models.Model):
         default="P",
         null=False,
     )
+    theme_preset = models.CharField(max_length=32, default="teal", null=False)
+    theme_mode = models.CharField(
+        max_length=1,
+        choices=(
+            ("S", _("System")),
+            ("L", _("Light")),
+            ("D", _("Dark")),
+        ),
+        default="S",
+        null=False,
+    )
+    api_base_url = models.CharField(max_length=255, default="http://localhost:9080/api/v1", null=False)
 
     # last_login and date_joined automatically created by user_id, for these field, create one time value to timezone.now()
     # The field is only automatically updated when calling Model.save().

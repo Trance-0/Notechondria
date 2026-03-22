@@ -1,6 +1,7 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.utils.timezone import now
+from urllib.parse import urlparse
 
 from rest_framework import permissions, serializers, status
 from rest_framework.authtoken.models import Token
@@ -26,10 +27,14 @@ def auth_payload(user: User):
             "id": user.id,
             "email": user.email,
             "username": user.username,
+            "display_name": user.username,
             "motto": creator.motto or "",
             "social_link": creator.social_link or "",
             "image_url": creator.image.url if creator.image else "",
             "editor_mode": creator.editor_mode,
+            "theme_preset": creator.theme_preset,
+            "theme_mode": creator.theme_mode,
+            "api_base_url": creator.api_base_url,
         },
     }
 
@@ -124,10 +129,21 @@ class ResendVerificationSerializer(serializers.Serializer):
 
 
 class SettingsSerializer(serializers.Serializer):
-    email = serializers.EmailField(read_only=True)
+    username = serializers.CharField(required=False, max_length=150)
+    email = serializers.EmailField(required=False)
     motto = serializers.CharField(allow_blank=True, required=False, max_length=100)
     social_link = serializers.URLField(allow_blank=True, required=False)
     image_url = serializers.CharField(read_only=True)
+    theme_preset = serializers.CharField(required=False, allow_blank=False, max_length=32)
+    theme_mode = serializers.ChoiceField(
+        choices=[
+            ("S", "system"),
+            ("L", "light"),
+            ("D", "dark"),
+        ],
+        required=False,
+    )
+    api_base_url = serializers.CharField(required=False, allow_blank=False, max_length=255)
     editor_mode = serializers.ChoiceField(
         choices=[
             ("G", "gfm"),
@@ -139,17 +155,51 @@ class SettingsSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         return {
+            "username": instance.user_id.username,
             "email": instance.user_id.email,
             "motto": instance.motto or "",
             "social_link": instance.social_link or "",
             "image_url": instance.image.url if instance.image else "",
             "editor_mode": instance.editor_mode,
+            "theme_preset": instance.theme_preset,
+            "theme_mode": instance.theme_mode,
+            "api_base_url": instance.api_base_url,
         }
 
+    def validate_username(self, value):
+        user = self.instance.user_id if self.instance is not None else None
+        existing = User.objects.filter(username__iexact=value).exclude(pk=user.pk if user else None).first()
+        if existing is not None:
+            raise serializers.ValidationError("This username is already in use.")
+        return value
+
+    def validate_email(self, value):
+        user = self.instance.user_id if self.instance is not None else None
+        existing = User.objects.filter(email__iexact=value).exclude(pk=user.pk if user else None).first()
+        if existing is not None:
+            raise serializers.ValidationError("This email is already in use.")
+        return value.lower()
+
+    def validate_api_base_url(self, value):
+        parsed = urlparse(value.strip())
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise serializers.ValidationError("Use a full http:// or https:// API base URL.")
+        return value.strip()
+
     def update(self, instance, validated_data):
+        user = instance.user_id
+        if "username" in validated_data:
+            user.username = validated_data["username"]
+        if "email" in validated_data:
+            user.email = validated_data["email"]
+        if "username" in validated_data or "email" in validated_data:
+            user.save(update_fields=["username", "email"])
         instance.motto = validated_data.get("motto", instance.motto)
         instance.social_link = validated_data.get("social_link", instance.social_link)
         instance.editor_mode = validated_data.get("editor_mode", instance.editor_mode)
+        instance.theme_preset = validated_data.get("theme_preset", instance.theme_preset)
+        instance.theme_mode = validated_data.get("theme_mode", instance.theme_mode)
+        instance.api_base_url = validated_data.get("api_base_url", instance.api_base_url)
         instance.save()
         return instance
 
