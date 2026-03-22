@@ -256,9 +256,9 @@ class _SettingsPageState extends State<_SettingsPage> {
               Expanded(
                 child: DropdownButtonFormField<String>(
                   value: _themePreset,
-                  items: _themePresetEntries
+                  items: _themePresetEntries.entries
                       .map(
-                        (entry) => DropdownMenuItem(
+                        (entry) => DropdownMenuItem<String>(
                           value: entry.key,
                           child: Text(entry.value),
                         ),

@@ -1,11 +1,18 @@
 FROM ghcr.io/cirruslabs/flutter:stable AS frontend_base
 
+ARG FRONTEND_UID=1000
+ARG FRONTEND_GID=1000
+RUN groupadd --gid ${FRONTEND_GID} frontend \
+    && useradd --uid ${FRONTEND_UID} --gid ${FRONTEND_GID} --create-home --shell /bin/bash frontend
+
 WORKDIR /app
 
-COPY pubspec.yaml pubspec.lock ./
+COPY --chown=frontend:frontend pubspec.yaml pubspec.lock ./
+USER frontend
+ENV HOME=/home/frontend
 RUN flutter config --enable-web && flutter pub get
 
-COPY . .
+COPY --chown=frontend:frontend . .
 
 FROM frontend_base AS frontend_test
 
