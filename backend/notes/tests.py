@@ -492,6 +492,37 @@ class HeatmapApiTests(TestCase):
             1,
         )
 
+    def test_course_create_is_idempotent_for_client_course_id(self):
+        payload = {
+            'title': 'Offline-created course',
+            'description': 'Created locally and synced later.',
+            'client_course_id': 'course-local-abc',
+        }
+
+        first_response = self.client.post(
+            '/api/v1/courses/',
+            data=json.dumps(payload),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+        second_response = self.client.post(
+            '/api/v1/courses/',
+            data=json.dumps(payload),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+
+        self.assertEqual(first_response.status_code, 201)
+        self.assertEqual(second_response.status_code, 200)
+        self.assertEqual(first_response.json()['id'], second_response.json()['id'])
+        self.assertEqual(
+            Course.objects.filter(
+                creator_id=self.creator,
+                client_course_id='course-local-abc',
+            ).count(),
+            1,
+        )
+
     def test_planner_completion_removes_event_from_active_week_payloads(self):
         event = PlannerEvent.objects.create(
             creator_id=self.creator,

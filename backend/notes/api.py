@@ -10,6 +10,7 @@ from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.utils.text import slugify
 
 from rest_framework import permissions, serializers, status
 from rest_framework.response import Response
@@ -122,6 +123,17 @@ def append_course_operation(creator, course, operation_type, metadata=None):
         operation_type=operation_type,
         metadata_json="" if not metadata else json.dumps(metadata, sort_keys=True),
     )
+
+
+def unique_course_slug(title: str, fallback: str = "course") -> str:
+    base = slugify(title)[:100] or fallback
+    candidate = base
+    counter = 2
+    while Course.objects.filter(slug=candidate).exists():
+        suffix = f"-{counter}"
+        candidate = f"{base[: max(1, 120 - len(suffix))]}{suffix}"
+        counter += 1
+    return candidate
 
 
 def note_search_score(note: Note, query: str):
@@ -286,6 +298,7 @@ class CourseSerializer(serializers.ModelSerializer):
         model = Course
         fields = [
             "id",
+            "client_course_id",
             "slug",
             "title",
             "description",
@@ -338,6 +351,12 @@ class CourseSerializer(serializers.ModelSerializer):
         if subscription is None or subscription.last_opened_at is None:
             return None
         return subscription.last_opened_at.isoformat()
+
+
+class CourseWriteSerializer(serializers.Serializer):
+    title = serializers.CharField(max_length=120)
+    description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    client_course_id = serializers.CharField(required=False, allow_blank=True, max_length=64)
 
 
 class NoteWriteSerializer(serializers.Serializer):
@@ -498,6 +517,49 @@ class CourseListApiView(APIView):
                 many=True,
                 context={"request": request, "subscription_map": subscription_map},
             ).data
+        )
+
+    def post(self, request):
+        if not request.user.is_authenticated:
+            return Response(
+                {"detail": "Authentication required."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        creator = ensure_creator(request.user)
+        serializer = CourseWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        title = serializer.validated_data["title"].strip()
+        description = serializer.validated_data.get("description") or ""
+        client_course_id = serializer.validated_data.get("client_course_id") or None
+        existing = None
+        if client_course_id:
+            existing = Course.objects.filter(
+                creator_id=creator,
+                client_course_id=client_course_id,
+            ).first()
+        if existing is not None:
+            existing.title = title
+            existing.description = description
+            existing.save(update_fields=["title", "description", "last_edit"])
+            course = existing
+            response_status = status.HTTP_200_OK
+        else:
+            course = Course.objects.create(
+                creator_id=creator,
+                client_course_id=client_course_id,
+                slug=unique_course_slug(title, fallback="local-course"),
+                title=title,
+                description=description,
+                is_default=False,
+            )
+            response_status = status.HTTP_201_CREATED
+        subscription_map = active_subscription_map(creator)
+        return Response(
+            CourseSerializer(
+                course,
+                context={"request": request, "subscription_map": subscription_map},
+            ).data,
+            status=response_status,
         )
 
 

@@ -5,20 +5,48 @@ class _ApiDebugCard extends StatelessWidget {
   const _ApiDebugCard({
     required this.apiBaseUrl,
     required this.snapshotListenable,
+    this.historyListenable,
   });
 
   final String? apiBaseUrl;
   final ValueListenable<ApiDebugSnapshot?>? snapshotListenable;
+  final ValueListenable<List<ApiDebugSnapshot>>? historyListenable;
 
   @override
   Widget build(BuildContext context) {
     if (snapshotListenable == null) {
-      return _ApiDebugSummary(apiBaseUrl: apiBaseUrl, snapshot: null);
+      return _ApiDebugSummary(
+        apiBaseUrl: apiBaseUrl,
+        snapshot: null,
+        history: const [],
+      );
     }
-    return ValueListenableBuilder<ApiDebugSnapshot?>(
-      valueListenable: snapshotListenable!,
-      builder: (context, snapshot, child) {
-        return _ApiDebugSummary(apiBaseUrl: apiBaseUrl, snapshot: snapshot);
+    final history = historyListenable;
+    if (history == null) {
+      return ValueListenableBuilder<ApiDebugSnapshot?>(
+        valueListenable: snapshotListenable!,
+        builder: (context, snapshot, child) {
+          return _ApiDebugSummary(
+            apiBaseUrl: apiBaseUrl,
+            snapshot: snapshot,
+            history: const [],
+          );
+        },
+      );
+    }
+    return ValueListenableBuilder<List<ApiDebugSnapshot>>(
+      valueListenable: history,
+      builder: (context, entries, child) {
+        return ValueListenableBuilder<ApiDebugSnapshot?>(
+          valueListenable: snapshotListenable!,
+          builder: (context, snapshot, child) {
+            return _ApiDebugSummary(
+              apiBaseUrl: apiBaseUrl,
+              snapshot: snapshot,
+              history: entries,
+            );
+          },
+        );
       },
     );
   }
@@ -29,10 +57,12 @@ class _ApiDebugSummary extends StatelessWidget {
   const _ApiDebugSummary({
     required this.apiBaseUrl,
     required this.snapshot,
+    required this.history,
   });
 
   final String? apiBaseUrl;
   final ApiDebugSnapshot? snapshot;
+  final List<ApiDebugSnapshot> history;
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +81,11 @@ class _ApiDebugSummary extends StatelessWidget {
             if (snapshot == null)
               const Text('No API response captured yet.')
             else ...[
+              Text(
+                'Last response at ${_formatCompactTimestamp(snapshot!.recordedAt.toIso8601String())}',
+                style: theme.textTheme.bodySmall,
+              ),
+              const SizedBox(height: 4),
               Text('${snapshot!.method} ${snapshot!.url}',
                   style: theme.textTheme.bodyMedium),
               const SizedBox(height: 4),
@@ -77,6 +112,31 @@ class _ApiDebugSummary extends StatelessWidget {
                     : snapshot!.bodyPreview,
                 style: theme.textTheme.bodySmall
                     ?.copyWith(fontFamily: 'monospace'),
+              ),
+            ],
+            if (history.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Recent API requests',
+                style: theme.textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 160,
+                child: ListView(
+                  children: [
+                    for (final entry in history.take(8))
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: SelectableText(
+                          '[${entry.recordedAt.toIso8601String()}] ${entry.method} ${entry.url} -> ${entry.statusCode == 0 ? 'failed' : entry.statusCode}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ],
           ],

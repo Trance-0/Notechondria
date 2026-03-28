@@ -18,9 +18,15 @@ class _SettingsPage extends StatefulWidget {
     required this.onEmptyDeletedNotes,
     required this.onCopyLogs,
     required this.onUploadAvatar,
+    required this.onSyncLocalData,
+    required this.onClearLocalCache,
+    required this.onClearLocalData,
+    required this.localDraftCount,
+    required this.localCourseCount,
     required this.uiLogs,
     this.apiBaseUrl,
     this.debugSnapshotListenable,
+    this.debugHistoryListenable,
   });
 
   final Map<String, dynamic>? profile;
@@ -53,9 +59,15 @@ class _SettingsPage extends StatefulWidget {
   final Future<void> Function() onEmptyDeletedNotes;
   final Future<void> Function() onCopyLogs;
   final Future<ActionFeedback> Function() onUploadAvatar;
+  final Future<ActionFeedback> Function({bool showMessage}) onSyncLocalData;
+  final Future<ActionFeedback> Function() onClearLocalCache;
+  final Future<ActionFeedback> Function() onClearLocalData;
+  final int localDraftCount;
+  final int localCourseCount;
   final List<String> uiLogs;
   final String? apiBaseUrl;
   final ValueListenable<ApiDebugSnapshot?>? debugSnapshotListenable;
+  final ValueListenable<List<ApiDebugSnapshot>>? debugHistoryListenable;
 
   @override
   State<_SettingsPage> createState() => _SettingsPageState();
@@ -97,7 +109,7 @@ class _SettingsPageState extends State<_SettingsPage> {
     _apiBaseController = TextEditingController(
       text: widget.localSettings['api_base_url']?.toString() ??
           widget.apiBaseUrl ??
-          'http://localhost:9080/api/v1',
+          _defaultApiBaseUrl(),
     );
     _editorMode = widget.settings?['editor_mode']?.toString() ?? 'P';
     _themePreset = widget.localSettings['theme_preset']?.toString() ?? 'teal';
@@ -121,7 +133,7 @@ class _SettingsPageState extends State<_SettingsPage> {
     if (oldWidget.localSettings != widget.localSettings) {
       _apiBaseController.text = widget.localSettings['api_base_url']?.toString() ??
           widget.apiBaseUrl ??
-          'http://localhost:9080/api/v1';
+          _defaultApiBaseUrl();
       _themePreset = widget.localSettings['theme_preset']?.toString() ?? 'teal';
       _themeMode = widget.localSettings['theme_mode']?.toString() ?? 'S';
     }
@@ -172,6 +184,21 @@ class _SettingsPageState extends State<_SettingsPage> {
     }
     setState(() {
       _uploadingAvatar = false;
+      _saveFeedback = feedback;
+    });
+  }
+
+  Future<void> _runMaintenanceAction(
+    Future<ActionFeedback> Function() action,
+  ) async {
+    setState(() {
+      _saveFeedback = null;
+    });
+    final feedback = await action();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
       _saveFeedback = feedback;
     });
   }
@@ -422,7 +449,7 @@ class _SettingsPageState extends State<_SettingsPage> {
           controller: _apiBaseController,
           decoration: const InputDecoration(
             labelText: 'API base URL',
-            hintText: 'http://localhost:9080/api/v1',
+            hintText: '/api/v1',
             helperText: 'Stored locally and mirrored to the profile on login.',
             border: OutlineInputBorder(),
           ),
@@ -445,6 +472,58 @@ class _SettingsPageState extends State<_SettingsPage> {
             child: const Text('Logout'),
           ),
         ],
+        const SizedBox(height: 24),
+        Text(
+          'Local data and cache',
+          style: Theme.of(context)
+              .textTheme
+              .titleMedium
+              ?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${widget.localDraftCount} local draft(s), ${widget.localCourseCount} local course(s).',
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'The app keeps local drafts, local courses, cached API content, and debug logs so it can still run when the backend is unavailable.',
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: _isAuthenticated
+                          ? () => _runMaintenanceAction(
+                                () => widget.onSyncLocalData(showMessage: false),
+                              )
+                          : null,
+                      icon: const Icon(Icons.cloud_upload_outlined),
+                      label: const Text('Sync local data'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () => _runMaintenanceAction(widget.onClearLocalCache),
+                      icon: const Icon(Icons.cleaning_services_outlined),
+                      label: const Text('Clear local cache'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () => _runMaintenanceAction(widget.onClearLocalData),
+                      icon: const Icon(Icons.delete_sweep_outlined),
+                      label: const Text('Remove local data'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
         const SizedBox(height: 24),
         Text(
           'Recycle bin',
@@ -529,6 +608,7 @@ class _SettingsPageState extends State<_SettingsPage> {
         _ApiDebugCard(
           apiBaseUrl: widget.apiBaseUrl,
           snapshotListenable: widget.debugSnapshotListenable,
+          historyListenable: widget.debugHistoryListenable,
         ),
         const SizedBox(height: 24),
         Row(

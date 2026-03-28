@@ -115,16 +115,26 @@ class _FrontPageState extends State<_FrontPage> {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        _CourseCarousel(
-          courses: carouselCourses,
-          pageController: _pageController,
-          currentPage: _currentPage,
-          apiBaseUrl: widget.apiBaseUrl,
-          showRestoreButton: isAdmin,
-          onPageChanged: (index) => setState(() => _currentPage = index),
-          onOpenCourse: widget.onOpenCourse,
-          onRestoreTemplateCourses: widget.onRestoreTemplateCourses,
-        ),
+        if (carouselCourses.isEmpty)
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'Public courses are unavailable right now. You can still use local drafts, local courses, and settings while the backend is offline.',
+              ),
+            ),
+          )
+        else
+          _CourseCarousel(
+            courses: carouselCourses,
+            pageController: _pageController,
+            currentPage: _currentPage,
+            apiBaseUrl: widget.apiBaseUrl,
+            showRestoreButton: isAdmin,
+            onPageChanged: (index) => setState(() => _currentPage = index),
+            onOpenCourse: widget.onOpenCourse,
+            onRestoreTemplateCourses: widget.onRestoreTemplateCourses,
+          ),
         if (greetingName != null && greetingName.isNotEmpty) ...[
           const SizedBox(height: 20),
           Text(
@@ -152,6 +162,15 @@ class _FrontPageState extends State<_FrontPage> {
               ?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 12),
+        if (recommendedNotes.isEmpty)
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'No public notes are cached yet. Connect to the backend to refresh recommendations.',
+              ),
+            ),
+          ),
         for (final note in recommendedNotes)
           Padding(
             padding: const EdgeInsets.only(bottom: 14),

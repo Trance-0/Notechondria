@@ -24,6 +24,7 @@ class Course(models.Model):
         null=True,
         blank=True,
     )
+    client_course_id = models.CharField(max_length=64, blank=True, null=True)
     slug = models.SlugField(max_length=120, unique=True)
     title = models.CharField(max_length=120, null=False)
     description = models.TextField(blank=True, null=True)
@@ -33,6 +34,13 @@ class Course(models.Model):
     last_edit = models.DateTimeField(auto_now=True, null=False)
 
     class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["creator_id", "client_course_id"],
+                condition=Q(client_course_id__isnull=False),
+                name="unique_course_client_id_per_creator",
+            )
+        ]
         ordering = ["title"]
 
     def __str__(self) -> str:

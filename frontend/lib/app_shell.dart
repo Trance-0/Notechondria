@@ -71,6 +71,7 @@ class _AppShellState extends State<AppShell> {
   Map<String, dynamic>? _settings;
   Map<String, dynamic>? _frontPage;
   List<Map<String, dynamic>> _courses = const [];
+  List<Map<String, dynamic>> _localCourses = const [];
   List<Map<String, dynamic>> _courseNotes = const [];
   List<Map<String, dynamic>> _learnerNotes = const [];
   List<Map<String, dynamic>> _localDrafts = const [];
@@ -83,6 +84,7 @@ class _AppShellState extends State<AppShell> {
   Map<String, dynamic>? _selectedNote;
   Map<String, dynamic> _localSettings = _LocalAppStore.defaultSettings();
   Map<String, dynamic> _localStats = _LocalAppStore.defaultStats();
+  Map<String, dynamic> _localCache = _LocalAppStore.defaultCache();
   DateTime _activityWeekStart = _dateOnly(DateTime.now());
   bool _hasMoreLearnerNotes = true;
   bool _isLoadingMoreNotes = false;
@@ -130,6 +132,13 @@ class _AppShellState extends State<AppShell> {
     await _loadInitialData();
   }
 
+  bool get _hasRenderableLocalState =>
+      (_frontPage?.isNotEmpty ?? false) ||
+      _courses.isNotEmpty ||
+      _localCourses.isNotEmpty ||
+      _localDrafts.isNotEmpty ||
+      _selectedIndex == 4;
+
   void _appendUiLog(String message) {
     final timestamp = DateTime.now().toIso8601String();
     setState(() {
@@ -138,15 +147,48 @@ class _AppShellState extends State<AppShell> {
         _uiLogs.removeRange(80, _uiLogs.length);
       }
     });
+    unawaited(_persistUiLogs());
   }
 
   Future<void> _loadLocalState() async {
     final snapshot = await _LocalAppStore.load();
     _localSettings = snapshot.settings;
+    final storedApiBase = _localSettings['api_base_url']?.toString() ?? '';
+    if (kIsWeb &&
+        (storedApiBase == 'http://localhost:9080' ||
+            storedApiBase == 'http://localhost:9080/api/v1')) {
+      _localSettings = {
+        ..._localSettings,
+        'api_base_url': _defaultApiBaseUrl(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      };
+      await _LocalAppStore.saveSettings(_localSettings);
+    }
     _localDrafts = snapshot.drafts;
+    _localCourses = snapshot.courses;
     _localStats = snapshot.stats;
+    _localCache = snapshot.cache;
+    _uiLogs
+      ..clear()
+      ..addAll(snapshot.logs);
+    _frontPage = Map<String, dynamic>.from(
+      snapshot.cache['front_page'] as Map? ?? const {},
+    );
+    _courses = (snapshot.cache['courses'] as List<dynamic>? ?? const [])
+        .map((item) => _decorateRemoteCourse(Map<String, dynamic>.from(item as Map)))
+        .toList(growable: false);
+    _activity = (snapshot.cache['activity'] as List<dynamic>? ?? const [])
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList(growable: false);
+    if (_selectedCourse == null) {
+      _selectedCourse = _chooseDefaultCourse(
+        remoteCourses: _courses,
+        localCourses: _localCourses,
+        frontPage: _frontPage,
+      );
+    }
     _httpClient?.updateBaseUrl(
-      _localSettings['api_base_url']?.toString() ?? 'http://localhost:9080/api/v1',
+      _localSettings['api_base_url']?.toString() ?? _defaultApiBaseUrl(),
     );
     widget.onThemeChanged?.call(
       _localSettings['theme_preset']?.toString() ?? 'teal',
@@ -165,8 +207,105 @@ class _AppShellState extends State<AppShell> {
     await _LocalAppStore.saveDrafts(_localDrafts);
   }
 
+  Future<void> _persistLocalCourses() async {
+    await _LocalAppStore.saveCourses(_localCourses);
+  }
+
   Future<void> _persistLocalStats() async {
     await _LocalAppStore.saveStats(_localStats);
+  }
+
+  Future<void> _persistLocalCache() async {
+    _localCache = {
+      ..._localCache,
+      'front_page': _frontPage ?? const <String, dynamic>{},
+      'courses': _courses,
+      'activity': _activity,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    };
+    await _LocalAppStore.saveCache(_localCache);
+  }
+
+  Future<void> _persistUiLogs() async {
+    await _LocalAppStore.saveLogs(_uiLogs);
+  }
+
+  bool _isLocalCourse(Map<String, dynamic>? course) {
+    if (course == null) {
+      return false;
+    }
+    return course['is_local_course'] == true ||
+        ((course['id'] as num?)?.toInt() ?? 0) < 0;
+  }
+
+  Map<String, dynamic> _decorateRemoteCourse(Map<String, dynamic> course) {
+    final owner = Map<String, dynamic>.from(course['owner'] as Map? ?? const {});
+    final username = _profile?['username']?.toString() ?? '';
+    final isOwned = username.isNotEmpty &&
+        owner['username']?.toString().toLowerCase() == username.toLowerCase();
+    return {
+      ...course,
+      'is_local_course': false,
+      'is_owned': course['is_owned'] == true || isOwned,
+    };
+  }
+
+  Map<String, dynamic> _frontPageFallbackPayload(
+    List<Map<String, dynamic>> remoteCourses,
+  ) {
+    final fallbackCourses =
+        remoteCourses.isNotEmpty ? remoteCourses.take(3).toList() : _localCourses.take(3).toList();
+    return {
+      'default_course': fallbackCourses.isNotEmpty ? fallbackCourses.first : null,
+      'carousel_courses': fallbackCourses,
+      'collections': fallbackCourses,
+      'recent_notes': const <Map<String, dynamic>>[],
+      'recommended_notes': const <Map<String, dynamic>>[],
+    };
+  }
+
+  Map<String, dynamic>? _chooseDefaultCourse({
+    required List<Map<String, dynamic>> remoteCourses,
+    required List<Map<String, dynamic>> localCourses,
+    required Map<String, dynamic>? frontPage,
+  }) {
+    final retainedCourseId = (_selectedCourse?['id'] as num?)?.toInt();
+    if (retainedCourseId != null) {
+      for (final course in [...localCourses, ...remoteCourses]) {
+        if ((course['id'] as num?)?.toInt() == retainedCourseId) {
+          return Map<String, dynamic>.from(course);
+        }
+      }
+    }
+    final defaultCourse = frontPage?['default_course'] as Map<String, dynamic>?;
+    if (defaultCourse != null && defaultCourse.isNotEmpty) {
+      final defaultId = (defaultCourse['id'] as num?)?.toInt();
+      for (final course in [...localCourses, ...remoteCourses]) {
+        if ((course['id'] as num?)?.toInt() == defaultId) {
+          return Map<String, dynamic>.from(course);
+        }
+      }
+      return Map<String, dynamic>.from(defaultCourse);
+    }
+    if (localCourses.isNotEmpty) {
+      return Map<String, dynamic>.from(localCourses.first);
+    }
+    if (remoteCourses.isNotEmpty) {
+      return Map<String, dynamic>.from(remoteCourses.first);
+    }
+    return null;
+  }
+
+  List<Map<String, dynamic>> _localNotesForCourse(Map<String, dynamic> course) {
+    final localId = (course['id'] as num?)?.toInt();
+    final syncedId = (course['synced_course_id'] as num?)?.toInt();
+    return _localDrafts.where((draft) {
+      final metadata =
+          _decodeNoteMetadata(draft['metadata_json']?.toString() ?? '{}');
+      final courseId = (metadata['course_id'] as num?)?.toInt() ??
+          (draft['course_id'] as num?)?.toInt();
+      return courseId == localId || (syncedId != null && courseId == syncedId);
+    }).map((item) => Map<String, dynamic>.from(item)).toList(growable: false);
   }
 
   Future<void> _loadInitialData() async {
@@ -174,86 +313,144 @@ class _AppShellState extends State<AppShell> {
       _isLoading = true;
       _errorMessage = null;
     });
+    final errors = <String>[];
+    _httpClient?.updateBaseUrl(
+      _localSettings['api_base_url']?.toString() ?? _defaultApiBaseUrl(),
+    );
+    widget.onThemeChanged?.call(
+      _localSettings['theme_preset']?.toString() ?? 'teal',
+      _localSettings['theme_mode']?.toString() ?? 'S',
+    );
+
+    var frontPage = _frontPage ?? _frontPageFallbackPayload(_courses);
+    var courses = List<Map<String, dynamic>>.from(_courses);
+    var activity = List<Map<String, dynamic>>.from(_activity);
+    var courseNotes = List<Map<String, dynamic>>.from(_courseNotes);
+    var plannerEvents = List<Map<String, dynamic>>.from(_plannerEvents);
+    var calendarFeeds = List<Map<String, dynamic>>.from(_calendarFeeds);
+    var learnerNotes = List<Map<String, dynamic>>.from(_learnerNotes);
+    var deletedNotes = List<Map<String, dynamic>>.from(_deletedNotes);
+    Map<String, dynamic>? activityWeek = _activityWeek;
+    Map<String, dynamic> notePage = {
+      'results': learnerNotes,
+      'has_more': _hasMoreLearnerNotes,
+    };
+    var updatedCache = false;
+
     try {
-      _httpClient?.updateBaseUrl(
-        _localSettings['api_base_url']?.toString() ?? 'http://localhost:9080/api/v1',
-      );
-      widget.onThemeChanged?.call(
-        _localSettings['theme_preset']?.toString() ?? 'teal',
-        _localSettings['theme_mode']?.toString() ?? 'S',
-      );
-      final frontPage = await widget.client.getFrontPage(token: _token);
-      final courses = await widget.client.getCourses(token: _token);
-      final activity = await widget.client.getActivity(token: _token);
-      final defaultCourse = frontPage['default_course'] as Map<String, dynamic>?;
-      final retainedCourseId = (_selectedCourse?['id'] as num?)?.toInt();
-      Map<String, dynamic>? selectedCourse;
-      if (retainedCourseId != null) {
-        for (final course in courses) {
-          if (course['id'] == retainedCourseId) {
-            selectedCourse = Map<String, dynamic>.from(course);
-            break;
-          }
+      frontPage = await widget.client.getFrontPage(token: _token);
+      updatedCache = true;
+    } catch (error) {
+      errors.add(error.toString().replaceFirst('Exception: ', ''));
+    }
+    try {
+      courses = (await widget.client.getCourses(token: _token))
+          .map(_decorateRemoteCourse)
+          .toList(growable: false);
+      updatedCache = true;
+    } catch (error) {
+      errors.add(error.toString().replaceFirst('Exception: ', ''));
+    }
+    try {
+      activity = await widget.client.getActivity(token: _token);
+      updatedCache = true;
+    } catch (error) {
+      errors.add(error.toString().replaceFirst('Exception: ', ''));
+    }
+
+    final selectedCourse = _chooseDefaultCourse(
+      remoteCourses: courses,
+      localCourses: _localCourses,
+      frontPage: frontPage,
+    );
+    if (selectedCourse != null) {
+      if (_isLocalCourse(selectedCourse)) {
+        courseNotes = _localNotesForCourse(selectedCourse);
+      } else {
+        try {
+          courseNotes = await widget.client.getCourseNotes(
+            selectedCourse['id'] as int,
+            token: _token,
+          );
+        } catch (error) {
+          errors.add(error.toString().replaceFirst('Exception: ', ''));
+          courseNotes = const [];
         }
       }
-      selectedCourse ??= defaultCourse != null
-          ? Map<String, dynamic>.from(defaultCourse)
-          : (courses.isNotEmpty ? Map<String, dynamic>.from(courses.first) : null);
-      List<Map<String, dynamic>> courseNotes = const [];
-      if (selectedCourse != null) {
-        courseNotes = await widget.client.getCourseNotes(
-          selectedCourse['id'] as int,
-          token: _token,
-        );
-      }
-      List<Map<String, dynamic>> plannerEvents = const [];
-      List<Map<String, dynamic>> calendarFeeds = const [];
-      List<Map<String, dynamic>> learnerNotes = const [];
-      List<Map<String, dynamic>> deletedNotes = const [];
-      Map<String, dynamic>? activityWeek;
-      Map<String, dynamic> notePage = const {
-        'results': [],
-        'has_more': false,
-      };
-      if (_token != null && _token!.isNotEmpty) {
+    } else {
+      courseNotes = const [];
+    }
+
+    if (_token != null && _token!.isNotEmpty) {
+      try {
         plannerEvents = await widget.client.getPlannerEvents(_token!);
+      } catch (error) {
+        errors.add(error.toString().replaceFirst('Exception: ', ''));
+      }
+      try {
         calendarFeeds = await widget.client.getCalendarFeeds(_token!);
+      } catch (error) {
+        errors.add(error.toString().replaceFirst('Exception: ', ''));
+      }
+      try {
         activityWeek = await widget.client.getActivityWeek(
           _token!,
           startDate: _activityWeekStart.toIso8601String().split('T').first,
         );
+      } catch (error) {
+        errors.add(error.toString().replaceFirst('Exception: ', ''));
+      }
+      try {
         deletedNotes = await widget.client.getDeletedNotes(_token!);
+      } catch (error) {
+        errors.add(error.toString().replaceFirst('Exception: ', ''));
+      }
+      try {
         notePage =
             await widget.client.listNotes(token: _token, limit: 20, offset: 0);
         learnerNotes = (notePage['results'] as List<dynamic>? ?? const [])
             .map((item) => Map<String, dynamic>.from(item as Map))
-            .toList();
+            .toList(growable: false);
+      } catch (error) {
+        errors.add(error.toString().replaceFirst('Exception: ', ''));
       }
-      setState(() {
-        _frontPage = frontPage;
-        _courses = courses;
-        _activity = activity;
-        _selectedCourse = selectedCourse;
-        _courseNotes = courseNotes;
-        _learnerNotes = learnerNotes;
-        _deletedNotes = deletedNotes;
-        _selectedNote = null;
-        _plannerEvents = plannerEvents;
-        _calendarFeeds = calendarFeeds;
-        _activityWeek = activityWeek;
-        _hasMoreLearnerNotes = notePage['has_more'] == true;
-        _learnerNotesOffset = learnerNotes.length;
-        _isLoading = false;
-      });
-      _appendUiLog('Initial data loaded.');
-    } catch (error) {
-      setState(() {
-        _errorMessage = error.toString().replaceFirst('Exception: ', '');
-        _isLoading = false;
-      });
-      _appendUiLog(
-          'Initial load failed: ${error.toString().replaceFirst('Exception: ', '')}');
+    } else {
+      plannerEvents = const [];
+      calendarFeeds = const [];
+      activityWeek = null;
+      deletedNotes = const [];
+      learnerNotes = const [];
+      notePage = const {
+        'results': [],
+        'has_more': false,
+      };
     }
+
+    setState(() {
+      _frontPage = frontPage;
+      _courses = courses;
+      _activity = activity;
+      _selectedCourse = selectedCourse;
+      _courseNotes = courseNotes;
+      _learnerNotes = learnerNotes;
+      _deletedNotes = deletedNotes;
+      _selectedNote = null;
+      _plannerEvents = plannerEvents;
+      _calendarFeeds = calendarFeeds;
+      _activityWeek = activityWeek;
+      _hasMoreLearnerNotes = notePage['has_more'] == true;
+      _learnerNotesOffset = learnerNotes.length;
+      _errorMessage = errors.isEmpty ? null : errors.first;
+      _isLoading = false;
+    });
+    if (updatedCache) {
+      await _persistLocalCache();
+    }
+    _appendUiLog(
+      errors.isEmpty
+          ? 'Initial data loaded.'
+          : 'Initial load used offline fallback: ${errors.first}',
+    );
   }
 
   Map<String, dynamic> _storeLocalDraft(
@@ -325,16 +522,25 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<void> _refreshFrontPageData() async {
-    final frontPage = await widget.client.getFrontPage(token: _token);
-    List<Map<String, dynamic>> plannerEvents = _plannerEvents;
-    if (_token != null && _token!.isNotEmpty) {
-      plannerEvents = await widget.client.getPlannerEvents(_token!);
+    try {
+      final frontPage = await widget.client.getFrontPage(token: _token);
+      List<Map<String, dynamic>> plannerEvents = _plannerEvents;
+      if (_token != null && _token!.isNotEmpty) {
+        plannerEvents = await widget.client.getPlannerEvents(_token!);
+      }
+      setState(() {
+        _frontPage = frontPage;
+        _plannerEvents = plannerEvents;
+      });
+      await _persistLocalCache();
+      _appendUiLog('Front page refreshed.');
+    } catch (error) {
+      final message = error.toString().replaceFirst('Exception: ', '');
+      setState(() {
+        _errorMessage = message;
+      });
+      _appendUiLog('Front page refresh failed: $message');
     }
-    setState(() {
-      _frontPage = frontPage;
-      _plannerEvents = plannerEvents;
-    });
-    _appendUiLog('Front page refreshed.');
   }
 
   Future<void> _loadLearnerNotes({bool reset = false, String? query}) async {
@@ -386,13 +592,24 @@ class _AppShellState extends State<AppShell> {
       _selectedCourse = course;
       _isLoading = true;
     });
+    if (_isLocalCourse(course)) {
+      setState(() {
+        _courseNotes = _localNotesForCourse(course);
+        _selectedNote = null;
+        _selectedIndex = 2;
+        _isLoading = false;
+      });
+      _appendUiLog('Opened local course ${course['title']}.');
+      return;
+    }
     try {
       var effectiveCourse = Map<String, dynamic>.from(course);
       if ((_token?.isNotEmpty ?? false) && course['is_subscribed'] == true) {
         effectiveCourse =
             await widget.client.openCourse(_token!, course['id'] as int);
       }
-      final refreshedCourses = await widget.client.getCourses(token: _token);
+      final refreshedCourses =
+          (await widget.client.getCourses(token: _token)).map(_decorateRemoteCourse).toList();
       final refreshedSelected = refreshedCourses.firstWhere(
         (item) => item['id'] == effectiveCourse['id'],
         orElse: () => effectiveCourse,
@@ -406,16 +623,20 @@ class _AppShellState extends State<AppShell> {
         _selectedCourse = refreshedSelected;
         _courseNotes = notes;
         _selectedNote = null;
+        _selectedIndex = 2;
         _isLoading = false;
       });
+      await _persistLocalCache();
       _appendUiLog('Opened course ${refreshedSelected['title']}.');
     } catch (error) {
+      final message = error.toString().replaceFirst('Exception: ', '');
       setState(() {
-        _errorMessage = error.toString().replaceFirst('Exception: ', '');
+        _selectedCourse = course;
+        _courseNotes = const [];
+        _errorMessage = message;
         _isLoading = false;
       });
-      _appendUiLog(
-          'Course load failed: ${error.toString().replaceFirst('Exception: ', '')}');
+      _appendUiLog('Course load failed: $message');
     }
   }
 
@@ -441,7 +662,15 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<void> _openNoteViewer(Map<String, dynamic> noteSummary) async {
-    final detail = await _fetchNoteDetail(noteSummary['id'] as int);
+    Map<String, dynamic> detail;
+    try {
+      detail = await _fetchNoteDetail(noteSummary['id'] as int);
+    } catch (error) {
+      _showMessage(error.toString().replaceFirst('Exception: ', ''));
+      _appendUiLog(
+          'Note viewer failed: ${error.toString().replaceFirst('Exception: ', '')}');
+      return;
+    }
     if (!mounted) {
       return;
     }
@@ -553,7 +782,7 @@ class _AppShellState extends State<AppShell> {
       'theme_mode': themeMode ?? _localSettings['theme_mode'] ?? 'S',
       'api_base_url': apiBaseUrl ??
           _localSettings['api_base_url'] ??
-          'http://localhost:9080/api/v1',
+          _defaultApiBaseUrl(),
       'log_preferences': existingLogPrefs,
     };
   }
@@ -565,7 +794,7 @@ class _AppShellState extends State<AppShell> {
       ...settings,
     };
     _httpClient?.updateBaseUrl(
-      _localSettings['api_base_url']?.toString() ?? 'http://localhost:9080/api/v1',
+      _localSettings['api_base_url']?.toString() ?? _defaultApiBaseUrl(),
     );
     widget.onThemeChanged?.call(
       _localSettings['theme_preset']?.toString() ?? 'teal',
@@ -584,33 +813,50 @@ class _AppShellState extends State<AppShell> {
   Future<void> _applyAuthPayload(Map<String, dynamic> payload) async {
     final token = payload['token']?.toString() ?? '';
     final user = Map<String, dynamic>.from(payload['user'] as Map? ?? {});
-    var settings = await widget.client.getSettings(token);
-    final localUpdated =
-        _parseUpdatedAt(_localSettings['updated_at']?.toString());
-    final serverUpdated =
-        _parseUpdatedAt(settings['app_settings_updated_at']?.toString());
-    if (localUpdated.isAfter(serverUpdated)) {
-      settings = await widget.client.updateSettings(token, {
-        'app_settings': _currentAppSettingsPayload(),
-        'app_settings_updated_at': _localSettings['updated_at'],
+    Map<String, dynamic> settings;
+    try {
+      settings = await widget.client.getSettings(token);
+      final localUpdated =
+          _parseUpdatedAt(_localSettings['updated_at']?.toString());
+      final serverUpdated =
+          _parseUpdatedAt(settings['app_settings_updated_at']?.toString());
+      if (localUpdated.isAfter(serverUpdated)) {
+        settings = await widget.client.updateSettings(token, {
+          'app_settings': _currentAppSettingsPayload(),
+          'app_settings_updated_at': _localSettings['updated_at'],
+          'theme_preset': _localSettings['theme_preset'],
+          'theme_mode': _localSettings['theme_mode'],
+          'api_base_url': _localSettings['api_base_url'],
+        });
+      } else {
+        final serverAppSettings = Map<String, dynamic>.from(
+          settings['app_settings'] as Map? ??
+              _currentAppSettingsPayload(
+                themePreset: settings['theme_preset']?.toString(),
+                themeMode: settings['theme_mode']?.toString(),
+                apiBaseUrl: settings['api_base_url']?.toString(),
+              ),
+        );
+        await _applyLocalAppSettings({
+          ...serverAppSettings,
+          'updated_at': settings['app_settings_updated_at']?.toString() ??
+              DateTime.now().toUtc().toIso8601String(),
+        });
+      }
+    } catch (error) {
+      settings = {
+        'username': user['username'],
+        'email': user['email'],
+        'editor_mode': _settings?['editor_mode'] ?? 'P',
         'theme_preset': _localSettings['theme_preset'],
         'theme_mode': _localSettings['theme_mode'],
         'api_base_url': _localSettings['api_base_url'],
-      });
-    } else {
-      final serverAppSettings = Map<String, dynamic>.from(
-        settings['app_settings'] as Map? ??
-            _currentAppSettingsPayload(
-              themePreset: settings['theme_preset']?.toString(),
-              themeMode: settings['theme_mode']?.toString(),
-              apiBaseUrl: settings['api_base_url']?.toString(),
-            ),
-      );
-      await _applyLocalAppSettings({
-        ...serverAppSettings,
-        'updated_at': settings['app_settings_updated_at']?.toString() ??
-            DateTime.now().toUtc().toIso8601String(),
-      });
+        'app_settings': _currentAppSettingsPayload(),
+        'app_settings_updated_at':
+            _localSettings['updated_at'] ?? DateTime.now().toUtc().toIso8601String(),
+      };
+      _appendUiLog(
+          'Settings bootstrap after login fell back to local state: ${error.toString().replaceFirst('Exception: ', '')}');
     }
     setState(() {
       _token = token;
@@ -633,6 +879,7 @@ class _AppShellState extends State<AppShell> {
       ),
     });
     await _loadInitialData();
+    await _syncAllLocalData(showMessage: false);
     _appendUiLog(
         'Authenticated as ${user['username'] ?? user['email'] ?? 'user'}.');
   }
@@ -642,7 +889,12 @@ class _AppShellState extends State<AppShell> {
     if (token == null || token.isEmpty) {
       return;
     }
-    await widget.client.logout(token);
+    try {
+      await widget.client.logout(token);
+    } catch (error) {
+      _appendUiLog(
+          'Cloud logout failed, cleared local session anyway: ${error.toString().replaceFirst('Exception: ', '')}');
+    }
     setState(() {
       _token = null;
       _profile = null;
@@ -833,16 +1085,151 @@ class _AppShellState extends State<AppShell> {
       return;
     }
     final effectiveStart = _dateOnly(startDate ?? _activityWeekStart);
-    final week = await widget.client.getActivityWeek(
-      token,
-      startDate: effectiveStart.toIso8601String().split('T').first,
-    );
+    try {
+      final week = await widget.client.getActivityWeek(
+        token,
+        startDate: effectiveStart.toIso8601String().split('T').first,
+      );
+      setState(() {
+        _activityWeekStart = effectiveStart;
+        _activityWeek = week;
+      });
+      _appendUiLog(
+          'Activity week loaded for ${effectiveStart.toIso8601String().split('T').first}.');
+    } catch (error) {
+      final message = error.toString().replaceFirst('Exception: ', '');
+      setState(() {
+        _errorMessage = message;
+      });
+      _appendUiLog('Activity week load failed: $message');
+    }
+  }
+
+  Map<String, dynamic> _buildLocalCourse({
+    required String title,
+    String description = '',
+    String? clientCourseId,
+    String? createdAt,
+    int? id,
+  }) {
+    final nowIso = DateTime.now().toUtc().toIso8601String();
+    final effectiveTitle = title.trim().isEmpty ? 'Untitled course' : title.trim();
+    final ownerLabel = _profile?['username']?.toString() ?? 'Local';
+    return {
+      'id': id ?? -DateTime.now().microsecondsSinceEpoch,
+      'client_course_id': clientCourseId ?? _LocalAppStore.newCourseId(),
+      'slug': _slugifyLocalText(effectiveTitle, fallback: 'local-course'),
+      'title': effectiveTitle,
+      'description': description.trim(),
+      'cover_image_url': '',
+      'is_default': false,
+      'is_subscribed': false,
+      'subscriber_count': 0,
+      'last_opened_at': nowIso,
+      'date_created': createdAt ?? nowIso,
+      'last_edit': nowIso,
+      'is_local_course': true,
+      'is_owned': true,
+      'owner': {
+        'username': ownerLabel,
+        'display_name': ownerLabel,
+        'image_url': '',
+      },
+      'recent_notes': const <Map<String, dynamic>>[],
+      'media': const <Map<String, dynamic>>[],
+    };
+  }
+
+  Future<Map<String, dynamic>> _createLocalCourse(
+    String title,
+    String description,
+  ) async {
+    final course = _buildLocalCourse(title: title, description: description);
+    _localCourses = [course, ..._localCourses];
+    _localStats = {
+      ..._localStats,
+      'local_courses_created':
+          ((_localStats['local_courses_created'] as num?)?.toInt() ?? 0) + 1,
+    };
+    await _persistLocalCourses();
+    await _persistLocalStats();
     setState(() {
-      _activityWeekStart = effectiveStart;
-      _activityWeek = week;
+      _selectedCourse = course;
+      _selectedIndex = 2;
+      _courseNotes = _localNotesForCourse(course);
     });
-    _appendUiLog(
-        'Activity week loaded for ${effectiveStart.toIso8601String().split('T').first}.');
+    _appendUiLog("Created local course '${course['title']}'.");
+    return course;
+  }
+
+  int? _draftCourseId(Map<String, dynamic> draft) {
+    final metadata =
+        _decodeNoteMetadata(draft['metadata_json']?.toString() ?? '{}');
+    return (metadata['course_id'] as num?)?.toInt() ??
+        (draft['course_id'] as num?)?.toInt();
+  }
+
+  Map<String, dynamic> _remapDraftCourseId(
+    Map<String, dynamic> draft,
+    int fromCourseId,
+    int toCourseId,
+  ) {
+    final metadata =
+        _decodeNoteMetadata(draft['metadata_json']?.toString() ?? '{}');
+    if ((metadata['course_id'] as num?)?.toInt() == fromCourseId) {
+      metadata['course_id'] = toCourseId;
+    }
+    return {
+      ...draft,
+      'course_id': toCourseId,
+      'metadata_json': jsonEncode(metadata),
+      'last_edit': DateTime.now().toUtc().toIso8601String(),
+    };
+  }
+
+  Future<Map<String, dynamic>> _syncLocalCourse(Map<String, dynamic> course) async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      throw Exception('Sign in to sync local courses.');
+    }
+    final created = await widget.client.createCourse(token, {
+      'title': course['title'],
+      'description': course['description'] ?? '',
+      'client_course_id': course['client_course_id'],
+    });
+    final localId = (course['id'] as num?)?.toInt();
+    final remoteId = (created['id'] as num?)?.toInt();
+    if (localId != null && remoteId != null) {
+      _localDrafts = _localDrafts
+          .map((draft) => _draftCourseId(draft) == localId
+              ? _remapDraftCourseId(draft, localId, remoteId)
+              : draft)
+          .toList(growable: false);
+    }
+    final selectedCourseId = (_selectedCourse?['id'] as num?)?.toInt();
+    _localCourses = _localCourses
+        .where((item) => item['id'] != course['id'])
+        .toList(growable: false);
+    _courses = [
+      _decorateRemoteCourse(created),
+      ..._courses.where((item) => item['id'] != created['id']),
+    ];
+    if (selectedCourseId != null && selectedCourseId == localId) {
+      _selectedCourse = _decorateRemoteCourse(created);
+      _courseNotes = const [];
+    }
+    _localStats = {
+      ..._localStats,
+      'local_courses_synced':
+          ((_localStats['local_courses_synced'] as num?)?.toInt() ?? 0) + 1,
+      'last_sync_at': DateTime.now().toUtc().toIso8601String(),
+    };
+    await _persistLocalCourses();
+    await _persistLocalDrafts();
+    await _persistLocalStats();
+    await _persistLocalCache();
+    _appendUiLog("Synced local course '${course['title']}'.");
+    return created;
   }
 
   Map<String, dynamic> _buildLocalDraft({
@@ -892,15 +1279,37 @@ class _AppShellState extends State<AppShell> {
     if (token == null || token.isEmpty) {
       throw Exception('Sign in to sync local drafts.');
     }
-    final metadata =
+    var metadata =
         _decodeNoteMetadata(draft['metadata_json']?.toString() ?? '{}');
+    final assignedCourseId = (metadata['course_id'] as num?)?.toInt();
+    if (assignedCourseId != null && assignedCourseId < 0) {
+      Map<String, dynamic>? localCourse;
+      for (final item in _localCourses) {
+        if ((item['id'] as num?)?.toInt() == assignedCourseId) {
+          localCourse = item;
+          break;
+        }
+      }
+      if (localCourse != null) {
+        final syncedCourse = await _syncLocalCourse(localCourse);
+        metadata = {
+          ...metadata,
+          'course_id': syncedCourse['id'],
+        };
+        draft = _remapDraftCourseId(
+          draft,
+          assignedCourseId,
+          syncedCourse['id'] as int,
+        );
+      }
+    }
     final created = await widget.client.createNote(token, {
       'title': draft['title'],
       'description': draft['description'] ?? '',
       'content': draft['content'] ?? '',
       'editor_mode': draft['editor_mode'] ?? 'P',
       'course_id': metadata['course_id'],
-      'metadata_json': draft['metadata_json'] ?? '{}',
+      'metadata_json': jsonEncode(metadata),
       'client_draft_id': draft['client_draft_id'],
       'is_public': false,
     });
@@ -1306,6 +1715,18 @@ class _AppShellState extends State<AppShell> {
     _appendUiLog('Emptied recycle bin.');
   }
 
+  Future<void> _syncAllLocalCourses() async {
+    if (_localCourses.isEmpty) {
+      return;
+    }
+    for (final course in List<Map<String, dynamic>>.from(_localCourses)) {
+      await _syncLocalCourse(course);
+    }
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   Future<void> _syncAllLocalDrafts() async {
     if (_localDrafts.isEmpty) {
       return;
@@ -1316,6 +1737,97 @@ class _AppShellState extends State<AppShell> {
     if (mounted) {
       setState(() {});
     }
+  }
+
+  Future<ActionFeedback> _syncAllLocalData({bool showMessage = true}) async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      return const ActionFeedback(
+        message: 'Sign in to sync local courses and drafts.',
+        isError: true,
+      );
+    }
+    try {
+      await _syncAllLocalCourses();
+      await _syncAllLocalDrafts();
+      await _loadInitialData();
+      const feedback = ActionFeedback(message: 'Local data synced to the cloud.');
+      if (showMessage) {
+        _showMessage(feedback.message);
+      }
+      return feedback;
+    } catch (error) {
+      _localStats = {
+        ..._localStats,
+        'sync_failures': ((_localStats['sync_failures'] as num?)?.toInt() ?? 0) + 1,
+      };
+      await _persistLocalStats();
+      final message = error.toString().replaceFirst('Exception: ', '');
+      _appendUiLog('Local data sync failed: $message');
+      if (showMessage) {
+        _showMessage('Local data sync failed: $message');
+      }
+      return ActionFeedback(message: message, isError: true);
+    }
+  }
+
+  Future<ActionFeedback> _clearLocalCache() async {
+    _localCache = _LocalAppStore.defaultCache();
+    _frontPage = _localCourses.isNotEmpty
+        ? _frontPageFallbackPayload(const [])
+        : const <String, dynamic>{};
+    _courses = const [];
+    _activity = const [];
+    _courseNotes = _isLocalCourse(_selectedCourse)
+        ? _localNotesForCourse(_selectedCourse!)
+        : const [];
+    _selectedCourse = _isLocalCourse(_selectedCourse)
+        ? _selectedCourse
+        : _chooseDefaultCourse(
+            remoteCourses: const [],
+            localCourses: _localCourses,
+            frontPage: _frontPage,
+          );
+    _localStats = {
+      ..._localStats,
+      'cache_clears': ((_localStats['cache_clears'] as num?)?.toInt() ?? 0) + 1,
+    };
+    await _LocalAppStore.saveCache(_localCache);
+    await _persistLocalStats();
+    if (mounted) {
+      setState(() {});
+    }
+    _appendUiLog('Cleared cached remote data.');
+    return const ActionFeedback(message: 'Cached remote data cleared.');
+  }
+
+  Future<ActionFeedback> _clearLocalData() async {
+    _localDrafts = const [];
+    _localCourses = const [];
+    _selectedNote = null;
+    if (_selectedCourse != null && _isLocalCourse(_selectedCourse)) {
+      _selectedCourse = _chooseDefaultCourse(
+        remoteCourses: _courses,
+        localCourses: const [],
+        frontPage: _frontPage,
+      );
+      _courseNotes = _selectedCourse == null || _isLocalCourse(_selectedCourse)
+          ? const []
+          : _courseNotes;
+    }
+    _localStats = {
+      ..._localStats,
+      'local_data_clears':
+          ((_localStats['local_data_clears'] as num?)?.toInt() ?? 0) + 1,
+    };
+    await _persistLocalDrafts();
+    await _persistLocalCourses();
+    await _persistLocalStats();
+    if (mounted) {
+      setState(() {});
+    }
+    _appendUiLog('Removed local drafts and local courses.');
+    return const ActionFeedback(message: 'Local drafts and local courses removed.');
   }
 
   Future<void> _togglePlannerEventCompletion(
@@ -1573,11 +2085,13 @@ class _AppShellState extends State<AppShell> {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 250),
       child: SelectionArea(
-        child: _isLoading
+        child: _isLoading && !_hasRenderableLocalState
             ? const Center(child: CircularProgressIndicator())
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (_isLoading)
+                    const LinearProgressIndicator(minHeight: 2),
                   if (_errorMessage != null)
                     Material(
                       color: Theme.of(context).colorScheme.errorContainer,
@@ -1650,7 +2164,7 @@ class _AppShellState extends State<AppShell> {
         return _LearnerPage(
           notes: _learnerNotes,
           localDrafts: _localDrafts,
-          courses: _courses,
+          courses: [..._localCourses, ..._courses],
           selectedNote: _selectedNote,
           editorMode: _settings?['editor_mode']?.toString() ?? 'P',
           hasMoreNotes: _hasMoreLearnerNotes,
@@ -1680,11 +2194,16 @@ class _AppShellState extends State<AppShell> {
       case 2:
         return _CoursePage(
           courses: _courses,
+          localCourses: _localCourses,
           selectedCourse: _selectedCourse,
           notes: _courseNotes,
+          localNotes: _localDrafts,
           isAuthenticated: _token != null && _token!.isNotEmpty,
+          canCreateLocalCourses: true,
           apiBaseUrl: _httpClient?.baseUrl,
           onCourseChanged: _selectCourse,
+          onCreateLocalCourse: _createLocalCourse,
+          onSyncLocalData: _syncAllLocalData,
           onSubscribe: _subscribeToCourse,
           onUnsubscribe: _unsubscribeFromCourse,
           onFetchNoteDetail: _fetchNoteDetail,
@@ -1723,8 +2242,14 @@ class _AppShellState extends State<AppShell> {
           onEmptyDeletedNotes: _emptyDeletedNotes,
           onCopyLogs: _copyFrontendLogs,
           onUploadAvatar: _uploadAvatar,
+          onSyncLocalData: _syncAllLocalData,
+          onClearLocalCache: _clearLocalCache,
+          onClearLocalData: _clearLocalData,
+          localDraftCount: _localDrafts.length,
+          localCourseCount: _localCourses.length,
           apiBaseUrl: _httpClient?.baseUrl,
           debugSnapshotListenable: _httpClient?.debugSnapshot,
+          debugHistoryListenable: _httpClient?.debugHistory,
           uiLogs: _uiLogs,
         );
       default:

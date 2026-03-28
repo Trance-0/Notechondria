@@ -14,6 +14,7 @@ class ActionFeedback {
 /// Captures the last API response shape for frontend debugging surfaces.
 class ApiDebugSnapshot {
   const ApiDebugSnapshot({
+    required this.recordedAt,
     required this.method,
     required this.url,
     required this.statusCode,
@@ -23,6 +24,7 @@ class ApiDebugSnapshot {
     this.note,
   });
 
+  final DateTime recordedAt;
   final String method;
   final String url;
   final int statusCode;
@@ -36,6 +38,10 @@ class ApiDebugSnapshot {
 abstract class NotechondriaClient {
   Future<Map<String, dynamic>> getFrontPage({String? token});
   Future<List<Map<String, dynamic>>> getCourses({String? token});
+  Future<Map<String, dynamic>> createCourse(
+    String token,
+    Map<String, dynamic> payload,
+  );
   Future<Map<String, dynamic>> getCourseDetail(int courseId, {String? token});
   Future<List<Map<String, dynamic>>> getCourseNotes(int courseId, {String? token});
   Future<Map<String, dynamic>> getNoteDetail(int noteId, {String? token});
@@ -135,6 +141,8 @@ class HttpNotechondriaClient implements NotechondriaClient {
   final http.Client _httpClient;
   String _baseUrl;
   final ValueNotifier<ApiDebugSnapshot?> debugSnapshot = ValueNotifier(null);
+  final ValueNotifier<List<ApiDebugSnapshot>> debugHistory =
+      ValueNotifier(const []);
 
   String get baseUrl => _baseUrl;
 
@@ -149,11 +157,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
       return configured;
     }
     if (kIsWeb && Uri.base.scheme.startsWith('http')) {
-      final isLocalHost =
-          Uri.base.host == 'localhost' || Uri.base.host == '127.0.0.1';
-      if (!isLocalHost) {
-        return Uri.base.origin;
-      }
+      return '/api/v1';
     }
     return 'http://localhost:9080';
   }
@@ -213,6 +217,15 @@ class HttpNotechondriaClient implements NotechondriaClient {
     return 'Expected JSON from $target but received an invalid response.';
   }
 
+  void _recordDebugSnapshot(ApiDebugSnapshot snapshot) {
+    debugSnapshot.value = snapshot;
+    final next = [snapshot, ...debugHistory.value];
+    if (next.length > 32) {
+      next.removeRange(32, next.length);
+    }
+    debugHistory.value = List<ApiDebugSnapshot>.unmodifiable(next);
+  }
+
   Future<dynamic> _decode(
     http.Response response, {
     required Uri uri,
@@ -234,7 +247,8 @@ class HttpNotechondriaClient implements NotechondriaClient {
     try {
       data = jsonDecode(body);
     } on FormatException {
-      debugSnapshot.value = ApiDebugSnapshot(
+      _recordDebugSnapshot(ApiDebugSnapshot(
+        recordedAt: DateTime.now(),
         method: method,
         url: uri.toString(),
         statusCode: response.statusCode,
@@ -244,21 +258,44 @@ class HttpNotechondriaClient implements NotechondriaClient {
         note: looksLikeHtml
             ? 'The response body looks like HTML, not JSON.'
             : 'The response body is not valid JSON.',
-      );
+      ));
       throw Exception(_formatDecodeError(uri, response, looksLikeHtml));
     }
-    debugSnapshot.value = ApiDebugSnapshot(
+    _recordDebugSnapshot(ApiDebugSnapshot(
+      recordedAt: DateTime.now(),
       method: method,
       url: uri.toString(),
       statusCode: response.statusCode,
       contentType: contentType,
       bodyPreview: _previewBody(body),
       looksLikeHtml: looksLikeHtml,
-    );
+    ));
     if (response.statusCode >= 400) {
       throw Exception(_stringifyErrors(data));
     }
     return data;
+  }
+
+  Future<http.Response> _send(
+    String method,
+    Uri uri,
+    Future<http.Response> Function() operation,
+  ) async {
+    try {
+      return await operation();
+    } catch (error) {
+      _recordDebugSnapshot(ApiDebugSnapshot(
+        recordedAt: DateTime.now(),
+        method: method,
+        url: uri.toString(),
+        statusCode: 0,
+        contentType: '',
+        bodyPreview: error.toString(),
+        looksLikeHtml: false,
+        note: 'Request failed before a response was received.',
+      ));
+      throw Exception('Client failed to fetch, uri=$uri');
+    }
   }
 
   Map<String, String> _headers({
@@ -275,11 +312,58 @@ class HttpNotechondriaClient implements NotechondriaClient {
     return headers;
   }
 
+  Future<http.Response> _get(Uri uri, {String? token}) {
+    return _send(
+      'GET',
+      uri,
+      () => _httpClient.get(uri, headers: _headers(token: token)),
+    );
+  }
+
+  Future<http.Response> _post(
+    Uri uri, {
+    String? token,
+    Map<String, dynamic>? payload,
+  }) {
+    return _send(
+      'POST',
+      uri,
+      () => _httpClient.post(
+        uri,
+        headers: _headers(token: token, includeJsonContentType: true),
+        body: jsonEncode(payload ?? const {}),
+      ),
+    );
+  }
+
+  Future<http.Response> _patch(
+    Uri uri, {
+    String? token,
+    required Map<String, dynamic> payload,
+  }) {
+    return _send(
+      'PATCH',
+      uri,
+      () => _httpClient.patch(
+        uri,
+        headers: _headers(token: token, includeJsonContentType: true),
+        body: jsonEncode(payload),
+      ),
+    );
+  }
+
+  Future<http.Response> _delete(Uri uri, {String? token}) {
+    return _send(
+      'DELETE',
+      uri,
+      () => _httpClient.delete(uri, headers: _headers(token: token)),
+    );
+  }
+
   @override
   Future<Map<String, dynamic>> getFrontPage({String? token}) async {
     final uri = _uri('/front-page/');
-    final response =
-        await _httpClient.get(uri, headers: _headers(token: token));
+    final response = await _get(uri, token: token);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'GET'),
     );
@@ -288,19 +372,29 @@ class HttpNotechondriaClient implements NotechondriaClient {
   @override
   Future<List<Map<String, dynamic>>> getCourses({String? token}) async {
     final uri = _uri('/courses/');
-    final response =
-        await _httpClient.get(uri, headers: _headers(token: token));
+    final response = await _get(uri, token: token);
     final data =
         await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
     return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
   @override
+  Future<Map<String, dynamic>> createCourse(
+    String token,
+    Map<String, dynamic> payload,
+  ) async {
+    final uri = _uri('/courses/');
+    final response = await _post(uri, token: token, payload: payload);
+    return Map<String, dynamic>.from(
+      await _decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
   Future<Map<String, dynamic>> getCourseDetail(int courseId,
       {String? token}) async {
     final uri = _uri('/courses/$courseId/');
-    final response =
-        await _httpClient.get(uri, headers: _headers(token: token));
+    final response = await _get(uri, token: token);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'GET'),
     );
@@ -310,8 +404,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
   Future<List<Map<String, dynamic>>> getCourseNotes(int courseId,
       {String? token}) async {
     final uri = _uri('/courses/$courseId/notes/');
-    final response =
-        await _httpClient.get(uri, headers: _headers(token: token));
+    final response = await _get(uri, token: token);
     final data =
         await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
     return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
@@ -320,8 +413,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
   @override
   Future<Map<String, dynamic>> getNoteDetail(int noteId, {String? token}) async {
     final uri = _uri('/notes/$noteId/');
-    final response =
-        await _httpClient.get(uri, headers: _headers(token: token));
+    final response = await _get(uri, token: token);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'GET'),
     );
@@ -341,8 +433,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
         if (query.trim().isNotEmpty) 'q': query.trim(),
       },
     );
-    final response =
-        await _httpClient.get(uri, headers: _headers(token: token));
+    final response = await _get(uri, token: token);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'GET'),
     );
@@ -354,11 +445,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     Map<String, dynamic> payload,
   ) async {
     final uri = _uri('/notes/');
-    final response = await _httpClient.post(
-      uri,
-      headers: _headers(token: token, includeJsonContentType: true),
-      body: jsonEncode(payload),
-    );
+    final response = await _post(uri, token: token, payload: payload);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),
     );
@@ -367,16 +454,14 @@ class HttpNotechondriaClient implements NotechondriaClient {
   @override
   Future<void> deleteNote(String token, int noteId) async {
     final uri = _uri('/notes/$noteId/');
-    final response =
-        await _httpClient.delete(uri, headers: _headers(token: token));
+    final response = await _delete(uri, token: token);
     await _decode(response, uri: uri, method: 'DELETE');
   }
 
   @override
   Future<List<Map<String, dynamic>>> getDeletedNotes(String token) async {
     final uri = _uri('/notes/deleted/');
-    final response =
-        await _httpClient.get(uri, headers: _headers(token: token));
+    final response = await _get(uri, token: token);
     final data =
         await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
     return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
@@ -385,11 +470,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
   @override
   Future<Map<String, dynamic>> restoreDeletedNote(String token, int noteId) async {
     final uri = _uri('/notes/$noteId/restore/');
-    final response = await _httpClient.post(
-      uri,
-      headers: _headers(token: token, includeJsonContentType: true),
-      body: jsonEncode({}),
-    );
+    final response = await _post(uri, token: token);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),
     );
@@ -398,8 +479,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
   @override
   Future<Map<String, dynamic>> emptyDeletedNotes(String token) async {
     final uri = _uri('/notes/deleted/empty/');
-    final response =
-        await _httpClient.delete(uri, headers: _headers(token: token));
+    final response = await _delete(uri, token: token);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'DELETE'),
     );
@@ -412,11 +492,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     Map<String, dynamic> payload,
   ) async {
     final uri = _uri('/notes/$noteId/');
-    final response = await _httpClient.patch(
-      uri,
-      headers: _headers(token: token, includeJsonContentType: true),
-      body: jsonEncode(payload),
-    );
+    final response = await _patch(uri, token: token, payload: payload);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'PATCH'),
     );
@@ -428,8 +504,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     int noteId,
   ) async {
     final uri = _uri('/notes/$noteId/history/');
-    final response =
-        await _httpClient.get(uri, headers: _headers(token: token));
+    final response = await _get(uri, token: token);
     final data =
         await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
     return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
@@ -442,10 +517,10 @@ class HttpNotechondriaClient implements NotechondriaClient {
     String reason = 'manual',
   }) async {
     final uri = _uri('/notes/$noteId/snapshot/');
-    final response = await _httpClient.post(
+    final response = await _post(
       uri,
-      headers: _headers(token: token, includeJsonContentType: true),
-      body: jsonEncode({'reason': reason}),
+      token: token,
+      payload: {'reason': reason},
     );
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),
@@ -459,11 +534,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     int versionId,
   ) async {
     final uri = _uri('/notes/$noteId/restore/$versionId/');
-    final response = await _httpClient.post(
-      uri,
-      headers: _headers(token: token, includeJsonContentType: true),
-      body: jsonEncode({}),
-    );
+    final response = await _post(uri, token: token);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),
     );
@@ -472,8 +543,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
   @override
   Future<List<Map<String, dynamic>>> getActivity({String? token}) async {
     final uri = _uri('/activity/');
-    final response =
-        await _httpClient.get(uri, headers: _headers(token: token));
+    final response = await _get(uri, token: token);
     final data =
         await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
     return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
@@ -489,8 +559,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
         if (startDate != null && startDate.isNotEmpty) 'start_date': startDate,
       },
     );
-    final response =
-        await _httpClient.get(uri, headers: _headers(token: token));
+    final response = await _get(uri, token: token);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'GET'),
     );
@@ -499,8 +568,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
   @override
   Future<List<Map<String, dynamic>>> getCalendarFeeds(String token) async {
     final uri = _uri('/calendar-feeds/');
-    final response =
-        await _httpClient.get(uri, headers: _headers(token: token));
+    final response = await _get(uri, token: token);
     final data =
         await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
     return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
@@ -512,11 +580,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     Map<String, dynamic> payload,
   ) async {
     final uri = _uri('/calendar-feeds/');
-    final response = await _httpClient.post(
-      uri,
-      headers: _headers(token: token, includeJsonContentType: true),
-      body: jsonEncode(payload),
-    );
+    final response = await _post(uri, token: token, payload: payload);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),
     );
@@ -529,11 +593,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     Map<String, dynamic> payload,
   ) async {
     final uri = _uri('/calendar-feeds/$feedId/');
-    final response = await _httpClient.patch(
-      uri,
-      headers: _headers(token: token, includeJsonContentType: true),
-      body: jsonEncode(payload),
-    );
+    final response = await _patch(uri, token: token, payload: payload);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'PATCH'),
     );
@@ -542,8 +602,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
   @override
   Future<void> deleteCalendarFeed(String token, int feedId) async {
     final uri = _uri('/calendar-feeds/$feedId/');
-    final response =
-        await _httpClient.delete(uri, headers: _headers(token: token));
+    final response = await _delete(uri, token: token);
     await _decode(response, uri: uri, method: 'DELETE');
   }
 
@@ -553,11 +612,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     Map<String, dynamic> payload,
   ) async {
     final uri = _uri('/note-sessions/');
-    final response = await _httpClient.post(
-      uri,
-      headers: _headers(token: token, includeJsonContentType: true),
-      body: jsonEncode(payload),
-    );
+    final response = await _post(uri, token: token, payload: payload);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),
     );
@@ -570,11 +625,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     Map<String, dynamic> payload,
   ) async {
     final uri = _uri('/note-sessions/$sessionId/');
-    final response = await _httpClient.patch(
-      uri,
-      headers: _headers(token: token, includeJsonContentType: true),
-      body: jsonEncode(payload),
-    );
+    final response = await _patch(uri, token: token, payload: payload);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'PATCH'),
     );
@@ -583,11 +634,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
   @override
   Future<Map<String, dynamic>> subscribeCourse(String token, int courseId) async {
     final uri = _uri('/courses/$courseId/subscribe/');
-    final response = await _httpClient.post(
-      uri,
-      headers: _headers(token: token, includeJsonContentType: true),
-      body: jsonEncode({}),
-    );
+    final response = await _post(uri, token: token);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),
     );
@@ -597,8 +644,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
   Future<Map<String, dynamic>> unsubscribeCourse(
       String token, int courseId) async {
     final uri = _uri('/courses/$courseId/subscribe/');
-    final response =
-        await _httpClient.delete(uri, headers: _headers(token: token));
+    final response = await _delete(uri, token: token);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'DELETE'),
     );
@@ -607,11 +653,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
   @override
   Future<Map<String, dynamic>> openCourse(String token, int courseId) async {
     final uri = _uri('/courses/$courseId/open/');
-    final response = await _httpClient.post(
-      uri,
-      headers: _headers(token: token, includeJsonContentType: true),
-      body: jsonEncode({}),
-    );
+    final response = await _post(uri, token: token);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),
     );
@@ -620,11 +662,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
   @override
   Future<Map<String, dynamic>> restoreTemplateCourses(String token) async {
     final uri = _uri('/admin/template-courses/restore/');
-    final response = await _httpClient.post(
-      uri,
-      headers: _headers(token: token, includeJsonContentType: true),
-      body: jsonEncode({}),
-    );
+    final response = await _post(uri, token: token);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),
     );
@@ -633,10 +671,9 @@ class HttpNotechondriaClient implements NotechondriaClient {
   @override
   Future<Map<String, dynamic>> register(String email, String password) async {
     final uri = _uri('/auth/register/');
-    final response = await _httpClient.post(
+    final response = await _post(
       uri,
-      headers: _headers(includeJsonContentType: true),
-      body: jsonEncode({'email': email, 'password': password}),
+      payload: {'email': email, 'password': password},
     );
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),
@@ -646,10 +683,9 @@ class HttpNotechondriaClient implements NotechondriaClient {
   @override
   Future<Map<String, dynamic>> verifyEmail(String email, String code) async {
     final uri = _uri('/auth/verify-email/');
-    final response = await _httpClient.post(
+    final response = await _post(
       uri,
-      headers: _headers(includeJsonContentType: true),
-      body: jsonEncode({'email': email, 'code': code}),
+      payload: {'email': email, 'code': code},
     );
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),
@@ -659,10 +695,9 @@ class HttpNotechondriaClient implements NotechondriaClient {
   @override
   Future<Map<String, dynamic>> login(String email, String password) async {
     final uri = _uri('/auth/login/');
-    final response = await _httpClient.post(
+    final response = await _post(
       uri,
-      headers: _headers(includeJsonContentType: true),
-      body: jsonEncode({'email': email, 'password': password}),
+      payload: {'email': email, 'password': password},
     );
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),
@@ -672,11 +707,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
   @override
   Future<Map<String, dynamic>> requestPasswordReset(String email) async {
     final uri = _uri('/auth/password-reset/');
-    final response = await _httpClient.post(
-      uri,
-      headers: _headers(includeJsonContentType: true),
-      body: jsonEncode({'email': email}),
-    );
+    final response = await _post(uri, payload: {'email': email});
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),
     );
@@ -689,10 +720,9 @@ class HttpNotechondriaClient implements NotechondriaClient {
     String password,
   ) async {
     final uri = _uri('/auth/password-reset/confirm/');
-    final response = await _httpClient.post(
+    final response = await _post(
       uri,
-      headers: _headers(includeJsonContentType: true),
-      body: jsonEncode({'email': email, 'code': code, 'password': password}),
+      payload: {'email': email, 'code': code, 'password': password},
     );
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),
@@ -702,16 +732,18 @@ class HttpNotechondriaClient implements NotechondriaClient {
   @override
   Future<void> logout(String token) async {
     final uri = _uri('/auth/logout/');
-    final response =
-        await _httpClient.post(uri, headers: _headers(token: token));
+    final response = await _send(
+      'POST',
+      uri,
+      () => _httpClient.post(uri, headers: _headers(token: token)),
+    );
     await _decode(response, uri: uri, method: 'POST');
   }
 
   @override
   Future<Map<String, dynamic>> getSettings(String token) async {
     final uri = _uri('/settings/');
-    final response =
-        await _httpClient.get(uri, headers: _headers(token: token));
+    final response = await _get(uri, token: token);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'GET'),
     );
@@ -723,11 +755,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     Map<String, dynamic> payload,
   ) async {
     final uri = _uri('/settings/');
-    final response = await _httpClient.patch(
-      uri,
-      headers: _headers(token: token, includeJsonContentType: true),
-      body: jsonEncode(payload),
-    );
+    final response = await _patch(uri, token: token, payload: payload);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'PATCH'),
     );
@@ -745,20 +773,16 @@ class HttpNotechondriaClient implements NotechondriaClient {
           filename: file.name,
         ),
       );
-    final streamed = await request.send();
-    final response = await http.Response.fromStream(streamed);
+    final streamed = await _send('PATCH', uri, () => request.send().then(http.Response.fromStream));
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'PATCH'),
+      await _decode(streamed, uri: uri, method: 'PATCH'),
     );
   }
 
   @override
   Future<List<Map<String, dynamic>>> getPlannerEvents(String token) async {
     final uri = _uri('/planner-events/');
-    final response = await _httpClient.get(
-      uri,
-      headers: _headers(token: token),
-    );
+    final response = await _get(uri, token: token);
     final data =
         await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
     return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
@@ -770,11 +794,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     Map<String, dynamic> payload,
   ) async {
     final uri = _uri('/planner-events/');
-    final response = await _httpClient.post(
-      uri,
-      headers: _headers(token: token, includeJsonContentType: true),
-      body: jsonEncode(payload),
-    );
+    final response = await _post(uri, token: token, payload: payload);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),
     );
@@ -787,11 +807,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     Map<String, dynamic> payload,
   ) async {
     final uri = _uri('/planner-events/$eventId/');
-    final response = await _httpClient.patch(
-      uri,
-      headers: _headers(token: token, includeJsonContentType: true),
-      body: jsonEncode(payload),
-    );
+    final response = await _patch(uri, token: token, payload: payload);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'PATCH'),
     );

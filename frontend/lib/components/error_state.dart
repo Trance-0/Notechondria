@@ -27,6 +27,7 @@ class _ErrorState extends StatelessWidget {
             _ApiDebugSummary(
               apiBaseUrl: apiBaseUrl,
               snapshot: debugSnapshot,
+              history: const [],
             ),
             const SizedBox(height: 12),
             FilledButton(

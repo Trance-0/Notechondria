@@ -109,6 +109,23 @@ String _formatTime(DateTime value) {
   return '$hour:${value.minute.toString().padLeft(2, '0')} $suffix';
 }
 
+String _defaultApiBaseUrl() {
+  if (kIsWeb) {
+    return '/api/v1';
+  }
+  return 'http://localhost:9080/api/v1';
+}
+
+String _slugifyLocalText(String value, {String fallback = 'item'}) {
+  final normalized = value
+      .trim()
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+      .replaceAll(RegExp(r'-+'), '-')
+      .replaceAll(RegExp(r'^-|-$'), '');
+  return normalized.isEmpty ? fallback : normalized;
+}
+
 String _apiOrigin(String? baseUrl) {
   final candidate = (baseUrl ?? '').trim();
   if (candidate.isEmpty) {

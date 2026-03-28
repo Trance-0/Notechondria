@@ -296,6 +296,22 @@ class FakeClient implements NotechondriaClient {
   Future<List<Map<String, dynamic>>> getCourses({String? token}) async => _courses;
 
   @override
+  Future<Map<String, dynamic>> createCourse(
+      String token, Map<String, dynamic> payload) async {
+    final created = FakeClient._sampleCourse(
+      id: 100 + _courses.length,
+      title: payload['title']?.toString() ?? 'Untitled course',
+      isSubscribed: false,
+    )
+      ..['description'] = payload['description']?.toString() ?? ''
+      ..['client_course_id'] = payload['client_course_id']
+      ..['is_local_course'] = false
+      ..['is_owned'] = true;
+    _courses = [created, ..._courses];
+    return created;
+  }
+
+  @override
   Future<Map<String, dynamic>> getCourseDetail(int courseId,
           {String? token}) async =>
       _courses.firstWhere((course) => course['id'] == courseId);
@@ -349,11 +365,11 @@ class FakeClient implements NotechondriaClient {
         'editor_mode': 'P',
         'theme_preset': 'teal',
         'theme_mode': 'S',
-        'api_base_url': 'http://localhost:9080/api/v1',
+        'api_base_url': '/api/v1',
         'app_settings': {
           'theme_preset': 'teal',
           'theme_mode': 'S',
-          'api_base_url': 'http://localhost:9080/api/v1',
+          'api_base_url': '/api/v1',
           'log_preferences': {},
         },
         'app_settings_updated_at': '2026-03-21T12:00:00Z',
@@ -497,14 +513,12 @@ class FakeClient implements NotechondriaClient {
         'editor_mode': payload['editor_mode'] ?? 'P',
         'theme_preset': payload['theme_preset'] ?? 'teal',
         'theme_mode': payload['theme_mode'] ?? 'S',
-        'api_base_url':
-            payload['api_base_url'] ?? 'http://localhost:9080/api/v1',
+        'api_base_url': payload['api_base_url'] ?? '/api/v1',
         'app_settings': payload['app_settings'] ??
             {
               'theme_preset': payload['theme_preset'] ?? 'teal',
               'theme_mode': payload['theme_mode'] ?? 'S',
-              'api_base_url':
-                  payload['api_base_url'] ?? 'http://localhost:9080/api/v1',
+              'api_base_url': payload['api_base_url'] ?? '/api/v1',
               'log_preferences': {},
             },
         'app_settings_updated_at':
@@ -632,6 +646,10 @@ void main() {
     await tester.tap(find.text('Course').first);
     await tester.pump();
     await pumpUntilVisible(tester, find.byKey(const Key('course-scope-selector')));
+    await tester.tap(find.byKey(const Key('course-scope-selector')));
+    await pumpUntilVisible(tester, find.text('Public courses').last);
+    await tester.tap(find.text('Public courses').last);
+    await tester.pump();
     await pumpUntilVisible(tester, find.byKey(const Key('course-public-search')));
     expect(tester.takeException(), isNull);
 
