@@ -84,6 +84,7 @@ This file is the current engineer handoff for the Notechondria workspace. It is 
   - superuser bootstrap
   - `collectstatic --clear`
   - startup verification that required admin and DRF assets really exist in the shared static directory
+- The backend runtime now normalizes `PRODUCTION_STATIC_ROOT` and `PRODUCTION_MEDIA_ROOT` to POSIX container paths before startup work begins. This defends against Windows-hosted Jenkins or Git Bash environments leaking drive-letter style values into the Linux container.
 - `backend/docker-compose.yml` healthchecks depend on those static assets existing before the stack is treated as healthy.
 - This was added because earlier runs could appear "up" while admin and browsable DRF assets were still 404ing through nginx.
 
@@ -200,6 +201,9 @@ This file is the current engineer handoff for the Notechondria workspace. It is 
   - `wait_for_stack.sh`
   - `wait_for_frontend.sh`
   - `ensure_db_ready.sh`
+- Backend deploy now has two migration/static checkpoints:
+  - startup entrypoint runs `migrate`, `bootstrap_platform`, and `collectstatic --clear`
+  - `deploy_backend.sh` reruns `migrate --noinput`, `bootstrap_platform`, and `collectstatic --clear` after the new app container reports healthy, then waits for stack health again
 
 ### 5.4 Environment contract
 

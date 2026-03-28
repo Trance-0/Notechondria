@@ -1,5 +1,6 @@
 import json
 import logging
+from pathlib import Path
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -182,12 +183,17 @@ class Command(BaseCommand):
 
     @staticmethod
     def resolve_sample_base_root():
+        explicit_root = Command.getenv("SAMPLE_ROOT")
         candidates = [
+            Path(explicit_root) if explicit_root else None,
+            Path("/home/sample"),
             settings.BASE_DIR.parent / "sample",
             settings.BASE_DIR / "sample",
             settings.BASE_DIR.parent.parent / "sample",
         ]
         for candidate in candidates:
+            if candidate is None:
+                continue
             if (candidate / "vibe-coding-101" / "course.json").exists():
                 return candidate
         raise FileNotFoundError(
@@ -217,11 +223,15 @@ class Command(BaseCommand):
         raise FileNotFoundError("Could not find CODEX.md in expected runtime locations.")
 
     def attach_course_cover(self, course: Course, cover_path):
-        if cover_path and cover_path.is_file():
-            with cover_path.open("rb") as cover_file:
-                course.cover_image.save(cover_path.name, File(cover_file), save=True)
+        resolved_cover_path = self.resolve_course_asset_path(course.slug, cover_path)
+        if resolved_cover_path and resolved_cover_path.is_file():
+            with resolved_cover_path.open("rb") as cover_file:
+                course.cover_image.save(resolved_cover_path.name, File(cover_file), save=True)
         else:
-            logger.warning("Sample course cover not found at %s. Continuing without cover image.", cover_path)
+            logger.warning(
+                "Sample course cover not found at %s. Continuing without cover image.",
+                cover_path,
+            )
 
     def attach_course_media(self, course: Course, course_root, payload: dict):
         media_items = payload.get("media") or []
@@ -248,15 +258,40 @@ class Command(BaseCommand):
             )
             media_ref = media_payload.get("path")
             media_path = course_root / media_ref if media_ref else None
-            if media_path and media_path.is_file():
-                with media_path.open("rb") as media_file:
-                    media.image.save(media_path.name, File(media_file), save=True)
+            resolved_media_path = self.resolve_course_asset_path(course.slug, media_path)
+            if resolved_media_path and resolved_media_path.is_file():
+                with resolved_media_path.open("rb") as media_file:
+                    media.image.save(resolved_media_path.name, File(media_file), save=True)
             else:
                 logger.warning(
                     "Sample course media not found at %s. Continuing without image for '%s'.",
                     media_path,
                     media.title,
                 )
+
+    @staticmethod
+    def resolve_course_asset_path(slug: str, candidate_path):
+        if not candidate_path:
+            return None
+        candidate = Path(candidate_path)
+        if candidate.is_file():
+            return candidate
+
+        file_name = candidate.name
+        alternatives = [
+            Path("/home/sample") / slug / file_name,
+            Path("/home/sample") / slug / "media" / file_name,
+            settings.BASE_DIR.parent / "sample" / slug / file_name,
+            settings.BASE_DIR.parent / "sample" / slug / "media" / file_name,
+            settings.BASE_DIR / "sample" / slug / file_name,
+            settings.BASE_DIR / "sample" / slug / "media" / file_name,
+            settings.BASE_DIR.parent.parent / "sample" / slug / file_name,
+            settings.BASE_DIR.parent.parent / "sample" / slug / "media" / file_name,
+        ]
+        for alternative in alternatives:
+            if alternative.is_file():
+                return alternative
+        return candidate
 
     def create_seed_note(self, creator, course: Course, title: str, body: str):
         markdown_body = f"# {title}\n\n{body}".strip()

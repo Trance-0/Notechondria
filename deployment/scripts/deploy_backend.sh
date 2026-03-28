@@ -20,6 +20,9 @@ bash "$DB_READY_SCRIPT" "$PROJECT_DIR" "$ENV_PATH" "$WAIT_TIMEOUT_SECONDS"
 docker compose --env-file "$ENV_PATH" build --pull --no-cache app nginx
 docker compose --env-file "$ENV_PATH" up -d --force-recreate
 bash "$WAIT_SCRIPT" "$PROJECT_DIR" "$ENV_PATH" "$WAIT_TIMEOUT_SECONDS"
-docker compose --env-file "$ENV_PATH" exec -T app python manage.py collectstatic --noinput
+docker compose --env-file "$ENV_PATH" exec -T app python manage.py migrate --noinput
+docker compose --env-file "$ENV_PATH" exec -T app python manage.py bootstrap_platform
+docker compose --env-file "$ENV_PATH" exec -T app python manage.py collectstatic --noinput --clear
+bash "$WAIT_SCRIPT" "$PROJECT_DIR" "$ENV_PATH" "$WAIT_TIMEOUT_SECONDS"
 
 echo "Deployment finished successfully."

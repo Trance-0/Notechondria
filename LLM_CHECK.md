@@ -77,3 +77,7 @@ Use this checklist at the end of each modification round.
 - Fixed Flutter widget-test timeouts caused by the 30-second front-page carousel timer by disabling auto-slide under test bindings and making `widget_test.dart` use bounded pumps instead of `pumpAndSettle()`.
 - Split Jenkins into independent backend and frontend release tracks so frontend failures no longer block backend deployment; frontend failures now mark the build unstable instead.
 - Verification is still incomplete in this environment: `flutter analyze` and `dart analyze` both timed out here, so the latest Flutter integration should be treated as source-updated but not execution-verified.
+- Fixed a Dart parse/type break in `frontend/lib/app_shell.dart` by avoiding null-aware map indexing directly inside ternary branches when updating local fallback profile values.
+- Hardened backend deployment against Windows-host path leakage by normalizing `PRODUCTION_STATIC_ROOT` and `PRODUCTION_MEDIA_ROOT` in both `prepare_env.sh` and the backend entrypoint before migrations and `collectstatic`.
+- Made backend deploy explicitly rerun `migrate --noinput`, `bootstrap_platform`, and `collectstatic --noinput --clear` after the new app container becomes healthy, then wait for stack health again so Jenkins deploys verify the final runtime state.
+- Hardened seeded course asset lookup to search multiple runtime sample roots, including `/home/sample`, and changed the backend Dockerfile to copy `sample/` into `/home/sample/` explicitly.

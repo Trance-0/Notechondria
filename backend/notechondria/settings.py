@@ -37,7 +37,15 @@ def env_list(name: str, default: str = ""):
 
 def env_path(name: str, default):
     raw = os.getenv(name)
-    return raw if raw else str(default)
+    if not raw:
+        return str(default)
+    candidate = raw.strip()
+    if os.name != "nt":
+        if len(candidate) >= 2 and candidate[1] == ":":
+            return str(default)
+        if not candidate.startswith("/"):
+            return str(default)
+    return candidate
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/

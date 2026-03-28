@@ -21,7 +21,7 @@ RUN pip3 install -r requirements.txt --no-cache-dir
 # copy files
 WORKDIR ${APP_HOME}
 COPY backend/ .
-COPY sample /home/sample
+COPY sample/ /home/sample/
 COPY CODEX.md /home/CODEX.md
 
 # add entrypoint to root

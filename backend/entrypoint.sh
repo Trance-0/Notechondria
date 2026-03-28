@@ -3,6 +3,28 @@
 
 set -e
 
+normalize_container_path() {
+    local value="${1:-}"
+    local fallback="$2"
+
+    if [ -z "$value" ]; then
+        echo "$fallback"
+        return
+    fi
+
+    case "$value" in
+        /*)
+            printf '%s\n' "${value%/}"
+            ;;
+        [A-Za-z]:*|*:\\*)
+            printf '%s\n' "$fallback"
+            ;;
+        *)
+            printf '%s\n' "$fallback"
+            ;;
+    esac
+}
+
 if [ -n "$POSTGRE_HOST" ] && [ -n "$POSTGRE_PORT" ]
 then
     echo "Waiting for postgres..."
@@ -50,12 +72,17 @@ PY
     fi
 fi
 
-mkdir -p "${PRODUCTION_STATIC_ROOT:-/home/staticfiles}"
-mkdir -p "${PRODUCTION_MEDIA_ROOT:-/home/mediafiles}"
+PRODUCTION_STATIC_ROOT="$(normalize_container_path "${PRODUCTION_STATIC_ROOT:-}" "/home/staticfiles")"
+PRODUCTION_MEDIA_ROOT="$(normalize_container_path "${PRODUCTION_MEDIA_ROOT:-}" "/home/mediafiles")"
+export PRODUCTION_STATIC_ROOT
+export PRODUCTION_MEDIA_ROOT
+
+mkdir -p "${PRODUCTION_STATIC_ROOT}"
+mkdir -p "${PRODUCTION_MEDIA_ROOT}"
 
 python manage.py migrate
 python manage.py bootstrap_platform
-echo "Collecting static files into ${PRODUCTION_STATIC_ROOT:-/home/staticfiles}"
+echo "Collecting static files into ${PRODUCTION_STATIC_ROOT}"
 python manage.py collectstatic --noinput --clear
 python - <<'PY'
 import os

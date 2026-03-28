@@ -570,7 +570,13 @@ void main() {
   }) async {
     await pumpUntil(
       tester,
-      () => finder.evaluate().isNotEmpty,
+      () {
+        try {
+          return finder.evaluate().isNotEmpty;
+        } on StateError {
+          return false;
+        }
+      },
       maxPumps: maxPumps,
       step: step,
       description: finder.description,
@@ -647,8 +653,9 @@ void main() {
     await tester.pump();
     await pumpUntilVisible(tester, find.byKey(const Key('course-scope-selector')));
     await tester.tap(find.byKey(const Key('course-scope-selector')));
-    await pumpUntilVisible(tester, find.text('Public courses').last);
-    await tester.tap(find.text('Public courses').last);
+    final publicCoursesOption = find.text('Public courses');
+    await pumpUntilVisible(tester, publicCoursesOption);
+    await tester.tap(publicCoursesOption.last);
     await tester.pump();
     await pumpUntilVisible(tester, find.byKey(const Key('course-public-search')));
     expect(tester.takeException(), isNull);

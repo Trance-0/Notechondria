@@ -972,6 +972,8 @@ class _AppShellState extends State<AppShell> {
       return const ActionFeedback(message: 'Settings updated.');
     } catch (error) {
       final message = error.toString().replaceFirst('Exception: ', '');
+      final fallbackUsername = _profile?['username'];
+      final fallbackEmail = _profile?['email'];
       setState(() {
         _settings = {
           ...?_settings,
@@ -986,8 +988,8 @@ class _AppShellState extends State<AppShell> {
         };
         _profile = {
           ...?_profile,
-          'username': username.isEmpty ? _profile?['username'] : username,
-          'email': email.isEmpty ? _profile?['email'] : email,
+          'username': username.isEmpty ? fallbackUsername : username,
+          'email': email.isEmpty ? fallbackEmail : email,
           'motto': motto,
           'social_link': socialLink,
         };

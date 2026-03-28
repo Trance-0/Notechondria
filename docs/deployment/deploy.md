@@ -135,6 +135,11 @@ Track behavior:
 - The backend track is required for a green pipeline.
 - The frontend track is isolated and wrapped with `catchError`.
 - If the frontend track fails, Jenkins marks the build unstable, but the backend track can still deploy the latest backend changes for testing.
+- The backend deploy script now performs a post-start verification pass inside the running app container:
+  - `python manage.py migrate --noinput`
+  - `python manage.py bootstrap_platform`
+  - `python manage.py collectstatic --noinput --clear`
+  - followed by a second stack health wait
 
 The relevant files are:
 
@@ -184,6 +189,7 @@ Only the host-exposed ports are configurable:
 
 Deployment readiness waits at most 300 seconds before failing and stopping the web containers.
 The backend entrypoint now runs `collectstatic --clear`, verifies that Django admin and DRF assets exist under `/home/staticfiles`, and the stack wait step now requires both `app` and `nginx` to report healthy before Jenkins treats the deployment as ready.
+`prepare_env.sh` also normalizes `PRODUCTION_STATIC_ROOT` and `PRODUCTION_MEDIA_ROOT` to Linux-container-safe absolute paths so Windows-hosted Jenkins shells cannot accidentally leak host-style values such as `C:/...` into the container runtime.
 The test stage does not use the postgres container; it runs Django tests with `settings_test` directly in an app container without the production entrypoint.
 The app service must not mount a named volume over `/home/notechondria`, because that path contains the Django code copied into the image during build.
 The Jenkins build can tag images with the current build number using `APP_IMAGE`, `NGINX_IMAGE`, and `FRONTEND_IMAGE`, for example `trancezero/notechondria:build-${BUILD_NUMBER}`.

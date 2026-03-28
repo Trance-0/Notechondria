@@ -4,6 +4,56 @@ set -euo pipefail
 OUTPUT_PATH=${1:-.env.deploy}
 SOURCE_PATH=${2:-}
 
+normalize_container_path_value() {
+  local value="${1:-}"
+  local fallback="$2"
+
+  if [[ -z "$value" ]]; then
+    printf '%s\n' "$fallback"
+    return
+  fi
+
+  case "$value" in
+    /*)
+      printf '%s/\n' "${value%/}"
+      ;;
+    [A-Za-z]:*|*:\\*)
+      printf '%s\n' "$fallback"
+      ;;
+    *)
+      printf '%s\n' "$fallback"
+      ;;
+  esac
+}
+
+rewrite_env_path_key() {
+  local key="$1"
+  local fallback="$2"
+  local current
+  current=$(grep -E "^${key}=" "$OUTPUT_PATH" | tail -n 1 | cut -d= -f2- || true)
+  current=$(normalize_container_path_value "$current" "$fallback")
+
+  local tmp_file
+  tmp_file=$(mktemp)
+  awk -v key="$key" -v value="$current" '
+    BEGIN { replaced = 0 }
+    $0 ~ ("^" key "=") {
+      if (!replaced) {
+        print key "=" value
+        replaced = 1
+      }
+      next
+    }
+    { print }
+    END {
+      if (!replaced) {
+        print key "=" value
+      }
+    }
+  ' "$OUTPUT_PATH" > "$tmp_file"
+  mv "$tmp_file" "$OUTPUT_PATH"
+}
+
 mkdir -p "$(dirname "$OUTPUT_PATH")"
 
 if [[ -n "$SOURCE_PATH" && -f "$SOURCE_PATH" ]]; then
@@ -62,6 +112,9 @@ FRONTEND_IMAGE=${FRONTEND_IMAGE:-trancezero/notechondria-frontend:build-${BUILD_
 DB_AUTO_REINIT_IF_MISMATCH=${DB_AUTO_REINIT_IF_MISMATCH:-False}
 EOF
 fi
+
+rewrite_env_path_key "PRODUCTION_STATIC_ROOT" "/home/staticfiles/"
+rewrite_env_path_key "PRODUCTION_MEDIA_ROOT" "/home/mediafiles/"
 
 chmod 600 "$OUTPUT_PATH"
 echo "Deployment env prepared at $OUTPUT_PATH"
