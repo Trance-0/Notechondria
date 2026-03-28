@@ -60,7 +60,7 @@ SMTP_USE_SSL=False
 SMTP_FROM_EMAIL=no-reply@example.com
 EMAIL_VERIFICATION_TTL_HOURS=24
 FRONTEND_VERIFY_URL=http://localhost:9060/#/verify
-FRONTEND_API_BASE_URL=/api/v1
+FRONTEND_API_BASE_URL=http://localhost:9060/api/v1
 FRONTEND_BACKEND_ORIGIN=http://nginx
 NOTECHONDRIA_SHARED_NETWORK=notechondria-shared
 GITHUB_APP_ID=
@@ -237,7 +237,7 @@ cd frontend
 docker compose --env-file ../.env up --build -d
 ```
 
-The frontend container builds Flutter web with `FRONTEND_API_BASE_URL`, serves the resulting static site through nginx on `FRONTEND_HOST_PORT`, and proxies `/api`, `/admin`, `/static`, and `/media` to `FRONTEND_BACKEND_ORIGIN` over the shared Docker network. The default backend origin is `http://nginx`, not a host-local address like `localhost` or `host.docker.internal`.
+The frontend container builds Flutter web with `FRONTEND_API_BASE_URL`, serves the resulting static site through nginx on `FRONTEND_HOST_PORT`, and proxies `/api`, `/admin`, `/static`, and `/media` to `FRONTEND_BACKEND_ORIGIN` over the shared Docker network. `FRONTEND_API_BASE_URL` should stay an absolute browser-reachable URL such as `http://localhost:9060/api/v1`; do not use a slash-prefixed relative value in Windows-hosted Git Bash environments because it can be path-converted into a broken `C:/...` build argument. The default backend origin is `http://nginx`, not a host-local address like `localhost` or `host.docker.internal`.
 
 ## 7) Test deployment template
 

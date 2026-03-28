@@ -25,8 +25,8 @@ RUN flutter test
 
 FROM frontend_base AS frontend_build
 
-ARG API_BASE_URL=/api/v1
-RUN flutter build web --release --dart-define=API_BASE_URL=${API_BASE_URL}
+ARG FRONTEND_API_BASE_URL=http://localhost:9060/api/v1
+RUN flutter build web --release --dart-define=API_BASE_URL=${FRONTEND_API_BASE_URL}
 
 FROM nginx:1.27-alpine AS frontend_runtime
 

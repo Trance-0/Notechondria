@@ -111,7 +111,10 @@ String _formatTime(DateTime value) {
 
 String _defaultApiBaseUrl() {
   if (kIsWeb) {
-    return '/api/v1';
+    if (Uri.base.hasScheme && Uri.base.host.isNotEmpty) {
+      return '${Uri.base.origin}/api/v1';
+    }
+    return 'http://localhost:9060/api/v1';
   }
   return 'http://localhost:9080/api/v1';
 }

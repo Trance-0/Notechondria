@@ -157,9 +157,9 @@ class HttpNotechondriaClient implements NotechondriaClient {
       return configured;
     }
     if (kIsWeb && Uri.base.scheme.startsWith('http')) {
-      return '/api/v1';
+      return '${Uri.base.origin}/api/v1';
     }
-    return 'http://localhost:9080';
+    return 'http://localhost:9080/api/v1';
   }
 
   static String _normalizeBaseUrl(String raw) {

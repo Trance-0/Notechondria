@@ -33,7 +33,7 @@ flutter run -d chrome
 docker compose --env-file ../sample.env -f docker-compose.yml up --build -d
 ```
 
-The standalone web container serves the Flutter build on `FRONTEND_HOST_PORT`. The image compiles with `FRONTEND_API_BASE_URL` and the nginx runtime proxies `/api`, `/admin`, `/static`, and `/media` to `FRONTEND_BACKEND_ORIGIN` over the shared Docker network. The default backend origin is `http://nginx`.
+The standalone web container serves the Flutter build on `FRONTEND_HOST_PORT`. The image compiles with `FRONTEND_API_BASE_URL` and the nginx runtime proxies `/api`, `/admin`, `/static`, and `/media` to `FRONTEND_BACKEND_ORIGIN` over the shared Docker network. Keep `FRONTEND_API_BASE_URL` absolute, for example `http://localhost:9060/api/v1`, so Windows-hosted Git Bash does not path-convert a slash-prefixed value during Docker build. The default backend origin is `http://nginx`.
 
 ## Test
 

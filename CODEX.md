@@ -144,9 +144,11 @@ This file is the current engineer handoff for the Notechondria workspace. It is 
 
 - Text selection/copy support was added, but an early global `SelectionArea` placement caused overlay crashes. Selection handling was then moved deeper into page content.
 - The Flutter client now tries to defend against HTML error pages being decoded as JSON by surfacing request/response debug information in the UI.
-- Local default API behavior is meant to target `http://localhost:9080/api/v1`.
+- Local default API behavior is meant to use absolute API URLs:
+  - Flutter web defaults to the current browser origin plus `/api/v1`
+  - non-web local runs still default to `http://localhost:9080/api/v1`
 - The standalone web build also accepts `FRONTEND_API_BASE_URL`.
-- The standalone frontend container now defaults `FRONTEND_API_BASE_URL` to `/api/v1` and relies on frontend nginx to proxy `/api/`, `/admin/`, `/static/`, and `/media/` to `FRONTEND_BACKEND_ORIGIN`.
+- The standalone frontend container now defaults `FRONTEND_API_BASE_URL` to an absolute browser-facing URL such as `http://localhost:9060/api/v1` and relies on frontend nginx to proxy `/api/`, `/admin/`, `/static/`, and `/media/` to `FRONTEND_BACKEND_ORIGIN`.
 - The standalone frontend must not assume the backend is reachable through host `localhost` or `host.docker.internal`; the backend/frontend Docker stacks are now expected to share `NOTECHONDRIA_SHARED_NETWORK`, and the default proxy target is backend service name `http://nginx`.
 - Imported markdown documents should leave description empty rather than copying the entire document body into the description field.
 - The learner add action should stay compact: icon-first, tooltip on hover, long-press import on supported platforms.

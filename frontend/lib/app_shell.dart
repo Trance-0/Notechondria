@@ -155,7 +155,8 @@ class _AppShellState extends State<AppShell> {
     _localSettings = snapshot.settings;
     final storedApiBase = _localSettings['api_base_url']?.toString() ?? '';
     if (kIsWeb &&
-        (storedApiBase == 'http://localhost:9080' ||
+        (storedApiBase == '/api/v1' ||
+            storedApiBase == 'http://localhost:9080' ||
             storedApiBase == 'http://localhost:9080/api/v1')) {
       _localSettings = {
         ..._localSettings,

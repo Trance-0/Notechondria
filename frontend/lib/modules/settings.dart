@@ -449,7 +449,7 @@ class _SettingsPageState extends State<_SettingsPage> {
           controller: _apiBaseController,
           decoration: const InputDecoration(
             labelText: 'API base URL',
-            hintText: '/api/v1',
+            hintText: 'http://localhost:9060/api/v1',
             helperText: 'Stored locally and mirrored to the profile on login.',
             border: OutlineInputBorder(),
           ),

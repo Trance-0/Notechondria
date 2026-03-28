@@ -3,6 +3,7 @@ set -euo pipefail
 
 OUTPUT_PATH=${1:-.env.deploy}
 SOURCE_PATH=${2:-}
+DEFAULT_FRONTEND_PUBLIC_ORIGIN="http://localhost:${FRONTEND_HOST_PORT:-9060}"
 
 normalize_container_path_value() {
   local value="${1:-}"
@@ -54,6 +55,75 @@ rewrite_env_path_key() {
   mv "$tmp_file" "$OUTPUT_PATH"
 }
 
+normalize_frontend_api_url_value() {
+  local value="${1:-}"
+  local fallback="$2"
+
+  if [[ -z "$value" ]]; then
+    printf '%s\n' "$fallback"
+    return
+  fi
+
+  case "$value" in
+    /*)
+      printf '%s\n' "$fallback"
+      ;;
+    http://localhost:9080|http://localhost:9080/api/v1)
+      printf '%s\n' "$fallback"
+      ;;
+    http://*|https://*)
+      local normalized="${value%/}"
+      if [[ "$normalized" == */api/v1 ]]; then
+        printf '%s\n' "$normalized"
+      elif [[ "$normalized" == */api ]]; then
+        printf '%s/v1\n' "$normalized"
+      else
+        printf '%s/api/v1\n' "$normalized"
+      fi
+      ;;
+    *)
+      printf '%s\n' "$fallback"
+      ;;
+  esac
+}
+
+rewrite_frontend_api_base_key() {
+  local key="FRONTEND_API_BASE_URL"
+  local fallback="$1"
+  local current
+  current=$(grep -E "^${key}=" "$OUTPUT_PATH" | tail -n 1 | cut -d= -f2- || true)
+  current=$(normalize_frontend_api_url_value "$current" "$fallback")
+
+  local tmp_file
+  tmp_file=$(mktemp)
+  awk -v key="$key" -v value="$current" '
+    BEGIN { replaced = 0 }
+    $0 ~ ("^" key "=") {
+      if (!replaced) {
+        print key "=" value
+        replaced = 1
+      }
+      next
+    }
+    { print }
+    END {
+      if (!replaced) {
+        print key "=" value
+      }
+    }
+  ' "$OUTPUT_PATH" > "$tmp_file"
+  mv "$tmp_file" "$OUTPUT_PATH"
+}
+
+frontend_public_origin_from_env_file() {
+  local port
+  port=$(grep -E '^FRONTEND_HOST_PORT=' "$OUTPUT_PATH" | tail -n 1 | cut -d= -f2- || true)
+  if [[ -z "$port" ]]; then
+    port="${FRONTEND_HOST_PORT:-9060}"
+  fi
+  printf 'http://localhost:%s\n' "$port"
+}
+
 mkdir -p "$(dirname "$OUTPUT_PATH")"
 
 if [[ -n "$SOURCE_PATH" && -f "$SOURCE_PATH" ]]; then
@@ -98,7 +168,7 @@ SMTP_USE_SSL=${SMTP_USE_SSL:-False}
 SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL:-no-reply@example.com}
 EMAIL_VERIFICATION_TTL_HOURS=${EMAIL_VERIFICATION_TTL_HOURS:-24}
 FRONTEND_VERIFY_URL=${FRONTEND_VERIFY_URL:-http://localhost:9060/#/verify}
-FRONTEND_API_BASE_URL=${FRONTEND_API_BASE_URL:-/api/v1}
+FRONTEND_API_BASE_URL=${FRONTEND_API_BASE_URL:-${DEFAULT_FRONTEND_PUBLIC_ORIGIN}/api/v1}
 FRONTEND_BACKEND_ORIGIN=${FRONTEND_BACKEND_ORIGIN:-http://nginx}
 NOTECHONDRIA_SHARED_NETWORK=${NOTECHONDRIA_SHARED_NETWORK:-notechondria-shared}
 GITHUB_APP_ID=${GITHUB_APP_ID:-}
@@ -115,6 +185,7 @@ fi
 
 rewrite_env_path_key "PRODUCTION_STATIC_ROOT" "/home/staticfiles/"
 rewrite_env_path_key "PRODUCTION_MEDIA_ROOT" "/home/mediafiles/"
+rewrite_frontend_api_base_key "$(frontend_public_origin_from_env_file)/api/v1"
 
 chmod 600 "$OUTPUT_PATH"
 echo "Deployment env prepared at $OUTPUT_PATH"
