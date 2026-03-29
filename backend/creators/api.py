@@ -229,6 +229,8 @@ class SettingsSerializer(serializers.Serializer):
 
     def validate_email(self, value):
         user = self.instance.user_id if self.instance is not None else None
+        if user is not None and user.email.lower() == value.lower():
+            return user.email
         existing = User.objects.filter(email__iexact=value).exclude(pk=user.pk if user else None).first()
         if existing is not None:
             raise serializers.ValidationError("This email is already in use.")
@@ -236,12 +238,10 @@ class SettingsSerializer(serializers.Serializer):
 
     def validate_api_base_url(self, value):
         normalized = value.strip()
-        if normalized.startswith("/"):
-            return normalized
         parsed = urlparse(normalized)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
             raise serializers.ValidationError(
-                "Use an app-relative path like /api/v1 or a full http:// / https:// API base URL."
+                "Use a full http:// or https:// API base URL."
             )
         return normalized
 

@@ -365,11 +365,11 @@ class FakeClient implements NotechondriaClient {
         'editor_mode': 'P',
         'theme_preset': 'teal',
         'theme_mode': 'S',
-        'api_base_url': '/api/v1',
+        'api_base_url': 'http://localhost:9060/api/v1',
         'app_settings': {
           'theme_preset': 'teal',
           'theme_mode': 'S',
-          'api_base_url': '/api/v1',
+          'api_base_url': 'http://localhost:9060/api/v1',
           'log_preferences': {},
         },
         'app_settings_updated_at': '2026-03-21T12:00:00Z',
@@ -513,12 +513,14 @@ class FakeClient implements NotechondriaClient {
         'editor_mode': payload['editor_mode'] ?? 'P',
         'theme_preset': payload['theme_preset'] ?? 'teal',
         'theme_mode': payload['theme_mode'] ?? 'S',
-        'api_base_url': payload['api_base_url'] ?? '/api/v1',
+        'api_base_url':
+            payload['api_base_url'] ?? 'http://localhost:9060/api/v1',
         'app_settings': payload['app_settings'] ??
             {
               'theme_preset': payload['theme_preset'] ?? 'teal',
               'theme_mode': payload['theme_mode'] ?? 'S',
-              'api_base_url': payload['api_base_url'] ?? '/api/v1',
+              'api_base_url':
+                  payload['api_base_url'] ?? 'http://localhost:9060/api/v1',
               'log_preferences': {},
             },
         'app_settings_updated_at':
@@ -658,6 +660,9 @@ void main() {
     await tester.tap(publicCoursesOption.last);
     await tester.pump();
     await pumpUntilVisible(tester, find.byKey(const Key('course-public-search')));
+    await tester.tap(find.text('Vibe Coding 101').last);
+    await tester.pump();
+    await pumpUntilVisible(tester, find.text('Course discussion'));
     expect(tester.takeException(), isNull);
 
     final verticalScrollable = find.byWidgetPredicate(
@@ -669,7 +674,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('Project outcome'),
       240,
-      scrollable: verticalScrollable.last,
+      scrollable: verticalScrollable.first,
     );
     await tester.pump();
     await tester.tap(find.text('Project outcome').first);

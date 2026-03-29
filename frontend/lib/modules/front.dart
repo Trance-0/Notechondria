@@ -8,7 +8,6 @@ class _FrontPage extends StatefulWidget {
     required this.apiBaseUrl,
     required this.onOpenNote,
     required this.onOpenCourse,
-    required this.onRestoreTemplateCourses,
   });
 
   final Map<String, dynamic> frontPage;
@@ -16,7 +15,6 @@ class _FrontPage extends StatefulWidget {
   final String? apiBaseUrl;
   final Future<void> Function(Map<String, dynamic> note) onOpenNote;
   final Future<void> Function(Map<String, dynamic> course) onOpenCourse;
-  final Future<ActionFeedback> Function() onRestoreTemplateCourses;
 
   @override
   State<_FrontPage> createState() => _FrontPageState();
@@ -109,7 +107,6 @@ class _FrontPageState extends State<_FrontPage> {
             .toList();
     final greetingName =
         widget.profile?['username']?.toString() ?? widget.profile?['email']?.toString();
-    final isAdmin = widget.profile?['is_superuser'] == true;
     final carouselCourses = _carouselCourses;
 
     return ListView(
@@ -130,10 +127,8 @@ class _FrontPageState extends State<_FrontPage> {
             pageController: _pageController,
             currentPage: _currentPage,
             apiBaseUrl: widget.apiBaseUrl,
-            showRestoreButton: isAdmin,
             onPageChanged: (index) => setState(() => _currentPage = index),
             onOpenCourse: widget.onOpenCourse,
-            onRestoreTemplateCourses: widget.onRestoreTemplateCourses,
           ),
         if (greetingName != null && greetingName.isNotEmpty) ...[
           const SizedBox(height: 20),
@@ -193,20 +188,16 @@ class _CourseCarousel extends StatelessWidget {
     required this.pageController,
     required this.currentPage,
     required this.apiBaseUrl,
-    required this.showRestoreButton,
     required this.onPageChanged,
     required this.onOpenCourse,
-    required this.onRestoreTemplateCourses,
   });
 
   final List<Map<String, dynamic>> courses;
   final PageController pageController;
   final int currentPage;
   final String? apiBaseUrl;
-  final bool showRestoreButton;
   final ValueChanged<int> onPageChanged;
   final Future<void> Function(Map<String, dynamic> course) onOpenCourse;
-  final Future<ActionFeedback> Function() onRestoreTemplateCourses;
 
   @override
   Widget build(BuildContext context) {
@@ -216,25 +207,6 @@ class _CourseCarousel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (showRestoreButton)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: () async {
-                  final feedback = await onRestoreTemplateCourses();
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(feedback.message)),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.restart_alt_outlined),
-                label: const Text('Restore templates'),
-              ),
-            ),
-          ),
         SizedBox(
           height: 320,
           child: PageView.builder(
@@ -387,9 +359,16 @@ class _CourseCarousel extends StatelessWidget {
                                           color: Colors.white.withOpacity(0.9),
                                         ),
                                       )
-                                    : Image.network(
-                                        coverUrl,
+                                    : _RemoteMedia(
+                                        imageUrl: coverUrl,
                                         fit: BoxFit.cover,
+                                        fallback: Center(
+                                          child: Icon(
+                                            Icons.auto_stories_outlined,
+                                            size: 72,
+                                            color: Colors.white.withOpacity(0.9),
+                                          ),
+                                        ),
                                       ),
                               ),
                             ),
@@ -408,16 +387,25 @@ class _CourseCarousel extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             for (var index = 0; index < courses.length; index++)
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                height: 8,
-                width: currentPage == index ? 28 : 8,
-                decoration: BoxDecoration(
-                  color: currentPage == index
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.surfaceVariant,
-                  borderRadius: BorderRadius.circular(999),
+              GestureDetector(
+                onTap: () {
+                  pageController.animateToPage(
+                    index,
+                    duration: const Duration(milliseconds: 280),
+                    curve: Curves.easeOutCubic,
+                  );
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  height: 8,
+                  width: currentPage == index ? 28 : 8,
+                  decoration: BoxDecoration(
+                    color: currentPage == index
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.surfaceVariant,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                 ),
               ),
           ],

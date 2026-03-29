@@ -778,21 +778,31 @@ class _AppShellState extends State<AppShell> {
   }) {
     final existingLogPrefs =
         Map<String, dynamic>.from(_localSettings['log_preferences'] as Map? ?? {});
+    final effectiveApiBase = (apiBaseUrl ?? _localSettings['api_base_url'] ?? _defaultApiBaseUrl())
+        .toString()
+        .trim();
     return {
       'theme_preset': themePreset ?? _localSettings['theme_preset'] ?? 'teal',
       'theme_mode': themeMode ?? _localSettings['theme_mode'] ?? 'S',
-      'api_base_url': apiBaseUrl ??
-          _localSettings['api_base_url'] ??
-          _defaultApiBaseUrl(),
+      'api_base_url': effectiveApiBase.startsWith('/')
+          ? _defaultApiBaseUrl()
+          : effectiveApiBase,
       'log_preferences': existingLogPrefs,
     };
   }
 
   Future<void> _applyLocalAppSettings(Map<String, dynamic> settings,
       {bool persist = true}) async {
+    final normalizedApiBase = (settings['api_base_url']?.toString() ??
+            _localSettings['api_base_url']?.toString() ??
+            _defaultApiBaseUrl())
+        .trim();
     _localSettings = {
       ..._localSettings,
       ...settings,
+      'api_base_url': normalizedApiBase.startsWith('/')
+          ? _defaultApiBaseUrl()
+          : normalizedApiBase,
     };
     _httpClient?.updateBaseUrl(
       _localSettings['api_base_url']?.toString() ?? _defaultApiBaseUrl(),
@@ -830,7 +840,7 @@ class _AppShellState extends State<AppShell> {
           'api_base_url': _localSettings['api_base_url'],
         });
       } else {
-        final serverAppSettings = Map<String, dynamic>.from(
+      final serverAppSettings = Map<String, dynamic>.from(
           settings['app_settings'] as Map? ??
               _currentAppSettingsPayload(
                 themePreset: settings['theme_preset']?.toString(),
@@ -908,6 +918,248 @@ class _AppShellState extends State<AppShell> {
     _appendUiLog('Signed out.');
   }
 
+  bool _sameTrimmedValue(String a, String b) => a.trim() == b.trim();
+
+  bool _sameEmailValue(String a, String b) =>
+      a.trim().toLowerCase() == b.trim().toLowerCase();
+
+  String _summarizeChangedFields(List<String> fields) {
+    final unique = <String>[];
+    for (final field in fields) {
+      if (field.isEmpty || unique.contains(field)) {
+        continue;
+      }
+      unique.add(field);
+    }
+    if (unique.isEmpty) {
+      return 'settings';
+    }
+    if (unique.length == 1) {
+      return unique.first;
+    }
+    if (unique.length == 2) {
+      return '${unique.first} and ${unique.last}';
+    }
+    return '${unique[0]}, ${unique[1]} +${unique.length - 2}';
+  }
+
+  bool _sameNoteTitle(Map<String, dynamic> left, Map<String, dynamic> right) {
+    final leftTitle = left['title']?.toString().trim().toLowerCase() ?? '';
+    final rightTitle = right['title']?.toString().trim().toLowerCase() ?? '';
+    return leftTitle.isNotEmpty && leftTitle == rightTitle;
+  }
+
+  Map<String, dynamic> _buildPulledLocalDraft(
+    Map<String, dynamic> note, {
+    Map<String, dynamic>? existingDraft,
+  }) {
+    final sourceAccount = _profile?['username']?.toString().trim().isNotEmpty == true
+        ? _profile!['username'].toString().trim()
+        : _profile?['email']?.toString().trim() ?? '';
+    final metadata = {
+      ..._decodeNoteMetadata(note['metadata_json']?.toString() ?? '{}'),
+      'pulled_from_cloud_note_id': note['id'],
+      'pulled_from_account': sourceAccount,
+      'is_cloud_copy': true,
+      'source_note_last_edit': note['last_edit']?.toString(),
+    };
+    return _buildLocalDraft(
+      id: (existingDraft?['id'] as num?)?.toInt(),
+      clientDraftId: existingDraft?['client_draft_id']?.toString(),
+      createdAt: existingDraft?['date_created']?.toString() ??
+          note['date_created']?.toString(),
+      title: note['title']?.toString() ?? 'Untitled note',
+      description: note['description']?.toString() ??
+          note['excerpt']?.toString() ??
+          '',
+      content: note['content']?.toString() ?? _noteToMarkdown(note),
+      editorMode: note['editor_mode']?.toString() ??
+          existingDraft?['editor_mode']?.toString() ??
+          'P',
+      metadataJson: jsonEncode(metadata),
+    );
+  }
+
+  Future<String?> _showPullConflictDialog({
+    required Map<String, dynamic> localDraft,
+    required Map<String, dynamic> remoteNote,
+  }) async {
+    if (!mounted) {
+      return null;
+    }
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Resolve note conflict'),
+        content: SizedBox(
+          width: 460,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'A local note and a cloud note share the title "${remoteNote['title'] ?? 'Untitled note'}".',
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Local',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                localDraft['description']?.toString().isNotEmpty == true
+                    ? localDraft['description'].toString()
+                    : _excerptFromMarkdown(
+                        localDraft['content']?.toString() ?? '',
+                      ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Cloud',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                remoteNote['description']?.toString().isNotEmpty == true
+                    ? remoteNote['description'].toString()
+                    : remoteNote['excerpt']?.toString() ?? '',
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop('local'),
+            child: const Text('Keep local'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop('cloud'),
+            child: const Text('Use server'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<ActionFeedback> _pullCloudNotesToLocal() async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      return const ActionFeedback(
+        message: 'Sign in to pull cloud notes.',
+        isError: true,
+      );
+    }
+    try {
+      final pulledDrafts = List<Map<String, dynamic>>.from(_localDrafts);
+      var imported = 0;
+      var updated = 0;
+      var skipped = 0;
+      var offset = 0;
+      var hasMore = true;
+      while (hasMore) {
+        final page = await widget.client.listNotes(
+          token: token,
+          offset: offset,
+          limit: 50,
+        );
+        final rows = (page['results'] as List<dynamic>? ?? const [])
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList(growable: false);
+        hasMore = page['has_more'] == true && rows.isNotEmpty;
+        offset += rows.length;
+        for (final summary in rows) {
+          final noteId = (summary['id'] as num?)?.toInt();
+          if (noteId == null) {
+            continue;
+          }
+          final detail = await widget.client.getNoteDetail(noteId, token: token);
+          final pulledIndex = pulledDrafts.indexWhere((draft) {
+            final metadata =
+                _decodeNoteMetadata(draft['metadata_json']?.toString() ?? '{}');
+            return (metadata['pulled_from_cloud_note_id'] as num?)?.toInt() ==
+                noteId;
+          });
+          if (pulledIndex >= 0) {
+            pulledDrafts[pulledIndex] = _buildPulledLocalDraft(
+              detail,
+              existingDraft: pulledDrafts[pulledIndex],
+            );
+            updated += 1;
+            continue;
+          }
+          final conflictIndex =
+              pulledDrafts.indexWhere((draft) => _sameNoteTitle(draft, detail));
+          if (conflictIndex >= 0) {
+            final decision = await _showPullConflictDialog(
+              localDraft: pulledDrafts[conflictIndex],
+              remoteNote: detail,
+            );
+            if (!mounted) {
+              return const ActionFeedback(
+                message: 'Cloud pull cancelled.',
+                isError: true,
+              );
+            }
+            if (decision != 'cloud') {
+              skipped += 1;
+              continue;
+            }
+            pulledDrafts[conflictIndex] = _buildPulledLocalDraft(
+              detail,
+              existingDraft: pulledDrafts[conflictIndex],
+            );
+            updated += 1;
+            continue;
+          }
+          pulledDrafts.insert(0, _buildPulledLocalDraft(detail));
+          imported += 1;
+        }
+      }
+      _localDrafts = List<Map<String, dynamic>>.unmodifiable(pulledDrafts);
+      _localStats = {
+        ..._localStats,
+        'cloud_notes_pulled':
+            ((_localStats['cloud_notes_pulled'] as num?)?.toInt() ?? 0) +
+                imported +
+                updated,
+        'last_pull_at': DateTime.now().toUtc().toIso8601String(),
+      };
+      await _persistLocalDrafts();
+      await _persistLocalStats();
+      if (mounted) {
+        setState(() {});
+      }
+      final segments = <String>[];
+      if (imported > 0) {
+        segments.add('pulled $imported');
+      }
+      if (updated > 0) {
+        segments.add('updated $updated');
+      }
+      if (skipped > 0) {
+        segments.add('kept $skipped local');
+      }
+      final message =
+          segments.isEmpty ? 'Cloud notes already match local copies.' : segments.join(', ');
+      _appendUiLog('Cloud pull completed: $message.');
+      return ActionFeedback(message: message);
+    } catch (error) {
+      final message = error.toString().replaceFirst('Exception: ', '');
+      _appendUiLog('Cloud pull failed: $message');
+      return ActionFeedback(message: 'Pull failed.', isError: true);
+    }
+  }
+
   Future<ActionFeedback> _updateSettings(
     String username,
     String email,
@@ -918,12 +1170,62 @@ class _AppShellState extends State<AppShell> {
     String themeMode,
     String apiBaseUrl,
   ) async {
+    final currentSettings = Map<String, dynamic>.from(_settings ?? const {});
+    final currentProfile = Map<String, dynamic>.from(_profile ?? const {});
+    final currentUsername = currentSettings['username']?.toString() ??
+        currentProfile['username']?.toString() ??
+        '';
+    final currentEmail = currentSettings['email']?.toString() ??
+        currentProfile['email']?.toString() ??
+        '';
+    final currentMotto = currentSettings['motto']?.toString() ?? '';
+    final currentSocialLink = currentSettings['social_link']?.toString() ?? '';
+    final currentEditorMode = currentSettings['editor_mode']?.toString() ?? 'P';
+    final currentThemePreset =
+        _localSettings['theme_preset']?.toString() ?? 'teal';
+    final currentThemeMode = _localSettings['theme_mode']?.toString() ?? 'S';
+    final currentApiBase =
+        _localSettings['api_base_url']?.toString() ?? _defaultApiBaseUrl();
+    final nextApiBase = apiBaseUrl.trim().isEmpty || apiBaseUrl.trim().startsWith('/')
+        ? _defaultApiBaseUrl()
+        : apiBaseUrl.trim();
+    final changedFields = <String>[];
+    final remotePayload = <String, dynamic>{};
+    if (!_sameTrimmedValue(username, currentUsername)) {
+      remotePayload['username'] = username;
+      changedFields.add('username');
+    }
+    if (!_sameEmailValue(email, currentEmail)) {
+      remotePayload['email'] = email;
+      changedFields.add('email');
+    }
+    if (!_sameTrimmedValue(motto, currentMotto)) {
+      remotePayload['motto'] = motto;
+      changedFields.add('motto');
+    }
+    if (!_sameTrimmedValue(socialLink, currentSocialLink)) {
+      remotePayload['social_link'] = socialLink;
+      changedFields.add('social link');
+    }
+    if (editorMode != currentEditorMode) {
+      remotePayload['editor_mode'] = editorMode;
+      changedFields.add('editor mode');
+    }
+    final localSettingsChanged = themePreset != currentThemePreset ||
+        themeMode != currentThemeMode ||
+        !_sameTrimmedValue(nextApiBase, currentApiBase);
+    if (themePreset != currentThemePreset || themeMode != currentThemeMode) {
+      changedFields.add('theme');
+    }
+    if (!_sameTrimmedValue(nextApiBase, currentApiBase)) {
+      changedFields.add('API base');
+    }
     final updatedAt = DateTime.now().toUtc().toIso8601String();
     await _applyLocalAppSettings({
       ..._currentAppSettingsPayload(
         themePreset: themePreset,
         themeMode: themeMode,
-        apiBaseUrl: apiBaseUrl,
+        apiBaseUrl: nextApiBase,
       ),
       'updated_at': updatedAt,
     });
@@ -933,26 +1235,29 @@ class _AppShellState extends State<AppShell> {
           1,
     };
     await _persistLocalStats();
+    if (remotePayload.isEmpty && !localSettingsChanged) {
+      return const ActionFeedback(message: 'No changes.');
+    }
     final token = _token;
     if (token == null || token.isEmpty) {
-      return const ActionFeedback(message: 'Local app settings updated.');
+      return const ActionFeedback(message: 'Saved locally.');
     }
     try {
+      if (localSettingsChanged) {
+        remotePayload.addAll({
+          'theme_preset': themePreset,
+          'theme_mode': themeMode,
+          'api_base_url': nextApiBase,
+          'app_settings': _currentAppSettingsPayload(
+            themePreset: themePreset,
+            themeMode: themeMode,
+            apiBaseUrl: nextApiBase,
+          ),
+          'app_settings_updated_at': updatedAt,
+        });
+      }
       final updated = await widget.client.updateSettings(token, {
-        'username': username,
-        'email': email,
-        'motto': motto,
-        'social_link': socialLink,
-        'editor_mode': editorMode,
-        'theme_preset': themePreset,
-        'theme_mode': themeMode,
-        'api_base_url': apiBaseUrl,
-        'app_settings': _currentAppSettingsPayload(
-          themePreset: themePreset,
-          themeMode: themeMode,
-          apiBaseUrl: apiBaseUrl,
-        ),
-        'app_settings_updated_at': updatedAt,
+        ...remotePayload,
       });
       setState(() {
         _settings = updated;
@@ -968,36 +1273,45 @@ class _AppShellState extends State<AppShell> {
               updated['is_superuser'] ?? _profile?['is_superuser'],
         };
       });
-      _showMessage('Settings updated.');
-      _appendUiLog('Settings updated.');
-      return const ActionFeedback(message: 'Settings updated.');
+      final summary = _summarizeChangedFields(changedFields);
+      _showMessage('Saved $summary.');
+      _appendUiLog('Settings updated: $summary.');
+      return ActionFeedback(message: 'Saved $summary.');
     } catch (error) {
-      final message = error.toString().replaceFirst('Exception: ', '');
+      final detail = error.toString().replaceFirst('Exception: ', '');
       final fallbackUsername = _profile?['username'];
       final fallbackEmail = _profile?['email'];
       setState(() {
         _settings = {
           ...?_settings,
-          'username': username,
-          'email': email,
-          'motto': motto,
-          'social_link': socialLink,
-          'editor_mode': editorMode,
-          'theme_preset': themePreset,
-          'theme_mode': themeMode,
-          'api_base_url': apiBaseUrl,
+          if (remotePayload.containsKey('username')) 'username': username,
+          if (remotePayload.containsKey('email')) 'email': email,
+          if (remotePayload.containsKey('motto')) 'motto': motto,
+          if (remotePayload.containsKey('social_link'))
+            'social_link': socialLink,
+          if (remotePayload.containsKey('editor_mode')) 'editor_mode': editorMode,
+          if (localSettingsChanged) 'theme_preset': themePreset,
+          if (localSettingsChanged) 'theme_mode': themeMode,
+          if (localSettingsChanged) 'api_base_url': nextApiBase,
         };
         _profile = {
           ...?_profile,
-          'username': username.isEmpty ? fallbackUsername : username,
-          'email': email.isEmpty ? fallbackEmail : email,
-          'motto': motto,
-          'social_link': socialLink,
+          'username': remotePayload.containsKey('username') && username.isNotEmpty
+              ? username
+              : fallbackUsername,
+          'email': remotePayload.containsKey('email') && email.isNotEmpty
+              ? email
+              : fallbackEmail,
+          'motto': remotePayload.containsKey('motto') ? motto : _profile?['motto'],
+          'social_link': remotePayload.containsKey('social_link')
+              ? socialLink
+              : _profile?['social_link'],
         };
       });
-      _appendUiLog('Cloud settings sync failed, kept local settings: $message');
+      final summary = _summarizeChangedFields(changedFields);
+      _appendUiLog('Cloud settings sync failed for $summary: $detail');
       return ActionFeedback(
-        message: 'Local settings saved. Cloud sync pending: $message',
+        message: 'Saved locally. Sync pending for $summary.',
       );
     }
   }
@@ -1305,6 +1619,54 @@ class _AppShellState extends State<AppShell> {
           syncedCourse['id'] as int,
         );
       }
+    }
+    final pulledFromNoteId =
+        (metadata['pulled_from_cloud_note_id'] as num?)?.toInt();
+    final pulledFromAccount =
+        metadata['pulled_from_account']?.toString().trim().toLowerCase() ?? '';
+    final currentAccount = (_profile?['username']?.toString().trim().isNotEmpty == true
+            ? _profile!['username'].toString().trim()
+            : _profile?['email']?.toString().trim() ?? '')
+        .toLowerCase();
+    if (pulledFromNoteId != null &&
+        pulledFromNoteId > 0 &&
+        pulledFromAccount.isNotEmpty &&
+        pulledFromAccount == currentAccount) {
+      final updated = await widget.client.updateNote(token, pulledFromNoteId, {
+        'title': draft['title'],
+        'description': draft['description'] ?? '',
+        'content': draft['content'] ?? '',
+        'editor_mode': draft['editor_mode'] ?? 'P',
+        'course_id': metadata['course_id'],
+        'metadata_json': jsonEncode(metadata),
+        'is_public': false,
+      });
+      _localDrafts = _localDrafts
+          .map((item) => item['id'] == draft['id']
+              ? {
+                  ...draft,
+                  'last_edit': updated['last_edit'] ?? draft['last_edit'],
+                  'metadata_json': jsonEncode({
+                    ...metadata,
+                    'source_note_last_edit': updated['last_edit'],
+                  }),
+                }
+              : item)
+          .toList(growable: false);
+      _localStats = {
+        ..._localStats,
+        'local_drafts_synced':
+            ((_localStats['local_drafts_synced'] as num?)?.toInt() ?? 0) + 1,
+        'last_sync_at': DateTime.now().toUtc().toIso8601String(),
+      };
+      await _persistLocalDrafts();
+      await _persistLocalStats();
+      await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
+      if (mounted) {
+        setState(() {});
+      }
+      _appendUiLog("Synced local cloud copy '${draft['title']}'.");
+      return updated;
     }
     final created = await widget.client.createNote(token, {
       'title': draft['title'],
@@ -2042,16 +2404,17 @@ class _AppShellState extends State<AppShell> {
                               ),
                             ),
                           ],
-                          const Spacer(),
-                          _SidebarItem(
-                            icon: Icons.settings_outlined,
-                            label: 'Settings',
-                            selected: _selectedIndex == 4,
-                            onTap: () => _handleDestinationSelected(4),
-                          ),
-                          const SizedBox(height: 16),
                         ],
                       ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                    child: _SidebarItem(
+                      icon: Icons.settings_outlined,
+                      label: 'Settings',
+                      selected: _selectedIndex == 4,
+                      onTap: () => _handleDestinationSelected(4),
                     ),
                   ),
                 ],
@@ -2161,7 +2524,6 @@ class _AppShellState extends State<AppShell> {
           apiBaseUrl: _httpClient?.baseUrl,
           onOpenNote: _openNoteViewer,
           onOpenCourse: _selectCourse,
-          onRestoreTemplateCourses: _restoreTemplateCourses,
         );
       case 1:
         return _LearnerPage(
@@ -2246,8 +2608,10 @@ class _AppShellState extends State<AppShell> {
           onCopyLogs: _copyFrontendLogs,
           onUploadAvatar: _uploadAvatar,
           onSyncLocalData: _syncAllLocalData,
+          onPullCloudData: _pullCloudNotesToLocal,
           onClearLocalCache: _clearLocalCache,
           onClearLocalData: _clearLocalData,
+          onRestoreTemplateCourses: _restoreTemplateCourses,
           localDraftCount: _localDrafts.length,
           localCourseCount: _localCourses.length,
           apiBaseUrl: _httpClient?.baseUrl,

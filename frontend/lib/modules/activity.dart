@@ -43,60 +43,148 @@ class _ActivityPage extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isHorizontal = MediaQuery.of(context).size.width >= 960;
-        return Stack(
-          children: [
-            Column(
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      20,
-                      20,
-                      20,
-                      100,
-                    ),
-                    child: !isAuthenticated
-                        ? const Card(
-                            child: Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(16),
-                                child: Text(
-                                  'Sign in to view your deadlines, synced study sessions, and weekly calendar.',
-                                ),
-                              ),
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: !isAuthenticated
+                    ? const _ActivityFillCard(
+                        child: Padding(
+                          padding: EdgeInsets.all(20),
+                          child: Center(
+                            child: Text(
+                              'Sign in to view your deadlines, synced study sessions, and weekly calendar.',
+                              textAlign: TextAlign.center,
                             ),
-                          )
-                        : isHorizontal
-                            ? (weekDays.isEmpty
-                                ? const SizedBox.shrink()
-                                : _WideWeekCalendar(
-                                    days: weekDays,
-                                    onNavigateWeek: onNavigateWeek,
-                                    onShiftStartDay: onShiftStartDay,
-                                  ))
-                            : _DeadlineList(
-                                deadlines: deadlines,
-                                plannerEvents: plannerEvents,
-                                onTogglePlannerEventCompletion:
-                                    onTogglePlannerEventCompletion,
-                              ),
+                          ),
+                        ),
+                      )
+                    : isHorizontal
+                        ? (weekDays.isEmpty
+                            ? const _ActivityFillCard(
+                                child: Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(20),
+                                    child: Text(
+                                      'No weekly events are available for the current view.',
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : _WideWeekCalendar(
+                                days: weekDays,
+                                onNavigateWeek: onNavigateWeek,
+                                onShiftStartDay: onShiftStartDay,
+                              ))
+                        : _VerticalWeekBoard(
+                            days: weekDays,
+                            deadlines: deadlines,
+                            plannerEvents: plannerEvents,
+                            onNavigateWeek: onNavigateWeek,
+                            onTogglePlannerEventCompletion:
+                                onTogglePlannerEventCompletion,
+                          ),
+              ),
+              if (isAuthenticated)
+                Positioned(
+                  right: 20,
+                  bottom: 20,
+                  child: _RoundActivityFab(
+                    onCreatePlannerEvent: onCreatePlannerEvent,
+                    onImportCalendar: onImportCalendar,
+                    onSubscribeCalendar: onSubscribeCalendar,
                   ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ActivityFillCard extends StatelessWidget {
+  const _ActivityFillCard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.expand(
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: child,
+      ),
+    );
+  }
+}
+
+class _VerticalWeekBoard extends StatelessWidget {
+  const _VerticalWeekBoard({
+    required this.days,
+    required this.deadlines,
+    required this.plannerEvents,
+    required this.onNavigateWeek,
+    required this.onTogglePlannerEventCompletion,
+  });
+
+  final List<Map<String, dynamic>> days;
+  final List<Map<String, dynamic>> deadlines;
+  final List<Map<String, dynamic>> plannerEvents;
+  final Future<void> Function(int direction) onNavigateWeek;
+  final Future<void> Function(Map<String, dynamic> event, bool completed)
+      onTogglePlannerEventCompletion;
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = Theme.of(context).colorScheme.outlineVariant;
+    final rangeLabel = days.isEmpty
+        ? 'This week'
+        : '${_formatWeekDay(days.first['date']?.toString() ?? '')} - ${_formatWeekDay(days.last['date']?.toString() ?? '')}';
+    return _ActivityFillCard(
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: borderColor)),
+            ),
+            child: Row(
+              children: [
+                IconButton(
+                  tooltip: 'Previous week',
+                  onPressed: () => onNavigateWeek(-1),
+                  icon: const Icon(Icons.chevron_left),
+                ),
+                Expanded(
+                  child: Text(
+                    rangeLabel,
+                    key: const Key('activity-vertical-range-label'),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Next week',
+                  onPressed: () => onNavigateWeek(1),
+                  icon: const Icon(Icons.chevron_right),
                 ),
               ],
             ),
-            if (isAuthenticated)
-              Positioned(
-                right: 24,
-                bottom: 24,
-                child: _RoundActivityFab(
-                  onCreatePlannerEvent: onCreatePlannerEvent,
-                  onImportCalendar: onImportCalendar,
-                  onSubscribeCalendar: onSubscribeCalendar,
-                ),
-              ),
-          ],
-        );
-      },
+          ),
+          Expanded(
+            child: _DeadlineList(
+              deadlines: deadlines,
+              plannerEvents: plannerEvents,
+              onTogglePlannerEventCompletion: onTogglePlannerEventCompletion,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -191,18 +279,22 @@ class _DeadlineList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (deadlines.isEmpty) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(
-            plannerEvents.isEmpty
-                ? 'No active deadlines yet. Use the add button to create one.'
-                : 'No urgent deadlines remain in the current view.',
+      return SizedBox.expand(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              plannerEvents.isEmpty
+                  ? 'No active deadlines yet. Use the add button to create one.'
+                  : 'No urgent deadlines remain in the current view.',
+              textAlign: TextAlign.center,
+            ),
           ),
         ),
       );
     }
     return ListView.separated(
+      padding: const EdgeInsets.all(16),
       itemCount: deadlines.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {

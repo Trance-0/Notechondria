@@ -19,8 +19,10 @@ class _SettingsPage extends StatefulWidget {
     required this.onCopyLogs,
     required this.onUploadAvatar,
     required this.onSyncLocalData,
+    required this.onPullCloudData,
     required this.onClearLocalCache,
     required this.onClearLocalData,
+    required this.onRestoreTemplateCourses,
     required this.localDraftCount,
     required this.localCourseCount,
     required this.uiLogs,
@@ -60,8 +62,10 @@ class _SettingsPage extends StatefulWidget {
   final Future<void> Function() onCopyLogs;
   final Future<ActionFeedback> Function() onUploadAvatar;
   final Future<ActionFeedback> Function({bool showMessage}) onSyncLocalData;
+  final Future<ActionFeedback> Function() onPullCloudData;
   final Future<ActionFeedback> Function() onClearLocalCache;
   final Future<ActionFeedback> Function() onClearLocalData;
+  final Future<ActionFeedback> Function() onRestoreTemplateCourses;
   final int localDraftCount;
   final int localCourseCount;
   final List<String> uiLogs;
@@ -87,6 +91,10 @@ class _SettingsPageState extends State<_SettingsPage> {
   bool _uploadingAvatar = false;
 
   bool get _isAuthenticated => widget.profile != null && widget.settings != null;
+
+  bool get _isAdmin =>
+      widget.profile?['is_superuser'] == true ||
+      widget.settings?['is_superuser'] == true;
 
   @override
   void initState() {
@@ -463,6 +471,14 @@ class _SettingsPageState extends State<_SettingsPage> {
           onPressed: _saving ? null : _submitSettings,
           child: Text(_saving ? 'Saving...' : 'Save settings'),
         ),
+        if (_isAdmin) ...[
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () => _runMaintenanceAction(widget.onRestoreTemplateCourses),
+            icon: const Icon(Icons.restart_alt_outlined),
+            label: const Text('Restore templates'),
+          ),
+        ],
         if (_isAuthenticated) ...[
           const SizedBox(height: 12),
           OutlinedButton(
@@ -507,6 +523,13 @@ class _SettingsPageState extends State<_SettingsPage> {
                           : null,
                       icon: const Icon(Icons.cloud_upload_outlined),
                       label: const Text('Sync local data'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _isAuthenticated
+                          ? () => _runMaintenanceAction(widget.onPullCloudData)
+                          : null,
+                      icon: const Icon(Icons.download_for_offline_outlined),
+                      label: const Text('Pull cloud notes'),
                     ),
                     OutlinedButton.icon(
                       onPressed: () => _runMaintenanceAction(widget.onClearLocalCache),
