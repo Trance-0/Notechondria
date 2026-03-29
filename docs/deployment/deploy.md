@@ -237,7 +237,7 @@ cd frontend
 docker compose --env-file ../.env up --build -d
 ```
 
-The frontend container builds Flutter web with `FRONTEND_API_BASE_URL`, serves the resulting static site through nginx on `FRONTEND_HOST_PORT`, and proxies `/api`, `/admin`, `/static`, and `/media` to `FRONTEND_BACKEND_ORIGIN` over the shared Docker network. `FRONTEND_API_BASE_URL` should stay an absolute browser-reachable URL such as `http://localhost:9060/api/v1`; do not use a slash-prefixed relative value in Windows-hosted Git Bash environments because it can be path-converted into a broken `C:/...` build argument. The default backend origin is `http://nginx`, not a host-local address like `localhost` or `host.docker.internal`.
+The frontend container builds Flutter web with `FRONTEND_API_BASE_URL`, serves the resulting static site through nginx on `FRONTEND_HOST_PORT`, and proxies `/api`, `/admin`, `/static`, and `/media` to `FRONTEND_BACKEND_ORIGIN` over the shared Docker network. `FRONTEND_API_BASE_URL` must stay an absolute browser-reachable URL such as `http://localhost:9060/api/v1`; do not use a slash-prefixed relative value in Windows-hosted Git Bash environments because it can be path-converted into a broken `C:/...` build argument. The frontend deploy scripts now unset conflicting shell variables, disable MSYS path conversion for Docker commands, and fail fast if `FRONTEND_API_BASE_URL` is not absolute. The default backend origin is `http://nginx`, not a host-local address like `localhost` or `host.docker.internal`.
 
 ## 7) Test deployment template
 

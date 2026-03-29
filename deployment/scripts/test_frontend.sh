@@ -11,4 +11,10 @@ fi
 
 cd "$PROJECT_DIR/frontend"
 
-docker build --pull --no-cache --target frontend_test -t notechondria-frontend-test .
+env \
+  -u API_BASE_URL \
+  -u FRONTEND_API_BASE_URL \
+  MSYS_NO_PATHCONV=1 \
+  MSYS2_ARG_CONV_EXCL='*' \
+  COMPOSE_CONVERT_WINDOWS_PATHS=0 \
+  docker build --pull --no-cache --target frontend_test -t notechondria-frontend-test .
