@@ -88,6 +88,10 @@ Use this checklist at the end of each modification round.
 - Replaced the tracked root frontend monolith with exactly three tracked app directories: `frontend/editor_app`, `frontend/planner_app`, and `frontend/portal_app`.
 - Added app-local `Dockerfile`, `docker-compose.yml`, and nginx template files for all three frontend apps.
 - Added GitHub Pages workflows that build/test/deploy the three frontend apps independently from the `codex` branch.
+- Replaced the split Pages workflows with a single combined pipeline to avoid gh-pages push races and workflow cancellation.
+- Added a root Pages landing page so `/Notechondria/` is not a 404 while the three apps live under subpaths.
+- Updated Pages builds to bundle web resources locally (`--no-web-resources-cdn`) and rewrite the final Flutter bootstrap load call to disable service-worker registration in the published output.
+- Local verification for the Pages runtime path now includes confirming the built bootstrap ends in `_flutter.loader.load({});` and uses `useLocalCanvasKit: true`.
 - Updated frontend ignore rules to apply recursively so nested Flutter app build output does not pollute the repo.
 - Local Django verification now reaches real test discovery/install using `uv`, but still stops at PostgreSQL connection setup because no local database server is present on this host.
 - Specialized `portal_app` toward option B: router-shell/orchestrator behavior, `Portal + Settings` navigation only, and launch cards for editor/planner targets instead of retaining the broad integrated copy.

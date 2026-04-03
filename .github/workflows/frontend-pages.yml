@@ -38,7 +38,7 @@ jobs:
 
       - name: Build editor_app
         working-directory: frontend/editor_app
-        run: flutter build web --release --base-href /editor/
+        run: flutter build web --release --base-href /editor/ --no-web-resources-cdn
 
       - name: Test planner_app
         working-directory: frontend/planner_app
@@ -48,7 +48,7 @@ jobs:
 
       - name: Build planner_app
         working-directory: frontend/planner_app
-        run: flutter build web --release --base-href /planner/
+        run: flutter build web --release --base-href /planner/ --no-web-resources-cdn
 
       - name: Test portal_app
         working-directory: frontend/portal_app
@@ -58,7 +58,22 @@ jobs:
 
       - name: Build portal_app
         working-directory: frontend/portal_app
-        run: flutter build web --release --base-href /portal/
+        run: flutter build web --release --base-href /portal/ --no-web-resources-cdn
+
+      - name: Disable service worker bootstrap in Pages builds
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          for app in ('editor_app', 'planner_app', 'portal_app'):
+              p = Path(f'frontend/{app}/build/web/flutter_bootstrap.js')
+              text = p.read_text()
+              text = re.sub(r"_flutter\.loader\.load\(\{\s*serviceWorkerSettings:\s*\{.*?\}\s*\}\);", "_flutter.loader.load({});", text, flags=re.S)
+              p.write_text(text)
+              sw = Path(f'frontend/{app}/build/web/flutter_service_worker.js')
+              if sw.exists():
+                  sw.unlink()
+          PY
 
       - name: Stage Pages tree
         run: |

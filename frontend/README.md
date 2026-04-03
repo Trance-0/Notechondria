@@ -89,19 +89,22 @@ Minimal setup path:
 
 If you prefer checked-in local defaults for development, keep them in a non-secret env file outside git and feed them into Docker Compose or local shell exports.
 
-## GitHub Pages workflows
+## GitHub Pages workflow
 
-GitHub Actions workflows build each app separately from `codex`:
+GitHub Actions builds all three apps from `codex` in one combined workflow:
 
-- `.github/workflows/frontend-editor-pages.yml`
-- `.github/workflows/frontend-planner-pages.yml`
-- `.github/workflows/frontend-portal-pages.yml`
+- `.github/workflows/frontend-pages.yml`
 
 Deployment targets:
 
 - `/editor/`
 - `/planner/`
 - `/portal/`
+
+Important Pages runtime notes:
+- builds use `--no-web-resources-cdn` so CanvasKit/web runtime assets are bundled locally instead of fetched from Google CDN
+- the published bootstrap is rewritten to disable service-worker registration, reducing stale-cache breakage after bad deploys
+- the site root includes a small landing page linking to all three apps
 
 ## App-local Docker assets
 

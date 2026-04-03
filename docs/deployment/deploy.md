@@ -250,11 +250,9 @@ This repository now keeps only the Monaco `min/` runtime bundle under `backend/s
 
 Frontend deployment is handled by GitHub Actions, not Jenkins.
 
-Workflows:
+Workflow:
 
-- `.github/workflows/frontend-editor-pages.yml`
-- `.github/workflows/frontend-planner-pages.yml`
-- `.github/workflows/frontend-portal-pages.yml`
+- `.github/workflows/frontend-pages.yml`
 
 Deployment targets:
 
@@ -262,7 +260,11 @@ Deployment targets:
 - `/planner/`
 - `/portal/`
 
-Important note: all three workflows publish into the same `gh-pages` branch, so they now share a repository-wide concurrency group (`gh-pages-deploy`) to prevent push races between simultaneous deployments.
+Important Pages runtime notes:
+- one workflow builds/tests all three apps and deploys one combined `gh-pages` tree
+- Pages builds use `--no-web-resources-cdn` so runtime web assets are bundled locally instead of relying on Google CDN
+- the published bootstrap is rewritten to disable service-worker registration, reducing stale broken-cache behavior after bad deploys
+- the site root publishes a landing page linking to the three app paths
 
 ## 7) Render free-tier backend deployment
 
