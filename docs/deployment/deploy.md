@@ -96,14 +96,28 @@ Jenkins must provide at least:
 
 ## 2) Local Docker deployment
 
+Backend stack:
+
 ```bash
 cd backend
 docker compose --env-file ../.env up --build -d
 ```
 
+Frontend apps are now separate containers. Start each one from its own directory:
+
 ```bash
-cd frontend
-docker compose --env-file ../.env up --build -d
+cd frontend/editor_app
+docker compose --env-file ../../.env up --build -d
+```
+
+```bash
+cd frontend/planner_app
+docker compose --env-file ../../.env up --build -d
+```
+
+```bash
+cd frontend/portal_app
+docker compose --env-file ../../.env up --build -d
 ```
 
 ## 3) Initialize database
@@ -122,20 +136,21 @@ bash deployment/scripts/test_backend.sh /workspace/Notechondria /workspace/Notec
 
 ## 5) Jenkins pipeline flow
 
-The pipeline now runs in this order:
+Jenkins is now **backend-only**.
+
+The pipeline runs in this order:
 
 1. Checkout source.
 2. Generate `${WORKSPACE}/.env.deploy` from Jenkins-injected environment variables.
 3. Start the `db` service and back up PostgreSQL from the database container.
-4. Run the backend track: backend tests, then backend deploy.
-5. Run the frontend track independently: frontend tests, then frontend deploy.
+4. Run backend tests.
+5. Run backend deploy.
 
-Track behavior:
+Pipeline behavior:
 
 - The backend track is required for a green pipeline.
-- The frontend track is isolated and wrapped with `catchError`.
-- If the frontend track fails, Jenkins marks the build unstable, but the backend track can still deploy the latest backend changes for testing.
-- The backend deploy script now performs a post-start verification pass inside the running app container:
+- Frontend CI/CD is no longer part of Jenkins.
+- The backend deploy script performs a post-start verification pass inside the running app container:
   - `python manage.py migrate --noinput`
   - `python manage.py bootstrap_platform`
   - `python manage.py collectstatic --noinput --clear`
@@ -148,29 +163,30 @@ The relevant files are:
 - `deployment/scripts/backup_postgres.sh`
 - `deployment/scripts/ensure_db_ready.sh`
 - `deployment/scripts/test_backend.sh`
-- `deployment/scripts/test_frontend.sh`
 - `deployment/scripts/wait_for_stack.sh`
-- `deployment/scripts/wait_for_frontend.sh`
 - `deployment/scripts/deploy_backend.sh`
-- `deployment/scripts/deploy_frontend.sh`
+- `deployment/scripts/render_backend_start.sh`
+- `docs/deployment/render_free_tier.md`
 
 ### Compose stack shape
 
-The Docker Compose stack is named `notechondria` and contains separate containers for:
+The backend Compose stack is named `notechondria` and contains:
 
 - `app`: Django/gunicorn backend
 - `db`: PostgreSQL 15
 - `nginx`: reverse proxy/static serving
 
-The standalone frontend Compose stack is named `notechondria-frontend` and contains:
+Each frontend app has its own standalone Compose stack:
 
-- `frontend`: nginx-served Flutter web build
+- `frontend/editor_app`
+- `frontend/planner_app`
+- `frontend/portal_app`
 
-The backend and standalone frontend stacks are connected through a shared Docker network:
+All frontend stacks connect to the shared Docker network:
 
 - `NOTECHONDRIA_SHARED_NETWORK`, default `notechondria-shared`
 - backend `app` and backend `nginx` join that network
-- frontend `frontend` joins that network and proxies backend traffic to the backend `nginx` service name `http://nginx`
+- each frontend nginx container joins that network and proxies backend traffic to `http://nginx`
 
 Jenkins only needs Docker access. It does not need host `python` or host `pg_dump`.
 The Django container talks to PostgreSQL through the internal Compose service host `db`.
@@ -230,20 +246,38 @@ If needed, also move the Jenkins workspace root to a shorter directory such as `
 
 This repository now keeps only the Monaco `min/` runtime bundle under `backend/static/monaco-editor/` to reduce checkout path depth.
 
-## 6) Frontend web build (standalone container)
+## 6) Frontend GitHub Pages deployment
 
-```bash
-cd frontend
-docker compose --env-file ../.env up --build -d
-```
+Frontend deployment is handled by GitHub Actions, not Jenkins.
 
-The frontend container builds Flutter web with `FRONTEND_API_BASE_URL`, serves the resulting static site through nginx on `FRONTEND_HOST_PORT`, and proxies `/api`, `/admin`, `/static`, and `/media` to `FRONTEND_BACKEND_ORIGIN` over the shared Docker network. `FRONTEND_API_BASE_URL` must stay an absolute browser-reachable URL such as `http://localhost:9060/api/v1`; do not use a slash-prefixed relative value in Windows-hosted Git Bash environments because it can be path-converted into a broken `C:/...` build argument. The frontend deploy scripts now unset conflicting shell variables, disable MSYS path conversion for Docker commands, and fail fast if `FRONTEND_API_BASE_URL` is not absolute. The default backend origin is `http://nginx`, not a host-local address like `localhost` or `host.docker.internal`.
+Workflows:
 
-## 7) Test deployment template
+- `.github/workflows/frontend-editor-pages.yml`
+- `.github/workflows/frontend-planner-pages.yml`
+- `.github/workflows/frontend-portal-pages.yml`
+
+Deployment targets:
+
+- `/editor/`
+- `/planner/`
+- `/portal/`
+
+Important note: all three workflows publish into the same `gh-pages` branch, so they now share a repository-wide concurrency group (`gh-pages-deploy`) to prevent push races between simultaneous deployments.
+
+## 7) Render free-tier backend deployment
+
+Use:
+
+- `deployment/scripts/render_backend_start.sh`
+- `docs/deployment/render_free_tier.md`
+
+This backend-only path is intended for Render web services and keeps frontend deployment separate on GitHub Pages.
+
+## 8) Test deployment template
 
 Use `sample.test.env` as a safe starting point for a non-production Jenkins credential or local smoke deployment. Replace placeholders before any real deploy.
 
-## 8) Rollback
+## 9) Rollback
 
 1. Restore database from latest SQL dump generated by CI backup step.
 2. Redeploy previous Docker image tag.
