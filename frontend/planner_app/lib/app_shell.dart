@@ -216,6 +216,12 @@ class _AppShellState extends State<AppShell> {
     _localCourses = snapshot.courses;
     _localStats = snapshot.stats;
     _localCache = snapshot.cache;
+    _plannerEvents = (snapshot.cache['planner_events'] as List<dynamic>? ?? const [])
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList(growable: false);
+    _activityWeek = Map<String, dynamic>.from(
+      snapshot.cache['activity_week'] as Map? ?? const {},
+    );
     _uiLogs
       ..clear()
       ..addAll(snapshot.logs);
@@ -228,6 +234,7 @@ class _AppShellState extends State<AppShell> {
     _activity = (snapshot.cache['activity'] as List<dynamic>? ?? const [])
         .map((item) => Map<String, dynamic>.from(item as Map))
         .toList(growable: false);
+    await _ensureStarterWorkspace();
     if (_selectedCourse == null) {
       _selectedCourse = _chooseDefaultCourse(
         remoteCourses: _courses,
@@ -269,6 +276,8 @@ class _AppShellState extends State<AppShell> {
       'front_page': _frontPage ?? const <String, dynamic>{},
       'courses': _courses,
       'activity': _activity,
+      'planner_events': _plannerEvents,
+      'activity_week': _activityWeek ?? const <String, dynamic>{},
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     };
     await _LocalAppStore.saveCache(_localCache);
@@ -276,6 +285,135 @@ class _AppShellState extends State<AppShell> {
 
   Future<void> _persistUiLogs() async {
     await _LocalAppStore.saveLogs(_uiLogs);
+  }
+
+
+  Map<String, dynamic> _buildLocalPlannerEvent({
+    required String title,
+    required DateTime eventDate,
+    required int difficultyWeight,
+    required String description,
+    int? courseId,
+  }) {
+    final now = DateTime.now().toUtc();
+    return {
+      'id': -DateTime.now().microsecondsSinceEpoch,
+      'title': title,
+      'event_date': _dateOnly(eventDate).toIso8601String().split('T').first,
+      'starts_at': eventDate.toUtc().toIso8601String(),
+      'ends_at': eventDate.toUtc().add(const Duration(hours: 1)).toIso8601String(),
+      'difficulty_weight': difficultyWeight,
+      'description': description,
+      'course_id': courseId,
+      'is_completed': false,
+      'completed_at': null,
+      'is_local_event': true,
+      'date_created': now.toIso8601String(),
+      'last_edit': now.toIso8601String(),
+    };
+  }
+
+  Map<String, dynamic> _buildOfflineActivityWeek() {
+    final base = _dateOnly(DateTime.now());
+    final days = List.generate(7, (index) {
+      final day = base.add(Duration(days: index));
+      return {
+        'date': day.toIso8601String().split('T').first,
+        'events': const <Map<String, dynamic>>[],
+      };
+    });
+    final deadlines = _plannerEvents.map((event) => {
+      'title': event['title'],
+      'event_date': event['event_date'],
+      'difficulty_weight': event['difficulty_weight'] ?? 1,
+      'description': event['description'] ?? '',
+      'is_completed': event['is_completed'] ?? false,
+    }).toList(growable: false);
+    return {
+      'days': days,
+      'deadlines': deadlines,
+    };
+  }
+
+  Future<void> _ensureStarterWorkspace() async {
+    if (_frontPage?.isNotEmpty == true ||
+        _courses.isNotEmpty ||
+        _localCourses.isNotEmpty ||
+        _localDrafts.isNotEmpty ||
+        _plannerEvents.isNotEmpty) {
+      return;
+    }
+    final starterCourse = _buildLocalCourse(
+      title: 'Starter planning course',
+      description: 'Offline planning workspace with module discussion and calendar items.',
+    );
+    final draftA = _buildLocalDraft(
+      title: 'Module 1: Kickoff discussion',
+      description: 'Local module discussion seed note.',
+      content: '''# Module 1: Kickoff discussion
+
+Use this as the root discussion note for the first module.
+
+Add leaf notes as comments or follow-ups.''',
+      editorMode: 'M',
+      metadataJson: jsonEncode({
+        'course_id': starterCourse['id'],
+        'module_id': 'module-1',
+        'module_title': 'Kickoff module',
+        'module_description': 'Discussion board and planning seed for the first module.',
+        'objectives': ['Define scope', 'Map first milestone'],
+        'assignments': ['Review the discussion board', 'Schedule first work block'],
+      }),
+    );
+    final draftB = _buildLocalDraft(
+      title: 'Module 2: Scheduling notes',
+      description: 'Local planning note for timeline work.',
+      content: '''# Module 2: Scheduling notes
+
+Capture deadlines, sequencing, and blockers here.''',
+      editorMode: 'M',
+      metadataJson: jsonEncode({
+        'course_id': starterCourse['id'],
+        'module_id': 'module-2',
+        'module_title': 'Scheduling module',
+        'module_description': 'Planning and scheduling discussion for the second module.',
+        'objectives': ['Set deadlines', 'Track blockers'],
+        'assignments': ['Draft the weekly calendar', 'Review dependencies'],
+      }),
+    );
+    final now = _dateOnly(DateTime.now());
+    _localCourses = [starterCourse];
+    _localDrafts = [draftA, draftB];
+    _plannerEvents = [
+      _buildLocalPlannerEvent(
+        title: 'Draft weekly study block',
+        eventDate: now.add(const Duration(days: 1)).add(const Duration(hours: 10)),
+        difficultyWeight: 2,
+        description: 'Turn the module plan into a real calendar slot.',
+        courseId: starterCourse['id'] as int,
+      ),
+      _buildLocalPlannerEvent(
+        title: 'Review module discussion',
+        eventDate: now.add(const Duration(days: 2)).add(const Duration(hours: 14)),
+        difficultyWeight: 1,
+        description: 'Summarize the local discussion notes and next actions.',
+        courseId: starterCourse['id'] as int,
+      ),
+    ];
+    _activityWeekStart = now;
+    _activityWeek = _buildOfflineActivityWeek();
+    _selectedCourse = starterCourse;
+    _courseNotes = _localNotesForCourse(starterCourse);
+    _frontPage = _frontPageFallbackPayload(const []);
+    _localStats = {
+      ..._localStats,
+      'starter_workspace_seeded_at': DateTime.now().toUtc().toIso8601String(),
+    };
+    await _persistLocalCourses();
+    await _persistLocalDrafts();
+    await _persistLocalStats();
+    await _persistLocalCache();
+    _appendUiLog('Seeded starter planner workspace for first-run offline use.');
   }
 
   bool _isLocalCourse(Map<String, dynamic>? course) {
@@ -1371,10 +1509,20 @@ class _AppShellState extends State<AppShell> {
   ) async {
     final token = _token;
     if (token == null || token.isEmpty) {
-      return const ActionFeedback(
-        message: 'Sign in first to create planning events.',
-        isError: true,
+      final event = _buildLocalPlannerEvent(
+        title: title,
+        eventDate: eventDate,
+        difficultyWeight: difficultyWeight,
+        description: description,
+        courseId: (_selectedCourse?['id'] as num?)?.toInt(),
       );
+      setState(() {
+        _plannerEvents = [event, ..._plannerEvents];
+        _activityWeek = _buildOfflineActivityWeek();
+      });
+      await _persistLocalCache();
+      _appendUiLog("Created local planner event '${event['title']}'.");
+      return const ActionFeedback(message: 'Saved local planner event.');
     }
     try {
       await widget.client.createPlannerEvent(token, {
@@ -2246,7 +2394,23 @@ class _AppShellState extends State<AppShell> {
       Map<String, dynamic> event, bool completed) async {
     final token = _token;
     if (token == null || token.isEmpty) {
-      throw Exception('Sign in to update activities.');
+      setState(() {
+        _plannerEvents = _plannerEvents
+            .map((item) => item['id'] == event['id']
+                ? {
+                    ...item,
+                    'is_completed': completed,
+                    'completed_at': completed
+                        ? DateTime.now().toUtc().toIso8601String()
+                        : null,
+                  }
+                : item)
+            .toList(growable: false);
+        _activityWeek = _buildOfflineActivityWeek();
+      });
+      await _persistLocalCache();
+      _appendUiLog("${completed ? 'Completed' : 'Reopened'} local planner event ${event['title']}.");
+      return;
     }
     await widget.client.updatePlannerEvent(token, event['id'] as int, {
       'is_completed': completed,

@@ -228,6 +228,7 @@ class _AppShellState extends State<AppShell> {
     _activity = (snapshot.cache['activity'] as List<dynamic>? ?? const [])
         .map((item) => Map<String, dynamic>.from(item as Map))
         .toList(growable: false);
+    await _ensureStarterWorkspace();
     if (_selectedCourse == null) {
       _selectedCourse = _chooseDefaultCourse(
         remoteCourses: _courses,
@@ -276,6 +277,28 @@ class _AppShellState extends State<AppShell> {
 
   Future<void> _persistUiLogs() async {
     await _LocalAppStore.saveLogs(_uiLogs);
+  }
+
+
+  Future<void> _ensureStarterWorkspace() async {
+    if (_frontPage?.isNotEmpty == true) {
+      return;
+    }
+    _frontPage = {
+      'default_course': null,
+      'carousel_courses': const <Map<String, dynamic>>[],
+      'collections': const <Map<String, dynamic>>[],
+      'recent_notes': const <Map<String, dynamic>>[],
+      'recommended_notes': const <Map<String, dynamic>>[],
+      'portal_shell': true,
+    };
+    _localStats = {
+      ..._localStats,
+      'starter_workspace_seeded_at': DateTime.now().toUtc().toIso8601String(),
+    };
+    await _persistLocalStats();
+    await _persistLocalCache();
+    _appendUiLog('Seeded portal shell starter state for first-run use.');
   }
 
   bool _isLocalCourse(Map<String, dynamic>? course) {

@@ -92,6 +92,12 @@ Use this checklist at the end of each modification round.
 - Added a root Pages landing page so `/Notechondria/` is not a 404 while the three apps live under subpaths.
 - Updated Pages builds to bundle web resources locally (`--no-web-resources-cdn`) and rewrite the final Flutter bootstrap load call to disable service-worker registration in the published output.
 - Local verification for the Pages runtime path now includes confirming the built bootstrap ends in `_flutter.loader.load({});` and uses `useLocalCanvasKit: true`.
+- Added first-run offline starter workspaces so the split apps render meaningful content without backend/login prerequisites:
+  - `editor_app` seeds local notes and a storage-layout example
+  - `planner_app` seeds a local course, module discussion notes, and local planner events
+  - `portal_app` seeds a minimal router-shell front-page payload
+- Planner offline behavior now supports signed-out local planner-event creation/toggling and shows the activity board when local planner data exists.
+- Re-ran local `flutter test` and `flutter build web --no-web-resources-cdn` for all three apps after the functionality patch.
 - Updated frontend ignore rules to apply recursively so nested Flutter app build output does not pollute the repo.
 - Local Django verification now reaches real test discovery/install using `uv`, but still stops at PostgreSQL connection setup because no local database server is present on this host.
 - Specialized `portal_app` toward option B: router-shell/orchestrator behavior, `Portal + Settings` navigation only, and launch cards for editor/planner targets instead of retaining the broad integrated copy.

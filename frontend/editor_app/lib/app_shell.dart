@@ -228,6 +228,7 @@ class _AppShellState extends State<AppShell> {
     _activity = (snapshot.cache['activity'] as List<dynamic>? ?? const [])
         .map((item) => Map<String, dynamic>.from(item as Map))
         .toList(growable: false);
+    await _ensureStarterWorkspace();
     if (_selectedCourse == null) {
       _selectedCourse = _chooseDefaultCourse(
         remoteCourses: _courses,
@@ -276,6 +277,77 @@ class _AppShellState extends State<AppShell> {
 
   Future<void> _persistUiLogs() async {
     await _LocalAppStore.saveLogs(_uiLogs);
+  }
+
+
+  Future<void> _ensureStarterWorkspace() async {
+    if (_frontPage?.isNotEmpty == true ||
+        _courses.isNotEmpty ||
+        _localCourses.isNotEmpty ||
+        _localDrafts.isNotEmpty) {
+      return;
+    }
+    final starterCourse = _buildLocalCourse(
+      title: 'Inbox',
+      description: 'Offline-first local note bucket for the editor app.',
+    );
+    final starterDraft = _buildLocalDraft(
+      title: 'Welcome to the editor workspace',
+      description: 'Starter note describing the offline storage layout.',
+      content: '''# Welcome to the editor workspace
+
+This app is the offline-first markdown editor.
+
+## Suggested local structure
+
+```
+root/
+- category/
+- <note>/
+- media/
+- .metadata
+- note-<created_timestamp>.md
+```
+
+Use this draft as a starting point and sync later when you sign in.''',
+      editorMode: 'M',
+      metadataJson: jsonEncode({
+        'course_id': starterCourse['id'],
+        'module_title': 'Inbox',
+        'module_description': 'Local starter notes for the editor app.',
+        'storage_layout': 'root/category/<note>/media/.metadata',
+      }),
+    );
+    final starterReference = _buildLocalDraft(
+      title: 'Plain-text editor checklist',
+      description: 'Starter checklist for the editor modes.',
+      content: '''# Plain-text editor checklist
+
+- Markdown mode
+- Plain text mode
+- Structured mode
+
+Add syntax highlighting for plain text and keep notes searchable by title or body.''',
+      editorMode: 'T',
+      metadataJson: jsonEncode({
+        'course_id': starterCourse['id'],
+        'module_title': 'Editor setup',
+      }),
+    );
+    _localCourses = [starterCourse];
+    _localDrafts = [starterDraft, starterReference];
+    _selectedCourse = starterCourse;
+    _courseNotes = _localNotesForCourse(starterCourse);
+    _frontPage = _frontPageFallbackPayload(const []);
+    _localStats = {
+      ..._localStats,
+      'starter_workspace_seeded_at': DateTime.now().toUtc().toIso8601String(),
+    };
+    await _persistLocalCourses();
+    await _persistLocalDrafts();
+    await _persistLocalStats();
+    await _persistLocalCache();
+    _appendUiLog('Seeded starter editor workspace for first-run offline use.');
   }
 
   bool _isLocalCourse(Map<String, dynamic>? course) {

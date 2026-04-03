@@ -43,24 +43,34 @@ class _ActivityPage extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isHorizontal = MediaQuery.of(context).size.width >= 960;
+        final hasOfflinePlannerData = plannerEvents.isNotEmpty || deadlines.isNotEmpty;
         return Padding(
           padding: const EdgeInsets.all(20),
           child: Stack(
             children: [
               Positioned.fill(
-                child: !isAuthenticated
+                child: (!isAuthenticated && !hasOfflinePlannerData)
                     ? const _ActivityFillCard(
                         child: Padding(
                           padding: EdgeInsets.all(20),
                           child: Center(
                             child: Text(
-                              'Sign in to view your deadlines, synced study sessions, and weekly calendar.',
+                              'No local planner events yet. Add one with the button below, or sign in to view synced deadlines and calendar feeds.',
                               textAlign: TextAlign.center,
                             ),
                           ),
                         ),
                       )
-                    : isHorizontal
+                    : (!isAuthenticated || !isHorizontal)
+                        ? _VerticalWeekBoard(
+                            days: weekDays,
+                            deadlines: deadlines,
+                            plannerEvents: plannerEvents,
+                            onNavigateWeek: onNavigateWeek,
+                            onTogglePlannerEventCompletion:
+                                onTogglePlannerEventCompletion,
+                          )
+                        : isHorizontal
                         ? (weekDays.isEmpty
                             ? const _ActivityFillCard(
                                 child: Center(
@@ -87,16 +97,15 @@ class _ActivityPage extends StatelessWidget {
                                 onTogglePlannerEventCompletion,
                           ),
               ),
-              if (isAuthenticated)
-                Positioned(
-                  right: 20,
-                  bottom: 20,
-                  child: _RoundActivityFab(
-                    onCreatePlannerEvent: onCreatePlannerEvent,
-                    onImportCalendar: onImportCalendar,
-                    onSubscribeCalendar: onSubscribeCalendar,
-                  ),
+              Positioned(
+                right: 20,
+                bottom: 20,
+                child: _RoundActivityFab(
+                  onCreatePlannerEvent: onCreatePlannerEvent,
+                  onImportCalendar: onImportCalendar,
+                  onSubscribeCalendar: onSubscribeCalendar,
                 ),
+              ),
             ],
           ),
         );
