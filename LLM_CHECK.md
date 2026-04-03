@@ -103,6 +103,8 @@ Use this checklist at the end of each modification round.
 - Added planner deadline ordering weights (`deadline_time_weight`, `deadline_importance_weight`) and used them in offline deadline urgency scoring.
 - Added stronger widget smoke tests that assert meaningful first-run content instead of only checking for `MaterialApp`.
 - Added `frontend/AGENTS.md` and refreshed `frontend/README.md` to document the three-app split for both humans and agents.
+- Replaced the planner app's generic front page with a planner-specific dashboard centered on course calendars and upcoming deadlines.
+- Re-verified all three apps locally after the planner-home replacement.
 - Updated frontend ignore rules to apply recursively so nested Flutter app build output does not pollute the repo.
 - Local Django verification now reaches real test discovery/install using `uv`, but still stops at PostgreSQL connection setup because no local database server is present on this host.
 - Specialized `portal_app` toward option B: router-shell/orchestrator behavior, `Portal + Settings` navigation only, and launch cards for editor/planner targets instead of retaining the broad integrated copy.

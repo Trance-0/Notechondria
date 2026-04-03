@@ -39,8 +39,8 @@ Implemented now:
 
 Still to deepen:
 - richer calendar behaviors
-- more explicit course-as-calendar / module-as-event mapping in UI copy and flows
 - stronger online discussion-board integration
+- more detailed module/event editing workflows beyond the new planner home and offline starter state
 
 ### portal_app
 Implemented now:

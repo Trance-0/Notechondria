@@ -2757,10 +2757,10 @@ Capture deadlines, sequencing, and blockers here.''',
     switch (_selectedIndex) {
       case 0:
         return _FrontPage(
-          frontPage: _frontPage ?? const {},
           profile: _profile,
-          apiBaseUrl: _httpClient?.baseUrl,
-          onOpenNote: _openNoteViewer,
+          localCourses: _localCourses,
+          remoteCourses: _courses,
+          plannerEvents: _plannerEvents,
           onOpenCourse: _selectCourse,
         );
       case 1:
