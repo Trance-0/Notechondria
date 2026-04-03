@@ -1,42 +1,113 @@
-# Frontend (Flutter)
+# Frontend workspace
 
-This Flutter app is the client for the Canvas-like calendar experience.
+`frontend/` now contains exactly three app directories:
 
-## Structure
+- `editor_app/` — offline-first markdown editor with optional sync
+- `planner_app/` — course planning, module board, and calendar workflows
+- `portal_app/` — online auth, sync orchestration, and integrated remote views
 
-- `lib/main.dart`: thin library entrypoint.
-- `lib/app_shell.dart`: top-level app shell and shared app state.
-- `lib/core/`: shared client and helper logic.
-- `lib/components/`: reusable UI components.
-- `lib/modules/`: independent page modules for `front`, `learner`, `course`, `activity`, and `settings`.
+## Current app intent
 
-## Pages in MVP scaffold
+### 1) `editor_app`
+Primary role:
+- local/offline note creation
+- note list ordered by created time
+- keyword search
+- edit/view workflows
+- local settings and sync endpoint configuration
 
-- Front Page
-- Learner View
-- Course View
-- Activity View
-- Settings View
+Current runtime shape in this pass:
+- boots independently
+- builds independently for web
+- navigation constrained to learner/settings surfaces
 
-Each page is reachable from the bottom navigation bar in `lib/main.dart`.
+### 2) `planner_app`
+Primary role:
+- course list / project list
+- module-oriented course view
+- activity and calendar planning
+- discussion-board-oriented course/module surfaces
 
-## Run locally
+Current runtime shape in this pass:
+- boots independently
+- builds independently for web
+- navigation constrained to front/course/activity surfaces
 
-```bash
-flutter pub get
-flutter run -d chrome
-```
+### 3) `portal_app`
+Primary role:
+- online-only auth and account orchestration
+- cloud preference storage
+- integrated remote access to the editor/planner domain concepts
+- future git-like versioning entry surface
 
-## Docker web build
+Current runtime shape in this pass:
+- boots independently
+- builds independently for web
+- retains the broad integrated navigation while the deeper online-only restrictions are refined
 
-```bash
-docker compose --env-file ../sample.env -f docker-compose.yml up --build -d
-```
+## Local verification completed in this environment
 
-The standalone web container serves the Flutter build on `FRONTEND_HOST_PORT`. The image compiles with `FRONTEND_API_BASE_URL` and the nginx runtime proxies `/api`, `/admin`, `/static`, and `/media` to `FRONTEND_BACKEND_ORIGIN` over the shared Docker network. Keep `FRONTEND_API_BASE_URL` absolute, for example `http://localhost:9060/api/v1`, so Windows-hosted Git Bash does not path-convert a slash-prefixed value during Docker build. The default backend origin is `http://nginx`.
+Using a git-source Flutter install on arm64 Linux:
 
-## Test
+- `flutter test test/smoke_test.dart` passed for:
+  - `frontend/editor_app`
+  - `frontend/planner_app`
+  - `frontend/portal_app`
+- `flutter build web --release` passed for:
+  - `frontend/editor_app`
+  - `frontend/planner_app`
+  - `frontend/portal_app`
 
-```bash
-flutter test
-```
+## Important verification caveat
+
+The old upstream root frontend test suite was **not green** before the split. In this environment, the upstream root app failed at least one widget test (`opens course note in reader dialog`) before the cleanup work. Treat this branch as a clean split starting point, not as proof that every feature contract is already fully re-separated internally.
+
+## Environment variables
+
+For local or CI builds, the key frontend variables are:
+
+- `FRONTEND_API_BASE_URL` — browser-reachable API base URL, e.g. `https://example.com/api/v1`
+- `FRONTEND_BACKEND_ORIGIN` — nginx proxy target for `/api`, `/admin`, `/static`, `/media`
+- `NOTECHONDRIA_SHARED_NETWORK` — shared Docker network name for full-stack local deployment
+
+Keep `FRONTEND_API_BASE_URL` absolute.
+
+### GitHub Actions / repo secrets
+
+The current Pages workflows can build without private secrets if the public API URL is hardcoded in source defaults, but for real deployment you should record these repository-level secrets or variables:
+
+- `FRONTEND_API_BASE_URL`
+- `FRONTEND_BACKEND_ORIGIN`
+
+Minimal setup path:
+
+1. Open GitHub repository settings.
+2. Go to **Secrets and variables → Actions**.
+3. Add `FRONTEND_API_BASE_URL` with the public API endpoint.
+4. Add `FRONTEND_BACKEND_ORIGIN` with the proxy origin used by nginx/container deployments.
+
+If you prefer checked-in local defaults for development, keep them in a non-secret env file outside git and feed them into Docker Compose or local shell exports.
+
+## GitHub Pages workflows
+
+GitHub Actions workflows build each app separately from `codex`:
+
+- `.github/workflows/frontend-editor-pages.yml`
+- `.github/workflows/frontend-planner-pages.yml`
+- `.github/workflows/frontend-portal-pages.yml`
+
+Deployment targets:
+
+- `/editor/`
+- `/planner/`
+- `/portal/`
+
+## App-local Docker assets
+
+Each app now contains its own:
+
+- `Dockerfile`
+- `docker-compose.yml`
+- `nginx/default.conf.template`
+
+That keeps home/self-host deployment aligned with the three-app split instead of the old single frontend container.

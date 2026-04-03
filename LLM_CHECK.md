@@ -83,3 +83,10 @@ Use this checklist at the end of each modification round.
 - Hardened seeded course asset lookup to search multiple runtime sample roots, including `/home/sample`, and changed the backend Dockerfile to copy `sample/` into `/home/sample/` explicitly.
 - Normalized the frontend deployment contract around `FRONTEND_API_BASE_URL` as an absolute browser-facing URL instead of a slash-prefixed route, because Git Bash on Windows can path-convert `/api/v1` into a broken `C:/Program Files/Git/api/v1` Docker build argument.
 - Frontend deploy/test scripts now explicitly unset shell overrides such as `FRONTEND_API_BASE_URL` and disable MSYS path conversion for Docker commands so Jenkins-host environment variables cannot silently override the normalized `.env.deploy` value during build.
+- Reset the fork `codex` branch back to `upstream/codex` and preserved the earlier misfire state on a backup branch before restarting the split work.
+- Installed Flutter from git source on arm64 Linux and used that toolchain successfully for local smoke tests and web builds.
+- Replaced the tracked root frontend monolith with exactly three tracked app directories: `frontend/editor_app`, `frontend/planner_app`, and `frontend/portal_app`.
+- Added app-local `Dockerfile`, `docker-compose.yml`, and nginx template files for all three frontend apps.
+- Added GitHub Pages workflows that build/test/deploy the three frontend apps independently from the `codex` branch.
+- Updated frontend ignore rules to apply recursively so nested Flutter app build output does not pollute the repo.
+- Local Django verification now reaches real test discovery/install using `uv`, but still stops at PostgreSQL connection setup because no local database server is present on this host.

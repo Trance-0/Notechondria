@@ -1,0 +1,54 @@
+name: frontend-portal-pages
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  push:
+    branches: [ codex ]
+    paths:
+      - 'frontend/portal_app/**'
+      - '.github/workflows/frontend-portal-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Enable Flutter web
+        run: flutter config --enable-web
+
+      - name: Flutter pub get
+        working-directory: frontend/portal_app
+        run: flutter pub get
+
+      - name: Flutter test
+        working-directory: frontend/portal_app
+        run: flutter test test/smoke_test.dart -r compact
+
+      - name: Flutter build web
+        working-directory: frontend/portal_app
+        run: flutter build web --release --base-href /portal/
+
+      - name: Stage site
+        run: |
+          mkdir -p /tmp/pages/portal
+          cp -R frontend/portal_app/build/web/. /tmp/pages/portal/
+
+      - name: Deploy to gh-pages/portal
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: /tmp/pages
+          keep_files: true
