@@ -313,6 +313,26 @@ class _AppShellState extends State<AppShell> {
     };
   }
 
+  double _deadlineTimeWeight() =>
+      (_localSettings['deadline_time_weight'] as num?)?.toDouble() ?? 1.0;
+
+  double _deadlineImportanceWeight() =>
+      (_localSettings['deadline_importance_weight'] as num?)?.toDouble() ?? 1.0;
+
+  double _deadlineUrgencyScore(Map<String, dynamic> event) {
+    final raw = event['starts_at']?.toString() ?? event['event_date']?.toString() ?? '';
+    DateTime due;
+    try {
+      due = DateTime.parse(raw);
+    } catch (_) {
+      due = DateTime.now().toUtc();
+    }
+    final hoursRemaining = due.difference(DateTime.now().toUtc()).inMinutes / 60.0;
+    final timePressure = hoursRemaining <= 0 ? 24.0 : 1 / (hoursRemaining / 24.0).clamp(0.25, 365.0);
+    final importance = (event['difficulty_weight'] as num?)?.toDouble() ?? 1.0;
+    return (_deadlineTimeWeight() * timePressure) * (_deadlineImportanceWeight() * importance);
+  }
+
   Map<String, dynamic> _buildOfflineActivityWeek() {
     final base = _dateOnly(DateTime.now());
     final days = List.generate(7, (index) {
@@ -325,10 +345,14 @@ class _AppShellState extends State<AppShell> {
     final deadlines = _plannerEvents.map((event) => {
       'title': event['title'],
       'event_date': event['event_date'],
+      'starts_at': event['starts_at'],
       'difficulty_weight': event['difficulty_weight'] ?? 1,
       'description': event['description'] ?? '',
       'is_completed': event['is_completed'] ?? false,
-    }).toList(growable: false);
+      'urgency_score': _deadlineUrgencyScore(event),
+    }).toList(growable: false)
+      ..sort((a, b) => ((b['urgency_score'] as num?)?.toDouble() ?? 0)
+          .compareTo((a['urgency_score'] as num?)?.toDouble() ?? 0));
     return {
       'days': days,
       'deadlines': deadlines,
@@ -1354,6 +1378,8 @@ Capture deadlines, sequencing, and blockers here.''',
     String themePreset,
     String themeMode,
     String apiBaseUrl,
+    double deadlineTimeWeight,
+    double deadlineImportanceWeight,
   ) async {
     final currentSettings = Map<String, dynamic>.from(_settings ?? const {});
     final currentProfile = Map<String, dynamic>.from(_profile ?? const {});
@@ -1371,6 +1397,10 @@ Capture deadlines, sequencing, and blockers here.''',
     final currentThemeMode = _localSettings['theme_mode']?.toString() ?? 'S';
     final currentApiBase =
         _localSettings['api_base_url']?.toString() ?? _defaultApiBaseUrl();
+    final currentDeadlineTimeWeight =
+        (_localSettings['deadline_time_weight'] as num?)?.toDouble() ?? 1.0;
+    final currentDeadlineImportanceWeight =
+        (_localSettings['deadline_importance_weight'] as num?)?.toDouble() ?? 1.0;
     final nextApiBase = apiBaseUrl.trim().isEmpty || apiBaseUrl.trim().startsWith('/')
         ? _defaultApiBaseUrl()
         : apiBaseUrl.trim();
@@ -1398,12 +1428,18 @@ Capture deadlines, sequencing, and blockers here.''',
     }
     final localSettingsChanged = themePreset != currentThemePreset ||
         themeMode != currentThemeMode ||
-        !_sameTrimmedValue(nextApiBase, currentApiBase);
+        !_sameTrimmedValue(nextApiBase, currentApiBase) ||
+        deadlineTimeWeight != currentDeadlineTimeWeight ||
+        deadlineImportanceWeight != currentDeadlineImportanceWeight;
     if (themePreset != currentThemePreset || themeMode != currentThemeMode) {
       changedFields.add('theme');
     }
     if (!_sameTrimmedValue(nextApiBase, currentApiBase)) {
       changedFields.add('API base');
+    }
+    if (deadlineTimeWeight != currentDeadlineTimeWeight ||
+        deadlineImportanceWeight != currentDeadlineImportanceWeight) {
+      changedFields.add('deadline ordering');
     }
     final updatedAt = DateTime.now().toUtc().toIso8601String();
     await _applyLocalAppSettings({
@@ -1412,8 +1448,11 @@ Capture deadlines, sequencing, and blockers here.''',
         themeMode: themeMode,
         apiBaseUrl: nextApiBase,
       ),
+      'deadline_time_weight': deadlineTimeWeight,
+      'deadline_importance_weight': deadlineImportanceWeight,
       'updated_at': updatedAt,
     });
+    _activityWeek = _buildOfflineActivityWeek();
     _localStats = {
       ..._localStats,
       'settings_saves': ((_localStats['settings_saves'] as num?)?.toInt() ?? 0) +
@@ -1433,11 +1472,15 @@ Capture deadlines, sequencing, and blockers here.''',
           'theme_preset': themePreset,
           'theme_mode': themeMode,
           'api_base_url': nextApiBase,
-          'app_settings': _currentAppSettingsPayload(
-            themePreset: themePreset,
-            themeMode: themeMode,
-            apiBaseUrl: nextApiBase,
-          ),
+          'app_settings': {
+            ..._currentAppSettingsPayload(
+              themePreset: themePreset,
+              themeMode: themeMode,
+              apiBaseUrl: nextApiBase,
+            ),
+            'deadline_time_weight': deadlineTimeWeight,
+            'deadline_importance_weight': deadlineImportanceWeight,
+          },
           'app_settings_updated_at': updatedAt,
         });
       }
@@ -1478,6 +1521,8 @@ Capture deadlines, sequencing, and blockers here.''',
           if (localSettingsChanged) 'theme_preset': themePreset,
           if (localSettingsChanged) 'theme_mode': themeMode,
           if (localSettingsChanged) 'api_base_url': nextApiBase,
+          if (localSettingsChanged) 'deadline_time_weight': deadlineTimeWeight,
+          if (localSettingsChanged) 'deadline_importance_weight': deadlineImportanceWeight,
         };
         _profile = {
           ...?_profile,

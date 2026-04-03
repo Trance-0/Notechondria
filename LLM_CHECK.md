@@ -98,6 +98,11 @@ Use this checklist at the end of each modification round.
   - `portal_app` seeds a minimal router-shell front-page payload
 - Planner offline behavior now supports signed-out local planner-event creation/toggling and shows the activity board when local planner data exists.
 - Re-ran local `flutter test` and `flutter build web --no-web-resources-cdn` for all three apps after the functionality patch.
+- Simplified `editor_app` settings down to the requested three sections: login/sync, editor settings, and debug log.
+- Simplified `planner_app` settings down to the requested three sections: login/sync, planner settings, and debug log.
+- Added planner deadline ordering weights (`deadline_time_weight`, `deadline_importance_weight`) and used them in offline deadline urgency scoring.
+- Added stronger widget smoke tests that assert meaningful first-run content instead of only checking for `MaterialApp`.
+- Added `frontend/AGENTS.md` and refreshed `frontend/README.md` to document the three-app split for both humans and agents.
 - Updated frontend ignore rules to apply recursively so nested Flutter app build output does not pollute the repo.
 - Local Django verification now reaches real test discovery/install using `uv`, but still stops at PostgreSQL connection setup because no local database server is present on this host.
 - Specialized `portal_app` toward option B: router-shell/orchestrator behavior, `Portal + Settings` navigation only, and launch cards for editor/planner targets instead of retaining the broad integrated copy.

@@ -45,6 +45,8 @@ class _SettingsPage extends StatefulWidget {
     String themePreset,
     String themeMode,
     String apiBaseUrl,
+    double deadlineTimeWeight,
+    double deadlineImportanceWeight,
   ) onSave;
   final Future<void> Function() onLogout;
   final Future<ActionFeedback> Function(String email, String password)
@@ -83,6 +85,8 @@ class _SettingsPageState extends State<_SettingsPage> {
   late final TextEditingController _mottoController;
   late final TextEditingController _socialController;
   late final TextEditingController _apiBaseController;
+  late final TextEditingController _deadlineTimeWeightController;
+  late final TextEditingController _deadlineImportanceWeightController;
   String _editorMode = 'P';
   String _themePreset = 'teal';
   String _themeMode = 'S';
@@ -119,6 +123,12 @@ class _SettingsPageState extends State<_SettingsPage> {
           widget.apiBaseUrl ??
           _defaultApiBaseUrl(),
     );
+    _deadlineTimeWeightController = TextEditingController(
+      text: (widget.localSettings['deadline_time_weight'] ?? 1.0).toString(),
+    );
+    _deadlineImportanceWeightController = TextEditingController(
+      text: (widget.localSettings['deadline_importance_weight'] ?? 1.0).toString(),
+    );
     _editorMode = widget.settings?['editor_mode']?.toString() ?? 'P';
     _themePreset = widget.localSettings['theme_preset']?.toString() ?? 'teal';
     _themeMode = widget.localSettings['theme_mode']?.toString() ?? 'S';
@@ -142,6 +152,10 @@ class _SettingsPageState extends State<_SettingsPage> {
       _apiBaseController.text = widget.localSettings['api_base_url']?.toString() ??
           widget.apiBaseUrl ??
           _defaultApiBaseUrl();
+      _deadlineTimeWeightController.text =
+          (widget.localSettings['deadline_time_weight'] ?? 1.0).toString();
+      _deadlineImportanceWeightController.text =
+          (widget.localSettings['deadline_importance_weight'] ?? 1.0).toString();
       _themePreset = widget.localSettings['theme_preset']?.toString() ?? 'teal';
       _themeMode = widget.localSettings['theme_mode']?.toString() ?? 'S';
     }
@@ -154,6 +168,8 @@ class _SettingsPageState extends State<_SettingsPage> {
     _mottoController.dispose();
     _socialController.dispose();
     _apiBaseController.dispose();
+    _deadlineTimeWeightController.dispose();
+    _deadlineImportanceWeightController.dispose();
     super.dispose();
   }
 
@@ -162,6 +178,10 @@ class _SettingsPageState extends State<_SettingsPage> {
       _saving = true;
       _saveFeedback = null;
     });
+    final deadlineTimeWeight =
+        double.tryParse(_deadlineTimeWeightController.text.trim()) ?? 1.0;
+    final deadlineImportanceWeight =
+        double.tryParse(_deadlineImportanceWeightController.text.trim()) ?? 1.0;
     final feedback = await widget.onSave(
       _usernameController.text.trim(),
       _emailController.text.trim(),
@@ -171,6 +191,8 @@ class _SettingsPageState extends State<_SettingsPage> {
       _themePreset,
       _themeMode,
       _apiBaseController.text.trim(),
+      deadlineTimeWeight,
+      deadlineImportanceWeight,
     );
     if (!mounted) {
       return;
@@ -286,217 +308,21 @@ class _SettingsPageState extends State<_SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final avatarUrl = _resolveRemoteUrl(
-      widget.profile?['image_url']?.toString() ??
-          widget.settings?['image_url']?.toString() ??
-          '',
-      apiBaseUrl: widget.localSettings['api_base_url']?.toString(),
-    );
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        if (!_isAuthenticated) ...[
-          const Text(
-            'Use this tab to register, verify email, and log in. Local settings still apply without an account.',
-          ),
-          const SizedBox(height: 16),
-          _AuthHub(
-            onRegister: widget.onRegister,
-            onVerify: widget.onVerify,
-            onLogin: widget.onLogin,
-            onRequestPasswordReset: widget.onRequestPasswordReset,
-            onConfirmPasswordReset: widget.onConfirmPasswordReset,
-          ),
-          const SizedBox(height: 24),
-        ] else ...[
-          Row(
-            children: [
-              _RemoteAvatar(
-                radius: 28,
-                imageUrl: avatarUrl,
-                fallbackLabel: widget.profile?['username']?.toString() ?? '',
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.profile?['username']?.toString() ??
-                          widget.profile?['email']?.toString() ??
-                          '',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    Text(
-                      widget.profile?['email']?.toString() ?? '',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-              OutlinedButton.icon(
-                onPressed: _uploadingAvatar ? null : _handleAvatarUpload,
-                icon: const Icon(Icons.photo_camera_outlined),
-                label: Text(_uploadingAvatar ? 'Uploading...' : 'Edit avatar'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          TextField(
-            controller: _usernameController,
-            decoration: const InputDecoration(
-              labelText: 'Username',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _emailController,
-            decoration: const InputDecoration(
-              labelText: 'Email',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _mottoController,
-            decoration: const InputDecoration(
-              labelText: 'Motto',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _socialController,
-            decoration: const InputDecoration(
-              labelText: 'Social link',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            value: _editorMode,
-            items: const [
-              DropdownMenuItem(value: 'G', child: Text('GFM live preview')),
-              DropdownMenuItem(value: 'B', child: Text('Blocks fallback')),
-              DropdownMenuItem(value: 'P', child: Text('Plain text')),
-            ],
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => _editorMode = value);
-              }
-            },
-            decoration: const InputDecoration(
-              labelText: 'Editor mode',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
         Text(
-          'Local app settings',
+          'Planner settings',
           style: Theme.of(context)
               .textTheme
-              .titleMedium
-              ?.copyWith(fontWeight: FontWeight.w700),
+              .headlineSmall
+              ?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                value: _themePreset,
-                items: _themePresetEntries.entries
-                    .map(
-                      (entry) => DropdownMenuItem<String>(
-                        value: entry.key,
-                        child: Text(entry.value),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() => _themePreset = value);
-                  }
-                },
-                decoration: const InputDecoration(
-                  labelText: 'Theme preset',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                value: _themeMode,
-                items: const [
-                  DropdownMenuItem(value: 'S', child: Text('System')),
-                  DropdownMenuItem(value: 'L', child: Text('Light')),
-                  DropdownMenuItem(value: 'D', child: Text('Dark')),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() => _themeMode = value);
-                  }
-                },
-                decoration: const InputDecoration(
-                  labelText: 'Theme mode',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ),
-          ],
+        const Text(
+          'This app keeps planner-focused controls only: login/sync, deadline-ordering preferences, and debug output.',
         ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _apiBaseController,
-          decoration: const InputDecoration(
-            labelText: 'API base URL',
-            hintText: 'http://localhost:9060/api/v1',
-            helperText: 'Stored locally and mirrored to the profile on login.',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 16),
-        if (_saveFeedback != null) ...[
-          _FeedbackText(feedback: _saveFeedback!),
-          const SizedBox(height: 12),
-        ],
-        FilledButton(
-          onPressed: _saving ? null : _submitSettings,
-          child: Text(_saving ? 'Saving...' : 'Save settings'),
-        ),
-        if (_isAdmin) ...[
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () => _runMaintenanceAction(widget.onRestoreTemplateCourses),
-            icon: const Icon(Icons.restart_alt_outlined),
-            label: const Text('Restore templates'),
-          ),
-        ],
-        if (_isAuthenticated) ...[
-          const SizedBox(height: 12),
-          OutlinedButton(
-            onPressed: () {
-              widget.onLogout();
-            },
-            child: const Text('Logout'),
-          ),
-        ],
-        const SizedBox(height: 24),
-        Text(
-          'Local data and cache',
-          style: Theme.of(context)
-              .textTheme
-              .titleMedium
-              ?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 20),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -504,161 +330,214 @@ class _SettingsPageState extends State<_SettingsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${widget.localDraftCount} local draft(s), ${widget.localCourseCount} local course(s).',
+                  '1. Login and sync',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'The app keeps local drafts, local courses, cached API content, and debug logs so it can still run when the backend is unavailable.',
+                if (!_isAuthenticated) ...[
+                  const Text(
+                    'Sign in to sync course plans, module discussion roots, and planner deadlines. Local planner data remains usable while signed out.',
+                  ),
+                  const SizedBox(height: 12),
+                  _AuthHub(
+                    onRegister: widget.onRegister,
+                    onVerify: widget.onVerify,
+                    onLogin: widget.onLogin,
+                    onRequestPasswordReset: widget.onRequestPasswordReset,
+                    onConfirmPasswordReset: widget.onConfirmPasswordReset,
+                  ),
+                ] else ...[
+                  Text(
+                    'Signed in as ${widget.profile?['email']?.toString() ?? widget.profile?['username']?.toString() ?? 'user'}.',
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      FilledButton.icon(
+                        onPressed: () => _runMaintenanceAction(
+                          () => widget.onSyncLocalData(showMessage: false),
+                        ),
+                        icon: const Icon(Icons.cloud_upload_outlined),
+                        label: const Text('Push local → cloud'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () => _runMaintenanceAction(widget.onPullCloudData),
+                        icon: const Icon(Icons.download_for_offline_outlined),
+                        label: const Text('Pull cloud → local'),
+                      ),
+                      OutlinedButton(
+                        onPressed: widget.onLogout,
+                        child: const Text('Logout'),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '2. Planner settings',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 12),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
+                Row(
                   children: [
-                    FilledButton.icon(
-                      onPressed: _isAuthenticated
-                          ? () => _runMaintenanceAction(
-                                () => widget.onSyncLocalData(showMessage: false),
-                              )
-                          : null,
-                      icon: const Icon(Icons.cloud_upload_outlined),
-                      label: const Text('Sync local data'),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: _themePreset,
+                        items: _themePresetEntries.entries
+                            .map((entry) => DropdownMenuItem<String>(
+                                  value: entry.key,
+                                  child: Text(entry.value),
+                                ))
+                            .toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => _themePreset = value);
+                          }
+                        },
+                        decoration: const InputDecoration(
+                          labelText: 'Theme preset',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
                     ),
-                    OutlinedButton.icon(
-                      onPressed: _isAuthenticated
-                          ? () => _runMaintenanceAction(widget.onPullCloudData)
-                          : null,
-                      icon: const Icon(Icons.download_for_offline_outlined),
-                      label: const Text('Pull cloud notes'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: () => _runMaintenanceAction(widget.onClearLocalCache),
-                      icon: const Icon(Icons.cleaning_services_outlined),
-                      label: const Text('Clear local cache'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: () => _runMaintenanceAction(widget.onClearLocalData),
-                      icon: const Icon(Icons.delete_sweep_outlined),
-                      label: const Text('Remove local data'),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: _themeMode,
+                        items: const [
+                          DropdownMenuItem(value: 'S', child: Text('System')),
+                          DropdownMenuItem(value: 'L', child: Text('Light')),
+                          DropdownMenuItem(value: 'D', child: Text('Dark')),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => _themeMode = value);
+                          }
+                        },
+                        decoration: const InputDecoration(
+                          labelText: 'Theme mode',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        Text(
-          'Recycle bin',
-          style: Theme.of(context)
-              .textTheme
-              .titleMedium
-              ?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    !_isAuthenticated
-                        ? 'Sign in to manage deleted cloud notes.'
-                        : '${widget.deletedNotes.length} note(s) currently in the recycle bin.',
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _deadlineTimeWeightController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Deadline time weight (a)',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _deadlineImportanceWeightController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Deadline importance weight (b)',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Deadlines sort by (a × time pressure) × (b × importance). Importance uses the existing event weight.',
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _apiBaseController,
+                  decoration: const InputDecoration(
+                    labelText: 'API base URL',
+                    border: OutlineInputBorder(),
                   ),
                 ),
-                OutlinedButton(
-                  onPressed: !_isAuthenticated ? null : _openRecycleBinDialog,
-                  child: const Text('Open recycle bin'),
+                const SizedBox(height: 12),
+                if (_saveFeedback != null) ...[
+                  _FeedbackText(feedback: _saveFeedback!),
+                  const SizedBox(height: 12),
+                ],
+                FilledButton(
+                  onPressed: _saving ? null : _submitSettings,
+                  child: Text(_saving ? 'Saving...' : 'Save planner settings'),
                 ),
               ],
             ),
           ),
         ),
-        const SizedBox(height: 24),
-        Text(
-          'Stats',
-          style: Theme.of(context)
-              .textTheme
-              .titleMedium
-              ?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 16),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Wrap(
-              spacing: 12,
-              runSpacing: 12,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _StatChip(
-                  label: 'Local drafts created',
-                  value:
-                      '${(widget.localStats['local_drafts_created'] as num?)?.toInt() ?? 0}',
+                Text(
+                  '3. Debug log',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
-                _StatChip(
-                  label: 'Drafts synced',
-                  value:
-                      '${(widget.localStats['local_drafts_synced'] as num?)?.toInt() ?? 0}',
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${widget.localDraftCount} local note(s), ${widget.localCourseCount} local course(s).',
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: widget.onCopyLogs,
+                      icon: const Icon(Icons.copy_all_outlined),
+                      label: const Text('Copy logs'),
+                    ),
+                  ],
                 ),
-                _StatChip(
-                  label: 'Avatar updates',
-                  value:
-                      '${(widget.localStats['avatar_updates'] as num?)?.toInt() ?? 0}',
+                const SizedBox(height: 12),
+                _ApiDebugCard(
+                  apiBaseUrl: widget.apiBaseUrl,
+                  snapshotListenable: widget.debugSnapshotListenable,
+                  historyListenable: widget.debugHistoryListenable,
                 ),
-                _StatChip(
-                  label: 'Settings saves',
-                  value:
-                      '${(widget.localStats['settings_saves'] as num?)?.toInt() ?? 0}',
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 220,
+                  child: ListView(
+                    padding: EdgeInsets.zero,
+                    children: [
+                      for (final row in widget.uiLogs) SelectableText(row),
+                      if (widget.uiLogs.isEmpty)
+                        const Text('No frontend logs captured yet.'),
+                    ],
+                  ),
                 ),
-                _StatChip(
-                  label: 'Logs copied',
-                  value:
-                      '${(widget.localStats['logs_copied'] as num?)?.toInt() ?? 0}',
-                ),
-                _StatChip(
-                  label: 'Last sync',
-                  value: widget.localStats['last_sync_at']?.toString() ?? 'Never',
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        Text('API debug', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
-        _ApiDebugCard(
-          apiBaseUrl: widget.apiBaseUrl,
-          snapshotListenable: widget.debugSnapshotListenable,
-          historyListenable: widget.debugHistoryListenable,
-        ),
-        const SizedBox(height: 24),
-        Row(
-          children: [
-            Expanded(
-              child:
-                  Text('Frontend logs', style: Theme.of(context).textTheme.titleMedium),
-            ),
-            TextButton.icon(
-              onPressed: () {
-                widget.onCopyLogs();
-              },
-              icon: const Icon(Icons.copy_all_outlined),
-              label: const Text('Copy'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: SizedBox(
-            height: 220,
-            child: ListView(
-              padding: const EdgeInsets.all(12),
-              children: [
-                for (final row in widget.uiLogs) SelectableText(row),
-                if (widget.uiLogs.isEmpty)
-                  const Text('No frontend logs captured yet.'),
               ],
             ),
           ),
@@ -666,6 +545,7 @@ class _SettingsPageState extends State<_SettingsPage> {
       ],
     );
   }
+
 }
 
 class _StatChip extends StatelessWidget {
