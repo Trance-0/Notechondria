@@ -48,7 +48,7 @@ jobs:
 
       - name: Build planner_app
         working-directory: frontend/planner_app
-        run: flutter build web --release --base-href /planner/ --no-web-resources-cdn
+        run: flutter build web --release --base-href /Notechondria/planner/ --no-web-resources-cdn
 
       - name: Test portal_app
         working-directory: frontend/portal_app
