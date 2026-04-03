@@ -89,6 +89,13 @@ Use this checklist at the end of each modification round.
 - Added app-local `Dockerfile`, `docker-compose.yml`, and nginx template files for all three frontend apps.
 - Added GitHub Pages workflows that build/test/deploy the three frontend apps independently from the `codex` branch.
 - Replaced the split Pages workflows with a single combined pipeline to avoid gh-pages push races and workflow cancellation.
+- Reorganized deployment into method-specific folders:
+  - `deployment/jenkins/`
+  - `deployment/docker/`
+  - `deployment/render/`
+- Moved environment samples into deployment-method folders and removed the stale root `sample.env`.
+- Added root full-stack `docker-compose.yml`, root `render-deploy.sh`, and a full-stack Jenkins pipeline wired to deployment-specific helper scripts.
+- Default frontend API behavior now targets `https://notenextra.trance-0.com/api/v1` on GitHub Pages and same-origin `/api/v1` on local browser full-stack deploys.
 - Added a root Pages landing page so `/Notechondria/` is not a 404 while the three apps live under subpaths.
 - Corrected Pages base-href handling for a GitHub **project site**: builds must use `/Notechondria/editor/`, `/Notechondria/planner/`, and `/Notechondria/portal/` rather than root-level `/editor/`, `/planner/`, `/portal/`.
 - Caught and fixed an incomplete workflow patch where planner used the corrected repo-prefixed base path but editor and portal were still building with root-level base paths.

@@ -9,13 +9,11 @@ pipeline {
   environment {
     ENV_FILE = '.env.deploy'
     BACKUP_DIR = 'backups'
-    DEPLOY_SCRIPT = 'deployment/scripts/deploy_backend.sh'
-    BACKUP_SCRIPT = 'deployment/scripts/backup_postgres.sh'
-    TEST_SCRIPT = 'deployment/scripts/test_backend.sh'
-    PREPARE_ENV_SCRIPT = 'deployment/scripts/prepare_env.sh'
-    WAIT_SCRIPT = 'deployment/scripts/wait_for_stack.sh'
-    DB_READY_SCRIPT = 'deployment/scripts/ensure_db_ready.sh'
-    WAIT_TIMEOUT_SECONDS = '300'
+    PREPARE_ENV_SCRIPT = 'deployment/jenkins/scripts/prepare_env.sh'
+    BACKUP_SCRIPT = 'deployment/jenkins/scripts/backup_postgres.sh'
+    TEST_BACKEND_SCRIPT = 'deployment/jenkins/scripts/test_backend.sh'
+    TEST_FRONTENDS_SCRIPT = 'deployment/jenkins/scripts/test_frontends.sh'
+    DEPLOY_FULL_STACK_SCRIPT = 'deployment/jenkins/scripts/deploy_full_stack.sh'
   }
 
   triggers {
@@ -43,23 +41,29 @@ pipeline {
 
     stage('Backend Tests') {
       steps {
-        sh 'bash ${TEST_SCRIPT} "${WORKSPACE}" "${WORKSPACE}/${ENV_FILE}"'
+        sh 'bash ${TEST_BACKEND_SCRIPT} "${WORKSPACE}" "${WORKSPACE}/${ENV_FILE}"'
       }
     }
 
-    stage('Deploy Backend') {
+    stage('Frontend Tests') {
       steps {
-        sh 'bash ${DEPLOY_SCRIPT} "${WORKSPACE}" "${WORKSPACE}/${ENV_FILE}" "${WORKSPACE}/${WAIT_SCRIPT}" "${WAIT_TIMEOUT_SECONDS}" "${WORKSPACE}/${DB_READY_SCRIPT}"'
+        sh 'bash ${TEST_FRONTENDS_SCRIPT}'
+      }
+    }
+
+    stage('Deploy Full Stack') {
+      steps {
+        sh 'bash ${DEPLOY_FULL_STACK_SCRIPT} "${WORKSPACE}/${ENV_FILE}"'
       }
     }
   }
 
   post {
     success {
-      echo 'Backend deployment pipeline succeeded.'
+      echo 'Full-stack Jenkins deployment pipeline succeeded.'
     }
     failure {
-      echo 'Backend deployment pipeline failed. Check backend validation/deploy output before retrying.'
+      echo 'Full-stack Jenkins deployment pipeline failed.'
     }
   }
 }

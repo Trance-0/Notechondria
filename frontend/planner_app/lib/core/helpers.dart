@@ -111,12 +111,16 @@ String _formatTime(DateTime value) {
 
 String _defaultApiBaseUrl() {
   if (kIsWeb) {
-    if (Uri.base.hasScheme && Uri.base.host.isNotEmpty) {
-      return '${Uri.base.origin}/api/v1';
+    final base = Uri.base;
+    final origin = '${base.scheme}://${base.host}${base.hasPort ? ':${base.port}' : ''}';
+    if (base.host == 'nesbitt-bot.github.io') {
+      return 'https://notenextra.trance-0.com/api/v1';
     }
-    return 'http://localhost:9060/api/v1';
+    if (base.host == 'localhost' || base.host == '127.0.0.1') {
+      return '$origin/api/v1';
+    }
   }
-  return 'http://localhost:9080/api/v1';
+  return 'https://notenextra.trance-0.com/api/v1';
 }
 
 String _slugifyLocalText(String value, {String fallback = 'item'}) {
