@@ -4,7 +4,7 @@
 
 - `editor_app/` — offline-first markdown editor with optional sync
 - `planner_app/` — course planning, module board, and calendar workflows
-- `portal_app/` — online auth, sync orchestration, and integrated remote views
+- `portal_app/` — online auth, cloud preferences, and router-shell orchestration
 
 ## Current app intent
 
@@ -37,13 +37,14 @@ Current runtime shape in this pass:
 Primary role:
 - online-only auth and account orchestration
 - cloud preference storage
-- integrated remote access to the editor/planner domain concepts
+- router shell around the editor/planner workspaces
 - future git-like versioning entry surface
 
 Current runtime shape in this pass:
 - boots independently
 - builds independently for web
-- retains the broad integrated navigation while the deeper online-only restrictions are refined
+- navigation is constrained to `Portal` + `Settings`
+- front page is an orchestration dashboard with launch targets for editor/planner instead of a broad integrated copy
 
 ## Local verification completed in this environment
 

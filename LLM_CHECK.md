@@ -90,3 +90,4 @@ Use this checklist at the end of each modification round.
 - Added GitHub Pages workflows that build/test/deploy the three frontend apps independently from the `codex` branch.
 - Updated frontend ignore rules to apply recursively so nested Flutter app build output does not pollute the repo.
 - Local Django verification now reaches real test discovery/install using `uv`, but still stops at PostgreSQL connection setup because no local database server is present on this host.
+- Specialized `portal_app` toward option B: router-shell/orchestrator behavior, `Portal + Settings` navigation only, and launch cards for editor/planner targets instead of retaining the broad integrated copy.

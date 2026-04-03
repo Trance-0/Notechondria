@@ -27,7 +27,7 @@ We will not use your knowledge to feed the AI, we use open API and ensure that y
 * `frontend/` - three Flutter frontend apps:
   * `editor_app/` - offline-first markdown editor
   * `planner_app/` - course planning and calendar workflows
-  * `portal_app/` - online auth, sync, and integrated remote views
+  * `portal_app/` - online auth, cloud preferences, and router-shell orchestration
 * `docs/` - product documentation, MVP scope, and planning references.
 * `course_template/` - canonical git course template for import/export and validation.
 

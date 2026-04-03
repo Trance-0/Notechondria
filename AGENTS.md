@@ -91,7 +91,8 @@ Intended role:
 Current shape in this pass:
 - self-contained Flutter app directory
 - own `pubspec.yaml`, `lib/`, `web/`, `windows/`, `test/`, `Dockerfile`, `docker-compose.yml`, and nginx template
-- currently keeps the broad integrated navigation while the stricter online-only behavior is still being refined
+- navigation is constrained to `Portal` + `Cloud Settings`
+- front page is a router/orchestrator shell that launches editor/planner targets instead of acting like the full integrated copy
 
 ## 4.2 Important frontend reality
 - The three apps are independently buildable now.
