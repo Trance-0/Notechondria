@@ -58,7 +58,7 @@ jobs:
 
       - name: Build portal_app
         working-directory: frontend/portal_app
-        run: flutter build web --release --base-href /portal/ --no-web-resources-cdn
+        run: flutter build web --release --base-href /Notechondria/portal/ --no-web-resources-cdn
 
       - name: Disable service worker bootstrap in Pages builds
         run: |
