@@ -1,0 +1,76 @@
+name: frontend-pages
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  push:
+    branches: [ codex ]
+    paths:
+      - 'frontend/editor_app/**'
+      - 'frontend/planner_app/**'
+      - 'frontend/portal_app/**'
+      - '.github/workflows/frontend-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Enable Flutter web
+        run: flutter config --enable-web
+
+      - name: Test editor_app
+        working-directory: frontend/editor_app
+        run: |
+          flutter pub get
+          flutter test test/smoke_test.dart -r compact
+
+      - name: Build editor_app
+        working-directory: frontend/editor_app
+        run: flutter build web --release --base-href /editor/
+
+      - name: Test planner_app
+        working-directory: frontend/planner_app
+        run: |
+          flutter pub get
+          flutter test test/smoke_test.dart -r compact
+
+      - name: Build planner_app
+        working-directory: frontend/planner_app
+        run: flutter build web --release --base-href /planner/
+
+      - name: Test portal_app
+        working-directory: frontend/portal_app
+        run: |
+          flutter pub get
+          flutter test test/smoke_test.dart -r compact
+
+      - name: Build portal_app
+        working-directory: frontend/portal_app
+        run: flutter build web --release --base-href /portal/
+
+      - name: Stage Pages tree
+        run: |
+          mkdir -p /tmp/pages/editor /tmp/pages/planner /tmp/pages/portal
+          cp -R frontend/editor_app/build/web/. /tmp/pages/editor/
+          cp -R frontend/planner_app/build/web/. /tmp/pages/planner/
+          cp -R frontend/portal_app/build/web/. /tmp/pages/portal/
+
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: /tmp/pages
+          keep_files: true
