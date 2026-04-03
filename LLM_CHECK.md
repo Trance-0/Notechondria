@@ -92,6 +92,7 @@ Use this checklist at the end of each modification round.
 - Added a root Pages landing page so `/Notechondria/` is not a 404 while the three apps live under subpaths.
 - Corrected Pages base-href handling for a GitHub **project site**: builds must use `/Notechondria/editor/`, `/Notechondria/planner/`, and `/Notechondria/portal/` rather than root-level `/editor/`, `/planner/`, `/portal/`.
 - Caught and fixed an incomplete workflow patch where planner used the corrected repo-prefixed base path but editor and portal were still building with root-level base paths.
+- Caught a second incomplete base-href fix where portal had been corrected but editor was still building with `/editor/`; editor must also use `/Notechondria/editor/` on GitHub project Pages.
 - Updated Pages builds to bundle web resources locally (`--no-web-resources-cdn`) and rewrite the final Flutter bootstrap load call to disable service-worker registration in the published output.
 - Local verification for the Pages runtime path now includes confirming the built bootstrap ends in `_flutter.loader.load({});` and uses `useLocalCanvasKit: true`.
 - Added first-run offline starter workspaces so the split apps render meaningful content without backend/login prerequisites:
