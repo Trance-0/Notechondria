@@ -83,3 +83,38 @@ Use this checklist at the end of each modification round.
 - Hardened seeded course asset lookup to search multiple runtime sample roots, including `/home/sample`, and changed the backend Dockerfile to copy `sample/` into `/home/sample/` explicitly.
 - Normalized the frontend deployment contract around `FRONTEND_API_BASE_URL` as an absolute browser-facing URL instead of a slash-prefixed route, because Git Bash on Windows can path-convert `/api/v1` into a broken `C:/Program Files/Git/api/v1` Docker build argument.
 - Frontend deploy/test scripts now explicitly unset shell overrides such as `FRONTEND_API_BASE_URL` and disable MSYS path conversion for Docker commands so Jenkins-host environment variables cannot silently override the normalized `.env.deploy` value during build.
+- Reset the fork `codex` branch back to `upstream/codex` and preserved the earlier misfire state on a backup branch before restarting the split work.
+- Installed Flutter from git source on arm64 Linux and used that toolchain successfully for local smoke tests and web builds.
+- Replaced the tracked root frontend monolith with exactly three tracked app directories: `frontend/editor_app`, `frontend/planner_app`, and `frontend/portal_app`.
+- Added app-local `Dockerfile`, `docker-compose.yml`, and nginx template files for all three frontend apps.
+- Added GitHub Pages workflows that build/test/deploy the three frontend apps independently from the `codex` branch.
+- Replaced the split Pages workflows with a single combined pipeline to avoid gh-pages push races and workflow cancellation.
+- Reorganized deployment into method-specific folders:
+  - `deployment/jenkins/`
+  - `deployment/docker/`
+  - `deployment/render/`
+- Moved environment samples into deployment-method folders and removed the stale root `sample.env`.
+- Added root full-stack `docker-compose.yml`, root `render-deploy.sh`, and a full-stack Jenkins pipeline wired to deployment-specific helper scripts.
+- Default frontend API behavior now targets `https://notenextra.trance-0.com/api/v1` on GitHub Pages and same-origin `/api/v1` on local browser full-stack deploys.
+- Added a root Pages landing page so `/Notechondria/` is not a 404 while the three apps live under subpaths.
+- Corrected Pages base-href handling for a GitHub **project site**: builds must use `/Notechondria/editor/`, `/Notechondria/planner/`, and `/Notechondria/portal/` rather than root-level `/editor/`, `/planner/`, `/portal/`.
+- Caught and fixed an incomplete workflow patch where planner used the corrected repo-prefixed base path but editor and portal were still building with root-level base paths.
+- Caught a second incomplete base-href fix where portal had been corrected but editor was still building with `/editor/`; editor must also use `/Notechondria/editor/` on GitHub project Pages.
+- Updated Pages builds to bundle web resources locally (`--no-web-resources-cdn`) and rewrite the final Flutter bootstrap load call to disable service-worker registration in the published output.
+- Local verification for the Pages runtime path now includes confirming the built bootstrap ends in `_flutter.loader.load({});` and uses `useLocalCanvasKit: true`.
+- Added first-run offline starter workspaces so the split apps render meaningful content without backend/login prerequisites:
+  - `editor_app` seeds local notes and a storage-layout example
+  - `planner_app` seeds a local course, module discussion notes, and local planner events
+  - `portal_app` seeds a minimal router-shell front-page payload
+- Planner offline behavior now supports signed-out local planner-event creation/toggling and shows the activity board when local planner data exists.
+- Re-ran local `flutter test` and `flutter build web --no-web-resources-cdn` for all three apps after the functionality patch.
+- Simplified `editor_app` settings down to the requested three sections: login/sync, editor settings, and debug log.
+- Simplified `planner_app` settings down to the requested three sections: login/sync, planner settings, and debug log.
+- Added planner deadline ordering weights (`deadline_time_weight`, `deadline_importance_weight`) and used them in offline deadline urgency scoring.
+- Added stronger widget smoke tests that assert meaningful first-run content instead of only checking for `MaterialApp`.
+- Added `frontend/AGENTS.md` and refreshed `frontend/README.md` to document the three-app split for both humans and agents.
+- Replaced the planner app's generic front page with a planner-specific dashboard centered on course calendars and upcoming deadlines.
+- Re-verified all three apps locally after the planner-home replacement.
+- Updated frontend ignore rules to apply recursively so nested Flutter app build output does not pollute the repo.
+- Local Django verification now reaches real test discovery/install using `uv`, but still stops at PostgreSQL connection setup because no local database server is present on this host.
+- Specialized `portal_app` toward option B: router-shell/orchestrator behavior, `Portal + Settings` navigation only, and launch cards for editor/planner targets instead of retaining the broad integrated copy.

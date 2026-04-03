@@ -94,3 +94,9 @@ backend/static/monaco-editor/esm/
 !frontend/lib/**
 !frontend/test/
 !frontend/test/**
+!frontend/editor_app/lib/
+!frontend/editor_app/lib/**
+!frontend/planner_app/lib/
+!frontend/planner_app/lib/**
+!frontend/portal_app/lib/
+!frontend/portal_app/lib/**

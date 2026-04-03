@@ -1,42 +1,69 @@
-# Frontend (Flutter)
+# Notechondria Frontends
 
-This Flutter app is the client for the Canvas-like calendar experience.
+This directory contains three standalone Flutter apps:
 
-## Structure
+- `editor_app/` — offline-first text editor and note workspace
+- `planner_app/` — course/module planner and deadline tracker
+- `portal_app/` — auth/orchestration shell that routes into the other apps
 
-- `lib/main.dart`: thin library entrypoint.
-- `lib/app_shell.dart`: top-level app shell and shared app state.
-- `lib/core/`: shared client and helper logic.
-- `lib/components/`: reusable UI components.
-- `lib/modules/`: independent page modules for `front`, `learner`, `course`, `activity`, and `settings`.
+## Modules by app
 
-## Pages in MVP scaffold
+### editor_app
+Primary behavior:
+- note list
+- note metadata editing
+- markdown import/export
+- note editor with three modes:
+  - plain text
+  - dynamic markdown
+  - block editor
+- editor-focused settings:
+  - login/sync
+  - editor defaults/theme
+  - debug log
 
-- Front Page
-- Learner View
-- Course View
-- Activity View
-- Settings View
+### planner_app
+Primary behavior:
+- course view
+- module discussion roots and local note comments
+- deadline tracker / activity view
+- offline planner events
+- planner-focused settings:
+  - login/sync
+  - deadline ordering weights + theme
+  - debug log
 
-Each page is reachable from the bottom navigation bar in `lib/main.dart`.
+### portal_app
+Primary behavior:
+- auth/orchestration shell
+- launch links into editor/planner workspaces
+- cloud-oriented settings surface
 
-## Run locally
+## Deployment
+
+Frontend GitHub Pages deploys all three apps from one workflow:
+- `.github/workflows/frontend-pages.yml`
+
+GitHub Pages project-site paths:
+- `/Notechondria/editor/`
+- `/Notechondria/planner/`
+- `/Notechondria/portal/`
+
+Pages runtime choices:
+- local bundled web runtime assets (`--no-web-resources-cdn`)
+- disabled published service-worker bootstrap
+- root landing page links to all three apps
+- default API target on Pages: `https://notenextra.trance-0.com/api/v1`
+
+On local full-stack browser deploys (`localhost` / `127.0.0.1`), the apps default to same-origin `/api/v1`.
+
+## Verification
+
+Run from `frontend/`:
 
 ```bash
-flutter pub get
-flutter run -d chrome
-```
-
-## Docker web build
-
-```bash
-docker compose --env-file ../sample.env -f docker-compose.yml up --build -d
-```
-
-The standalone web container serves the Flutter build on `FRONTEND_HOST_PORT`. The image compiles with `FRONTEND_API_BASE_URL` and the nginx runtime proxies `/api`, `/admin`, `/static`, and `/media` to `FRONTEND_BACKEND_ORIGIN` over the shared Docker network. Keep `FRONTEND_API_BASE_URL` absolute, for example `http://localhost:9060/api/v1`, so Windows-hosted Git Bash does not path-convert a slash-prefixed value during Docker build. The default backend origin is `http://nginx`.
-
-## Test
-
-```bash
-flutter test
+for app in editor_app planner_app portal_app; do
+  (cd "$app" && flutter test test/smoke_test.dart -r compact)
+  (cd "$app" && flutter build web --release --base-href "/${app%_app}/" --no-web-resources-cdn)
+done
 ```

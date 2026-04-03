@@ -1,0 +1,133 @@
+name: frontend-pages
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  push:
+    branches: [ codex ]
+    paths:
+      - 'frontend/editor_app/**'
+      - 'frontend/planner_app/**'
+      - 'frontend/portal_app/**'
+      - '.github/workflows/frontend-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Enable Flutter web
+        run: flutter config --enable-web
+
+      - name: Test editor_app
+        working-directory: frontend/editor_app
+        run: |
+          flutter pub get
+          flutter test test/smoke_test.dart -r compact
+
+      - name: Build editor_app
+        working-directory: frontend/editor_app
+        run: flutter build web --release --base-href /Notechondria/editor/ --no-web-resources-cdn
+
+      - name: Test planner_app
+        working-directory: frontend/planner_app
+        run: |
+          flutter pub get
+          flutter test test/smoke_test.dart -r compact
+
+      - name: Build planner_app
+        working-directory: frontend/planner_app
+        run: flutter build web --release --base-href /Notechondria/planner/ --no-web-resources-cdn
+
+      - name: Test portal_app
+        working-directory: frontend/portal_app
+        run: |
+          flutter pub get
+          flutter test test/smoke_test.dart -r compact
+
+      - name: Build portal_app
+        working-directory: frontend/portal_app
+        run: flutter build web --release --base-href /Notechondria/portal/ --no-web-resources-cdn
+
+      - name: Disable service worker bootstrap in Pages builds
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          for app in ('editor_app', 'planner_app', 'portal_app'):
+              p = Path(f'frontend/{app}/build/web/flutter_bootstrap.js')
+              text = p.read_text()
+              text = re.sub(r"_flutter\.loader\.load\(\{\s*serviceWorkerSettings:\s*\{.*?\}\s*\}\);", "_flutter.loader.load({});", text, flags=re.S)
+              p.write_text(text)
+              sw = Path(f'frontend/{app}/build/web/flutter_service_worker.js')
+              if sw.exists():
+                  sw.unlink()
+          PY
+
+      - name: Stage Pages tree
+        run: |
+          mkdir -p /tmp/pages/editor /tmp/pages/planner /tmp/pages/portal
+          cp -R frontend/editor_app/build/web/. /tmp/pages/editor/
+          cp -R frontend/planner_app/build/web/. /tmp/pages/planner/
+          cp -R frontend/portal_app/build/web/. /tmp/pages/portal/
+          touch /tmp/pages/.nojekyll
+          cat > /tmp/pages/index.html <<'EOF'
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <title>Notechondria Frontends</title>
+            <style>
+              :root { color-scheme: dark; }
+              body { font-family: system-ui, sans-serif; margin: 0; padding: 32px; background: #0f172a; color: #e5e7eb; }
+              .wrap { max-width: 860px; margin: 0 auto; }
+              .cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 16px; margin-top: 24px; }
+              .card { background: #111827; border: 1px solid #374151; border-radius: 16px; padding: 20px; }
+              a { color: #93c5fd; text-decoration: none; }
+              a:hover { text-decoration: underline; }
+              h1,h2 { margin-top: 0; }
+              code { background: #1f2937; padding: 2px 6px; border-radius: 6px; }
+            </style>
+          </head>
+          <body>
+            <div class="wrap">
+              <h1>Notechondria Frontends</h1>
+              <p>This Pages site publishes the three split frontend apps from the <code>codex</code> branch.</p>
+              <div class="cards">
+                <div class="card">
+                  <h2><a href="./editor/">Editor</a></h2>
+                  <p>Offline-first markdown editor with local drafts, search, and sync-oriented settings.</p>
+                </div>
+                <div class="card">
+                  <h2><a href="./planner/">Planner</a></h2>
+                  <p>Course planning, activity/calendar workflows, and module discussion surfaces.</p>
+                </div>
+                <div class="card">
+                  <h2><a href="./portal/">Portal</a></h2>
+                  <p>Online auth, cloud preferences, and orchestration links into the other workspaces.</p>
+                </div>
+              </div>
+            </div>
+          </body>
+          </html>
+          EOF
+
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: /tmp/pages
+          keep_files: true

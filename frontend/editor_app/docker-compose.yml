@@ -1,0 +1,27 @@
+name: notechondria-editor
+
+networks:
+  notechondria-shared:
+    external: true
+    name: ${NOTECHONDRIA_SHARED_NETWORK:-notechondria-shared}
+
+services:
+  frontend:
+    image: ${FRONTEND_IMAGE:-trancezero/notechondria-editor:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        FRONTEND_API_BASE_URL: ${FRONTEND_API_BASE_URL:-http://localhost:9060/api/v1}
+        APP_BASE_HREF: ${APP_BASE_HREF:-/}
+    environment:
+      FRONTEND_BACKEND_ORIGIN: ${FRONTEND_BACKEND_ORIGIN:-http://nginx}
+    ports:
+      - ${EDITOR_FRONTEND_HOST_PORT:-9061}:80
+    networks:
+      - notechondria-shared
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
