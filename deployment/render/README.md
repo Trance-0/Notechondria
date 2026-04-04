@@ -34,9 +34,16 @@ You can configure Render in either of two ways:
 Set values directly in the Render dashboard:
 - `DATABASE_URL`
 - `SECRET_KEY`
-- `ALLOWED_HOSTS`
-- `CSRF_TRUSTED_ORIGINS`
+- `CUSTOM_DOMAIN` — custom domain pointing to backend (e.g. `notenextra.trance-0.com`)
+- `FRONTEND_ORIGIN` — frontend origin for CORS (e.g. `https://trance-0.github.io`)
+- `DJANGO_SUPERUSER_PASSWORD` — admin account password (required for bootstrap)
+- optional `DJANGO_SUPERUSER_USERNAME`, `DJANGO_SUPERUSER_EMAIL`
+- optional `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` (override auto-detection)
 - optional `OPENAI_API_KEY`, `GITHUB_APP_*`
+
+> **Note**: `RENDER_EXTERNAL_HOSTNAME` is set automatically by Render.
+> `CUSTOM_DOMAIN` and `FRONTEND_ORIGIN` auto-populate `ALLOWED_HOSTS` and
+> `CSRF_TRUSTED_ORIGINS` defaults, so you typically don't need to set those manually.
 
 ### Option B: Render secret file
 Render can mount plaintext secret files under `/etc/secrets/<filename>`.
@@ -51,8 +58,9 @@ Example Render secret file content:
 ```env
 DATABASE_URL=postgresql://...
 SECRET_KEY=change-me
-ALLOWED_HOSTS=your-service.onrender.com,notenextra.trance-0.com
-CSRF_TRUSTED_ORIGINS=https://your-service.onrender.com,https://notenextra.trance-0.com
+CUSTOM_DOMAIN=notenextra.trance-0.com
+FRONTEND_ORIGIN=https://trance-0.github.io
+DJANGO_SUPERUSER_PASSWORD=your-admin-password
 WEB_CONCURRENCY=2
 PYTHONUNBUFFERED=1
 ```

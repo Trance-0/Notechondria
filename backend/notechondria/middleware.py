@@ -35,4 +35,12 @@ class ApiCorsMiddleware:
         host = parsed.hostname or ""
         if host in {"localhost", "127.0.0.1"}:
             return True
-        return host in settings.ALLOWED_HOSTS
+        if host in settings.ALLOWED_HOSTS:
+            return True
+        # Check CSRF_TRUSTED_ORIGINS for cross-origin frontend deployments
+        # (e.g. GitHub Pages frontend talking to Render backend)
+        for trusted in getattr(settings, "CSRF_TRUSTED_ORIGINS", []):
+            trusted_parsed = urlparse(trusted)
+            if trusted_parsed.hostname == host:
+                return True
+        return False

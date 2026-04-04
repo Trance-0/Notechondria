@@ -109,18 +109,23 @@ String _formatTime(DateTime value) {
   return '$hour:${value.minute.toString().padLeft(2, '0')} $suffix';
 }
 
+/// Build-time configurable backend URL: pass --dart-define=DEFAULT_API_URL=https://your-backend.com/api/v1
+const _kDefaultApiUrl = String.fromEnvironment('DEFAULT_API_URL',
+    defaultValue: 'https://notenextra.trance-0.com/api/v1');
+
 String _defaultApiBaseUrl() {
   if (kIsWeb) {
     final base = Uri.base;
     final origin = '${base.scheme}://${base.host}${base.hasPort ? ':${base.port}' : ''}';
-    if (base.host == 'nesbitt-bot.github.io') {
-      return 'https://notenextra.trance-0.com/api/v1';
-    }
     if (base.host == 'localhost' || base.host == '127.0.0.1') {
       return '$origin/api/v1';
     }
+    // Static hosting (e.g. GitHub Pages) - API is cross-origin
+    if (base.host.endsWith('.github.io')) {
+      return _kDefaultApiUrl;
+    }
   }
-  return 'https://notenextra.trance-0.com/api/v1';
+  return _kDefaultApiUrl;
 }
 
 String _slugifyLocalText(String value, {String fallback = 'item'}) {

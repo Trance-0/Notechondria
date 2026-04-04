@@ -20,7 +20,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path(
         "favicon.ico",
-        RedirectView.as_view(url=staticfiles_storage.url("images/bug-fill.ico" if settings.DEBUG else "images/bar-chart-steps.ico")),
+        RedirectView.as_view(url=staticfiles_storage.url("images/bug-fill.ico" if settings.DEBUG else "images/braces-asterisk.ico")),
     ),
 ]
 

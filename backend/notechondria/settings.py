@@ -56,7 +56,17 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY') or os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env_bool('DJANGO_DEBUG', env_bool('DEBUG', False))
 
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", os.getenv("ALLOWED_HOSTS", "localhost 127.0.0.1"))
+_default_hosts = "localhost 127.0.0.1"
+# Auto-detect Render deployment hostname (set automatically by Render)
+_render_host = os.getenv("RENDER_EXTERNAL_HOSTNAME", "")
+if _render_host:
+    _default_hosts += f" {_render_host}"
+# Custom domain pointing to this backend (e.g. notenextra.trance-0.com)
+_custom_domain = os.getenv("CUSTOM_DOMAIN", "")
+if _custom_domain:
+    _default_hosts += f" {_custom_domain}"
+
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", os.getenv("ALLOWED_HOSTS", _default_hosts))
 
 
 # Application definition
@@ -89,9 +99,18 @@ MIDDLEWARE = [
 ]
 
 # add trusted CDN
+_default_csrf = f"http://localhost:{os.getenv('APP_HOST_PORT', '9080')}"
+if _render_host:
+    _default_csrf += f",https://{_render_host}"
+if _custom_domain:
+    _default_csrf += f",https://{_custom_domain}"
+# Frontend origin for CORS (e.g. https://username.github.io)
+_frontend_origin = os.getenv("FRONTEND_ORIGIN", "")
+if _frontend_origin:
+    _default_csrf += f",{_frontend_origin}"
 CSRF_TRUSTED_ORIGINS = env_list(
     "DJANGO_CSRF_TRUSTED_ORIGINS",
-    os.getenv("CSRF_TRUSTED_ORIGINS", f"http://localhost:{os.getenv('APP_HOST_PORT', '9080')}"),
+    os.getenv("CSRF_TRUSTED_ORIGINS", _default_csrf),
 )
 
 ROOT_URLCONF = 'notechondria.urls'
