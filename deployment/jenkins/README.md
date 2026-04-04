@@ -1,6 +1,6 @@
 # Jenkins full-stack deployment
 
-This deployment target uses Jenkins to test and deploy the full stack:
+This target uses Jenkins to test and deploy the full stack:
 - Django backend
 - PostgreSQL database
 - backend nginx
@@ -13,15 +13,17 @@ This deployment target uses Jenkins to test and deploy the full stack:
 - `scripts/` — Jenkins helper scripts
 - `.env.example` — environment example for Jenkins-injected values
 
-## Expected root entrypoints
-- `Jenkinsfile`
-- `docker-compose.yml`
-
-## Jenkins behavior
+## Pipeline shape
 1. prepare environment
 2. backup database
-3. test backend
-4. test/build frontends through root docker compose
-5. deploy full stack
+3. run tests in parallel:
+   - backend tests
+   - frontend tests
+4. deploy in parallel:
+   - backend deploy
+   - frontend deploy
+5. bring up gateway nginx
 
-Use the scripts in `deployment/jenkins/scripts/` from the root `Jenkinsfile`.
+## Notes
+- Backend Docker build now copies `AGENTS.md`, not the removed `CODEX.md`.
+- Frontend deploy uses the same three app directories used by GitHub Pages.

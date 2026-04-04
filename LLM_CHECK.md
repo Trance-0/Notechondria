@@ -95,6 +95,9 @@ Use this checklist at the end of each modification round.
   - `deployment/render/`
 - Moved environment samples into deployment-method folders and removed the stale root `sample.env`.
 - Added root full-stack `docker-compose.yml`, root `render-deploy.sh`, and a full-stack Jenkins pipeline wired to deployment-specific helper scripts.
+- Backend Docker build now copies `AGENTS.md` instead of the removed `CODEX.md`.
+- Jenkins pipeline now runs backend/frontend tests in parallel and backend/frontend deploys in parallel, then finalizes the gateway nginx.
+- `render-deploy.sh` now supports sourcing env files from Render secret files (e.g. `/etc/secrets/.env`).
 - Default frontend API behavior now targets `https://notenextra.trance-0.com/api/v1` on GitHub Pages and same-origin `/api/v1` on local browser full-stack deploys.
 - Added a root Pages landing page so `/Notechondria/` is not a 404 while the three apps live under subpaths.
 - Corrected Pages base-href handling for a GitHub **project site**: builds must use `/Notechondria/editor/`, `/Notechondria/planner/`, and `/Notechondria/portal/` rather than root-level `/editor/`, `/planner/`, `/portal/`.
