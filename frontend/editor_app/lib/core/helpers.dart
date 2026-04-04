@@ -111,7 +111,7 @@ String _formatTime(DateTime value) {
 
 /// Build-time configurable backend URL: pass --dart-define=DEFAULT_API_URL=https://your-backend.com/api/v1
 const _kDefaultApiUrl = String.fromEnvironment('DEFAULT_API_URL',
-    defaultValue: 'https://notenextra.trance-0.com/api/v1');
+    defaultValue: 'https://notechondria.trance-0.com/api/v1');
 
 String _defaultApiBaseUrl() {
   if (kIsWeb) {

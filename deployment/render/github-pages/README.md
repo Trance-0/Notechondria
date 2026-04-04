@@ -6,8 +6,8 @@ This project deploys the three frontend apps to GitHub Pages from one workflow.
 - `.github/workflows/frontend-pages.yml`
 
 ## Required repository secrets or variables
-- `FRONTEND_API_BASE_URL` = `https://notenextra.trance-0.com/api/v1`
-- `FRONTEND_BACKEND_ORIGIN` = `https://notenextra.trance-0.com`
+- `FRONTEND_API_BASE_URL` = `https://notechondria.trance-0.com/api/v1`
+- `FRONTEND_BACKEND_ORIGIN` = `https://notechondria.trance-0.com`
 
 ## Required GitHub repository settings
 Merging workflow files alone may not be enough in the upstream repo. Check:

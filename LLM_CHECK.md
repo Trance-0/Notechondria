@@ -108,7 +108,7 @@ Use this checklist at the end of each modification round.
   - root `.python-version`
 - Backend `requirements.txt` no longer includes `numba` / `llvmlite`, avoiding Python 3.14 build failures in Render's default environment.
 - Reproduced and passed the previous Jenkins-failing backend test locally (`HeatmapApiTests.test_admin_can_restore_template_courses_into_partial_catalog`) and the `HeatmapApiTests` suite under `settings_test`.
-- Default frontend API behavior now targets `https://notenextra.trance-0.com/api/v1` on GitHub Pages and same-origin `/api/v1` on local browser full-stack deploys.
+- Default frontend API behavior now targets `https://notechondria.trance-0.com/api/v1` on GitHub Pages and same-origin `/api/v1` on local browser full-stack deploys.
 - Added a root Pages landing page so `/Notechondria/` is not a 404 while the three apps live under subpaths.
 - Corrected Pages base-href handling for a GitHub **project site**: builds must use `/Notechondria/editor/`, `/Notechondria/planner/`, and `/Notechondria/portal/` rather than root-level `/editor/`, `/planner/`, `/portal/`.
 - Caught and fixed an incomplete workflow patch where planner used the corrected repo-prefixed base path but editor and portal were still building with root-level base paths.

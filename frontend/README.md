@@ -53,7 +53,7 @@ Pages runtime choices:
 - local bundled web runtime assets (`--no-web-resources-cdn`)
 - disabled published service-worker bootstrap
 - root landing page links to all three apps
-- default API target on Pages: `https://notenextra.trance-0.com/api/v1`
+- default API target on Pages: `https://notechondria.trance-0.com/api/v1`
 
 On local full-stack browser deploys (`localhost` / `127.0.0.1`), the apps default to same-origin `/api/v1`.
 

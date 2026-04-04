@@ -34,7 +34,7 @@ You can configure Render in either of two ways:
 Set values directly in the Render dashboard:
 - `DATABASE_URL`
 - `SECRET_KEY`
-- `CUSTOM_DOMAIN` — custom domain pointing to backend (e.g. `notenextra.trance-0.com`)
+- `CUSTOM_DOMAIN` — custom domain pointing to backend (e.g. `notechondria.trance-0.com`)
 - `FRONTEND_ORIGIN` — frontend origin for CORS (e.g. `https://trance-0.github.io`)
 - `DJANGO_SUPERUSER_PASSWORD` — admin account password (required for bootstrap)
 - optional `DJANGO_SUPERUSER_USERNAME`, `DJANGO_SUPERUSER_EMAIL`
@@ -58,7 +58,7 @@ Example Render secret file content:
 ```env
 DATABASE_URL=postgresql://...
 SECRET_KEY=change-me
-CUSTOM_DOMAIN=notenextra.trance-0.com
+CUSTOM_DOMAIN=notechondria.trance-0.com
 FRONTEND_ORIGIN=https://trance-0.github.io
 DJANGO_SUPERUSER_PASSWORD=your-admin-password
 WEB_CONCURRENCY=2

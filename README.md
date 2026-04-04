@@ -35,7 +35,7 @@ Render should use the backend runtime files:
 - `docs/deployment/render_free_tier.md` — minimal Render backend deployment
 
 ## Frontend default API behavior
-- On GitHub Pages: defaults to `https://notenextra.trance-0.com/api/v1`
+- On GitHub Pages: defaults to `https://notechondria.trance-0.com/api/v1`
 - On local browser full-stack deploy (`localhost` / `127.0.0.1`): defaults to same-origin `${origin}/api/v1`
 - In Docker full-stack deploy: root gateway nginx routes `/api/v1` to the Django backend
 

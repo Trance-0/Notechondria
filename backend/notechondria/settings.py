@@ -61,7 +61,7 @@ _default_hosts = "localhost 127.0.0.1"
 _render_host = os.getenv("RENDER_EXTERNAL_HOSTNAME", "")
 if _render_host:
     _default_hosts += f" {_render_host}"
-# Custom domain pointing to this backend (e.g. notenextra.trance-0.com)
+# Custom domain pointing to this backend (e.g. notechondria.trance-0.com)
 _custom_domain = os.getenv("CUSTOM_DOMAIN", "")
 if _custom_domain:
     _default_hosts += f" {_custom_domain}"
