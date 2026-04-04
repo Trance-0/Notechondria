@@ -117,7 +117,19 @@ Historical baseline note:
 
 ## 5. Deployment topology
 
-### 5.1 Backend
+### 5.1 Backend — Render (primary)
+- Service URL: `https://notechondria.onrender.com`
+- Root dir: repo root (not `backend/`)
+- Build command: `pip install -r backend/requirements-render.txt`
+- Start command: `bash render-deploy.sh`
+- `render-deploy.sh` loads `.env` / secret files, then calls `deployment/render/scripts/render_backend_start.sh`
+- The start script runs Django migrations, `bootstrap_platform`, `collectstatic`, and launches gunicorn
+- `backend/requirements-render.txt` excludes heavy ML packages (torch, etc.) for free-tier compatibility
+- WhiteNoise middleware serves static files (no nginx on Render)
+- `DATABASE_URL` is parsed via `dj-database-url` when set; falls back to individual `POSTGRE_*` vars
+- Required env vars: `DATABASE_URL`, `SECRET_KEY`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`
+
+### 5.1b Backend — Docker / Jenkins (self-hosted)
 - Compose file: `backend/docker-compose.yml`
 - Jenkins handles backend env prep, backup, tests, and deploy
 - backend deploy/test helpers live under `deployment/jenkins/scripts/`
@@ -144,7 +156,8 @@ Important frontend variables:
 - `FRONTEND_BACKEND_ORIGIN`
 - `NOTECHONDRIA_SHARED_NETWORK`
 
-Important backend variables remain the ones described in `deployment/jenkins/.env.example` and `deployment/jenkins/scripts/prepare_env.sh`.
+Important backend variables for Docker/Jenkins: see `deployment/jenkins/.env.example` and `deployment/jenkins/scripts/prepare_env.sh`.
+Important backend variables for Render: see `deployment/render/README.md`.
 
 ## 6. Open work / caution list
 
@@ -153,6 +166,8 @@ Important backend variables remain the ones described in `deployment/jenkins/.en
 - Backend local verification still needs a reachable PostgreSQL service to complete full Django test runs.
 - Any future PR to upstream should target `Trance-0/Notechondria:codex`, not the fork’s `main` branch.
 - Do not claim full feature re-separation until learner/planner/portal code paths are more deeply specialized than just navigation slicing and app-directory isolation.
+- Render free-tier `SECRET_KEY` is a placeholder; rotate before any real production traffic.
+- `requirements-render.txt` must stay free of heavy ML packages (torch, etc.) for free-tier compatibility; keep those only in `requirements.txt` for self-hosted Docker builds.
 
 ## 7. Prompt recipe for the next engineer
 

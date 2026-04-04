@@ -78,6 +78,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'notechondria.middleware.ApiCorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -88,7 +89,10 @@ MIDDLEWARE = [
 ]
 
 # add trusted CDN
-CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", f"http://localhost:{os.getenv('APP_HOST_PORT', '9080')}")
+CSRF_TRUSTED_ORIGINS = env_list(
+    "DJANGO_CSRF_TRUSTED_ORIGINS",
+    os.getenv("CSRF_TRUSTED_ORIGINS", f"http://localhost:{os.getenv('APP_HOST_PORT', '9080')}"),
+)
 
 ROOT_URLCONF = 'notechondria.urls'
 
@@ -170,16 +174,23 @@ LOGGING = {
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRE_DB', 'postgres'),
-        'USER': os.getenv('POSTGRE_USERNAME'),
-        'PASSWORD': os.getenv('POSTGRE_PASSWORD'),
-        'HOST': os.getenv('POSTGRE_HOST', 'localhost'),
-        'PORT': os.getenv('POSTGRE_PORT', '5432'),
+_database_url = os.getenv('DATABASE_URL')
+if _database_url:
+    import dj_database_url
+    DATABASES = {
+        'default': dj_database_url.parse(_database_url, conn_max_age=600),
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('POSTGRE_DB', 'postgres'),
+            'USER': os.getenv('POSTGRE_USERNAME'),
+            'PASSWORD': os.getenv('POSTGRE_PASSWORD'),
+            'HOST': os.getenv('POSTGRE_HOST', 'localhost'),
+            'PORT': os.getenv('POSTGRE_PORT', '5432'),
+        }
+    }
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
