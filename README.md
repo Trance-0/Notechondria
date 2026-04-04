@@ -28,6 +28,12 @@ Render should use the backend runtime files:
 - `deployment/docker/` — local/self-hosted Docker full stack
 - `deployment/render/` — Render backend + GitHub Pages frontend
 
+## Useful docs
+- `docs/development/python_environments.md` — local backend env setup with conda, pip, and uv
+- `docs/operations/postgres_migration.md` — backup/restore workflow for arbitrary PostgreSQL hosts
+- `docs/deployment/deploy.md` — deployment flow overview
+- `docs/deployment/render_free_tier.md` — minimal Render backend deployment
+
 ## Frontend default API behavior
 - On GitHub Pages: defaults to `https://notenextra.trance-0.com/api/v1`
 - On local browser full-stack deploy (`localhost` / `127.0.0.1`): defaults to same-origin `${origin}/api/v1`

@@ -133,6 +133,8 @@ Use this checklist at the end of each modification round.
   - pull `force` replaces local drafts with remote notes
 - Added a user-scoped backend notes bulk-clear action at `DELETE /api/v1/notes/mine/` for force-push behavior.
 - Replaced the planner app's generic front page with a planner-specific dashboard centered on course calendars and upcoming deadlines.
+- Added a reminder that `settings_test` must define a non-empty `SECRET_KEY`; otherwise session/messages/request tests fail before reaching application logic.
+- Added a reminder that OpenAI/GPT clients must be initialized lazily at call time rather than module import time, or unrelated tests and URL imports can fail without `OPENAI_API_KEY`.
 - Re-verified all three apps locally after the planner-home replacement.
 - Updated frontend ignore rules to apply recursively so nested Flutter app build output does not pollute the repo.
 - Local Django verification now reaches real test discovery/install using `uv`, but still stops at PostgreSQL connection setup because no local database server is present on this host.

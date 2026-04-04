@@ -1,10 +1,15 @@
 # Deployment Guide
 
+Related docs:
+- `docs/development/python_environments.md`
+- `docs/operations/postgres_migration.md`
+- `docs/deployment/render_free_tier.md`
+
 ## 1) Prepare environment
 
 ### Local
 
-1. Copy `sample.env` to `.env`.
+1. Copy `deployment/docker/.env.example` to `.env` for local Docker-based full-stack work.
 2. Fill PostgreSQL credentials, Django secret key, and optional GitHub app keys.
 
 ### Jenkins-injected deployment env
@@ -18,13 +23,13 @@ Recommended setup with the Environment Injector plugin:
 3. Check `Keep Jenkins Environment Variables`.
 4. Check `Keep Jenkins Build Variables`.
 5. Leave `Override Build Parameters` enabled only if you intentionally want injected values to win over build parameters.
-6. Use `Properties Content` or `Properties File Path` to define the deployment variables using the keys shown in `sample.env`.
+6. Use `Properties Content` or `Properties File Path` to define the deployment variables using the keys shown in `deployment/jenkins/.env.example`.
 7. Save the job.
 8. Run one manual build to verify the injected variables reach the pipeline.
 
 If your repository is public, remove SCM credentials from the Pipeline SCM job configuration. The Jenkinsfile does not require repository credentials by itself.
 
-The pipeline writes those injected variables to `${WORKSPACE}/.env.deploy` through `deployment/scripts/prepare_env.sh`.
+The pipeline writes those injected variables to `${WORKSPACE}/.env.deploy` through `deployment/jenkins/scripts/prepare_env.sh`.
 
 Example `Properties Content`:
 
@@ -131,12 +136,12 @@ docker compose exec app python manage.py collectstatic --noinput
 
 ```bash
 cd /workspace/Notechondria
-bash deployment/scripts/test_backend.sh /workspace/Notechondria /workspace/Notechondria/.env.deploy
+bash deployment/jenkins/scripts/test_backend.sh /workspace/Notechondria /workspace/Notechondria/.env.deploy
 ```
 
 ## 5) Jenkins pipeline flow
 
-Jenkins is now **backend-only**.
+Jenkins now drives the full stack, with backend/frontend test and deploy branches running in parallel.
 
 The pipeline runs in this order:
 
@@ -148,8 +153,8 @@ The pipeline runs in this order:
 
 Pipeline behavior:
 
-- The backend track is required for a green pipeline.
-- Frontend CI/CD is no longer part of Jenkins.
+- Backend and frontend tracks run in parallel.
+- Each branch is wrapped in `catchError(...)` so one side can continue even if the other side fails.
 - The backend deploy script performs a post-start verification pass inside the running app container:
   - `python manage.py migrate --noinput`
   - `python manage.py bootstrap_platform`
@@ -159,13 +164,16 @@ Pipeline behavior:
 The relevant files are:
 
 - `Jenkinsfile`
-- `deployment/scripts/prepare_env.sh`
-- `deployment/scripts/backup_postgres.sh`
-- `deployment/scripts/ensure_db_ready.sh`
-- `deployment/scripts/test_backend.sh`
-- `deployment/scripts/wait_for_stack.sh`
-- `deployment/scripts/deploy_backend.sh`
-- `deployment/scripts/render_backend_start.sh`
+- `deployment/jenkins/scripts/prepare_env.sh`
+- `deployment/jenkins/scripts/backup_postgres.sh`
+- `deployment/jenkins/scripts/ensure_db_ready.sh`
+- `deployment/jenkins/scripts/test_backend.sh`
+- `deployment/jenkins/scripts/test_frontends.sh`
+- `deployment/jenkins/scripts/wait_for_stack.sh`
+- `deployment/jenkins/scripts/deploy_backend.sh`
+- `deployment/jenkins/scripts/deploy_frontends.sh`
+- `deployment/jenkins/scripts/deploy_gateway.sh`
+- `deployment/render/scripts/render_backend_start.sh`
 - `docs/deployment/render_free_tier.md`
 
 ### Compose stack shape
@@ -270,7 +278,7 @@ Important Pages runtime notes:
 
 Use:
 
-- `deployment/scripts/render_backend_start.sh`
+- `deployment/render/scripts/render_backend_start.sh`
 - `docs/deployment/render_free_tier.md`
 
 This backend-only path is intended for Render web services and keeps frontend deployment separate on GitHub Pages.

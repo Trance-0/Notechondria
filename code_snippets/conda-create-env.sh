@@ -1,1 +1,0 @@
-conda create --name WebDev python=3.9.18 

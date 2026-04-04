@@ -17,7 +17,18 @@ from .models import Conversation,Message,MessageRoleChoices,GPTModelChoices
 # OpenAI API Key
 api_key = os.getenv("OPENAI_API_KEY")
 
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+client = None
+
+def get_openai_client():
+    global client
+    if client is None:
+        key = os.environ.get("OPENAI_API_KEY")
+        if not key:
+            raise RuntimeError(
+                "OPENAI_API_KEY is required only when GPT utilities are used."
+            )
+        client = OpenAI(api_key=key)
+    return client
 
 def __short_text(text,max_length:int=200):
     """ server head and tail of text"""
@@ -40,7 +51,7 @@ def generate_message(conversation:Conversation):
     logger.info(u"{}: sent message as below: \n {}".format(conversation.creator_id,__short_text(message_string)))
     response=None
     try:
-        response = client.chat.completions.create(
+        response = get_openai_client().chat.completions.create(
             messages=payload,
             model=model_name,
             temperature=float(conversation.temperature),
@@ -78,7 +89,7 @@ def generate_stream_message(conversation:Conversation):
     logger.info(u"{}: sent streaming message as below: \n {}".format(conversation.creator_id,message_string))
     response=None
     try:
-        stream = client.chat.completions.create(
+        stream = get_openai_client().chat.completions.create(
             messages=payload,
             model=model_name,
             temperature=float(conversation.temperature),

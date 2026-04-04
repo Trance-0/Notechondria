@@ -46,18 +46,18 @@ pip install -r requirements.txt
 Preferred:
 
 ```bash
-bash deployment/scripts/render_backend_start.sh
+bash deployment/render/scripts/render_backend_start.sh
 ```
 
 If the service root is `backend/`, use:
 
 ```bash
-bash ../deployment/scripts/render_backend_start.sh
+bash ../deployment/render/scripts/render_backend_start.sh
 ```
 
 ## What the start script does
 
-`deployment/scripts/render_backend_start.sh` runs:
+`deployment/render/scripts/render_backend_start.sh` runs:
 
 1. `python manage.py migrate --noinput`
 2. `python manage.py bootstrap_platform || true`
