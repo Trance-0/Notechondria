@@ -45,12 +45,16 @@ pipeline {
       parallel {
         stage('Backend Tests') {
           steps {
-            sh 'bash ${TEST_BACKEND_SCRIPT} "${WORKSPACE}" "${WORKSPACE}/${ENV_FILE}"'
+            catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+              sh 'bash ${TEST_BACKEND_SCRIPT} "${WORKSPACE}" "${WORKSPACE}/${ENV_FILE}"'
+            }
           }
         }
         stage('Frontend Tests') {
           steps {
-            sh 'bash ${TEST_FRONTENDS_SCRIPT}'
+            catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+              sh 'bash ${TEST_FRONTENDS_SCRIPT}'
+            }
           }
         }
       }
@@ -60,12 +64,16 @@ pipeline {
       parallel {
         stage('Backend Deploy') {
           steps {
-            sh 'bash ${DEPLOY_BACKEND_SCRIPT} "${WORKSPACE}" "${WORKSPACE}/${ENV_FILE}" "${WORKSPACE}/deployment/jenkins/scripts/wait_for_stack.sh" "300" "${WORKSPACE}/deployment/jenkins/scripts/ensure_db_ready.sh"'
+            catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+              sh 'bash ${DEPLOY_BACKEND_SCRIPT} "${WORKSPACE}" "${WORKSPACE}/${ENV_FILE}" "${WORKSPACE}/deployment/jenkins/scripts/wait_for_stack.sh" "300" "${WORKSPACE}/deployment/jenkins/scripts/ensure_db_ready.sh"'
+            }
           }
         }
         stage('Frontend Deploy') {
           steps {
-            sh 'bash ${DEPLOY_FRONTENDS_SCRIPT} "${WORKSPACE}/${ENV_FILE}"'
+            catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+              sh 'bash ${DEPLOY_FRONTENDS_SCRIPT} "${WORKSPACE}/${ENV_FILE}"'
+            }
           }
         }
       }

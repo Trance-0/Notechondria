@@ -17,6 +17,12 @@ Only essential root files are kept here:
 - `docker-compose.yml`
 - `render-deploy.sh`
 
+## Render runtime note
+Render should use the backend runtime files:
+- `backend/runtime.txt`
+- `backend/.python-version`
+- `backend/requirements-render.txt`
+
 ## Deployment methods
 - `deployment/jenkins/` — full-stack Jenkins deployment
 - `deployment/docker/` — local/self-hosted Docker full stack
