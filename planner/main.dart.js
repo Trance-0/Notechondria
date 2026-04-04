@@ -32004,7 +32004,7 @@ if(A.bm(q)===A.bm(r))return B.c.hK(B.f.k(A.bL(q)),2,"0")+"/"+B.c.hK(B.f.k(A.cC(q
 return B.c.hK(B.f.k(B.f.aO(A.bm(q),100)),2,"0")+"/"+B.c.hK(B.f.k(A.bL(q)),2,"0")+"/"+B.c.hK(B.f.k(A.cC(q)),2,"0")},
 b5b(a){var s=B.f.aO(A.zN(a),12)===0?12:B.f.aO(A.zN(a),12),r=A.zN(a)>=12?"PM":"AM"
 return""+s+":"+B.c.hK(B.f.k(A.Xl(a)),2,"0")+" "+r},
-jY(){var s="https://notenextra.trance-0.com/api/v1",r=A.jS(),q=r.gdH(),p=r.ghG(),o=r.gtm()?":"+r.gqC():""
+jY(){var s="https://notechondria.trance-0.com/api/v1",r=A.jS(),q=r.gdH(),p=r.ghG(),o=r.gtm()?":"+r.gqC():""
 if(r.ghG()==="localhost"||r.ghG()==="127.0.0.1")return q+"://"+p+o+"/api/v1"
 if(B.c.fI(r.ghG(),".github.io"))return s
 return s},
