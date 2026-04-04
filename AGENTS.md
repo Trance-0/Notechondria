@@ -120,7 +120,7 @@ Historical baseline note:
 ### 5.1 Backend
 - Compose file: `backend/docker-compose.yml`
 - Jenkins handles backend env prep, backup, tests, and deploy
-- backend deploy/test helpers remain under `deployment/scripts/`
+- backend deploy/test helpers live under `deployment/jenkins/scripts/`
 
 ### 5.2 Frontend
 GitHub Pages workflows:
@@ -144,7 +144,7 @@ Important frontend variables:
 - `FRONTEND_BACKEND_ORIGIN`
 - `NOTECHONDRIA_SHARED_NETWORK`
 
-Important backend variables remain the ones described in `sample.env` and `deployment/scripts/prepare_env.sh`.
+Important backend variables remain the ones described in `deployment/jenkins/.env.example` and `deployment/jenkins/scripts/prepare_env.sh`.
 
 ## 6. Open work / caution list
 
@@ -158,4 +158,4 @@ Important backend variables remain the ones described in `sample.env` and `deplo
 
 If continuing this work, use this framing:
 
-> Work on `Trance-0/Notechondria` using the `codex` branch as the upstream target. Keep Jenkins backend-only. Keep frontend as three standalone Flutter apps under `frontend/editor_app`, `frontend/planner_app`, and `frontend/portal_app`. Verify each app locally with Flutter before claiming success. If local backend tests are attempted, record clearly whether PostgreSQL was actually available.
+> Work on `Trance-0/Notechondria` using the `codex` branch as the upstream target. Keep frontend as three standalone Flutter apps under `frontend/editor_app`, `frontend/planner_app`, and `frontend/portal_app`. Keep the Jenkins pipeline full-stack with backend/frontend test and deploy branches running in parallel. Verify each app locally with Flutter before claiming success. Run backend tests with `DJANGO_SETTINGS_MODULE=notechondria.settings_test`, keep `SECRET_KEY` defined there, and avoid import-time OpenAI client initialization.

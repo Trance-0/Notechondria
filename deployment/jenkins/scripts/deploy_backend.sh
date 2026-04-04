@@ -3,10 +3,10 @@ set -euo pipefail
 
 PROJECT_DIR=${1:-$(pwd)}
 ENV_PATH=${2:-$PROJECT_DIR/.env}
-WAIT_SCRIPT=${3:-$PROJECT_DIR/deployment/scripts/wait_for_stack.sh}
+WAIT_SCRIPT=${3:-$PROJECT_DIR/deployment/jenkins/scripts/wait_for_stack.sh}
 WAIT_TIMEOUT_SECONDS=${4:-300}
-DB_READY_SCRIPT=${5:-$PROJECT_DIR/deployment/scripts/ensure_db_ready.sh}
-NETWORK_SCRIPT=${6:-$PROJECT_DIR/deployment/scripts/ensure_shared_network.sh}
+DB_READY_SCRIPT=${5:-$PROJECT_DIR/deployment/jenkins/scripts/ensure_db_ready.sh}
+NETWORK_SCRIPT=${6:-$PROJECT_DIR/deployment/jenkins/scripts/ensure_shared_network.sh}
 
 if [[ ! -f "$ENV_PATH" ]]; then
   echo "Env file not found: $ENV_PATH"

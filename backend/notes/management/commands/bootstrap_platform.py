@@ -210,17 +210,23 @@ class Command(BaseCommand):
     @staticmethod
     def resolve_codex_path():
         candidates = [
+            settings.BASE_DIR.parent / "AGENTS.md",
             settings.BASE_DIR.parent / "CODEX.md",
+            settings.BASE_DIR / "AGENTS.md",
             settings.BASE_DIR / "CODEX.md",
+            settings.BASE_DIR.parent.parent / "AGENTS.md",
             settings.BASE_DIR.parent.parent / "CODEX.md",
+            settings.BASE_DIR.parent / "agents.md",
             settings.BASE_DIR.parent / "codex.md",
+            settings.BASE_DIR / "agents.md",
             settings.BASE_DIR / "codex.md",
+            settings.BASE_DIR.parent.parent / "agents.md",
             settings.BASE_DIR.parent.parent / "codex.md",
         ]
         for candidate in candidates:
             if candidate.exists():
                 return candidate
-        raise FileNotFoundError("Could not find CODEX.md in expected runtime locations.")
+        raise FileNotFoundError("Could not find AGENTS.md or CODEX.md in expected runtime locations.")
 
     def attach_course_cover(self, course: Course, cover_path):
         resolved_cover_path = self.resolve_course_asset_path(course.slug, cover_path)

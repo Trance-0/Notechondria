@@ -1,6 +1,7 @@
 from .settings import *  # noqa: F401,F403
 
 DEBUG = True
+SECRET_KEY = 'notechondria-test-secret-key'
 
 DATABASES = {
     'default': {

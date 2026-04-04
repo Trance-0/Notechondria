@@ -8,9 +8,21 @@ Use Render for the Django backend and PostgreSQL, and GitHub Pages for the front
 - Environment example: `.env.example`
 
 ## Build command
+If the Render root directory is the repo root:
+
 ```bash
-pip install -r backend/requirements.txt
+pip install -r backend/requirements-render.txt
 ```
+
+If the Render root directory is `backend/`:
+
+```bash
+pip install -r requirements-render.txt
+```
+
+The repo now includes:
+- `backend/requirements-render.txt` for Render/runtime installs
+- `backend/runtime.txt` and `backend/.python-version` pinned to Python 3.11.4
 
 ## Start command
 ```bash

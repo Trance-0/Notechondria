@@ -1,1 +1,0 @@
-conda list -e > environment.yml

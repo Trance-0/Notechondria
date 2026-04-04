@@ -96,8 +96,18 @@ Use this checklist at the end of each modification round.
 - Moved environment samples into deployment-method folders and removed the stale root `sample.env`.
 - Added root full-stack `docker-compose.yml`, root `render-deploy.sh`, and a full-stack Jenkins pipeline wired to deployment-specific helper scripts.
 - Backend Docker build now copies `AGENTS.md` instead of the removed `CODEX.md`.
+- `bootstrap_platform` runtime lookup now accepts `AGENTS.md` first and falls back to `CODEX.md`, fixing Jenkins test/runtime failures after the handoff rename.
 - Jenkins pipeline now runs backend/frontend tests in parallel and backend/frontend deploys in parallel, then finalizes the gateway nginx.
+- Jenkins test/deploy branches use `catchError(...)` so one side can continue even if the other side fails.
 - `render-deploy.sh` now supports sourcing env files from Render secret files (e.g. `/etc/secrets/.env`).
+- Added Render-specific backend dependency/runtime files:
+  - `backend/requirements-render.txt`
+  - `backend/runtime.txt`
+  - `backend/.python-version`
+  - root `runtime.txt`
+  - root `.python-version`
+- Backend `requirements.txt` no longer includes `numba` / `llvmlite`, avoiding Python 3.14 build failures in Render's default environment.
+- Reproduced and passed the previous Jenkins-failing backend test locally (`HeatmapApiTests.test_admin_can_restore_template_courses_into_partial_catalog`) and the `HeatmapApiTests` suite under `settings_test`.
 - Default frontend API behavior now targets `https://notenextra.trance-0.com/api/v1` on GitHub Pages and same-origin `/api/v1` on local browser full-stack deploys.
 - Added a root Pages landing page so `/Notechondria/` is not a 404 while the three apps live under subpaths.
 - Corrected Pages base-href handling for a GitHub **project site**: builds must use `/Notechondria/editor/`, `/Notechondria/planner/`, and `/Notechondria/portal/` rather than root-level `/editor/`, `/planner/`, `/portal/`.
@@ -116,7 +126,15 @@ Use this checklist at the end of each modification round.
 - Added planner deadline ordering weights (`deadline_time_weight`, `deadline_importance_weight`) and used them in offline deadline urgency scoring.
 - Added stronger widget smoke tests that assert meaningful first-run content instead of only checking for `MaterialApp`.
 - Added `frontend/AGENTS.md` and refreshed `frontend/README.md` to document the three-app split for both humans and agents.
+- Added backend-supported editor sync modes:
+  - push `normal` keeps both local/cloud
+  - push `force` clears signed-in user cloud notes, then uploads local drafts
+  - pull `normal` merges remote notes into local drafts
+  - pull `force` replaces local drafts with remote notes
+- Added a user-scoped backend notes bulk-clear action at `DELETE /api/v1/notes/mine/` for force-push behavior.
 - Replaced the planner app's generic front page with a planner-specific dashboard centered on course calendars and upcoming deadlines.
+- Added a reminder that `settings_test` must define a non-empty `SECRET_KEY`; otherwise session/messages/request tests fail before reaching application logic.
+- Added a reminder that OpenAI/GPT clients must be initialized lazily at call time rather than module import time, or unrelated tests and URL imports can fail without `OPENAI_API_KEY`.
 - Re-verified all three apps locally after the planner-home replacement.
 - Updated frontend ignore rules to apply recursively so nested Flutter app build output does not pollute the repo.
 - Local Django verification now reaches real test discovery/install using `uv`, but still stops at PostgreSQL connection setup because no local database server is present on this host.
