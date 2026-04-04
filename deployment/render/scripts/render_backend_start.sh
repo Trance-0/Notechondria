@@ -16,7 +16,7 @@ set -Eeuo pipefail
 # - OPENAI_API_KEY
 # - GITHUB_APP_* values if used
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$ROOT_DIR/backend"
 
 export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
