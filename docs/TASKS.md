@@ -28,6 +28,7 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 ### Note preview
 
+- [ ] In vertical view, title is not correly displayed on iphone machine.
 - [x] The display for note header is too small, make appropriate padding on lower subheadings.
 - [x] Add options for export markdown.
   - A checkbox include metadata; default to add the header about note metadata (author name, course name, last edit time, creation time, etc.), add selectable to note format, 
