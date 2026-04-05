@@ -375,8 +375,8 @@ class _SettingsPageState extends State<_SettingsPage> {
   /// Profile fields shown when authenticated: avatar, username, email, motto,
   /// social link.
   Widget _buildProfileFields(BuildContext context) {
-    final avatarUrl = widget.profile?['avatar']?.toString() ??
-        widget.settings?['avatar']?.toString();
+    final avatarUrl = widget.profile?['image_url']?.toString() ??
+        widget.settings?['image_url']?.toString();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

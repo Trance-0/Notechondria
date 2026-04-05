@@ -250,9 +250,13 @@ ThemeMode _themeModeFromSetting(String raw) {
   }
 }
 
-/// Builds markdown renderers, including inline LaTeX support.
+/// Builds markdown renderers, including inline LaTeX support and scrollable
+/// code blocks.
 Map<String, MarkdownElementBuilder> _markdownBuilders() {
-  return {'latex': _LatexBuilder()};
+  return {
+    'latex': _LatexBuilder(),
+    'pre': _ScrollableCodeBlockBuilder(),
+  };
 }
 
 /// Registers markdown inline syntaxes used across note viewers and previews.
@@ -289,6 +293,39 @@ class _LatexBuilder extends MarkdownElementBuilder {
       element.textContent,
       mathStyle: MathStyle.text,
       textStyle: preferredStyle ?? parentStyle,
+    );
+  }
+}
+
+/// Renders fenced code blocks inside a horizontal [SingleChildScrollView]
+/// so long lines scroll instead of overflowing.
+class _ScrollableCodeBlockBuilder extends MarkdownElementBuilder {
+  @override
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    final code = element.textContent.trimRight();
+    final codeStyle = (preferredStyle ?? parentStyle)?.copyWith(
+          fontFamily: 'monospace',
+        ) ??
+        const TextStyle(fontFamily: 'monospace');
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SelectableText(
+          code,
+          style: codeStyle,
+        ),
+      ),
     );
   }
 }

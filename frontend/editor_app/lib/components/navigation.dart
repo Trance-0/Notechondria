@@ -35,11 +35,15 @@ class _SidebarItem extends StatelessWidget {
             children: [
               Icon(icon, color: selected ? selectedForeground : idleForeground),
               const SizedBox(width: 12),
-              Text(
-                label,
-                style: TextStyle(
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  color: selected ? selectedForeground : idleForeground,
+              Expanded(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    color: selected ? selectedForeground : idleForeground,
+                  ),
                 ),
               ),
             ],

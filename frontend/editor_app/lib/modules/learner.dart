@@ -183,7 +183,12 @@ class _LearnerPageState extends State<_LearnerPage> {
     }
     await showDialog<void>(
       context: context,
-      builder: (context) => _NoteViewerDialog(note: detail),
+      builder: (context) => _NoteViewerDialog(
+        note: detail,
+        onEdit: () => _openEditor(detail),
+        onExport: () => widget.onExportNote(detail),
+        onDelete: () => widget.onDeleteNote(detail),
+      ),
     );
   }
 
@@ -462,12 +467,34 @@ class _LearnerNoteCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          note['title']?.toString() ?? 'Untitled note',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                note['title']?.toString() ?? 'Untitled note',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w700),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Tooltip(
+                              message: isLocalDraft
+                                  ? 'Local only — not synced'
+                                  : 'Synced to cloud',
+                              child: Icon(
+                                isLocalDraft
+                                    ? Icons.cloud_off_outlined
+                                    : Icons.cloud_done_outlined,
+                                size: 16,
+                                color: isLocalDraft
+                                    ? Theme.of(context).colorScheme.onSurfaceVariant
+                                    : Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 4),
                         Text(

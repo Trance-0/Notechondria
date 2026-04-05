@@ -36,6 +36,55 @@ class _RemoteMedia extends StatelessWidget {
   }
 }
 
+/// Preview dialog shown before uploading a new avatar. Displays the selected
+/// image in a circular clip so the user can confirm it looks correct.
+class _AvatarPreviewDialog extends StatelessWidget {
+  const _AvatarPreviewDialog({required this.imageBytes});
+
+  final Uint8List imageBytes;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Preview avatar'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('This image will be cropped to a circle for your profile.'),
+          const SizedBox(height: 20),
+          ClipOval(
+            child: SizedBox(
+              width: 160,
+              height: 160,
+              child: Image.memory(
+                imageBytes,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 160,
+                  height: 160,
+                  color: Theme.of(context).colorScheme.surfaceVariant,
+                  alignment: Alignment.center,
+                  child: const Text('Cannot preview this image'),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Upload'),
+        ),
+      ],
+    );
+  }
+}
+
 class _RemoteAvatar extends StatelessWidget {
   const _RemoteAvatar({
     required this.radius,

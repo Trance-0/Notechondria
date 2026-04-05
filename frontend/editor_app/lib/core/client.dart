@@ -50,6 +50,7 @@ abstract class NotechondriaClient {
     String query = '',
     int offset = 0,
     int limit = 20,
+    int? courseId,
   });
   Future<Map<String, dynamic>> createNote(
     String token,
@@ -422,12 +423,14 @@ class HttpNotechondriaClient implements NotechondriaClient {
     String query = '',
     int offset = 0,
     int limit = 20,
+    int? courseId,
   }) async {
     final uri = _uri('/notes/').replace(
       queryParameters: {
         'limit': '$limit',
         'offset': '$offset',
         if (query.trim().isNotEmpty) 'q': query.trim(),
+        if (courseId != null) 'course_id': '$courseId',
       },
     );
     final response = await _get(uri, token: token);

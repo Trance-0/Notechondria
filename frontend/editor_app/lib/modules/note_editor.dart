@@ -512,6 +512,32 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                   selectable: true,
                   builders: _markdownBuilders(),
                   inlineSyntaxes: _markdownInlineSyntaxes(),
+                  styleSheet: MarkdownStyleSheet.fromTheme(
+                    Theme.of(context),
+                  ).copyWith(
+                    codeblockDecoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    code: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(
+                          fontFamily: 'monospace',
+                          backgroundColor: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
+                        ),
+                    horizontalRuleDecoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(
+                          color: Theme.of(context).dividerColor,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               );
             },

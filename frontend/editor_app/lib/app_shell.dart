@@ -624,11 +624,13 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       if (reset) _learnerSearchQuery = effectiveQuery;
     });
     try {
+      final activeCourseId = _selectedCategoryId;
       final page = await widget.client.listNotes(
         token: _token,
         query: effectiveQuery,
         offset: nextOffset,
         limit: 20,
+        courseId: (activeCourseId != null && activeCourseId > 0) ? activeCourseId : null,
       );
       final rows = (page['results'] as List<dynamic>? ?? const [])
           .map((item) => Map<String, dynamic>.from(item as Map))
@@ -651,57 +653,19 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
   }
 
   Future<void> _selectCourse(Map<String, dynamic> course) async {
+    final courseId = (course['id'] as num?)?.toInt();
     setState(() {
       _selectedCourse = course;
-      _selectedCategoryId = (course['id'] as num?)?.toInt();
+      _selectedCategoryId = courseId;
       _selectedIndex = 1;
-      _isLoading = true;
+      _selectedNote = null;
     });
     if (_isLocalCourse(course)) {
-      setState(() {
-        _courseNotes = _localNotesForCourse(course);
-        _selectedNote = null;
-        _isLoading = false;
-      });
       _appendUiLog('Opened local category ${course['title']}.');
-      return;
+    } else {
+      _appendUiLog('Opened category ${course['title']}.');
     }
-    try {
-      var effectiveCourse = Map<String, dynamic>.from(course);
-      if ((_token?.isNotEmpty ?? false) && course['is_subscribed'] == true) {
-        effectiveCourse =
-            await widget.client.openCourse(_token!, course['id'] as int);
-      }
-      final refreshedCourses = (await widget.client.getCourses(token: _token))
-          .map(_decorateRemoteCourse)
-          .toList();
-      final refreshedSelected = refreshedCourses.firstWhere(
-        (item) => item['id'] == effectiveCourse['id'],
-        orElse: () => effectiveCourse,
-      );
-      final notes = await widget.client.getCourseNotes(
-        refreshedSelected['id'] as int,
-        token: _token,
-      );
-      setState(() {
-        _courses = refreshedCourses;
-        _selectedCourse = refreshedSelected;
-        _courseNotes = notes;
-        _selectedNote = null;
-        _isLoading = false;
-      });
-      await _persistLocalCache();
-      _appendUiLog('Opened category ${refreshedSelected['title']}.');
-    } catch (error) {
-      final message = error.toString().replaceFirst('Exception: ', '');
-      setState(() {
-        _selectedCourse = course;
-        _courseNotes = const [];
-        _errorMessage = message;
-        _isLoading = false;
-      });
-      _appendUiLog('Category load failed: $message');
-    }
+    await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
   }
 
   Future<void> _selectNote(Map<String, dynamic> noteSummary) async {
@@ -1150,6 +1114,17 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       if (file == null) {
         return const ActionFeedback(message: 'Avatar update cancelled.');
       }
+      final bytes = await file.readAsBytes();
+      if (!mounted) {
+        return const ActionFeedback(message: 'Avatar update cancelled.');
+      }
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => _AvatarPreviewDialog(imageBytes: bytes),
+      );
+      if (confirmed != true) {
+        return const ActionFeedback(message: 'Avatar update cancelled.');
+      }
       final updated = await widget.client.uploadAvatar(token, file);
       _localStats = {
         ..._localStats,
@@ -1596,14 +1571,17 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       _appendUiLog("Synced local cloud copy '${draft['title']}'.");
       return updated;
     }
-    final created = await widget.client.createNote(token, {
-      'title': draft['title'],
+    final syncCourseId = (metadata['course_id'] as num?)?.toInt();
+    final syncClientDraftId = draft['client_draft_id']?.toString();
+    final created = await widget.client.createNote(token, <String, dynamic>{
+      'title': draft['title'] ?? 'Untitled note',
       'description': draft['description'] ?? '',
       'content': draft['content'] ?? '',
       'editor_mode': draft['editor_mode'] ?? 'P',
-      'course_id': metadata['course_id'],
+      if (syncCourseId != null && syncCourseId > 0) 'course_id': syncCourseId,
       'metadata_json': jsonEncode(metadata),
-      'client_draft_id': draft['client_draft_id'],
+      if (syncClientDraftId != null && syncClientDraftId.isNotEmpty)
+        'client_draft_id': syncClientDraftId,
       'is_public': false,
     });
     _localDrafts = _localDrafts
@@ -1660,15 +1638,14 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       });
       return draft;
     }
-    final payload = {
+    final payload = <String, dynamic>{
       'title': title ?? _extractTitleFromMarkdown(initialMarkdown),
       'description':
           description ?? _excerptFromMarkdown(initialMarkdown),
       'content': initialMarkdown,
       'editor_mode': mode,
-      'course_id': null,
-      'client_draft_id': clientDraftId,
       'metadata_json': jsonEncode({'section': '', 'autosave': false}),
+      if (clientDraftId != null) 'client_draft_id': clientDraftId,
     };
     try {
       final created = await widget.client.createNote(token, payload);
@@ -2145,6 +2122,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
                   _selectedCategoryId = null;
                   _selectedIndex = 1;
                 });
+                _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
               } else if (value == 'settings') {
                 setState(() => _selectedIndex = 4);
               } else if (value.startsWith('cat_')) {
@@ -2261,6 +2239,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
                           _selectedCategoryId = null;
                           _selectedIndex = 1;
                         });
+                        _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
                       },
                     ),
                   ),
