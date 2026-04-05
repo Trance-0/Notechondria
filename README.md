@@ -46,3 +46,9 @@ for app in frontend/editor_app frontend/planner_app frontend/portal_app; do
   (cd "$app" && flutter build web --release --base-href "/${app##*/_app}/" --no-web-resources-cdn)
 done
 ```
+
+## Developer scripts
+
+```english
+Continue working on this project, with prompts in ./docs/TASK.md
+```
