@@ -63,6 +63,21 @@ String _extractTitleFromMarkdown(String markdown) {
   return 'Untitled note';
 }
 
+/// Parsed representation of an imported markdown document. Populated by the
+/// import flow in `_AppShellState._parseImportedMarkdown`, which optionally
+/// strips a YAML frontmatter block and pulls `title` / `description` out of it.
+class _ImportedMarkdown {
+  const _ImportedMarkdown({
+    this.title,
+    this.description,
+    required this.body,
+  });
+
+  final String? title;
+  final String? description;
+  final String body;
+}
+
 /// Generates a short excerpt from markdown content for list cards.
 String _excerptFromMarkdown(String markdown) {
   final body = _bodyWithoutTitle(markdown).trim();

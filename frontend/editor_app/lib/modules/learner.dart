@@ -11,9 +11,11 @@ class _LearnerPage extends StatefulWidget {
     required this.hasMoreNotes,
     required this.isLoadingMore,
     required this.searchQuery,
+    required this.searchScope,
     required this.isAuthenticated,
     required this.apiBaseUrl,
     required this.onSearchChanged,
+    required this.onSearchScopeChanged,
     required this.onLoadMore,
     required this.onOpenNote,
     required this.onFetchNoteDetail,
@@ -40,9 +42,12 @@ class _LearnerPage extends StatefulWidget {
   final bool hasMoreNotes;
   final bool isLoadingMore;
   final String searchQuery;
+  /// 'personal' = only own notes, 'all' = own notes + public notes from any user.
+  final String searchScope;
   final bool isAuthenticated;
   final String? apiBaseUrl;
   final ValueChanged<String> onSearchChanged;
+  final ValueChanged<String> onSearchScopeChanged;
   final Future<void> Function() onLoadMore;
   final ValueChanged<Map<String, dynamic>> onOpenNote;
   final Future<Map<String, dynamic>> Function(int noteId) onFetchNoteDetail;
@@ -214,7 +219,7 @@ class _LearnerPageState extends State<_LearnerPage> {
       ),
       items: const [
         PopupMenuItem(value: 'new', child: Text('Create note')),
-        PopupMenuItem(value: 'import', child: Text('Import markdown')),
+        PopupMenuItem(value: 'import', child: Text('Import markdown or zip')),
       ],
     );
     if (selected == 'import') {
@@ -238,12 +243,33 @@ class _LearnerPageState extends State<_LearnerPage> {
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.search),
                 hintText: widget.isAuthenticated
-                    ? 'Search your cloud notes'
+                    ? (widget.searchScope == 'all'
+                        ? 'Search all notes (yours + public)'
+                        : 'Search your notes')
                     : 'Search local drafts',
                 border:
                     OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
               ),
             ),
+            if (widget.isAuthenticated)
+              Padding(
+                padding: const EdgeInsets.only(top: 8, left: 4),
+                child: Row(
+                  children: [
+                    // Checkbox mirrors the task spec: checked = "All" scope
+                    // (your notes + every other user's public notes),
+                    // unchecked = "Personal" (only your own private + public).
+                    Checkbox(
+                      value: widget.searchScope == 'all',
+                      onChanged: (value) {
+                        widget.onSearchScopeChanged(
+                            value == true ? 'all' : 'personal');
+                      },
+                    ),
+                    const Text('Include public notes from other users'),
+                  ],
+                ),
+              ),
             const SizedBox(height: 16),
             if (widget.isAuthenticated && localDrafts.isNotEmpty) ...[
               Card(

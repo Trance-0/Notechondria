@@ -30,6 +30,10 @@ class Course(models.Model):
     description = models.TextField(blank=True, null=True)
     cover_image = models.ImageField(upload_to=course_cover_path, blank=True, null=True)
     is_default = models.BooleanField(default=False, null=False)
+    # Explicit sort order for sidebar rendering. Defaults to 0; the reorder
+    # endpoint rewrites this to match the client-supplied ordering so users
+    # can drag categories into their preferred arrangement.
+    sort_order = models.IntegerField(default=0, null=False)
     date_created = models.DateTimeField(auto_now_add=True, null=False)
     last_edit = models.DateTimeField(auto_now=True, null=False)
 
@@ -41,7 +45,7 @@ class Course(models.Model):
                 name="unique_course_client_id_per_creator",
             )
         ]
-        ordering = ["title"]
+        ordering = ["sort_order", "title"]
 
     def __str__(self) -> str:
         return self.title

@@ -69,6 +69,13 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
   // (true) and raw text editing (false). Typora-style full WYSIWYG is not
   // feasible in Flutter; this single-column toggle is the interim UX.
   bool _liveMarkdownPreview = true;
+  /// Index of the paragraph currently being edited inline in the Typora-style
+  /// live editor. Null means every paragraph is rendered as a preview.
+  int? _liveEditingParagraphIndex;
+  /// Scratch controller used while a paragraph is being edited. Rebuilt every
+  /// time the user enters a different paragraph and disposed on commit.
+  TextEditingController? _liveParagraphController;
+  final FocusNode _liveParagraphFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -90,6 +97,9 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
       block.textController.addListener(_handleChanged);
       block.argsController.addListener(_handleChanged);
     }
+    // When the paragraph being edited inline loses focus, commit its contents
+    // back into _bodyController and swap it back to a rendered preview.
+    _liveParagraphFocusNode.addListener(_handleLiveParagraphFocusChange);
   }
 
   @override
@@ -98,10 +108,219 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
     _titleController.dispose();
     _bodyController.dispose();
     _previewScrollController.dispose();
+    _liveParagraphFocusNode.removeListener(_handleLiveParagraphFocusChange);
+    _liveParagraphFocusNode.dispose();
+    _liveParagraphController?.dispose();
     for (final block in _blockDrafts) {
       block.dispose();
     }
     super.dispose();
+  }
+
+  /// Splits the current body into top-level markdown blocks. Unlike a naive
+  /// `split(\n\s*\n)`, this walks the source line-by-line so multi-line
+  /// constructs stay in a single paragraph entry:
+  ///   * fenced code blocks (``` or ~~~) including blank lines inside the fence
+  ///   * HTML blocks such as `<details>…</details>` and `<summary>` regions
+  ///   * pipe tables (header row followed by a `|---|---|` separator)
+  ///   * lists and blockquotes that have no intervening blank lines
+  ///   * ATX headings (single-line, but kept as their own block)
+  /// Every block returned here is later re-joined with `\n\n`, so the parser
+  /// treats each entry as its own top-level markdown block when rendering.
+  List<String> _liveParagraphs() {
+    final text = _bodyController.text;
+    if (text.isEmpty) return const [''];
+    final lines = text.split('\n');
+    final blocks = <String>[];
+    final buffer = <String>[];
+
+    void flush() {
+      if (buffer.isEmpty) return;
+      // Trim trailing empty lines inside a block; they are block separators.
+      while (buffer.isNotEmpty && buffer.last.trim().isEmpty) {
+        buffer.removeLast();
+      }
+      if (buffer.isNotEmpty) {
+        blocks.add(buffer.join('\n'));
+      }
+      buffer.clear();
+    }
+
+    final fenceOpen = RegExp(r'^\s{0,3}(`{3,}|~{3,})');
+    final headingLine = RegExp(r'^\s{0,3}#{1,6}\s');
+    final tableSeparator =
+        RegExp(r'^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$');
+    final htmlBlockOpen = RegExp(
+        r'^\s{0,3}<(details|summary|table|thead|tbody|tr|div|section|article|aside|figure|pre|blockquote)\b',
+        caseSensitive: false);
+
+    int i = 0;
+    while (i < lines.length) {
+      final line = lines[i];
+      final trimmed = line.trimLeft();
+
+      // Blank line → current block ends.
+      if (line.trim().isEmpty) {
+        flush();
+        i++;
+        continue;
+      }
+
+      // Fenced code block — consume until matching closing fence.
+      final fenceMatch = fenceOpen.firstMatch(line);
+      if (fenceMatch != null) {
+        flush();
+        final fenceMarker = fenceMatch.group(1)!;
+        final fenceChar = fenceMarker[0];
+        final fenceLen = fenceMarker.length;
+        buffer.add(line);
+        i++;
+        while (i < lines.length) {
+          final inner = lines[i];
+          buffer.add(inner);
+          i++;
+          final closeMatch =
+              RegExp('^\\s{0,3}($fenceChar{$fenceLen,})\\s*\$')
+                  .firstMatch(inner);
+          if (closeMatch != null) break;
+        }
+        flush();
+        continue;
+      }
+
+      // HTML block — consume until a blank line or a matching closing tag.
+      final htmlMatch = htmlBlockOpen.firstMatch(line);
+      if (htmlMatch != null) {
+        flush();
+        final tag = htmlMatch.group(1)!.toLowerCase();
+        final closeTag = RegExp('</$tag\\s*>', caseSensitive: false);
+        buffer.add(line);
+        // Single-line HTML block (opens and closes on the same line) still
+        // flushes immediately via the blank-line / EOF path below.
+        if (closeTag.hasMatch(line)) {
+          i++;
+          flush();
+          continue;
+        }
+        i++;
+        while (i < lines.length) {
+          final inner = lines[i];
+          buffer.add(inner);
+          i++;
+          if (closeTag.hasMatch(inner)) break;
+        }
+        flush();
+        continue;
+      }
+
+      // ATX heading — emit as its own block so the caller can tap into it
+      // without dragging adjacent paragraphs along.
+      if (headingLine.hasMatch(line)) {
+        flush();
+        buffer.add(line);
+        flush();
+        i++;
+        continue;
+      }
+
+      // Pipe table — current line starts with `|` and the next line is the
+      // `|---|---|` separator. Consume all subsequent non-blank rows.
+      if (trimmed.startsWith('|') &&
+          i + 1 < lines.length &&
+          tableSeparator.hasMatch(lines[i + 1])) {
+        flush();
+        buffer.add(line);
+        buffer.add(lines[i + 1]);
+        i += 2;
+        while (i < lines.length && lines[i].trim().isNotEmpty) {
+          buffer.add(lines[i]);
+          i++;
+        }
+        flush();
+        continue;
+      }
+
+      // Default: accumulate until the next blank line (handles paragraphs,
+      // lists, blockquotes, setext headings, etc. as a single block).
+      buffer.add(line);
+      i++;
+    }
+
+    flush();
+    if (blocks.isEmpty) return const [''];
+    return blocks;
+  }
+
+  /// Rewrites [_bodyController] from the paragraph list, joining with double
+  /// newlines so the markdown parser keeps treating each entry as its own
+  /// block.
+  void _updateBodyFromParagraphs(List<String> paragraphs) {
+    final next = paragraphs.join('\n\n');
+    if (_bodyController.text != next) {
+      _bodyController.text = next;
+    }
+  }
+
+  /// Swaps paragraph [index] into edit mode, seeding a fresh controller with
+  /// its raw markdown source and requesting focus on the next frame so the
+  /// caret lands inside the newly materialized TextField.
+  void _beginEditingLiveParagraph(int index) {
+    final paragraphs = _liveParagraphs();
+    if (index < 0 || index >= paragraphs.length) return;
+    _liveParagraphController?.dispose();
+    _liveParagraphController =
+        TextEditingController(text: paragraphs[index]);
+    setState(() {
+      _liveEditingParagraphIndex = index;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _liveParagraphFocusNode.requestFocus();
+    });
+  }
+
+  /// Commits the in-progress paragraph edit back into the master body and
+  /// clears the transient edit controller. Called when focus leaves the
+  /// inline editor or the user taps somewhere else.
+  void _commitEditingLiveParagraph() {
+    final index = _liveEditingParagraphIndex;
+    final controller = _liveParagraphController;
+    if (index == null || controller == null) return;
+    final paragraphs = [..._liveParagraphs()];
+    if (index >= 0 && index < paragraphs.length) {
+      paragraphs[index] = controller.text;
+    }
+    // Drop trailing empty paragraphs so we don't keep accumulating phantom
+    // blocks every time the user cancels an insertion.
+    while (paragraphs.length > 1 && paragraphs.last.trim().isEmpty) {
+      paragraphs.removeLast();
+    }
+    _updateBodyFromParagraphs(paragraphs);
+    controller.dispose();
+    _liveParagraphController = null;
+    setState(() {
+      _liveEditingParagraphIndex = null;
+    });
+  }
+
+  void _handleLiveParagraphFocusChange() {
+    if (!_liveParagraphFocusNode.hasFocus) {
+      _commitEditingLiveParagraph();
+    }
+  }
+
+  /// Inserts an empty paragraph at [index] and immediately enters edit mode on
+  /// it so the user can start typing.
+  void _insertLiveParagraph(int index) {
+    // Flush any pending edit first so we don't clobber the user's in-progress
+    // paragraph.
+    if (_liveEditingParagraphIndex != null) {
+      _commitEditingLiveParagraph();
+    }
+    final paragraphs = [..._liveParagraphs()];
+    final clamped = index.clamp(0, paragraphs.length);
+    paragraphs.insert(clamped, '');
+    _updateBodyFromParagraphs(paragraphs);
+    _beginEditingLiveParagraph(clamped);
   }
 
   void _handleChanged() {
@@ -283,13 +502,6 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
     return _markdownFromBlockDraftRows(rows);
   }
 
-  String _previewMarkdown() {
-    if (_editorMode == 'B') {
-      return _composeBlockMarkdown();
-    }
-    return _composeMarkdown(_titleController.text, _bodyController.text);
-  }
-
   void _setEditorMode(String mode) {
     if (_editorMode == mode) {
       return;
@@ -465,10 +677,13 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
     );
   }
 
-  /// Full-width live markdown editor. Single column: shows rendered preview
-  /// by default, tap the "Edit" toggle to switch into the raw editor. This is
-  /// the interim implementation until true Typora-style inline rendering
-  /// lands.
+  /// Full-width live markdown editor. Emulates Typora-style inline rendering:
+  /// every paragraph renders as a `MarkdownBody` preview until the user taps
+  /// it, at which point that single paragraph swaps into a borderless
+  /// TextField for editing. Focus loss commits the change and swaps the
+  /// paragraph back to rendered form. Thin "+" buttons between paragraphs
+  /// insert empty blocks at the exact cursor position. A "Raw" escape hatch
+  /// stays available for users who want the full textarea experience.
   Widget _buildLiveMarkdownEditor() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -480,17 +695,22 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
               segments: const [
                 ButtonSegment(
                   value: true,
-                  label: Text('Preview'),
-                  icon: Icon(Icons.visibility_outlined),
+                  label: Text('Inline'),
+                  icon: Icon(Icons.view_stream_outlined),
                 ),
                 ButtonSegment(
                   value: false,
-                  label: Text('Edit'),
-                  icon: Icon(Icons.edit_outlined),
+                  label: Text('Raw'),
+                  icon: Icon(Icons.code),
                 ),
               ],
               selected: {_liveMarkdownPreview},
               onSelectionChanged: (values) {
+                // Flush any in-progress paragraph edit before swapping modes
+                // so the raw textarea doesn't render stale content.
+                if (_liveEditingParagraphIndex != null) {
+                  _commitEditingLiveParagraph();
+                }
                 setState(() {
                   _liveMarkdownPreview = values.first;
                 });
@@ -503,35 +723,7 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
           child: Card(
             clipBehavior: Clip.antiAlias,
             child: _liveMarkdownPreview
-                ? SelectionArea(
-                    child: Scrollbar(
-                      controller: _previewScrollController,
-                      thumbVisibility: true,
-                      child: SingleChildScrollView(
-                        controller: _previewScrollController,
-                        padding: const EdgeInsets.all(20),
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            return ConstrainedBox(
-                              constraints: BoxConstraints(
-                                minWidth: constraints.maxWidth > 40
-                                    ? constraints.maxWidth - 40
-                                    : constraints.maxWidth,
-                              ),
-                              child: MarkdownBody(
-                                data: _previewMarkdown(),
-                                selectable: true,
-                                builders: _markdownBuilders(),
-                                inlineSyntaxes: _markdownInlineSyntaxes(),
-                                blockSyntaxes: _markdownBlockSyntaxes(),
-                                styleSheet: _markdownStyleSheet(context),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  )
+                ? _buildInlineLiveMarkdownBody()
                 : Padding(
                     padding: const EdgeInsets.all(12),
                     child: TextField(
@@ -548,6 +740,111 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Builds the Typora-style stacked paragraph editor. Each paragraph is
+  /// either a tap-to-edit preview or an active borderless TextField.
+  Widget _buildInlineLiveMarkdownBody() {
+    final paragraphs = _liveParagraphs();
+    final editingIndex = _liveEditingParagraphIndex;
+    return Scrollbar(
+      controller: _previewScrollController,
+      thumbVisibility: true,
+      child: SingleChildScrollView(
+        controller: _previewScrollController,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildParagraphInsertSlot(0),
+            for (var i = 0; i < paragraphs.length; i++) ...[
+              if (editingIndex == i)
+                _buildInlineParagraphEditor(paragraphs[i])
+              else
+                _buildInlineParagraphPreview(i, paragraphs[i]),
+              _buildParagraphInsertSlot(i + 1),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// A paragraph rendered in preview mode. Clicking it swaps to edit mode.
+  Widget _buildInlineParagraphPreview(int index, String source) {
+    final trimmed = source.trim();
+    return InkWell(
+      borderRadius: BorderRadius.circular(6),
+      onTap: () => _beginEditingLiveParagraph(index),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+        child: trimmed.isEmpty
+            ? Text(
+                'Empty paragraph — click to edit',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.outline,
+                      fontStyle: FontStyle.italic,
+                    ),
+              )
+            : MarkdownBody(
+                data: source,
+                selectable: false,
+                builders: _markdownBuilders(),
+                inlineSyntaxes: _markdownInlineSyntaxes(),
+                blockSyntaxes: _markdownBlockSyntaxes(),
+                styleSheet: _markdownStyleSheet(context),
+              ),
+      ),
+    );
+  }
+
+  /// The active paragraph editor. Borderless TextField so it visually blends
+  /// with the surrounding preview rows.
+  Widget _buildInlineParagraphEditor(String initialText) {
+    final controller = _liveParagraphController;
+    if (controller == null) {
+      // Shouldn't happen, but fall back to a stale preview if it does.
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
+      child: TextField(
+        controller: controller,
+        focusNode: _liveParagraphFocusNode,
+        maxLines: null,
+        autofocus: true,
+        textAlignVertical: TextAlignVertical.top,
+        decoration: const InputDecoration(
+          isDense: true,
+          border: InputBorder.none,
+          hintText: 'Edit paragraph markdown...',
+        ),
+      ),
+    );
+  }
+
+  /// Thin hairline button sitting between paragraphs. Clicking it inserts an
+  /// empty paragraph at that slot and focuses it for immediate typing.
+  Widget _buildParagraphInsertSlot(int index) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _insertLiveParagraph(index),
+        child: SizedBox(
+          height: 10,
+          child: Center(
+            child: Container(
+              height: 2,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.outlineVariant,
+                borderRadius: BorderRadius.circular(1),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 

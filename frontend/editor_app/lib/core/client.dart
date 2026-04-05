@@ -48,6 +48,12 @@ abstract class NotechondriaClient {
     Map<String, dynamic> payload,
   );
   Future<void> deleteCourse(String token, int courseId);
+  /// Persists the sidebar drag-reorder by POSTing the ordered course id list.
+  /// Returns the refreshed course list with new `sort_order` values applied.
+  Future<List<Map<String, dynamic>>> reorderCourses(
+    String token,
+    List<int> courseIds,
+  );
   Future<Map<String, dynamic>> getCourseDetail(int courseId, {String? token});
   Future<List<Map<String, dynamic>>> getCourseNotes(int courseId, {String? token});
   Future<Map<String, dynamic>> getNoteDetail(int noteId, {String? token});
@@ -57,6 +63,9 @@ abstract class NotechondriaClient {
     int offset = 0,
     int limit = 20,
     int? courseId,
+    /// Search scope: 'personal' = own notes only (default).
+    /// 'all' = own notes + public notes from any user.
+    String scope = 'personal',
   });
   Future<Map<String, dynamic>> createNote(
     String token,
@@ -415,6 +424,22 @@ class HttpNotechondriaClient implements NotechondriaClient {
   }
 
   @override
+  Future<List<Map<String, dynamic>>> reorderCourses(
+    String token,
+    List<int> courseIds,
+  ) async {
+    final uri = _uri('/courses/reorder/');
+    final response = await _post(
+      uri,
+      token: token,
+      payload: {'course_ids': courseIds},
+    );
+    final data =
+        await _decode(response, uri: uri, method: 'POST') as List<dynamic>;
+    return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+  }
+
+  @override
   Future<Map<String, dynamic>> getCourseDetail(int courseId,
       {String? token}) async {
     final uri = _uri('/courses/$courseId/');
@@ -450,11 +475,13 @@ class HttpNotechondriaClient implements NotechondriaClient {
     int offset = 0,
     int limit = 20,
     int? courseId,
+    String scope = 'personal',
   }) async {
     final uri = _uri('/notes/').replace(
       queryParameters: {
         'limit': '$limit',
         'offset': '$offset',
+        'scope': scope,
         if (query.trim().isNotEmpty) 'q': query.trim(),
         if (courseId != null) 'course_id': '$courseId',
       },

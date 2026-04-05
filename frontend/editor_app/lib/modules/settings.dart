@@ -339,8 +339,6 @@ class _SettingsPageState extends State<_SettingsPage> {
         const SizedBox(height: 16),
         _buildOfflinePreferencesSection(context),
         const SizedBox(height: 16),
-        _buildConfigSection(context),
-        const SizedBox(height: 16),
         _buildDebugSection(context),
       ],
     );
@@ -611,32 +609,18 @@ class _SettingsPageState extends State<_SettingsPage> {
                 border: OutlineInputBorder(),
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Configuration file section: download env config, maintenance actions.
-  Widget _buildConfigSection(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+            const SizedBox(height: 16),
+            // Offline account actions row — previously lived in a separate
+            // "Configuration" card, now inlined here because everything below
+            // works without a cloud session.
             Text(
-              'Configuration',
+              'Offline account',
               style: Theme.of(context)
                   .textTheme
-                  .titleMedium
+                  .labelLarge
                   ?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Download or manage configuration files. Maintenance actions affect local storage only.',
-            ),
-            const SizedBox(height: 12),
             Wrap(
               spacing: 10,
               runSpacing: 10,
@@ -648,7 +632,8 @@ class _SettingsPageState extends State<_SettingsPage> {
                     label: const Text('Download config file'),
                   ),
                 OutlinedButton.icon(
-                  onPressed: () => _runMaintenanceAction(widget.onRestoreTemplateCourses),
+                  onPressed: () =>
+                      _runMaintenanceAction(widget.onRestoreTemplateCourses),
                   icon: const Icon(Icons.restore_outlined),
                   label: const Text('Restore template categories'),
                 ),
@@ -665,7 +650,8 @@ class _SettingsPageState extends State<_SettingsPage> {
                       color: Theme.of(context).colorScheme.error),
                   label: Text(
                     'Clear all local data',
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error),
                   ),
                 ),
               ],

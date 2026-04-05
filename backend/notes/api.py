@@ -108,12 +108,19 @@ def active_subscription_map(creator):
 
 
 def course_sort_key(course, subscription_map):
+    # Default category always sticks to the top of the list so users never
+    # lose track of their Inbox.
+    if course.is_default:
+        return (0, 0, 0, course.title.lower())
+    # Explicit user-set sort order comes next — non-zero means the user
+    # dragged this course into a specific position.
+    if course.sort_order:
+        return (1, course.sort_order, 0, course.title.lower())
     subscription = subscription_map.get(course.id)
     if subscription is not None:
         opened = subscription.last_opened_at or subscription.subscribed_at or timezone.now()
-        return (0, -opened.timestamp(), course.title.lower())
-    default_rank = 0 if course.is_default else 1
-    return (1, default_rank, course.title.lower())
+        return (2, -opened.timestamp(), 0, course.title.lower())
+    return (3, 0, 0, course.title.lower())
 
 
 def append_course_operation(creator, course, operation_type, metadata=None):
@@ -304,6 +311,7 @@ class CourseSerializer(serializers.ModelSerializer):
             "description",
             "cover_image_url",
             "is_default",
+            "sort_order",
             "owner",
             "subscriber_count",
             "is_subscribed",
@@ -651,6 +659,66 @@ class CourseDetailApiView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class CourseReorderApiView(APIView):
+    """Accepts an ordered list of course ids and rewrites their `sort_order`
+    so the user's preferred arrangement survives across sessions."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        creator = ensure_creator(request.user)
+        ids = request.data.get("course_ids")
+        if not isinstance(ids, list):
+            return Response(
+                {"detail": "`course_ids` must be a list of integers."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Only allow the user to reorder their own non-default courses; the
+        # default Inbox is pinned in `course_sort_key` and not part of the
+        # drag list on the client.
+        owned = {
+            c.id: c
+            for c in Course.objects.filter(
+                creator_id=creator,
+                is_default=False,
+            )
+        }
+        # Tolerate garbage entries: non-int-ish items are skipped silently so a
+        # transient client bug can't brick a reorder request. Only ids that map
+        # to courses owned by this creator survive.
+        new_order = []
+        seen = set()
+        for raw in ids:
+            try:
+                course_id = int(raw)
+            except (TypeError, ValueError):
+                continue
+            if course_id in owned and course_id not in seen:
+                new_order.append(course_id)
+                seen.add(course_id)
+        with transaction.atomic():
+            # Rewrite sort_order for every course in the list. Start at 1 so
+            # zero remains the "unset" marker for course_sort_key.
+            for index, course_id in enumerate(new_order, start=1):
+                course = owned[course_id]
+                course.sort_order = index
+                course.save(update_fields=["sort_order", "last_edit"])
+        subscription_map = active_subscription_map(creator)
+        courses = list(
+            Course.objects.select_related("creator_id__user_id")
+            .prefetch_related("media_items")
+            .filter(creator_id=creator)
+        )
+        courses.sort(key=lambda course: course_sort_key(course, subscription_map))
+        return Response(
+            CourseSerializer(
+                courses,
+                many=True,
+                context={"request": request, "subscription_map": subscription_map},
+            ).data
+        )
+
+
 class CourseNotesApiView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -675,12 +743,22 @@ class NoteListCreateApiView(APIView):
         creator = ensure_creator(request.user)
         course_id = request.query_params.get("course_id")
         query = request.query_params.get("q", "").strip()
+        # scope=personal (default): only notes owned by the current user
+        # (includes their private + public notes).
+        # scope=all: personal notes PLUS public notes owned by other users, so
+        # the sidebar search checkbox can broaden the result set.
+        scope = request.query_params.get("scope", "personal").strip().lower()
         limit = request.query_params.get("limit")
         offset = int(request.query_params.get("offset", "0") or 0)
         notes = Note.objects.filter(
-            creator_id=creator,
             deleted_at__isnull=True,
         ).select_related("course_id", "creator_id__user_id")
+        if scope == "all":
+            notes = notes.filter(
+                Q(creator_id=creator) | Q(is_public=True),
+            )
+        else:
+            notes = notes.filter(creator_id=creator)
         if course_id:
             notes = notes.filter(course_id_id=course_id)
         if query:

@@ -436,6 +436,60 @@ class HeatmapApiTests(TestCase):
         titles = [row['title'] for row in response.json()]
         self.assertIn('Meaningful Structures', titles)
 
+    def test_note_list_scope_all_includes_public_notes_from_other_users(self):
+        # Foreign creator publishes one public note and one private note.
+        foreign_user = User.objects.create_user(username='stranger@example.com', password='pw')
+        foreign_creator = Creator.objects.create(user_id=foreign_user)
+        foreign_course = Course.objects.create(
+            creator_id=foreign_creator,
+            slug='foreign-catalog',
+            title='Foreign Catalog',
+        )
+        Note.objects.create(
+            creator_id=foreign_creator,
+            course_id=foreign_course,
+            sharing_id='foreign-pub',
+            title='Foreign Public Note',
+            is_public=True,
+            content='Shared reading for everyone.',
+        )
+        Note.objects.create(
+            creator_id=foreign_creator,
+            course_id=foreign_course,
+            sharing_id='foreign-priv',
+            title='Foreign Private Note',
+            is_public=False,
+            content='Private draft.',
+        )
+        # Own note (private) to confirm personal scope still works.
+        Note.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            sharing_id='own-priv',
+            title='Own Private Note',
+        )
+
+        personal_response = self.client.get(
+            '/api/v1/notes/?scope=personal',
+            **self._auth_headers(),
+        )
+        self.assertEqual(personal_response.status_code, 200)
+        personal_titles = [row['title'] for row in personal_response.json()]
+        self.assertIn('Own Private Note', personal_titles)
+        self.assertNotIn('Foreign Public Note', personal_titles)
+        self.assertNotIn('Foreign Private Note', personal_titles)
+
+        all_response = self.client.get(
+            '/api/v1/notes/?scope=all',
+            **self._auth_headers(),
+        )
+        self.assertEqual(all_response.status_code, 200)
+        all_titles = [row['title'] for row in all_response.json()]
+        self.assertIn('Own Private Note', all_titles)
+        self.assertIn('Foreign Public Note', all_titles)
+        # Foreign-owned private notes must never leak into scope=all.
+        self.assertNotIn('Foreign Private Note', all_titles)
+
     def test_course_subscribe_open_and_ordering_are_synced(self):
         course_a = Course.objects.create(
             creator_id=self.creator,
@@ -522,6 +576,87 @@ class HeatmapApiTests(TestCase):
             ).count(),
             1,
         )
+
+    def test_course_reorder_rewrites_sort_order_for_owned_courses(self):
+        course_a = Course.objects.create(
+            creator_id=self.creator,
+            slug='reorder-a',
+            title='Reorder Alpha',
+        )
+        course_b = Course.objects.create(
+            creator_id=self.creator,
+            slug='reorder-b',
+            title='Reorder Bravo',
+        )
+        course_c = Course.objects.create(
+            creator_id=self.creator,
+            slug='reorder-c',
+            title='Reorder Charlie',
+        )
+
+        response = self.client.post(
+            '/api/v1/courses/reorder/',
+            data=json.dumps({'course_ids': [course_c.id, course_a.id, course_b.id]}),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        course_a.refresh_from_db()
+        course_b.refresh_from_db()
+        course_c.refresh_from_db()
+        self.assertEqual(course_c.sort_order, 1)
+        self.assertEqual(course_a.sort_order, 2)
+        self.assertEqual(course_b.sort_order, 3)
+
+        payload = response.json()
+        returned_ids = [row['id'] for row in payload]
+        # The user-ordered trio should appear in the requested sequence right
+        # after any pinned default (Inbox) category.
+        self.assertIn(course_c.id, returned_ids)
+        self.assertIn(course_a.id, returned_ids)
+        self.assertIn(course_b.id, returned_ids)
+        non_default = [row for row in payload if not row.get('is_default')]
+        ordered_custom = [row['id'] for row in non_default if row['id'] in {course_a.id, course_b.id, course_c.id}]
+        self.assertEqual(ordered_custom, [course_c.id, course_a.id, course_b.id])
+
+    def test_course_reorder_rejects_non_list_payload(self):
+        response = self.client.post(
+            '/api/v1/courses/reorder/',
+            data=json.dumps({'course_ids': 'not-a-list'}),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_course_reorder_ignores_courses_owned_by_other_users(self):
+        other_user = User.objects.create_user(username='intruder@example.com', password='pw')
+        other_creator = Creator.objects.create(user_id=other_user)
+        foreign_course = Course.objects.create(
+            creator_id=other_creator,
+            slug='foreign-course',
+            title='Foreign Course',
+        )
+        own_course = Course.objects.create(
+            creator_id=self.creator,
+            slug='own-course',
+            title='Own Course',
+        )
+
+        response = self.client.post(
+            '/api/v1/courses/reorder/',
+            data=json.dumps({'course_ids': [foreign_course.id, own_course.id]}),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        foreign_course.refresh_from_db()
+        own_course.refresh_from_db()
+        # The foreign course must not have been touched.
+        self.assertEqual(foreign_course.sort_order, 0)
+        # Our own course should be the first custom-ordered entry (index 1).
+        self.assertEqual(own_course.sort_order, 1)
 
     def test_planner_completion_removes_event_from_active_week_payloads(self):
         event = PlannerEvent.objects.create(

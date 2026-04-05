@@ -79,8 +79,10 @@ class _AuthHub extends StatelessWidget {
                     context,
                     _EmailPasswordDialog(
                       title: 'Login',
-                      description:
-                          'Sign in with your email and password. Admin username also works for the bootstrapped Django admin account.',
+                      // Empty description: the previous helper text about
+                      // admin usernames was redundant and hogged mobile
+                      // screen space, leaving no room for the soft keyboard.
+                      description: '',
                       submitLabel: 'Login',
                       emailLabel: 'Email or username',
                       onSubmit: onLogin,
@@ -154,6 +156,11 @@ class _EmailPasswordDialogState extends State<_EmailPasswordDialog> {
       _feedback = feedback;
     });
     if (!feedback.isError && widget.title == 'Login') {
+      // Signals the platform/browser that this autofill context finished
+      // successfully, which is what triggers Chrome's "Save password?" prompt
+      // on web. Without this the dialog pops before the browser associates
+      // the submission with the credential form, so the prompt never fires.
+      TextInput.finishAutofillContext();
       Navigator.of(context).pop();
     }
   }
@@ -168,8 +175,10 @@ class _EmailPasswordDialogState extends State<_EmailPasswordDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.description),
-            const SizedBox(height: 16),
+            if (widget.description.isNotEmpty) ...[
+              Text(widget.description),
+              const SizedBox(height: 16),
+            ],
             AutofillGroup(
               child: Column(
                 mainAxisSize: MainAxisSize.min,

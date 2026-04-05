@@ -111,6 +111,9 @@ class _AppShellState extends State<AppShell> {
   bool _coursePanelExpanded = true;
   int _learnerNotesOffset = 0;
   String _learnerSearchQuery = '';
+  /// Learner search scope: 'personal' (default) = only the user's own notes,
+  /// 'all' = user's notes plus public notes from any other user.
+  String _learnerSearchScope = 'personal';
   final List<String> _uiLogs = <String>[];
 
   /// Currently selected category (course) for note filtering. null = all notes.
@@ -609,19 +612,28 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
   // ---------------------------------------------------------------------------
   // Note loading & selection
   // ---------------------------------------------------------------------------
-  Future<void> _loadLearnerNotes({bool reset = false, String? query}) async {
+  Future<void> _loadLearnerNotes({
+    bool reset = false,
+    String? query,
+    String? scope,
+  }) async {
     if (_token == null || _token!.isEmpty) {
       setState(() {
         _learnerSearchQuery = query ?? _learnerSearchQuery;
+        if (scope != null) _learnerSearchScope = scope;
       });
       return;
     }
     if (_isLoadingMoreNotes) return;
     final effectiveQuery = query ?? _learnerSearchQuery;
+    final effectiveScope = scope ?? _learnerSearchScope;
     final nextOffset = reset ? 0 : _learnerNotesOffset;
     setState(() {
       _isLoadingMoreNotes = true;
-      if (reset) _learnerSearchQuery = effectiveQuery;
+      if (reset) {
+        _learnerSearchQuery = effectiveQuery;
+        _learnerSearchScope = effectiveScope;
+      }
     });
     try {
       final activeCourseId = _selectedCategoryId;
@@ -631,6 +643,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         offset: nextOffset,
         limit: 20,
         courseId: (activeCourseId != null && activeCourseId > 0) ? activeCourseId : null,
+        scope: effectiveScope,
       );
       final rows = (page['results'] as List<dynamic>? ?? const [])
           .map((item) => Map<String, dynamic>.from(item as Map))
@@ -1313,6 +1326,88 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       final message = error.toString().replaceFirst('Exception: ', '');
       _appendUiLog('Delete category failed: $message');
       return ActionFeedback(message: message, isError: true);
+    }
+  }
+
+  /// Renders a single sidebar category row with the shared tooltip, long-press,
+  /// and right-click handlers. Pulled out so the pinned Inbox row and the
+  /// draggable rows inside the reorderable list share the exact same look.
+  Widget _buildCategoryRow(Map<String, dynamic> cat) {
+    return Tooltip(
+      message: cat['is_default'] == true
+          ? cat['title']?.toString() ?? 'Category'
+          : 'Long-press or right-click to rename or delete. Drag to reorder.',
+      waitDuration: const Duration(milliseconds: 600),
+      child: GestureDetector(
+        onLongPress: () => _promptEditCategory(cat),
+        onSecondaryTap: () => _promptEditCategory(cat),
+        child: _SidebarItem(
+          icon: cat['is_local_course'] == true
+              ? Icons.folder_outlined
+              : (cat['is_default'] == true
+                  ? Icons.inbox_outlined
+                  : Icons.school_outlined),
+          label: cat['title']?.toString() ?? 'Category',
+          selected:
+              _selectedCategoryId == (cat['id'] as num?)?.toInt(),
+          onTap: () => _selectCourse(cat),
+        ),
+      ),
+    );
+  }
+
+  /// Applies a new ordering for the draggable categories in the sidebar. The
+  /// default Inbox is pinned and never included in [newOrder]. Local-only
+  /// categories are reordered in memory; remote ones are persisted through
+  /// `/courses/reorder/` so the order survives across sessions.
+  Future<void> _reorderCategories(List<Map<String, dynamic>> newOrder) async {
+    // Split the drag result into local vs cloud buckets. Local drafts keep the
+    // in-memory order the user just chose; cloud courses get persisted.
+    final newLocal = <Map<String, dynamic>>[];
+    final newRemote = <Map<String, dynamic>>[];
+    for (final course in newOrder) {
+      if (_isLocalCourse(course)) {
+        newLocal.add(course);
+      } else {
+        newRemote.add(course);
+      }
+    }
+
+    setState(() {
+      _localCourses = List<Map<String, dynamic>>.from(newLocal);
+      _courses = List<Map<String, dynamic>>.from(newRemote);
+    });
+
+    // Persist local ordering regardless of auth state.
+    await _persistLocalCourses();
+
+    final token = _token;
+    if (token == null || token.isEmpty || newRemote.isEmpty) {
+      _appendUiLog('Reordered categories locally.');
+      return;
+    }
+
+    final remoteIds = <int>[
+      for (final course in newRemote)
+        if ((course['id'] as num?) != null) (course['id'] as num).toInt(),
+    ];
+    try {
+      final refreshed = await widget.client.reorderCourses(token, remoteIds);
+      final decorated =
+          refreshed.map(_decorateRemoteCourse).toList(growable: false);
+      setState(() {
+        _courses = decorated;
+      });
+      await _persistLocalCache();
+      _appendUiLog('Reordered ${remoteIds.length} cloud categories.');
+    } catch (error) {
+      final message = error.toString().replaceFirst('Exception: ', '');
+      _appendUiLog('Reorder categories failed: $message');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Reorder failed: $message')),
+        );
+      }
     }
   }
 
@@ -2051,25 +2146,126 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     return restored;
   }
 
+  /// Imports one or more notes from a markdown file or a zip archive. Mirrors
+  /// the export flow: each note may carry a YAML frontmatter block whose
+  /// `title`/`description`/`category` fields are round-tripped back into the
+  /// created note. Zip archives iterate every `.md` entry at any depth so a
+  /// recursive export can be re-imported in one step.
   Future<void> _importMarkdownNote() async {
     try {
       final file = await openFile(
         acceptedTypeGroups: [
           const XTypeGroup(
-              label: 'Markdown', extensions: ['md', 'markdown', 'txt']),
+              label: 'Markdown or zip',
+              extensions: ['md', 'markdown', 'txt', 'zip']),
         ],
       );
       if (file == null) return;
-      final contents = await file.readAsString();
-      final created = await _createNote(
-        markdown: contents,
-        title: _extractTitleFromMarkdown(contents),
-        description: '',
-      );
-      _showMessage("Imported '${created['title']}'.");
+      final name = file.name.toLowerCase();
+      if (name.endsWith('.zip')) {
+        await _importNotesFromZip(file);
+      } else {
+        final contents = await file.readAsString();
+        final parsed = _parseImportedMarkdown(contents);
+        final created = await _createNote(
+          markdown: parsed.body,
+          title: parsed.title ?? _extractTitleFromMarkdown(parsed.body),
+          description: parsed.description ?? '',
+        );
+        _showMessage("Imported '${created['title']}'.");
+      }
     } catch (error) {
       _showMessage(error.toString().replaceFirst('Exception: ', ''));
     }
+  }
+
+  /// Decodes a zip archive and creates one note per `.md` entry.
+  Future<void> _importNotesFromZip(XFile file) async {
+    final bytes = await file.readAsBytes();
+    final archive = ZipDecoder().decodeBytes(bytes);
+    int importedCount = 0;
+    int skippedCount = 0;
+    for (final entry in archive) {
+      if (!entry.isFile) continue;
+      final lowerName = entry.name.toLowerCase();
+      if (!(lowerName.endsWith('.md') || lowerName.endsWith('.markdown'))) {
+        // Non-markdown entries (media, .metadata) are skipped — the current
+        // import path only creates notes, not media attachments.
+        skippedCount += 1;
+        continue;
+      }
+      try {
+        final content = utf8.decode(entry.content as List<int>);
+        final parsed = _parseImportedMarkdown(content);
+        // Fall back to the zip entry filename (without extension) when the
+        // markdown has no title + no frontmatter.
+        final fallbackTitle = entry.name.split('/').last.replaceAll(
+              RegExp(r'\.(md|markdown)$', caseSensitive: false),
+              '',
+            );
+        final derivedTitle = _extractTitleFromMarkdown(parsed.body);
+        await _createNote(
+          markdown: parsed.body,
+          title: parsed.title ??
+              (derivedTitle == 'Untitled note'
+                  ? (fallbackTitle.isEmpty
+                      ? 'Imported note'
+                      : fallbackTitle)
+                  : derivedTitle),
+          description: parsed.description ?? '',
+        );
+        importedCount += 1;
+      } catch (error) {
+        _appendUiLog('Skipped "${entry.name}": $error');
+        skippedCount += 1;
+      }
+    }
+    if (importedCount == 0) {
+      _showMessage('No markdown entries found in archive.');
+    } else {
+      final suffix = skippedCount > 0 ? ' ($skippedCount skipped)' : '';
+      _showMessage('Imported $importedCount note(s) from zip.$suffix');
+    }
+  }
+
+  /// Splits imported markdown into optional YAML frontmatter + body. Recognizes
+  /// the exact frontmatter shape we emit during export (`title`, `description`,
+  /// `category`, `author`, `last_edit`).
+  _ImportedMarkdown _parseImportedMarkdown(String content) {
+    final lines = content.split('\n');
+    if (lines.isEmpty || lines.first.trim() != '---') {
+      return _ImportedMarkdown(body: content);
+    }
+    final closingIndex = lines.indexWhere((l) => l.trim() == '---', 1);
+    if (closingIndex < 0) {
+      return _ImportedMarkdown(body: content);
+    }
+    final headerLines = lines.sublist(1, closingIndex);
+    final body = lines.sublist(closingIndex + 1).join('\n').trimLeft();
+    String? title;
+    String? description;
+    for (final line in headerLines) {
+      final colonIdx = line.indexOf(':');
+      if (colonIdx <= 0) continue;
+      final key = line.substring(0, colonIdx).trim().toLowerCase();
+      var value = line.substring(colonIdx + 1).trim();
+      // Strip surrounding quotes from yaml-escape output.
+      if (value.length >= 2 &&
+          ((value.startsWith('"') && value.endsWith('"')) ||
+              (value.startsWith("'") && value.endsWith("'")))) {
+        value = value.substring(1, value.length - 1);
+      }
+      if (key == 'title') {
+        title = value;
+      } else if (key == 'description') {
+        description = value;
+      }
+    }
+    return _ImportedMarkdown(
+      title: title,
+      description: description,
+      body: body,
+    );
   }
 
   Future<void> _exportNote(Map<String, dynamic> note) async {
@@ -2714,47 +2910,73 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
                     ),
                     if (_coursePanelExpanded)
                       Expanded(
-                        child: ListView(
-                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                          children: [
-                            for (final cat in _allCategories)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: Tooltip(
-                                  message: cat['is_default'] == true
-                                      ? cat['title']?.toString() ?? 'Category'
-                                      : 'Long-press or right-click to rename or delete',
-                                  waitDuration:
-                                      const Duration(milliseconds: 600),
-                                  child: GestureDetector(
-                                    onLongPress: () =>
-                                        _promptEditCategory(cat),
-                                    onSecondaryTap: () =>
-                                        _promptEditCategory(cat),
-                                    child: _SidebarItem(
-                                      icon: cat['is_local_course'] == true
-                                          ? Icons.folder_outlined
-                                          : Icons.school_outlined,
-                                      label: cat['title']?.toString() ??
-                                          'Category',
-                                      selected: _selectedCategoryId ==
-                                          (cat['id'] as num?)?.toInt(),
-                                      onTap: () => _selectCourse(cat),
-                                    ),
-                                  ),
+                        child: Builder(builder: (context) {
+                          // Pin the default (Inbox) category at the top so it
+                          // stays out of the drag-reorder zone.
+                          final pinned = _allCategories
+                              .where((c) => c['is_default'] == true)
+                              .toList(growable: false);
+                          final draggable = _allCategories
+                              .where((c) => c['is_default'] != true)
+                              .toList(growable: false);
+                          return Column(
+                            children: [
+                              for (final cat in pinned)
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                      12, 0, 12, 4),
+                                  child: _buildCategoryRow(cat),
+                                ),
+                              Expanded(
+                                child: ReorderableListView.builder(
+                                  padding: const EdgeInsets.fromLTRB(
+                                      12, 0, 12, 0),
+                                  buildDefaultDragHandles: false,
+                                  itemCount: draggable.length,
+                                  onReorder: (oldIndex, newIndex) {
+                                    // Flutter's ReorderableListView passes
+                                    // newIndex as the target slot *before*
+                                    // removal, so shift it left when moving
+                                    // down the list.
+                                    if (newIndex > oldIndex) newIndex -= 1;
+                                    final reordered = List<Map<String, dynamic>>
+                                        .from(draggable);
+                                    final moved = reordered.removeAt(oldIndex);
+                                    reordered.insert(newIndex, moved);
+                                    // _reorderCategories synchronously updates
+                                    // _localCourses/_courses via setState, so
+                                    // the next rebuild already reflects the
+                                    // new order — no local mutation needed.
+                                    _reorderCategories([...pinned, ...reordered]);
+                                  },
+                                  itemBuilder: (context, index) {
+                                    final cat = draggable[index];
+                                    final key = ValueKey(
+                                        'cat-${cat['id']?.toString() ?? index}');
+                                    return Padding(
+                                      key: key,
+                                      padding: const EdgeInsets.only(bottom: 4),
+                                      child: ReorderableDragStartListener(
+                                        index: index,
+                                        child: _buildCategoryRow(cat),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ),
-                            Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: _SidebarItem(
-                                icon: Icons.add_circle_outline,
-                                label: 'New category',
-                                selected: false,
-                                onTap: _promptCreateCategory,
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                    12, 4, 12, 8),
+                                child: _SidebarItem(
+                                  icon: Icons.add_circle_outline,
+                                  label: 'New category',
+                                  selected: false,
+                                  onTap: _promptCreateCategory,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          );
+                        }),
                       )
                     else
                       const Spacer(),
@@ -2873,10 +3095,13 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           hasMoreNotes: _hasMoreLearnerNotes,
           isLoadingMore: _isLoadingMoreNotes,
           searchQuery: _learnerSearchQuery,
+          searchScope: _learnerSearchScope,
           isAuthenticated: _token != null && _token!.isNotEmpty,
           apiBaseUrl: _httpClient?.baseUrl,
           onSearchChanged: (value) =>
               _loadLearnerNotes(reset: true, query: value),
+          onSearchScopeChanged: (value) =>
+              _loadLearnerNotes(reset: true, scope: value),
           onLoadMore: () => _loadLearnerNotes(),
           onOpenNote: _selectNote,
           onFetchNoteDetail: _fetchNoteDetail,
