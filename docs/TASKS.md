@@ -12,15 +12,15 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 ### Sidebar/Navigation
 
-- [ ] Remove the Notechondria editor title from the sidebar.
-- [ ] Enable drag and reorder for the categories.
-- [ ] Hold categories for editing the category name (course, plan name in future version) and delete the category (show warning before deletion, move all notes to default category, the default "Inbox" category cannot be deleted) keep a simple editor for testing at this stage. Add tooltip for that on hover.
-- [ ] At bottom of the Category drop down, add a placeholder to create a new category.
+- [x] Remove the Notechondria editor title from the sidebar.
+- [ ] Enable drag and reorder for the categories. (deferred — needs backend order field)
+- [x] Hold categories for editing the category name (course, plan name in future version) and delete the category (show warning before deletion, move all notes to default category, the default "Inbox" category cannot be deleted) keep a simple editor for testing at this stage. Add tooltip for that on hover.
+- [x] At bottom of the Category drop down, add a placeholder to create a new category.
 
 ### Note view
 
-- [ ] Remove three-dot menu button in the card
-- [ ] Remove the helper text in the card "Course metadata stays editable from the editor details panel"
+- [x] Remove three-dot menu button in the card
+- [x] Remove the helper text in the card "Course metadata stays editable from the editor details panel"
 
 #### Search
 
@@ -28,8 +28,8 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 ### Note preview
 
-- [ ] The display for note header is too small, make appropriate padding on lower subheadings.
-- [ ] Add options for export markdown.
+- [x] The display for note header is too small, make appropriate padding on lower subheadings.
+- [x] Add options for export markdown.
   - A checkbox include metadata; default to add the header about note metadata (author name, course name, last edit time, creation time, etc.), add selectable to note format, 
   - A checkbox for recursive export; default to false.
   - A selector of export format; default is zip with the following structure
@@ -53,41 +53,41 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 #### Markdown Editor
 
-- [ ] Should display one red text warning belows the title if user is not following the markdown spec. Only show one line red text warning is enough.
-- [ ] Full GitHub Flavored Markdown (GFM) is not supported yet, at least the following features are missing
-  - [ ] details and summary tags
+- [x] Should display one red text warning belows the title if user is not following the markdown spec. Only show one line red text warning is enough.
+- [x] Full GitHub Flavored Markdown (GFM) is not supported yet, at least the following features are missing
+  - [x] details and summary tags
 
 ##### Plaintext editor
 
-- [ ] Syntax highlighting is not functional (bold for bold, italics for italics, etc. Follows the GFM spec)
+- [x] Syntax highlighting is not functional (bold for bold, italics for italics, etc. Follows the GFM spec)
 
 ##### Markdown editor
 
-- [ ] Rename the editor to Live Markdown Editor
-- [ ] Remove the double column editor for now.
-- [ ] Live render the sections where user is not editing (like typora). Dynamically allocate and enable full features of GFM.
+- [x] Rename the editor to Live Markdown Editor
+- [x] Remove the double column editor for now.
+- [ ] Live render the sections where user is not editing (like typora). Dynamically allocate and enable full features of GFM. (interim: SegmentedButton Preview/Edit toggle — full Typora-style inline rendering not feasible in Flutter)
 
 ##### Block editor
 
-- [ ] Remove the top menu for adding blocks (bold, italics, etc.) They should pop in the position when user hover on the intersection between two existing blocks and top, bottom padding areas. (to insert new block in that position)
+- [x] Remove the top menu for adding blocks (bold, italics, etc.) They should pop in the position when user hover on the intersection between two existing blocks and top, bottom padding areas. (to insert new block in that position)
 That means, the block add menu item should be (paragraph, list, enumeration, code, quote, image, dropdown, html embedding, etc.)
 
-- [ ] Follows the design for notion
-  - [ ] Full live markdown editor support, it should be an extension of markdown editor
+- [x] Follows the design for notion
+  - [ ] Full live markdown editor support, it should be an extension of markdown editor (pending Typora-style live rendering)
 
 ### Editor Settings
 
 #### Login and account info
 
-- [ ] No save button for now, updated avatar image and motto, email cannot be saved. Put the (configuration section) as subsection of login and account info
-- [ ] Organize the widgets by their functions, put
+- [x] No save button for now, updated avatar image and motto, email cannot be saved. Put the (configuration section) as subsection of login and account info
+- [x] Organize the widgets by their functions, put
   - Online account setting: save account config reset password, logout on the same line
   - Offline account setting: Download config file, Recycle bin, restore templates, clear all local data. (add warning and 3s confirmation before clearing recycle bin and local data)
-- [ ] Remove clear local cache, I assume that is equivalent to clear all local data.
+- [x] Remove clear local cache, I assume that is equivalent to clear all local data.
 
 #### Editor Preferences
 
-- [ ] Currently default editor naming is inconsistent.
+- [x] Currently default editor naming is inconsistent.
 
 ## Planner
 

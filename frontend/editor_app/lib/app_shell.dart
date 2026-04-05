@@ -1154,6 +1154,294 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
   }
 
   // ---------------------------------------------------------------------------
+  // Category (course) management
+  // ---------------------------------------------------------------------------
+
+  /// Creates a new category. Cloud if signed in, otherwise local.
+  Future<ActionFeedback> _createCategory(String title) async {
+    final trimmed = title.trim();
+    if (trimmed.isEmpty) {
+      return const ActionFeedback(
+          message: 'Category name cannot be empty.', isError: true);
+    }
+    final token = _token;
+    try {
+      if (token != null && token.isNotEmpty) {
+        final created = await widget.client.createCourse(token, {
+          'title': trimmed,
+          'description': '',
+        });
+        final decorated = _decorateRemoteCourse(created);
+        setState(() {
+          _courses = [decorated, ..._courses];
+        });
+        await _persistLocalCache();
+        _appendUiLog("Created category '$trimmed'.");
+      } else {
+        final localCourse = _buildLocalCourse(title: trimmed);
+        setState(() {
+          _localCourses = [..._localCourses, localCourse];
+        });
+        await _persistLocalCourses();
+        _appendUiLog("Created local category '$trimmed'.");
+      }
+      return ActionFeedback(message: "Created '$trimmed'.");
+    } catch (error) {
+      final message = error.toString().replaceFirst('Exception: ', '');
+      _appendUiLog('Create category failed: $message');
+      return ActionFeedback(message: message, isError: true);
+    }
+  }
+
+  /// Renames a category. Handles local-only and cloud courses.
+  Future<ActionFeedback> _renameCategory(
+    Map<String, dynamic> course,
+    String newTitle,
+  ) async {
+    final trimmed = newTitle.trim();
+    if (trimmed.isEmpty) {
+      return const ActionFeedback(
+          message: 'Category name cannot be empty.', isError: true);
+    }
+    if (course['is_default'] == true) {
+      return const ActionFeedback(
+          message: 'The default category cannot be renamed.', isError: true);
+    }
+    final courseId = (course['id'] as num?)?.toInt();
+    final isLocal = _isLocalCourse(course);
+    try {
+      if (isLocal) {
+        setState(() {
+          _localCourses = _localCourses
+              .map((item) => item['id'] == course['id']
+                  ? {...item, 'title': trimmed}
+                  : item)
+              .toList(growable: false);
+          if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
+            _selectedCourse = {...?_selectedCourse, 'title': trimmed};
+          }
+        });
+        await _persistLocalCourses();
+      } else {
+        final token = _token;
+        if (token == null || token.isEmpty || courseId == null) {
+          return const ActionFeedback(
+              message: 'Sign in to rename cloud categories.', isError: true);
+        }
+        final updated = await widget.client.updateCourse(
+          token,
+          courseId,
+          {'title': trimmed},
+        );
+        final decorated = _decorateRemoteCourse(updated);
+        setState(() {
+          _courses = _courses
+              .map((item) => (item['id'] as num?)?.toInt() == courseId
+                  ? decorated
+                  : item)
+              .toList(growable: false);
+          if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
+            _selectedCourse = decorated;
+          }
+        });
+        await _persistLocalCache();
+      }
+      _appendUiLog("Renamed category to '$trimmed'.");
+      return ActionFeedback(message: "Renamed to '$trimmed'.");
+    } catch (error) {
+      final message = error.toString().replaceFirst('Exception: ', '');
+      _appendUiLog('Rename category failed: $message');
+      return ActionFeedback(message: message, isError: true);
+    }
+  }
+
+  /// Deletes a category. Notes in it are moved to the user's default category.
+  Future<ActionFeedback> _deleteCategory(Map<String, dynamic> course) async {
+    if (course['is_default'] == true) {
+      return const ActionFeedback(
+          message: 'The default category cannot be deleted.', isError: true);
+    }
+    final courseId = (course['id'] as num?)?.toInt();
+    final isLocal = _isLocalCourse(course);
+    try {
+      if (isLocal) {
+        setState(() {
+          _localCourses = _localCourses
+              .where((item) => item['id'] != course['id'])
+              .toList(growable: false);
+          // Strip course_id from any local drafts that referenced it.
+          _localDrafts = _localDrafts.map((draft) {
+            if (_draftCourseId(draft) != courseId) return draft;
+            final metadata =
+                _decodeNoteMetadata(draft['metadata_json']?.toString() ?? '{}');
+            metadata.remove('course_id');
+            return {
+              ...draft,
+              'metadata_json': jsonEncode(metadata),
+            };
+          }).toList(growable: false);
+          if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
+            _selectedCourse = null;
+            _selectedCategoryId = null;
+          }
+        });
+        await _persistLocalCourses();
+        await _persistLocalDrafts();
+      } else {
+        final token = _token;
+        if (token == null || token.isEmpty || courseId == null) {
+          return const ActionFeedback(
+              message: 'Sign in to delete cloud categories.', isError: true);
+        }
+        await widget.client.deleteCourse(token, courseId);
+        setState(() {
+          _courses = _courses
+              .where((item) => (item['id'] as num?)?.toInt() != courseId)
+              .toList(growable: false);
+          if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
+            _selectedCourse = null;
+            _selectedCategoryId = null;
+          }
+        });
+        await _persistLocalCache();
+        await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
+      }
+      _appendUiLog("Deleted category '${course['title']}'.");
+      return ActionFeedback(
+          message: "Deleted '${course['title']}'. Notes moved to default.");
+    } catch (error) {
+      final message = error.toString().replaceFirst('Exception: ', '');
+      _appendUiLog('Delete category failed: $message');
+      return ActionFeedback(message: message, isError: true);
+    }
+  }
+
+  /// Shows a simple dialog to create a new category.
+  Future<void> _promptCreateCategory() async {
+    final controller = TextEditingController();
+    final title = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('New category'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Category name',
+            border: OutlineInputBorder(),
+          ),
+          onSubmitted: (value) => Navigator.of(ctx).pop(value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text),
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (title == null || title.trim().isEmpty) return;
+    await _createCategory(title);
+  }
+
+  /// Shows an edit dialog for a category (rename + delete).
+  Future<void> _promptEditCategory(Map<String, dynamic> course) async {
+    if (course['is_default'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('The default category cannot be edited.'),
+        ),
+      );
+      return;
+    }
+    final controller =
+        TextEditingController(text: course['title']?.toString() ?? '');
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit category'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Category name',
+                border: OutlineInputBorder(),
+              ),
+              onSubmitted: (value) => Navigator.of(ctx).pop('rename:$value'),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Deleting moves all notes to the default category.',
+              style: Theme.of(ctx).textTheme.bodySmall,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('delete'),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            child: const Text('Delete'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(ctx).pop('rename:${controller.text}'),
+            child: const Text('Rename'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (result == null) return;
+    if (result == 'delete') {
+      final confirmed = await _confirmWithDelay(
+        title: 'Delete category?',
+        message:
+            "'${course['title']}' will be removed. All notes inside will move to the default category.",
+      );
+      if (confirmed) {
+        await _deleteCategory(course);
+      }
+    } else if (result.startsWith('rename:')) {
+      await _renameCategory(course, result.substring(7));
+    }
+  }
+
+  /// Shows a confirmation dialog with a 3-second delay before enabling the
+  /// destructive action button. Used for clear-data style operations.
+  Future<bool> _confirmWithDelay({
+    required String title,
+    required String message,
+    String confirmLabel = 'Delete',
+    int delaySeconds = 3,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => _ConfirmWithDelayDialog(
+        title: title,
+        message: message,
+        confirmLabel: confirmLabel,
+        delaySeconds: delaySeconds,
+      ),
+    );
+    return result == true;
+  }
+
+  // ---------------------------------------------------------------------------
   // Local course & draft building
   // ---------------------------------------------------------------------------
   Map<String, dynamic> _buildLocalCourse({
@@ -1789,23 +2077,211 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       final detail = note['content'] != null
           ? note
           : await _fetchNoteDetail(note['id'] as int);
-      final location = await getSaveLocation(
-        suggestedName: '${detail['title'] ?? 'note'}.md',
-        acceptedTypeGroups: [
-          const XTypeGroup(label: 'Markdown', extensions: ['md']),
-        ],
+      // Resolve category + sibling notes so the options dialog can show how
+      // many notes a recursive export would include.
+      final courseMap =
+          Map<String, dynamic>.from(detail['course'] as Map? ?? const {});
+      final courseId = courseMap['id'] as int?;
+      final categoryTitle = courseMap['title']?.toString() ?? 'Category';
+      final siblings = await _collectCategoryNotes(detail, courseId);
+
+      if (!mounted) return;
+      final options = await showDialog<_ExportOptions>(
+        context: context,
+        builder: (ctx) => _ExportOptionsDialog(
+          noteTitle: detail['title']?.toString() ?? 'Untitled note',
+          categoryTitle: categoryTitle,
+          siblingCount: siblings.length,
+        ),
       );
-      if (location == null) return;
-      final bytes = Uint8List.fromList(utf8.encode(
-          detail['content']?.toString() ?? _noteToMarkdown(detail)));
-      final file = XFile.fromData(bytes,
-          name: '${detail['title'] ?? 'note'}.md',
-          mimeType: 'text/markdown');
-      await file.saveTo(location.path);
-      _showMessage("Exported '${detail['title'] ?? 'note'}'.");
+      if (options == null) return;
+
+      final notesToExport = options.recursive ? siblings : [detail];
+      final baseName = options.recursive
+          ? _slugifyLocalText(categoryTitle, fallback: 'category')
+          : _slugifyLocalText(
+              detail['title']?.toString() ?? 'note',
+              fallback: 'note');
+
+      if (options.format == 'zip') {
+        await _writeNotesAsZip(
+          notes: notesToExport,
+          baseName: baseName,
+          includeMetadata: options.includeMetadata,
+        );
+      } else {
+        await _writeNotesAsMarkdown(
+          notes: notesToExport,
+          baseName: baseName,
+          includeMetadata: options.includeMetadata,
+          combined: options.recursive,
+        );
+      }
     } catch (error) {
       _showMessage(error.toString().replaceFirst('Exception: ', ''));
     }
+  }
+
+  /// Returns the list of notes that share a category with [detail]. Falls back
+  /// to the single note when no category info is available. Used by the export
+  /// options dialog and the recursive export path.
+  Future<List<Map<String, dynamic>>> _collectCategoryNotes(
+      Map<String, dynamic> detail, int? courseId) async {
+    if (courseId == null) {
+      return [detail];
+    }
+    final local = _localDrafts
+        .where((d) =>
+            (Map<String, dynamic>.from(d['course'] as Map? ?? const {}))['id'] ==
+            courseId)
+        .map((d) => Map<String, dynamic>.from(d))
+        .toList();
+    List<Map<String, dynamic>> remote = const [];
+    final token = _token;
+    if (token != null && token.isNotEmpty && courseId >= 0) {
+      try {
+        final list = await widget.client.getCourseNotes(courseId, token: token);
+        remote = [
+          for (final n in list)
+            n['content'] != null
+                ? Map<String, dynamic>.from(n)
+                : await _fetchNoteDetail(n['id'] as int),
+        ];
+      } catch (_) {
+        remote = const [];
+      }
+    }
+    final combined = <Map<String, dynamic>>[...local, ...remote];
+    // Deduplicate by id, keep the richer (with content) version.
+    final byId = <dynamic, Map<String, dynamic>>{};
+    for (final n in combined) {
+      final id = n['id'];
+      if (!byId.containsKey(id) ||
+          (byId[id]!['content'] == null && n['content'] != null)) {
+        byId[id] = n;
+      }
+    }
+    final result = byId.values.toList();
+    if (result.isEmpty) result.add(detail);
+    return result;
+  }
+
+  /// Builds YAML frontmatter block prepended to exported markdown when the
+  /// user opts in to metadata.
+  String _frontmatterForNote(Map<String, dynamic> note) {
+    final author =
+        Map<String, dynamic>.from(note['author'] as Map? ?? const {});
+    final course =
+        Map<String, dynamic>.from(note['course'] as Map? ?? const {});
+    final buffer = StringBuffer('---\n');
+    buffer.writeln('title: ${_yamlEscape(note['title']?.toString() ?? '')}');
+    if ((author['username']?.toString() ?? '').isNotEmpty) {
+      buffer.writeln('author: ${_yamlEscape(author['username'].toString())}');
+    }
+    if ((course['title']?.toString() ?? '').isNotEmpty) {
+      buffer.writeln('category: ${_yamlEscape(course['title'].toString())}');
+    }
+    if ((note['last_edit']?.toString() ?? '').isNotEmpty) {
+      buffer.writeln('last_edit: ${note['last_edit']}');
+    }
+    if ((note['description']?.toString() ?? '').isNotEmpty) {
+      buffer.writeln(
+          'description: ${_yamlEscape(note['description'].toString())}');
+    }
+    buffer.writeln('---');
+    return buffer.toString();
+  }
+
+  String _yamlEscape(String value) {
+    if (value.contains(':') || value.contains('#') || value.contains('\n')) {
+      return '"${value.replaceAll('"', '\\"').replaceAll('\n', ' ')}"';
+    }
+    return value;
+  }
+
+  String _noteMarkdownBody(Map<String, dynamic> note) {
+    return note['content']?.toString() ?? _noteToMarkdown(note);
+  }
+
+  /// Writes notes as a markdown file. When [combined] is true, all notes are
+  /// concatenated with `---` separators into a single file.
+  Future<void> _writeNotesAsMarkdown({
+    required List<Map<String, dynamic>> notes,
+    required String baseName,
+    required bool includeMetadata,
+    required bool combined,
+  }) async {
+    final location = await getSaveLocation(
+      suggestedName: '$baseName.md',
+      acceptedTypeGroups: [
+        const XTypeGroup(label: 'Markdown', extensions: ['md']),
+      ],
+    );
+    if (location == null) return;
+    final buffer = StringBuffer();
+    for (var i = 0; i < notes.length; i++) {
+      final note = notes[i];
+      if (includeMetadata) {
+        buffer.writeln(_frontmatterForNote(note));
+        buffer.writeln();
+      }
+      buffer.writeln(_noteMarkdownBody(note));
+      if (combined && i < notes.length - 1) {
+        buffer.writeln();
+        buffer.writeln('---');
+        buffer.writeln();
+      }
+    }
+    final bytes = Uint8List.fromList(utf8.encode(buffer.toString()));
+    final file = XFile.fromData(bytes,
+        name: '$baseName.md', mimeType: 'text/markdown');
+    await file.saveTo(location.path);
+    _showMessage('Exported ${notes.length} note(s) to ${location.path}.');
+  }
+
+  /// Writes notes as a zip archive where each note becomes a separate .md.
+  Future<void> _writeNotesAsZip({
+    required List<Map<String, dynamic>> notes,
+    required String baseName,
+    required bool includeMetadata,
+  }) async {
+    final location = await getSaveLocation(
+      suggestedName: '$baseName.zip',
+      acceptedTypeGroups: [
+        const XTypeGroup(label: 'Zip archive', extensions: ['zip']),
+      ],
+    );
+    if (location == null) return;
+    final archive = Archive();
+    final seen = <String>{};
+    for (final note in notes) {
+      final title = note['title']?.toString() ?? 'Untitled note';
+      var slug = _slugifyLocalText(title, fallback: 'note');
+      var finalSlug = slug;
+      var counter = 1;
+      while (seen.contains('$finalSlug.md')) {
+        counter += 1;
+        finalSlug = '$slug-$counter';
+      }
+      seen.add('$finalSlug.md');
+      final buffer = StringBuffer();
+      if (includeMetadata) {
+        buffer.writeln(_frontmatterForNote(note));
+        buffer.writeln();
+      }
+      buffer.writeln(_noteMarkdownBody(note));
+      final data = utf8.encode(buffer.toString());
+      archive.addFile(ArchiveFile('$finalSlug.md', data.length, data));
+    }
+    final zipData = ZipEncoder().encode(archive);
+    if (zipData == null) {
+      _showMessage('Failed to encode zip archive.');
+      return;
+    }
+    final file = XFile.fromData(Uint8List.fromList(zipData),
+        name: '$baseName.zip', mimeType: 'application/zip');
+    await file.saveTo(location.path);
+    _showMessage('Exported ${notes.length} note(s) to ${location.path}.');
   }
 
   // ---------------------------------------------------------------------------
@@ -1942,34 +2418,6 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       if (showMessage) _showMessage('Local data sync failed: $message');
       return ActionFeedback(message: message, isError: true);
     }
-  }
-
-  Future<ActionFeedback> _clearLocalCache() async {
-    _localCache = _LocalAppStore.defaultCache();
-    _frontPage = _localCourses.isNotEmpty
-        ? _frontPageFallbackPayload(const [])
-        : const <String, dynamic>{};
-    _courses = const [];
-    _courseNotes = _isLocalCourse(_selectedCourse)
-        ? _localNotesForCourse(_selectedCourse!)
-        : const [];
-    _selectedCourse = _isLocalCourse(_selectedCourse)
-        ? _selectedCourse
-        : _chooseDefaultCourse(
-            remoteCourses: const [],
-            localCourses: _localCourses,
-            frontPage: _frontPage,
-          );
-    _localStats = {
-      ..._localStats,
-      'cache_clears':
-          ((_localStats['cache_clears'] as num?)?.toInt() ?? 0) + 1,
-    };
-    await _LocalAppStore.saveCache(_localCache);
-    await _persistLocalStats();
-    if (mounted) setState(() {});
-    _appendUiLog('Cleared cached remote data.');
-    return const ActionFeedback(message: 'Cached remote data cleared.');
   }
 
   Future<ActionFeedback> _clearLocalData() async {
@@ -2216,16 +2664,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-                    child: Text(
-                      widget.appTitle,
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.w800),
-                    ),
-                  ),
+                  const SizedBox(height: 20),
                   // "All Notes" item
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -2281,24 +2720,57 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
                             for (final cat in _allCategories)
                               Padding(
                                 padding: const EdgeInsets.only(bottom: 4),
-                                child: _SidebarItem(
-                                  icon: cat['is_local_course'] == true
-                                      ? Icons.folder_outlined
-                                      : Icons.school_outlined,
-                                  label: cat['title']?.toString() ??
-                                      'Category',
-                                  selected: _selectedCategoryId ==
-                                      (cat['id'] as num?)?.toInt(),
-                                  onTap: () => _selectCourse(cat),
+                                child: Tooltip(
+                                  message: cat['is_default'] == true
+                                      ? cat['title']?.toString() ?? 'Category'
+                                      : 'Long-press or right-click to rename or delete',
+                                  waitDuration:
+                                      const Duration(milliseconds: 600),
+                                  child: GestureDetector(
+                                    onLongPress: () =>
+                                        _promptEditCategory(cat),
+                                    onSecondaryTap: () =>
+                                        _promptEditCategory(cat),
+                                    child: _SidebarItem(
+                                      icon: cat['is_local_course'] == true
+                                          ? Icons.folder_outlined
+                                          : Icons.school_outlined,
+                                      label: cat['title']?.toString() ??
+                                          'Category',
+                                      selected: _selectedCategoryId ==
+                                          (cat['id'] as num?)?.toInt(),
+                                      onTap: () => _selectCourse(cat),
+                                    ),
+                                  ),
                                 ),
                               ),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: _SidebarItem(
+                                icon: Icons.add_circle_outline,
+                                label: 'New category',
+                                selected: false,
+                                onTap: _promptCreateCategory,
+                              ),
+                            ),
                           ],
                         ),
                       )
                     else
                       const Spacer(),
-                  ] else
+                  ] else ...[
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: _SidebarItem(
+                        icon: Icons.add_circle_outline,
+                        label: 'New category',
+                        selected: false,
+                        onTap: _promptCreateCategory,
+                      ),
+                    ),
                     const Spacer(),
+                  ],
                   // Settings at bottom
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
@@ -2442,7 +2914,6 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           onUploadAvatar: _uploadAvatar,
           onSyncLocalData: _syncAllLocalData,
           onPullCloudData: _pullCloudNotesToLocal,
-          onClearLocalCache: _clearLocalCache,
           onClearLocalData: _clearLocalData,
           onRestoreTemplateCourses: _restoreTemplateCourses,
           onDownloadConfig: _downloadConfigFile,

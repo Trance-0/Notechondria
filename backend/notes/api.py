@@ -580,6 +580,76 @@ class CourseDetailApiView(APIView):
             ).data
         )
 
+    def patch(self, request, course_id):
+        if not request.user.is_authenticated:
+            return Response(
+                {"detail": "Authentication required."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        creator = ensure_creator(request.user)
+        course = get_object_or_404(Course, pk=course_id)
+        if course.creator_id_id != creator.id:
+            return Response(
+                {"detail": "You can only edit your own categories."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if course.is_default:
+            return Response(
+                {"detail": "The default category cannot be edited."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = CourseWriteSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        if "title" in serializer.validated_data:
+            course.title = serializer.validated_data["title"].strip()
+        if "description" in serializer.validated_data:
+            course.description = serializer.validated_data.get("description") or ""
+        course.save()
+        subscription_map = active_subscription_map(creator)
+        return Response(
+            CourseSerializer(
+                course,
+                context={"request": request, "subscription_map": subscription_map},
+            ).data
+        )
+
+    def delete(self, request, course_id):
+        if not request.user.is_authenticated:
+            return Response(
+                {"detail": "Authentication required."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        creator = ensure_creator(request.user)
+        course = get_object_or_404(Course, pk=course_id)
+        if course.creator_id_id != creator.id:
+            return Response(
+                {"detail": "You can only delete your own categories."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if course.is_default:
+            return Response(
+                {"detail": "The default category cannot be deleted."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Move owned notes into the user's default category before deletion.
+        default_course = (
+            Course.objects.filter(creator_id=creator, is_default=True)
+            .order_by("id")
+            .first()
+        )
+        if default_course is None:
+            default_course = Course.objects.create(
+                creator_id=creator,
+                slug=unique_course_slug("Inbox", fallback="inbox"),
+                title="Inbox",
+                description="Default category",
+                is_default=True,
+            )
+        with transaction.atomic():
+            Note.objects.filter(course_id=course).update(course_id=default_course)
+            course.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class CourseNotesApiView(APIView):
     permission_classes = [permissions.AllowAny]

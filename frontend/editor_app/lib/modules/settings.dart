@@ -22,7 +22,6 @@ class _SettingsPage extends StatefulWidget {
     required this.onUploadAvatar,
     required this.onSyncLocalData,
     required this.onPullCloudData,
-    required this.onClearLocalCache,
     required this.onClearLocalData,
     required this.onRestoreTemplateCourses,
     required this.localDraftCount,
@@ -66,7 +65,6 @@ class _SettingsPage extends StatefulWidget {
   final Future<ActionFeedback> Function() onUploadAvatar;
   final Future<ActionFeedback> Function({bool showMessage}) onSyncLocalData;
   final Future<ActionFeedback> Function() onPullCloudData;
-  final Future<ActionFeedback> Function() onClearLocalCache;
   final Future<ActionFeedback> Function() onClearLocalData;
   final Future<ActionFeedback> Function() onRestoreTemplateCourses;
   final Future<void> Function()? onDownloadConfig;
@@ -93,6 +91,7 @@ class _SettingsPageState extends State<_SettingsPage> {
   ActionFeedback? _saveFeedback;
   bool _saving = false;
   bool _uploadingAvatar = false;
+  Timer? _autoSaveTimer;
 
   bool get _isAuthenticated => widget.profile != null && widget.settings != null;
 
@@ -149,6 +148,7 @@ class _SettingsPageState extends State<_SettingsPage> {
 
   @override
   void dispose() {
+    _autoSaveTimer?.cancel();
     _usernameController.dispose();
     _emailController.dispose();
     _mottoController.dispose();
@@ -157,7 +157,18 @@ class _SettingsPageState extends State<_SettingsPage> {
     super.dispose();
   }
 
+  /// Debounced auto-save: triggered by text field edits and dropdown changes.
+  /// Replaces the explicit "Save settings" button so every change is persisted
+  /// shortly after the user stops editing.
+  void _scheduleAutoSave() {
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = Timer(const Duration(milliseconds: 700), () {
+      if (mounted) _submitSettings();
+    });
+  }
+
   Future<void> _submitSettings() async {
+    if (_saving) return;
     setState(() {
       _saving = true;
       _saveFeedback = null;
@@ -194,6 +205,25 @@ class _SettingsPageState extends State<_SettingsPage> {
       _uploadingAvatar = false;
       _saveFeedback = feedback;
     });
+  }
+
+  /// Destructive confirmation for "Clear all local data" — blocks the confirm
+  /// button for 3 seconds so the user cannot tap through reflexively.
+  Future<void> _confirmClearAllLocalData() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const _ConfirmWithDelayDialog(
+        title: 'Clear all local data?',
+        message:
+            'This removes every local draft and local category from this device. Notes already synced to the cloud are not affected.',
+        confirmLabel: 'Clear all',
+        delaySeconds: 3,
+      ),
+    );
+    if (confirmed == true) {
+      await _runMaintenanceAction(widget.onClearLocalData);
+    }
   }
 
   Future<void> _runMaintenanceAction(
@@ -298,12 +328,16 @@ class _SettingsPageState extends State<_SettingsPage> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'This app only keeps the editor-focused controls: login/sync, editor preferences, and debug output.',
+          'Changes are saved automatically. Online account settings require an active login; local preferences work offline.',
         ),
+        if (_saveFeedback != null) ...[
+          const SizedBox(height: 12),
+          _FeedbackText(feedback: _saveFeedback!),
+        ],
         const SizedBox(height: 20),
-        _buildLoginSyncSection(context),
+        _buildOnlineAccountSection(context),
         const SizedBox(height: 16),
-        _buildEditorSection(context),
+        _buildOfflinePreferencesSection(context),
         const SizedBox(height: 16),
         _buildConfigSection(context),
         const SizedBox(height: 16),
@@ -312,25 +346,41 @@ class _SettingsPageState extends State<_SettingsPage> {
     );
   }
 
-  /// Login, sync, and user profile section.
-  Widget _buildLoginSyncSection(BuildContext context) {
+  /// Online account section: login/register when signed out; profile fields,
+  /// sync buttons, and logout when signed in. Hosts every control that only
+  /// makes sense with an active cloud session.
+  Widget _buildOnlineAccountSection(BuildContext context) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Login and sync',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700),
+            Row(
+              children: [
+                Icon(Icons.cloud_outlined,
+                    color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Online account',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const Spacer(),
+                if (_saving)
+                  const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+              ],
             ),
             const SizedBox(height: 8),
             if (!_isAuthenticated) ...[
               const Text(
-                'Sign in to sync notes independently from the planner and portal apps. Local notes remain usable while signed out.',
+                'Sign in to sync notes with the cloud. Local notes stay editable even while signed out.',
               ),
               const SizedBox(height: 12),
               _AuthHub(
@@ -426,6 +476,7 @@ class _SettingsPageState extends State<_SettingsPage> {
         const SizedBox(height: 16),
         TextField(
           controller: _usernameController,
+          onChanged: (_) => _scheduleAutoSave(),
           decoration: const InputDecoration(
             labelText: 'Username',
             border: OutlineInputBorder(),
@@ -434,6 +485,7 @@ class _SettingsPageState extends State<_SettingsPage> {
         const SizedBox(height: 12),
         TextField(
           controller: _emailController,
+          onChanged: (_) => _scheduleAutoSave(),
           decoration: const InputDecoration(
             labelText: 'Email',
             border: OutlineInputBorder(),
@@ -442,6 +494,7 @@ class _SettingsPageState extends State<_SettingsPage> {
         const SizedBox(height: 12),
         TextField(
           controller: _mottoController,
+          onChanged: (_) => _scheduleAutoSave(),
           decoration: const InputDecoration(
             labelText: 'Motto',
             border: OutlineInputBorder(),
@@ -450,6 +503,7 @@ class _SettingsPageState extends State<_SettingsPage> {
         const SizedBox(height: 12),
         TextField(
           controller: _socialController,
+          onChanged: (_) => _scheduleAutoSave(),
           decoration: const InputDecoration(
             labelText: 'Social link',
             border: OutlineInputBorder(),
@@ -459,32 +513,41 @@ class _SettingsPageState extends State<_SettingsPage> {
     );
   }
 
-  /// Editor preferences: editor mode, theme, API base URL.
-  Widget _buildEditorSection(BuildContext context) {
+  /// Offline preferences: editor mode, theme, API base URL. Every control
+  /// works without an account and auto-saves on change — no explicit button.
+  Widget _buildOfflinePreferencesSection(BuildContext context) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Editor preferences',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700),
+            Row(
+              children: [
+                Icon(Icons.tune_outlined,
+                    color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Offline preferences',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _editorMode,
+              initialValue: _editorMode,
               items: const [
                 DropdownMenuItem(value: 'P', child: Text('Plain text editor')),
-                DropdownMenuItem(value: 'G', child: Text('Dynamic markdown editor')),
+                DropdownMenuItem(value: 'G', child: Text('Live markdown editor')),
                 DropdownMenuItem(value: 'B', child: Text('Block editor')),
               ],
               onChanged: (value) {
                 if (value != null) {
                   setState(() => _editorMode = value);
+                  _scheduleAutoSave();
                 }
               },
               decoration: const InputDecoration(
@@ -497,7 +560,7 @@ class _SettingsPageState extends State<_SettingsPage> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _themePreset,
+                    initialValue: _themePreset,
                     items: _themePresetEntries.entries
                         .map((entry) => DropdownMenuItem<String>(
                               value: entry.key,
@@ -507,6 +570,7 @@ class _SettingsPageState extends State<_SettingsPage> {
                     onChanged: (value) {
                       if (value != null) {
                         setState(() => _themePreset = value);
+                        _scheduleAutoSave();
                       }
                     },
                     decoration: const InputDecoration(
@@ -518,7 +582,7 @@ class _SettingsPageState extends State<_SettingsPage> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _themeMode,
+                    initialValue: _themeMode,
                     items: const [
                       DropdownMenuItem(value: 'S', child: Text('System')),
                       DropdownMenuItem(value: 'L', child: Text('Light')),
@@ -527,6 +591,7 @@ class _SettingsPageState extends State<_SettingsPage> {
                     onChanged: (value) {
                       if (value != null) {
                         setState(() => _themeMode = value);
+                        _scheduleAutoSave();
                       }
                     },
                     decoration: const InputDecoration(
@@ -540,19 +605,11 @@ class _SettingsPageState extends State<_SettingsPage> {
             const SizedBox(height: 12),
             TextField(
               controller: _apiBaseController,
+              onChanged: (_) => _scheduleAutoSave(),
               decoration: const InputDecoration(
                 labelText: 'API base URL',
                 border: OutlineInputBorder(),
               ),
-            ),
-            const SizedBox(height: 12),
-            if (_saveFeedback != null) ...[
-              _FeedbackText(feedback: _saveFeedback!),
-              const SizedBox(height: 12),
-            ],
-            FilledButton(
-              onPressed: _saving ? null : _submitSettings,
-              child: Text(_saving ? 'Saving...' : 'Save settings'),
             ),
           ],
         ),
@@ -591,11 +648,6 @@ class _SettingsPageState extends State<_SettingsPage> {
                     label: const Text('Download config file'),
                   ),
                 OutlinedButton.icon(
-                  onPressed: () => _runMaintenanceAction(widget.onClearLocalCache),
-                  icon: const Icon(Icons.cached_outlined),
-                  label: const Text('Clear local cache'),
-                ),
-                OutlinedButton.icon(
                   onPressed: () => _runMaintenanceAction(widget.onRestoreTemplateCourses),
                   icon: const Icon(Icons.restore_outlined),
                   label: const Text('Restore template categories'),
@@ -608,7 +660,7 @@ class _SettingsPageState extends State<_SettingsPage> {
                   ),
                 ),
                 OutlinedButton.icon(
-                  onPressed: () => _runMaintenanceAction(widget.onClearLocalData),
+                  onPressed: _confirmClearAllLocalData,
                   icon: Icon(Icons.warning_amber_outlined,
                       color: Theme.of(context).colorScheme.error),
                   label: Text(

@@ -42,6 +42,12 @@ abstract class NotechondriaClient {
     String token,
     Map<String, dynamic> payload,
   );
+  Future<Map<String, dynamic>> updateCourse(
+    String token,
+    int courseId,
+    Map<String, dynamic> payload,
+  );
+  Future<void> deleteCourse(String token, int courseId);
   Future<Map<String, dynamic>> getCourseDetail(int courseId, {String? token});
   Future<List<Map<String, dynamic>>> getCourseNotes(int courseId, {String? token});
   Future<Map<String, dynamic>> getNoteDetail(int noteId, {String? token});
@@ -386,6 +392,26 @@ class HttpNotechondriaClient implements NotechondriaClient {
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),
     );
+  }
+
+  @override
+  Future<Map<String, dynamic>> updateCourse(
+    String token,
+    int courseId,
+    Map<String, dynamic> payload,
+  ) async {
+    final uri = _uri('/courses/$courseId/');
+    final response = await _patch(uri, token: token, payload: payload);
+    return Map<String, dynamic>.from(
+      await _decode(response, uri: uri, method: 'PATCH'),
+    );
+  }
+
+  @override
+  Future<void> deleteCourse(String token, int courseId) async {
+    final uri = _uri('/courses/$courseId/');
+    final response = await _delete(uri, token: token);
+    await _decode(response, uri: uri, method: 'DELETE');
   }
 
   @override

@@ -312,23 +312,15 @@ class _LearnerPageState extends State<_LearnerPage> {
                 _LearnerNoteCard(
                   note: note,
                   apiBaseUrl: widget.apiBaseUrl,
-                  canEdit: true,
                   isLocalDraft: true,
                   onOpen: () => _openViewer(note),
-                  onEdit: () => _openEditor(note),
-                  onExport: () => widget.onExportNote(note),
-                  onDelete: () => widget.onDeleteNote(note),
                 ),
             if (widget.isAuthenticated)
               for (final note in widget.notes)
                 _LearnerNoteCard(
                   note: note,
                   apiBaseUrl: widget.apiBaseUrl,
-                  canEdit: true,
                   onOpen: () => _openViewer(note),
-                  onEdit: () => _openEditor(note),
-                  onExport: () => widget.onExportNote(note),
-                  onDelete: () => widget.onDeleteNote(note),
                 ),
             if (widget.isAuthenticated && localDrafts.isNotEmpty) ...[
               const SizedBox(height: 20),
@@ -338,13 +330,9 @@ class _LearnerPageState extends State<_LearnerPage> {
                 _LearnerNoteCard(
                   note: draft,
                   apiBaseUrl: widget.apiBaseUrl,
-                  canEdit: true,
                   isLocalDraft: true,
                   canSync: true,
                   onOpen: () => _openViewer(draft),
-                  onEdit: () => _openEditor(draft),
-                  onExport: () => widget.onExportNote(draft),
-                  onDelete: () => widget.onDeleteNote(draft),
                   onSync: () => widget.onSyncLocalDraft(draft),
                 ),
             ],
@@ -391,16 +379,13 @@ class _LearnerPageState extends State<_LearnerPage> {
   }
 }
 
-/// Recent-note card with public/private styling and note actions.
+/// Recent-note card with public/private styling. Tap to open the viewer;
+/// note actions (edit/export/delete) live inside the viewer itself.
 class _LearnerNoteCard extends StatelessWidget {
   const _LearnerNoteCard({
     required this.note,
     required this.apiBaseUrl,
-    required this.canEdit,
     required this.onOpen,
-    required this.onEdit,
-    required this.onExport,
-    required this.onDelete,
     this.onSync,
     this.isLocalDraft = false,
     this.canSync = false,
@@ -408,11 +393,7 @@ class _LearnerNoteCard extends StatelessWidget {
 
   final Map<String, dynamic> note;
   final String? apiBaseUrl;
-  final bool canEdit;
   final VoidCallback onOpen;
-  final VoidCallback onEdit;
-  final Future<void> Function() onExport;
-  final Future<void> Function() onDelete;
   final Future<void> Function()? onSync;
   final bool isLocalDraft;
   final bool canSync;
@@ -521,29 +502,14 @@ class _LearnerNoteCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  PopupMenuButton<String>(
-                    onSelected: (value) async {
-                      if (value == 'edit') {
-                        onEdit();
-                      } else if (value == 'delete') {
-                        await onDelete();
-                      } else if (value == 'sync' && onSync != null) {
+                  if (canSync && onSync != null)
+                    IconButton(
+                      tooltip: 'Sync to cloud',
+                      icon: const Icon(Icons.cloud_upload_outlined),
+                      onPressed: () async {
                         await onSync!();
-                      } else if (value == 'export') {
-                        await onExport();
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      if (canEdit)
-                        const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                      if (canSync)
-                        const PopupMenuItem(value: 'sync', child: Text('Sync to cloud')),
-                      const PopupMenuItem(
-                          value: 'export', child: Text('Export markdown')),
-                      const PopupMenuItem(
-                          value: 'delete', child: Text('Delete')),
-                    ],
-                  ),
+                      },
+                    ),
                 ],
               ),
               if ((note['description']?.toString() ?? '').isNotEmpty) ...[
@@ -566,21 +532,22 @@ class _LearnerNoteCard extends StatelessWidget {
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 14),
-              Align(
-                alignment: Alignment.bottomRight,
-                child: Text(
-                  isLocalDraft
-                      ? 'Stored locally until you sync'
-                      : 'Course metadata stays editable from the editor details panel',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+              if (isLocalDraft) ...[
+                const SizedBox(height: 14),
+                Align(
+                  alignment: Alignment.bottomRight,
+                  child: Text(
+                    'Stored locally until you sync',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),

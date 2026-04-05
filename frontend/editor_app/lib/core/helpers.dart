@@ -250,18 +250,156 @@ ThemeMode _themeModeFromSetting(String raw) {
   }
 }
 
-/// Builds markdown renderers, including inline LaTeX support and scrollable
-/// code blocks.
+/// Builds markdown renderers, including inline LaTeX support, scrollable
+/// code blocks, and GFM <details>/<summary> collapsible sections.
 Map<String, MarkdownElementBuilder> _markdownBuilders() {
   return {
     'latex': _LatexBuilder(),
     'pre': _ScrollableCodeBlockBuilder(),
+    'details': _DetailsBuilder(),
   };
+}
+
+/// Block syntaxes used for viewer/editor previews — currently the GFM
+/// `<details>`/`<summary>` collapsible section.
+List<md.BlockSyntax> _markdownBlockSyntaxes() {
+  return [_DetailsBlockSyntax()];
+}
+
+/// Shared MarkdownStyleSheet used by the note viewer and editor preview so
+/// headers, code blocks, and horizontal rules render consistently. Headers
+/// use a clearer size progression with padding-like spacing.
+MarkdownStyleSheet _markdownStyleSheet(BuildContext context) {
+  final theme = Theme.of(context);
+  final colorScheme = theme.colorScheme;
+  final base = MarkdownStyleSheet.fromTheme(theme);
+  return base.copyWith(
+    h1: theme.textTheme.displaySmall?.copyWith(
+      fontWeight: FontWeight.w800,
+      height: 1.2,
+    ),
+    h1Padding: const EdgeInsets.only(top: 24, bottom: 12),
+    h2: theme.textTheme.headlineMedium?.copyWith(
+      fontWeight: FontWeight.w700,
+      height: 1.25,
+    ),
+    h2Padding: const EdgeInsets.only(top: 20, bottom: 10),
+    h3: theme.textTheme.headlineSmall?.copyWith(
+      fontWeight: FontWeight.w700,
+      height: 1.3,
+    ),
+    h3Padding: const EdgeInsets.only(top: 18, bottom: 8),
+    h4: theme.textTheme.titleLarge?.copyWith(
+      fontWeight: FontWeight.w700,
+    ),
+    h4Padding: const EdgeInsets.only(top: 14, bottom: 6),
+    h5: theme.textTheme.titleMedium?.copyWith(
+      fontWeight: FontWeight.w700,
+    ),
+    h5Padding: const EdgeInsets.only(top: 12, bottom: 6),
+    h6: theme.textTheme.titleSmall?.copyWith(
+      fontWeight: FontWeight.w700,
+    ),
+    h6Padding: const EdgeInsets.only(top: 10, bottom: 4),
+    p: theme.textTheme.bodyLarge,
+    pPadding: const EdgeInsets.symmetric(vertical: 4),
+    blockquoteDecoration: BoxDecoration(
+      color: colorScheme.surfaceContainerHighest.withOpacity(0.4),
+      border: Border(
+        left: BorderSide(color: colorScheme.primary, width: 4),
+      ),
+    ),
+    blockquotePadding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+    codeblockDecoration: BoxDecoration(
+      color: colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    code: theme.textTheme.bodyMedium?.copyWith(
+      fontFamily: 'monospace',
+      backgroundColor: colorScheme.surfaceContainerHighest,
+    ),
+    horizontalRuleDecoration: BoxDecoration(
+      border: Border(
+        top: BorderSide(color: theme.dividerColor),
+      ),
+    ),
+  );
 }
 
 /// Registers markdown inline syntaxes used across note viewers and previews.
 List<md.InlineSyntax> _markdownInlineSyntaxes() {
   return [_LatexInlineSyntax()];
+}
+
+/// Lightweight GFM-spec validator: scans [markdown] for obvious structural
+/// problems that would prevent the note from rendering correctly. Returns a
+/// list of human-readable warnings; empty means the note is well-formed.
+///
+/// Intentionally conservative — this is a safety net, not a full parser.
+List<String> _validateMarkdownSpec(String markdown) {
+  if (markdown.isEmpty) return const [];
+  final warnings = <String>[];
+  final lines = markdown.split('\n');
+  // Unclosed fenced code blocks.
+  var fenceOpen = false;
+  var fenceLine = 0;
+  for (var i = 0; i < lines.length; i++) {
+    final trimmed = lines[i].trimLeft();
+    if (trimmed.startsWith('```') || trimmed.startsWith('~~~')) {
+      if (!fenceOpen) {
+        fenceOpen = true;
+        fenceLine = i + 1;
+      } else {
+        fenceOpen = false;
+      }
+    }
+  }
+  if (fenceOpen) {
+    warnings.add('Unclosed code fence opened on line $fenceLine.');
+  }
+  // Headings with more than 6 `#`.
+  for (var i = 0; i < lines.length; i++) {
+    final match = RegExp(r'^(#{7,})\s').firstMatch(lines[i]);
+    if (match != null) {
+      warnings.add('Heading on line ${i + 1} exceeds 6 `#` characters.');
+      break;
+    }
+  }
+  // Inline code backticks: odd count of single backticks outside code fences.
+  var inFence = false;
+  var backticks = 0;
+  var dollarSingles = 0;
+  var dollarDoubles = 0;
+  for (final line in lines) {
+    final trimmed = line.trimLeft();
+    if (trimmed.startsWith('```') || trimmed.startsWith('~~~')) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
+    for (var i = 0; i < line.length; i++) {
+      final c = line[i];
+      if (c == '`') backticks += 1;
+      if (c == r'$') {
+        if (i + 1 < line.length && line[i + 1] == r'$') {
+          dollarDoubles += 1;
+          i += 1;
+        } else if (i == 0 || line[i - 1] != r'\\') {
+          dollarSingles += 1;
+        }
+      }
+    }
+  }
+  if (backticks.isOdd) {
+    warnings.add('Unmatched inline backtick (`) — close your inline code.');
+  }
+  if (dollarSingles.isOdd) {
+    warnings.add(r'Unmatched inline math delimiter ($).');
+  }
+  if (dollarDoubles.isOdd) {
+    warnings.add(r'Unmatched display math delimiter ($$).');
+  }
+  return warnings;
 }
 
 /// Parses `$...$` and `$$...$$` LaTeX spans into markdown elements.
@@ -293,6 +431,91 @@ class _LatexBuilder extends MarkdownElementBuilder {
       element.textContent,
       mathStyle: MathStyle.text,
       textStyle: preferredStyle ?? parentStyle,
+    );
+  }
+}
+
+/// Parses GFM `<details>` HTML blocks into a custom markdown element so they
+/// can be rendered as collapsible [ExpansionTile]s. Accepts an optional
+/// `<summary>` on the first or second line and treats the rest of the block
+/// as nested markdown that will be re-rendered inside the expansion body.
+class _DetailsBlockSyntax extends md.BlockSyntax {
+  @override
+  RegExp get pattern => RegExp(r'^\s*<details\b[^>]*>\s*$');
+
+  @override
+  md.Node? parse(md.BlockParser parser) {
+    parser.advance();
+    var summary = 'Details';
+    final bodyLines = <String>[];
+    final summaryRegex = RegExp(r'<summary[^>]*>(.*?)</summary>',
+        caseSensitive: false, dotAll: true);
+    final closingRegex = RegExp(r'^\s*</details>\s*$', caseSensitive: false);
+    while (!parser.isDone) {
+      final line = parser.current.content;
+      if (closingRegex.hasMatch(line)) {
+        parser.advance();
+        break;
+      }
+      final match = summaryRegex.firstMatch(line);
+      if (match != null && summary == 'Details') {
+        summary = match.group(1)?.trim() ?? summary;
+        final remaining = line
+            .replaceFirst(summaryRegex, '')
+            .trim();
+        if (remaining.isNotEmpty) bodyLines.add(remaining);
+      } else {
+        bodyLines.add(line);
+      }
+      parser.advance();
+    }
+    final element = md.Element('details', [md.Text(bodyLines.join('\n'))])
+      ..attributes['summary'] = summary;
+    return element;
+  }
+}
+
+/// Renders `<details>` elements as a Material [ExpansionTile] with nested
+/// markdown inside the body.
+class _DetailsBuilder extends MarkdownElementBuilder {
+  @override
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    final summary = element.attributes['summary'] ?? 'Details';
+    final body = element.textContent;
+    final theme = Theme.of(context);
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        border: Border.all(color: theme.dividerColor),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Theme(
+        data: theme.copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          title: Text(
+            summary,
+            style: (preferredStyle ?? theme.textTheme.bodyLarge)
+                ?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          children: [
+            MarkdownBody(
+              data: body,
+              selectable: true,
+              builders: _markdownBuilders(),
+              inlineSyntaxes: _markdownInlineSyntaxes(),
+              blockSyntaxes: _markdownBlockSyntaxes(),
+              styleSheet: _markdownStyleSheet(context),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

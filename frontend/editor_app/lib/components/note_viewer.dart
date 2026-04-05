@@ -143,32 +143,8 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
                             selectable: true,
                             builders: _markdownBuilders(),
                             inlineSyntaxes: _markdownInlineSyntaxes(),
-                            styleSheet: MarkdownStyleSheet.fromTheme(
-                              Theme.of(context),
-                            ).copyWith(
-                              codeblockDecoration: BoxDecoration(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .surfaceContainerHighest,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              code: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    fontFamily: 'monospace',
-                                    backgroundColor: Theme.of(context)
-                                        .colorScheme
-                                        .surfaceContainerHighest,
-                                  ),
-                              horizontalRuleDecoration: BoxDecoration(
-                                border: Border(
-                                  top: BorderSide(
-                                    color: Theme.of(context).dividerColor,
-                                  ),
-                                ),
-                              ),
-                            ),
+                            blockSyntaxes: _markdownBlockSyntaxes(),
+                            styleSheet: _markdownStyleSheet(context),
                           ),
                         );
                       },
@@ -180,6 +156,129 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// User-chosen options returned from [_ExportOptionsDialog].
+class _ExportOptions {
+  const _ExportOptions({
+    required this.includeMetadata,
+    required this.recursive,
+    required this.format,
+  });
+
+  final bool includeMetadata;
+  final bool recursive;
+
+  /// Either 'md' (single/combined markdown file) or 'zip' (archive of notes).
+  final String format;
+}
+
+/// Dialog that collects export preferences before a note is written to disk.
+/// Shown once per export action so users can pick metadata, recursive (whole
+/// category), and the output format.
+class _ExportOptionsDialog extends StatefulWidget {
+  const _ExportOptionsDialog({
+    required this.noteTitle,
+    required this.categoryTitle,
+    required this.siblingCount,
+  });
+
+  final String noteTitle;
+  final String categoryTitle;
+  final int siblingCount;
+
+  @override
+  State<_ExportOptionsDialog> createState() => _ExportOptionsDialogState();
+}
+
+class _ExportOptionsDialogState extends State<_ExportOptionsDialog> {
+  bool _includeMetadata = true;
+  bool _recursive = false;
+  String _format = 'md';
+
+  @override
+  Widget build(BuildContext context) {
+    final canRecurse = widget.siblingCount > 1;
+    // Recursive + md combines into one file; zip stores notes as separate files.
+    return AlertDialog(
+      title: const Text('Export markdown'),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Exporting "${widget.noteTitle}"',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 12),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              value: _includeMetadata,
+              onChanged: (value) =>
+                  setState(() => _includeMetadata = value ?? true),
+              title: const Text('Include metadata (YAML frontmatter)'),
+              subtitle: const Text(
+                  'Adds title, author, category, and last-edited timestamp.'),
+            ),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              value: _recursive,
+              onChanged: canRecurse
+                  ? (value) => setState(() => _recursive = value ?? false)
+                  : null,
+              title: Text(
+                  'Recursive (entire "${widget.categoryTitle}" category, ${widget.siblingCount} notes)'),
+              subtitle: Text(canRecurse
+                  ? 'Exports every note in the same category.'
+                  : 'Only one note in this category — nothing to recurse.'),
+            ),
+            const SizedBox(height: 8),
+            Text('Format', style: Theme.of(context).textTheme.titleSmall),
+            RadioListTile<String>(
+              contentPadding: EdgeInsets.zero,
+              value: 'md',
+              groupValue: _format,
+              onChanged: (value) =>
+                  setState(() => _format = value ?? 'md'),
+              title: const Text('Markdown (.md)'),
+              subtitle: Text(_recursive
+                  ? 'All notes combined into one file with separators.'
+                  : 'Single markdown file.'),
+            ),
+            RadioListTile<String>(
+              contentPadding: EdgeInsets.zero,
+              value: 'zip',
+              groupValue: _format,
+              onChanged: (value) =>
+                  setState(() => _format = value ?? 'zip'),
+              title: const Text('Zip archive (.zip)'),
+              subtitle: const Text('Each note as a separate .md file inside a zip.'),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(
+            _ExportOptions(
+              includeMetadata: _includeMetadata,
+              recursive: _recursive,
+              format: _format,
+            ),
+          ),
+          child: const Text('Export'),
+        ),
+      ],
     );
   }
 }

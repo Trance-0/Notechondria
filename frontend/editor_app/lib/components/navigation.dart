@@ -1,5 +1,76 @@
 part of notechondria_frontend;
 
+/// Confirmation dialog that disables its destructive button for [delaySeconds]
+/// to give the user a chance to reconsider. Used for clear-data and delete-
+/// category style operations.
+class _ConfirmWithDelayDialog extends StatefulWidget {
+  const _ConfirmWithDelayDialog({
+    required this.title,
+    required this.message,
+    this.confirmLabel = 'Delete',
+    this.delaySeconds = 3,
+  });
+
+  final String title;
+  final String message;
+  final String confirmLabel;
+  final int delaySeconds;
+
+  @override
+  State<_ConfirmWithDelayDialog> createState() =>
+      _ConfirmWithDelayDialogState();
+}
+
+class _ConfirmWithDelayDialogState extends State<_ConfirmWithDelayDialog> {
+  late int _remaining;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _remaining = widget.delaySeconds;
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      setState(() {
+        _remaining -= 1;
+        if (_remaining <= 0) {
+          timer.cancel();
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = _remaining <= 0;
+    return AlertDialog(
+      title: Text(widget.title),
+      content: Text(widget.message),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: enabled ? () => Navigator.of(context).pop(true) : null,
+          style: FilledButton.styleFrom(
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+          child: Text(
+            enabled ? widget.confirmLabel : '${widget.confirmLabel} ($_remaining)',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// Sidebar navigation row used by the wide desktop layout.
 class _SidebarItem extends StatelessWidget {
   const _SidebarItem({
