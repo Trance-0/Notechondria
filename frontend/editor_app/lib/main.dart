@@ -22,13 +22,13 @@ part 'core/helpers.dart';
 part 'core/local_store.dart';
 part 'components/navigation.dart';
 part 'components/avatar.dart';
+part 'components/auth_dialogs.dart';
 part 'components/debug_widgets.dart';
 part 'components/error_state.dart';
 part 'components/note_viewer.dart';
-part 'modules/front.dart';
 part 'modules/learner.dart';
-part 'modules/course.dart';
-part 'modules/activity.dart';
+part 'modules/note_editor.dart';
+part 'modules/note_metadata.dart';
 part 'modules/settings.dart';
 
 void main() {

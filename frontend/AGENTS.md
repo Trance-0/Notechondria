@@ -16,14 +16,20 @@ Implemented now:
 - local starter note workspace on first run
 - note list, metadata edit, import/export widgets from the learner flow
 - 3 editor modes already wired in the old codebase (`P`, `G`, `B`)
-- reduced settings surface:
-  - login/sync
-  - editor settings
-  - debug log
+- sidebar shows note categories (courses) instead of module navigation; no "Wide layout" subtitle
+- compact view uses a three-dot menu button in the app bar instead of a bottom NavigationBar
+- reduced settings surface (no section numbering):
+  - Login and sync (includes user profile: avatar, username, email, motto, social link when authenticated)
+  - Editor preferences (editor mode, theme, API base URL)
+  - Configuration (config file download, maintenance actions, recycle bin)
+  - Debug log (simplified: only recent UI logs with copy button, no verbose API debug card)
+- stale modules removed: `front.dart`, `course.dart`, `activity.dart` — only `learner.dart` and `settings.dart` remain
+- large files split: learner into `learner.dart` + `note_editor.dart` + `note_metadata.dart`; settings auth dialogs into `components/auth_dialogs.dart`
+- `onDownloadConfig` callback added to `_SettingsPage` for env config file export
 
 Still to deepen:
 - stronger independent sync semantics and conflict UX
-- more explicit separation from planner-specific concepts
+- `app_shell.dart` (2481 lines) and `client.dart` (812 lines) remain over 500-line target — app_shell is a single stateful class and client is an interface+implementation pair; splitting further requires mixin-based refactor
 
 ### planner_app
 Implemented now:
@@ -31,10 +37,10 @@ Implemented now:
 - local course + module discussion seed notes
 - local planner events for signed-out use
 - activity view usable offline when local planner data exists
-- reduced settings surface:
-  - login/sync
-  - planner ordering/theme settings
-  - debug log
+- reduced settings surface (no section numbering):
+  - Login and sync
+  - Planner preferences (theme, deadline weights, API base URL)
+  - Debug log (simplified: only recent UI logs with copy button, no verbose API debug card)
 - deadline ordering weights stored locally (`deadline_time_weight`, `deadline_importance_weight`)
 
 Still to deepen:
@@ -47,6 +53,7 @@ Implemented now:
 - router-shell direction (choice B)
 - launch surfaces for editor/planner
 - minimal settings/orchestration role
+- settings debug log simplified (removed verbose API debug card and Stats section, kept only recent UI logs with copy button)
 
 Still to deepen:
 - embed or route into new app-specific surfaces more intentionally

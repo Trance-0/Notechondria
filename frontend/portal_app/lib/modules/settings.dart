@@ -577,128 +577,45 @@ class _SettingsPageState extends State<_SettingsPage> {
           ),
         ),
         const SizedBox(height: 24),
-        Text(
-          'Stats',
-          style: Theme.of(context)
-              .textTheme
-              .titleMedium
-              ?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                _StatChip(
-                  label: 'Local drafts created',
-                  value:
-                      '${(widget.localStats['local_drafts_created'] as num?)?.toInt() ?? 0}',
-                ),
-                _StatChip(
-                  label: 'Drafts synced',
-                  value:
-                      '${(widget.localStats['local_drafts_synced'] as num?)?.toInt() ?? 0}',
-                ),
-                _StatChip(
-                  label: 'Avatar updates',
-                  value:
-                      '${(widget.localStats['avatar_updates'] as num?)?.toInt() ?? 0}',
-                ),
-                _StatChip(
-                  label: 'Settings saves',
-                  value:
-                      '${(widget.localStats['settings_saves'] as num?)?.toInt() ?? 0}',
-                ),
-                _StatChip(
-                  label: 'Logs copied',
-                  value:
-                      '${(widget.localStats['logs_copied'] as num?)?.toInt() ?? 0}',
-                ),
-                _StatChip(
-                  label: 'Last sync',
-                  value: widget.localStats['last_sync_at']?.toString() ?? 'Never',
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        Text('API debug', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
-        _ApiDebugCard(
-          apiBaseUrl: widget.apiBaseUrl,
-          snapshotListenable: widget.debugSnapshotListenable,
-          historyListenable: widget.debugHistoryListenable,
-        ),
-        const SizedBox(height: 24),
         Row(
           children: [
             Expanded(
-              child:
-                  Text('Frontend logs', style: Theme.of(context).textTheme.titleMedium),
+              child: Text('Debug log',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700)),
             ),
             TextButton.icon(
-              onPressed: () {
-                widget.onCopyLogs();
-              },
+              onPressed: widget.onCopyLogs,
               icon: const Icon(Icons.copy_all_outlined),
-              label: const Text('Copy'),
+              label: const Text('Copy logs'),
             ),
           ],
         ),
         const SizedBox(height: 8),
         Card(
           child: SizedBox(
-            height: 220,
-            child: ListView(
-              padding: const EdgeInsets.all(12),
-              children: [
-                for (final row in widget.uiLogs) SelectableText(row),
-                if (widget.uiLogs.isEmpty)
-                  const Text('No frontend logs captured yet.'),
-              ],
-            ),
+            height: 260,
+            child: widget.uiLogs.isEmpty
+                ? const Center(child: Text('No frontend logs captured yet.'))
+                : ListView.builder(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: widget.uiLogs.length,
+                    itemBuilder: (context, index) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: SelectableText(
+                        widget.uiLogs[index],
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(fontFamily: 'monospace'),
+                      ),
+                    ),
+                  ),
           ),
         ),
       ],
-    );
-  }
-}
-
-class _StatChip extends StatelessWidget {
-  const _StatChip({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minWidth: 180),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(fontWeight: FontWeight.w700),
-          ),
-        ],
-      ),
     );
   }
 }

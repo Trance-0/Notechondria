@@ -330,7 +330,7 @@ class _SettingsPageState extends State<_SettingsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '1. Login and sync',
+                  'Login and sync',
                   style: Theme.of(context)
                       .textTheme
                       .titleMedium
@@ -389,7 +389,7 @@ class _SettingsPageState extends State<_SettingsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '2. Planner settings',
+                  'Planner preferences',
                   style: Theme.of(context)
                       .textTheme
                       .titleMedium
@@ -499,7 +499,7 @@ class _SettingsPageState extends State<_SettingsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '3. Debug log',
+                  'Debug log',
                   style: Theme.of(context)
                       .textTheme
                       .titleMedium
@@ -521,22 +521,24 @@ class _SettingsPageState extends State<_SettingsPage> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                _ApiDebugCard(
-                  apiBaseUrl: widget.apiBaseUrl,
-                  snapshotListenable: widget.debugSnapshotListenable,
-                  historyListenable: widget.debugHistoryListenable,
-                ),
-                const SizedBox(height: 12),
                 SizedBox(
-                  height: 220,
-                  child: ListView(
-                    padding: EdgeInsets.zero,
-                    children: [
-                      for (final row in widget.uiLogs) SelectableText(row),
-                      if (widget.uiLogs.isEmpty)
-                        const Text('No frontend logs captured yet.'),
-                    ],
-                  ),
+                  height: 260,
+                  child: widget.uiLogs.isEmpty
+                      ? const Center(child: Text('No frontend logs captured yet.'))
+                      : ListView.builder(
+                          padding: EdgeInsets.zero,
+                          itemCount: widget.uiLogs.length,
+                          itemBuilder: (context, index) => Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: SelectableText(
+                              widget.uiLogs[index],
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(fontFamily: 'monospace'),
+                            ),
+                          ),
+                        ),
                 ),
               ],
             ),

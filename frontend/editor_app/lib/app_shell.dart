@@ -85,6 +85,9 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
+  // ---------------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------------
   int _selectedIndex = 0;
   bool _isLoading = true;
   String? _errorMessage;
@@ -98,22 +101,20 @@ class _AppShellState extends State<AppShell> {
   List<Map<String, dynamic>> _learnerNotes = const [];
   List<Map<String, dynamic>> _localDrafts = const [];
   List<Map<String, dynamic>> _deletedNotes = const [];
-  List<Map<String, dynamic>> _activity = const [];
-  List<Map<String, dynamic>> _plannerEvents = const [];
-  List<Map<String, dynamic>> _calendarFeeds = const [];
-  Map<String, dynamic>? _activityWeek;
   Map<String, dynamic>? _selectedCourse;
   Map<String, dynamic>? _selectedNote;
   Map<String, dynamic> _localSettings = _LocalAppStore.defaultSettings();
   Map<String, dynamic> _localStats = _LocalAppStore.defaultStats();
   Map<String, dynamic> _localCache = _LocalAppStore.defaultCache();
-  DateTime _activityWeekStart = _dateOnly(DateTime.now());
   bool _hasMoreLearnerNotes = true;
   bool _isLoadingMoreNotes = false;
   bool _coursePanelExpanded = true;
   int _learnerNotesOffset = 0;
   String _learnerSearchQuery = '';
   final List<String> _uiLogs = <String>[];
+
+  /// Currently selected category (course) for note filtering. null = all notes.
+  int? _selectedCategoryId;
 
   HttpNotechondriaClient? get _httpClient =>
       widget.client is HttpNotechondriaClient
@@ -122,33 +123,19 @@ class _AppShellState extends State<AppShell> {
 
   static const List<String> _titles = [
     'Front Page',
-    'Learner View',
+    'Notes',
     'Course View',
     'Activity View',
     'Settings',
-  ];
-
-  static const List<NavigationDestination> _destinations = [
-    NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Front'),
-    NavigationDestination(
-        icon: Icon(Icons.menu_book_outlined), label: 'Learner'),
-    NavigationDestination(icon: Icon(Icons.school_outlined), label: 'Course'),
-    NavigationDestination(
-        icon: Icon(Icons.timeline_outlined), label: 'Activity'),
-    NavigationDestination(
-        icon: Icon(Icons.settings_outlined), label: 'Settings'),
   ];
 
   List<int> get _visibleIndices {
     final visible = widget.visibleIndices
         .where((index) => index >= 0 && index < _titles.length)
         .toList(growable: false);
-    return visible.isEmpty ? List<int>.generate(_titles.length, (i) => i) : visible;
-  }
-
-  int get _selectedNavIndex {
-    final idx = _visibleIndices.indexOf(_selectedIndex);
-    return idx >= 0 ? idx : 0;
+    return visible.isEmpty
+        ? List<int>.generate(_titles.length, (i) => i)
+        : visible;
   }
 
   void _selectActualIndex(int index) {
@@ -157,20 +144,21 @@ class _AppShellState extends State<AppShell> {
     });
   }
 
-  void _handleVisibleDestinationSelected(int visibleIndex) {
-    final actual = _visibleIndices[visibleIndex];
-    _selectActualIndex(actual);
-  }
-
   bool _showWidePageHeader(int index) => index == 4;
 
-  bool _showCompactPageHeader(int index) => index != 3;
+  /// All categories: local courses first, then remote courses.
+  List<Map<String, dynamic>> get _allCategories =>
+      [..._localCourses, ..._courses];
 
+  // ---------------------------------------------------------------------------
+  // Lifecycle
+  // ---------------------------------------------------------------------------
   @override
   void initState() {
     super.initState();
     final clamped = widget.initialIndex.clamp(0, _titles.length - 1);
-    _selectedIndex = _visibleIndices.contains(clamped) ? clamped : _visibleIndices.first;
+    _selectedIndex =
+        _visibleIndices.contains(clamped) ? clamped : _visibleIndices.first;
     _bootstrapApp();
   }
 
@@ -197,6 +185,9 @@ class _AppShellState extends State<AppShell> {
     unawaited(_persistUiLogs());
   }
 
+  // ---------------------------------------------------------------------------
+  // Local state persistence
+  // ---------------------------------------------------------------------------
   Future<void> _loadLocalState() async {
     final snapshot = await _LocalAppStore.load();
     _localSettings = snapshot.settings;
@@ -223,19 +214,15 @@ class _AppShellState extends State<AppShell> {
       snapshot.cache['front_page'] as Map? ?? const {},
     );
     _courses = (snapshot.cache['courses'] as List<dynamic>? ?? const [])
-        .map((item) => _decorateRemoteCourse(Map<String, dynamic>.from(item as Map)))
-        .toList(growable: false);
-    _activity = (snapshot.cache['activity'] as List<dynamic>? ?? const [])
-        .map((item) => Map<String, dynamic>.from(item as Map))
+        .map((item) =>
+            _decorateRemoteCourse(Map<String, dynamic>.from(item as Map)))
         .toList(growable: false);
     await _ensureStarterWorkspace();
-    if (_selectedCourse == null) {
-      _selectedCourse = _chooseDefaultCourse(
-        remoteCourses: _courses,
-        localCourses: _localCourses,
-        frontPage: _frontPage,
-      );
-    }
+    _selectedCourse ??= _chooseDefaultCourse(
+      remoteCourses: _courses,
+      localCourses: _localCourses,
+      frontPage: _frontPage,
+    );
     _httpClient?.updateBaseUrl(
       _localSettings['api_base_url']?.toString() ?? _defaultApiBaseUrl(),
     );
@@ -269,7 +256,6 @@ class _AppShellState extends State<AppShell> {
       ..._localCache,
       'front_page': _frontPage ?? const <String, dynamic>{},
       'courses': _courses,
-      'activity': _activity,
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     };
     await _LocalAppStore.saveCache(_localCache);
@@ -279,7 +265,9 @@ class _AppShellState extends State<AppShell> {
     await _LocalAppStore.saveLogs(_uiLogs);
   }
 
-
+  // ---------------------------------------------------------------------------
+  // Starter workspace
+  // ---------------------------------------------------------------------------
   Future<void> _ensureStarterWorkspace() async {
     if (_frontPage?.isNotEmpty == true ||
         _courses.isNotEmpty ||
@@ -321,7 +309,8 @@ Use this draft as a starting point and sync later when you sign in.''',
     final starterReference = _buildLocalDraft(
       title: 'Plain-text editor checklist',
       description: 'Starter checklist for the editor modes.',
-      content: '''# Plain-text editor checklist
+      content:
+          '''# Plain-text editor checklist
 
 - Markdown mode
 - Plain text mode
@@ -347,19 +336,22 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     await _persistLocalDrafts();
     await _persistLocalStats();
     await _persistLocalCache();
-    _appendUiLog('Seeded starter editor workspace for first-run offline use.');
+    _appendUiLog(
+        'Seeded starter editor workspace for first-run offline use.');
   }
 
+  // ---------------------------------------------------------------------------
+  // Course / category helpers
+  // ---------------------------------------------------------------------------
   bool _isLocalCourse(Map<String, dynamic>? course) {
-    if (course == null) {
-      return false;
-    }
+    if (course == null) return false;
     return course['is_local_course'] == true ||
         ((course['id'] as num?)?.toInt() ?? 0) < 0;
   }
 
   Map<String, dynamic> _decorateRemoteCourse(Map<String, dynamic> course) {
-    final owner = Map<String, dynamic>.from(course['owner'] as Map? ?? const {});
+    final owner =
+        Map<String, dynamic>.from(course['owner'] as Map? ?? const {});
     final username = _profile?['username']?.toString() ?? '';
     final isOwned = username.isNotEmpty &&
         owner['username']?.toString().toLowerCase() == username.toLowerCase();
@@ -373,10 +365,12 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
   Map<String, dynamic> _frontPageFallbackPayload(
     List<Map<String, dynamic>> remoteCourses,
   ) {
-    final fallbackCourses =
-        remoteCourses.isNotEmpty ? remoteCourses.take(3).toList() : _localCourses.take(3).toList();
+    final fallbackCourses = remoteCourses.isNotEmpty
+        ? remoteCourses.take(3).toList()
+        : _localCourses.take(3).toList();
     return {
-      'default_course': fallbackCourses.isNotEmpty ? fallbackCourses.first : null,
+      'default_course':
+          fallbackCourses.isNotEmpty ? fallbackCourses.first : null,
       'carousel_courses': fallbackCourses,
       'collections': fallbackCourses,
       'recent_notes': const <Map<String, dynamic>>[],
@@ -397,7 +391,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         }
       }
     }
-    final defaultCourse = frontPage?['default_course'] as Map<String, dynamic>?;
+    final defaultCourse =
+        frontPage?['default_course'] as Map<String, dynamic>?;
     if (defaultCourse != null && defaultCourse.isNotEmpty) {
       final defaultId = (defaultCourse['id'] as num?)?.toInt();
       for (final course in [...localCourses, ...remoteCourses]) {
@@ -416,7 +411,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     return null;
   }
 
-  List<Map<String, dynamic>> _localNotesForCourse(Map<String, dynamic> course) {
+  List<Map<String, dynamic>> _localNotesForCourse(
+      Map<String, dynamic> course) {
     final localId = (course['id'] as num?)?.toInt();
     final syncedId = (course['synced_course_id'] as num?)?.toInt();
     return _localDrafts.where((draft) {
@@ -428,6 +424,9 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     }).map((item) => Map<String, dynamic>.from(item)).toList(growable: false);
   }
 
+  // ---------------------------------------------------------------------------
+  // Initial data loading
+  // ---------------------------------------------------------------------------
   Future<void> _loadInitialData() async {
     setState(() {
       _isLoading = true;
@@ -444,13 +443,9 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
 
     var frontPage = _frontPage ?? _frontPageFallbackPayload(_courses);
     var courses = List<Map<String, dynamic>>.from(_courses);
-    var activity = List<Map<String, dynamic>>.from(_activity);
     var courseNotes = List<Map<String, dynamic>>.from(_courseNotes);
-    var plannerEvents = List<Map<String, dynamic>>.from(_plannerEvents);
-    var calendarFeeds = List<Map<String, dynamic>>.from(_calendarFeeds);
     var learnerNotes = List<Map<String, dynamic>>.from(_learnerNotes);
     var deletedNotes = List<Map<String, dynamic>>.from(_deletedNotes);
-    Map<String, dynamic>? activityWeek = _activityWeek;
     Map<String, dynamic> notePage = {
       'results': learnerNotes,
       'has_more': _hasMoreLearnerNotes,
@@ -467,12 +462,6 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       courses = (await widget.client.getCourses(token: _token))
           .map(_decorateRemoteCourse)
           .toList(growable: false);
-      updatedCache = true;
-    } catch (error) {
-      errors.add(error.toString().replaceFirst('Exception: ', ''));
-    }
-    try {
-      activity = await widget.client.getActivity(token: _token);
       updatedCache = true;
     } catch (error) {
       errors.add(error.toString().replaceFirst('Exception: ', ''));
@@ -503,31 +492,13 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
 
     if (_token != null && _token!.isNotEmpty) {
       try {
-        plannerEvents = await widget.client.getPlannerEvents(_token!);
-      } catch (error) {
-        errors.add(error.toString().replaceFirst('Exception: ', ''));
-      }
-      try {
-        calendarFeeds = await widget.client.getCalendarFeeds(_token!);
-      } catch (error) {
-        errors.add(error.toString().replaceFirst('Exception: ', ''));
-      }
-      try {
-        activityWeek = await widget.client.getActivityWeek(
-          _token!,
-          startDate: _activityWeekStart.toIso8601String().split('T').first,
-        );
-      } catch (error) {
-        errors.add(error.toString().replaceFirst('Exception: ', ''));
-      }
-      try {
         deletedNotes = await widget.client.getDeletedNotes(_token!);
       } catch (error) {
         errors.add(error.toString().replaceFirst('Exception: ', ''));
       }
       try {
-        notePage =
-            await widget.client.listNotes(token: _token, limit: 20, offset: 0);
+        notePage = await widget.client
+            .listNotes(token: _token, limit: 20, offset: 0);
         learnerNotes = (notePage['results'] as List<dynamic>? ?? const [])
             .map((item) => Map<String, dynamic>.from(item as Map))
             .toList(growable: false);
@@ -535,29 +506,19 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         errors.add(error.toString().replaceFirst('Exception: ', ''));
       }
     } else {
-      plannerEvents = const [];
-      calendarFeeds = const [];
-      activityWeek = null;
       deletedNotes = const [];
       learnerNotes = const [];
-      notePage = const {
-        'results': [],
-        'has_more': false,
-      };
+      notePage = const {'results': [], 'has_more': false};
     }
 
     setState(() {
       _frontPage = frontPage;
       _courses = courses;
-      _activity = activity;
       _selectedCourse = selectedCourse;
       _courseNotes = courseNotes;
       _learnerNotes = learnerNotes;
       _deletedNotes = deletedNotes;
       _selectedNote = null;
-      _plannerEvents = plannerEvents;
-      _calendarFeeds = calendarFeeds;
-      _activityWeek = activityWeek;
       _hasMoreLearnerNotes = notePage['has_more'] == true;
       _learnerNotesOffset = learnerNotes.length;
       _errorMessage = errors.isEmpty ? null : errors.first;
@@ -573,6 +534,9 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Draft / note helpers
+  // ---------------------------------------------------------------------------
   Map<String, dynamic> _storeLocalDraft(
     Map<String, dynamic> draft, {
     bool incrementCreated = false,
@@ -605,13 +569,14 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     final existingIndex = sourceId == null
         ? -1
         : _localDrafts.indexWhere((item) {
-            final metadata =
-                _decodeNoteMetadata(item['metadata_json']?.toString() ?? '{}');
+            final metadata = _decodeNoteMetadata(
+                item['metadata_json']?.toString() ?? '{}');
             return (metadata['offline_source_note_id'] as num?)?.toInt() ==
                 sourceId;
           });
-    final existingDraft =
-        existingIndex >= 0 ? Map<String, dynamic>.from(_localDrafts[existingIndex]) : null;
+    final existingDraft = existingIndex >= 0
+        ? Map<String, dynamic>.from(_localDrafts[existingIndex])
+        : null;
     final metadata = _decodeNoteMetadata(
       payload['metadata_json']?.toString() ??
           sourceNote?['metadata_json']?.toString() ??
@@ -641,28 +606,9 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     );
   }
 
-  Future<void> _refreshFrontPageData() async {
-    try {
-      final frontPage = await widget.client.getFrontPage(token: _token);
-      List<Map<String, dynamic>> plannerEvents = _plannerEvents;
-      if (_token != null && _token!.isNotEmpty) {
-        plannerEvents = await widget.client.getPlannerEvents(_token!);
-      }
-      setState(() {
-        _frontPage = frontPage;
-        _plannerEvents = plannerEvents;
-      });
-      await _persistLocalCache();
-      _appendUiLog('Front page refreshed.');
-    } catch (error) {
-      final message = error.toString().replaceFirst('Exception: ', '');
-      setState(() {
-        _errorMessage = message;
-      });
-      _appendUiLog('Front page refresh failed: $message');
-    }
-  }
-
+  // ---------------------------------------------------------------------------
+  // Note loading & selection
+  // ---------------------------------------------------------------------------
   Future<void> _loadLearnerNotes({bool reset = false, String? query}) async {
     if (_token == null || _token!.isEmpty) {
       setState(() {
@@ -670,16 +616,12 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       });
       return;
     }
-    if (_isLoadingMoreNotes) {
-      return;
-    }
+    if (_isLoadingMoreNotes) return;
     final effectiveQuery = query ?? _learnerSearchQuery;
     final nextOffset = reset ? 0 : _learnerNotesOffset;
     setState(() {
       _isLoadingMoreNotes = true;
-      if (reset) {
-        _learnerSearchQuery = effectiveQuery;
-      }
+      if (reset) _learnerSearchQuery = effectiveQuery;
     });
     try {
       final page = await widget.client.listNotes(
@@ -694,7 +636,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       setState(() {
         _learnerNotes = reset ? rows : [..._learnerNotes, ...rows];
         _hasMoreLearnerNotes = page['has_more'] == true;
-        _learnerNotesOffset = (reset ? 0 : _learnerNotesOffset) + rows.length;
+        _learnerNotesOffset =
+            (reset ? 0 : _learnerNotesOffset) + rows.length;
         _isLoadingMoreNotes = false;
       });
     } catch (error) {
@@ -710,16 +653,17 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
   Future<void> _selectCourse(Map<String, dynamic> course) async {
     setState(() {
       _selectedCourse = course;
+      _selectedCategoryId = (course['id'] as num?)?.toInt();
+      _selectedIndex = 1;
       _isLoading = true;
     });
     if (_isLocalCourse(course)) {
       setState(() {
         _courseNotes = _localNotesForCourse(course);
         _selectedNote = null;
-        _selectedIndex = 2;
         _isLoading = false;
       });
-      _appendUiLog('Opened local course ${course['title']}.');
+      _appendUiLog('Opened local category ${course['title']}.');
       return;
     }
     try {
@@ -728,8 +672,9 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         effectiveCourse =
             await widget.client.openCourse(_token!, course['id'] as int);
       }
-      final refreshedCourses =
-          (await widget.client.getCourses(token: _token)).map(_decorateRemoteCourse).toList();
+      final refreshedCourses = (await widget.client.getCourses(token: _token))
+          .map(_decorateRemoteCourse)
+          .toList();
       final refreshedSelected = refreshedCourses.firstWhere(
         (item) => item['id'] == effectiveCourse['id'],
         orElse: () => effectiveCourse,
@@ -743,11 +688,10 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         _selectedCourse = refreshedSelected;
         _courseNotes = notes;
         _selectedNote = null;
-        _selectedIndex = 2;
         _isLoading = false;
       });
       await _persistLocalCache();
-      _appendUiLog('Opened course ${refreshedSelected['title']}.');
+      _appendUiLog('Opened category ${refreshedSelected['title']}.');
     } catch (error) {
       final message = error.toString().replaceFirst('Exception: ', '');
       setState(() {
@@ -756,14 +700,12 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         _errorMessage = message;
         _isLoading = false;
       });
-      _appendUiLog('Course load failed: $message');
+      _appendUiLog('Category load failed: $message');
     }
   }
 
   Future<void> _selectNote(Map<String, dynamic> noteSummary) async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
     try {
       final detail = await _fetchNoteDetail(noteSummary['id'] as int);
       setState(() {
@@ -781,24 +723,6 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     }
   }
 
-  Future<void> _openNoteViewer(Map<String, dynamic> noteSummary) async {
-    Map<String, dynamic> detail;
-    try {
-      detail = await _fetchNoteDetail(noteSummary['id'] as int);
-    } catch (error) {
-      _showMessage(error.toString().replaceFirst('Exception: ', ''));
-      _appendUiLog(
-          'Note viewer failed: ${error.toString().replaceFirst('Exception: ', '')}');
-      return;
-    }
-    if (!mounted) {
-      return;
-    }
-    await showDialog<void>(
-      context: context,
-      builder: (context) => _NoteViewerDialog(note: detail),
-    );
-  }
 
   Future<Map<String, dynamic>> _fetchNoteDetail(int noteId) async {
     if (noteId < 0) {
@@ -806,31 +730,28 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         (item) => item['id'] == noteId,
         orElse: () => <String, dynamic>{},
       );
-      if (draft.isEmpty) {
-        throw Exception('Local draft not found.');
-      }
-      setState(() {
-        _selectedNote = draft;
-      });
+      if (draft.isEmpty) throw Exception('Local draft not found.');
+      setState(() => _selectedNote = draft);
       return draft;
     }
     final detail = await widget.client.getNoteDetail(noteId, token: _token);
-    setState(() {
-      _selectedNote = detail;
-    });
+    setState(() => _selectedNote = detail);
     return detail;
   }
 
+  // ---------------------------------------------------------------------------
+  // Authentication
+  // ---------------------------------------------------------------------------
   Future<ActionFeedback> _register(String email, String password) async {
     try {
       final result = await widget.client.register(email, password);
       return ActionFeedback(
-          message: result['message']?.toString() ?? 'Verification email sent.');
+          message:
+              result['message']?.toString() ?? 'Verification email sent.');
     } catch (error) {
       return ActionFeedback(
-        message: error.toString().replaceFirst('Exception: ', ''),
-        isError: true,
-      );
+          message: error.toString().replaceFirst('Exception: ', ''),
+          isError: true);
     }
   }
 
@@ -842,9 +763,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           message: 'Email verified. You are now signed in.');
     } catch (error) {
       return ActionFeedback(
-        message: error.toString().replaceFirst('Exception: ', ''),
-        isError: true,
-      );
+          message: error.toString().replaceFirst('Exception: ', ''),
+          isError: true);
     }
   }
 
@@ -855,9 +775,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       return const ActionFeedback(message: 'Login successful.');
     } catch (error) {
       return ActionFeedback(
-        message: error.toString().replaceFirst('Exception: ', ''),
-        isError: true,
-      );
+          message: error.toString().replaceFirst('Exception: ', ''),
+          isError: true);
     }
   }
 
@@ -865,13 +784,12 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     try {
       final result = await widget.client.requestPasswordReset(email);
       return ActionFeedback(
-          message:
-              result['message']?.toString() ?? 'Password reset email sent.');
+          message: result['message']?.toString() ??
+              'Password reset email sent.');
     } catch (error) {
       return ActionFeedback(
-        message: error.toString().replaceFirst('Exception: ', ''),
-        isError: true,
-      );
+          message: error.toString().replaceFirst('Exception: ', ''),
+          isError: true);
     }
   }
 
@@ -884,9 +802,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           message: result['message']?.toString() ?? 'Password updated.');
     } catch (error) {
       return ActionFeedback(
-        message: error.toString().replaceFirst('Exception: ', ''),
-        isError: true,
-      );
+          message: error.toString().replaceFirst('Exception: ', ''),
+          isError: true);
     }
   }
 
@@ -895,11 +812,12 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     String? themeMode,
     String? apiBaseUrl,
   }) {
-    final existingLogPrefs =
-        Map<String, dynamic>.from(_localSettings['log_preferences'] as Map? ?? {});
-    final effectiveApiBase = (apiBaseUrl ?? _localSettings['api_base_url'] ?? _defaultApiBaseUrl())
-        .toString()
-        .trim();
+    final existingLogPrefs = Map<String, dynamic>.from(
+        _localSettings['log_preferences'] as Map? ?? {});
+    final effectiveApiBase =
+        (apiBaseUrl ?? _localSettings['api_base_url'] ?? _defaultApiBaseUrl())
+            .toString()
+            .trim();
     return {
       'theme_preset': themePreset ?? _localSettings['theme_preset'] ?? 'teal',
       'theme_mode': themeMode ?? _localSettings['theme_mode'] ?? 'S',
@@ -930,9 +848,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       _localSettings['theme_preset']?.toString() ?? 'teal',
       _localSettings['theme_mode']?.toString() ?? 'S',
     );
-    if (persist) {
-      await _persistLocalSettings();
-    }
+    if (persist) await _persistLocalSettings();
   }
 
   DateTime _parseUpdatedAt(String? raw) {
@@ -959,7 +875,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           'api_base_url': _localSettings['api_base_url'],
         });
       } else {
-      final serverAppSettings = Map<String, dynamic>.from(
+        final serverAppSettings = Map<String, dynamic>.from(
           settings['app_settings'] as Map? ??
               _currentAppSettingsPayload(
                 themePreset: settings['theme_preset']?.toString(),
@@ -982,8 +898,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         'theme_mode': _localSettings['theme_mode'],
         'api_base_url': _localSettings['api_base_url'],
         'app_settings': _currentAppSettingsPayload(),
-        'app_settings_updated_at':
-            _localSettings['updated_at'] ?? DateTime.now().toUtc().toIso8601String(),
+        'app_settings_updated_at': _localSettings['updated_at'] ??
+            DateTime.now().toUtc().toIso8601String(),
       };
       _appendUiLog(
           'Settings bootstrap after login fell back to local state: ${error.toString().replaceFirst('Exception: ', '')}');
@@ -1016,9 +932,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
 
   Future<void> _logout() async {
     final token = _token;
-    if (token == null || token.isEmpty) {
-      return;
-    }
+    if (token == null || token.isEmpty) return;
     try {
       await widget.client.logout(token);
     } catch (error) {
@@ -1029,7 +943,6 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       _token = null;
       _profile = null;
       _settings = null;
-      _plannerEvents = const [];
       _deletedNotes = const [];
     });
     await _loadInitialData();
@@ -1037,6 +950,9 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     _appendUiLog('Signed out.');
   }
 
+  // ---------------------------------------------------------------------------
+  // Settings
+  // ---------------------------------------------------------------------------
   bool _sameTrimmedValue(String a, String b) => a.trim() == b.trim();
 
   bool _sameEmailValue(String a, String b) =>
@@ -1045,238 +961,13 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
   String _summarizeChangedFields(List<String> fields) {
     final unique = <String>[];
     for (final field in fields) {
-      if (field.isEmpty || unique.contains(field)) {
-        continue;
-      }
+      if (field.isEmpty || unique.contains(field)) continue;
       unique.add(field);
     }
-    if (unique.isEmpty) {
-      return 'settings';
-    }
-    if (unique.length == 1) {
-      return unique.first;
-    }
-    if (unique.length == 2) {
-      return '${unique.first} and ${unique.last}';
-    }
+    if (unique.isEmpty) return 'settings';
+    if (unique.length == 1) return unique.first;
+    if (unique.length == 2) return '${unique.first} and ${unique.last}';
     return '${unique[0]}, ${unique[1]} +${unique.length - 2}';
-  }
-
-  bool _sameNoteTitle(Map<String, dynamic> left, Map<String, dynamic> right) {
-    final leftTitle = left['title']?.toString().trim().toLowerCase() ?? '';
-    final rightTitle = right['title']?.toString().trim().toLowerCase() ?? '';
-    return leftTitle.isNotEmpty && leftTitle == rightTitle;
-  }
-
-  Map<String, dynamic> _buildPulledLocalDraft(
-    Map<String, dynamic> note, {
-    Map<String, dynamic>? existingDraft,
-  }) {
-    final sourceAccount = _profile?['username']?.toString().trim().isNotEmpty == true
-        ? _profile!['username'].toString().trim()
-        : _profile?['email']?.toString().trim() ?? '';
-    final metadata = {
-      ..._decodeNoteMetadata(note['metadata_json']?.toString() ?? '{}'),
-      'pulled_from_cloud_note_id': note['id'],
-      'pulled_from_account': sourceAccount,
-      'is_cloud_copy': true,
-      'source_note_last_edit': note['last_edit']?.toString(),
-    };
-    return _buildLocalDraft(
-      id: (existingDraft?['id'] as num?)?.toInt(),
-      clientDraftId: existingDraft?['client_draft_id']?.toString(),
-      createdAt: existingDraft?['date_created']?.toString() ??
-          note['date_created']?.toString(),
-      title: note['title']?.toString() ?? 'Untitled note',
-      description: note['description']?.toString() ??
-          note['excerpt']?.toString() ??
-          '',
-      content: note['content']?.toString() ?? _noteToMarkdown(note),
-      editorMode: note['editor_mode']?.toString() ??
-          existingDraft?['editor_mode']?.toString() ??
-          'P',
-      metadataJson: jsonEncode(metadata),
-    );
-  }
-
-  Future<String?> _showPullConflictDialog({
-    required Map<String, dynamic> localDraft,
-    required Map<String, dynamic> remoteNote,
-  }) async {
-    if (!mounted) {
-      return null;
-    }
-    return showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Resolve note conflict'),
-        content: SizedBox(
-          width: 460,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'A local note and a cloud note share the title "${remoteNote['title'] ?? 'Untitled note'}".',
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Local',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleSmall
-                    ?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                localDraft['description']?.toString().isNotEmpty == true
-                    ? localDraft['description'].toString()
-                    : _excerptFromMarkdown(
-                        localDraft['content']?.toString() ?? '',
-                      ),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Cloud',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleSmall
-                    ?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                remoteNote['description']?.toString().isNotEmpty == true
-                    ? remoteNote['description'].toString()
-                    : remoteNote['excerpt']?.toString() ?? '',
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop('local'),
-            child: const Text('Keep local'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop('cloud'),
-            child: const Text('Use server'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<ActionFeedback> _pullCloudNotesToLocal() async {
-    final token = _token;
-    if (token == null || token.isEmpty) {
-      return const ActionFeedback(
-        message: 'Sign in to pull cloud notes.',
-        isError: true,
-      );
-    }
-    try {
-      final pulledDrafts = List<Map<String, dynamic>>.from(_localDrafts);
-      var imported = 0;
-      var updated = 0;
-      var skipped = 0;
-      var offset = 0;
-      var hasMore = true;
-      while (hasMore) {
-        final page = await widget.client.listNotes(
-          token: token,
-          offset: offset,
-          limit: 50,
-        );
-        final rows = (page['results'] as List<dynamic>? ?? const [])
-            .map((item) => Map<String, dynamic>.from(item as Map))
-            .toList(growable: false);
-        hasMore = page['has_more'] == true && rows.isNotEmpty;
-        offset += rows.length;
-        for (final summary in rows) {
-          final noteId = (summary['id'] as num?)?.toInt();
-          if (noteId == null) {
-            continue;
-          }
-          final detail = await widget.client.getNoteDetail(noteId, token: token);
-          final pulledIndex = pulledDrafts.indexWhere((draft) {
-            final metadata =
-                _decodeNoteMetadata(draft['metadata_json']?.toString() ?? '{}');
-            return (metadata['pulled_from_cloud_note_id'] as num?)?.toInt() ==
-                noteId;
-          });
-          if (pulledIndex >= 0) {
-            pulledDrafts[pulledIndex] = _buildPulledLocalDraft(
-              detail,
-              existingDraft: pulledDrafts[pulledIndex],
-            );
-            updated += 1;
-            continue;
-          }
-          final conflictIndex =
-              pulledDrafts.indexWhere((draft) => _sameNoteTitle(draft, detail));
-          if (conflictIndex >= 0) {
-            final decision = await _showPullConflictDialog(
-              localDraft: pulledDrafts[conflictIndex],
-              remoteNote: detail,
-            );
-            if (!mounted) {
-              return const ActionFeedback(
-                message: 'Cloud pull cancelled.',
-                isError: true,
-              );
-            }
-            if (decision != 'cloud') {
-              skipped += 1;
-              continue;
-            }
-            pulledDrafts[conflictIndex] = _buildPulledLocalDraft(
-              detail,
-              existingDraft: pulledDrafts[conflictIndex],
-            );
-            updated += 1;
-            continue;
-          }
-          pulledDrafts.insert(0, _buildPulledLocalDraft(detail));
-          imported += 1;
-        }
-      }
-      _localDrafts = List<Map<String, dynamic>>.unmodifiable(pulledDrafts);
-      _localStats = {
-        ..._localStats,
-        'cloud_notes_pulled':
-            ((_localStats['cloud_notes_pulled'] as num?)?.toInt() ?? 0) +
-                imported +
-                updated,
-        'last_pull_at': DateTime.now().toUtc().toIso8601String(),
-      };
-      await _persistLocalDrafts();
-      await _persistLocalStats();
-      if (mounted) {
-        setState(() {});
-      }
-      final segments = <String>[];
-      if (imported > 0) {
-        segments.add('pulled $imported');
-      }
-      if (updated > 0) {
-        segments.add('updated $updated');
-      }
-      if (skipped > 0) {
-        segments.add('kept $skipped local');
-      }
-      final message =
-          segments.isEmpty ? 'Cloud notes already match local copies.' : segments.join(', ');
-      _appendUiLog('Cloud pull completed: $message.');
-      return ActionFeedback(message: message);
-    } catch (error) {
-      final message = error.toString().replaceFirst('Exception: ', '');
-      _appendUiLog('Cloud pull failed: $message');
-      return ActionFeedback(message: 'Pull failed.', isError: true);
-    }
   }
 
   Future<ActionFeedback> _updateSettings(
@@ -1289,7 +980,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     String themeMode,
     String apiBaseUrl,
   ) async {
-    final currentSettings = Map<String, dynamic>.from(_settings ?? const {});
+    final currentSettings =
+        Map<String, dynamic>.from(_settings ?? const {});
     final currentProfile = Map<String, dynamic>.from(_profile ?? const {});
     final currentUsername = currentSettings['username']?.toString() ??
         currentProfile['username']?.toString() ??
@@ -1298,16 +990,20 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         currentProfile['email']?.toString() ??
         '';
     final currentMotto = currentSettings['motto']?.toString() ?? '';
-    final currentSocialLink = currentSettings['social_link']?.toString() ?? '';
-    final currentEditorMode = currentSettings['editor_mode']?.toString() ?? 'P';
+    final currentSocialLink =
+        currentSettings['social_link']?.toString() ?? '';
+    final currentEditorMode =
+        currentSettings['editor_mode']?.toString() ?? 'P';
     final currentThemePreset =
         _localSettings['theme_preset']?.toString() ?? 'teal';
-    final currentThemeMode = _localSettings['theme_mode']?.toString() ?? 'S';
+    final currentThemeMode =
+        _localSettings['theme_mode']?.toString() ?? 'S';
     final currentApiBase =
         _localSettings['api_base_url']?.toString() ?? _defaultApiBaseUrl();
-    final nextApiBase = apiBaseUrl.trim().isEmpty || apiBaseUrl.trim().startsWith('/')
-        ? _defaultApiBaseUrl()
-        : apiBaseUrl.trim();
+    final nextApiBase =
+        apiBaseUrl.trim().isEmpty || apiBaseUrl.trim().startsWith('/')
+            ? _defaultApiBaseUrl()
+            : apiBaseUrl.trim();
     final changedFields = <String>[];
     final remotePayload = <String, dynamic>{};
     if (!_sameTrimmedValue(username, currentUsername)) {
@@ -1350,8 +1046,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     });
     _localStats = {
       ..._localStats,
-      'settings_saves': ((_localStats['settings_saves'] as num?)?.toInt() ?? 0) +
-          1,
+      'settings_saves':
+          ((_localStats['settings_saves'] as num?)?.toInt() ?? 0) + 1,
     };
     await _persistLocalStats();
     if (remotePayload.isEmpty && !localSettingsChanged) {
@@ -1408,20 +1104,24 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           if (remotePayload.containsKey('motto')) 'motto': motto,
           if (remotePayload.containsKey('social_link'))
             'social_link': socialLink,
-          if (remotePayload.containsKey('editor_mode')) 'editor_mode': editorMode,
+          if (remotePayload.containsKey('editor_mode'))
+            'editor_mode': editorMode,
           if (localSettingsChanged) 'theme_preset': themePreset,
           if (localSettingsChanged) 'theme_mode': themeMode,
           if (localSettingsChanged) 'api_base_url': nextApiBase,
         };
         _profile = {
           ...?_profile,
-          'username': remotePayload.containsKey('username') && username.isNotEmpty
-              ? username
-              : fallbackUsername,
+          'username':
+              remotePayload.containsKey('username') && username.isNotEmpty
+                  ? username
+                  : fallbackUsername,
           'email': remotePayload.containsKey('email') && email.isNotEmpty
               ? email
               : fallbackEmail,
-          'motto': remotePayload.containsKey('motto') ? motto : _profile?['motto'],
+          'motto': remotePayload.containsKey('motto')
+              ? motto
+              : _profile?['motto'],
           'social_link': remotePayload.containsKey('social_link')
               ? socialLink
               : _profile?['social_link'],
@@ -1430,43 +1130,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       final summary = _summarizeChangedFields(changedFields);
       _appendUiLog('Cloud settings sync failed for $summary: $detail');
       return ActionFeedback(
-        message: 'Saved locally. Sync pending for $summary.',
-      );
-    }
-  }
-
-  Future<ActionFeedback> _createPlannerEvent(
-    String title,
-    DateTime eventDate,
-    int difficultyWeight,
-    String description,
-  ) async {
-    final token = _token;
-    if (token == null || token.isEmpty) {
-      return const ActionFeedback(
-        message: 'Sign in first to create planning events.',
-        isError: true,
-      );
-    }
-    try {
-      await widget.client.createPlannerEvent(token, {
-        'title': title,
-        'event_date': _dateOnly(eventDate).toIso8601String().split('T').first,
-        'starts_at': eventDate.toIso8601String(),
-        'ends_at': eventDate.add(const Duration(hours: 1)).toIso8601String(),
-        'difficulty_weight': difficultyWeight,
-        'description': description,
-        'course_id': _selectedCourse?['id'],
-      });
-      await _refreshFrontPageData();
-      await _loadActivityWeek(startDate: _activityWeekStart);
-      return const ActionFeedback(
-          message: 'Future event added to the heatmap.');
-    } catch (error) {
-      return ActionFeedback(
-        message: error.toString().replaceFirst('Exception: ', ''),
-        isError: true,
-      );
+          message: 'Saved locally. Sync pending for $summary.');
     }
   }
 
@@ -1474,14 +1138,13 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     final token = _token;
     if (token == null || token.isEmpty) {
       return const ActionFeedback(
-        message: 'Sign in first to update your avatar.',
-        isError: true,
-      );
+          message: 'Sign in first to update your avatar.', isError: true);
     }
     try {
       final file = await openFile(
         acceptedTypeGroups: const [
-          XTypeGroup(label: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp']),
+          XTypeGroup(
+              label: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp']),
         ],
       );
       if (file == null) {
@@ -1515,32 +1178,9 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     }
   }
 
-  Future<void> _loadActivityWeek({DateTime? startDate}) async {
-    final token = _token;
-    if (token == null || token.isEmpty) {
-      return;
-    }
-    final effectiveStart = _dateOnly(startDate ?? _activityWeekStart);
-    try {
-      final week = await widget.client.getActivityWeek(
-        token,
-        startDate: effectiveStart.toIso8601String().split('T').first,
-      );
-      setState(() {
-        _activityWeekStart = effectiveStart;
-        _activityWeek = week;
-      });
-      _appendUiLog(
-          'Activity week loaded for ${effectiveStart.toIso8601String().split('T').first}.');
-    } catch (error) {
-      final message = error.toString().replaceFirst('Exception: ', '');
-      setState(() {
-        _errorMessage = message;
-      });
-      _appendUiLog('Activity week load failed: $message');
-    }
-  }
-
+  // ---------------------------------------------------------------------------
+  // Local course & draft building
+  // ---------------------------------------------------------------------------
   Map<String, dynamic> _buildLocalCourse({
     required String title,
     String description = '',
@@ -1549,7 +1189,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     int? id,
   }) {
     final nowIso = DateTime.now().toUtc().toIso8601String();
-    final effectiveTitle = title.trim().isEmpty ? 'Untitled course' : title.trim();
+    final effectiveTitle =
+        title.trim().isEmpty ? 'Untitled course' : title.trim();
     final ownerLabel = _profile?['username']?.toString() ?? 'Local';
     return {
       'id': id ?? -DateTime.now().microsecondsSinceEpoch,
@@ -1574,28 +1215,6 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       'recent_notes': const <Map<String, dynamic>>[],
       'media': const <Map<String, dynamic>>[],
     };
-  }
-
-  Future<Map<String, dynamic>> _createLocalCourse(
-    String title,
-    String description,
-  ) async {
-    final course = _buildLocalCourse(title: title, description: description);
-    _localCourses = [course, ..._localCourses];
-    _localStats = {
-      ..._localStats,
-      'local_courses_created':
-          ((_localStats['local_courses_created'] as num?)?.toInt() ?? 0) + 1,
-    };
-    await _persistLocalCourses();
-    await _persistLocalStats();
-    setState(() {
-      _selectedCourse = course;
-      _selectedIndex = 2;
-      _courseNotes = _localNotesForCourse(course);
-    });
-    _appendUiLog("Created local course '${course['title']}'.");
-    return course;
   }
 
   int? _draftCourseId(Map<String, dynamic> draft) {
@@ -1623,7 +1242,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     };
   }
 
-  Future<Map<String, dynamic>> _syncLocalCourse(Map<String, dynamic> course) async {
+  Future<Map<String, dynamic>> _syncLocalCourse(
+      Map<String, dynamic> course) async {
     final token = _token;
     if (token == null || token.isEmpty) {
       throw Exception('Sign in to sync local courses.');
@@ -1664,7 +1284,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     await _persistLocalDrafts();
     await _persistLocalStats();
     await _persistLocalCache();
-    _appendUiLog("Synced local course '${course['title']}'.");
+    _appendUiLog("Synced local category '${course['title']}'.");
     return created;
   }
 
@@ -1710,7 +1330,201 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     };
   }
 
-  Future<Map<String, dynamic>> _syncLocalDraft(Map<String, dynamic> draft) async {
+  // ---------------------------------------------------------------------------
+  // Draft sync & pull
+  // ---------------------------------------------------------------------------
+  bool _sameNoteTitle(Map<String, dynamic> left, Map<String, dynamic> right) {
+    final leftTitle = left['title']?.toString().trim().toLowerCase() ?? '';
+    final rightTitle = right['title']?.toString().trim().toLowerCase() ?? '';
+    return leftTitle.isNotEmpty && leftTitle == rightTitle;
+  }
+
+  Map<String, dynamic> _buildPulledLocalDraft(
+    Map<String, dynamic> note, {
+    Map<String, dynamic>? existingDraft,
+  }) {
+    final sourceAccount =
+        _profile?['username']?.toString().trim().isNotEmpty == true
+            ? _profile!['username'].toString().trim()
+            : _profile?['email']?.toString().trim() ?? '';
+    final metadata = {
+      ..._decodeNoteMetadata(note['metadata_json']?.toString() ?? '{}'),
+      'pulled_from_cloud_note_id': note['id'],
+      'pulled_from_account': sourceAccount,
+      'is_cloud_copy': true,
+      'source_note_last_edit': note['last_edit']?.toString(),
+    };
+    return _buildLocalDraft(
+      id: (existingDraft?['id'] as num?)?.toInt(),
+      clientDraftId: existingDraft?['client_draft_id']?.toString(),
+      createdAt: existingDraft?['date_created']?.toString() ??
+          note['date_created']?.toString(),
+      title: note['title']?.toString() ?? 'Untitled note',
+      description: note['description']?.toString() ??
+          note['excerpt']?.toString() ??
+          '',
+      content: note['content']?.toString() ?? _noteToMarkdown(note),
+      editorMode: note['editor_mode']?.toString() ??
+          existingDraft?['editor_mode']?.toString() ??
+          'P',
+      metadataJson: jsonEncode(metadata),
+    );
+  }
+
+  Future<String?> _showPullConflictDialog({
+    required Map<String, dynamic> localDraft,
+    required Map<String, dynamic> remoteNote,
+  }) async {
+    if (!mounted) return null;
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Resolve note conflict'),
+        content: SizedBox(
+          width: 460,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'A local note and a cloud note share the title "${remoteNote['title'] ?? 'Untitled note'}".',
+              ),
+              const SizedBox(height: 16),
+              Text('Local',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 4),
+              Text(
+                localDraft['description']?.toString().isNotEmpty == true
+                    ? localDraft['description'].toString()
+                    : _excerptFromMarkdown(
+                        localDraft['content']?.toString() ?? ''),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 12),
+              Text('Cloud',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 4),
+              Text(
+                remoteNote['description']?.toString().isNotEmpty == true
+                    ? remoteNote['description'].toString()
+                    : remoteNote['excerpt']?.toString() ?? '',
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(context).pop('local'),
+              child: const Text('Keep local')),
+          FilledButton(
+              onPressed: () => Navigator.of(context).pop('cloud'),
+              child: const Text('Use server')),
+        ],
+      ),
+    );
+  }
+
+  Future<ActionFeedback> _pullCloudNotesToLocal() async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      return const ActionFeedback(
+          message: 'Sign in to pull cloud notes.', isError: true);
+    }
+    try {
+      final pulledDrafts = List<Map<String, dynamic>>.from(_localDrafts);
+      var imported = 0;
+      var updated = 0;
+      var skipped = 0;
+      var offset = 0;
+      var hasMore = true;
+      while (hasMore) {
+        final page = await widget.client
+            .listNotes(token: token, offset: offset, limit: 50);
+        final rows = (page['results'] as List<dynamic>? ?? const [])
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList(growable: false);
+        hasMore = page['has_more'] == true && rows.isNotEmpty;
+        offset += rows.length;
+        for (final summary in rows) {
+          final noteId = (summary['id'] as num?)?.toInt();
+          if (noteId == null) continue;
+          final detail =
+              await widget.client.getNoteDetail(noteId, token: token);
+          final pulledIndex = pulledDrafts.indexWhere((draft) {
+            final metadata = _decodeNoteMetadata(
+                draft['metadata_json']?.toString() ?? '{}');
+            return (metadata['pulled_from_cloud_note_id'] as num?)
+                    ?.toInt() ==
+                noteId;
+          });
+          if (pulledIndex >= 0) {
+            pulledDrafts[pulledIndex] = _buildPulledLocalDraft(detail,
+                existingDraft: pulledDrafts[pulledIndex]);
+            updated += 1;
+            continue;
+          }
+          final conflictIndex = pulledDrafts
+              .indexWhere((draft) => _sameNoteTitle(draft, detail));
+          if (conflictIndex >= 0) {
+            final decision = await _showPullConflictDialog(
+                localDraft: pulledDrafts[conflictIndex],
+                remoteNote: detail);
+            if (!mounted) {
+              return const ActionFeedback(
+                  message: 'Cloud pull cancelled.', isError: true);
+            }
+            if (decision != 'cloud') {
+              skipped += 1;
+              continue;
+            }
+            pulledDrafts[conflictIndex] = _buildPulledLocalDraft(detail,
+                existingDraft: pulledDrafts[conflictIndex]);
+            updated += 1;
+            continue;
+          }
+          pulledDrafts.insert(0, _buildPulledLocalDraft(detail));
+          imported += 1;
+        }
+      }
+      _localDrafts = List<Map<String, dynamic>>.unmodifiable(pulledDrafts);
+      _localStats = {
+        ..._localStats,
+        'cloud_notes_pulled':
+            ((_localStats['cloud_notes_pulled'] as num?)?.toInt() ?? 0) +
+                imported +
+                updated,
+        'last_pull_at': DateTime.now().toUtc().toIso8601String(),
+      };
+      await _persistLocalDrafts();
+      await _persistLocalStats();
+      if (mounted) setState(() {});
+      final segments = <String>[];
+      if (imported > 0) segments.add('pulled $imported');
+      if (updated > 0) segments.add('updated $updated');
+      if (skipped > 0) segments.add('kept $skipped local');
+      final message = segments.isEmpty
+          ? 'Cloud notes already match local copies.'
+          : segments.join(', ');
+      _appendUiLog('Cloud pull completed: $message.');
+      return ActionFeedback(message: message);
+    } catch (error) {
+      final message = error.toString().replaceFirst('Exception: ', '');
+      _appendUiLog('Cloud pull failed: $message');
+      return ActionFeedback(message: 'Pull failed.', isError: true);
+    }
+  }
+
+  Future<Map<String, dynamic>> _syncLocalDraft(
+      Map<String, dynamic> draft) async {
     final token = _token;
     if (token == null || token.isEmpty) {
       throw Exception('Sign in to sync local drafts.');
@@ -1728,30 +1542,27 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       }
       if (localCourse != null) {
         final syncedCourse = await _syncLocalCourse(localCourse);
-        metadata = {
-          ...metadata,
-          'course_id': syncedCourse['id'],
-        };
+        metadata = {...metadata, 'course_id': syncedCourse['id']};
         draft = _remapDraftCourseId(
-          draft,
-          assignedCourseId,
-          syncedCourse['id'] as int,
-        );
+            draft, assignedCourseId, syncedCourse['id'] as int);
       }
     }
     final pulledFromNoteId =
         (metadata['pulled_from_cloud_note_id'] as num?)?.toInt();
     final pulledFromAccount =
-        metadata['pulled_from_account']?.toString().trim().toLowerCase() ?? '';
-    final currentAccount = (_profile?['username']?.toString().trim().isNotEmpty == true
-            ? _profile!['username'].toString().trim()
-            : _profile?['email']?.toString().trim() ?? '')
-        .toLowerCase();
+        metadata['pulled_from_account']?.toString().trim().toLowerCase() ??
+            '';
+    final currentAccount =
+        (_profile?['username']?.toString().trim().isNotEmpty == true
+                ? _profile!['username'].toString().trim()
+                : _profile?['email']?.toString().trim() ?? '')
+            .toLowerCase();
     if (pulledFromNoteId != null &&
         pulledFromNoteId > 0 &&
         pulledFromAccount.isNotEmpty &&
         pulledFromAccount == currentAccount) {
-      final updated = await widget.client.updateNote(token, pulledFromNoteId, {
+      final updated =
+          await widget.client.updateNote(token, pulledFromNoteId, {
         'title': draft['title'],
         'description': draft['description'] ?? '',
         'content': draft['content'] ?? '',
@@ -1781,9 +1592,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       await _persistLocalDrafts();
       await _persistLocalStats();
       await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
-      if (mounted) {
-        setState(() {});
-      }
+      if (mounted) setState(() {});
       _appendUiLog("Synced local cloud copy '${draft['title']}'.");
       return updated;
     }
@@ -1809,14 +1618,14 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     await _persistLocalDrafts();
     await _persistLocalStats();
     await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
-    await _refreshFrontPageData();
-    if (mounted) {
-      setState(() {});
-    }
+    if (mounted) setState(() {});
     _appendUiLog("Synced local draft '${draft['title']}'.");
     return created;
   }
 
+  // ---------------------------------------------------------------------------
+  // Note CRUD
+  // ---------------------------------------------------------------------------
   Future<Map<String, dynamic>> _createNote({
     String? markdown,
     String? title,
@@ -1853,7 +1662,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     }
     final payload = {
       'title': title ?? _extractTitleFromMarkdown(initialMarkdown),
-      'description': description ?? _excerptFromMarkdown(initialMarkdown),
+      'description':
+          description ?? _excerptFromMarkdown(initialMarkdown),
       'content': initialMarkdown,
       'editor_mode': mode,
       'course_id': null,
@@ -1880,7 +1690,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         _selectedNote = draft;
         _selectedIndex = 1;
       });
-      _appendUiLog('Cloud create failed, saved local draft instead: $message');
+      _appendUiLog(
+          'Cloud create failed, saved local draft instead: $message');
       _showMessage('Backend unavailable. Saved as a local draft.');
       return draft;
     }
@@ -1893,30 +1704,32 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         (item) => item['id'] == noteId,
         orElse: () => <String, dynamic>{},
       );
-      if (existing.isEmpty) {
-        throw Exception('Local draft not found.');
-      }
+      if (existing.isEmpty) throw Exception('Local draft not found.');
       final updated = _buildLocalDraft(
         id: noteId,
-        title: payload['title']?.toString() ?? existing['title']?.toString() ?? 'Untitled note',
-        description:
-            payload['description']?.toString() ?? existing['description']?.toString() ?? '',
-        content: payload['content']?.toString() ?? existing['content']?.toString() ?? '',
+        title: payload['title']?.toString() ??
+            existing['title']?.toString() ??
+            'Untitled note',
+        description: payload['description']?.toString() ??
+            existing['description']?.toString() ??
+            '',
+        content: payload['content']?.toString() ??
+            existing['content']?.toString() ??
+            '',
         editorMode: payload['editor_mode']?.toString() ??
             existing['editor_mode']?.toString() ??
             'P',
         clientDraftId: existing['client_draft_id']?.toString(),
         createdAt: existing['date_created']?.toString(),
-        metadataJson:
-            payload['metadata_json']?.toString() ?? existing['metadata_json']?.toString() ?? '{}',
+        metadataJson: payload['metadata_json']?.toString() ??
+            existing['metadata_json']?.toString() ??
+            '{}',
       );
       _localDrafts = _localDrafts
           .map((item) => item['id'] == noteId ? updated : item)
           .toList(growable: false);
       await _persistLocalDrafts();
-      setState(() {
-        _selectedNote = updated;
-      });
+      setState(() => _selectedNote = updated);
       return updated;
     }
     final token = _token;
@@ -1926,26 +1739,20 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     try {
       final updated = await widget.client.updateNote(token, noteId, payload);
       await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
-      setState(() {
-        _selectedNote = updated;
-      });
+      setState(() => _selectedNote = updated);
       return updated;
     } catch (error) {
       final sourceNote = _selectedNote?['id'] == noteId
           ? Map<String, dynamic>.from(_selectedNote!)
           : null;
       final fallbackDraft = _storeLocalDraft(
-        _buildOfflineFallbackDraft(
-          sourceNote: sourceNote,
-          payload: payload,
-        ),
+        _buildOfflineFallbackDraft(sourceNote: sourceNote, payload: payload),
       );
       await _persistLocalDrafts();
       final message = error.toString().replaceFirst('Exception: ', '');
-      setState(() {
-        _selectedNote = fallbackDraft;
-      });
-      _appendUiLog('Cloud save failed, kept local draft instead: $message');
+      setState(() => _selectedNote = fallbackDraft);
+      _appendUiLog(
+          'Cloud save failed, kept local draft instead: $message');
       _showMessage('Backend unavailable. Changes were saved locally.');
       return fallbackDraft;
     }
@@ -1953,9 +1760,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
 
   Future<List<Map<String, dynamic>>> _getNoteHistory(int noteId) async {
     final token = _token;
-    if (token == null || token.isEmpty || noteId < 0) {
-      return const [];
-    }
+    if (token == null || token.isEmpty || noteId < 0) return const [];
     return widget.client.getNoteHistory(token, noteId);
   }
 
@@ -1977,9 +1782,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     final restored =
         await widget.client.restoreNoteVersion(token, noteId, versionId);
     await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
-    setState(() {
-      _selectedNote = restored;
-    });
+    setState(() => _selectedNote = restored);
     return restored;
   }
 
@@ -1991,9 +1794,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
               label: 'Markdown', extensions: ['md', 'markdown', 'txt']),
         ],
       );
-      if (file == null) {
-        return;
-      }
+      if (file == null) return;
       final contents = await file.readAsString();
       final created = await _createNote(
         markdown: contents,
@@ -2017,13 +1818,12 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           const XTypeGroup(label: 'Markdown', extensions: ['md']),
         ],
       );
-      if (location == null) {
-        return;
-      }
-      final bytes = Uint8List.fromList(utf8
-          .encode(detail['content']?.toString() ?? _noteToMarkdown(detail)));
+      if (location == null) return;
+      final bytes = Uint8List.fromList(utf8.encode(
+          detail['content']?.toString() ?? _noteToMarkdown(detail)));
       final file = XFile.fromData(bytes,
-          name: '${detail['title'] ?? 'note'}.md', mimeType: 'text/markdown');
+          name: '${detail['title'] ?? 'note'}.md',
+          mimeType: 'text/markdown');
       await file.saveTo(location.path);
       _showMessage("Exported '${detail['title'] ?? 'note'}'.");
     } catch (error) {
@@ -2031,84 +1831,13 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     }
   }
 
-  Future<void> _refreshCalendarState() async {
-    final token = _token;
-    if (token == null || token.isEmpty) {
-      return;
-    }
-    final feeds = await widget.client.getCalendarFeeds(token);
-    final week = await widget.client.getActivityWeek(
-      token,
-      startDate: _activityWeekStart.toIso8601String().split('T').first,
-    );
-    setState(() {
-      _calendarFeeds = feeds;
-      _activityWeek = week;
-    });
-    _appendUiLog('Calendar state refreshed.');
-  }
-
-  Future<void> _importCalendarFeed(String rawIcal, String title,
-      {int? courseId}) async {
-    final token = _token;
-    if (token == null || token.isEmpty) {
-      throw Exception('Sign in to import calendars.');
-    }
-    await widget.client.createCalendarFeed(token, {
-      'title': title,
-      'source_kind': 'I',
-      'raw_ical': rawIcal,
-      'course_id': courseId,
-    });
-    await _refreshCalendarState();
-    _appendUiLog('Imported calendar $title.');
-  }
-
-  Future<void> _subscribeCalendarFeed(String title, String url,
-      {int? courseId}) async {
-    final token = _token;
-    if (token == null || token.isEmpty) {
-      throw Exception('Sign in to subscribe calendars.');
-    }
-    await widget.client.createCalendarFeed(token, {
-      'title': title,
-      'source_kind': 'S',
-      'source_url': url,
-      'course_id': courseId,
-    });
-    await _refreshCalendarState();
-    _appendUiLog('Subscribed calendar $title.');
-  }
-
-  Future<void> _toggleCalendarFeed(
-      Map<String, dynamic> feed, bool enabled) async {
-    final token = _token;
-    if (token == null || token.isEmpty) {
-      return;
-    }
-    await widget.client
-        .updateCalendarFeed(token, feed['id'] as int, {'is_enabled': enabled});
-    await _refreshCalendarState();
-    _appendUiLog(
-        '${enabled ? 'Enabled' : 'Disabled'} calendar ${feed['title']}.');
-  }
-
-  Future<void> _deleteCalendarFeed(Map<String, dynamic> feed) async {
-    final token = _token;
-    if (token == null || token.isEmpty) {
-      return;
-    }
-    await widget.client.deleteCalendarFeed(token, feed['id'] as int);
-    await _refreshCalendarState();
-    _appendUiLog('Deleted calendar ${feed['title']}.');
-  }
-
+  // ---------------------------------------------------------------------------
+  // Note sessions
+  // ---------------------------------------------------------------------------
   Future<int?> _startNoteSession(
       int noteId, String title, String summary) async {
     final token = _token;
-    if (token == null || token.isEmpty || noteId < 0) {
-      return null;
-    }
+    if (token == null || token.isEmpty || noteId < 0) return null;
     try {
       final session = await widget.client.startNoteSession(token, {
         'note_id': noteId,
@@ -2128,16 +1857,13 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
   Future<void> _finishNoteSession(int? sessionId,
       {String? title, String? summary}) async {
     final token = _token;
-    if (token == null || token.isEmpty || sessionId == null) {
-      return;
-    }
+    if (token == null || token.isEmpty || sessionId == null) return;
     try {
       await widget.client.updateNoteSession(token, sessionId, {
         if (title != null) 'title': title,
         if (summary != null) 'summary': summary,
         'ended_at': DateTime.now().toIso8601String(),
       });
-      await _loadActivityWeek(startDate: _activityWeekStart);
       _appendUiLog('Finished note session ${sessionId.toString()}.');
     } catch (error) {
       _appendUiLog(
@@ -2145,11 +1871,12 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Delete, restore, sync, clear
+  // ---------------------------------------------------------------------------
   Future<void> _deleteNoteToRecycleBin(Map<String, dynamic> note) async {
     final noteId = (note['id'] as num?)?.toInt();
-    if (noteId == null) {
-      return;
-    }
+    if (noteId == null) return;
     if (noteId < 0) {
       _localDrafts = _localDrafts
           .where((item) => item['id'] != noteId)
@@ -2166,7 +1893,6 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     await widget.client.deleteNote(token, noteId);
     _deletedNotes = await widget.client.getDeletedNotes(token);
     await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
-    await _refreshFrontPageData();
     setState(() {});
     _appendUiLog("Moved note '${note['title']}' to recycle bin.");
   }
@@ -2177,9 +1903,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       throw Exception('Sign in to restore notes.');
     }
     final noteId = (note['id'] as num?)?.toInt();
-    if (noteId == null) {
-      return;
-    }
+    if (noteId == null) return;
     await widget.client.restoreDeletedNote(token, noteId);
     _deletedNotes = await widget.client.getDeletedNotes(token);
     await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
@@ -2193,64 +1917,52 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       throw Exception('Sign in to empty the recycle bin.');
     }
     await widget.client.emptyDeletedNotes(token);
-    setState(() {
-      _deletedNotes = const [];
-    });
+    setState(() => _deletedNotes = const []);
     _appendUiLog('Emptied recycle bin.');
   }
 
   Future<void> _syncAllLocalCourses() async {
-    if (_localCourses.isEmpty) {
-      return;
-    }
+    if (_localCourses.isEmpty) return;
     for (final course in List<Map<String, dynamic>>.from(_localCourses)) {
       await _syncLocalCourse(course);
     }
-    if (mounted) {
-      setState(() {});
-    }
+    if (mounted) setState(() {});
   }
 
   Future<void> _syncAllLocalDrafts() async {
-    if (_localDrafts.isEmpty) {
-      return;
-    }
+    if (_localDrafts.isEmpty) return;
     for (final draft in List<Map<String, dynamic>>.from(_localDrafts)) {
       await _syncLocalDraft(draft);
     }
-    if (mounted) {
-      setState(() {});
-    }
+    if (mounted) setState(() {});
   }
 
-  Future<ActionFeedback> _syncAllLocalData({bool showMessage = true}) async {
+  Future<ActionFeedback> _syncAllLocalData(
+      {bool showMessage = true}) async {
     final token = _token;
     if (token == null || token.isEmpty) {
       return const ActionFeedback(
-        message: 'Sign in to sync local courses and drafts.',
-        isError: true,
-      );
+          message: 'Sign in to sync local courses and drafts.',
+          isError: true);
     }
     try {
       await _syncAllLocalCourses();
       await _syncAllLocalDrafts();
       await _loadInitialData();
-      const feedback = ActionFeedback(message: 'Local data synced to the cloud.');
-      if (showMessage) {
-        _showMessage(feedback.message);
-      }
+      const feedback =
+          ActionFeedback(message: 'Local data synced to the cloud.');
+      if (showMessage) _showMessage(feedback.message);
       return feedback;
     } catch (error) {
       _localStats = {
         ..._localStats,
-        'sync_failures': ((_localStats['sync_failures'] as num?)?.toInt() ?? 0) + 1,
+        'sync_failures':
+            ((_localStats['sync_failures'] as num?)?.toInt() ?? 0) + 1,
       };
       await _persistLocalStats();
       final message = error.toString().replaceFirst('Exception: ', '');
       _appendUiLog('Local data sync failed: $message');
-      if (showMessage) {
-        _showMessage('Local data sync failed: $message');
-      }
+      if (showMessage) _showMessage('Local data sync failed: $message');
       return ActionFeedback(message: message, isError: true);
     }
   }
@@ -2261,7 +1973,6 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         ? _frontPageFallbackPayload(const [])
         : const <String, dynamic>{};
     _courses = const [];
-    _activity = const [];
     _courseNotes = _isLocalCourse(_selectedCourse)
         ? _localNotesForCourse(_selectedCourse!)
         : const [];
@@ -2274,13 +1985,12 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           );
     _localStats = {
       ..._localStats,
-      'cache_clears': ((_localStats['cache_clears'] as num?)?.toInt() ?? 0) + 1,
+      'cache_clears':
+          ((_localStats['cache_clears'] as num?)?.toInt() ?? 0) + 1,
     };
     await _LocalAppStore.saveCache(_localCache);
     await _persistLocalStats();
-    if (mounted) {
-      setState(() {});
-    }
+    if (mounted) setState(() {});
     _appendUiLog('Cleared cached remote data.');
     return const ActionFeedback(message: 'Cached remote data cleared.');
   }
@@ -2295,9 +2005,10 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         localCourses: const [],
         frontPage: _frontPage,
       );
-      _courseNotes = _selectedCourse == null || _isLocalCourse(_selectedCourse)
-          ? const []
-          : _courseNotes;
+      _courseNotes =
+          _selectedCourse == null || _isLocalCourse(_selectedCourse)
+              ? const []
+              : _courseNotes;
     }
     _localStats = {
       ..._localStats,
@@ -2307,50 +2018,10 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     await _persistLocalDrafts();
     await _persistLocalCourses();
     await _persistLocalStats();
-    if (mounted) {
-      setState(() {});
-    }
+    if (mounted) setState(() {});
     _appendUiLog('Removed local drafts and local courses.');
-    return const ActionFeedback(message: 'Local drafts and local courses removed.');
-  }
-
-  Future<void> _togglePlannerEventCompletion(
-      Map<String, dynamic> event, bool completed) async {
-    final token = _token;
-    if (token == null || token.isEmpty) {
-      throw Exception('Sign in to update activities.');
-    }
-    await widget.client.updatePlannerEvent(token, event['id'] as int, {
-      'is_completed': completed,
-      'completed_at': completed
-          ? DateTime.now().toUtc().toIso8601String()
-          : null,
-    });
-    await _loadActivityWeek(startDate: _activityWeekStart);
-    final refreshedEvents = await widget.client.getPlannerEvents(token);
-    setState(() {
-      _plannerEvents = refreshedEvents;
-    });
-    _appendUiLog(
-        '${completed ? 'Completed' : 'Reopened'} planner event ${event['title']}.');
-  }
-
-  Future<void> _subscribeToCourse(Map<String, dynamic> course) async {
-    final token = _token;
-    if (token == null || token.isEmpty) {
-      throw Exception('Sign in to subscribe to courses.');
-    }
-    await widget.client.subscribeCourse(token, course['id'] as int);
-    await _loadInitialData();
-  }
-
-  Future<void> _unsubscribeFromCourse(Map<String, dynamic> course) async {
-    final token = _token;
-    if (token == null || token.isEmpty) {
-      throw Exception('Sign in to unsubscribe from courses.');
-    }
-    await widget.client.unsubscribeCourse(token, course['id'] as int);
-    await _loadInitialData();
+    return const ActionFeedback(
+        message: 'Local drafts and local courses removed.');
   }
 
   Future<void> _copyFrontendLogs() async {
@@ -2359,7 +2030,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     setState(() {
       _localStats = {
         ..._localStats,
-        'logs_copied': ((_localStats['logs_copied'] as num?)?.toInt() ?? 0) + 1,
+        'logs_copied':
+            ((_localStats['logs_copied'] as num?)?.toInt() ?? 0) + 1,
       };
     });
     await _persistLocalStats();
@@ -2370,9 +2042,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     final token = _token;
     if (token == null || token.isEmpty) {
       return const ActionFeedback(
-        message: 'Sign in with an admin account first.',
-        isError: true,
-      );
+          message: 'Sign in with an admin account first.', isError: true);
     }
     try {
       final result = await widget.client.restoreTemplateCourses(token);
@@ -2389,140 +2059,281 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     }
   }
 
-  void _showMessage(String message) {
-    if (!mounted) {
-      return;
+  /// Generates a downloadable config file content from local settings.
+  String _buildConfigFileContent() {
+    final username = _profile?['username']?.toString() ?? '';
+    final email = _settings?['email']?.toString() ??
+        _profile?['email']?.toString() ??
+        '';
+    final apiBase =
+        _localSettings['api_base_url']?.toString() ?? _defaultApiBaseUrl();
+    final themePreset = _localSettings['theme_preset']?.toString() ?? 'teal';
+    final themeMode = _localSettings['theme_mode']?.toString() ?? 'S';
+    final editorMode = _settings?['editor_mode']?.toString() ?? 'P';
+    return [
+      '# Notechondria Editor configuration',
+      '# Generated ${DateTime.now().toUtc().toIso8601String()}',
+      '',
+      'API_BASE_URL=$apiBase',
+      'THEME_PRESET=$themePreset',
+      'THEME_MODE=$themeMode',
+      'EDITOR_MODE=$editorMode',
+      if (username.isNotEmpty) 'USERNAME=$username',
+      if (email.isNotEmpty) 'EMAIL=$email',
+      '',
+      '# Add custom environment variables below',
+      '',
+    ].join('\n');
+  }
+
+  Future<void> _downloadConfigFile() async {
+    try {
+      final username = _profile?['username']?.toString() ?? 'editor';
+      final content = _buildConfigFileContent();
+      final location = await getSaveLocation(
+        suggestedName: 'notechondria-$username.env',
+        acceptedTypeGroups: [
+          const XTypeGroup(label: 'Config', extensions: ['env', 'txt']),
+        ],
+      );
+      if (location == null) return;
+      final bytes = Uint8List.fromList(utf8.encode(content));
+      final file = XFile.fromData(bytes,
+          name: 'notechondria-$username.env', mimeType: 'text/plain');
+      await file.saveTo(location.path);
+      _showMessage('Configuration file saved.');
+      _appendUiLog('Downloaded configuration file.');
+    } catch (error) {
+      _showMessage(error.toString().replaceFirst('Exception: ', ''));
     }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
+  // ---------------------------------------------------------------------------
+  // Build
+  // ---------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWideLayout = constraints.maxWidth >= 960;
-        if (isWideLayout) {
-          return _buildWideScaffold(context);
-        }
-        return _buildCompactScaffold();
+        if (isWideLayout) return _buildWideScaffold(context);
+        return _buildCompactScaffold(context);
       },
     );
   }
 
-  Widget _buildCompactScaffold() {
+  /// Compact (mobile/narrow) layout with a three-dot menu in the AppBar.
+  Widget _buildCompactScaffold(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
-        title: _showCompactPageHeader(_selectedIndex)
-            ? Text(_titles[_selectedIndex])
-            : null,
+        title: Text(widget.appTitle),
         backgroundColor: Colors.transparent,
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            tooltip: 'Navigation',
+            onSelected: (value) {
+              if (value == 'all_notes') {
+                setState(() {
+                  _selectedCategoryId = null;
+                  _selectedIndex = 1;
+                });
+              } else if (value == 'settings') {
+                setState(() => _selectedIndex = 4);
+              } else if (value.startsWith('cat_')) {
+                final catId = int.tryParse(value.substring(4));
+                if (catId != null) {
+                  final cat = _allCategories.firstWhere(
+                    (c) => (c['id'] as num?)?.toInt() == catId,
+                    orElse: () => const <String, dynamic>{},
+                  );
+                  if (cat.isNotEmpty) _selectCourse(cat);
+                }
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'all_notes',
+                child: Row(
+                  children: [
+                    Icon(Icons.menu_book_outlined,
+                        color: _selectedCategoryId == null &&
+                                _selectedIndex == 1
+                            ? Theme.of(context).colorScheme.primary
+                            : null),
+                    const SizedBox(width: 12),
+                    const Text('All Notes'),
+                  ],
+                ),
+              ),
+              if (_allCategories.isNotEmpty) const PopupMenuDivider(),
+              for (final cat in _allCategories)
+                PopupMenuItem(
+                  value: 'cat_${cat['id']}',
+                  child: Row(
+                    children: [
+                      Icon(
+                        cat['is_local_course'] == true
+                            ? Icons.folder_outlined
+                            : Icons.school_outlined,
+                        color: _selectedCategoryId ==
+                                (cat['id'] as num?)?.toInt()
+                            ? Theme.of(context).colorScheme.primary
+                            : null,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          cat['title']?.toString() ?? 'Category',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const PopupMenuDivider(),
+              PopupMenuItem(
+                value: 'settings',
+                child: Row(
+                  children: [
+                    Icon(Icons.settings_outlined,
+                        color: _selectedIndex == 4
+                            ? Theme.of(context).colorScheme.primary
+                            : null),
+                    const SizedBox(width: 12),
+                    const Text('Settings'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: _buildBody(),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedNavIndex,
-        onDestinationSelected: _handleVisibleDestinationSelected,
-        destinations: _visibleIndices.map((index) => _destinations[index]).toList(growable: false),
-      ),
     );
   }
 
+  /// Wide (horizontal) layout with category sidebar.
   Widget _buildWideScaffold(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final subscribedCourses =
-        _courses.where((course) => course['is_subscribed'] == true).toList();
     return Scaffold(
       body: SafeArea(
         child: Row(
           children: [
+            // ---- Sidebar ----
             Container(
               width: 240,
               decoration: BoxDecoration(
                 color: colorScheme.surface,
                 border: Border(
-                  right: BorderSide(color: colorScheme.outlineVariant),
-                ),
+                    right: BorderSide(color: colorScheme.outlineVariant)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.appTitle,
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Wide layout',
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
-                        ),
-                      ],
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+                    child: Text(
+                      widget.appTitle,
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800),
                     ),
                   ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Column(
-                        children: [
-                          for (final index in _visibleIndices.where((index) => index != 4))
-                            _SidebarItem(
-                              icon: (_destinations[index].icon as Icon).icon!,
-                              label: _titles[index],
-                              selected: _selectedIndex == index,
-                              onTap: () => _selectActualIndex(index),
-                            ),
-                          if (subscribedCourses.isNotEmpty && _visibleIndices.contains(2)) ...[
-                            const SizedBox(height: 12),
-                            Flexible(
-                              child: _WideCourseSidebarSection(
-                                expanded: _coursePanelExpanded,
-                                courses: subscribedCourses,
-                                selectedCourseId:
-                                    (_selectedCourse?['id'] as num?)?.toInt(),
-                                onToggleExpanded: () {
-                                  setState(() {
-                                    _coursePanelExpanded = !_coursePanelExpanded;
-                                  });
-                                },
-                                onSelectCourse: (course) {
-                                  setState(() {
-                                    _selectedIndex = 2;
-                                  });
-                                  _selectCourse(course);
-                                },
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
+                  // "All Notes" item
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: _SidebarItem(
+                      icon: Icons.menu_book_outlined,
+                      label: 'All Notes',
+                      selected: _selectedIndex == 1 &&
+                          _selectedCategoryId == null,
+                      onTap: () {
+                        setState(() {
+                          _selectedCategoryId = null;
+                          _selectedIndex = 1;
+                        });
+                      },
                     ),
                   ),
-                  if (_visibleIndices.contains(4))
+                  // Categories section
+                  if (_allCategories.isNotEmpty) ...[
+                    const SizedBox(height: 8),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-                      child: _SidebarItem(
-                        icon: Icons.settings_outlined,
-                        label: 'Settings',
-                        selected: _selectedIndex == 4,
-                        onTap: () => _selectActualIndex(4),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: InkWell(
+                        onTap: () => setState(() =>
+                            _coursePanelExpanded = !_coursePanelExpanded),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 8),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Categories',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleSmall
+                                      ?.copyWith(fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                              Icon(_coursePanelExpanded
+                                  ? Icons.expand_less
+                                  : Icons.expand_more),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
+                    if (_coursePanelExpanded)
+                      Expanded(
+                        child: ListView(
+                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                          children: [
+                            for (final cat in _allCategories)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: _SidebarItem(
+                                  icon: cat['is_local_course'] == true
+                                      ? Icons.folder_outlined
+                                      : Icons.school_outlined,
+                                  label: cat['title']?.toString() ??
+                                      'Category',
+                                  selected: _selectedCategoryId ==
+                                      (cat['id'] as num?)?.toInt(),
+                                  onTap: () => _selectCourse(cat),
+                                ),
+                              ),
+                          ],
+                        ),
+                      )
+                    else
+                      const Spacer(),
+                  ] else
+                    const Spacer(),
+                  // Settings at bottom
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                    child: _SidebarItem(
+                      icon: Icons.settings_outlined,
+                      label: 'Settings',
+                      selected: _selectedIndex == 4,
+                      onTap: () => _selectActualIndex(4),
+                    ),
+                  ),
                 ],
               ),
             ),
+            // ---- Main content ----
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2535,9 +2346,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
                         style: Theme.of(context)
                             .textTheme
                             .headlineSmall
-                            ?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                            ?.copyWith(fontWeight: FontWeight.w700),
                       ),
                     ),
                   Expanded(child: _buildBody()),
@@ -2566,38 +2375,27 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
                       color: Theme.of(context).colorScheme.errorContainer,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
+                            horizontal: 16, vertical: 12),
                         child: Row(
                           children: [
-                            Icon(
-                              Icons.cloud_off_outlined,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onErrorContainer,
-                            ),
+                            Icon(Icons.cloud_off_outlined,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onErrorContainer),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: Text(
-                                _errorMessage!,
-                                style: TextStyle(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onErrorContainer,
-                                ),
-                              ),
+                              child: Text(_errorMessage!,
+                                  style: TextStyle(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onErrorContainer)),
                             ),
                             TextButton(
-                              onPressed: _loadInitialData,
-                              child: const Text('Retry'),
-                            ),
+                                onPressed: _loadInitialData,
+                                child: const Text('Retry')),
                             IconButton(
-                              onPressed: () {
-                                setState(() {
-                                  _errorMessage = null;
-                                });
-                              },
+                              onPressed: () =>
+                                  setState(() => _errorMessage = null),
                               icon: const Icon(Icons.close),
                               tooltip: 'Dismiss',
                             ),
@@ -2612,20 +2410,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     );
   }
 
-  void _handleDestinationSelected(int index) {
-    _selectActualIndex(index);
-  }
-
   Widget _buildPage() {
     switch (_selectedIndex) {
-      case 0:
-        return _FrontPage(
-          frontPage: _frontPage ?? const {},
-          profile: _profile,
-          apiBaseUrl: _httpClient?.baseUrl,
-          onOpenNote: _openNoteViewer,
-          onOpenCourse: _selectCourse,
-        );
       case 1:
         return _LearnerPage(
           notes: _learnerNotes,
@@ -2657,39 +2443,6 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           onSyncAllLocalDrafts: _syncAllLocalDrafts,
           onLogEvent: _appendUiLog,
         );
-      case 2:
-        return _CoursePage(
-          courses: _courses,
-          localCourses: _localCourses,
-          selectedCourse: _selectedCourse,
-          notes: _courseNotes,
-          localNotes: _localDrafts,
-          isAuthenticated: _token != null && _token!.isNotEmpty,
-          canCreateLocalCourses: true,
-          apiBaseUrl: _httpClient?.baseUrl,
-          onCourseChanged: _selectCourse,
-          onCreateLocalCourse: _createLocalCourse,
-          onSyncLocalData: _syncAllLocalData,
-          onSubscribe: _subscribeToCourse,
-          onUnsubscribe: _unsubscribeFromCourse,
-          onFetchNoteDetail: _fetchNoteDetail,
-        );
-      case 3:
-        return _ActivityPage(
-          activityWeek: _activityWeek,
-          isAuthenticated: _token != null && _token!.isNotEmpty,
-          plannerEvents: _plannerEvents,
-          onCreatePlannerEvent: _createPlannerEvent,
-          onImportCalendar: _importCalendarFeed,
-          onSubscribeCalendar: _subscribeCalendarFeed,
-          onNavigateWeek: (direction) => _loadActivityWeek(
-            startDate: _activityWeekStart.add(Duration(days: direction * 7)),
-          ),
-          onShiftStartDay: (dayDelta) => _loadActivityWeek(
-            startDate: _activityWeekStart.add(Duration(days: dayDelta)),
-          ),
-          onTogglePlannerEventCompletion: _togglePlannerEventCompletion,
-        );
       case 4:
         return _SettingsPage(
           profile: _profile,
@@ -2713,6 +2466,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           onClearLocalCache: _clearLocalCache,
           onClearLocalData: _clearLocalData,
           onRestoreTemplateCourses: _restoreTemplateCourses,
+          onDownloadConfig: _downloadConfigFile,
           localDraftCount: _localDrafts.length,
           localCourseCount: _localCourses.length,
           apiBaseUrl: _httpClient?.baseUrl,
@@ -2723,120 +2477,5 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       default:
         return const SizedBox.shrink();
     }
-  }
-}
-
-class _WideCourseSidebarSection extends StatelessWidget {
-  const _WideCourseSidebarSection({
-    required this.expanded,
-    required this.courses,
-    required this.selectedCourseId,
-    required this.onToggleExpanded,
-    required this.onSelectCourse,
-  });
-
-  final bool expanded;
-  final List<Map<String, dynamic>> courses;
-  final int? selectedCourseId;
-  final VoidCallback onToggleExpanded;
-  final ValueChanged<Map<String, dynamic>> onSelectCourse;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Card(
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      color: colorScheme.surfaceVariant.withOpacity(0.35),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          InkWell(
-            onTap: onToggleExpanded,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Courses',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                  Icon(expanded ? Icons.expand_less : Icons.expand_more),
-                ],
-              ),
-            ),
-          ),
-          if (expanded)
-            Flexible(
-              child: ListView(
-                shrinkWrap: true,
-                padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                children: [
-                  for (final course in courses)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: InkWell(
-                        onTap: () => onSelectCourse(course),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Ink(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: selectedCourseId == course['id']
-                                ? colorScheme.primaryContainer
-                                : Colors.transparent,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                course['title']?.toString() ?? 'Course',
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      color: selectedCourseId == course['id']
-                                          ? colorScheme.onPrimaryContainer
-                                          : null,
-                                    ),
-                              ),
-                              if ((course['last_opened_at']?.toString() ?? '')
-                                  .isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Opened ${_formatCompactTimestamp(course['last_opened_at'].toString())}',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
-                                        color: selectedCourseId == course['id']
-                                            ? colorScheme.onPrimaryContainer
-                                            : colorScheme.onSurfaceVariant,
-                                      ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
   }
 }

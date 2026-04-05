@@ -1,5 +1,7 @@
 part of notechondria_frontend;
 
+/// Editor-focused settings page with login/sync, profile, editor preferences,
+/// config file download, and a simplified debug log.
 class _SettingsPage extends StatefulWidget {
   const _SettingsPage({
     required this.profile,
@@ -26,6 +28,7 @@ class _SettingsPage extends StatefulWidget {
     required this.localDraftCount,
     required this.localCourseCount,
     required this.uiLogs,
+    this.onDownloadConfig,
     this.apiBaseUrl,
     this.debugSnapshotListenable,
     this.debugHistoryListenable,
@@ -66,6 +69,7 @@ class _SettingsPage extends StatefulWidget {
   final Future<ActionFeedback> Function() onClearLocalCache;
   final Future<ActionFeedback> Function() onClearLocalData;
   final Future<ActionFeedback> Function() onRestoreTemplateCourses;
+  final Future<void> Function()? onDownloadConfig;
   final int localDraftCount;
   final int localCourseCount;
   final List<String> uiLogs;
@@ -91,10 +95,6 @@ class _SettingsPageState extends State<_SettingsPage> {
   bool _uploadingAvatar = false;
 
   bool get _isAuthenticated => widget.profile != null && widget.settings != null;
-
-  bool get _isAdmin =>
-      widget.profile?['is_superuser'] == true ||
-      widget.settings?['is_superuser'] == true;
 
   @override
   void initState() {
@@ -301,350 +301,320 @@ class _SettingsPageState extends State<_SettingsPage> {
           'This app only keeps the editor-focused controls: login/sync, editor preferences, and debug output.',
         ),
         const SizedBox(height: 20),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '1. Login and sync',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 8),
-                if (!_isAuthenticated) ...[
-                  const Text(
-                    'Sign in to sync notes independently from the planner and portal apps. Local notes remain usable while signed out.',
+        _buildLoginSyncSection(context),
+        const SizedBox(height: 16),
+        _buildEditorSection(context),
+        const SizedBox(height: 16),
+        _buildConfigSection(context),
+        const SizedBox(height: 16),
+        _buildDebugSection(context),
+      ],
+    );
+  }
+
+  /// Login, sync, and user profile section.
+  Widget _buildLoginSyncSection(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Login and sync',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            if (!_isAuthenticated) ...[
+              const Text(
+                'Sign in to sync notes independently from the planner and portal apps. Local notes remain usable while signed out.',
+              ),
+              const SizedBox(height: 12),
+              _AuthHub(
+                onRegister: widget.onRegister,
+                onVerify: widget.onVerify,
+                onLogin: widget.onLogin,
+                onRequestPasswordReset: widget.onRequestPasswordReset,
+                onConfirmPasswordReset: widget.onConfirmPasswordReset,
+              ),
+            ] else ...[
+              _buildProfileFields(context),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  FilledButton.icon(
+                    onPressed: () => _runMaintenanceAction(
+                      () => widget.onSyncLocalData(showMessage: false),
+                    ),
+                    icon: const Icon(Icons.cloud_upload_outlined),
+                    label: const Text('Push local \u2192 cloud'),
                   ),
-                  const SizedBox(height: 12),
-                  _AuthHub(
-                    onRegister: widget.onRegister,
-                    onVerify: widget.onVerify,
-                    onLogin: widget.onLogin,
-                    onRequestPasswordReset: widget.onRequestPasswordReset,
-                    onConfirmPasswordReset: widget.onConfirmPasswordReset,
+                  OutlinedButton.icon(
+                    onPressed: () => _runMaintenanceAction(widget.onPullCloudData),
+                    icon: const Icon(Icons.download_for_offline_outlined),
+                    label: const Text('Pull cloud \u2192 local'),
                   ),
-                ] else ...[
+                  OutlinedButton(
+                    onPressed: widget.onLogout,
+                    child: const Text('Logout'),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Profile fields shown when authenticated: avatar, username, email, motto,
+  /// social link.
+  Widget _buildProfileFields(BuildContext context) {
+    final avatarUrl = widget.profile?['avatar']?.toString() ??
+        widget.settings?['avatar']?.toString();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            GestureDetector(
+              onTap: _uploadingAvatar ? null : _handleAvatarUpload,
+              child: CircleAvatar(
+                radius: 32,
+                backgroundImage:
+                    avatarUrl != null && avatarUrl.isNotEmpty
+                        ? NetworkImage(
+                            _resolveRemoteUrl(avatarUrl, apiBaseUrl: widget.apiBaseUrl),
+                          )
+                        : null,
+                child: avatarUrl == null || avatarUrl.isEmpty
+                    ? const Icon(Icons.person, size: 32)
+                    : null,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    'Signed in as ${widget.profile?['email']?.toString() ?? widget.profile?['username']?.toString() ?? 'user'}.',
+                    widget.profile?['username']?.toString() ?? 'User',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w600),
                   ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      FilledButton.icon(
-                        onPressed: () => _runMaintenanceAction(
-                          () => widget.onSyncLocalData(showMessage: false),
-                        ),
-                        icon: const Icon(Icons.cloud_upload_outlined),
-                        label: const Text('Push local → cloud'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: () => _runMaintenanceAction(widget.onPullCloudData),
-                        icon: const Icon(Icons.download_for_offline_outlined),
-                        label: const Text('Pull cloud → local'),
-                      ),
-                      OutlinedButton(
-                        onPressed: widget.onLogout,
-                        child: const Text('Logout'),
-                      ),
-                    ],
+                  Text(
+                    widget.profile?['email']?.toString() ?? '',
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
-              ],
+              ),
             ),
-          ),
+            TextButton.icon(
+              onPressed: _uploadingAvatar ? null : _handleAvatarUpload,
+              icon: const Icon(Icons.camera_alt_outlined, size: 18),
+              label: Text(_uploadingAvatar ? 'Uploading...' : 'Change avatar'),
+            ),
+          ],
         ),
         const SizedBox(height: 16),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '2. Editor settings',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: _editorMode,
-                  items: const [
-                    DropdownMenuItem(value: 'P', child: Text('Plain text editor')),
-                    DropdownMenuItem(value: 'G', child: Text('Dynamic markdown editor')),
-                    DropdownMenuItem(value: 'B', child: Text('Block editor')),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => _editorMode = value);
-                    }
-                  },
-                  decoration: const InputDecoration(
-                    labelText: 'Default editor',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _themePreset,
-                        items: _themePresetEntries.entries
-                            .map((entry) => DropdownMenuItem<String>(
-                                  value: entry.key,
-                                  child: Text(entry.value),
-                                ))
-                            .toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() => _themePreset = value);
-                          }
-                        },
-                        decoration: const InputDecoration(
-                          labelText: 'Theme preset',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _themeMode,
-                        items: const [
-                          DropdownMenuItem(value: 'S', child: Text('System')),
-                          DropdownMenuItem(value: 'L', child: Text('Light')),
-                          DropdownMenuItem(value: 'D', child: Text('Dark')),
-                        ],
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() => _themeMode = value);
-                          }
-                        },
-                        decoration: const InputDecoration(
-                          labelText: 'Theme mode',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _apiBaseController,
-                  decoration: const InputDecoration(
-                    labelText: 'API base URL',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                if (_saveFeedback != null) ...[
-                  _FeedbackText(feedback: _saveFeedback!),
-                  const SizedBox(height: 12),
-                ],
-                FilledButton(
-                  onPressed: _saving ? null : _submitSettings,
-                  child: Text(_saving ? 'Saving...' : 'Save editor settings'),
-                ),
-              ],
-            ),
+        TextField(
+          controller: _usernameController,
+          decoration: const InputDecoration(
+            labelText: 'Username',
+            border: OutlineInputBorder(),
           ),
         ),
-        const SizedBox(height: 16),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '3. Debug log',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '${widget.localDraftCount} local draft(s), ${widget.localCourseCount} local note bucket(s).',
-                      ),
-                    ),
-                    TextButton.icon(
-                      onPressed: widget.onCopyLogs,
-                      icon: const Icon(Icons.copy_all_outlined),
-                      label: const Text('Copy logs'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _ApiDebugCard(
-                  apiBaseUrl: widget.apiBaseUrl,
-                  snapshotListenable: widget.debugSnapshotListenable,
-                  historyListenable: widget.debugHistoryListenable,
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 220,
-                  child: ListView(
-                    padding: EdgeInsets.zero,
-                    children: [
-                      for (final row in widget.uiLogs) SelectableText(row),
-                      if (widget.uiLogs.isEmpty)
-                        const Text('No frontend logs captured yet.'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _emailController,
+          decoration: const InputDecoration(
+            labelText: 'Email',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _mottoController,
+          decoration: const InputDecoration(
+            labelText: 'Motto',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _socialController,
+          decoration: const InputDecoration(
+            labelText: 'Social link',
+            border: OutlineInputBorder(),
           ),
         ),
       ],
     );
   }
 
-}
-
-class _StatChip extends StatelessWidget {
-  const _StatChip({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minWidth: 180),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(fontWeight: FontWeight.w700),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AuthHub extends StatelessWidget {
-  const _AuthHub({
-    required this.onRegister,
-    required this.onVerify,
-    required this.onLogin,
-    required this.onRequestPasswordReset,
-    required this.onConfirmPasswordReset,
-  });
-
-  final Future<ActionFeedback> Function(String email, String password)
-      onRegister;
-  final Future<ActionFeedback> Function(String email, String code) onVerify;
-  final Future<ActionFeedback> Function(String email, String password) onLogin;
-  final Future<ActionFeedback> Function(String email) onRequestPasswordReset;
-  final Future<ActionFeedback> Function(
-    String email,
-    String code,
-    String password,
-  ) onConfirmPasswordReset;
-
-  Future<void> _openDialog(BuildContext context, Widget dialog) {
-    return showDialog<void>(
-      context: context,
-      builder: (context) => dialog,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  /// Editor preferences: editor mode, theme, API base URL.
+  Widget _buildEditorSection(BuildContext context) {
     return Card(
-      elevation: 0,
-      color: Theme.of(context).colorScheme.surfaceVariant,
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Account', style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              'Editor preferences',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: _editorMode,
+              items: const [
+                DropdownMenuItem(value: 'P', child: Text('Plain text editor')),
+                DropdownMenuItem(value: 'G', child: Text('Dynamic markdown editor')),
+                DropdownMenuItem(value: 'B', child: Text('Block editor')),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _editorMode = value);
+                }
+              },
+              decoration: const InputDecoration(
+                labelText: 'Default editor',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: _themePreset,
+                    items: _themePresetEntries.entries
+                        .map((entry) => DropdownMenuItem<String>(
+                              value: entry.key,
+                              child: Text(entry.value),
+                            ))
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _themePreset = value);
+                      }
+                    },
+                    decoration: const InputDecoration(
+                      labelText: 'Theme preset',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: _themeMode,
+                    items: const [
+                      DropdownMenuItem(value: 'S', child: Text('System')),
+                      DropdownMenuItem(value: 'L', child: Text('Light')),
+                      DropdownMenuItem(value: 'D', child: Text('Dark')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _themeMode = value);
+                      }
+                    },
+                    decoration: const InputDecoration(
+                      labelText: 'Theme mode',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _apiBaseController,
+              decoration: const InputDecoration(
+                labelText: 'API base URL',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (_saveFeedback != null) ...[
+              _FeedbackText(feedback: _saveFeedback!),
+              const SizedBox(height: 12),
+            ],
+            FilledButton(
+              onPressed: _saving ? null : _submitSettings,
+              child: Text(_saving ? 'Saving...' : 'Save settings'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Configuration file section: download env config, maintenance actions.
+  Widget _buildConfigSection(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Configuration',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 8),
             const Text(
-              'Use small dialogs for sign up, verification, login, and password reset.',
+              'Download or manage configuration files. Maintenance actions affect local storage only.',
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Wrap(
               spacing: 10,
               runSpacing: 10,
               children: [
-                FilledButton(
-                  onPressed: () => _openDialog(
-                    context,
-                    _EmailPasswordDialog(
-                      title: 'Sign up',
-                      description:
-                          'Create an account with email and password. Verification code arrives by email or server log fallback.',
-                      submitLabel: 'Create account',
-                      onSubmit: onRegister,
-                    ),
+                if (widget.onDownloadConfig != null)
+                  OutlinedButton.icon(
+                    onPressed: widget.onDownloadConfig,
+                    icon: const Icon(Icons.download_outlined),
+                    label: const Text('Download config file'),
                   ),
-                  child: const Text('Sign up'),
+                OutlinedButton.icon(
+                  onPressed: () => _runMaintenanceAction(widget.onClearLocalCache),
+                  icon: const Icon(Icons.cached_outlined),
+                  label: const Text('Clear local cache'),
                 ),
-                OutlinedButton(
-                  onPressed: () => _openDialog(
-                    context,
-                    _EmailCodeDialog(
-                      title: 'Verify email',
-                      description:
-                          'Enter the verification code sent to your email.',
-                      submitLabel: 'Verify',
-                      onSubmit: onVerify,
-                    ),
-                  ),
-                  child: const Text('Verify email'),
+                OutlinedButton.icon(
+                  onPressed: () => _runMaintenanceAction(widget.onRestoreTemplateCourses),
+                  icon: const Icon(Icons.restore_outlined),
+                  label: const Text('Restore template categories'),
                 ),
-                OutlinedButton(
-                  onPressed: () => _openDialog(
-                    context,
-                    _EmailPasswordDialog(
-                      title: 'Login',
-                      description:
-                          'Sign in with your email and password. Admin username also works for the bootstrapped Django admin account.',
-                      submitLabel: 'Login',
-                      emailLabel: 'Email or username',
-                      onSubmit: onLogin,
-                    ),
+                OutlinedButton.icon(
+                  onPressed: _openRecycleBinDialog,
+                  icon: const Icon(Icons.delete_sweep_outlined),
+                  label: Text(
+                    'Recycle bin (${widget.deletedNotes.length})',
                   ),
-                  child: const Text('Login'),
                 ),
-                TextButton(
-                  onPressed: () => _openDialog(
-                    context,
-                    _PasswordResetDialog(
-                      onRequestPasswordReset: onRequestPasswordReset,
-                      onConfirmPasswordReset: onConfirmPasswordReset,
-                    ),
+                OutlinedButton.icon(
+                  onPressed: () => _runMaintenanceAction(widget.onClearLocalData),
+                  icon: Icon(Icons.warning_amber_outlined,
+                      color: Theme.of(context).colorScheme.error),
+                  label: Text(
+                    'Clear all local data',
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),
                   ),
-                  child: const Text('Forgot password'),
                 ),
               ],
             ),
@@ -653,351 +623,61 @@ class _AuthHub extends StatelessWidget {
       ),
     );
   }
-}
 
-class _EmailPasswordDialog extends StatefulWidget {
-  const _EmailPasswordDialog({
-    required this.title,
-    required this.description,
-    required this.submitLabel,
-    required this.onSubmit,
-    this.emailLabel = 'Email',
-  });
-
-  final String title;
-  final String description;
-  final String submitLabel;
-  final Future<ActionFeedback> Function(String email, String password) onSubmit;
-  final String emailLabel;
-
-  @override
-  State<_EmailPasswordDialog> createState() => _EmailPasswordDialogState();
-}
-
-class _EmailPasswordDialogState extends State<_EmailPasswordDialog> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  ActionFeedback? _feedback;
-  bool _submitting = false;
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    setState(() {
-      _submitting = true;
-      _feedback = null;
-    });
-    final feedback =
-        await widget.onSubmit(_emailController.text, _passwordController.text);
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _submitting = false;
-      _feedback = feedback;
-    });
-    if (!feedback.isError && widget.title == 'Login') {
-      Navigator.of(context).pop();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.title),
-      content: SizedBox(
-        width: 360,
+  /// Simplified debug log: local stats and recent UI logs with copy button.
+  Widget _buildDebugSection(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.description),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _emailController,
-              decoration: InputDecoration(
-                labelText: widget.emailLabel,
-                border: const OutlineInputBorder(),
-              ),
+            Text(
+              'Debug log',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Password',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            if (_feedback != null) ...[
-              const SizedBox(height: 12),
-              _FeedbackText(feedback: _feedback!),
-            ],
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Close'),
-        ),
-        FilledButton(
-          onPressed: _submitting ? null : _submit,
-          child: Text(_submitting ? 'Working...' : widget.submitLabel),
-        ),
-      ],
-    );
-  }
-}
-
-class _EmailCodeDialog extends StatefulWidget {
-  const _EmailCodeDialog({
-    required this.title,
-    required this.description,
-    required this.submitLabel,
-    required this.onSubmit,
-  });
-
-  final String title;
-  final String description;
-  final String submitLabel;
-  final Future<ActionFeedback> Function(String email, String code) onSubmit;
-
-  @override
-  State<_EmailCodeDialog> createState() => _EmailCodeDialogState();
-}
-
-class _EmailCodeDialogState extends State<_EmailCodeDialog> {
-  final _emailController = TextEditingController();
-  final _codeController = TextEditingController();
-  ActionFeedback? _feedback;
-  bool _submitting = false;
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _codeController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    setState(() {
-      _submitting = true;
-      _feedback = null;
-    });
-    final feedback =
-        await widget.onSubmit(_emailController.text, _codeController.text);
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _submitting = false;
-      _feedback = feedback;
-    });
-    if (!feedback.isError) {
-      Navigator.of(context).pop();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.title),
-      content: SizedBox(
-        width: 360,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.description),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _codeController,
-              decoration: const InputDecoration(
-                labelText: 'Code',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            if (_feedback != null) ...[
-              const SizedBox(height: 12),
-              _FeedbackText(feedback: _feedback!),
-            ],
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Close'),
-        ),
-        FilledButton(
-          onPressed: _submitting ? null : _submit,
-          child: Text(_submitting ? 'Working...' : widget.submitLabel),
-        ),
-      ],
-    );
-  }
-}
-
-class _PasswordResetDialog extends StatefulWidget {
-  const _PasswordResetDialog({
-    required this.onRequestPasswordReset,
-    required this.onConfirmPasswordReset,
-  });
-
-  final Future<ActionFeedback> Function(String email) onRequestPasswordReset;
-  final Future<ActionFeedback> Function(
-    String email,
-    String code,
-    String password,
-  ) onConfirmPasswordReset;
-
-  @override
-  State<_PasswordResetDialog> createState() => _PasswordResetDialogState();
-}
-
-class _PasswordResetDialogState extends State<_PasswordResetDialog> {
-  final _emailController = TextEditingController();
-  final _codeController = TextEditingController();
-  final _passwordController = TextEditingController();
-  ActionFeedback? _feedback;
-  bool _submitting = false;
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _codeController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _run(
-    Future<ActionFeedback> Function() action, {
-    bool closeOnSuccess = false,
-  }) async {
-    setState(() {
-      _submitting = true;
-      _feedback = null;
-    });
-    final feedback = await action();
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _submitting = false;
-      _feedback = feedback;
-    });
-    if (closeOnSuccess && !feedback.isError) {
-      Navigator.of(context).pop();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Forgot password'),
-      content: SizedBox(
-        width: 380,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Request a reset code, then set a new password in the same dialog.',
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton(
-              onPressed: _submitting
-                  ? null
-                  : () => _run(
-                        () => widget
-                            .onRequestPasswordReset(_emailController.text),
-                      ),
-              child: Text(_submitting ? 'Working...' : 'Send reset code'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _codeController,
-              decoration: const InputDecoration(
-                labelText: 'Reset code',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'New password',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            if (_feedback != null) ...[
-              const SizedBox(height: 12),
-              _FeedbackText(feedback: _feedback!),
-            ],
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Close'),
-        ),
-        FilledButton(
-          onPressed: _submitting
-              ? null
-              : () => _run(
-                    () => widget.onConfirmPasswordReset(
-                      _emailController.text,
-                      _codeController.text,
-                      _passwordController.text,
-                    ),
-                    closeOnSuccess: true,
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${widget.localDraftCount} local draft(s), ${widget.localCourseCount} local category(ies).',
                   ),
-          child: Text(_submitting ? 'Working...' : 'Update password'),
+                ),
+                TextButton.icon(
+                  onPressed: widget.onCopyLogs,
+                  icon: const Icon(Icons.copy_all_outlined),
+                  label: const Text('Copy logs'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 260,
+              child: widget.uiLogs.isEmpty
+                  ? const Center(child: Text('No frontend logs captured yet.'))
+                  : ListView.builder(
+                      padding: EdgeInsets.zero,
+                      itemCount: widget.uiLogs.length,
+                      itemBuilder: (context, index) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: SelectableText(
+                          widget.uiLogs[index],
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(fontFamily: 'monospace'),
+                        ),
+                      ),
+                    ),
+            ),
+          ],
         ),
-      ],
-    );
-  }
-}
-
-class _FeedbackText extends StatelessWidget {
-  const _FeedbackText({required this.feedback});
-
-  final ActionFeedback feedback;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      feedback.message,
-      style: TextStyle(
-        color: feedback.isError
-            ? const Color(0xFFB91C1C)
-            : const Color(0xFF166534),
-        fontWeight: FontWeight.w600,
       ),
     );
   }
 }
+
