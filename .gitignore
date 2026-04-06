@@ -100,3 +100,6 @@ backend/static/monaco-editor/esm/
 !frontend/planner_app/lib/**
 !frontend/portal_app/lib/
 !frontend/portal_app/lib/**
+
+# Claude
+.claude/
