@@ -16,6 +16,7 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 - [x] Enable drag and reorder for the categories. (backend: `Course.sort_order` + `POST /api/v1/courses/reorder/`; frontend: `ReorderableListView` in wide sidebar with pinned Inbox)
 - [x] Hold categories for editing the category name (course, plan name in future version) and delete the category (show warning before deletion, move all notes to default category, the default "Inbox" category cannot be deleted) keep a simple editor for testing at this stage. Add tooltip for that on hover.
 - [x] At bottom of the Category drop down, add a placeholder to create a new category.
+- [ ] Current drag and update, and hold to edit, add new categories are not implemented in vertical app view.
 
 ### Note view
 
