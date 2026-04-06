@@ -13,6 +13,7 @@ class _LearnerPage extends StatefulWidget {
     required this.searchQuery,
     required this.searchScope,
     required this.isAuthenticated,
+    required this.currentUsername,
     required this.apiBaseUrl,
     required this.onSearchChanged,
     required this.onSearchScopeChanged,
@@ -45,6 +46,7 @@ class _LearnerPage extends StatefulWidget {
   /// 'personal' = only own notes, 'all' = own notes + public notes from any user.
   final String searchScope;
   final bool isAuthenticated;
+  final String currentUsername;
   final String? apiBaseUrl;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<String> onSearchScopeChanged;
@@ -186,13 +188,21 @@ class _LearnerPageState extends State<_LearnerPage> {
     if (!mounted) {
       return;
     }
+    final author = Map<String, dynamic>.from(
+        detail['author'] as Map? ?? const {});
+    final isOwner = widget.currentUsername.isNotEmpty &&
+        author['username']?.toString() == widget.currentUsername;
+    // Local drafts (no author) are always editable.
+    final isLocal = (detail['id'] as num?)?.toInt() != null &&
+        ((detail['id'] as num).toInt() < 0);
+    final canEdit = isOwner || isLocal;
     await showDialog<void>(
       context: context,
       builder: (context) => _NoteViewerDialog(
         note: detail,
-        onEdit: () => _openEditor(detail),
+        onEdit: canEdit ? () => _openEditor(detail) : null,
         onExport: () => widget.onExportNote(detail),
-        onDelete: () => widget.onDeleteNote(detail),
+        onDelete: canEdit ? () => widget.onDeleteNote(detail) : null,
       ),
     );
   }
@@ -489,15 +499,23 @@ class _LearnerNoteCard extends StatelessWidget {
                             const SizedBox(width: 6),
                             Tooltip(
                               message: isLocalDraft
-                                  ? 'Local only — not synced'
+                                  ? (canSync
+                                      ? 'Not synced — tap sync to upload'
+                                      : 'Offline')
                                   : 'Synced to cloud',
                               child: Icon(
                                 isLocalDraft
-                                    ? Icons.cloud_off_outlined
+                                    ? (canSync
+                                        ? Icons.cloud_upload_outlined
+                                        : Icons.cloud_off_outlined)
                                     : Icons.cloud_done_outlined,
                                 size: 16,
                                 color: isLocalDraft
-                                    ? Theme.of(context).colorScheme.onSurfaceVariant
+                                    ? (canSync
+                                        ? Theme.of(context).colorScheme.tertiary
+                                        : Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant)
                                     : Theme.of(context).colorScheme.primary,
                               ),
                             ),

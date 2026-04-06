@@ -455,20 +455,53 @@ class _LatexBuilder extends MarkdownElementBuilder {
 /// `<summary>` on the first or second line and treats the rest of the block
 /// as nested markdown that will be re-rendered inside the expansion body.
 class _DetailsBlockSyntax extends md.BlockSyntax {
+  /// Match `<details` at the start of a line, optionally followed by attributes
+  /// and/or `<summary>` on the same line.
   @override
-  RegExp get pattern => RegExp(r'^\s*<details\b[^>]*>\s*$');
+  RegExp get pattern => RegExp(r'^\s{0,3}<details\b', caseSensitive: false);
+
+  @override
+  bool canEndBlock(md.BlockParser parser) => false;
 
   @override
   md.Node? parse(md.BlockParser parser) {
-    parser.advance();
     var summary = 'Details';
     final bodyLines = <String>[];
     final summaryRegex = RegExp(r'<summary[^>]*>(.*?)</summary>',
         caseSensitive: false, dotAll: true);
-    final closingRegex = RegExp(r'^\s*</details>\s*$', caseSensitive: false);
+    final closingRegex = RegExp(r'</details\s*>', caseSensitive: false);
+
+    // Process the opening line — may contain <summary> and/or <details> attrs.
+    final firstLine = parser.current.content;
+    parser.advance();
+
+    // Check if the opening line also has a <summary> tag.
+    final firstMatch = summaryRegex.firstMatch(firstLine);
+    if (firstMatch != null) {
+      summary = firstMatch.group(1)?.trim() ?? summary;
+    }
+    // If the opening line also has </details> (single-line block), emit now.
+    if (closingRegex.hasMatch(firstLine)) {
+      var remaining = firstLine
+          .replaceFirst(RegExp(r'<details\b[^>]*>', caseSensitive: false), '')
+          .replaceFirst(summaryRegex, '')
+          .replaceFirst(closingRegex, '')
+          .trim();
+      if (remaining.isNotEmpty) bodyLines.add(remaining);
+      final element = md.Element('details', [md.Text(bodyLines.join('\n'))])
+        ..attributes['summary'] = summary;
+      return element;
+    }
+
     while (!parser.isDone) {
       final line = parser.current.content;
       if (closingRegex.hasMatch(line)) {
+        // Capture any content before the closing tag on the same line.
+        final before = line
+            .replaceFirst(closingRegex, '')
+            .replaceFirst(summaryRegex, '')
+            .trim();
+        if (before.isNotEmpty) bodyLines.add(before);
         parser.advance();
         break;
       }
@@ -501,7 +534,7 @@ class _DetailsBuilder extends MarkdownElementBuilder {
     TextStyle? parentStyle,
   ) {
     final summary = element.attributes['summary'] ?? 'Details';
-    final body = element.textContent;
+    final body = element.textContent.trim();
     final theme = Theme.of(context);
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),

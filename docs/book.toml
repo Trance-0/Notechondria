@@ -10,5 +10,5 @@ build-dir = "build"
 [output.html]
 default-theme = "navy"
 preferred-dark-theme = "navy"
-git-repository-url = "https://github.com/Nesbitt-bot/Notechondria"
-edit-url-template = "https://github.com/Nesbitt-bot/Notechondria/edit/codex/docs/{path}"
+git-repository-url = "https://github.com/Trance-0/Notechondria"
+edit-url-template = "https://github.com/Trance-0/Notechondria/edit/codex/docs/{path}"

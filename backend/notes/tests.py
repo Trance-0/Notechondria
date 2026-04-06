@@ -724,6 +724,74 @@ class HeatmapApiTests(TestCase):
         self.assertIn('self-identity-and-expression-in-modern-arts', slugs)
 
 
+class CourseDeleteApiTests(TestCase):
+    """Verify DELETE /api/v1/courses/<id>/ moves notes and removes course."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='deleter', password='pw')
+        self.creator = Creator.objects.create(user_id=self.user)
+        self.token = Token.objects.create(user=self.user)
+        # Default category (Inbox)
+        self.inbox = Course.objects.create(
+            creator_id=self.creator, slug='inbox-del', title='Inbox',
+            is_default=True,
+        )
+        # Non-default category to delete
+        self.target = Course.objects.create(
+            creator_id=self.creator, slug='to-delete', title='To Delete',
+        )
+        # Notes inside the target category
+        self.note1 = Note.objects.create(
+            creator_id=self.creator, course_id=self.target,
+            sharing_id='del-n1', title='Note in target',
+        )
+        self.note2 = Note.objects.create(
+            creator_id=self.creator, course_id=self.target,
+            sharing_id='del-n2', title='Another note',
+        )
+
+    def _auth(self):
+        return {'HTTP_AUTHORIZATION': f'Token {self.token.key}'}
+
+    def test_delete_moves_notes_to_inbox(self):
+        resp = self.client.delete(
+            f'/api/v1/courses/{self.target.id}/', **self._auth(),
+        )
+        self.assertEqual(resp.status_code, 204)
+        # Course is gone
+        self.assertFalse(Course.objects.filter(pk=self.target.id).exists())
+        # Notes moved to Inbox
+        self.note1.refresh_from_db()
+        self.note2.refresh_from_db()
+        self.assertEqual(self.note1.course_id_id, self.inbox.id)
+        self.assertEqual(self.note2.course_id_id, self.inbox.id)
+
+    def test_delete_default_category_rejected(self):
+        resp = self.client.delete(
+            f'/api/v1/courses/{self.inbox.id}/', **self._auth(),
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertTrue(Course.objects.filter(pk=self.inbox.id).exists())
+
+    def test_delete_other_users_category_rejected(self):
+        other_user = User.objects.create_user(username='other', password='pw')
+        other_creator = Creator.objects.create(user_id=other_user)
+        other_course = Course.objects.create(
+            creator_id=other_creator, slug='other-c', title='Other',
+        )
+        resp = self.client.delete(
+            f'/api/v1/courses/{other_course.id}/', **self._auth(),
+        )
+        self.assertEqual(resp.status_code, 403)
+        self.assertTrue(Course.objects.filter(pk=other_course.id).exists())
+
+    def test_delete_unauthenticated_rejected(self):
+        resp = self.client.delete(f'/api/v1/courses/{self.target.id}/')
+        self.assertEqual(resp.status_code, 401)
+        self.assertTrue(Course.objects.filter(pk=self.target.id).exists())
+
+
 class CalendarParsingTests(TestCase):
     def test_parse_ical_datetime_accepts_minute_precision(self):
         parsed = parse_ical_datetime('20260321T1500Z')

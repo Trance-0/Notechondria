@@ -512,17 +512,12 @@ class _SettingsPageState extends State<_SettingsPage> {
           children: [
             GestureDetector(
               onTap: _uploadingAvatar ? null : _handleAvatarUpload,
-              child: CircleAvatar(
+              child: _RemoteAvatar(
                 radius: 32,
-                backgroundImage:
-                    avatarUrl != null && avatarUrl.isNotEmpty
-                        ? NetworkImage(
-                            _resolveRemoteUrl(avatarUrl, apiBaseUrl: widget.apiBaseUrl),
-                          )
-                        : null,
-                child: avatarUrl == null || avatarUrl.isEmpty
-                    ? const Icon(Icons.person, size: 32)
-                    : null,
+                imageUrl: avatarUrl != null && avatarUrl.isNotEmpty
+                    ? _resolveRemoteUrl(avatarUrl, apiBaseUrl: widget.apiBaseUrl)
+                    : '',
+                fallbackLabel: widget.profile?['username']?.toString() ?? '',
               ),
             ),
             const SizedBox(width: 16),
@@ -581,7 +576,7 @@ class _SettingsPageState extends State<_SettingsPage> {
     );
   }
 
-  /// Offline preferences: editor mode, theme, API base URL. Every control
+  /// Editor preferences: editor mode, theme, API base URL. Every control
   /// works without an account and auto-saves on change — no explicit button.
   Widget _buildOfflinePreferencesSection(BuildContext context) {
     return Card(
@@ -596,7 +591,7 @@ class _SettingsPageState extends State<_SettingsPage> {
                     color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 8),
                 Text(
-                  'Offline preferences',
+                  'Editor preferences',
                   style: Theme.of(context)
                       .textTheme
                       .titleMedium

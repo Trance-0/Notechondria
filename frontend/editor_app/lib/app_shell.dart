@@ -1178,11 +1178,18 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
             ((_localStats['avatar_updates'] as num?)?.toInt() ?? 0) + 1,
       };
       await _persistLocalStats();
+      // Bust the image cache so the new avatar displays immediately.
+      final rawUrl = updated['image_url']?.toString() ?? '';
+      final bustUrl = rawUrl.isNotEmpty
+          ? '$rawUrl${rawUrl.contains('?') ? '&' : '?'}t=${DateTime.now().millisecondsSinceEpoch}'
+          : rawUrl;
+      imageCache.clear();
+      imageCache.clearLiveImages();
       setState(() {
-        _settings = updated;
+        _settings = {...updated, 'image_url': bustUrl};
         _profile = {
           ...?_profile,
-          'image_url': updated['image_url'],
+          'image_url': bustUrl,
           'username': updated['username'] ?? _profile?['username'],
           'email': updated['email'] ?? _profile?['email'],
           'is_staff': updated['is_staff'] ?? _profile?['is_staff'],
@@ -1311,24 +1318,38 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     final isLocal = _isLocalCourse(course);
     try {
       if (isLocal) {
+        // Find the local default (Inbox) category to reassign notes.
+        final defaultLocal = _localCourses.cast<Map<String, dynamic>?>().firstWhere(
+          (c) => c?['is_default'] == true && c?['id'] != course['id'],
+          orElse: () => null,
+        );
+        final defaultLocalId = (defaultLocal?['id'] as num?)?.toInt();
         setState(() {
           _localCourses = _localCourses
               .where((item) => item['id'] != course['id'])
               .toList(growable: false);
-          // Strip course_id from any local drafts that referenced it.
-          _localDrafts = _localDrafts.map((draft) {
-            if (_draftCourseId(draft) != courseId) return draft;
-            final metadata =
-                _decodeNoteMetadata(draft['metadata_json']?.toString() ?? '{}');
-            metadata.remove('course_id');
-            return {
-              ...draft,
-              'metadata_json': jsonEncode(metadata),
-            };
-          }).toList(growable: false);
+          // Move drafts from the deleted category into the default category.
+          if (courseId != null && defaultLocalId != null) {
+            _localDrafts = _localDrafts.map((draft) {
+              if (_draftCourseId(draft) != courseId) return draft;
+              return _remapDraftCourseId(draft, courseId, defaultLocalId);
+            }).toList(growable: false);
+          } else {
+            // Fallback: strip course_id so they at least remain visible.
+            _localDrafts = _localDrafts.map((draft) {
+              if (_draftCourseId(draft) != courseId) return draft;
+              final metadata = _decodeNoteMetadata(
+                  draft['metadata_json']?.toString() ?? '{}');
+              metadata.remove('course_id');
+              return {
+                ...draft,
+                'metadata_json': jsonEncode(metadata),
+              };
+            }).toList(growable: false);
+          }
           if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
-            _selectedCourse = null;
-            _selectedCategoryId = null;
+            _selectedCourse = defaultLocal;
+            _selectedCategoryId = defaultLocalId;
           }
         });
         await _persistLocalCourses();
@@ -1340,13 +1361,18 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
               message: 'Sign in to delete cloud categories.', isError: true);
         }
         await widget.client.deleteCourse(token, courseId);
+        // Find the remote default category to land on after deletion.
+        final defaultRemote = _courses.cast<Map<String, dynamic>?>().firstWhere(
+          (c) => c?['is_default'] == true && (c?['id'] as num?)?.toInt() != courseId,
+          orElse: () => null,
+        );
         setState(() {
           _courses = _courses
               .where((item) => (item['id'] as num?)?.toInt() != courseId)
               .toList(growable: false);
           if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
-            _selectedCourse = null;
-            _selectedCategoryId = null;
+            _selectedCourse = defaultRemote;
+            _selectedCategoryId = (defaultRemote?['id'] as num?)?.toInt();
           }
         });
         await _persistLocalCache();
@@ -1542,10 +1568,20 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
             "'${course['title']}' will be removed. All notes inside will move to the default category.",
       );
       if (confirmed) {
-        await _deleteCategory(course);
+        final feedback = await _deleteCategory(course);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(feedback.message)),
+          );
+        }
       }
     } else if (result.startsWith('rename:')) {
-      await _renameCategory(course, result.substring(7));
+      final feedback = await _renameCategory(course, result.substring(7));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(feedback.message)),
+        );
+      }
     }
   }
 
@@ -1897,6 +1933,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       };
       await _persistLocalDrafts();
       await _persistLocalStats();
+      // Refresh remote courses and notes so the full cloud state is visible.
+      await _loadInitialData();
       if (mounted) setState(() {});
       final segments = <String>[];
       if (imported > 0) segments.add('pulled $imported');
@@ -2652,30 +2690,32 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
   Future<ActionFeedback> _clearLocalData() async {
     _localDrafts = const [];
     _localCourses = const [];
+    _deletedNotes = const [];
     _selectedNote = null;
-    if (_selectedCourse != null && _isLocalCourse(_selectedCourse)) {
-      _selectedCourse = _chooseDefaultCourse(
-        remoteCourses: _courses,
-        localCourses: const [],
-        frontPage: _frontPage,
-      );
-      _courseNotes =
-          _selectedCourse == null || _isLocalCourse(_selectedCourse)
-              ? const []
-              : _courseNotes;
-    }
+    _selectedCourse = null;
+    _courseNotes = const [];
+    // Clear cached remote data so stale template courses don't survive.
+    _localCache = _LocalAppStore.defaultCache();
     _localStats = {
-      ..._localStats,
+      ..._LocalAppStore.defaultStats(),
       'local_data_clears':
           ((_localStats['local_data_clears'] as num?)?.toInt() ?? 0) + 1,
     };
     await _persistLocalDrafts();
     await _persistLocalCourses();
     await _persistLocalStats();
+    await _persistLocalCache();
+    // Re-seed with just an Inbox so the workspace is never truly empty.
+    await _ensureStarterWorkspace();
+    _selectedCourse = _chooseDefaultCourse(
+      remoteCourses: _courses,
+      localCourses: _localCourses,
+      frontPage: _frontPage,
+    );
     if (mounted) setState(() {});
-    _appendUiLog('Removed local drafts and local courses.');
+    _appendUiLog('Cleared all local data. Fresh Inbox created.');
     return const ActionFeedback(
-        message: 'Local drafts and local courses removed.');
+        message: 'All local data cleared. Fresh Inbox created.');
   }
 
   Future<void> _copyFrontendLogs() async {
@@ -3242,6 +3282,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           searchQuery: _learnerSearchQuery,
           searchScope: _learnerSearchScope,
           isAuthenticated: _token != null && _token!.isNotEmpty,
+          currentUsername: _profile?['username']?.toString() ?? '',
           apiBaseUrl: _httpClient?.baseUrl,
           onSearchChanged: (value) =>
               _loadLearnerNotes(reset: true, query: value),

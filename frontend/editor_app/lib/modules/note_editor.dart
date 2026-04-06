@@ -65,10 +65,6 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
   late Map<String, dynamic> _metadata;
   late List<_BlockDraft> _blockDrafts;
   late String _editorMode;
-  // When live-markdown mode is active, toggles between rendered preview
-  // (true) and raw text editing (false). Typora-style full WYSIWYG is not
-  // feasible in Flutter; this single-column toggle is the interim UX.
-  bool _liveMarkdownPreview = true;
   /// Index of the paragraph currently being edited inline in the Typora-style
   /// live editor. Null means every paragraph is rendered as a preview.
   int? _liveEditingParagraphIndex;
@@ -746,61 +742,15 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
   /// it, at which point that single paragraph swaps into a borderless
   /// TextField for editing. Focus loss commits the change and swaps the
   /// paragraph back to rendered form. Thin "+" buttons between paragraphs
-  /// insert empty blocks at the exact cursor position. A "Raw" escape hatch
-  /// stays available for users who want the full textarea experience.
+  /// insert empty blocks at the exact cursor position.
   Widget _buildLiveMarkdownEditor() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(
-                  value: true,
-                  label: Text('Inline'),
-                  icon: Icon(Icons.view_stream_outlined),
-                ),
-                ButtonSegment(
-                  value: false,
-                  label: Text('Raw'),
-                  icon: Icon(Icons.code),
-                ),
-              ],
-              selected: {_liveMarkdownPreview},
-              onSelectionChanged: (values) {
-                // Flush any in-progress paragraph edit before swapping modes
-                // so the raw textarea doesn't render stale content.
-                if (_liveEditingParagraphIndex != null) {
-                  _commitEditingLiveParagraph();
-                }
-                setState(() {
-                  _liveMarkdownPreview = values.first;
-                });
-              },
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
         Expanded(
           child: Card(
             clipBehavior: Clip.antiAlias,
-            child: _liveMarkdownPreview
-                ? _buildInlineLiveMarkdownBody()
-                : Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: TextField(
-                      controller: _bodyController,
-                      maxLines: null,
-                      expands: true,
-                      textAlignVertical: TextAlignVertical.top,
-                      decoration: const InputDecoration(
-                        hintText: 'Write your note in markdown...',
-                        border: InputBorder.none,
-                      ),
-                    ),
-                  ),
+            child: _buildInlineLiveMarkdownBody(),
           ),
         ),
       ],
