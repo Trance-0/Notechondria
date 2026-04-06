@@ -28,7 +28,6 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 ### Note preview
 
-- [ ] In vertical view, title is not correly displayed on iphone machine.
 - [x] The display for note header is too small, make appropriate padding on lower subheadings.
 - [x] Add options for export markdown.
   - A checkbox include metadata; default to add the header about note metadata (author name, course name, last edit time, creation time, etc.), add selectable to note format, 
@@ -52,6 +51,10 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
   ```
   - second is markdown-only only export the pure markdown file (include the metadata as the first line in the file with a yaml header).
 - [x] Add additional options for import notes, supports zip and markdown files, reverse the process as above as described. (ZipDecoder path handles recursive archives; YAML frontmatter title/description round-trips back into created notes)
+
+### Note editor
+
+- [ ] In vertical view, title is not correly displayed on iphone machine.
 
 #### Markdown Editor
 
@@ -79,6 +82,10 @@ That means, the block add menu item should be (paragraph, list, enumeration, cod
 
 ### Editor Settings
 
+- [ ] Disable user change for account name, this shoule be unique and not change on create account(add validation on registration), user may change display name.
+- [ ] Remove current email editor, setup registration and security policies that one needs to verify old email before changging to new one. Both email needs to be validated before proceeding the change.
+- [ ] Save editor config to cloud with user, put pull and push as independent subsection and add short description for what those do.
+- [ ] Remove auto save in settings. change to click to save and promt user what changed before proceed. (now the auto save is interrupting user input and may save unwanted changes)
 - [x] Remove configuration section, as the function should be migrated to the login and account info section/Editor Preferences. (merged Download config / Restore templates / Recycle bin / Clear all local data into an "Offline account" row inside Offline preferences)
 
 #### Login and account info
