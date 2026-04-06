@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -l \"VerificationCode\" /d/Documents/Github/Notechondria/backend/creators/migrations/*.py)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(python manage.py test notes.tests.CourseDeleteApiTests -v2)",
+      "Bash(conda info:*)",
+      "Bash(C:/Users/wuzhe/anaconda3/envs/Django/python.exe manage.py test notes.tests.CourseDeleteApiTests -v2 --settings=notechondria.settings_test)",
+      "Bash(flutter test:*)"
+    ]
+  }
+}
