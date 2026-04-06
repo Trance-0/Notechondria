@@ -101,28 +101,38 @@ def ensure_creator(user: User) -> Creator:
     return creator
 
 
-def issue_registration_code(email: str) -> VerificationCode:
+def issue_registration_code(email: str) -> tuple[VerificationCode, str]:
+    """Invalidate old registration codes for *email*, create a new 6-digit
+    hashed code, and return ``(model_instance, plaintext_code)``."""
     VerificationCode.objects.filter(
         usage=VerificationChoices.REGISTER,
         function=email,
     ).update(max_use=0)
-    return VerificationCode.objects.create(
+    vc = VerificationCode(
         expire_date=now() + timedelta(hours=settings.EMAIL_VERIFICATION_TTL_HOURS),
         usage=VerificationChoices.REGISTER,
         function=email,
     )
+    plaintext = vc.generate_code()
+    vc.save()
+    return vc, plaintext
 
 
-def issue_password_reset_code(email: str) -> VerificationCode:
+def issue_password_reset_code(email: str) -> tuple[VerificationCode, str]:
+    """Invalidate old password-reset codes for *email*, create a new 6-digit
+    hashed code, and return ``(model_instance, plaintext_code)``."""
     VerificationCode.objects.filter(
         usage=VerificationChoices.FUNCTION,
         function=f"password_reset:{email}",
     ).update(max_use=0)
-    return VerificationCode.objects.create(
+    vc = VerificationCode(
         expire_date=now() + timedelta(hours=settings.EMAIL_VERIFICATION_TTL_HOURS),
         usage=VerificationChoices.FUNCTION,
         function=f"password_reset:{email}",
     )
+    plaintext = vc.generate_code()
+    vc.save()
+    return vc, plaintext
 
 
 def smtp_is_configured() -> bool:

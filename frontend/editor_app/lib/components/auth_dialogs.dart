@@ -10,8 +10,12 @@ class _AuthHub extends StatelessWidget {
     required this.onConfirmPasswordReset,
   });
 
-  final Future<ActionFeedback> Function(String email, String password)
-      onRegister;
+  final Future<ActionFeedback> Function(
+    String username,
+    String email,
+    String password, {
+    String invitationCode,
+  }) onRegister;
   final Future<ActionFeedback> Function(String email, String code) onVerify;
   final Future<ActionFeedback> Function(String email, String password) onLogin;
   final Future<ActionFeedback> Function(String email) onRequestPasswordReset;
@@ -41,7 +45,7 @@ class _AuthHub extends StatelessWidget {
             Text('Account', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             const Text(
-              'Use small dialogs for sign up, verification, login, and password reset.',
+              'Sign up, verify your email, log in, or reset your password.',
             ),
             const SizedBox(height: 16),
             Wrap(
@@ -51,13 +55,7 @@ class _AuthHub extends StatelessWidget {
                 FilledButton(
                   onPressed: () => _openDialog(
                     context,
-                    _EmailPasswordDialog(
-                      title: 'Sign up',
-                      description:
-                          'Create an account with email and password. Verification code arrives by email or server log fallback.',
-                      submitLabel: 'Create account',
-                      onSubmit: onRegister,
-                    ),
+                    _RegisterDialog(onRegister: onRegister),
                   ),
                   child: const Text('Sign up'),
                 ),
@@ -67,7 +65,7 @@ class _AuthHub extends StatelessWidget {
                     _EmailCodeDialog(
                       title: 'Verify email',
                       description:
-                          'Enter the verification code sent to your email.',
+                          'Enter the 6-digit verification code sent to your email.',
                       submitLabel: 'Verify',
                       onSubmit: onVerify,
                     ),
@@ -79,9 +77,6 @@ class _AuthHub extends StatelessWidget {
                     context,
                     _EmailPasswordDialog(
                       title: 'Login',
-                      // Empty description: the previous helper text about
-                      // admin usernames was redundant and hogged mobile
-                      // screen space, leaving no room for the soft keyboard.
                       description: '',
                       submitLabel: 'Login',
                       emailLabel: 'Email or username',
@@ -105,6 +100,176 @@ class _AuthHub extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Full registration dialog: username, email, password, repeat password,
+/// optional invitation code.
+class _RegisterDialog extends StatefulWidget {
+  const _RegisterDialog({required this.onRegister});
+
+  final Future<ActionFeedback> Function(
+    String username,
+    String email,
+    String password, {
+    String invitationCode,
+  }) onRegister;
+
+  @override
+  State<_RegisterDialog> createState() => _RegisterDialogState();
+}
+
+class _RegisterDialogState extends State<_RegisterDialog> {
+  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  final _invitationController = TextEditingController();
+  ActionFeedback? _feedback;
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _invitationController.dispose();
+    super.dispose();
+  }
+
+  String? _validateLocally() {
+    if (_usernameController.text.trim().isEmpty) {
+      return 'Username is required.';
+    }
+    if (_emailController.text.trim().isEmpty) {
+      return 'Email is required.';
+    }
+    final pw = _passwordController.text;
+    if (pw.length < 8) {
+      return 'Password must be at least 8 characters.';
+    }
+    final hasUpper = pw.contains(RegExp(r'[A-Z]'));
+    final hasLower = pw.contains(RegExp(r'[a-z]'));
+    final hasDigitOrSpecial = pw.contains(RegExp(r'[^a-zA-Z]'));
+    if (!hasUpper || !hasLower || !hasDigitOrSpecial) {
+      return 'Password needs uppercase, lowercase, and a digit or special character.';
+    }
+    if (pw != _confirmPasswordController.text) {
+      return 'Passwords do not match.';
+    }
+    return null;
+  }
+
+  Future<void> _submit() async {
+    final error = _validateLocally();
+    if (error != null) {
+      setState(() {
+        _feedback = ActionFeedback(message: error, isError: true);
+      });
+      return;
+    }
+    setState(() {
+      _submitting = true;
+      _feedback = null;
+    });
+    final feedback = await widget.onRegister(
+      _usernameController.text.trim(),
+      _emailController.text.trim(),
+      _passwordController.text,
+      invitationCode: _invitationController.text.trim(),
+    );
+    if (!mounted) return;
+    setState(() {
+      _submitting = false;
+      _feedback = feedback;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Create account'),
+      content: SizedBox(
+        width: 380,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'After registration a 6-digit verification code will be sent to your email.',
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _usernameController,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'Username',
+                  helperText: 'Letters, numbers, hyphens, underscores.',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _passwordController,
+                obscureText: true,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'Password',
+                  helperText: 'Min 8 chars, uppercase + lowercase + digit/special.',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _confirmPasswordController,
+                obscureText: true,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'Confirm password',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _invitationController,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _submitting ? null : _submit(),
+                decoration: const InputDecoration(
+                  labelText: 'Invitation code (if required)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              if (_feedback != null) ...[
+                const SizedBox(height: 12),
+                _FeedbackText(feedback: _feedback!),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _submitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+        FilledButton(
+          onPressed: _submitting ? null : _submit,
+          child: Text(_submitting ? 'Creating...' : 'Create account'),
+        ),
+      ],
     );
   }
 }
@@ -347,6 +512,7 @@ class _PasswordResetDialogState extends State<_PasswordResetDialog> {
   final _emailController = TextEditingController();
   final _codeController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   ActionFeedback? _feedback;
   bool _submitting = false;
 
@@ -355,6 +521,7 @@ class _PasswordResetDialogState extends State<_PasswordResetDialog> {
     _emailController.dispose();
     _codeController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -385,53 +552,65 @@ class _PasswordResetDialogState extends State<_PasswordResetDialog> {
       title: const Text('Forgot password'),
       content: SizedBox(
         width: 380,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Request a reset code, then set a new password in the same dialog.',
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                border: OutlineInputBorder(),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Request a 6-digit reset code, then set a new password.',
               ),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton(
-              onPressed: _submitting
-                  ? null
-                  : () => _run(
-                        () => widget
-                            .onRequestPasswordReset(_emailController.text),
-                      ),
-              child: Text(_submitting ? 'Working...' : 'Send reset code'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _codeController,
-              decoration: const InputDecoration(
-                labelText: 'Reset code',
-                border: OutlineInputBorder(),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _emailController,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'New password',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            if (_feedback != null) ...[
               const SizedBox(height: 12),
-              _FeedbackText(feedback: _feedback!),
+              OutlinedButton(
+                onPressed: _submitting
+                    ? null
+                    : () => _run(
+                          () => widget
+                              .onRequestPasswordReset(_emailController.text),
+                        ),
+                child: Text(_submitting ? 'Working...' : 'Send reset code'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _codeController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: '6-digit reset code',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'New password',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _confirmPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Confirm new password',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              if (_feedback != null) ...[
+                const SizedBox(height: 12),
+                _FeedbackText(feedback: _feedback!),
+              ],
             ],
-          ],
+          ),
         ),
       ),
       actions: [
@@ -442,14 +621,26 @@ class _PasswordResetDialogState extends State<_PasswordResetDialog> {
         FilledButton(
           onPressed: _submitting
               ? null
-              : () => _run(
+              : () {
+                  if (_passwordController.text !=
+                      _confirmPasswordController.text) {
+                    setState(() {
+                      _feedback = const ActionFeedback(
+                        message: 'Passwords do not match.',
+                        isError: true,
+                      );
+                    });
+                    return;
+                  }
+                  _run(
                     () => widget.onConfirmPasswordReset(
                       _emailController.text,
                       _codeController.text,
                       _passwordController.text,
                     ),
                     closeOnSuccess: true,
-                  ),
+                  );
+                },
           child: Text(_submitting ? 'Working...' : 'Update password'),
         ),
       ],

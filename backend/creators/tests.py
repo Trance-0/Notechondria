@@ -8,8 +8,8 @@ from django.test import TestCase
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
-from .models import Creator, VerificationChoices, VerificationCode, user_profile_path
-from .utils import send_password_reset_email, send_registration_email
+from .models import Creator, InvitationCode, VerificationChoices, VerificationCode, user_profile_path
+from .utils import issue_registration_code, send_password_reset_email, send_registration_email
 
 
 class CreatorModelTests(TestCase):
@@ -176,3 +176,270 @@ class AuthApiTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn('api_base_url', response.json())
+
+
+class RegistrationFlowTests(TestCase):
+    """Full registration cycle: register → verify → login."""
+
+    def setUp(self):
+        self.client = APIClient()
+
+    @patch('creators.utils.smtp_is_configured', return_value=False)
+    @patch('creators.utils.log_manual_verification_code')
+    def test_register_creates_inactive_user_and_sends_code(self, mock_log, _smtp):
+        response = self.client.post(
+            '/api/v1/auth/register/',
+            {
+                'username': 'alice',
+                'email': 'alice@example.com',
+                'password': 'Strong1pw',
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, 201)
+        user = User.objects.get(email='alice@example.com')
+        self.assertFalse(user.is_active)
+        self.assertEqual(user.username, 'alice')
+        # The verification code was logged (SMTP not configured).
+        mock_log.assert_called_once()
+        logged_code = mock_log.call_args[0][1]  # positional: email, code, reason
+        self.assertEqual(len(logged_code), 6)
+        self.assertTrue(logged_code.isdigit())
+
+    @patch('creators.utils.smtp_is_configured', return_value=False)
+    @patch('creators.utils.log_manual_verification_code')
+    def test_register_then_verify_activates_user(self, mock_log, _smtp):
+        self.client.post(
+            '/api/v1/auth/register/',
+            {
+                'username': 'bob',
+                'email': 'bob@example.com',
+                'password': 'Strong1pw',
+            },
+            format='json',
+        )
+        plaintext_code = mock_log.call_args[0][1]
+        response = self.client.post(
+            '/api/v1/auth/verify-email/',
+            {'email': 'bob@example.com', 'code': plaintext_code},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('token', response.json())
+        user = User.objects.get(email='bob@example.com')
+        self.assertTrue(user.is_active)
+
+    def test_register_rejects_weak_password_no_uppercase(self):
+        response = self.client.post(
+            '/api/v1/auth/register/',
+            {'username': 'weak', 'email': 'w@example.com', 'password': 'alllower1'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('password', response.json())
+
+    def test_register_rejects_short_password(self):
+        response = self.client.post(
+            '/api/v1/auth/register/',
+            {'username': 'short', 'email': 's@example.com', 'password': 'Ab1'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('password', response.json())
+
+    def test_register_rejects_duplicate_username(self):
+        User.objects.create_user(username='taken', email='t@example.com', password='pw')
+        response = self.client.post(
+            '/api/v1/auth/register/',
+            {'username': 'taken', 'email': 'new@example.com', 'password': 'Strong1pw'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('username', response.json())
+
+    def test_register_requires_username(self):
+        response = self.client.post(
+            '/api/v1/auth/register/',
+            {'email': 'no-user@example.com', 'password': 'Strong1pw'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('username', response.json())
+
+
+class InvitationCodeTests(TestCase):
+    """Invitation code gate on registration."""
+
+    def setUp(self):
+        self.client = APIClient()
+
+    @patch('creators.utils.smtp_is_configured', return_value=False)
+    @patch('creators.utils.log_manual_verification_code')
+    def test_invitation_code_required_when_codes_exist(self, mock_log, _smtp):
+        InvitationCode.objects.create(code_hash=InvitationCode.hash_code('secret-invite'))
+        response = self.client.post(
+            '/api/v1/auth/register/',
+            {
+                'username': 'carol',
+                'email': 'carol@example.com',
+                'password': 'Strong1pw',
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('invitation_code', response.json())
+
+    @patch('creators.utils.smtp_is_configured', return_value=False)
+    @patch('creators.utils.log_manual_verification_code')
+    def test_valid_invitation_code_allows_registration(self, mock_log, _smtp):
+        InvitationCode.objects.create(
+            code_hash=InvitationCode.hash_code('secret-invite'),
+            label='test',
+            max_uses=5,
+        )
+        response = self.client.post(
+            '/api/v1/auth/register/',
+            {
+                'username': 'dave',
+                'email': 'dave@example.com',
+                'password': 'Strong1pw',
+                'invitation_code': 'secret-invite',
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, 201)
+        invite = InvitationCode.objects.get(label='test')
+        self.assertEqual(invite.times_used, 1)
+
+    @patch('creators.utils.smtp_is_configured', return_value=False)
+    @patch('creators.utils.log_manual_verification_code')
+    def test_wrong_invitation_code_rejected(self, mock_log, _smtp):
+        InvitationCode.objects.create(code_hash=InvitationCode.hash_code('real'))
+        response = self.client.post(
+            '/api/v1/auth/register/',
+            {
+                'username': 'eve',
+                'email': 'eve@example.com',
+                'password': 'Strong1pw',
+                'invitation_code': 'wrong-guess',
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, 400)
+
+    @patch('creators.utils.smtp_is_configured', return_value=False)
+    @patch('creators.utils.log_manual_verification_code')
+    def test_no_invitation_codes_in_db_allows_open_registration(self, mock_log, _smtp):
+        """When no InvitationCode records exist, anyone can register."""
+        response = self.client.post(
+            '/api/v1/auth/register/',
+            {
+                'username': 'frank',
+                'email': 'frank@example.com',
+                'password': 'Strong1pw',
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, 201)
+
+    def test_invitation_code_model_auto_hashes_plaintext_on_save(self):
+        invite = InvitationCode(code_hash='my-plain-code', label='auto')
+        invite.save()
+        self.assertEqual(len(invite.code_hash), 64)
+        self.assertEqual(invite.code_hash, InvitationCode.hash_code('my-plain-code'))
+
+
+class PasswordResetFlowTests(TestCase):
+    """Password reset with 6-digit hashed codes."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username='resetuser',
+            email='reset@example.com',
+            password='OldPass1!',
+            is_active=True,
+        )
+
+    @patch('creators.utils.smtp_is_configured', return_value=False)
+    @patch('creators.utils.log_manual_verification_code')
+    def test_password_reset_full_cycle(self, mock_log, _smtp):
+        # Request reset
+        response = self.client.post(
+            '/api/v1/auth/password-reset/',
+            {'email': 'reset@example.com'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 200)
+        plaintext_code = mock_log.call_args[0][1]
+        self.assertEqual(len(plaintext_code), 6)
+
+        # Confirm reset with new password
+        response = self.client.post(
+            '/api/v1/auth/password-reset/confirm/',
+            {
+                'email': 'reset@example.com',
+                'code': plaintext_code,
+                'password': 'NewPass2!',
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Old password no longer works
+        response = self.client.post(
+            '/api/v1/auth/login/',
+            {'email': 'reset@example.com', 'password': 'OldPass1!'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 400)
+
+        # New password works
+        response = self.client.post(
+            '/api/v1/auth/login/',
+            {'email': 'reset@example.com', 'password': 'NewPass2!'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('token', response.json())
+
+    def test_password_reset_rejects_unknown_email(self):
+        response = self.client.post(
+            '/api/v1/auth/password-reset/',
+            {'email': 'nobody@example.com'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 400)
+
+
+class VerificationCodeModelTests(TestCase):
+    """Tests for the 6-digit hashed verification code model."""
+
+    def test_generate_code_returns_6_digit_string(self):
+        vc = VerificationCode()
+        plaintext = vc.generate_code()
+        self.assertEqual(len(plaintext), 6)
+        self.assertTrue(plaintext.isdigit())
+
+    def test_generate_code_stores_sha256_hash(self):
+        vc = VerificationCode()
+        plaintext = vc.generate_code()
+        self.assertEqual(len(vc.code), 64)  # SHA-256 hex digest
+        self.assertEqual(vc.code, VerificationCode.hash_code(plaintext))
+
+    def test_hash_code_is_deterministic(self):
+        self.assertEqual(
+            VerificationCode.hash_code('123456'),
+            VerificationCode.hash_code('123456'),
+        )
+        self.assertNotEqual(
+            VerificationCode.hash_code('123456'),
+            VerificationCode.hash_code('654321'),
+        )
+
+    def test_issue_registration_code_returns_tuple(self):
+        User.objects.create_user(username='u', email='u@x.com', password='pw')
+        vc, plaintext = issue_registration_code('u@x.com')
+        self.assertIsInstance(vc, VerificationCode)
+        self.assertEqual(len(plaintext), 6)
+        self.assertEqual(vc.code, VerificationCode.hash_code(plaintext))

@@ -10,6 +10,7 @@ on:
       - 'frontend/editor_app/**'
       - 'frontend/planner_app/**'
       - 'frontend/portal_app/**'
+      - 'docs/**'
       - '.github/workflows/frontend-pages.yml'
   workflow_dispatch:
 
@@ -75,12 +76,18 @@ jobs:
                   sw.unlink()
           PY
 
+      - name: Build docs (mdBook)
+        run: |
+          curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.4.40/mdbook-v0.4.40-x86_64-unknown-linux-gnu.tar.gz | tar xz -C /usr/local/bin
+          mdbook build docs
+
       - name: Stage Pages tree
         run: |
-          mkdir -p /tmp/pages/editor /tmp/pages/planner /tmp/pages/portal
+          mkdir -p /tmp/pages/editor /tmp/pages/planner /tmp/pages/portal /tmp/pages/docs
           cp -R frontend/editor_app/build/web/. /tmp/pages/editor/
           cp -R frontend/planner_app/build/web/. /tmp/pages/planner/
           cp -R frontend/portal_app/build/web/. /tmp/pages/portal/
+          cp -R docs/build/. /tmp/pages/docs/
           touch /tmp/pages/.nojekyll
           cat > /tmp/pages/index.html <<'EOF'
           <!doctype html>
@@ -117,6 +124,10 @@ jobs:
                 <div class="card">
                   <h2><a href="./portal/">Portal</a></h2>
                   <p>Online auth, cloud preferences, and orchestration links into the other workspaces.</p>
+                </div>
+                <div class="card">
+                  <h2><a href="./docs/">Documentation</a></h2>
+                  <p>Developer and user guides, API specs, deployment instructions, and operations runbooks.</p>
                 </div>
               </div>
             </div>

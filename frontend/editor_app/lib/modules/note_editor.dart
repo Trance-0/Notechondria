@@ -616,15 +616,17 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
   }
 
   Widget _buildBlockCard(int index, _BlockDraft block, bool needsArgs) {
+    final isActive = _activeBlockIndex == index;
     return GestureDetector(
       onLongPressStart: (details) => _showBlockMenu(
         index,
         TapDownDetails(globalPosition: details.globalPosition),
       ),
       onSecondaryTapDown: (details) => _showBlockMenu(index, details),
+      onTap: isActive ? null : () => setState(() => _activeBlockIndex = index),
       child: Card(
         margin: EdgeInsets.zero,
-        color: _activeBlockIndex == index
+        color: isActive
             ? Theme.of(context).colorScheme.primaryContainer.withOpacity(
                   Theme.of(context).brightness == Brightness.dark ? 0.44 : 0.72,
                 )
@@ -645,35 +647,97 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                   ),
                 ],
               ),
-              if (needsArgs)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: TextField(
-                    controller: block.argsController,
-                    onTap: () => setState(() => _activeBlockIndex = index),
-                    decoration: InputDecoration(
-                      labelText: block.blockType == 'S'
-                          ? 'Heading token (## or ###)'
-                          : block.blockType == 'C'
-                              ? 'Language'
-                              : 'URL',
-                      border: const OutlineInputBorder(),
+              if (isActive) ...[
+                // ---- Editing mode: show raw TextFields ----
+                if (needsArgs)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: TextField(
+                      controller: block.argsController,
+                      decoration: InputDecoration(
+                        labelText: block.blockType == 'S'
+                            ? 'Heading token (## or ###)'
+                            : block.blockType == 'C'
+                                ? 'Language'
+                                : 'URL',
+                        border: const OutlineInputBorder(),
+                      ),
                     ),
                   ),
+                TextField(
+                  controller: block.textController,
+                  maxLines: null,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: 'Write block content...',
+                  ),
                 ),
-              TextField(
-                controller: block.textController,
-                onTap: () => setState(() => _activeBlockIndex = index),
-                maxLines: null,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: 'Write block content...',
-                ),
-              ),
+              ] else ...[
+                // ---- Preview mode: render as live markdown ----
+                _buildBlockPreview(block),
+              ],
             ],
           ),
         ),
       ),
+    );
+  }
+
+  /// Renders a block's content as live markdown. Composes the raw markdown
+  /// source from the block type + args + body so the preview is faithful.
+  Widget _buildBlockPreview(_BlockDraft block) {
+    final body = block.textController.text;
+    if (body.trim().isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Text(
+          'Empty block — tap to edit',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.outline,
+                fontStyle: FontStyle.italic,
+              ),
+        ),
+      );
+    }
+    // Compose full markdown source so the renderer handles it natively.
+    final String markdown;
+    switch (block.blockType) {
+      case 'S': // heading
+        final prefix = block.argsController.text.trim();
+        markdown = prefix.isEmpty ? '## $body' : '$prefix $body';
+        break;
+      case 'C': // code
+        final lang = block.argsController.text.trim();
+        markdown = '```$lang\n$body\n```';
+        break;
+      case 'Q': // quote
+        markdown = body
+            .split('\n')
+            .map((line) => '> $line')
+            .join('\n');
+        break;
+      case 'L': // list
+        markdown = body;
+        break;
+      case 'U': // link
+        final url = block.argsController.text.trim();
+        markdown = url.isEmpty ? body : '[$body]($url)';
+        break;
+      case 'I': // image
+        final url = block.argsController.text.trim();
+        markdown = url.isEmpty ? body : '![$body]($url)';
+        break;
+      default: // paragraph / other
+        markdown = body;
+    }
+    return MarkdownBody(
+      data: markdown,
+      selectable: false,
+      builders: _markdownBuilders(),
+      inlineSyntaxes: _markdownInlineSyntaxes(),
+      blockSyntaxes: _markdownBlockSyntaxes(),
+      styleSheet: _markdownStyleSheet(context),
     );
   }
 
@@ -862,99 +926,137 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
       child: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 7,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TextField(
-                          controller: _titleController,
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                          decoration: const InputDecoration(
-                              border: InputBorder.none, hintText: 'Title'),
-                        ),
-                        if (specWarnings.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4, left: 2),
-                            child: Text(
-                              specWarnings.join(' \u2022 '),
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
-                                    color: Theme.of(context).colorScheme.error,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+            LayoutBuilder(builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 600;
+              final titleField = TextField(
+                controller: _titleController,
+                style: Theme.of(context)
+                    .textTheme
+                    .headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.w700),
+                decoration: const InputDecoration(
+                    border: InputBorder.none, hintText: 'Title'),
+              );
+              final warningWidget = specWarnings.isNotEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: 4, left: 2),
+                      child: Text(
+                        specWarnings.join(' \u2022 '),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(
+                              color: Theme.of(context).colorScheme.error,
+                              fontWeight: FontWeight.w600,
                             ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: _SaveStatus(
-                        lastSavedAt: _lastSavedAt,
-                        errorMessage: _saveError,
-                        saving: _saving,
                       ),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 220,
-                    child: DropdownButtonFormField<String>(
-                      value: _editorMode,
-                      items: const [
-                        DropdownMenuItem(
-                            value: 'P', child: Text('Plain text editor')),
-                        DropdownMenuItem(
-                            value: 'G', child: Text('Live markdown editor')),
-                        DropdownMenuItem(
-                            value: 'B', child: Text('Block editor')),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          _setEditorMode(value);
-                        }
-                      },
-                      decoration: const InputDecoration(
-                        labelText: 'Editor mode',
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                      onPressed: _openDetails,
-                      icon: const Icon(Icons.more_horiz)),
-                  IconButton(
-                    onPressed: () async {
-                      _autosaveTimer?.cancel();
-                      if (_dirty) {
-                        await _save(reason: 'close');
-                        await widget.onSnapshot(_note['id'] as int,
-                            reason: 'quit');
-                      }
-                      widget.onLogEvent('Editor closed.');
-                      if (mounted) {
-                        Navigator.of(context).pop();
-                      }
-                    },
-                    icon: const Icon(Icons.close),
-                  ),
+                    )
+                  : null;
+              final saveStatus = _SaveStatus(
+                lastSavedAt: _lastSavedAt,
+                errorMessage: _saveError,
+                saving: _saving,
+              );
+              final editorDropdown = DropdownButtonFormField<String>(
+                initialValue: _editorMode,
+                items: const [
+                  DropdownMenuItem(
+                      value: 'P', child: Text('Plain text')),
+                  DropdownMenuItem(
+                      value: 'G', child: Text('Live markdown')),
+                  DropdownMenuItem(
+                      value: 'B', child: Text('Block editor')),
                 ],
-              ),
-            ),
+                onChanged: (value) {
+                  if (value != null) {
+                    _setEditorMode(value);
+                  }
+                },
+                decoration: const InputDecoration(
+                  labelText: 'Editor mode',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              );
+              final detailsButton = IconButton(
+                  onPressed: _openDetails,
+                  icon: const Icon(Icons.more_horiz));
+              final closeButton = IconButton(
+                onPressed: () async {
+                  final nav = Navigator.of(context);
+                  _autosaveTimer?.cancel();
+                  if (_dirty) {
+                    await _save(reason: 'close');
+                    await widget.onSnapshot(_note['id'] as int,
+                        reason: 'quit');
+                  }
+                  widget.onLogEvent('Editor closed.');
+                  if (mounted) {
+                    nav.pop();
+                  }
+                },
+                icon: const Icon(Icons.close),
+              );
+
+              if (isNarrow) {
+                // Vertical layout: title on top, controls below.
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 4, 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(child: titleField),
+                          detailsButton,
+                          closeButton,
+                        ],
+                      ),
+                      if (warningWidget != null) warningWidget,
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Expanded(child: editorDropdown),
+                          const SizedBox(width: 8),
+                          saveStatus,
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              // Wide layout: single row.
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 7,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          titleField,
+                          if (warningWidget != null) warningWidget,
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: saveStatus,
+                      ),
+                    ),
+                    SizedBox(width: 220, child: editorDropdown),
+                    const SizedBox(width: 8),
+                    detailsButton,
+                    closeButton,
+                  ],
+                ),
+              );
+            }),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(20),

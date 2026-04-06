@@ -49,8 +49,12 @@ class _SettingsPage extends StatefulWidget {
     String apiBaseUrl,
   ) onSave;
   final Future<void> Function() onLogout;
-  final Future<ActionFeedback> Function(String email, String password)
-      onRegister;
+  final Future<ActionFeedback> Function(
+    String username,
+    String email,
+    String password, {
+    String invitationCode,
+  }) onRegister;
   final Future<ActionFeedback> Function(String email, String code) onVerify;
   final Future<ActionFeedback> Function(String email, String password) onLogin;
   final Future<ActionFeedback> Function(String email) onRequestPasswordReset;
@@ -81,7 +85,6 @@ class _SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<_SettingsPage> {
   late final TextEditingController _usernameController;
-  late final TextEditingController _emailController;
   late final TextEditingController _mottoController;
   late final TextEditingController _socialController;
   late final TextEditingController _apiBaseController;
@@ -91,8 +94,6 @@ class _SettingsPageState extends State<_SettingsPage> {
   ActionFeedback? _saveFeedback;
   bool _saving = false;
   bool _uploadingAvatar = false;
-  Timer? _autoSaveTimer;
-
   bool get _isAuthenticated => widget.profile != null && widget.settings != null;
 
   @override
@@ -101,11 +102,6 @@ class _SettingsPageState extends State<_SettingsPage> {
     _usernameController = TextEditingController(
       text: widget.settings?['username']?.toString() ??
           widget.profile?['username']?.toString() ??
-          '',
-    );
-    _emailController = TextEditingController(
-      text: widget.settings?['email']?.toString() ??
-          widget.profile?['email']?.toString() ??
           '',
     );
     _mottoController =
@@ -130,9 +126,6 @@ class _SettingsPageState extends State<_SettingsPage> {
       _usernameController.text = widget.settings?['username']?.toString() ??
           widget.profile?['username']?.toString() ??
           '';
-      _emailController.text = widget.settings?['email']?.toString() ??
-          widget.profile?['email']?.toString() ??
-          '';
       _mottoController.text = widget.settings?['motto']?.toString() ?? '';
       _socialController.text = widget.settings?['social_link']?.toString() ?? '';
       _editorMode = widget.settings?['editor_mode']?.toString() ?? _editorMode;
@@ -148,23 +141,97 @@ class _SettingsPageState extends State<_SettingsPage> {
 
   @override
   void dispose() {
-    _autoSaveTimer?.cancel();
     _usernameController.dispose();
-    _emailController.dispose();
     _mottoController.dispose();
     _socialController.dispose();
     _apiBaseController.dispose();
     super.dispose();
   }
 
-  /// Debounced auto-save: triggered by text field edits and dropdown changes.
-  /// Replaces the explicit "Save settings" button so every change is persisted
-  /// shortly after the user stops editing.
-  void _scheduleAutoSave() {
-    _autoSaveTimer?.cancel();
-    _autoSaveTimer = Timer(const Duration(milliseconds: 700), () {
-      if (mounted) _submitSettings();
-    });
+  /// Collects pending changes between the current form state and the server
+  /// profile so the Save confirmation can list what will be written.
+  Map<String, String> _pendingChanges() {
+    final changes = <String, String>{};
+    final serverMotto = widget.settings?['motto']?.toString() ?? '';
+    final serverSocial = widget.settings?['social_link']?.toString() ?? '';
+    final serverEditorMode = widget.settings?['editor_mode']?.toString() ?? 'P';
+    final localThemePreset =
+        widget.localSettings['theme_preset']?.toString() ?? 'teal';
+    final localThemeMode =
+        widget.localSettings['theme_mode']?.toString() ?? 'S';
+    final localApiBase = widget.localSettings['api_base_url']?.toString() ??
+        widget.apiBaseUrl ??
+        _defaultApiBaseUrl();
+
+    if (_mottoController.text.trim() != serverMotto) {
+      changes['Motto'] =
+          '"${serverMotto.isEmpty ? "(empty)" : serverMotto}" \u2192 "${_mottoController.text.trim()}"';
+    }
+    if (_socialController.text.trim() != serverSocial) {
+      changes['Social link'] =
+          '"${serverSocial.isEmpty ? "(empty)" : serverSocial}" \u2192 "${_socialController.text.trim()}"';
+    }
+    if (_editorMode != serverEditorMode) {
+      changes['Default editor'] = '$serverEditorMode \u2192 $_editorMode';
+    }
+    if (_themePreset != localThemePreset) {
+      changes['Theme preset'] = '$localThemePreset \u2192 $_themePreset';
+    }
+    if (_themeMode != localThemeMode) {
+      changes['Theme mode'] = '$localThemeMode \u2192 $_themeMode';
+    }
+    if (_apiBaseController.text.trim() != localApiBase) {
+      changes['API base URL'] = localApiBase.isEmpty
+          ? '\u2192 "${_apiBaseController.text.trim()}"'
+          : '"$localApiBase" \u2192 "${_apiBaseController.text.trim()}"';
+    }
+    return changes;
+  }
+
+  /// Prompts the user with a summary of what changed, then saves if confirmed.
+  Future<void> _confirmAndSave() async {
+    final changes = _pendingChanges();
+    if (changes.isEmpty) {
+      setState(() {
+        _saveFeedback = const ActionFeedback(message: 'No changes to save.');
+      });
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Save settings?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('The following changes will be saved:'),
+            const SizedBox(height: 12),
+            for (final entry in changes.entries)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  '\u2022 ${entry.key}: ${entry.value}',
+                  style: Theme.of(ctx).textTheme.bodySmall,
+                ),
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await _submitSettings();
+    }
   }
 
   Future<void> _submitSettings() async {
@@ -175,7 +242,7 @@ class _SettingsPageState extends State<_SettingsPage> {
     });
     final feedback = await widget.onSave(
       _usernameController.text.trim(),
-      _emailController.text.trim(),
+      widget.profile?['email']?.toString() ?? '',
       _mottoController.text.trim(),
       _socialController.text.trim(),
       _editorMode,
@@ -328,7 +395,7 @@ class _SettingsPageState extends State<_SettingsPage> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Changes are saved automatically. Online account settings require an active login; local preferences work offline.',
+          'Edit your settings below and press Save to apply. Online account settings require an active login; local preferences work offline.',
         ),
         if (_saveFeedback != null) ...[
           const SizedBox(height: 12),
@@ -390,28 +457,41 @@ class _SettingsPageState extends State<_SettingsPage> {
               ),
             ] else ...[
               _buildProfileFields(context),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  FilledButton.icon(
-                    onPressed: () => _runMaintenanceAction(
-                      () => widget.onSyncLocalData(showMessage: false),
-                    ),
-                    icon: const Icon(Icons.cloud_upload_outlined),
-                    label: const Text('Push local \u2192 cloud'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () => _runMaintenanceAction(widget.onPullCloudData),
-                    icon: const Icon(Icons.download_for_offline_outlined),
-                    label: const Text('Pull cloud \u2192 local'),
-                  ),
-                  OutlinedButton(
-                    onPressed: widget.onLogout,
-                    child: const Text('Logout'),
-                  ),
-                ],
+              const SizedBox(height: 20),
+              // ---- Sync subsection ----
+              Text(
+                'Sync',
+                style: Theme.of(context)
+                    .textTheme
+                    .labelLarge
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: const Icon(Icons.cloud_upload_outlined),
+                title: const Text('Push local \u2192 cloud'),
+                subtitle: const Text(
+                    'Upload local drafts and categories to your cloud account.'),
+                dense: true,
+                onTap: () => _runMaintenanceAction(
+                  () => widget.onSyncLocalData(showMessage: false),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.download_for_offline_outlined),
+                title: const Text('Pull cloud \u2192 local'),
+                subtitle: const Text(
+                    'Download notes and categories from the cloud to this device.'),
+                dense: true,
+                onTap: () => _runMaintenanceAction(widget.onPullCloudData),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton(
+                  onPressed: widget.onLogout,
+                  child: const Text('Logout'),
+                ),
               ),
             ],
           ],
@@ -474,25 +554,16 @@ class _SettingsPageState extends State<_SettingsPage> {
         const SizedBox(height: 16),
         TextField(
           controller: _usernameController,
-          onChanged: (_) => _scheduleAutoSave(),
+          readOnly: true,
           decoration: const InputDecoration(
             labelText: 'Username',
             border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _emailController,
-          onChanged: (_) => _scheduleAutoSave(),
-          decoration: const InputDecoration(
-            labelText: 'Email',
-            border: OutlineInputBorder(),
+            helperText: 'Username is set at registration and cannot be changed.',
           ),
         ),
         const SizedBox(height: 12),
         TextField(
           controller: _mottoController,
-          onChanged: (_) => _scheduleAutoSave(),
           decoration: const InputDecoration(
             labelText: 'Motto',
             border: OutlineInputBorder(),
@@ -501,7 +572,6 @@ class _SettingsPageState extends State<_SettingsPage> {
         const SizedBox(height: 12),
         TextField(
           controller: _socialController,
-          onChanged: (_) => _scheduleAutoSave(),
           decoration: const InputDecoration(
             labelText: 'Social link',
             border: OutlineInputBorder(),
@@ -545,7 +615,6 @@ class _SettingsPageState extends State<_SettingsPage> {
               onChanged: (value) {
                 if (value != null) {
                   setState(() => _editorMode = value);
-                  _scheduleAutoSave();
                 }
               },
               decoration: const InputDecoration(
@@ -568,7 +637,6 @@ class _SettingsPageState extends State<_SettingsPage> {
                     onChanged: (value) {
                       if (value != null) {
                         setState(() => _themePreset = value);
-                        _scheduleAutoSave();
                       }
                     },
                     decoration: const InputDecoration(
@@ -589,7 +657,6 @@ class _SettingsPageState extends State<_SettingsPage> {
                     onChanged: (value) {
                       if (value != null) {
                         setState(() => _themeMode = value);
-                        _scheduleAutoSave();
                       }
                     },
                     decoration: const InputDecoration(
@@ -603,10 +670,25 @@ class _SettingsPageState extends State<_SettingsPage> {
             const SizedBox(height: 12),
             TextField(
               controller: _apiBaseController,
-              onChanged: (_) => _scheduleAutoSave(),
               decoration: const InputDecoration(
                 labelText: 'API base URL',
                 border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                onPressed: _saving ? null : _confirmAndSave,
+                icon: _saving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.save_outlined),
+                label: Text(_saving ? 'Saving...' : 'Save settings'),
               ),
             ),
             const SizedBox(height: 16),

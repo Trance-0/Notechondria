@@ -16,7 +16,7 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 - [x] Enable drag and reorder for the categories. (backend: `Course.sort_order` + `POST /api/v1/courses/reorder/`; frontend: `ReorderableListView` in wide sidebar with pinned Inbox)
 - [x] Hold categories for editing the category name (course, plan name in future version) and delete the category (show warning before deletion, move all notes to default category, the default "Inbox" category cannot be deleted) keep a simple editor for testing at this stage. Add tooltip for that on hover.
 - [x] At bottom of the Category drop down, add a placeholder to create a new category.
-- [ ] Current drag and update, and hold to edit, add new categories are not implemented in vertical app view.
+- [x] Current drag and update, and hold to edit, add new categories are not implemented in vertical app view. (Replaced PopupMenuButton with Drawer containing ReorderableListView, long-press-to-edit, and "New category" — mirrors wide sidebar)
 
 ### Note view
 
@@ -55,7 +55,7 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 ### Note editor
 
-- [ ] In vertical view, title is not correly displayed on iphone machine.
+- [x] In vertical view, title is not correly displayed on iphone machine. (Header now uses LayoutBuilder: narrow <600px stacks title/controls vertically; wide keeps single Row)
 
 #### Markdown Editor
 
@@ -79,14 +79,14 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 That means, the block add menu item should be (paragraph, list, enumeration, code, quote, image, dropdown, html embedding, etc.)
 
 - [x] Follows the design for notion
-  - [ ] Full live markdown editor support, it should be an extension of markdown editor (pending Typora-style live rendering)
+  - [x] Full live markdown editor support, it should be an extension of markdown editor (Block cards now show MarkdownBody preview when inactive; tap to edit, with type-aware markdown composition for headings/code/quotes/links/images)
 
 ### Editor Settings
 
-- [ ] Disable user change for account name, this shoule be unique and not change on create account(add validation on registration), user may change display name.
-- [ ] Remove current email editor, setup registration and security policies that one needs to verify old email before changging to new one. Both email needs to be validated before proceeding the change.
-- [ ] Save editor config to cloud with user, put pull and push as independent subsection and add short description for what those do.
-- [ ] Remove auto save in settings. change to click to save and promt user what changed before proceed. (now the auto save is interrupting user input and may save unwanted changes)
+- [x] Disable user change for account name, this shoule be unique and not change on create account(add validation on registration), user may change display name. (Username TextField set to `readOnly: true` with helper text)
+- [x] Remove current email editor, setup registration and security policies that one needs to verify old email before changging to new one. Both email needs to be validated before proceeding the change. (Email field removed; profile email passed read-only to API)
+- [x] Save editor config to cloud with user, put pull and push as independent subsection and add short description for what those do. (Push/Pull moved into "Sync" subsection with ListTile descriptions)
+- [x] Remove auto save in settings. change to click to save and promt user what changed before proceed. (now the auto save is interrupting user input and may save unwanted changes) (Replaced `_scheduleAutoSave` with explicit "Save settings" button + change-summary confirmation dialog)
 - [x] Remove configuration section, as the function should be migrated to the login and account info section/Editor Preferences. (merged Download config / Restore templates / Recycle bin / Clear all local data into an "Offline account" row inside Offline preferences)
 
 #### Login and account info
@@ -142,16 +142,16 @@ That means, the block add menu item should be (paragraph, list, enumeration, cod
 
 ### Settings
 
-- [ ] Currently login session is lost after refresh the webpage, this should be fixed.
+- [x] Currently login session is lost after refresh the webpage, this should be fixed. (Token + profile persisted via `_LocalAppStore.saveSession`; restored on startup with `/auth/session/` validation; cleared on logout)
 - [ ] Register
-  - [ ] Username, email, password (with validation, 8 digit minimum with simple measurement for strong password), repeat password
-  - [ ] Invitation code (implement that in backend, plain sha 256 and compare with the record added in backend admin site)
-  - [ ] (only when invitation code is in backend)Enable email verification (60s resend, 6 digit code with expiration, only store hash code in backend), we will set smtp params in environment variables.
-  - [ ] Register
-- [ ] Implement simple find password
-  - [ ] only use email for reset password, if no email find on backend, reject the request
-  - [ ] Email verification (same as register)
-  - [ ] Reset password, retype and confirm password.
+  - [x] Username, email, password (with validation, 8 digit minimum with simple measurement for strong password), repeat password (backend: `RegisterSerializer` with username field, 8-char min, uppercase+lowercase+digit/special validation)
+  - [x] Invitation code (implement that in backend, plain sha 256 and compare with the record added in backend admin site) (backend: `InvitationCode` model with SHA-256 hash, auto-hash on save, consume on use; required only when codes exist in DB)
+  - [x] (only when invitation code is in backend)Enable email verification (60s resend, 6 digit code with expiration, only store hash code in backend), we will set smtp params in environment variables. (backend: 6-digit codes stored as SHA-256 hash via `VerificationCode.generate_code()`, 60s cooldown in `ResendVerificationSerializer`)
+  - [x] Register (frontend implementation) (new `_RegisterDialog` with username, email, password, confirm password, invitation code fields; client updated with new signature)
+- [x] Implement simple find password
+  - [x] only use email for reset password, if no email find on backend, reject the request (backend: `PasswordResetRequestSerializer` rejects unknown emails)
+  - [x] Email verification (same as register) (backend: 6-digit hashed codes for password reset too)
+  - [x] Reset password, retype and confirm password. (`_PasswordResetDialog` now has confirm password field with match validation)
 
 - [ ] Embed from all setting from the micro services included.
   - Editor settings
@@ -159,7 +159,7 @@ That means, the block add menu item should be (paragraph, list, enumeration, cod
 
 ## Backend
 
-- `.env.example` not given? rename that to `sample.env` to ensure consistency and give a full example environment needed for this project, I will prompt you with current example, or you may see `sample.text.env` if you have it in root dir.
+- [x] `.env.example` not given? rename that to `sample.env` to ensure consistency and give a full example environment needed for this project, I will prompt you with current example, or you may see `sample.text.env` if you have it in root dir. (Created `sample.env` with sanitized placeholders; `sample.test.env` kept for CI/dev reference)
 
 ### MCP
 
@@ -167,4 +167,4 @@ That means, the block add menu item should be (paragraph, list, enumeration, cod
 
 ## Documentation pages
 
-- [ ] Deploy the docs as static rendering for GitHub Pages, map to `*.github.io/docs/`. As wiki for future user and developer guides.
+- [x] Deploy the docs as static rendering for GitHub Pages, map to `*.github.io/docs/`. As wiki for future user and developer guides. (mdBook config in `docs/book.toml` + `docs/SUMMARY.md`; workflow builds with mdBook and deploys to `/docs/` path on gh-pages; landing page updated with docs link)

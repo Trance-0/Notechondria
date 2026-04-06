@@ -120,7 +120,12 @@ abstract class NotechondriaClient {
   Future<Map<String, dynamic>> unsubscribeCourse(String token, int courseId);
   Future<Map<String, dynamic>> openCourse(String token, int courseId);
   Future<Map<String, dynamic>> restoreTemplateCourses(String token);
-  Future<Map<String, dynamic>> register(String email, String password);
+  Future<Map<String, dynamic>> register(
+    String username,
+    String email,
+    String password, {
+    String invitationCode = '',
+  });
   Future<Map<String, dynamic>> verifyEmail(String email, String code);
   Future<Map<String, dynamic>> login(String email, String password);
   Future<Map<String, dynamic>> requestPasswordReset(String email);
@@ -129,6 +134,7 @@ abstract class NotechondriaClient {
     String code,
     String password,
   );
+  Future<Map<String, dynamic>> checkSession(String token);
   Future<void> logout(String token);
   Future<Map<String, dynamic>> getSettings(String token);
   Future<Map<String, dynamic>> updateSettings(
@@ -722,12 +728,22 @@ class HttpNotechondriaClient implements NotechondriaClient {
   }
 
   @override
-  Future<Map<String, dynamic>> register(String email, String password) async {
+  Future<Map<String, dynamic>> register(
+    String username,
+    String email,
+    String password, {
+    String invitationCode = '',
+  }) async {
     final uri = _uri('/auth/register/');
-    final response = await _post(
-      uri,
-      payload: {'email': email, 'password': password},
-    );
+    final payload = <String, dynamic>{
+      'username': username,
+      'email': email,
+      'password': password,
+    };
+    if (invitationCode.isNotEmpty) {
+      payload['invitation_code'] = invitationCode;
+    }
+    final response = await _post(uri, payload: payload);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),
     );
@@ -779,6 +795,15 @@ class HttpNotechondriaClient implements NotechondriaClient {
     );
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> checkSession(String token) async {
+    final uri = _uri('/auth/session/');
+    final response = await _get(uri, token: token);
+    return Map<String, dynamic>.from(
+      await _decode(response, uri: uri, method: 'GET'),
     );
   }
 

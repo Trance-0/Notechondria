@@ -1,4 +1,5 @@
 import json
+from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.utils.timezone import now
@@ -10,7 +11,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import VerificationChoices, VerificationCode
+from .models import InvitationCode, VerificationChoices, VerificationCode
 from .utils import (
     ensure_creator,
     ensure_creator_avatar,
@@ -84,8 +85,20 @@ def auth_payload(user: User, request=None):
 
 
 class RegisterSerializer(serializers.Serializer):
+    username = serializers.RegexField(
+        r'^[a-zA-Z0-9_-]+$',
+        min_length=3,
+        max_length=150,
+        help_text="Alphanumeric, hyphens, and underscores only.",
+    )
     email = serializers.EmailField()
-    password = serializers.CharField(write_only=True, min_length=9)
+    password = serializers.CharField(write_only=True, min_length=8)
+    invitation_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
+    def validate_username(self, value):
+        if User.objects.filter(username__iexact=value).exists():
+            raise serializers.ValidationError("This username is already taken.")
+        return value
 
     def validate_email(self, value):
         existing = User.objects.filter(email__iexact=value).first()
@@ -93,24 +106,66 @@ class RegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError("A verified account already exists for this email.")
         return value.lower()
 
+    def validate_password(self, value):
+        has_upper = any(c.isupper() for c in value)
+        has_lower = any(c.islower() for c in value)
+        has_digit_or_special = any(not c.isalpha() for c in value)
+        if not (has_upper and has_lower and has_digit_or_special):
+            raise serializers.ValidationError(
+                "Password must contain at least one uppercase letter, "
+                "one lowercase letter, and one digit or special character."
+            )
+        return value
+
+    def validate_invitation_code(self, value):
+        if not value:
+            return value
+        code_hash = InvitationCode.hash_code(value)
+        invite = InvitationCode.objects.filter(code_hash=code_hash).first()
+        if invite is None or not invite.is_valid():
+            raise serializers.ValidationError("Invalid or expired invitation code.")
+        return value
+
+    def validate(self, attrs):
+        # Invitation code is required when any InvitationCode records exist
+        # in the database (i.e. admin has set up the invitation system).
+        if InvitationCode.objects.exists():
+            code = attrs.get("invitation_code", "").strip()
+            if not code:
+                raise serializers.ValidationError(
+                    {"invitation_code": "An invitation code is required to register."}
+                )
+        return attrs
+
     def create(self, validated_data):
+        username = validated_data["username"]
         email = validated_data["email"]
         password = validated_data["password"]
+        invitation_raw = validated_data.get("invitation_code", "").strip()
+
+        # Consume invitation code if provided.
+        if invitation_raw:
+            code_hash = InvitationCode.hash_code(invitation_raw)
+            invite = InvitationCode.objects.filter(code_hash=code_hash).first()
+            if invite:
+                invite.consume()
+
         user = User.objects.filter(email__iexact=email).first()
         if user is None:
             user = User.objects.create(
-                username=email,
+                username=username,
                 email=email,
                 is_active=False,
             )
-        user.username = email
+        else:
+            user.username = username
         user.email = email
         user.is_active = False
         user.set_password(password)
         user.save()
         ensure_creator(user)
-        verification = issue_registration_code(email)
-        delivery = send_registration_email(email, verification.code)
+        _, plaintext = issue_registration_code(email)
+        delivery = send_registration_email(email, plaintext)
         return {"user": user, "delivery": delivery}
 
 
@@ -120,9 +175,9 @@ class VerifyEmailSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         email = attrs["email"].lower()
-        code = attrs["code"]
+        code_hash = VerificationCode.hash_code(attrs["code"])
         verification = VerificationCode.objects.filter(
-            code=code,
+            code=code_hash,
             function=email,
             usage=VerificationChoices.REGISTER,
             max_use__gt=0,
@@ -169,6 +224,22 @@ class ResendVerificationSerializer(serializers.Serializer):
             raise serializers.ValidationError("No account found for this email.")
         if user.is_active:
             raise serializers.ValidationError("This account is already verified.")
+        # 60-second cooldown: reject if a valid code was issued less than
+        # 60 seconds ago to prevent spamming the email endpoint.
+        from datetime import timedelta
+        recent = VerificationCode.objects.filter(
+            function=value.lower(),
+            usage=VerificationChoices.REGISTER,
+            max_use__gt=0,
+            expire_date__gt=now() - timedelta(seconds=60),
+        ).order_by("-expire_date").first()
+        if recent:
+            ttl_hours = getattr(settings, "EMAIL_VERIFICATION_TTL_HOURS", 24)
+            created_approx = recent.expire_date - timedelta(hours=ttl_hours)
+            if (now() - created_approx).total_seconds() < 60:
+                raise serializers.ValidationError(
+                    "Please wait 60 seconds before requesting a new code."
+                )
         return value.lower()
 
 
@@ -295,13 +366,13 @@ class PasswordResetRequestSerializer(serializers.Serializer):
 class PasswordResetConfirmSerializer(serializers.Serializer):
     email = serializers.EmailField()
     code = serializers.CharField()
-    password = serializers.CharField(write_only=True, min_length=9)
+    password = serializers.CharField(write_only=True, min_length=8)
 
     def validate(self, attrs):
         email = attrs["email"].lower()
-        code = attrs["code"]
+        code_hash = VerificationCode.hash_code(attrs["code"])
         verification = VerificationCode.objects.filter(
-            code=code,
+            code=code_hash,
             function=f"password_reset:{email}",
             usage=VerificationChoices.FUNCTION,
             max_use__gt=0,
@@ -358,8 +429,8 @@ class ResendVerificationApiView(APIView):
         serializer = ResendVerificationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
-        verification = issue_registration_code(email)
-        delivery = send_registration_email(email, verification.code)
+        _, plaintext = issue_registration_code(email)
+        delivery = send_registration_email(email, plaintext)
         return Response(
             {
                 "message": delivery["message"],
@@ -384,8 +455,8 @@ class PasswordResetRequestApiView(APIView):
         serializer = PasswordResetRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
-        verification = issue_password_reset_code(email)
-        delivery = send_password_reset_email(email, verification.code)
+        _, plaintext = issue_password_reset_code(email)
+        delivery = send_password_reset_email(email, plaintext)
         return Response(
             {
                 "message": delivery["message"],

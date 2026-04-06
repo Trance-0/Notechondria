@@ -167,7 +167,28 @@ class _AppShellState extends State<AppShell> {
 
   Future<void> _bootstrapApp() async {
     await _loadLocalState();
+    await _restoreSession();
     await _loadInitialData();
+  }
+
+  /// Restores a persisted auth session if one exists. Validates the token
+  /// against the backend via `/auth/session/`; if the token is stale the
+  /// persisted session is cleared.
+  Future<void> _restoreSession() async {
+    final session = await _LocalAppStore.loadSession();
+    if (session == null) return;
+    final token = session['token']?.toString() ?? '';
+    if (token.isEmpty) return;
+    try {
+      final check = await widget.client.checkSession(token);
+      if (check['authenticated'] == true) {
+        await _applyAuthPayload(check);
+        return;
+      }
+    } catch (_) {
+      // Token invalid or network down — fall through and clear.
+    }
+    await _LocalAppStore.clearSession();
   }
 
   bool get _hasRenderableLocalState =>
@@ -719,9 +740,19 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
   // ---------------------------------------------------------------------------
   // Authentication
   // ---------------------------------------------------------------------------
-  Future<ActionFeedback> _register(String email, String password) async {
+  Future<ActionFeedback> _register(
+    String username,
+    String email,
+    String password, {
+    String invitationCode = '',
+  }) async {
     try {
-      final result = await widget.client.register(email, password);
+      final result = await widget.client.register(
+        username,
+        email,
+        password,
+        invitationCode: invitationCode,
+      );
       return ActionFeedback(
           message:
               result['message']?.toString() ?? 'Verification email sent.');
@@ -886,6 +917,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       _profile = user;
       _settings = settings;
     });
+    await _LocalAppStore.saveSession(token, user);
     await _applyLocalAppSettings({
       'theme_preset': settings['theme_preset']?.toString() ??
           _localSettings['theme_preset'],
@@ -922,6 +954,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       _settings = null;
       _deletedNotes = const [];
     });
+    await _LocalAppStore.clearSession();
     await _loadInitialData();
     _showMessage('Signed out.');
     _appendUiLog('Signed out.');
@@ -2749,96 +2782,208 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     );
   }
 
-  /// Compact (mobile/narrow) layout with a three-dot menu in the AppBar.
+  /// Compact (mobile/narrow) layout with a hamburger drawer for navigation.
   Widget _buildCompactScaffold(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
         title: Text(widget.appTitle),
         backgroundColor: Colors.transparent,
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
+        leading: Builder(
+          builder: (ctx) => IconButton(
+            icon: const Icon(Icons.menu),
             tooltip: 'Navigation',
-            onSelected: (value) {
-              if (value == 'all_notes') {
-                setState(() {
-                  _selectedCategoryId = null;
-                  _selectedIndex = 1;
-                });
-                _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
-              } else if (value == 'settings') {
-                setState(() => _selectedIndex = 4);
-              } else if (value.startsWith('cat_')) {
-                final catId = int.tryParse(value.substring(4));
-                if (catId != null) {
-                  final cat = _allCategories.firstWhere(
-                    (c) => (c['id'] as num?)?.toInt() == catId,
-                    orElse: () => const <String, dynamic>{},
-                  );
-                  if (cat.isNotEmpty) _selectCourse(cat);
-                }
-              }
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'all_notes',
-                child: Row(
-                  children: [
-                    Icon(Icons.menu_book_outlined,
-                        color: _selectedCategoryId == null &&
-                                _selectedIndex == 1
-                            ? Theme.of(context).colorScheme.primary
-                            : null),
-                    const SizedBox(width: 12),
-                    const Text('All Notes'),
-                  ],
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
+          ),
+        ),
+      ),
+      drawer: Drawer(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 16),
+              // "All Notes" item
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: _SidebarItem(
+                  icon: Icons.menu_book_outlined,
+                  label: 'All Notes',
+                  selected:
+                      _selectedIndex == 1 && _selectedCategoryId == null,
+                  onTap: () {
+                    Navigator.of(context).pop(); // close drawer
+                    setState(() {
+                      _selectedCategoryId = null;
+                      _selectedIndex = 1;
+                    });
+                    _loadLearnerNotes(
+                        reset: true, query: _learnerSearchQuery);
+                  },
                 ),
               ),
-              if (_allCategories.isNotEmpty) const PopupMenuDivider(),
-              for (final cat in _allCategories)
-                PopupMenuItem(
-                  value: 'cat_${cat['id']}',
-                  child: Row(
-                    children: [
-                      Icon(
-                        cat['is_local_course'] == true
-                            ? Icons.folder_outlined
-                            : Icons.school_outlined,
-                        color: _selectedCategoryId ==
-                                (cat['id'] as num?)?.toInt()
-                            ? Theme.of(context).colorScheme.primary
-                            : null,
+              // Categories section
+              if (_allCategories.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: InkWell(
+                    onTap: () => setState(() =>
+                        _coursePanelExpanded = !_coursePanelExpanded),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Categories',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          Icon(_coursePanelExpanded
+                              ? Icons.expand_less
+                              : Icons.expand_more),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          cat['title']?.toString() ?? 'Category',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              const PopupMenuDivider(),
-              PopupMenuItem(
-                value: 'settings',
-                child: Row(
-                  children: [
-                    Icon(Icons.settings_outlined,
-                        color: _selectedIndex == 4
-                            ? Theme.of(context).colorScheme.primary
-                            : null),
-                    const SizedBox(width: 12),
-                    const Text('Settings'),
-                  ],
+                if (_coursePanelExpanded)
+                  Expanded(
+                    child: Builder(builder: (context) {
+                      final pinned = _allCategories
+                          .where((c) => c['is_default'] == true)
+                          .toList(growable: false);
+                      final draggable = _allCategories
+                          .where((c) => c['is_default'] != true)
+                          .toList(growable: false);
+                      return Column(
+                        children: [
+                          for (final cat in pinned)
+                            Padding(
+                              padding:
+                                  const EdgeInsets.fromLTRB(12, 0, 12, 4),
+                              child: _buildDrawerCategoryRow(cat),
+                            ),
+                          Expanded(
+                            child: ReorderableListView.builder(
+                              padding:
+                                  const EdgeInsets.fromLTRB(12, 0, 12, 0),
+                              buildDefaultDragHandles: false,
+                              itemCount: draggable.length,
+                              onReorder: (oldIndex, newIndex) {
+                                if (newIndex > oldIndex) newIndex -= 1;
+                                final reordered =
+                                    List<Map<String, dynamic>>.from(
+                                        draggable);
+                                final moved =
+                                    reordered.removeAt(oldIndex);
+                                reordered.insert(newIndex, moved);
+                                _reorderCategories(
+                                    [...pinned, ...reordered]);
+                              },
+                              itemBuilder: (context, index) {
+                                final cat = draggable[index];
+                                final key = ValueKey(
+                                    'dcat-${cat['id']?.toString() ?? index}');
+                                return Padding(
+                                  key: key,
+                                  padding:
+                                      const EdgeInsets.only(bottom: 4),
+                                  child: ReorderableDragStartListener(
+                                    index: index,
+                                    child:
+                                        _buildDrawerCategoryRow(cat),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          Padding(
+                            padding:
+                                const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                            child: _SidebarItem(
+                              icon: Icons.add_circle_outline,
+                              label: 'New category',
+                              selected: false,
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                _promptCreateCategory();
+                              },
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
+                  )
+                else
+                  const Spacer(),
+              ] else ...[
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: _SidebarItem(
+                    icon: Icons.add_circle_outline,
+                    label: 'New category',
+                    selected: false,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      _promptCreateCategory();
+                    },
+                  ),
+                ),
+                const Spacer(),
+              ],
+              // Settings at bottom
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                child: _SidebarItem(
+                  icon: Icons.settings_outlined,
+                  label: 'Settings',
+                  selected: _selectedIndex == 4,
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _selectActualIndex(4);
+                  },
                 ),
               ),
             ],
           ),
-        ],
+        ),
       ),
       body: _buildBody(),
+    );
+  }
+
+  /// Category row for the compact drawer. Closes the drawer on tap, then
+  /// selects the course. Long-press opens the edit dialog (same as wide).
+  Widget _buildDrawerCategoryRow(Map<String, dynamic> cat) {
+    return GestureDetector(
+      onLongPress: () {
+        Navigator.of(context).pop();
+        _promptEditCategory(cat);
+      },
+      onSecondaryTap: () {
+        Navigator.of(context).pop();
+        _promptEditCategory(cat);
+      },
+      child: _SidebarItem(
+        icon: cat['is_local_course'] == true
+            ? Icons.folder_outlined
+            : (cat['is_default'] == true
+                ? Icons.inbox_outlined
+                : Icons.school_outlined),
+        label: cat['title']?.toString() ?? 'Category',
+        selected: _selectedCategoryId == (cat['id'] as num?)?.toInt(),
+        onTap: () {
+          Navigator.of(context).pop();
+          _selectCourse(cat);
+        },
+      ),
     );
   }
 
