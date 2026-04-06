@@ -1,0 +1,1325 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Notechondria Documentation</title>
+        <meta name="robots" content="noindex">
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "navy";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="TASKS.html">Tasks</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">API</li><li class="chapter-item expanded "><a href="api/backend_api_spec.html"><strong aria-hidden="true">1.</strong> Backend API Specification</a></li><li class="chapter-item expanded affix "><li class="part-title">Deployment</li><li class="chapter-item expanded "><a href="deployment/deploy.html"><strong aria-hidden="true">2.</strong> Deployment Guide</a></li><li class="chapter-item expanded "><a href="deployment/render_free_tier.html"><strong aria-hidden="true">3.</strong> Render Free Tier</a></li><li class="chapter-item expanded affix "><li class="part-title">Development</li><li class="chapter-item expanded "><a href="development/python_environments.html"><strong aria-hidden="true">4.</strong> Python Environments</a></li><li class="chapter-item expanded "><a href="canvas_like_calendar_mvp.html"><strong aria-hidden="true">5.</strong> Canvas-like Calendar MVP</a></li><li class="chapter-item expanded affix "><li class="part-title">Integrations</li><li class="chapter-item expanded "><a href="integrations/github_app_integration.html"><strong aria-hidden="true">6.</strong> GitHub App Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">Operations</li><li class="chapter-item expanded "><a href="operations/postgres_migration.html"><strong aria-hidden="true">7.</strong> PostgreSQL Migration</a></li><li class="chapter-item expanded affix "><li class="part-title">Testing</li><li class="chapter-item expanded "><a href="testing/backend_test_plan.html"><strong aria-hidden="true">8.</strong> Backend Test Plan</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Notechondria Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/Nesbitt-bot/Notechondria" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="tasks"><a class="header" href="#tasks">TASKS</a></h1>
+<p>Here is a list of task we need to do now after testing, finishing and solve these bugs in order, and check the item from the list when you are done, ignore the checked items.</p>
+<p>If certain functionality in frontend involves changes in backend, add the backend function in the corresponding module and test them before implementing them in frontend, provide options for hard to implement features.</p>
+<p>Add items if you find additional features that I described to you but is not implemented to keep them on track and let me know you get to it.</p>
+<p>PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK</p>
+<h2 id="editor"><a class="header" href="#editor">Editor</a></h2>
+<h3 id="sidebarnavigation"><a class="header" href="#sidebarnavigation">Sidebar/Navigation</a></h3>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Remove the Notechondria editor title from the sidebar.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Enable drag and reorder for the categories. (backend: <code>Course.sort_order</code> + <code>POST /api/v1/courses/reorder/</code>; frontend: <code>ReorderableListView</code> in wide sidebar with pinned Inbox)</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Hold categories for editing the category name (course, plan name in future version) and delete the category (show warning before deletion, move all notes to default category, the default "Inbox" category cannot be deleted) keep a simple editor for testing at this stage. Add tooltip for that on hover.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+At bottom of the Category drop down, add a placeholder to create a new category.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Current drag and update, and hold to edit, add new categories are not implemented in vertical app view. (Replaced PopupMenuButton with Drawer containing ReorderableListView, long-press-to-edit, and "New category" — mirrors wide sidebar)</li>
+</ul>
+<h3 id="note-view"><a class="header" href="#note-view">Note view</a></h3>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Remove three-dot menu button in the card</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Remove the helper text in the card "Course metadata stays editable from the editor details panel"</li>
+</ul>
+<h4 id="search"><a class="header" href="#search">Search</a></h4>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Implement basic in-note search with case insensitive match, with checkbox for All, or personal notes (backend <code>scope=all|personal</code> on <code>/api/v1/notes/</code>, frontend checkbox in Learner search bar)</li>
+</ul>
+<h3 id="note-preview"><a class="header" href="#note-preview">Note preview</a></h3>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+The display for note header is too small, make appropriate padding on lower subheadings.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Add options for export markdown.
+<ul>
+<li>A checkbox include metadata; default to add the header about note metadata (author name, course name, last edit time, creation time, etc.), add selectable to note format,</li>
+<li>A checkbox for recursive export; default to false.</li>
+<li>A selector of export format; default is zip with the following structure</li>
+</ul>
+<pre><code> - &lt;note&gt; (specified by note name, should be unique)
+    - media
+        - some-image.png
+        - some-image.jpg
+        - other-static-resources.mp3
+        - some-cited-document.pdf
+        - &lt;some-other-referenced-notes-folder&gt; (when recursive export is enabled, only include public notes owned by our site)
+            - media
+              - ...
+            - .metadata (store module, last change, etc, remove if not selected)
+            - note-&lt;created_timestamp&gt;.md
+        - ...
+    - .metadata (store module, last change, etc, remove if not selected)
+    - note-&lt;created_timestamp&gt;.md
+</code></pre>
+<ul>
+<li>second is markdown-only only export the pure markdown file (include the metadata as the first line in the file with a yaml header).</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Add additional options for import notes, supports zip and markdown files, reverse the process as above as described. (ZipDecoder path handles recursive archives; YAML frontmatter title/description round-trips back into created notes)</li>
+</ul>
+<h3 id="note-editor"><a class="header" href="#note-editor">Note editor</a></h3>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+In vertical view, title is not correly displayed on iphone machine. (Header now uses LayoutBuilder: narrow &lt;600px stacks title/controls vertically; wide keeps single Row)</li>
+</ul>
+<h4 id="markdown-editor"><a class="header" href="#markdown-editor">Markdown Editor</a></h4>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Should display one red text warning belows the title if user is not following the markdown spec. Only show one line red text warning is enough.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Full GitHub Flavored Markdown (GFM) is not supported yet, at least the following features are missing
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+details and summary tags</li>
+</ul>
+</li>
+</ul>
+<h5 id="plaintext-editor"><a class="header" href="#plaintext-editor">Plaintext editor</a></h5>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Syntax highlighting is not functional (bold for bold, italics for italics, etc. Follows the GFM spec)</li>
+</ul>
+<h5 id="markdown-editor-1"><a class="header" href="#markdown-editor-1">Markdown editor</a></h5>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Rename the editor to Live Markdown Editor</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Remove the double column editor for now.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Live render the sections where user is not editing (like typora). Dynamically allocate and enable full features of GFM. (Inline stacked paragraph editor: each paragraph renders as MarkdownBody until tapped, then swaps into a borderless TextField; thin hairline insert slots between paragraphs add empty blocks. <code>Raw</code> escape hatch kept via SegmentedButton.)</li>
+</ul>
+<h5 id="block-editor"><a class="header" href="#block-editor">Block editor</a></h5>
+<ul>
+<li>
+<p><input disabled="" type="checkbox" checked=""/>
+Remove the top menu for adding blocks (bold, italics, etc.) They should pop in the position when user hover on the intersection between two existing blocks and top, bottom padding areas. (to insert new block in that position)
+That means, the block add menu item should be (paragraph, list, enumeration, code, quote, image, dropdown, html embedding, etc.)</p>
+</li>
+<li>
+<p><input disabled="" type="checkbox" checked=""/>
+Follows the design for notion</p>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Full live markdown editor support, it should be an extension of markdown editor (Block cards now show MarkdownBody preview when inactive; tap to edit, with type-aware markdown composition for headings/code/quotes/links/images)</li>
+</ul>
+</li>
+</ul>
+<h3 id="editor-settings"><a class="header" href="#editor-settings">Editor Settings</a></h3>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Disable user change for account name, this shoule be unique and not change on create account(add validation on registration), user may change display name. (Username TextField set to <code>readOnly: true</code> with helper text)</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Remove current email editor, setup registration and security policies that one needs to verify old email before changging to new one. Both email needs to be validated before proceeding the change. (Email field removed; profile email passed read-only to API)</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Save editor config to cloud with user, put pull and push as independent subsection and add short description for what those do. (Push/Pull moved into "Sync" subsection with ListTile descriptions)</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Remove auto save in settings. change to click to save and promt user what changed before proceed. (now the auto save is interrupting user input and may save unwanted changes) (Replaced <code>_scheduleAutoSave</code> with explicit "Save settings" button + change-summary confirmation dialog)</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Remove configuration section, as the function should be migrated to the login and account info section/Editor Preferences. (merged Download config / Restore templates / Recycle bin / Clear all local data into an "Offline account" row inside Offline preferences)</li>
+</ul>
+<h4 id="login-and-account-info"><a class="header" href="#login-and-account-info">Login and account info</a></h4>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+No save button for now, updated avatar image and motto, email cannot be saved. Put the (configuration section) as subsection of login and account info</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Organize the widgets by their functions, put
+<ul>
+<li>Online account setting: save account config reset password, logout on the same line</li>
+<li>Offline account setting: Download config file, Recycle bin, restore templates, clear all local data. (add warning and 3s confirmation before clearing recycle bin and local data)</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Remove clear local cache, I assume that is equivalent to clear all local data.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+On login widgets, remove the helper text "sign in with your email and password... Admin user name also.... admin account". This text is redundant and occupy too much space on mobile view, making no place to fit keyboard.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Chrome password auto fill is still not supported. Find out why and fix it. (root cause: dialog popped before <code>TextInput.finishAutofillContext()</code> fired, so Chrome never saw a completed submission. Call added on successful login.)</li>
+</ul>
+<h4 id="editor-preferences"><a class="header" href="#editor-preferences">Editor Preferences</a></h4>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Currently default editor naming is inconsistent.</li>
+</ul>
+<h2 id="planner"><a class="header" href="#planner">Planner</a></h2>
+<ul>
+<li><input disabled="" type="checkbox"/>
+Remove the front page module, this should be added in portal app with recommendation algorithm.</li>
+</ul>
+<h3 id="course-list"><a class="header" href="#course-list">Course list</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"/>
+Make card like the one on Canvas, where upper half is preview image (if image not set, use theme color filled, for template course, we have feature images included) Then the card lower shows the related info.</li>
+</ul>
+<h4 id="course-view"><a class="header" href="#course-view">Course view</a></h4>
+<h3 id="activity-view"><a class="header" href="#activity-view">Activity view</a></h3>
+<h3 id="planner-settings"><a class="header" href="#planner-settings">Planner Settings</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"/>
+Not migrated yet</li>
+</ul>
+<h2 id="portal"><a class="header" href="#portal">Portal</a></h2>
+<ul>
+<li><input disabled="" type="checkbox"/>
+Set the root url to portal, that is, <code>*.github.io/Notechondria/</code> should be directed to the portal app</li>
+</ul>
+<h3 id="front-page"><a class="header" href="#front-page">Front page</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"/>
+Migrate from old front page, Keep it as the universal front page, display recent public courses, (use default ones for now.)</li>
+<li><input disabled="" type="checkbox"/>
+Update heatmap statistics</li>
+</ul>
+<h3 id="course"><a class="header" href="#course">Course</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"/>
+Embed from /planner/Course view</li>
+</ul>
+<h3 id="learner"><a class="header" href="#learner">Learner</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"/>
+Embed from /editor/Note view</li>
+</ul>
+<h3 id="activity"><a class="header" href="#activity">Activity</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"/>
+Embed from /planner/Activity view</li>
+</ul>
+<h3 id="settings"><a class="header" href="#settings">Settings</a></h3>
+<ul>
+<li>
+<p><input disabled="" type="checkbox" checked=""/>
+Currently login session is lost after refresh the webpage, this should be fixed. (Token + profile persisted via <code>_LocalAppStore.saveSession</code>; restored on startup with <code>/auth/session/</code> validation; cleared on logout)</p>
+</li>
+<li>
+<p><input disabled="" type="checkbox"/>
+Register</p>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Username, email, password (with validation, 8 digit minimum with simple measurement for strong password), repeat password (backend: <code>RegisterSerializer</code> with username field, 8-char min, uppercase+lowercase+digit/special validation)</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Invitation code (implement that in backend, plain sha 256 and compare with the record added in backend admin site) (backend: <code>InvitationCode</code> model with SHA-256 hash, auto-hash on save, consume on use; required only when codes exist in DB)</li>
+<li><input disabled="" type="checkbox" checked=""/>
+(only when invitation code is in backend)Enable email verification (60s resend, 6 digit code with expiration, only store hash code in backend), we will set smtp params in environment variables. (backend: 6-digit codes stored as SHA-256 hash via <code>VerificationCode.generate_code()</code>, 60s cooldown in <code>ResendVerificationSerializer</code>)</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Register (frontend implementation) (new <code>_RegisterDialog</code> with username, email, password, confirm password, invitation code fields; client updated with new signature)</li>
+</ul>
+</li>
+<li>
+<p><input disabled="" type="checkbox" checked=""/>
+Implement simple find password</p>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+only use email for reset password, if no email find on backend, reject the request (backend: <code>PasswordResetRequestSerializer</code> rejects unknown emails)</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Email verification (same as register) (backend: 6-digit hashed codes for password reset too)</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Reset password, retype and confirm password. (<code>_PasswordResetDialog</code> now has confirm password field with match validation)</li>
+</ul>
+</li>
+<li>
+<p><input disabled="" type="checkbox"/>
+Embed from all setting from the micro services included.</p>
+<ul>
+<li>Editor settings</li>
+<li>Planner settings</li>
+</ul>
+</li>
+</ul>
+<h2 id="backend"><a class="header" href="#backend">Backend</a></h2>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+<code>.env.example</code> not given? rename that to <code>sample.env</code> to ensure consistency and give a full example environment needed for this project, I will prompt you with current example, or you may see <code>sample.text.env</code> if you have it in root dir. (Created <code>sample.env</code> with sanitized placeholders; <code>sample.test.env</code> kept for CI/dev reference)</li>
+</ul>
+<h3 id="mcp"><a class="header" href="#mcp">MCP</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"/>
+Enable fully functional MCP, enable AI to interact with the site when user creates API keys, let it able to access all backend functions that manage the user's data (note operations, user profile, course operations, etc).</li>
+</ul>
+<h2 id="documentation-pages"><a class="header" href="#documentation-pages">Documentation pages</a></h2>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Deploy the docs as static rendering for GitHub Pages, map to <code>*.github.io/docs/</code>. As wiki for future user and developer guides. (mdBook config in <code>docs/book.toml</code> + <code>docs/SUMMARY.md</code>; workflow builds with mdBook and deploys to <code>/docs/</code> path on gh-pages; landing page updated with docs link)</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="backend-api-specification"><a class="header" href="#backend-api-specification">Backend API Specification</a></h1>
+<p>The backend now exposes a DRF-first API under <code>/api/v1/</code>. Django-rendered product pages are no longer the primary client surface; Django remains responsible for <code>/admin/</code>, API routes, and static/media delivery behind nginx.</p>
+<h2 id="authentication"><a class="header" href="#authentication">Authentication</a></h2>
+<p>Authentication uses DRF token auth.</p>
+<ol>
+<li><code>POST /api/v1/auth/register/</code> with <code>email</code> and <code>password</code>.</li>
+<li>The backend sends a verification code through SMTP using the env-provided credentials.</li>
+<li><code>POST /api/v1/auth/verify-email/</code> with <code>email</code> and <code>code</code>.</li>
+<li>Reuse the returned token in <code>Authorization: Token &lt;token&gt;</code>.</li>
+</ol>
+<h2 id="public-routes"><a class="header" href="#public-routes">Public routes</a></h2>
+<ul>
+<li><code>GET /api/v1/health/</code></li>
+<li><code>GET /api/v1/front-page/</code></li>
+<li><code>GET /api/v1/courses/</code></li>
+<li><code>GET /api/v1/courses/{course_id}/</code></li>
+<li><code>GET /api/v1/courses/{course_id}/notes/</code></li>
+<li><code>GET /api/v1/notes/{note_id}/</code> for notes in the default seeded course</li>
+<li><code>GET /api/v1/activity/</code></li>
+</ul>
+<h2 id="auth-routes"><a class="header" href="#auth-routes">Auth routes</a></h2>
+<ul>
+<li><code>POST /api/v1/auth/register/</code></li>
+<li><code>POST /api/v1/auth/verify-email/</code></li>
+<li><code>POST /api/v1/auth/resend-verification/</code></li>
+<li><code>POST /api/v1/auth/login/</code></li>
+<li><code>POST /api/v1/auth/logout/</code></li>
+<li><code>GET /api/v1/auth/session/</code></li>
+</ul>
+<h2 id="authenticated-user-routes"><a class="header" href="#authenticated-user-routes">Authenticated user routes</a></h2>
+<ul>
+<li><code>GET /api/v1/settings/</code></li>
+<li><code>PATCH /api/v1/settings/</code></li>
+<li><code>GET /api/v1/notes/</code></li>
+<li><code>POST /api/v1/notes/</code></li>
+<li><code>PATCH /api/v1/notes/{note_id}/</code></li>
+<li><code>POST /api/v1/notes/{note_id}/blocks/</code></li>
+<li><code>PATCH /api/v1/blocks/{block_id}/</code></li>
+<li><code>DELETE /api/v1/blocks/{block_id}/</code></li>
+<li><code>POST /api/v1/notes/{note_id}/reorder/</code></li>
+</ul>
+<h2 id="seed-data"><a class="header" href="#seed-data">Seed data</a></h2>
+<p>On startup the backend runs <code>python manage.py bootstrap_platform</code>, which:</p>
+<ul>
+<li>creates or updates the env-driven Django admin user</li>
+<li>seeds three sample courses if the database is empty</li>
+<li>creates a demo creator account named <code>CodeX</code> and logs the generated credentials</li>
+<li>builds the default <code>Vibe Coding 101</code> notes from <code>CODEX.md</code></li>
+<li>loads per-course media metadata from the repository <code>sample/&lt;slug&gt;/</code> directories</li>
+</ul>
+<h2 id="example-requests"><a class="header" href="#example-requests">Example requests</a></h2>
+<pre><code class="language-bash">curl -X POST http://localhost:9090/api/v1/auth/register/ \
+  -H "Content-Type: application/json" \
+  -d '{"email":"demo@example.com","password":"strong-pass-123"}'
+</code></pre>
+<pre><code class="language-bash">curl -X POST http://localhost:9090/api/v1/auth/verify-email/ \
+  -H "Content-Type: application/json" \
+  -d '{"email":"demo@example.com","code":"paste-code-from-email"}'
+</code></pre>
+<pre><code class="language-bash">curl http://localhost:9090/api/v1/front-page/
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="deployment-guide"><a class="header" href="#deployment-guide">Deployment Guide</a></h1>
+<p>Related docs:</p>
+<ul>
+<li><code>docs/development/python_environments.md</code></li>
+<li><code>docs/operations/postgres_migration.md</code></li>
+<li><code>docs/deployment/render_free_tier.md</code></li>
+</ul>
+<h2 id="1-prepare-environment"><a class="header" href="#1-prepare-environment">1) Prepare environment</a></h2>
+<h3 id="local"><a class="header" href="#local">Local</a></h3>
+<ol>
+<li>Copy <code>deployment/docker/.env.example</code> to <code>.env</code> for local Docker-based full-stack work.</li>
+<li>Fill PostgreSQL credentials, Django secret key, and optional GitHub app keys.</li>
+</ol>
+<h3 id="jenkins-injected-deployment-env"><a class="header" href="#jenkins-injected-deployment-env">Jenkins-injected deployment env</a></h3>
+<p>Do not commit the real deployment <code>.env</code> file. Instead, inject deployment variables in Jenkins and let the pipeline materialize <code>.env.deploy</code> during the build.</p>
+<p>Recommended setup with the Environment Injector plugin:</p>
+<ol>
+<li>Open the job configuration.</li>
+<li>Enable <code>Prepare an environment for the run</code>.</li>
+<li>Check <code>Keep Jenkins Environment Variables</code>.</li>
+<li>Check <code>Keep Jenkins Build Variables</code>.</li>
+<li>Leave <code>Override Build Parameters</code> enabled only if you intentionally want injected values to win over build parameters.</li>
+<li>Use <code>Properties Content</code> or <code>Properties File Path</code> to define the deployment variables using the keys shown in <code>deployment/jenkins/.env.example</code>.</li>
+<li>Save the job.</li>
+<li>Run one manual build to verify the injected variables reach the pipeline.</li>
+</ol>
+<p>If your repository is public, remove SCM credentials from the Pipeline SCM job configuration. The Jenkinsfile does not require repository credentials by itself.</p>
+<p>The pipeline writes those injected variables to <code>${WORKSPACE}/.env.deploy</code> through <code>deployment/jenkins/scripts/prepare_env.sh</code>.</p>
+<p>Example <code>Properties Content</code>:</p>
+<pre><code class="language-properties">DJANGO_SECRET_KEY=replace-with-real-secret
+DJANGO_DEBUG=False
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,app.example.com
+DJANGO_ALLOWED_HOSTS_COMPOSE=localhost 127.0.0.1 app.example.com
+DJANGO_CSRF_TRUSTED_ORIGINS=http://localhost:9080,http://localhost:9060
+DJANGO_LOG_LEVEL=INFO
+DJANGO_LOG_FILE_NAME=notechondria
+DJANGO_SUPERUSER_USERNAME=admin
+DJANGO_SUPERUSER_EMAIL=admin@example.com
+DJANGO_SUPERUSER_PASSWORD=change-me
+APP_HOST_PORT=9080
+BACKEND_HOST_PORT=9090
+FRONTEND_HOST_PORT=9060
+DB_HOST_PORT=9032
+POSTGRE_USERNAME=postgres
+POSTGRE_PASSWORD=replace-with-real-password
+POSTGRE_HOST=db
+POSTGRE_PORT=5432
+POSTGRE_DB=postgres
+PRODUCTION_STATIC_ROOT=/home/staticfiles/
+PRODUCTION_MEDIA_ROOT=/home/mediafiles/
+OPENAI_API_KEY=
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USERNAME=
+SMTP_PASSWORD=
+SMTP_USE_TLS=True
+SMTP_USE_SSL=False
+SMTP_FROM_EMAIL=no-reply@example.com
+EMAIL_VERIFICATION_TTL_HOURS=24
+FRONTEND_VERIFY_URL=http://localhost:9060/#/verify
+FRONTEND_API_BASE_URL=http://localhost:9060/api/v1
+FRONTEND_BACKEND_ORIGIN=http://nginx
+NOTECHONDRIA_SHARED_NETWORK=notechondria-shared
+GITHUB_APP_ID=
+GITHUB_APP_CLIENT_ID=
+GITHUB_APP_CLIENT_SECRET=
+GITHUB_APP_PRIVATE_KEY_PATH=
+GITHUB_APP_WEBHOOK_SECRET=
+APP_IMAGE=trancezero/notechondria:build-${BUILD_NUMBER}
+NGINX_IMAGE=trancezero/nginx:build-${BUILD_NUMBER}
+FRONTEND_IMAGE=trancezero/notechondria-frontend:build-${BUILD_NUMBER}
+</code></pre>
+<p>Important formatting notes:</p>
+<ul>
+<li><code>DJANGO_ALLOWED_HOSTS</code> should stay comma-separated for human editing.</li>
+<li><code>DJANGO_ALLOWED_HOSTS_COMPOSE</code> should stay space-separated because the Docker Compose app service passes it to Django as <code>ALLOWED_HOSTS</code>.</li>
+<li>Do not wrap the values in quotes in <code>Properties Content</code>.</li>
+<li>For Docker deployment, set <code>POSTGRE_HOST=db</code>. Do not switch database host to <code>localhost</code> just because <code>DJANGO_DEBUG=True</code>; inside the app container, PostgreSQL is reached through the Compose service network.</li>
+</ul>
+<p>Jenkins must provide at least:</p>
+<ul>
+<li><code>DJANGO_SECRET_KEY</code></li>
+<li><code>DJANGO_ALLOWED_HOSTS_COMPOSE</code></li>
+<li><code>APP_HOST_PORT</code></li>
+<li><code>BACKEND_HOST_PORT</code></li>
+<li><code>FRONTEND_HOST_PORT</code></li>
+<li><code>DB_HOST_PORT</code></li>
+<li><code>POSTGRE_USERNAME</code></li>
+<li><code>POSTGRE_PASSWORD</code></li>
+<li><code>POSTGRE_HOST</code></li>
+<li><code>POSTGRE_PORT</code></li>
+<li><code>POSTGRE_DB</code></li>
+</ul>
+<h2 id="2-local-docker-deployment"><a class="header" href="#2-local-docker-deployment">2) Local Docker deployment</a></h2>
+<p>Backend stack:</p>
+<pre><code class="language-bash">cd backend
+docker compose --env-file ../.env up --build -d
+</code></pre>
+<p>Frontend apps are now separate containers. Start each one from its own directory:</p>
+<pre><code class="language-bash">cd frontend/editor_app
+docker compose --env-file ../../.env up --build -d
+</code></pre>
+<pre><code class="language-bash">cd frontend/planner_app
+docker compose --env-file ../../.env up --build -d
+</code></pre>
+<pre><code class="language-bash">cd frontend/portal_app
+docker compose --env-file ../../.env up --build -d
+</code></pre>
+<h2 id="3-initialize-database"><a class="header" href="#3-initialize-database">3) Initialize database</a></h2>
+<pre><code class="language-bash">docker compose exec app python manage.py migrate
+docker compose exec app python manage.py collectstatic --noinput
+</code></pre>
+<h2 id="4-run-tests-before-release"><a class="header" href="#4-run-tests-before-release">4) Run tests before release</a></h2>
+<pre><code class="language-bash">cd /workspace/Notechondria
+bash deployment/jenkins/scripts/test_backend.sh /workspace/Notechondria /workspace/Notechondria/.env.deploy
+</code></pre>
+<h2 id="5-jenkins-pipeline-flow"><a class="header" href="#5-jenkins-pipeline-flow">5) Jenkins pipeline flow</a></h2>
+<p>Jenkins now drives the full stack, with backend/frontend test and deploy branches running in parallel.</p>
+<p>The pipeline runs in this order:</p>
+<ol>
+<li>Checkout source.</li>
+<li>Generate <code>${WORKSPACE}/.env.deploy</code> from Jenkins-injected environment variables.</li>
+<li>Start the <code>db</code> service and back up PostgreSQL from the database container.</li>
+<li>Run backend tests.</li>
+<li>Run backend deploy.</li>
+</ol>
+<p>Pipeline behavior:</p>
+<ul>
+<li>Backend and frontend tracks run in parallel.</li>
+<li>Each branch is wrapped in <code>catchError(...)</code> so one side can continue even if the other side fails.</li>
+<li>The backend deploy script performs a post-start verification pass inside the running app container:
+<ul>
+<li><code>python manage.py migrate --noinput</code></li>
+<li><code>python manage.py bootstrap_platform</code></li>
+<li><code>python manage.py collectstatic --noinput --clear</code></li>
+<li>followed by a second stack health wait</li>
+</ul>
+</li>
+</ul>
+<p>The relevant files are:</p>
+<ul>
+<li><code>Jenkinsfile</code></li>
+<li><code>deployment/jenkins/scripts/prepare_env.sh</code></li>
+<li><code>deployment/jenkins/scripts/backup_postgres.sh</code></li>
+<li><code>deployment/jenkins/scripts/ensure_db_ready.sh</code></li>
+<li><code>deployment/jenkins/scripts/test_backend.sh</code></li>
+<li><code>deployment/jenkins/scripts/test_frontends.sh</code></li>
+<li><code>deployment/jenkins/scripts/wait_for_stack.sh</code></li>
+<li><code>deployment/jenkins/scripts/deploy_backend.sh</code></li>
+<li><code>deployment/jenkins/scripts/deploy_frontends.sh</code></li>
+<li><code>deployment/jenkins/scripts/deploy_gateway.sh</code></li>
+<li><code>deployment/render/scripts/render_backend_start.sh</code></li>
+<li><code>docs/deployment/render_free_tier.md</code></li>
+</ul>
+<h3 id="compose-stack-shape"><a class="header" href="#compose-stack-shape">Compose stack shape</a></h3>
+<p>The backend Compose stack is named <code>notechondria</code> and contains:</p>
+<ul>
+<li><code>app</code>: Django/gunicorn backend</li>
+<li><code>db</code>: PostgreSQL 15</li>
+<li><code>nginx</code>: reverse proxy/static serving</li>
+</ul>
+<p>Each frontend app has its own standalone Compose stack:</p>
+<ul>
+<li><code>frontend/editor_app</code></li>
+<li><code>frontend/planner_app</code></li>
+<li><code>frontend/portal_app</code></li>
+</ul>
+<p>All frontend stacks connect to the shared Docker network:</p>
+<ul>
+<li><code>NOTECHONDRIA_SHARED_NETWORK</code>, default <code>notechondria-shared</code></li>
+<li>backend <code>app</code> and backend <code>nginx</code> join that network</li>
+<li>each frontend nginx container joins that network and proxies backend traffic to <code>http://nginx</code></li>
+</ul>
+<p>Jenkins only needs Docker access. It does not need host <code>python</code> or host <code>pg_dump</code>.
+The Django container talks to PostgreSQL through the internal Compose service host <code>db</code>.
+Internal container ports stay fixed:</p>
+<ul>
+<li><code>app</code> listens on <code>8000</code></li>
+<li><code>db</code> listens on <code>5432</code></li>
+<li><code>nginx</code> listens on <code>80</code></li>
+</ul>
+<p>Only the host-exposed ports are configurable:</p>
+<ul>
+<li><code>APP_HOST_PORT</code> maps host -&gt; <code>nginx:80</code></li>
+<li><code>BACKEND_HOST_PORT</code> maps host -&gt; <code>app:8000</code></li>
+<li><code>FRONTEND_HOST_PORT</code> maps host -&gt; <code>frontend:80</code></li>
+<li><code>DB_HOST_PORT</code> maps host -&gt; <code>db:5432</code></li>
+</ul>
+<p>Deployment readiness waits at most 300 seconds before failing and stopping the web containers.
+The backend entrypoint now runs <code>collectstatic --clear</code>, verifies that Django admin and DRF assets exist under <code>/home/staticfiles</code>, and the stack wait step now requires both <code>app</code> and <code>nginx</code> to report healthy before Jenkins treats the deployment as ready.
+<code>prepare_env.sh</code> also normalizes <code>PRODUCTION_STATIC_ROOT</code> and <code>PRODUCTION_MEDIA_ROOT</code> to Linux-container-safe absolute paths so Windows-hosted Jenkins shells cannot accidentally leak host-style values such as <code>C:/...</code> into the container runtime.
+The test stage does not use the postgres container; it runs Django tests with <code>settings_test</code> directly in an app container without the production entrypoint.
+The app service must not mount a named volume over <code>/home/notechondria</code>, because that path contains the Django code copied into the image during build.
+The Jenkins build can tag images with the current build number using <code>APP_IMAGE</code>, <code>NGINX_IMAGE</code>, and <code>FRONTEND_IMAGE</code>, for example <code>trancezero/notechondria:build-${BUILD_NUMBER}</code>.</p>
+<h3 id="postgresql-volume-behavior"><a class="header" href="#postgresql-volume-behavior">PostgreSQL volume behavior</a></h3>
+<p>The <code>db</code> container uses a persistent Docker volume. PostgreSQL reads <code>POSTGRES_USER</code>, <code>POSTGRES_PASSWORD</code>, and <code>POSTGRES_DB</code> only when the data directory is initialized the first time.</p>
+<p>If you later change <code>POSTGRE_USERNAME</code> or <code>POSTGRE_DB</code> in Jenkins but keep the same Docker volume, the container will start with the old cluster state and the new role may not exist. In that case you must do one of these:</p>
+<ol>
+<li>keep the Jenkins credential aligned with the already-initialized database role/database, or</li>
+<li>remove the existing <code>notechondria</code> postgres volume and let the cluster initialize again with the new env values.</li>
+</ol>
+<p>The pipeline now validates database access over TCP with the configured username and password before deploying the app container. That check is meant to catch password mismatches before Django reaches <code>manage.py migrate</code>.</p>
+<p>For disposable Jenkins environments, you can set:</p>
+<pre><code class="language-properties">DB_AUTO_REINIT_IF_MISMATCH=True
+</code></pre>
+<p>This allows the deploy step to remove and recreate the <code>notechondria_postgres-data</code> volume automatically if the configured credentials do not match the existing cluster.</p>
+<p>For a first smoke deployment, <code>sample.test.env</code> now uses the default <code>postgres</code> role/database to reduce that mismatch risk.
+On a first deployment, the backup step may skip automatically because there is no usable database state yet. That is expected and does not block the rest of the pipeline.</p>
+<h3 id="windows-jenkins-checkout-note"><a class="header" href="#windows-jenkins-checkout-note">Windows Jenkins checkout note</a></h3>
+<p>If Jenkins runs on Windows and checkout still fails before the pipeline starts, enable Git long-path support on the Jenkins host and keep the workspace path short.</p>
+<p>Recommended host setting:</p>
+<pre><code class="language-powershell">git config --system core.longpaths true
+</code></pre>
+<p>If needed, also move the Jenkins workspace root to a shorter directory such as <code>C:\Jenkins</code>.</p>
+<p>This repository now keeps only the Monaco <code>min/</code> runtime bundle under <code>backend/static/monaco-editor/</code> to reduce checkout path depth.</p>
+<h2 id="6-frontend-github-pages-deployment"><a class="header" href="#6-frontend-github-pages-deployment">6) Frontend GitHub Pages deployment</a></h2>
+<p>Frontend deployment is handled by GitHub Actions, not Jenkins.</p>
+<p>Workflow:</p>
+<ul>
+<li><code>.github/workflows/frontend-pages.yml</code></li>
+</ul>
+<p>Deployment targets:</p>
+<ul>
+<li><code>/editor/</code></li>
+<li><code>/planner/</code></li>
+<li><code>/portal/</code></li>
+</ul>
+<p>Important Pages runtime notes:</p>
+<ul>
+<li>one workflow builds/tests all three apps and deploys one combined <code>gh-pages</code> tree</li>
+<li>Pages builds use <code>--no-web-resources-cdn</code> so runtime web assets are bundled locally instead of relying on Google CDN</li>
+<li>the published bootstrap is rewritten to disable service-worker registration, reducing stale broken-cache behavior after bad deploys</li>
+<li>the site root publishes a landing page linking to the three app paths</li>
+</ul>
+<h2 id="7-render-free-tier-backend-deployment"><a class="header" href="#7-render-free-tier-backend-deployment">7) Render free-tier backend deployment</a></h2>
+<p>Use:</p>
+<ul>
+<li><code>deployment/render/scripts/render_backend_start.sh</code></li>
+<li><code>docs/deployment/render_free_tier.md</code></li>
+</ul>
+<p>This backend-only path is intended for Render web services and keeps frontend deployment separate on GitHub Pages.</p>
+<h2 id="8-test-deployment-template"><a class="header" href="#8-test-deployment-template">8) Test deployment template</a></h2>
+<p>Use <code>sample.test.env</code> as a safe starting point for a non-production Jenkins credential or local smoke deployment. Replace placeholders before any real deploy.</p>
+<h2 id="9-rollback"><a class="header" href="#9-rollback">9) Rollback</a></h2>
+<ol>
+<li>Restore database from latest SQL dump generated by CI backup step.</li>
+<li>Redeploy previous Docker image tag.</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="render-free-tier-backend-deployment"><a class="header" href="#render-free-tier-backend-deployment">Render free-tier backend deployment</a></h1>
+<p>This document describes the minimal backend-only deployment path for Render free-tier.</p>
+<h2 id="what-this-covers"><a class="header" href="#what-this-covers">What this covers</a></h2>
+<ul>
+<li>Django backend only</li>
+<li>PostgreSQL provided by Render or an external managed database</li>
+<li>Gunicorn web service</li>
+<li>Static files collected at boot</li>
+</ul>
+<h2 id="required-environment-variables"><a class="header" href="#required-environment-variables">Required environment variables</a></h2>
+<p>Set these in the Render dashboard:</p>
+<ul>
+<li><code>SECRET_KEY</code></li>
+<li><code>DATABASE_URL</code></li>
+<li><code>ALLOWED_HOSTS</code></li>
+<li><code>CSRF_TRUSTED_ORIGINS</code></li>
+<li><code>OPENAI_API_KEY</code> (if needed)</li>
+<li>any <code>GITHUB_APP_*</code> values if that integration is enabled</li>
+</ul>
+<p>Render also provides:</p>
+<ul>
+<li><code>PORT</code></li>
+</ul>
+<p>Recommended extras:</p>
+<ul>
+<li><code>PYTHONUNBUFFERED=1</code></li>
+<li><code>WEB_CONCURRENCY=2</code></li>
+</ul>
+<h2 id="build-command"><a class="header" href="#build-command">Build command</a></h2>
+<p>Use one of these:</p>
+<pre><code class="language-bash">pip install -r backend/requirements.txt
+</code></pre>
+<p>or if the service root is <code>backend/</code>:</p>
+<pre><code class="language-bash">pip install -r requirements.txt
+</code></pre>
+<h2 id="start-command"><a class="header" href="#start-command">Start command</a></h2>
+<p>Preferred:</p>
+<pre><code class="language-bash">bash deployment/render/scripts/render_backend_start.sh
+</code></pre>
+<p>If the service root is <code>backend/</code>, use:</p>
+<pre><code class="language-bash">bash ../deployment/render/scripts/render_backend_start.sh
+</code></pre>
+<h2 id="what-the-start-script-does"><a class="header" href="#what-the-start-script-does">What the start script does</a></h2>
+<p><code>deployment/render/scripts/render_backend_start.sh</code> runs:</p>
+<ol>
+<li><code>python manage.py migrate --noinput</code></li>
+<li><code>python manage.py bootstrap_platform || true</code></li>
+<li><code>python manage.py collectstatic --noinput --clear</code></li>
+<li><code>gunicorn notechondria.wsgi:application --bind 0.0.0.0:$PORT</code></li>
+</ol>
+<h2 id="notes"><a class="header" href="#notes">Notes</a></h2>
+<ul>
+<li>This is backend-only. The three frontend apps deploy separately to GitHub Pages.</li>
+<li>Free-tier instances may cold-start slowly.</li>
+<li>If migrations are slow, startup time may increase.</li>
+<li>If <code>bootstrap_platform</code> is not needed for a given environment, it safely tolerates failure in the script.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="python-environment-setup-for-developers"><a class="header" href="#python-environment-setup-for-developers">Python Environment Setup for Developers</a></h1>
+<p>This repo's backend lives in <code>backend/</code> and is currently verified most often with <code>uv</code>, but plain <code>conda</code> + <code>pip</code> also works well for local development.</p>
+<h2 id="recommended-python-version"><a class="header" href="#recommended-python-version">Recommended Python version</a></h2>
+<p>Use <strong>Python 3.11.4</strong> for local backend work.</p>
+<p>That matches:</p>
+<ul>
+<li><code>runtime.txt</code></li>
+<li><code>.python-version</code></li>
+<li><code>backend/runtime.txt</code></li>
+<li><code>backend/.python-version</code></li>
+</ul>
+<h2 id="option-a-conda--pip"><a class="header" href="#option-a-conda--pip">Option A: Conda + pip</a></h2>
+<p>Create and activate a clean env:</p>
+<pre><code class="language-bash">conda create -n notechondria-dev python=3.11.4 -y
+conda activate notechondria-dev
+</code></pre>
+<p>Install backend dependencies:</p>
+<pre><code class="language-bash">cd backend
+pip install -r requirements.txt
+</code></pre>
+<p>If you specifically want a Render-like runtime install path instead of the fuller backend dependency set:</p>
+<pre><code class="language-bash">cd backend
+pip install -r requirements-render.txt
+</code></pre>
+<h2 id="option-b-uv-managed-virtualenv"><a class="header" href="#option-b-uv-managed-virtualenv">Option B: uv-managed virtualenv</a></h2>
+<pre><code class="language-bash">cd backend
+uv venv .venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+</code></pre>
+<h2 id="running-backend-tests"><a class="header" href="#running-backend-tests">Running backend tests</a></h2>
+<pre><code class="language-bash">cd backend
+DJANGO_SETTINGS_MODULE=notechondria.settings_test python manage.py test
+</code></pre>
+<p>Notes:</p>
+<ul>
+<li><code>settings_test</code> uses SQLite in-memory for test runs.</li>
+<li><code>settings_test</code> must define a non-empty <code>SECRET_KEY</code>, otherwise request/session/message tests will fail before app logic is exercised.</li>
+<li>GPT/OpenAI code should not initialize API clients at import time; tests should only require <code>OPENAI_API_KEY</code> when GPT paths are actually executed.</li>
+</ul>
+<h2 id="dependency-maintenance-rules"><a class="header" href="#dependency-maintenance-rules">Dependency maintenance rules</a></h2>
+<p>Do <strong>not</strong> blindly overwrite <code>backend/requirements.txt</code> with <code>pip freeze</code> from an arbitrary machine.
+That tends to bake in:</p>
+<ul>
+<li>platform-specific noise</li>
+<li>transient local packages</li>
+<li>stale dev-only packages</li>
+<li>mismatches with Render/runtime constraints</li>
+</ul>
+<p>Prefer this workflow instead:</p>
+<ol>
+<li>install deliberately</li>
+<li>test deliberately</li>
+<li>update <code>requirements.txt</code> intentionally</li>
+</ol>
+<p>Useful inspection commands:</p>
+<pre><code class="language-bash">pip list
+pip freeze
+conda list
+conda env export --no-builds
+</code></pre>
+<p>If you want a local lock snapshot for debugging, write it to a temporary/local file rather than overwriting the tracked requirements file:</p>
+<pre><code class="language-bash">conda env export --no-builds &gt; /tmp/notechondria-conda-env.yml
+pip freeze &gt; /tmp/notechondria-pip-freeze.txt
+</code></pre>
+<h2 id="why-the-old-code_snippets-env-files-were-removed"><a class="header" href="#why-the-old-code_snippets-env-files-were-removed">Why the old <code>code_snippets/</code> env files were removed</a></h2>
+<p>The former snippet directory mixed together:</p>
+<ul>
+<li>redundant one-line shell snippets</li>
+<li>a stale Windows-specific <code>environment.yml</code></li>
+<li>commands that wrote directly into tracked requirement files</li>
+</ul>
+<p>That was more confusing than helpful.
+This doc keeps the useful workflow, but without the dangerous or outdated bits.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="canvas-like-calendar-for-self-study-tracking-mvp"><a class="header" href="#canvas-like-calendar-for-self-study-tracking-mvp">Canvas-like Calendar for Self-Study Tracking (MVP)</a></h1>
+<h2 id="one-liner"><a class="header" href="#one-liner">One-liner</a></h2>
+<p>A calendar app with an infinite canvas where learners create courses, track deadlines, log evidence, and publish portfolios.</p>
+<h2 id="problem-statement"><a class="header" href="#problem-statement">Problem statement</a></h2>
+<p>Self-learners struggle to keep a single, visual place to plan and document progress. Traditional calendars show dates but hide the narrative; note apps capture reflections but lack timelines. This product combines both.</p>
+<h2 id="target-users"><a class="header" href="#target-users">Target users</a></h2>
+<ul>
+<li>Self-learners (coding, languages, exams, reading plans)</li>
+<li>Career switchers building portfolio evidence</li>
+<li>Small study groups (optional in MVP)</li>
+</ul>
+<h2 id="core-objects-data-model"><a class="header" href="#core-objects-data-model">Core objects (data model)</a></h2>
+<h3 id="user"><a class="header" href="#user">User</a></h3>
+<ul>
+<li>id, handle, display_name</li>
+<li>privacy defaults (public profile? Y/N)</li>
+<li>timezone</li>
+<li>integrations (optional): github, google calendar, etc.</li>
+</ul>
+<h3 id="course-1"><a class="header" href="#course-1">Course</a></h3>
+<ul>
+<li>id, owner_id</li>
+<li>title, description</li>
+<li>visibility: private | unlisted | public</li>
+<li>tags (e.g., "math", "rust", "history")</li>
+<li>status: active | archived</li>
+<li>forked_from_course_id (nullable)</li>
+</ul>
+<h3 id="task-aka-milestone--assignment"><a class="header" href="#task-aka-milestone--assignment">Task (a.k.a. milestone / assignment)</a></h3>
+<ul>
+<li>id, course_id</li>
+<li>title, description</li>
+<li>due_date (nullable)</li>
+<li>state: todo | done</li>
+<li>completed_at (nullable)</li>
+<li>evidence: list of EvidenceItem</li>
+<li>reflections: list of ReflectionEntry</li>
+</ul>
+<h3 id="evidenceitem"><a class="header" href="#evidenceitem">EvidenceItem</a></h3>
+<ul>
+<li>type: link | git_commit | git_pr | file | note</li>
+<li>url (nullable)</li>
+<li>provider (nullable): github, youtube, etc.</li>
+<li>text (nullable)</li>
+<li>created_at</li>
+</ul>
+<h3 id="canvasboard"><a class="header" href="#canvasboard">CanvasBoard</a></h3>
+<ul>
+<li>id, course_id</li>
+<li>nodes: list of Node</li>
+<li>edges: list of Edge</li>
+</ul>
+<p>Node</p>
+<ul>
+<li>id, type: task | note | link | section</li>
+<li>ref_id (nullable): points to Task or EvidenceItem</li>
+<li>position: x,y</li>
+<li>size: w,h</li>
+<li>content (for note/section)</li>
+</ul>
+<p>Edge</p>
+<ul>
+<li>id, from_node_id, to_node_id</li>
+<li>label (optional)</li>
+</ul>
+<h2 id="primary-views--flows"><a class="header" href="#primary-views--flows">Primary views &amp; flows</a></h2>
+<h3 id="a-course-creation"><a class="header" href="#a-course-creation">A) Course creation</a></h3>
+<ul>
+<li>Create course (title + optional template)</li>
+<li>Auto-create a default board + default calendar grouping</li>
+</ul>
+<h3 id="b-task-creation"><a class="header" href="#b-task-creation">B) Task creation</a></h3>
+<ul>
+<li>Quick-add task from:
+<ul>
+<li>course page</li>
+<li>calendar (click day → add)</li>
+<li>canvas (create task card)</li>
+</ul>
+</li>
+<li>Optional due date</li>
+<li>Optional effort estimate (minutes/hours) [MVP: store, don’t over-interpret]</li>
+</ul>
+<h3 id="c-completion-logging"><a class="header" href="#c-completion-logging">C) Completion logging</a></h3>
+<ul>
+<li>One-click "Done"</li>
+<li>Optional modal: add reflection + evidence links</li>
+</ul>
+<h3 id="d-calendar-view"><a class="header" href="#d-calendar-view">D) Calendar view</a></h3>
+<ul>
+<li>Month + week views</li>
+<li>Filters: course, status, visibility</li>
+<li>Drag task to reschedule</li>
+</ul>
+<h3 id="e-canvas-view"><a class="header" href="#e-canvas-view">E) Canvas view</a></h3>
+<ul>
+<li>Infinite pan/zoom</li>
+<li>Create note nodes</li>
+<li>Drag tasks onto board (task cards)</li>
+<li>Link nodes (edges)</li>
+<li>Basic grouping/sections</li>
+</ul>
+<h3 id="f-sharing"><a class="header" href="#f-sharing">F) Sharing</a></h3>
+<ul>
+<li>Course visibility:
+<ul>
+<li>Private: only owner</li>
+<li>Unlisted: anyone with link</li>
+<li>Public: appears on profile and discoverable</li>
+</ul>
+</li>
+<li>Public board shows:
+<ul>
+<li>course summary</li>
+<li>progress stats (tasks done / total)</li>
+<li>selected artifacts (evidence links, reflections)</li>
+</ul>
+</li>
+<li>No public commenting in MVP (moderation sinkhole)</li>
+</ul>
+<h3 id="g-profile-repo-like"><a class="header" href="#g-profile-repo-like">G) Profile (“repo-like”)</a></h3>
+<ul>
+<li>List of courses with:
+<ul>
+<li>status (active/archived)</li>
+<li>last activity date</li>
+<li>progress bar</li>
+<li>link to public board if public/unlisted</li>
+</ul>
+</li>
+</ul>
+<h2 id="deadline-horizon-rule-3-month-constraint"><a class="header" href="#deadline-horizon-rule-3-month-constraint">Deadline horizon rule (3-month constraint)</a></h2>
+<ul>
+<li>Allow tasks to exist without a due date indefinitely.</li>
+<li>For due dates: enforce a planning horizon.
+<ul>
+<li>due_date must be within 90 days of the date it is set/edited.</li>
+<li>user can extend later, but only in increments within 90 days from “today”.</li>
+</ul>
+</li>
+</ul>
+<h2 id="mvp-metrics"><a class="header" href="#mvp-metrics">MVP metrics</a></h2>
+<ul>
+<li>Tasks completed per week</li>
+<li>Active courses count</li>
+<li>Evidence attachment rate</li>
+</ul>
+<h2 id="scope-boundaries-explicit-non-goals"><a class="header" href="#scope-boundaries-explicit-non-goals">Scope boundaries (explicit non-goals)</a></h2>
+<ul>
+<li>AI syllabus parsing/import</li>
+<li>Full course collaboration with branching/merging</li>
+<li>Credential issuance / official transcripts</li>
+<li>Payment / marketplace</li>
+<li>Advanced analytics (time auditing, “credits” enforcement)</li>
+</ul>
+<h2 id="git-backed-course-template-baseline"><a class="header" href="#git-backed-course-template-baseline">Git-backed course template (baseline)</a></h2>
+<p>Use the <code>course_template/</code> directory at repo root as the canonical layout:</p>
+<pre><code>/course.yaml
+/modules/
+  01-getting-started.md
+/assignments/
+  A1.md
+  A1.rubric.yaml
+/assets/
+</code></pre>
+<ul>
+<li><code>course.yaml</code> is the source of truth for metadata.</li>
+<li>Markdown holds content.</li>
+<li>Optional rubric YAML for assessments.</li>
+<li>The validator expects <code>course.yaml</code> to use JSON-compatible YAML (valid JSON syntax).</li>
+</ul>
+<h2 id="similar-products--references"><a class="header" href="#similar-products--references">Similar products / references</a></h2>
+<ul>
+<li>Canvas LMS (inspiration for course organization)</li>
+<li>Notion or Obsidian (linked knowledge / graph mindset)</li>
+<li>Miro or Figma FigJam (infinite canvas)</li>
+<li>Trello or Jira (kanban + task lifecycle)</li>
+<li>GitBook (docs + structured learning content)</li>
+</ul>
+<h2 id="practical-questions-to-resolve-not-in-the-initial-spec"><a class="header" href="#practical-questions-to-resolve-not-in-the-initial-spec">Practical questions to resolve (not in the initial spec)</a></h2>
+<ul>
+<li>What is the data export story for users (CSV/JSON, PDF portfolio, static site)?</li>
+<li>How will privacy work for public/unlisted content (robots.txt, signed URLs, share tokens)?</li>
+<li>How do we handle abandoned courses (archiving, reminders, cold storage)?</li>
+<li>Will the mobile app support offline usage? If yes, what is the conflict strategy?</li>
+<li>How do we handle timezone changes for deadlines and streaks?</li>
+<li>What are the upload limits for evidence (links only vs. file uploads)?</li>
+<li>Will admins need moderation tooling for public courses? (abuse reports, takedown)</li>
+<li>How should AI features be gated to avoid hallucinated syllabus imports?</li>
+<li>What is the plan for rate limiting and OAuth scopes for git provider adapters?</li>
+<li>How will we handle accessibility (keyboard navigation on canvas, screen readers)?</li>
+</ul>
+<h2 id="feasibility-and-timing-solo-developer-estimate"><a class="header" href="#feasibility-and-timing-solo-developer-estimate">Feasibility and timing (solo developer estimate)</a></h2>
+<p>Assuming one developer with ~6 months experience, building Django backend + Flutter app.</p>
+<h3 id="best-case-mvp-tight-scope-minimal-ux-polish"><a class="header" href="#best-case-mvp-tight-scope-minimal-ux-polish">Best-case MVP (tight scope, minimal UX polish)</a></h3>
+<ul>
+<li>450–700 hours</li>
+</ul>
+<h3 id="more-realistic-mvp-integration-bugs-included"><a class="header" href="#more-realistic-mvp-integration-bugs-included">More realistic MVP (integration bugs included)</a></h3>
+<ul>
+<li>800–1,200 hours</li>
+</ul>
+<h3 id="rough-breakdown"><a class="header" href="#rough-breakdown">Rough breakdown</a></h3>
+<ul>
+<li>Auth + user/account + basic UI shell: 60–100h</li>
+<li>Course template schema + parser + validation: 40–80h</li>
+<li>GitHub adapter (read + PR write): 80–140h</li>
+<li>DB models + APIs (courses, versions, discussions, submissions): 80–140h</li>
+<li>Flutter UI (course view, edit, submission, discussion): 120–200h</li>
+<li>Deployment + logging + monitoring + security cleanup: 50–80h</li>
+</ul>
+<h2 id="potentially-impractical-risks"><a class="header" href="#potentially-impractical-risks">Potentially impractical (risks)</a></h2>
+<ul>
+<li>Combining calendar + infinite canvas + git-based course authoring in v1 risks scope creep.</li>
+<li>Supporting multiple git providers early (GitHub + Gitea + GitLab) multiplies auth and webhook complexity.</li>
+<li>Rich “portfolio” rendering plus public sharing invites moderation, abuse handling, and privacy complexity.</li>
+</ul>
+<h2 id="recommended-v1-spine-choose-one"><a class="header" href="#recommended-v1-spine-choose-one">Recommended v1 spine (choose one)</a></h2>
+<ul>
+<li><strong>Git-first</strong>: repo → course → PR edits → profile/portfolio; defer calendar/canvas polish.</li>
+<li><strong>Planner-first</strong>: calendar/canvas + progress + evidence; treat git links as evidence only.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="github-app-integration-guide"><a class="header" href="#github-app-integration-guide">GitHub App Integration Guide</a></h1>
+<p>This project supports a GitHub App integration path for repo import/sync workflows.</p>
+<h2 id="1-create-github-app"><a class="header" href="#1-create-github-app">1) Create GitHub App</a></h2>
+<p>In GitHub Developer Settings:</p>
+<ul>
+<li>App name: <code>Notechondria Sync</code></li>
+<li>Homepage URL: your frontend URL</li>
+<li>Callback URL: <code>https://&lt;backend-host&gt;/integrations/github/callback</code></li>
+<li>Webhook URL: <code>https://&lt;backend-host&gt;/integrations/github/webhook</code></li>
+<li>Webhook secret: generate random 32+ chars</li>
+</ul>
+<h3 id="permissions"><a class="header" href="#permissions">Permissions</a></h3>
+<p>Set minimum permissions:</p>
+<ul>
+<li>Repository contents: <strong>Read &amp; write</strong></li>
+<li>Pull requests: <strong>Read &amp; write</strong></li>
+<li>Metadata: <strong>Read-only</strong></li>
+</ul>
+<h3 id="events"><a class="header" href="#events">Events</a></h3>
+<p>Subscribe to:</p>
+<ul>
+<li><code>push</code></li>
+<li><code>pull_request</code></li>
+<li><code>installation</code></li>
+<li><code>installation_repositories</code></li>
+</ul>
+<h2 id="2-install-app-on-repositoryorg"><a class="header" href="#2-install-app-on-repositoryorg">2) Install app on repository/org</a></h2>
+<p>Install the app on target repositories used for course templates.</p>
+<h2 id="3-configure-server-env"><a class="header" href="#3-configure-server-env">3) Configure server env</a></h2>
+<p>Add these variables to <code>.env</code>:</p>
+<ul>
+<li><code>GITHUB_APP_ID</code></li>
+<li><code>GITHUB_APP_CLIENT_ID</code></li>
+<li><code>GITHUB_APP_CLIENT_SECRET</code></li>
+<li><code>GITHUB_APP_PRIVATE_KEY_PATH</code></li>
+<li><code>GITHUB_APP_WEBHOOK_SECRET</code></li>
+</ul>
+<h2 id="4-verify-webhook-flow"><a class="header" href="#4-verify-webhook-flow">4) Verify webhook flow</a></h2>
+<ol>
+<li>Trigger a push event.</li>
+<li>Confirm backend receives and verifies <code>X-Hub-Signature-256</code>.</li>
+<li>Confirm event is logged and queued for sync.</li>
+</ol>
+<h2 id="5-recommended-backend-implementation-steps"><a class="header" href="#5-recommended-backend-implementation-steps">5) Recommended backend implementation steps</a></h2>
+<ol>
+<li>Add <code>/integrations/github/callback</code> endpoint to exchange OAuth code.</li>
+<li>Store installation IDs per user/org.</li>
+<li>Create adapter methods for:
+<ul>
+<li>Read template files from repository contents API.</li>
+<li>Open PR for course edits.</li>
+</ul>
+</li>
+<li>Add idempotent webhook consumer with retry on transient failures.</li>
+</ol>
+<h2 id="6-security-checklist"><a class="header" href="#6-security-checklist">6) Security checklist</a></h2>
+<ul>
+<li>Never commit private key content to git.</li>
+<li>Validate webhook signatures on every request.</li>
+<li>Restrict scopes to least privilege.</li>
+<li>Encrypt stored tokens at rest.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="postgresql-backup-and-restore-for-service-migration"><a class="header" href="#postgresql-backup-and-restore-for-service-migration">PostgreSQL Backup and Restore for Service Migration</a></h1>
+<p>This guide replaces the old root-level <code>code_snippets/database-backup.sh</code> and <code>database-restore.sh</code> one-liners with portable scripts that work against arbitrary PostgreSQL hosts.</p>
+<h2 id="canonical-scripts"><a class="header" href="#canonical-scripts">Canonical scripts</a></h2>
+<ul>
+<li><code>docs/operations/scripts/postgres_backup.sh</code></li>
+<li><code>docs/operations/scripts/postgres_restore.sh</code></li>
+</ul>
+<p>Both scripts use the standard PostgreSQL client environment variables:</p>
+<ul>
+<li><code>PGHOST</code></li>
+<li><code>PGPORT</code></li>
+<li><code>PGUSER</code></li>
+<li><code>PGPASSWORD</code></li>
+<li><code>PGDATABASE</code></li>
+</ul>
+<h2 id="1-back-up-a-source-database"><a class="header" href="#1-back-up-a-source-database">1) Back up a source database</a></h2>
+<p>Example:</p>
+<pre><code class="language-bash">export PGHOST=source-db.example.com
+export PGPORT=5432
+export PGUSER=postgres
+export PGPASSWORD='replace-me'
+export PGDATABASE=notechondria
+
+bash docs/operations/scripts/postgres_backup.sh ./backups/notechondria-$(date +%Y%m%d-%H%M%S).dump
+</code></pre>
+<p>The script creates a <strong>custom-format</strong> dump suitable for <code>pg_restore</code>.</p>
+<h2 id="2-restore-into-a-target-database"><a class="header" href="#2-restore-into-a-target-database">2) Restore into a target database</a></h2>
+<p>Example:</p>
+<pre><code class="language-bash">export PGHOST=target-db.example.com
+export PGPORT=5432
+export PGUSER=postgres
+export PGPASSWORD='replace-me'
+export PGDATABASE=notechondria
+
+bash docs/operations/scripts/postgres_restore.sh ./backups/notechondria-20260404-060000.dump
+</code></pre>
+<p>By default the restore script runs with:</p>
+<ul>
+<li><code>--clean</code></li>
+<li><code>--if-exists</code></li>
+<li><code>--no-owner</code></li>
+<li><code>--no-privileges</code></li>
+</ul>
+<p>That makes it safer for cross-host migration where roles and ownership differ.</p>
+<h2 id="3-create-the-target-database-first-when-needed"><a class="header" href="#3-create-the-target-database-first-when-needed">3) Create the target database first when needed</a></h2>
+<p>If the target database does not already exist, create it first:</p>
+<pre><code class="language-bash">createdb -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" "$PGDATABASE"
+</code></pre>
+<p>If your managed host does not allow <code>createdb</code>, create the empty database from the provider dashboard first, then run the restore.</p>
+<h2 id="4-common-migration-pattern"><a class="header" href="#4-common-migration-pattern">4) Common migration pattern</a></h2>
+<h3 id="source-host"><a class="header" href="#source-host">Source host</a></h3>
+<pre><code class="language-bash">export PGHOST=old-db.example.com
+export PGPORT=5432
+export PGUSER=postgres
+export PGPASSWORD='old-password'
+export PGDATABASE=notechondria
+bash docs/operations/scripts/postgres_backup.sh ./backups/notechondria.dump
+</code></pre>
+<h3 id="target-host"><a class="header" href="#target-host">Target host</a></h3>
+<pre><code class="language-bash">export PGHOST=new-db.example.com
+export PGPORT=5432
+export PGUSER=postgres
+export PGPASSWORD='new-password'
+export PGDATABASE=notechondria
+createdb -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" "$PGDATABASE" || true
+bash docs/operations/scripts/postgres_restore.sh ./backups/notechondria.dump
+</code></pre>
+<h2 id="5-verification-after-restore"><a class="header" href="#5-verification-after-restore">5) Verification after restore</a></h2>
+<pre><code class="language-bash">psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" -c '\dt'
+psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" -c 'select count(*) from django_migrations;'
+</code></pre>
+<p>For app-level verification after restore:</p>
+<pre><code class="language-bash">cd backend
+python manage.py migrate --noinput
+python manage.py check
+</code></pre>
+<h2 id="why-the-old-snippets-were-replaced"><a class="header" href="#why-the-old-snippets-were-replaced">Why the old snippets were replaced</a></h2>
+<p>The old snippets were too thin to be safe or reusable:</p>
+<ul>
+<li>hard-coded assumptions like <code>postgres</code></li>
+<li>no guardrails</li>
+<li>no docs around credentials or target database prep</li>
+<li>not clearly tied to migration workflows</li>
+</ul>
+<p>These replacement scripts are still simple, but they are at least portable, parameterized, and documented.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="backend-test-plan-current"><a class="header" href="#backend-test-plan-current">Backend Test Plan (Current)</a></h1>
+<h2 id="scope"><a class="header" href="#scope">Scope</a></h2>
+<p>Covers model utilities, markdown rendering behavior, and authenticated note access.</p>
+<h2 id="test-suites"><a class="header" href="#test-suites">Test suites</a></h2>
+<ol>
+<li>
+<p><code>creators.tests.CreatorModelTests</code></p>
+<ul>
+<li>profile image path generation</li>
+<li>verification default values</li>
+</ul>
+</li>
+<li>
+<p><code>notes.tests.NoteBlockMarkdownTests</code></p>
+<ul>
+<li>markdown output for code block and quote block</li>
+</ul>
+</li>
+<li>
+<p><code>notes.tests.NoteUtilitiesTests</code></p>
+<ul>
+<li>utility safety (<code>get_object_or_None</code>)</li>
+<li>unique ID generation constraints</li>
+<li>object-level permission checks with <code>check_is_creator</code></li>
+</ul>
+</li>
+<li>
+<p><code>notes.tests.NotesViewSmokeTests</code></p>
+<ul>
+<li><code>/notes/collections/</code> redirects anonymous users</li>
+<li>authenticated user gets page response</li>
+</ul>
+</li>
+<li>
+<p><code>gptutils.tests</code></p>
+<ul>
+<li>visual model detection</li>
+<li>system prompt serialization</li>
+<li>message body/extras split behavior for long texts</li>
+</ul>
+</li>
+</ol>
+<h2 id="run"><a class="header" href="#run">Run</a></h2>
+<pre><code class="language-bash">python backend/manage.py test --settings=notechondria.settings_test
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+        <script>
+        window.addEventListener('load', function() {
+            window.setTimeout(window.print, 100);
+        });
+        </script>
+
+    </div>
+    </body>
+</html>

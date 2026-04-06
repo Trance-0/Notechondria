@@ -1,0 +1,295 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>GitHub App Integration - Notechondria Documentation</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "navy";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../TASKS.html">Tasks</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">API</li><li class="chapter-item expanded "><a href="../api/backend_api_spec.html"><strong aria-hidden="true">1.</strong> Backend API Specification</a></li><li class="chapter-item expanded affix "><li class="part-title">Deployment</li><li class="chapter-item expanded "><a href="../deployment/deploy.html"><strong aria-hidden="true">2.</strong> Deployment Guide</a></li><li class="chapter-item expanded "><a href="../deployment/render_free_tier.html"><strong aria-hidden="true">3.</strong> Render Free Tier</a></li><li class="chapter-item expanded affix "><li class="part-title">Development</li><li class="chapter-item expanded "><a href="../development/python_environments.html"><strong aria-hidden="true">4.</strong> Python Environments</a></li><li class="chapter-item expanded "><a href="../canvas_like_calendar_mvp.html"><strong aria-hidden="true">5.</strong> Canvas-like Calendar MVP</a></li><li class="chapter-item expanded affix "><li class="part-title">Integrations</li><li class="chapter-item expanded "><a href="../integrations/github_app_integration.html" class="active"><strong aria-hidden="true">6.</strong> GitHub App Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">Operations</li><li class="chapter-item expanded "><a href="../operations/postgres_migration.html"><strong aria-hidden="true">7.</strong> PostgreSQL Migration</a></li><li class="chapter-item expanded affix "><li class="part-title">Testing</li><li class="chapter-item expanded "><a href="../testing/backend_test_plan.html"><strong aria-hidden="true">8.</strong> Backend Test Plan</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Notechondria Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/Nesbitt-bot/Notechondria" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/Nesbitt-bot/Notechondria/edit/codex/docs/./integrations/github_app_integration.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="github-app-integration-guide"><a class="header" href="#github-app-integration-guide">GitHub App Integration Guide</a></h1>
+<p>This project supports a GitHub App integration path for repo import/sync workflows.</p>
+<h2 id="1-create-github-app"><a class="header" href="#1-create-github-app">1) Create GitHub App</a></h2>
+<p>In GitHub Developer Settings:</p>
+<ul>
+<li>App name: <code>Notechondria Sync</code></li>
+<li>Homepage URL: your frontend URL</li>
+<li>Callback URL: <code>https://&lt;backend-host&gt;/integrations/github/callback</code></li>
+<li>Webhook URL: <code>https://&lt;backend-host&gt;/integrations/github/webhook</code></li>
+<li>Webhook secret: generate random 32+ chars</li>
+</ul>
+<h3 id="permissions"><a class="header" href="#permissions">Permissions</a></h3>
+<p>Set minimum permissions:</p>
+<ul>
+<li>Repository contents: <strong>Read &amp; write</strong></li>
+<li>Pull requests: <strong>Read &amp; write</strong></li>
+<li>Metadata: <strong>Read-only</strong></li>
+</ul>
+<h3 id="events"><a class="header" href="#events">Events</a></h3>
+<p>Subscribe to:</p>
+<ul>
+<li><code>push</code></li>
+<li><code>pull_request</code></li>
+<li><code>installation</code></li>
+<li><code>installation_repositories</code></li>
+</ul>
+<h2 id="2-install-app-on-repositoryorg"><a class="header" href="#2-install-app-on-repositoryorg">2) Install app on repository/org</a></h2>
+<p>Install the app on target repositories used for course templates.</p>
+<h2 id="3-configure-server-env"><a class="header" href="#3-configure-server-env">3) Configure server env</a></h2>
+<p>Add these variables to <code>.env</code>:</p>
+<ul>
+<li><code>GITHUB_APP_ID</code></li>
+<li><code>GITHUB_APP_CLIENT_ID</code></li>
+<li><code>GITHUB_APP_CLIENT_SECRET</code></li>
+<li><code>GITHUB_APP_PRIVATE_KEY_PATH</code></li>
+<li><code>GITHUB_APP_WEBHOOK_SECRET</code></li>
+</ul>
+<h2 id="4-verify-webhook-flow"><a class="header" href="#4-verify-webhook-flow">4) Verify webhook flow</a></h2>
+<ol>
+<li>Trigger a push event.</li>
+<li>Confirm backend receives and verifies <code>X-Hub-Signature-256</code>.</li>
+<li>Confirm event is logged and queued for sync.</li>
+</ol>
+<h2 id="5-recommended-backend-implementation-steps"><a class="header" href="#5-recommended-backend-implementation-steps">5) Recommended backend implementation steps</a></h2>
+<ol>
+<li>Add <code>/integrations/github/callback</code> endpoint to exchange OAuth code.</li>
+<li>Store installation IDs per user/org.</li>
+<li>Create adapter methods for:
+<ul>
+<li>Read template files from repository contents API.</li>
+<li>Open PR for course edits.</li>
+</ul>
+</li>
+<li>Add idempotent webhook consumer with retry on transient failures.</li>
+</ol>
+<h2 id="6-security-checklist"><a class="header" href="#6-security-checklist">6) Security checklist</a></h2>
+<ul>
+<li>Never commit private key content to git.</li>
+<li>Validate webhook signatures on every request.</li>
+<li>Restrict scopes to least privilege.</li>
+<li>Encrypt stored tokens at rest.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../canvas_like_calendar_mvp.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../operations/postgres_migration.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../canvas_like_calendar_mvp.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../operations/postgres_migration.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
