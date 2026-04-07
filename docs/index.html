@@ -180,190 +180,44 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="tasks"><a class="header" href="#tasks">TASKS</a></h1>
+<p>Pending version: 0.1</p>
 <p>Here is a list of task we need to do now after testing, finishing and solve these bugs in order, and check the item from the list when you are done, ignore the checked items.</p>
 <p>If certain functionality in frontend involves changes in backend, add the backend function in the corresponding module and test them before implementing them in frontend, provide options for hard to implement features.</p>
-<p>Add items if you find additional features that I described to you but is not implemented to keep them on track and let me know you get to it.</p>
+<p>For testing backend, check render-mcp, the api key and database credentials is in the local <code>sample.test.env</code>, or <code>sample.render.env</code> file.</p>
+<p>Add items if</p>
+<ul>
+<li>You find additional features that I described to you but is not implemented to keep them on track and let me know you get to it.</li>
+<li>A big task that needs to be decomposed into smaller tasks, and test on each steps.</li>
+</ul>
+<p>For the bug you fixed on this round, create a new <code>&lt;Pending-version&gt;.&lt;inc-numeral&gt;.md</code> in ./docs/versions, move your finished item (delete the completed item in this file) to this new file, follow the templated defined in previous files.</p>
+<p>Let me know any environment variables need to be updated. After all edits are done, check every test passed. COMMIT and I will push after check.</p>
+<p>Always finish urgent tasks first if exists.</p>
 <p>PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK</p>
 <h2 id="editor"><a class="header" href="#editor">Editor</a></h2>
+<h3 id="urgent-tasks"><a class="header" href="#urgent-tasks">Urgent tasks</a></h3>
 <ul>
 <li><input disabled="" type="checkbox"/>
-Now the panel don't redirect or route url for different contents as normal websites do and all link are stored on the same editor route. Is it possible to give different notes different routes, label by their uuid with strict access policy?</li>
+Now the panel don't redirect or route url for different contents as normal websites do and all link are stored on the same editor route. Is it possible to give different notes different routes, label by their uuid with strict access policy (All site viewer can view public notes, but only note owner can edit. Registered user can cite, comment (set note type as comment with source. It should not be deleted(but will be private) when the source note is deleted (The detailed comment section will be displayed on Planner App)), etc)? Implement the function so that every distinct note have their unique url. You also need to add/rewire backend function for creating uuid I assume.</li>
 </ul>
 <h3 id="sidebarnavigation"><a class="header" href="#sidebarnavigation">Sidebar/Navigation</a></h3>
 <ul>
-<li><input disabled="" type="checkbox" checked=""/>
-Remove the Notechondria editor title from the sidebar.</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Enable drag and reorder for the categories. (backend: <code>Course.sort_order</code> + <code>POST /api/v1/courses/reorder/</code>; frontend: <code>ReorderableListView</code> in wide sidebar with pinned Inbox)</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Hold categories for editing the category name (course, plan name in future version) and delete the category (show warning before deletion, move all notes to default category, the default "Inbox" category cannot be deleted) keep a simple editor for testing at this stage. Add tooltip for that on hover.</li>
-<li><input disabled="" type="checkbox" checked=""/>
-At bottom of the Category drop down, add a placeholder to create a new category.</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Current drag and update, and hold to edit, add new categories are not implemented in vertical app view. (Replaced PopupMenuButton with Drawer containing ReorderableListView, long-press-to-edit, and "New category" — mirrors wide sidebar)</li>
 <li><input disabled="" type="checkbox"/>
 In Edit category, besides category name, add a selector for course icon (select from flutter sources)</li>
 </ul>
 <h3 id="note-view"><a class="header" href="#note-view">Note view</a></h3>
-<ul>
-<li><input disabled="" type="checkbox" checked=""/>
-Remove three-dot menu button in the card</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Remove the helper text in the card "Course metadata stays editable from the editor details panel"</li>
-</ul>
 <h4 id="search"><a class="header" href="#search">Search</a></h4>
-<ul>
-<li><input disabled="" type="checkbox" checked=""/>
-Implement basic in-note search with case insensitive match, with checkbox for All, or personal notes (backend <code>scope=all|personal</code> on <code>/api/v1/notes/</code>, frontend checkbox in Learner search bar)</li>
-</ul>
 <h3 id="note-preview"><a class="header" href="#note-preview">Note preview</a></h3>
-<ul>
-<li><input disabled="" type="checkbox" checked=""/>
-The display for note header is too small, make appropriate padding on lower subheadings.</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Add options for export markdown.
-<ul>
-<li>A checkbox include metadata; default to add the header about note metadata (author name, course name, last edit time, creation time, etc.), add selectable to note format,</li>
-<li>A checkbox for recursive export; default to false.</li>
-<li>A selector of export format; default is zip with the following structure</li>
-</ul>
-<pre><code> - &lt;note&gt; (specified by note name, should be unique)
-    - media
-        - some-image.png
-        - some-image.jpg
-        - other-static-resources.mp3
-        - some-cited-document.pdf
-        - &lt;some-other-referenced-notes-folder&gt; (when recursive export is enabled, only include public notes owned by our site)
-            - media
-              - ...
-            - .metadata (store module, last change, etc, remove if not selected)
-            - note-&lt;created_timestamp&gt;.md
-        - ...
-    - .metadata (store module, last change, etc, remove if not selected)
-    - note-&lt;created_timestamp&gt;.md
-</code></pre>
-<ul>
-<li>second is markdown-only only export the pure markdown file (include the metadata as the first line in the file with a yaml header).</li>
-</ul>
-</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Add additional options for import notes, supports zip and markdown files, reverse the process as above as described. (ZipDecoder path handles recursive archives; YAML frontmatter title/description round-trips back into created notes)</li>
-<li><input disabled="" type="checkbox" checked=""/>
-When clear local cache, should have <code>Inbox</code> folder only, but the old templates <code>Vibe coding 101</code> etc still remains and there are currently 2 inbox. (Fixed <code>_clearLocalData</code> to clear <code>_localCache</code>, <code>_deletedNotes</code>, reset stats, and re-seed via <code>_ensureStarterWorkspace()</code>)</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Category delete is not functional locally (also failed remotely). (Local: notes now remapped to default Inbox via <code>_remapDraftCourseId</code>; remote: auto-selects default course after delete; added snackbar feedback. Backend verified with 4 new tests.)</li>
-<li><input disabled="" type="checkbox" checked=""/>
-The display for cloud status will have multiple icons, only three status is needed (offline/online/not synced). (3 states: <code>cloud_off_outlined</code> offline, <code>cloud_upload_outlined</code> not synced, <code>cloud_done_outlined</code> synced)</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Avatar uploaded but not displayed on the editor page now. (Settings page now uses <code>_RemoteAvatar</code>; cache-bust on upload via timestamp query param + <code>imageCache.clear()</code>)</li>
-</ul>
 <h3 id="note-editor"><a class="header" href="#note-editor">Note editor</a></h3>
 <ul>
-<li><input disabled="" type="checkbox" checked=""/>
-In vertical view, title is not correly displayed on iphone machine. (Header now uses LayoutBuilder: narrow &lt;600px stacks title/controls vertically; wide keeps single Row)</li>
+<li><input disabled="" type="checkbox"/>
+Add a lower right add button (the same as add notes) for inserting attachment (image, file, etc.) And create code embedding for rendering the imported contents. in both editors. Set max size of the file to be 20MB and create backend services handling the file upload/recycling if resource is not used. Store them in node media folder defined before.</li>
 </ul>
 <h4 id="markdown-editor"><a class="header" href="#markdown-editor">Markdown Editor</a></h4>
-<ul>
-<li><input disabled="" type="checkbox" checked=""/>
-Should display one red text warning belows the title if user is not following the markdown spec. Only show one line red text warning is enough.</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Full GitHub Flavored Markdown (GFM) is not supported yet, at least the following features are missing
-<ul>
-<li><input disabled="" type="checkbox" checked=""/>
-details and summary tags</li>
-</ul>
-</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Access control is broken, a login user should not edit public notes that are not owned by them. (Frontend: <code>_openViewer</code> now checks <code>author.username == currentUsername</code>; Edit/Delete only shown for owned notes or local drafts)</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Remove the inline/raw version toggle, if user wants to use raw, they can use plain text editor. (Removed <code>SegmentedButton</code> and <code>_liveMarkdownPreview</code> field; live editor always shows inline mode)</li>
-<li><input disabled="" type="checkbox"/>
-Broken html tag may corrupt the markdown sometimes</li>
-<li><input disabled="" type="checkbox" checked=""/>
-<code>&lt;details&gt;</code> and <code>&lt;summary&gt;</code> are not correctly rendered in the editor. (Fixed <code>_DetailsBlockSyntax</code>: relaxed pattern to <code>^\s{0,3}&lt;details\b</code>, <code>canEndBlock: false</code>, handles single-line blocks and inline <code>&lt;summary&gt;</code>, trims body content)</li>
-<li><input disabled="" type="checkbox"/>
-Live parsing is not behave as expected, the grey line should display only on hover, and when click, it should create a new empty block</li>
-<li><input disabled="" type="checkbox"/>
-Add a lower right add button for inserting attachment (image, file, etc. )</li>
-</ul>
 <h5 id="plaintext-editor"><a class="header" href="#plaintext-editor">Plaintext editor</a></h5>
-<ul>
-<li><input disabled="" type="checkbox" checked=""/>
-Syntax highlighting is not functional (bold for bold, italics for italics, etc. Follows the GFM spec)</li>
-</ul>
 <h5 id="markdown-editor-1"><a class="header" href="#markdown-editor-1">Markdown editor</a></h5>
-<ul>
-<li><input disabled="" type="checkbox" checked=""/>
-Rename the editor to Live Markdown Editor</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Remove the double column editor for now.</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Live render the sections where user is not editing (like typora). Dynamically allocate and enable full features of GFM. (Inline stacked paragraph editor: each paragraph renders as MarkdownBody until tapped, then swaps into a borderless TextField; thin hairline insert slots between paragraphs add empty blocks. <code>Raw</code> escape hatch kept via SegmentedButton.)</li>
-</ul>
-<h5 id="block-editor"><a class="header" href="#block-editor">Block editor</a></h5>
-<ul>
-<li>
-<p><input disabled="" type="checkbox" checked=""/>
-Remove the top menu for adding blocks (bold, italics, etc.) They should pop in the position when user hover on the intersection between two existing blocks and top, bottom padding areas. (to insert new block in that position)
-That means, the block add menu item should be (paragraph, list, enumeration, code, quote, image, dropdown, html embedding, etc.)</p>
-</li>
-<li>
-<p><input disabled="" type="checkbox" checked=""/>
-Follows the design for notion</p>
-<ul>
-<li><input disabled="" type="checkbox" checked=""/>
-Full live markdown editor support, it should be an extension of markdown editor (Block cards now show MarkdownBody preview when inactive; tap to edit, with type-aware markdown composition for headings/code/quotes/links/images)</li>
-</ul>
-</li>
-</ul>
 <h3 id="editor-settings"><a class="header" href="#editor-settings">Editor Settings</a></h3>
-<ul>
-<li><input disabled="" type="checkbox" checked=""/>
-Disable user change for account name, this shoule be unique and not change on create account(add validation on registration), user may change display name. (Username TextField set to <code>readOnly: true</code> with helper text)</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Remove current email editor, setup registration and security policies that one needs to verify old email before changging to new one. Both email needs to be validated before proceeding the change. (Email field removed; profile email passed read-only to API)</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Save editor config to cloud with user, put pull and push as independent subsection and add short description for what those do. (Push/Pull moved into "Sync" subsection with ListTile descriptions)</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Remove auto save in settings. change to click to save and promt user what changed before proceed. (now the auto save is interrupting user input and may save unwanted changes) (Replaced <code>_scheduleAutoSave</code> with explicit "Save settings" button + change-summary confirmation dialog)</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Remove configuration section, as the function should be migrated to the login and account info section/Editor Preferences. (merged Download config / Restore templates / Recycle bin / Clear all local data into an "Offline account" row inside Offline preferences)</li>
-<li><input disabled="" type="checkbox"/>
-For each section in editor settings (online account (when actually online), editor preference) unify the save button on the lower left of the widget, and cancel button on the lower right, these two buttons should span the row and cancel should be grey when nothing changed. (when cancel is clicked, restore value from remote) If not saved on quit page, default to discard the change.</li>
-</ul>
 <h4 id="login-and-account-info"><a class="header" href="#login-and-account-info">Login and account info</a></h4>
-<ul>
-<li><input disabled="" type="checkbox" checked=""/>
-No save button for now, updated avatar image and motto, email cannot be saved. Put the (configuration section) as subsection of login and account info</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Organize the widgets by their functions, put
-<ul>
-<li>Online account setting: save account config reset password, logout on the same line</li>
-<li>Offline account setting: Download config file, Recycle bin, restore templates, clear all local data. (add warning and 3s confirmation before clearing recycle bin and local data)</li>
-</ul>
-</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Remove clear local cache, I assume that is equivalent to clear all local data.</li>
-<li><input disabled="" type="checkbox" checked=""/>
-On login widgets, remove the helper text "sign in with your email and password... Admin user name also.... admin account". This text is redundant and occupy too much space on mobile view, making no place to fit keyboard.</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Chrome password auto fill is still not supported. Find out why and fix it. (root cause: dialog popped before <code>TextInput.finishAutofillContext()</code> fired, so Chrome never saw a completed submission. Call added on successful login.)</li>
-<li><input disabled="" type="checkbox" checked=""/>
-When pull is called after deleting local data, remote data is not downloaded and synchronized. (Added <code>_loadInitialData()</code> call after pull completes to refresh remote courses and notes)</li>
-<li><input disabled="" type="checkbox"/>
-User avatar setting has duplicated functions, when user click it's own image, it should be preview only. And upload avatar to edit.</li>
-<li><input disabled="" type="checkbox"/>
-Change edit username to "Change First name and Last name" (2 text fields on same row)</li>
-<li><input disabled="" type="checkbox"/>
-Since we don't allows user name edits, change the username to display only as subtext after the user name.</li>
-</ul>
 <h4 id="editor-preferences"><a class="header" href="#editor-preferences">Editor Preferences</a></h4>
-<ul>
-<li><input disabled="" type="checkbox" checked=""/>
-Currently default editor naming is inconsistent.</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Rename the section heading from "offline preferences to "Editor preferences" (Section heading and comment updated in settings.dart)</li>
-</ul>
 <h2 id="planner"><a class="header" href="#planner">Planner</a></h2>
 <ul>
 <li><input disabled="" type="checkbox"/>
@@ -411,10 +265,6 @@ Embed from /planner/Activity view</li>
 <h3 id="settings"><a class="header" href="#settings">Settings</a></h3>
 <ul>
 <li>
-<p><input disabled="" type="checkbox" checked=""/>
-Currently login session is lost after refresh the webpage, this should be fixed. (Token + profile persisted via <code>_LocalAppStore.saveSession</code>; restored on startup with <code>/auth/session/</code> validation; cleared on logout)</p>
-</li>
-<li>
 <p><input disabled="" type="checkbox"/>
 Register windows</p>
 <ul>
@@ -429,18 +279,6 @@ Register (frontend implementation) (new <code>_RegisterDialog</code> with userna
 </ul>
 </li>
 <li>
-<p><input disabled="" type="checkbox" checked=""/>
-Implement simple find password</p>
-<ul>
-<li><input disabled="" type="checkbox" checked=""/>
-only use email for reset password, if no email find on backend, reject the request (backend: <code>PasswordResetRequestSerializer</code> rejects unknown emails)</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Email verification (same as register) (backend: 6-digit hashed codes for password reset too)</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Reset password, retype and confirm password. (<code>_PasswordResetDialog</code> now has confirm password field with match validation)</li>
-</ul>
-</li>
-<li>
 <p><input disabled="" type="checkbox"/>
 Embed from all setting from the micro services included.</p>
 <ul>
@@ -451,8 +289,6 @@ Embed from all setting from the micro services included.</p>
 </ul>
 <h2 id="backend"><a class="header" href="#backend">Backend</a></h2>
 <ul>
-<li><input disabled="" type="checkbox" checked=""/>
-<code>.env.example</code> not given? rename that to <code>sample.env</code> to ensure consistency and give a full example environment needed for this project, I will prompt you with current example, or you may see <code>sample.text.env</code> if you have it in root dir. (Created <code>sample.env</code> with sanitized placeholders; <code>sample.test.env</code> kept for CI/dev reference)</li>
 <li><input disabled="" type="checkbox"/>
 Edit the admin portal for django, show the ow</li>
 <li><input disabled="" type="checkbox"/>
@@ -465,10 +301,8 @@ Enable fully functional MCP, enable AI to interact with the site when user creat
 </ul>
 <h2 id="documentation-pages"><a class="header" href="#documentation-pages">Documentation pages</a></h2>
 <ul>
-<li><input disabled="" type="checkbox" checked=""/>
-Deploy the docs as static rendering for GitHub Pages, map to <code>*.github.io/docs/</code>. As wiki for future user and developer guides. (mdBook config in <code>docs/book.toml</code> + <code>docs/SUMMARY.md</code>; workflow builds with mdBook and deploys to <code>/docs/</code> path on gh-pages; landing page updated with docs link)</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Documentation source repo redirects to https://github.com/Nesbitt-bot/Notechondria, need to be Trance-0's main repo (Updated <code>book.toml</code> git-repository-url and edit-url-template to Trance-0/Notechondria)</li>
+<li><input disabled="" type="checkbox"/>
+New version is added in doc, update the docs descriptions.</li>
 </ul>
 
                     </main>
