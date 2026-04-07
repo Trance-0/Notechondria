@@ -67,6 +67,7 @@ db.sqlite3
 db.sqlite3-journal
 media/
 backend/media/uploads/
+backend/mediafiles/
 backend/staticfiles/
 notechondria/productionfiles/
 playground/data/

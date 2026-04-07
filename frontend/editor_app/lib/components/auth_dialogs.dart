@@ -5,6 +5,7 @@ class _AuthHub extends StatelessWidget {
   const _AuthHub({
     required this.onRegister,
     required this.onVerify,
+    required this.onResendVerification,
     required this.onLogin,
     required this.onRequestPasswordReset,
     required this.onConfirmPasswordReset,
@@ -17,6 +18,7 @@ class _AuthHub extends StatelessWidget {
     String invitationCode,
   }) onRegister;
   final Future<ActionFeedback> Function(String email, String code) onVerify;
+  final Future<ActionFeedback> Function(String email) onResendVerification;
   final Future<ActionFeedback> Function(String email, String password) onLogin;
   final Future<ActionFeedback> Function(String email) onRequestPasswordReset;
   final Future<ActionFeedback> Function(
@@ -68,6 +70,7 @@ class _AuthHub extends StatelessWidget {
                           'Enter the 6-digit verification code sent to your email.',
                       submitLabel: 'Verify',
                       onSubmit: onVerify,
+                      onResend: onResendVerification,
                     ),
                   ),
                   child: const Text('Verify email'),
@@ -400,12 +403,14 @@ class _EmailCodeDialog extends StatefulWidget {
     required this.description,
     required this.submitLabel,
     required this.onSubmit,
+    this.onResend,
   });
 
   final String title;
   final String description;
   final String submitLabel;
   final Future<ActionFeedback> Function(String email, String code) onSubmit;
+  final Future<ActionFeedback> Function(String email)? onResend;
 
   @override
   State<_EmailCodeDialog> createState() => _EmailCodeDialogState();
@@ -416,12 +421,54 @@ class _EmailCodeDialogState extends State<_EmailCodeDialog> {
   final _codeController = TextEditingController();
   ActionFeedback? _feedback;
   bool _submitting = false;
+  int _resendCooldown = 0;
+  Timer? _cooldownTimer;
 
   @override
   void dispose() {
+    _cooldownTimer?.cancel();
     _emailController.dispose();
     _codeController.dispose();
     super.dispose();
+  }
+
+  void _startCooldown() {
+    _cooldownTimer?.cancel();
+    setState(() => _resendCooldown = 60);
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        _resendCooldown--;
+        if (_resendCooldown <= 0) timer.cancel();
+      });
+    });
+  }
+
+  Future<void> _resend() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      setState(() {
+        _feedback = const ActionFeedback(
+          message: 'Enter your email first.',
+          isError: true,
+        );
+      });
+      return;
+    }
+    setState(() {
+      _submitting = true;
+      _feedback = null;
+    });
+    final feedback = await widget.onResend!(email);
+    if (!mounted) return;
+    setState(() {
+      _submitting = false;
+      _feedback = feedback;
+    });
+    if (!feedback.isError) _startCooldown();
   }
 
   Future<void> _submit() async {
@@ -457,6 +504,8 @@ class _EmailCodeDialogState extends State<_EmailCodeDialog> {
             const SizedBox(height: 16),
             TextField(
               controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
                 labelText: 'Email',
                 border: OutlineInputBorder(),
@@ -465,11 +514,29 @@ class _EmailCodeDialogState extends State<_EmailCodeDialog> {
             const SizedBox(height: 12),
             TextField(
               controller: _codeController,
+              keyboardType: TextInputType.number,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _submitting ? null : _submit(),
               decoration: const InputDecoration(
-                labelText: 'Code',
+                labelText: '6-digit code',
                 border: OutlineInputBorder(),
               ),
             ),
+            if (widget.onResend != null) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed:
+                      _submitting || _resendCooldown > 0 ? null : _resend,
+                  child: Text(
+                    _resendCooldown > 0
+                        ? 'Resend code (${_resendCooldown}s)'
+                        : 'Resend code',
+                  ),
+                ),
+              ),
+            ],
             if (_feedback != null) ...[
               const SizedBox(height: 12),
               _FeedbackText(feedback: _feedback!),

@@ -175,7 +175,7 @@ class _AppShellState extends State<AppShell> {
     final newUrl = noteUuid != null
         ? '$base#/notes/$noteUuid'
         : '$base#/';
-    web.window.history.pushState(''.toJS, '', newUrl);
+    html.window.history.pushState(null, '', newUrl);
   }
 
   void _replaceNoteUrl(String? noteUuid) {
@@ -183,7 +183,7 @@ class _AppShellState extends State<AppShell> {
     final newUrl = noteUuid != null
         ? '$base#/notes/$noteUuid'
         : '$base#/';
-    web.window.history.replaceState(''.toJS, '', newUrl);
+    html.window.history.replaceState(null, '', newUrl);
   }
 
   // ---------------------------------------------------------------------------
@@ -869,6 +869,19 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       await _applyAuthPayload(result);
       return const ActionFeedback(
           message: 'Email verified. You are now signed in.');
+    } catch (error) {
+      return ActionFeedback(
+          message: error.toString().replaceFirst('Exception: ', ''),
+          isError: true);
+    }
+  }
+
+  Future<ActionFeedback> _resendVerification(String email) async {
+    try {
+      final result = await widget.client.resendVerification(email);
+      return ActionFeedback(
+          message: result['message']?.toString() ??
+              'Verification code resent.');
     } catch (error) {
       return ActionFeedback(
           message: error.toString().replaceFirst('Exception: ', ''),
@@ -3436,6 +3449,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           onLogout: _logout,
           onRegister: _register,
           onVerify: _verify,
+          onResendVerification: _resendVerification,
           onLogin: _login,
           onRequestPasswordReset: _requestPasswordReset,
           onConfirmPasswordReset: _confirmPasswordReset,

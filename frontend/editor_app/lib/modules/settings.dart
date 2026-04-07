@@ -13,6 +13,7 @@ class _SettingsPage extends StatefulWidget {
     required this.onLogout,
     required this.onRegister,
     required this.onVerify,
+    required this.onResendVerification,
     required this.onLogin,
     required this.onRequestPasswordReset,
     required this.onConfirmPasswordReset,
@@ -58,6 +59,7 @@ class _SettingsPage extends StatefulWidget {
     String invitationCode,
   }) onRegister;
   final Future<ActionFeedback> Function(String email, String code) onVerify;
+  final Future<ActionFeedback> Function(String email) onResendVerification;
   final Future<ActionFeedback> Function(String email, String password) onLogin;
   final Future<ActionFeedback> Function(String email) onRequestPasswordReset;
   final Future<ActionFeedback> Function(
@@ -574,6 +576,7 @@ class _SettingsPageState extends State<_SettingsPage> {
               _AuthHub(
                 onRegister: widget.onRegister,
                 onVerify: widget.onVerify,
+                onResendVerification: widget.onResendVerification,
                 onLogin: widget.onLogin,
                 onRequestPasswordReset: widget.onRequestPasswordReset,
                 onConfirmPasswordReset: widget.onConfirmPasswordReset,

@@ -19,7 +19,6 @@ dependencies:
   http: ^1.2.1
   markdown: ^7.3.0
   shared_preferences: ^2.5.3
-  web: ^1.1.0
 
 dev_dependencies:
   flutter_test:
