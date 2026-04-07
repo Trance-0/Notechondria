@@ -51,7 +51,7 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 ## Planner
 
-- [ ] Remove the front page module, this should be added in portal app with recommendation algorithm.
+- [x] Remove the front page module, this should be added in portal app with recommendation algorithm.
 
 ### Course list
 

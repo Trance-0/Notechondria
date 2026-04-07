@@ -25,7 +25,6 @@ part 'components/avatar.dart';
 part 'components/debug_widgets.dart';
 part 'components/error_state.dart';
 part 'components/note_viewer.dart';
-part 'modules/front.dart';
 part 'modules/learner.dart';
 part 'modules/course.dart';
 part 'modules/activity.dart';
@@ -34,9 +33,9 @@ part 'modules/settings.dart';
 void main() {
   runApp(
     const NotechondriaApp(
-      initialIndex: 2,
+      initialIndex: 1,
       title: 'Notechondria Planner',
-      visibleIndices: <int>[0, 2, 3],
+      visibleIndices: <int>[0, 1, 2],
     ),
   );
 }

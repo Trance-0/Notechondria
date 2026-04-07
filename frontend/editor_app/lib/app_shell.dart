@@ -175,7 +175,7 @@ class _AppShellState extends State<AppShell> {
     final newUrl = noteUuid != null
         ? '$base#/notes/$noteUuid'
         : '$base#/';
-    html.window.history.pushState(null, '', newUrl);
+    url_strategy.browserPushState(newUrl);
   }
 
   void _replaceNoteUrl(String? noteUuid) {
@@ -183,7 +183,7 @@ class _AppShellState extends State<AppShell> {
     final newUrl = noteUuid != null
         ? '$base#/notes/$noteUuid'
         : '$base#/';
-    html.window.history.replaceState(null, '', newUrl);
+    url_strategy.browserReplaceState(newUrl);
   }
 
   // ---------------------------------------------------------------------------

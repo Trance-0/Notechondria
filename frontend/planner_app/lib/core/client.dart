@@ -36,7 +36,6 @@ class ApiDebugSnapshot {
 
 /// Defines the frontend contract for all Notechondria REST operations.
 abstract class NotechondriaClient {
-  Future<Map<String, dynamic>> getFrontPage({String? token});
   Future<List<Map<String, dynamic>>> getCourses({String? token});
   Future<Map<String, dynamic>> createCourse(
     String token,
@@ -354,15 +353,6 @@ class HttpNotechondriaClient implements NotechondriaClient {
       'DELETE',
       uri,
       () => _httpClient.delete(uri, headers: _headers(token: token)),
-    );
-  }
-
-  @override
-  Future<Map<String, dynamic>> getFrontPage({String? token}) async {
-    final uri = _uri('/front-page/');
-    final response = await _get(uri, token: token);
-    return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'GET'),
     );
   }
 

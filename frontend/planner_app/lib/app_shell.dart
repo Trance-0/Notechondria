@@ -91,7 +91,6 @@ class _AppShellState extends State<AppShell> {
   String? _token;
   Map<String, dynamic>? _profile;
   Map<String, dynamic>? _settings;
-  Map<String, dynamic>? _frontPage;
   List<Map<String, dynamic>> _courses = const [];
   List<Map<String, dynamic>> _localCourses = const [];
   List<Map<String, dynamic>> _courseNotes = const [];
@@ -121,7 +120,6 @@ class _AppShellState extends State<AppShell> {
           : null;
 
   static const List<String> _titles = [
-    'Front Page',
     'Learner View',
     'Course View',
     'Activity View',
@@ -129,7 +127,6 @@ class _AppShellState extends State<AppShell> {
   ];
 
   static const List<NavigationDestination> _destinations = [
-    NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Front'),
     NavigationDestination(
         icon: Icon(Icons.menu_book_outlined), label: 'Learner'),
     NavigationDestination(icon: Icon(Icons.school_outlined), label: 'Course'),
@@ -162,9 +159,9 @@ class _AppShellState extends State<AppShell> {
     _selectActualIndex(actual);
   }
 
-  bool _showWidePageHeader(int index) => index == 4;
+  bool _showWidePageHeader(int index) => index == 3;
 
-  bool _showCompactPageHeader(int index) => index != 3;
+  bool _showCompactPageHeader(int index) => index != 2;
 
   @override
   void initState() {
@@ -180,11 +177,10 @@ class _AppShellState extends State<AppShell> {
   }
 
   bool get _hasRenderableLocalState =>
-      (_frontPage?.isNotEmpty ?? false) ||
       _courses.isNotEmpty ||
       _localCourses.isNotEmpty ||
       _localDrafts.isNotEmpty ||
-      _selectedIndex == 4;
+      _selectedIndex == 3;
 
   void _appendUiLog(String message) {
     final timestamp = DateTime.now().toIso8601String();
@@ -225,9 +221,6 @@ class _AppShellState extends State<AppShell> {
     _uiLogs
       ..clear()
       ..addAll(snapshot.logs);
-    _frontPage = Map<String, dynamic>.from(
-      snapshot.cache['front_page'] as Map? ?? const {},
-    );
     _courses = (snapshot.cache['courses'] as List<dynamic>? ?? const [])
         .map((item) => _decorateRemoteCourse(Map<String, dynamic>.from(item as Map)))
         .toList(growable: false);
@@ -239,7 +232,6 @@ class _AppShellState extends State<AppShell> {
       _selectedCourse = _chooseDefaultCourse(
         remoteCourses: _courses,
         localCourses: _localCourses,
-        frontPage: _frontPage,
       );
     }
     _httpClient?.updateBaseUrl(
@@ -273,7 +265,6 @@ class _AppShellState extends State<AppShell> {
   Future<void> _persistLocalCache() async {
     _localCache = {
       ..._localCache,
-      'front_page': _frontPage ?? const <String, dynamic>{},
       'courses': _courses,
       'activity': _activity,
       'planner_events': _plannerEvents,
@@ -360,8 +351,7 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<void> _ensureStarterWorkspace() async {
-    if (_frontPage?.isNotEmpty == true ||
-        _courses.isNotEmpty ||
+    if (_courses.isNotEmpty ||
         _localCourses.isNotEmpty ||
         _localDrafts.isNotEmpty ||
         _plannerEvents.isNotEmpty) {
@@ -428,7 +418,6 @@ Capture deadlines, sequencing, and blockers here.''',
     _activityWeek = _buildOfflineActivityWeek();
     _selectedCourse = starterCourse;
     _courseNotes = _localNotesForCourse(starterCourse);
-    _frontPage = _frontPageFallbackPayload(const []);
     _localStats = {
       ..._localStats,
       'starter_workspace_seeded_at': DateTime.now().toUtc().toIso8601String(),
@@ -460,24 +449,9 @@ Capture deadlines, sequencing, and blockers here.''',
     };
   }
 
-  Map<String, dynamic> _frontPageFallbackPayload(
-    List<Map<String, dynamic>> remoteCourses,
-  ) {
-    final fallbackCourses =
-        remoteCourses.isNotEmpty ? remoteCourses.take(3).toList() : _localCourses.take(3).toList();
-    return {
-      'default_course': fallbackCourses.isNotEmpty ? fallbackCourses.first : null,
-      'carousel_courses': fallbackCourses,
-      'collections': fallbackCourses,
-      'recent_notes': const <Map<String, dynamic>>[],
-      'recommended_notes': const <Map<String, dynamic>>[],
-    };
-  }
-
   Map<String, dynamic>? _chooseDefaultCourse({
     required List<Map<String, dynamic>> remoteCourses,
     required List<Map<String, dynamic>> localCourses,
-    required Map<String, dynamic>? frontPage,
   }) {
     final retainedCourseId = (_selectedCourse?['id'] as num?)?.toInt();
     if (retainedCourseId != null) {
@@ -486,16 +460,6 @@ Capture deadlines, sequencing, and blockers here.''',
           return Map<String, dynamic>.from(course);
         }
       }
-    }
-    final defaultCourse = frontPage?['default_course'] as Map<String, dynamic>?;
-    if (defaultCourse != null && defaultCourse.isNotEmpty) {
-      final defaultId = (defaultCourse['id'] as num?)?.toInt();
-      for (final course in [...localCourses, ...remoteCourses]) {
-        if ((course['id'] as num?)?.toInt() == defaultId) {
-          return Map<String, dynamic>.from(course);
-        }
-      }
-      return Map<String, dynamic>.from(defaultCourse);
     }
     if (localCourses.isNotEmpty) {
       return Map<String, dynamic>.from(localCourses.first);
@@ -532,7 +496,6 @@ Capture deadlines, sequencing, and blockers here.''',
       _localSettings['theme_mode']?.toString() ?? 'S',
     );
 
-    var frontPage = _frontPage ?? _frontPageFallbackPayload(_courses);
     var courses = List<Map<String, dynamic>>.from(_courses);
     var activity = List<Map<String, dynamic>>.from(_activity);
     var courseNotes = List<Map<String, dynamic>>.from(_courseNotes);
@@ -547,12 +510,6 @@ Capture deadlines, sequencing, and blockers here.''',
     };
     var updatedCache = false;
 
-    try {
-      frontPage = await widget.client.getFrontPage(token: _token);
-      updatedCache = true;
-    } catch (error) {
-      errors.add(error.toString().replaceFirst('Exception: ', ''));
-    }
     try {
       courses = (await widget.client.getCourses(token: _token))
           .map(_decorateRemoteCourse)
@@ -571,7 +528,6 @@ Capture deadlines, sequencing, and blockers here.''',
     final selectedCourse = _chooseDefaultCourse(
       remoteCourses: courses,
       localCourses: _localCourses,
-      frontPage: frontPage,
     );
     if (selectedCourse != null) {
       if (_isLocalCourse(selectedCourse)) {
@@ -637,7 +593,6 @@ Capture deadlines, sequencing, and blockers here.''',
     }
 
     setState(() {
-      _frontPage = frontPage;
       _courses = courses;
       _activity = activity;
       _selectedCourse = selectedCourse;
@@ -731,27 +686,7 @@ Capture deadlines, sequencing, and blockers here.''',
     );
   }
 
-  Future<void> _refreshFrontPageData() async {
-    try {
-      final frontPage = await widget.client.getFrontPage(token: _token);
-      List<Map<String, dynamic>> plannerEvents = _plannerEvents;
-      if (_token != null && _token!.isNotEmpty) {
-        plannerEvents = await widget.client.getPlannerEvents(_token!);
-      }
-      setState(() {
-        _frontPage = frontPage;
-        _plannerEvents = plannerEvents;
-      });
-      await _persistLocalCache();
-      _appendUiLog('Front page refreshed.');
-    } catch (error) {
-      final message = error.toString().replaceFirst('Exception: ', '');
-      setState(() {
-        _errorMessage = message;
-      });
-      _appendUiLog('Front page refresh failed: $message');
-    }
-  }
+
 
   Future<void> _loadLearnerNotes({bool reset = false, String? query}) async {
     if (_token == null || _token!.isEmpty) {
@@ -1579,7 +1514,6 @@ Capture deadlines, sequencing, and blockers here.''',
         'description': description,
         'course_id': _selectedCourse?['id'],
       });
-      await _refreshFrontPageData();
       await _loadActivityWeek(startDate: _activityWeekStart);
       return const ActionFeedback(
           message: 'Future event added to the heatmap.');
@@ -1930,7 +1864,6 @@ Capture deadlines, sequencing, and blockers here.''',
     await _persistLocalDrafts();
     await _persistLocalStats();
     await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
-    await _refreshFrontPageData();
     if (mounted) {
       setState(() {});
     }
@@ -2287,7 +2220,6 @@ Capture deadlines, sequencing, and blockers here.''',
     await widget.client.deleteNote(token, noteId);
     _deletedNotes = await widget.client.getDeletedNotes(token);
     await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
-    await _refreshFrontPageData();
     setState(() {});
     _appendUiLog("Moved note '${note['title']}' to recycle bin.");
   }
@@ -2378,9 +2310,6 @@ Capture deadlines, sequencing, and blockers here.''',
 
   Future<ActionFeedback> _clearLocalCache() async {
     _localCache = _LocalAppStore.defaultCache();
-    _frontPage = _localCourses.isNotEmpty
-        ? _frontPageFallbackPayload(const [])
-        : const <String, dynamic>{};
     _courses = const [];
     _activity = const [];
     _courseNotes = _isLocalCourse(_selectedCourse)
@@ -2391,7 +2320,6 @@ Capture deadlines, sequencing, and blockers here.''',
         : _chooseDefaultCourse(
             remoteCourses: const [],
             localCourses: _localCourses,
-            frontPage: _frontPage,
           );
     _localStats = {
       ..._localStats,
@@ -2414,7 +2342,6 @@ Capture deadlines, sequencing, and blockers here.''',
       _selectedCourse = _chooseDefaultCourse(
         remoteCourses: _courses,
         localCourses: const [],
-        frontPage: _frontPage,
       );
       _courseNotes = _selectedCourse == null || _isLocalCourse(_selectedCourse)
           ? const []
@@ -2756,14 +2683,6 @@ Capture deadlines, sequencing, and blockers here.''',
   Widget _buildPage() {
     switch (_selectedIndex) {
       case 0:
-        return _FrontPage(
-          profile: _profile,
-          localCourses: _localCourses,
-          remoteCourses: _courses,
-          plannerEvents: _plannerEvents,
-          onOpenCourse: _selectCourse,
-        );
-      case 1:
         return _LearnerPage(
           notes: _learnerNotes,
           localDrafts: _localDrafts,
@@ -2794,7 +2713,7 @@ Capture deadlines, sequencing, and blockers here.''',
           onSyncAllLocalDrafts: _syncAllLocalDrafts,
           onLogEvent: _appendUiLog,
         );
-      case 2:
+      case 1:
         return _CoursePage(
           courses: _courses,
           localCourses: _localCourses,
@@ -2811,7 +2730,7 @@ Capture deadlines, sequencing, and blockers here.''',
           onUnsubscribe: _unsubscribeFromCourse,
           onFetchNoteDetail: _fetchNoteDetail,
         );
-      case 3:
+      case 2:
         return _ActivityPage(
           activityWeek: _activityWeek,
           isAuthenticated: _token != null && _token!.isNotEmpty,
@@ -2827,7 +2746,7 @@ Capture deadlines, sequencing, and blockers here.''',
           ),
           onTogglePlannerEventCompletion: _togglePlannerEventCompletion,
         );
-      case 4:
+      case 3:
         return _SettingsPage(
           profile: _profile,
           settings: _settings,

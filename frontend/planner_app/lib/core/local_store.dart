@@ -56,7 +56,6 @@ class _LocalAppStore {
 
   static Map<String, dynamic> defaultCache() {
     return {
-      'front_page': <String, dynamic>{},
       'courses': <Map<String, dynamic>>[],
       'activity': <Map<String, dynamic>>[],
       'updated_at': null,
