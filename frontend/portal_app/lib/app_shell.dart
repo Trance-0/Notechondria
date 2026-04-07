@@ -799,6 +799,19 @@ class _AppShellState extends State<AppShell> {
     }
   }
 
+  Future<ActionFeedback> _resendVerification(String email) async {
+    try {
+      final result = await widget.client.resendVerification(email);
+      return ActionFeedback(
+          message: result['message']?.toString() ??
+              'Verification code resent.');
+    } catch (error) {
+      return ActionFeedback(
+          message: error.toString().replaceFirst('Exception: ', ''),
+          isError: true);
+    }
+  }
+
   Future<ActionFeedback> _login(String email, String password) async {
     try {
       final result = await widget.client.login(email, password);
@@ -2652,6 +2665,7 @@ class _AppShellState extends State<AppShell> {
           onLogout: _logout,
           onRegister: _register,
           onVerify: _verify,
+          onResendVerification: _resendVerification,
           onLogin: _login,
           onRequestPasswordReset: _requestPasswordReset,
           onConfirmPasswordReset: _confirmPasswordReset,

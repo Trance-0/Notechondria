@@ -106,6 +106,7 @@ abstract class NotechondriaClient {
   Future<Map<String, dynamic>> restoreTemplateCourses(String token);
   Future<Map<String, dynamic>> register(String email, String password);
   Future<Map<String, dynamic>> verifyEmail(String email, String code);
+  Future<Map<String, dynamic>> resendVerification(String email);
   Future<Map<String, dynamic>> login(String email, String password);
   Future<Map<String, dynamic>> requestPasswordReset(String email);
   Future<Map<String, dynamic>> confirmPasswordReset(
@@ -684,6 +685,15 @@ class HttpNotechondriaClient implements NotechondriaClient {
       uri,
       payload: {'email': email, 'code': code},
     );
+    return Map<String, dynamic>.from(
+      await _decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> resendVerification(String email) async {
+    final uri = _uri('/auth/resend-verification/');
+    final response = await _post(uri, payload: {'email': email});
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),
     );
