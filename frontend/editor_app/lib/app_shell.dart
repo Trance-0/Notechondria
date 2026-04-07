@@ -154,6 +154,39 @@ class _AppShellState extends State<AppShell> {
       [..._localCourses, ..._courses];
 
   // ---------------------------------------------------------------------------
+  // URL routing helpers (web only)
+  // ---------------------------------------------------------------------------
+
+  /// Parse the URL hash fragment for a note UUID.
+  /// Expected format: `#/notes/<uuid>`
+  static final _noteUuidPattern = RegExp(
+    r'^/?notes/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$',
+    caseSensitive: false,
+  );
+
+  String? _parseNoteUuidFromUrl() {
+    final fragment = Uri.base.fragment; // everything after #
+    final match = _noteUuidPattern.firstMatch(fragment);
+    return match?.group(1);
+  }
+
+  void _pushNoteUrl(String? noteUuid) {
+    final base = Uri.base.removeFragment();
+    final newUrl = noteUuid != null
+        ? '$base#/notes/$noteUuid'
+        : '$base#/';
+    web.window.history.pushState(''.toJS, '', newUrl);
+  }
+
+  void _replaceNoteUrl(String? noteUuid) {
+    final base = Uri.base.removeFragment();
+    final newUrl = noteUuid != null
+        ? '$base#/notes/$noteUuid'
+        : '$base#/';
+    web.window.history.replaceState(''.toJS, '', newUrl);
+  }
+
+  // ---------------------------------------------------------------------------
   // Lifecycle
   // ---------------------------------------------------------------------------
   @override
@@ -169,6 +202,69 @@ class _AppShellState extends State<AppShell> {
     await _loadLocalState();
     await _restoreSession();
     await _loadInitialData();
+    // Deep-link: if the URL contains a note UUID, load it.
+    final deepLinkUuid = _parseNoteUuidFromUrl();
+    if (deepLinkUuid != null) {
+      await _openNoteByUuid(deepLinkUuid);
+    }
+  }
+
+  /// Fetch a note by UUID and open it in the viewer/editor.
+  Future<void> _openNoteByUuid(String uuid) async {
+    setState(() => _isLoading = true);
+    try {
+      final detail = await widget.client.getNoteByUuid(uuid, token: _token);
+      setState(() {
+        _selectedNote = detail;
+        _selectedIndex = 1;
+        _isLoading = false;
+      });
+      _replaceNoteUrl(uuid);
+      // Open the note viewer/editor dialog after the frame renders.
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _showNoteDialogForDeepLink(detail);
+        });
+      }
+    } catch (error) {
+      setState(() {
+        _errorMessage = 'Could not load note: ${error.toString().replaceFirst('Exception: ', '')}';
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _showNoteDialogForDeepLink(Map<String, dynamic> detail) {
+    final canEdit = detail['can_edit'] == true;
+    if (canEdit) {
+      // Owner: open in editor.
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => _NoteEditorDialog(
+          note: detail,
+          courses: [..._localCourses, ..._courses],
+          editorMode: _settings?['editor_mode']?.toString() ?? 'P',
+          onSave: _saveNote,
+          onSnapshot: _snapshotNote,
+          onGetHistory: _getNoteHistory,
+          onRestoreVersion: _restoreNoteVersion,
+          onLogEvent: _appendUiLog,
+        ),
+      );
+    } else {
+      // Non-owner: read-only viewer.
+      showDialog<void>(
+        context: context,
+        builder: (context) => _NoteViewerDialog(
+          note: detail,
+          onEdit: null,
+          onExport: () => _exportNote(detail),
+          onDelete: null,
+        ),
+      );
+    }
   }
 
   /// Restores a persisted auth session if one exists. Validates the token
@@ -695,6 +791,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       _selectedIndex = 1;
       _selectedNote = null;
     });
+    _replaceNoteUrl(null);
     if (_isLocalCourse(course)) {
       _appendUiLog('Opened local category ${course['title']}.');
     } else {
@@ -712,6 +809,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         _selectedIndex = 1;
         _isLoading = false;
       });
+      final uuid = detail['uuid']?.toString();
+      if (uuid != null) _pushNoteUrl(uuid);
     } catch (error) {
       setState(() {
         _errorMessage = error.toString().replaceFirst('Exception: ', '');
@@ -2125,6 +2224,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         _selectedNote = created;
         _selectedIndex = 1;
       });
+      final uuid = created['uuid']?.toString();
+      if (uuid != null) _pushNoteUrl(uuid);
       return created;
     } catch (error) {
       final draft = _storeLocalDraft(
@@ -2188,6 +2289,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       final updated = await widget.client.updateNote(token, noteId, payload);
       await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
       setState(() => _selectedNote = updated);
+      final uuid = updated['uuid']?.toString();
+      if (uuid != null) _replaceNoteUrl(uuid);
       return updated;
     } catch (error) {
       final sourceNote = _selectedNote?['id'] == noteId

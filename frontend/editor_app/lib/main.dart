@@ -2,7 +2,9 @@ library notechondria_frontend;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:js_interop';
 import 'dart:math' as math;
+import 'package:web/web.dart' as web;
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';

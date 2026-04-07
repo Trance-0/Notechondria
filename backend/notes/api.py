@@ -220,27 +220,33 @@ class NoteBlockSerializer(serializers.ModelSerializer):
 
 
 class NoteSummarySerializer(serializers.ModelSerializer):
+    uuid = serializers.UUIDField(read_only=True)
     excerpt = serializers.SerializerMethodField()
     editor_mode = serializers.CharField(read_only=True)
+    note_type = serializers.CharField(read_only=True)
     preview_lines = serializers.SerializerMethodField()
     author = serializers.SerializerMethodField()
     course = serializers.SerializerMethodField()
+    source_note_uuid = serializers.SerializerMethodField()
 
     class Meta:
         model = Note
         fields = [
             "id",
+            "uuid",
             "title",
             "description",
             "excerpt",
             "preview_lines",
             "editor_mode",
+            "note_type",
             "is_public",
             "last_edit",
             "date_created",
             "course_id",
             "course",
             "author",
+            "source_note_uuid",
         ]
 
     def get_excerpt(self, obj):
@@ -270,6 +276,11 @@ class NoteSummarySerializer(serializers.ModelSerializer):
             "title": obj.course_id.title,
             "slug": obj.course_id.slug,
         }
+
+    def get_source_note_uuid(self, obj):
+        if obj.source_note is None:
+            return None
+        return str(obj.source_note.uuid)
 
 
 class NoteDetailSerializer(NoteSummarySerializer):
@@ -378,6 +389,8 @@ class NoteWriteSerializer(serializers.Serializer):
     client_draft_id = serializers.CharField(required=False, allow_blank=True, max_length=64)
     blocks = serializers.ListField(child=serializers.DictField(), required=False)
     editor_mode = serializers.ChoiceField(choices=[("G", "gfm"), ("B", "blocks"), ("P", "plain_text")], required=False)
+    note_type = serializers.ChoiceField(choices=[("N", "Normal"), ("C", "Comment")], required=False)
+    source_note_uuid = serializers.UUIDField(required=False, allow_null=True)
 
 
 class NoteVersionSerializer(serializers.ModelSerializer):
@@ -824,6 +837,10 @@ class NoteListCreateApiView(APIView):
             note.save()
             RecycleBinEntry.objects.filter(creator_id=creator, note_id=note).delete()
         else:
+            source_note = None
+            source_uuid = serializer.validated_data.get("source_note_uuid")
+            if source_uuid:
+                source_note = Note.objects.filter(uuid=source_uuid, deleted_at__isnull=True).first()
             note = Note.objects.create(
                 creator_id=creator,
                 course_id=course,
@@ -835,6 +852,8 @@ class NoteListCreateApiView(APIView):
                 metadata_json=serializer.validated_data.get("metadata_json") or "",
                 client_draft_id=client_draft_id,
                 editor_mode=serializer.validated_data.get("editor_mode") or creator.editor_mode,
+                note_type=serializer.validated_data.get("note_type", "N"),
+                source_note=source_note,
             )
         block_rows = serializer.validated_data.get("blocks")
         if block_rows:
@@ -868,7 +887,12 @@ class NoteDetailApiView(APIView):
 
     def get(self, request, note_id):
         note = require_note_access(request, note_id)
-        return Response(NoteDetailSerializer(note, context={"request": request}).data)
+        data = NoteDetailSerializer(note, context={"request": request}).data
+        data["can_edit"] = (
+            request.user.is_authenticated
+            and note.creator_id.user_id_id == request.user.id
+        )
+        return Response(data)
 
     def patch(self, request, note_id):
         if not request.user.is_authenticated:
@@ -912,6 +936,93 @@ class NoteDetailApiView(APIView):
         note = require_note_access(request, note_id)
         if note.creator_id.user_id_id != request.user.id:
             return Response({"detail": "Only the owner can delete this note."}, status=status.HTTP_403_FORBIDDEN)
+        # When a source note is deleted, its comments become private but are NOT deleted.
+        note.comments.filter(deleted_at__isnull=True).update(is_public=False)
+        note.deleted_at = timezone.now()
+        note.is_public = False
+        note.save(update_fields=["deleted_at", "is_public", "last_edit"])
+        RecycleBinEntry.objects.update_or_create(
+            creator_id=note.creator_id,
+            note_id=note,
+            defaults={
+                "item_type": "note",
+                "deleted_at": note.deleted_at,
+                "metadata_json": json.dumps(
+                    {
+                        "title": note.title,
+                        "description": note.description or "",
+                        "course_id": note.course_id_id,
+                    },
+                    sort_keys=True,
+                ),
+            },
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class NoteByUuidApiView(APIView):
+    """Look up a note by its public UUID. Supports GET (read), PATCH (edit),
+    and DELETE with the same access policy as NoteDetailApiView."""
+    permission_classes = [permissions.AllowAny]
+
+    def _get_note(self, request, note_uuid):
+        note = get_object_or_404(
+            Note.objects.select_related("course_id", "creator_id__user_id")
+            .filter(deleted_at__isnull=True),
+            uuid=note_uuid,
+        )
+        if not can_access_note(request, note):
+            raise serializers.ValidationError("You do not have access to this note.")
+        return note
+
+    def get(self, request, note_uuid):
+        note = self._get_note(request, note_uuid)
+        data = NoteDetailSerializer(note, context={"request": request}).data
+        data["can_edit"] = (
+            request.user.is_authenticated
+            and note.creator_id.user_id_id == request.user.id
+        )
+        return Response(data)
+
+    def patch(self, request, note_uuid):
+        if not request.user.is_authenticated:
+            return Response({"detail": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
+        note = self._get_note(request, note_uuid)
+        if note.creator_id.user_id_id != request.user.id:
+            return Response({"detail": "Only the owner can update this note."}, status=status.HTTP_403_FORBIDDEN)
+        serializer = NoteWriteSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        for field in ["title", "description", "metadata_json", "editor_mode", "is_public"]:
+            if field in serializer.validated_data:
+                setattr(note, field, serializer.validated_data[field])
+        if "course_id" in serializer.validated_data:
+            course_id = serializer.validated_data["course_id"]
+            note.course_id = get_object_or_404(Course, pk=course_id) if course_id else None
+        if "content" in serializer.validated_data:
+            note.content = serializer.validated_data["content"]
+        note.save()
+        if "blocks" in serializer.validated_data:
+            replace_note_blocks_from_payload(note, note.creator_id, serializer.validated_data["blocks"])
+            note.content = markdown_from_blocks(serializer.validated_data["blocks"], fallback_title=note.title)
+            note.save(update_fields=["content", "last_edit"])
+            record_note_activity(note, note_word_count(note), HeatmapActivityTypeChoices.EDITED)
+        elif "markdown" in serializer.validated_data or "content" in serializer.validated_data:
+            replacement_markdown = serializer.validated_data.get("content") or serializer.validated_data.get("markdown") or note.content
+            note.content = replacement_markdown
+            note.save(update_fields=["content", "last_edit"])
+            replace_note_blocks(note, note.creator_id, replacement_markdown)
+            record_note_activity(note, note_word_count(note), HeatmapActivityTypeChoices.EDITED)
+        data = NoteDetailSerializer(note, context={"request": request}).data
+        data["can_edit"] = True
+        return Response(data)
+
+    def delete(self, request, note_uuid):
+        if not request.user.is_authenticated:
+            return Response({"detail": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
+        note = self._get_note(request, note_uuid)
+        if note.creator_id.user_id_id != request.user.id:
+            return Response({"detail": "Only the owner can delete this note."}, status=status.HTTP_403_FORBIDDEN)
+        note.comments.filter(deleted_at__isnull=True).update(is_public=False)
         note.deleted_at = timezone.now()
         note.is_public = False
         note.save(update_fields=["deleted_at", "is_public", "last_edit"])

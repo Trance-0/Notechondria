@@ -584,6 +584,23 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
               final detailsButton = IconButton(
                   onPressed: _openDetails,
                   icon: const Icon(Icons.more_horiz));
+              final shareButton = _note['uuid'] != null
+                  ? IconButton(
+                      onPressed: () async {
+                        final uuid = _note['uuid'].toString();
+                        final base = Uri.base.removeFragment();
+                        final link = '$base#/notes/$uuid';
+                        await Clipboard.setData(ClipboardData(text: link));
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Link copied to clipboard')),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.link),
+                      tooltip: 'Copy link',
+                    )
+                  : const SizedBox.shrink();
               final closeButton = IconButton(
                 onPressed: () async {
                   final nav = Navigator.of(context);
@@ -611,6 +628,7 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                       Row(
                         children: [
                           Expanded(child: titleField),
+                          shareButton,
                           detailsButton,
                           closeButton,
                         ],
@@ -654,6 +672,7 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                     ),
                     SizedBox(width: 220, child: editorDropdown),
                     const SizedBox(width: 8),
+                    shareButton,
                     detailsButton,
                     closeButton,
                   ],

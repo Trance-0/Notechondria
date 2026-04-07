@@ -247,10 +247,27 @@ class HeatmapApiTests(TestCase):
         self.assertEqual(len(payload['days']), 7)
         self.assertTrue(any(day['events'] for day in payload['days']))
 
-    def test_notes_list_requires_authentication(self):
+    def test_notes_list_anonymous_returns_public_only(self):
+        Note.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            sharing_id='anon-pub',
+            title='Public Anon',
+            is_public=True,
+        )
+        Note.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            sharing_id='anon-priv',
+            title='Private Anon',
+            is_public=False,
+        )
         response = self.client.get('/api/v1/notes/')
 
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 200)
+        titles = [row['title'] for row in response.json()]
+        self.assertIn('Public Anon', titles)
+        self.assertNotIn('Private Anon', titles)
 
     def test_authenticated_notes_list_excludes_deleted_and_other_users_notes(self):
         other_user = User.objects.create_user(username='outside', password='pw')
@@ -799,6 +816,153 @@ class CourseDeleteApiTests(TestCase):
         resp = self.client.delete(f'/api/v1/courses/{self.target.id}/')
         self.assertEqual(resp.status_code, 401)
         self.assertTrue(Course.objects.filter(pk=self.target.id).exists())
+
+
+class NoteUuidApiTests(TestCase):
+    """Tests for UUID-based note access and comment notes."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='uuidowner', password='pw')
+        self.creator = Creator.objects.create(user_id=self.user)
+        self.token = Token.objects.create(user=self.user)
+        self.course = Course.objects.create(
+            creator_id=self.creator, slug='uuid-course', title='UUID Course',
+        )
+        self.public_note = Note.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            sharing_id='uuid-pub',
+            title='Public UUID Note',
+            content='# Public\n\nVisible to all.',
+            is_public=True,
+        )
+        self.private_note = Note.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            sharing_id='uuid-priv',
+            title='Private UUID Note',
+            content='# Private\n\nOwner only.',
+            is_public=False,
+        )
+
+    def _auth(self):
+        return {'HTTP_AUTHORIZATION': f'Token {self.token.key}'}
+
+    def test_get_public_note_by_uuid_anonymous(self):
+        response = self.client.get(
+            f'/api/v1/notes/uuid/{self.public_note.uuid}/',
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['title'], 'Public UUID Note')
+        self.assertFalse(data['can_edit'])
+
+    def test_get_public_note_by_uuid_owner(self):
+        response = self.client.get(
+            f'/api/v1/notes/uuid/{self.public_note.uuid}/',
+            **self._auth(),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['can_edit'])
+
+    def test_get_private_note_by_uuid_anonymous_rejected(self):
+        response = self.client.get(
+            f'/api/v1/notes/uuid/{self.private_note.uuid}/',
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_get_private_note_by_uuid_other_user_rejected(self):
+        other = User.objects.create_user(username='stranger', password='pw')
+        other_token = Token.objects.create(user=other)
+        Creator.objects.create(user_id=other)
+        response = self.client.get(
+            f'/api/v1/notes/uuid/{self.private_note.uuid}/',
+            HTTP_AUTHORIZATION=f'Token {other_token.key}',
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_patch_note_by_uuid_owner(self):
+        response = self.client.patch(
+            f'/api/v1/notes/uuid/{self.public_note.uuid}/',
+            data=json.dumps({'title': 'Renamed'}),
+            content_type='application/json',
+            **self._auth(),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.public_note.refresh_from_db()
+        self.assertEqual(self.public_note.title, 'Renamed')
+
+    def test_patch_note_by_uuid_non_owner_rejected(self):
+        other = User.objects.create_user(username='intruder', password='pw')
+        other_token = Token.objects.create(user=other)
+        Creator.objects.create(user_id=other)
+        response = self.client.patch(
+            f'/api/v1/notes/uuid/{self.public_note.uuid}/',
+            data=json.dumps({'title': 'Hacked'}),
+            content_type='application/json',
+            HTTP_AUTHORIZATION=f'Token {other_token.key}',
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_delete_note_by_uuid_owner(self):
+        response = self.client.delete(
+            f'/api/v1/notes/uuid/{self.public_note.uuid}/',
+            **self._auth(),
+        )
+        self.assertEqual(response.status_code, 204)
+        self.public_note.refresh_from_db()
+        self.assertIsNotNone(self.public_note.deleted_at)
+
+    def test_note_uuid_in_summary_serializer(self):
+        response = self.client.get('/api/v1/notes/', **self._auth())
+        self.assertEqual(response.status_code, 200)
+        for row in response.json():
+            self.assertIn('uuid', row)
+            self.assertIsNotNone(row['uuid'])
+
+    def test_create_comment_note_with_source(self):
+        response = self.client.post(
+            '/api/v1/notes/',
+            data=json.dumps({
+                'title': 'My Comment',
+                'content': 'Great article!',
+                'note_type': 'C',
+                'source_note_uuid': str(self.public_note.uuid),
+            }),
+            content_type='application/json',
+            **self._auth(),
+        )
+        self.assertEqual(response.status_code, 201)
+        data = response.json()
+        self.assertEqual(data['note_type'], 'C')
+        self.assertEqual(data['source_note_uuid'], str(self.public_note.uuid))
+
+    def test_delete_source_note_makes_comments_private(self):
+        comment = Note.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            sharing_id='comment-1',
+            title='Comment on public',
+            content='This is a comment.',
+            note_type='C',
+            source_note=self.public_note,
+            is_public=True,
+        )
+        self.client.delete(
+            f'/api/v1/notes/{self.public_note.id}/',
+            **self._auth(),
+        )
+        comment.refresh_from_db()
+        self.assertFalse(comment.is_public)
+        self.assertIsNone(comment.deleted_at)
+
+    def test_nonexistent_uuid_returns_404(self):
+        import uuid as _uuid
+        response = self.client.get(
+            f'/api/v1/notes/uuid/{_uuid.uuid4()}/',
+        )
+        self.assertEqual(response.status_code, 404)
 
 
 class CalendarParsingTests(TestCase):

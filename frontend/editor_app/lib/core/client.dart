@@ -57,6 +57,7 @@ abstract class NotechondriaClient {
   Future<Map<String, dynamic>> getCourseDetail(int courseId, {String? token});
   Future<List<Map<String, dynamic>>> getCourseNotes(int courseId, {String? token});
   Future<Map<String, dynamic>> getNoteDetail(int noteId, {String? token});
+  Future<Map<String, dynamic>> getNoteByUuid(String uuid, {String? token});
   Future<Map<String, dynamic>> listNotes({
     String? token,
     String query = '',
@@ -468,6 +469,15 @@ class HttpNotechondriaClient implements NotechondriaClient {
   @override
   Future<Map<String, dynamic>> getNoteDetail(int noteId, {String? token}) async {
     final uri = _uri('/notes/$noteId/');
+    final response = await _get(uri, token: token);
+    return Map<String, dynamic>.from(
+      await _decode(response, uri: uri, method: 'GET'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> getNoteByUuid(String uuid, {String? token}) async {
+    final uri = _uri('/notes/uuid/$uuid/');
     final response = await _get(uri, token: token);
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'GET'),

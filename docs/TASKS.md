@@ -23,10 +23,6 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 ## Editor
 
-### Urgent tasks
-
-- [ ] Now the panel don't redirect or route url for different contents as normal websites do and all link are stored on the same editor route. Is it possible to give different notes different routes, label by their uuid with strict access policy (All site viewer can view public notes, but only note owner can edit. Registered user can cite, comment (set note type as comment with source. It should not be deleted(but will be private) when the source note is deleted (The detailed comment section will be displayed on Planner App)), etc)? Implement the function so that every distinct note have their unique url. You also need to add/rewire backend function for creating uuid I assume.
-
 ### Sidebar/Navigation
 
 - [ ] In Edit category, besides category name, add a selector for course icon (select from flutter sources)

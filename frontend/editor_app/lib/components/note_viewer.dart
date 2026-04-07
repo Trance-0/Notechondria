@@ -99,6 +99,18 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
                           } else if (value == 'export' &&
                               widget.onExport != null) {
                             await widget.onExport!();
+                          } else if (value == 'copy_link') {
+                            final uuid = note['uuid']?.toString();
+                            if (uuid != null) {
+                              final base = Uri.base.removeFragment();
+                              final link = '$base#/notes/$uuid';
+                              await Clipboard.setData(ClipboardData(text: link));
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Link copied to clipboard')),
+                                );
+                              }
+                            }
                           } else if (value == 'delete' &&
                               widget.onDelete != null) {
                             Navigator.of(context).pop();
@@ -109,6 +121,10 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
                           if (widget.onEdit != null)
                             const PopupMenuItem(
                                 value: 'edit', child: Text('Edit')),
+                          if (note['uuid'] != null)
+                            const PopupMenuItem(
+                                value: 'copy_link',
+                                child: Text('Copy link')),
                           if (widget.onExport != null)
                             const PopupMenuItem(
                                 value: 'export',

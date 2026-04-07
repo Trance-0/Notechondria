@@ -1,9 +1,11 @@
 import os
+import uuid
+
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
-
 from django.utils.translation import gettext_lazy as _
+
 from creators.models import Creator
 
 # Create your models here.
@@ -231,6 +233,7 @@ class Note(models.Model):
         null=True,
         blank=True,
     )
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     sharing_id = models.CharField(max_length=36,unique=True,null=False)
     title = models.CharField(max_length=100, default="Untitled Ep", null=False)
     description=models.CharField(max_length=600, blank=True,null=True)
@@ -239,6 +242,23 @@ class Note(models.Model):
     metadata_json = models.TextField(blank=True, default="")
     client_draft_id = models.CharField(max_length=64, blank=True, null=True)
     deleted_at = models.DateTimeField(blank=True, null=True)
+    note_type = models.CharField(
+        max_length=1,
+        choices=(
+            ("N", _("Normal")),
+            ("C", _("Comment")),
+        ),
+        default="N",
+        null=False,
+    )
+    source_note = models.ForeignKey(
+        "self",
+        related_name="comments",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="For comment notes, the note being commented on.",
+    )
     editor_mode = models.CharField(
         max_length=1,
         choices=(
