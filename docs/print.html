@@ -192,11 +192,6 @@
 <p>Always finish urgent tasks first if exists.</p>
 <p>PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK</p>
 <h2 id="editor"><a class="header" href="#editor">Editor</a></h2>
-<h3 id="urgent-tasks"><a class="header" href="#urgent-tasks">Urgent tasks</a></h3>
-<ul>
-<li><input disabled="" type="checkbox"/>
-Now the panel don't redirect or route url for different contents as normal websites do and all link are stored on the same editor route. Is it possible to give different notes different routes, label by their uuid with strict access policy (All site viewer can view public notes, but only note owner can edit. Registered user can cite, comment (set note type as comment with source. It should not be deleted(but will be private) when the source note is deleted (The detailed comment section will be displayed on Planner App)), etc)? Implement the function so that every distinct note have their unique url. You also need to add/rewire backend function for creating uuid I assume.</li>
-</ul>
 <h3 id="sidebarnavigation"><a class="header" href="#sidebarnavigation">Sidebar/Navigation</a></h3>
 <ul>
 <li><input disabled="" type="checkbox"/>
@@ -218,7 +213,7 @@ Add a lower right add button (the same as add notes) for inserting attachment (i
 <h4 id="editor-preferences"><a class="header" href="#editor-preferences">Editor Preferences</a></h4>
 <h2 id="planner"><a class="header" href="#planner">Planner</a></h2>
 <ul>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Remove the front page module, this should be added in portal app with recommendation algorithm.</li>
 </ul>
 <h3 id="course-list"><a class="header" href="#course-list">Course list</a></h3>
@@ -268,9 +263,9 @@ Register windows</p>
 <ul>
 <li><input disabled="" type="checkbox" checked=""/>
 Username, email, password (with validation, 8 digit minimum with simple measurement for strong password), repeat password (backend: <code>RegisterSerializer</code> with username field, 8-char min, uppercase+lowercase+digit/special validation)</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Invitation code (implement that in backend, plain sha 256 and compare with the record added in backend admin site) (backend: <code>InvitationCode</code> model with SHA-256 hash, auto-hash on save, consume on use; required only when codes exist in DB) Note, the invitation code is separated from the email verification code. The invitation code is used for registering new users only for testing.</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 (only when invitation code is checked and not used in backend) Enable email verification (60s resend, 6 digit code with expiration, only store hash code in backend), we will set smtp params in environment variables. (backend: 6-digit codes stored as SHA-256 hash via <code>VerificationCode.generate_code()</code>, 60s cooldown in <code>ResendVerificationSerializer</code>)</li>
 <li><input disabled="" type="checkbox" checked=""/>
 Register (frontend implementation) (new <code>_RegisterDialog</code> with username, email, password, confirm password, invitation code fields; client updated with new signature)</li>
