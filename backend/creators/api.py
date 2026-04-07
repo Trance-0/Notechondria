@@ -66,7 +66,9 @@ def auth_payload(user: User, request=None):
             "id": user.id,
             "email": user.email,
             "username": user.username,
-            "display_name": user.username,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "display_name": f"{user.first_name} {user.last_name}".strip() or user.username,
             "is_staff": user.is_staff,
             "is_superuser": user.is_superuser,
             "motto": creator.motto or "",
@@ -245,6 +247,8 @@ class ResendVerificationSerializer(serializers.Serializer):
 
 class SettingsSerializer(serializers.Serializer):
     username = serializers.CharField(required=False, max_length=150)
+    first_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
+    last_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
     email = serializers.EmailField(required=False)
     motto = serializers.CharField(allow_blank=True, required=False, max_length=100)
     social_link = serializers.URLField(allow_blank=True, required=False)
@@ -275,6 +279,8 @@ class SettingsSerializer(serializers.Serializer):
         request = self.context.get("request") if self.context else None
         return {
             "username": instance.user_id.username,
+            "first_name": instance.user_id.first_name,
+            "last_name": instance.user_id.last_name,
             "email": instance.user_id.email,
             "is_staff": instance.user_id.is_staff,
             "is_superuser": instance.user_id.is_superuser,
@@ -318,12 +324,21 @@ class SettingsSerializer(serializers.Serializer):
 
     def update(self, instance, validated_data):
         user = instance.user_id
+        user_dirty = False
         if "username" in validated_data:
             user.username = validated_data["username"]
+            user_dirty = True
         if "email" in validated_data:
             user.email = validated_data["email"]
-        if "username" in validated_data or "email" in validated_data:
-            user.save(update_fields=["username", "email"])
+            user_dirty = True
+        if "first_name" in validated_data:
+            user.first_name = validated_data["first_name"]
+            user_dirty = True
+        if "last_name" in validated_data:
+            user.last_name = validated_data["last_name"]
+            user_dirty = True
+        if user_dirty:
+            user.save(update_fields=["username", "email", "first_name", "last_name"])
         instance.motto = validated_data.get("motto", instance.motto)
         instance.social_link = validated_data.get("social_link", instance.social_link)
         instance.editor_mode = validated_data.get("editor_mode", instance.editor_mode)

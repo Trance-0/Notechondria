@@ -737,23 +737,29 @@ class CourseNotesApiView(APIView):
 
 
 class NoteListCreateApiView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
 
     def get(self, request):
-        creator = ensure_creator(request.user)
+        creator = ensure_creator(request.user) if request.user.is_authenticated else None
         course_id = request.query_params.get("course_id")
         query = request.query_params.get("q", "").strip()
         # scope=personal (default): only notes owned by the current user
         # (includes their private + public notes).
         # scope=all: personal notes PLUS public notes owned by other users, so
         # the sidebar search checkbox can broaden the result set.
+        # Anonymous users always see public notes only.
         scope = request.query_params.get("scope", "personal").strip().lower()
         limit = request.query_params.get("limit")
         offset = int(request.query_params.get("offset", "0") or 0)
         notes = Note.objects.filter(
             deleted_at__isnull=True,
         ).select_related("course_id", "creator_id__user_id")
-        if scope == "all":
+        if creator is None:
+            notes = notes.filter(is_public=True)
+        elif scope == "all":
             notes = notes.filter(
                 Q(creator_id=creator) | Q(is_public=True),
             )

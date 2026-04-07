@@ -72,17 +72,17 @@ PY
     fi
 fi
 
-PRODUCTION_STATIC_ROOT="$(normalize_container_path "${PRODUCTION_STATIC_ROOT:-}" "/home/staticfiles")"
-PRODUCTION_MEDIA_ROOT="$(normalize_container_path "${PRODUCTION_MEDIA_ROOT:-}" "/home/mediafiles")"
-export PRODUCTION_STATIC_ROOT
-export PRODUCTION_MEDIA_ROOT
+DJANGO_PRODUCTION_STATIC_ROOT="$(normalize_container_path "${DJANGO_PRODUCTION_STATIC_ROOT:-}" "/home/staticfiles")"
+DJANGO_PRODUCTION_MEDIA_ROOT="$(normalize_container_path "${DJANGO_PRODUCTION_MEDIA_ROOT:-}" "/home/mediafiles")"
+export DJANGO_PRODUCTION_STATIC_ROOT
+export DJANGO_PRODUCTION_MEDIA_ROOT
 
-mkdir -p "${PRODUCTION_STATIC_ROOT}"
-mkdir -p "${PRODUCTION_MEDIA_ROOT}"
+mkdir -p "${DJANGO_PRODUCTION_STATIC_ROOT}"
+mkdir -p "${DJANGO_PRODUCTION_MEDIA_ROOT}"
 
 python manage.py migrate
 python manage.py bootstrap_platform
-echo "Collecting static files into ${PRODUCTION_STATIC_ROOT}"
+echo "Collecting static files into ${DJANGO_PRODUCTION_STATIC_ROOT}"
 python manage.py collectstatic --noinput --clear
 python - <<'PY'
 import os
@@ -93,7 +93,7 @@ from pathlib import Path
 import rest_framework
 from django.contrib import admin
 
-static_root = Path(os.getenv("PRODUCTION_STATIC_ROOT", "/home/staticfiles")).resolve()
+static_root = Path(os.getenv("DJANGO_PRODUCTION_STATIC_ROOT", "/home/staticfiles")).resolve()
 static_root.mkdir(parents=True, exist_ok=True)
 
 package_static_dirs = [

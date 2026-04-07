@@ -4,8 +4,8 @@ FROM python:3.9.18-bullseye AS builder
 # configurations
 ENV HOME=/home
 ENV APP_HOME=/home/notechondria
-ENV PRODUCTION_MEDIA_ROOT=/home/mediafiles
-ENV PRODUCTION_STATIC_ROOT=/home/staticfiles
+ENV DJANGO_PRODUCTION_MEDIA_ROOT=/home/mediafiles
+ENV DJANGO_PRODUCTION_STATIC_ROOT=/home/staticfiles
 RUN mkdir ${APP_HOME}
 
 RUN apt-get update \

@@ -95,7 +95,7 @@ class Command(BaseCommand):
             {
                 "creator": creator,
                 "payload": self.load_course_payload(sample_root, "vibe-coding-101"),
-                "is_default": True,
+                "is_default": False,
                 "notes": [
                     {
                         "title": section["title"],

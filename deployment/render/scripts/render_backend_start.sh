@@ -6,13 +6,14 @@ set -Eeuo pipefail
 #
 # Expected env:
 # - DATABASE_URL
-# - SECRET_KEY
-# - ALLOWED_HOSTS
-# - CSRF_TRUSTED_ORIGINS
+# - DJANGO_SECRET_KEY
+# - DJANGO_ALLOWED_HOSTS
+# - DJANGO_CSRF_TRUSTED_ORIGINS
 # - PORT (provided by Render)
 # Optional env:
 # - PYTHONUNBUFFERED=1
 # - WEB_CONCURRENCY=2
+# - BACKEND_CUSTOM_DOMAIN
 # - OPENAI_API_KEY
 # - GITHUB_APP_* values if used
 

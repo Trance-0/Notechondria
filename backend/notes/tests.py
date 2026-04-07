@@ -722,6 +722,15 @@ class HeatmapApiTests(TestCase):
         self.assertIn(existing.slug, slugs)
         self.assertIn('meaning-of-work-in-age-of-ai', slugs)
         self.assertIn('self-identity-and-expression-in-modern-arts', slugs)
+        # Template courses must never be marked as default — only the user's
+        # Inbox should carry is_default=True.
+        template_defaults = Course.objects.filter(
+            slug__in=['vibe-coding-101', 'meaning-of-work-in-age-of-ai',
+                       'self-identity-and-expression-in-modern-arts'],
+            is_default=True,
+        )
+        self.assertEqual(template_defaults.count(), 0,
+                         'Template courses must not be marked as default')
 
 
 class CourseDeleteApiTests(TestCase):

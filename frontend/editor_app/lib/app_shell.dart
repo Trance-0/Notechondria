@@ -147,7 +147,7 @@ class _AppShellState extends State<AppShell> {
     });
   }
 
-  bool _showWidePageHeader(int index) => index == 4;
+  bool _showWidePageHeader(int index) => false;
 
   /// All categories: local courses first, then remote courses.
   List<Map<String, dynamic>> get _allCategories =>
@@ -299,10 +299,13 @@ class _AppShellState extends State<AppShell> {
         _localDrafts.isNotEmpty) {
       return;
     }
-    final starterCourse = _buildLocalCourse(
-      title: 'Inbox',
-      description: 'Offline-first local note bucket for the editor app.',
-    );
+    final starterCourse = {
+      ..._buildLocalCourse(
+        title: 'Inbox',
+        description: 'Offline-first local note bucket for the editor app.',
+      ),
+      'is_default': true,
+    };
     final starterDraft = _buildLocalDraft(
       title: 'Welcome to the editor workspace',
       description: 'Starter note describing the offline storage layout.',
@@ -520,19 +523,21 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       } catch (error) {
         errors.add(error.toString().replaceFirst('Exception: ', ''));
       }
-      try {
-        notePage = await widget.client
-            .listNotes(token: _token, limit: 20, offset: 0);
-        learnerNotes = (notePage['results'] as List<dynamic>? ?? const [])
-            .map((item) => Map<String, dynamic>.from(item as Map))
-            .toList(growable: false);
-      } catch (error) {
-        errors.add(error.toString().replaceFirst('Exception: ', ''));
-      }
     } else {
       deletedNotes = const [];
-      learnerNotes = const [];
-      notePage = const {'results': [], 'has_more': false};
+    }
+    try {
+      notePage = await widget.client.listNotes(
+        token: (_token != null && _token!.isNotEmpty) ? _token : null,
+        limit: 20,
+        offset: 0,
+        scope: (_token != null && _token!.isNotEmpty) ? 'personal' : 'all',
+      );
+      learnerNotes = (notePage['results'] as List<dynamic>? ?? const [])
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList(growable: false);
+    } catch (error) {
+      errors.add(error.toString().replaceFirst('Exception: ', ''));
     }
 
     setState(() {
@@ -638,16 +643,12 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     String? query,
     String? scope,
   }) async {
-    if (_token == null || _token!.isEmpty) {
-      setState(() {
-        _learnerSearchQuery = query ?? _learnerSearchQuery;
-        if (scope != null) _learnerSearchScope = scope;
-      });
-      return;
-    }
     if (_isLoadingMoreNotes) return;
+    final isAuthenticated = _token != null && _token!.isNotEmpty;
     final effectiveQuery = query ?? _learnerSearchQuery;
-    final effectiveScope = scope ?? _learnerSearchScope;
+    // Anonymous users always see public notes (scope=all).
+    final effectiveScope =
+        isAuthenticated ? (scope ?? _learnerSearchScope) : 'all';
     final nextOffset = reset ? 0 : _learnerNotesOffset;
     setState(() {
       _isLoadingMoreNotes = true;
@@ -659,7 +660,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     try {
       final activeCourseId = _selectedCategoryId;
       final page = await widget.client.listNotes(
-        token: _token,
+        token: isAuthenticated ? _token : null,
         query: effectiveQuery,
         offset: nextOffset,
         limit: 20,
@@ -988,8 +989,10 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     String editorMode,
     String themePreset,
     String themeMode,
-    String apiBaseUrl,
-  ) async {
+    String apiBaseUrl, {
+    String firstName = '',
+    String lastName = '',
+  }) async {
     final currentSettings =
         Map<String, dynamic>.from(_settings ?? const {});
     final currentProfile = Map<String, dynamic>.from(_profile ?? const {});
@@ -1023,6 +1026,20 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     if (!_sameEmailValue(email, currentEmail)) {
       remotePayload['email'] = email;
       changedFields.add('email');
+    }
+    final currentFirstName = currentSettings['first_name']?.toString() ??
+        currentProfile['first_name']?.toString() ??
+        '';
+    final currentLastName = currentSettings['last_name']?.toString() ??
+        currentProfile['last_name']?.toString() ??
+        '';
+    if (!_sameTrimmedValue(firstName, currentFirstName)) {
+      remotePayload['first_name'] = firstName;
+      changedFields.add('first name');
+    }
+    if (!_sameTrimmedValue(lastName, currentLastName)) {
+      remotePayload['last_name'] = lastName;
+      changedFields.add('last name');
     }
     if (!_sameTrimmedValue(motto, currentMotto)) {
       remotePayload['motto'] = motto;

@@ -46,8 +46,10 @@ class _SettingsPage extends StatefulWidget {
     String editorMode,
     String themePreset,
     String themeMode,
-    String apiBaseUrl,
-  ) onSave;
+    String apiBaseUrl, {
+    String firstName,
+    String lastName,
+  }) onSave;
   final Future<void> Function() onLogout;
   final Future<ActionFeedback> Function(
     String username,
@@ -85,6 +87,8 @@ class _SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<_SettingsPage> {
   late final TextEditingController _usernameController;
+  late final TextEditingController _firstNameController;
+  late final TextEditingController _lastNameController;
   late final TextEditingController _mottoController;
   late final TextEditingController _socialController;
   late final TextEditingController _apiBaseController;
@@ -104,6 +108,16 @@ class _SettingsPageState extends State<_SettingsPage> {
           widget.profile?['username']?.toString() ??
           '',
     );
+    _firstNameController = TextEditingController(
+      text: widget.settings?['first_name']?.toString() ??
+          widget.profile?['first_name']?.toString() ??
+          '',
+    );
+    _lastNameController = TextEditingController(
+      text: widget.settings?['last_name']?.toString() ??
+          widget.profile?['last_name']?.toString() ??
+          '',
+    );
     _mottoController =
         TextEditingController(text: widget.settings?['motto']?.toString() ?? '');
     _socialController = TextEditingController(
@@ -115,6 +129,7 @@ class _SettingsPageState extends State<_SettingsPage> {
           _defaultApiBaseUrl(),
     );
     _editorMode = widget.settings?['editor_mode']?.toString() ?? 'P';
+    if (_editorMode == 'B') _editorMode = 'G'; // block editor removed
     _themePreset = widget.localSettings['theme_preset']?.toString() ?? 'teal';
     _themeMode = widget.localSettings['theme_mode']?.toString() ?? 'S';
   }
@@ -125,6 +140,12 @@ class _SettingsPageState extends State<_SettingsPage> {
     if (oldWidget.settings != widget.settings || oldWidget.profile != widget.profile) {
       _usernameController.text = widget.settings?['username']?.toString() ??
           widget.profile?['username']?.toString() ??
+          '';
+      _firstNameController.text = widget.settings?['first_name']?.toString() ??
+          widget.profile?['first_name']?.toString() ??
+          '';
+      _lastNameController.text = widget.settings?['last_name']?.toString() ??
+          widget.profile?['last_name']?.toString() ??
           '';
       _mottoController.text = widget.settings?['motto']?.toString() ?? '';
       _socialController.text = widget.settings?['social_link']?.toString() ?? '';
@@ -142,19 +163,76 @@ class _SettingsPageState extends State<_SettingsPage> {
   @override
   void dispose() {
     _usernameController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
     _mottoController.dispose();
     _socialController.dispose();
     _apiBaseController.dispose();
     super.dispose();
   }
 
+  /// Whether any profile (online account) field has been edited.
+  bool get _hasProfileChanges {
+    final s = widget.settings ?? const {};
+    final p = widget.profile ?? const {};
+    final serverFirstName = s['first_name']?.toString() ?? p['first_name']?.toString() ?? '';
+    final serverLastName = s['last_name']?.toString() ?? p['last_name']?.toString() ?? '';
+    final serverMotto = s['motto']?.toString() ?? '';
+    final serverSocial = s['social_link']?.toString() ?? '';
+    return _firstNameController.text.trim() != serverFirstName ||
+        _lastNameController.text.trim() != serverLastName ||
+        _mottoController.text.trim() != serverMotto ||
+        _socialController.text.trim() != serverSocial;
+  }
+
+  /// Whether any editor-preference field has been edited.
+  bool get _hasPreferenceChanges {
+    final serverEditorMode = widget.settings?['editor_mode']?.toString() ?? 'P';
+    final localThemePreset = widget.localSettings['theme_preset']?.toString() ?? 'teal';
+    final localThemeMode = widget.localSettings['theme_mode']?.toString() ?? 'S';
+    final localApiBase = widget.localSettings['api_base_url']?.toString() ??
+        widget.apiBaseUrl ?? _defaultApiBaseUrl();
+    return _editorMode != serverEditorMode ||
+        _themePreset != localThemePreset ||
+        _themeMode != localThemeMode ||
+        _apiBaseController.text.trim() != localApiBase;
+  }
+
+  /// Restores profile fields to server values.
+  void _cancelProfileChanges() {
+    final s = widget.settings ?? const {};
+    final p = widget.profile ?? const {};
+    setState(() {
+      _firstNameController.text = s['first_name']?.toString() ?? p['first_name']?.toString() ?? '';
+      _lastNameController.text = s['last_name']?.toString() ?? p['last_name']?.toString() ?? '';
+      _mottoController.text = s['motto']?.toString() ?? '';
+      _socialController.text = s['social_link']?.toString() ?? '';
+    });
+  }
+
+  /// Restores editor preference fields to server/local values.
+  void _cancelPreferenceChanges() {
+    setState(() {
+      _editorMode = widget.settings?['editor_mode']?.toString() ?? 'P';
+      if (_editorMode == 'B') _editorMode = 'G';
+      _themePreset = widget.localSettings['theme_preset']?.toString() ?? 'teal';
+      _themeMode = widget.localSettings['theme_mode']?.toString() ?? 'S';
+      _apiBaseController.text = widget.localSettings['api_base_url']?.toString() ??
+          widget.apiBaseUrl ?? _defaultApiBaseUrl();
+    });
+  }
+
   /// Collects pending changes between the current form state and the server
   /// profile so the Save confirmation can list what will be written.
   Map<String, String> _pendingChanges() {
     final changes = <String, String>{};
-    final serverMotto = widget.settings?['motto']?.toString() ?? '';
-    final serverSocial = widget.settings?['social_link']?.toString() ?? '';
-    final serverEditorMode = widget.settings?['editor_mode']?.toString() ?? 'P';
+    final s = widget.settings ?? const {};
+    final p = widget.profile ?? const {};
+    final serverFirstName = s['first_name']?.toString() ?? p['first_name']?.toString() ?? '';
+    final serverLastName = s['last_name']?.toString() ?? p['last_name']?.toString() ?? '';
+    final serverMotto = s['motto']?.toString() ?? '';
+    final serverSocial = s['social_link']?.toString() ?? '';
+    final serverEditorMode = s['editor_mode']?.toString() ?? 'P';
     final localThemePreset =
         widget.localSettings['theme_preset']?.toString() ?? 'teal';
     final localThemeMode =
@@ -163,6 +241,14 @@ class _SettingsPageState extends State<_SettingsPage> {
         widget.apiBaseUrl ??
         _defaultApiBaseUrl();
 
+    if (_firstNameController.text.trim() != serverFirstName) {
+      changes['First name'] =
+          '"${serverFirstName.isEmpty ? "(empty)" : serverFirstName}" \u2192 "${_firstNameController.text.trim()}"';
+    }
+    if (_lastNameController.text.trim() != serverLastName) {
+      changes['Last name'] =
+          '"${serverLastName.isEmpty ? "(empty)" : serverLastName}" \u2192 "${_lastNameController.text.trim()}"';
+    }
     if (_mottoController.text.trim() != serverMotto) {
       changes['Motto'] =
           '"${serverMotto.isEmpty ? "(empty)" : serverMotto}" \u2192 "${_mottoController.text.trim()}"';
@@ -186,6 +272,41 @@ class _SettingsPageState extends State<_SettingsPage> {
           : '"$localApiBase" \u2192 "${_apiBaseController.text.trim()}"';
     }
     return changes;
+  }
+
+  /// Builds a save/cancel button row for a settings section.
+  Widget _buildSectionButtons({
+    required bool hasChanges,
+    required VoidCallback onCancel,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: FilledButton.icon(
+            onPressed: _saving ? null : _confirmAndSave,
+            icon: _saving
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white),
+                  )
+                : const Icon(Icons.save_outlined),
+            label: Text(_saving ? 'Saving...' : 'Save'),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: OutlinedButton(
+            onPressed: hasChanges ? onCancel : null,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: hasChanges ? null : Theme.of(context).colorScheme.outline,
+            ),
+            child: const Text('Cancel'),
+          ),
+        ),
+      ],
+    );
   }
 
   /// Prompts the user with a summary of what changed, then saves if confirmed.
@@ -249,6 +370,8 @@ class _SettingsPageState extends State<_SettingsPage> {
       _themePreset,
       _themeMode,
       _apiBaseController.text.trim(),
+      firstName: _firstNameController.text.trim(),
+      lastName: _lastNameController.text.trim(),
     );
     if (!mounted) {
       return;
@@ -457,6 +580,11 @@ class _SettingsPageState extends State<_SettingsPage> {
               ),
             ] else ...[
               _buildProfileFields(context),
+              const SizedBox(height: 16),
+              _buildSectionButtons(
+                hasChanges: _hasProfileChanges,
+                onCancel: _cancelProfileChanges,
+              ),
               const SizedBox(height: 20),
               // ---- Sync subsection ----
               Text(
@@ -500,24 +628,25 @@ class _SettingsPageState extends State<_SettingsPage> {
     );
   }
 
-  /// Profile fields shown when authenticated: avatar, username, email, motto,
-  /// social link.
+  /// Profile fields shown when authenticated: avatar, name, motto, social link.
   Widget _buildProfileFields(BuildContext context) {
     final avatarUrl = widget.profile?['image_url']?.toString() ??
         widget.settings?['image_url']?.toString();
+    final resolvedAvatar = avatarUrl != null && avatarUrl.isNotEmpty
+        ? _resolveRemoteUrl(avatarUrl, apiBaseUrl: widget.apiBaseUrl)
+        : '';
+    final username = widget.profile?['username']?.toString() ?? 'User';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             GestureDetector(
-              onTap: _uploadingAvatar ? null : _handleAvatarUpload,
+              onTap: () => _previewAvatar(resolvedAvatar, username),
               child: _RemoteAvatar(
                 radius: 32,
-                imageUrl: avatarUrl != null && avatarUrl.isNotEmpty
-                    ? _resolveRemoteUrl(avatarUrl, apiBaseUrl: widget.apiBaseUrl)
-                    : '',
-                fallbackLabel: widget.profile?['username']?.toString() ?? '',
+                imageUrl: resolvedAvatar,
+                fallbackLabel: username,
               ),
             ),
             const SizedBox(width: 16),
@@ -526,11 +655,17 @@ class _SettingsPageState extends State<_SettingsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.profile?['username']?.toString() ?? 'User',
+                    widget.profile?['display_name']?.toString() ?? username,
                     style: Theme.of(context)
                         .textTheme
                         .titleMedium
                         ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    '@$username',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
                   ),
                   Text(
                     widget.profile?['email']?.toString() ?? '',
@@ -547,14 +682,28 @@ class _SettingsPageState extends State<_SettingsPage> {
           ],
         ),
         const SizedBox(height: 16),
-        TextField(
-          controller: _usernameController,
-          readOnly: true,
-          decoration: const InputDecoration(
-            labelText: 'Username',
-            border: OutlineInputBorder(),
-            helperText: 'Username is set at registration and cannot be changed.',
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _firstNameController,
+                decoration: const InputDecoration(
+                  labelText: 'First name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                controller: _lastNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Last name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         TextField(
@@ -573,6 +722,49 @@ class _SettingsPageState extends State<_SettingsPage> {
           ),
         ),
       ],
+    );
+  }
+
+  void _previewAvatar(String imageUrl, String username) {
+    if (imageUrl.isEmpty) return;
+    showDialog<void>(
+      context: context,
+      builder: (context) => Dialog(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                username,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400, maxHeight: 400),
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Icon(Icons.broken_image_outlined, size: 64),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -605,7 +797,6 @@ class _SettingsPageState extends State<_SettingsPage> {
               items: const [
                 DropdownMenuItem(value: 'P', child: Text('Plain text editor')),
                 DropdownMenuItem(value: 'G', child: Text('Live markdown editor')),
-                DropdownMenuItem(value: 'B', child: Text('Block editor')),
               ],
               onChanged: (value) {
                 if (value != null) {
@@ -671,20 +862,9 @@ class _SettingsPageState extends State<_SettingsPage> {
               ),
             ),
             const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton.icon(
-                onPressed: _saving ? null : _confirmAndSave,
-                icon: _saving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Icon(Icons.save_outlined),
-                label: Text(_saving ? 'Saving...' : 'Save settings'),
-              ),
+            _buildSectionButtons(
+              hasChanges: _hasPreferenceChanges,
+              onCancel: _cancelPreferenceChanges,
             ),
             const SizedBox(height: 16),
             // Offline account actions row — previously lived in a separate

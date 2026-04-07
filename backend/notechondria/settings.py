@@ -51,10 +51,10 @@ def env_path(name: str, default):
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY') or os.getenv('SECRET_KEY')
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env_bool('DJANGO_DEBUG', env_bool('DEBUG', False))
+DEBUG = env_bool('DJANGO_DEBUG', False)
 
 _default_hosts = "localhost 127.0.0.1"
 # Auto-detect Render deployment hostname (set automatically by Render)
@@ -62,11 +62,11 @@ _render_host = os.getenv("RENDER_EXTERNAL_HOSTNAME", "")
 if _render_host:
     _default_hosts += f" {_render_host}"
 # Custom domain pointing to this backend (e.g. notechondria.trance-0.com)
-_custom_domain = os.getenv("CUSTOM_DOMAIN", "")
+_custom_domain = os.getenv("BACKEND_CUSTOM_DOMAIN", "")
 if _custom_domain:
     _default_hosts += f" {_custom_domain}"
 
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", os.getenv("ALLOWED_HOSTS", _default_hosts))
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", _default_hosts)
 
 
 # Application definition
@@ -108,10 +108,7 @@ if _custom_domain:
 _frontend_origin = os.getenv("FRONTEND_ORIGIN", "")
 if _frontend_origin:
     _default_csrf += f",{_frontend_origin}"
-CSRF_TRUSTED_ORIGINS = env_list(
-    "DJANGO_CSRF_TRUSTED_ORIGINS",
-    os.getenv("CSRF_TRUSTED_ORIGINS", _default_csrf),
-)
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", _default_csrf)
 
 ROOT_URLCONF = 'notechondria.urls'
 
@@ -272,7 +269,7 @@ STATICFILES_DIRS = [
 ]
 
 # keep Django and nginx pointed at the same static directory regardless of DEBUG
-STATIC_ROOT = env_path('PRODUCTION_STATIC_ROOT', BASE_DIR / 'productionfiles')
+STATIC_ROOT = env_path('DJANGO_PRODUCTION_STATIC_ROOT', BASE_DIR / 'productionfiles')
 
 # Image files (jpg, jpeg)
 # reference: https://djangocentral.com/uploading-images-with-django/
@@ -281,7 +278,7 @@ STATIC_ROOT = env_path('PRODUCTION_STATIC_ROOT', BASE_DIR / 'productionfiles')
 MEDIA_URL = '/media/'
 
 # keep Django and nginx pointed at the same media directory regardless of DEBUG
-MEDIA_ROOT = env_path('PRODUCTION_MEDIA_ROOT', BASE_DIR / 'mediafiles')
+MEDIA_ROOT = env_path('DJANGO_PRODUCTION_MEDIA_ROOT', BASE_DIR / 'mediafiles')
 
 # Offline development tag
 OFFLINE = False
@@ -300,5 +297,5 @@ EMAIL_HOST_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 EMAIL_USE_TLS = env_bool("SMTP_USE_TLS", True)
 EMAIL_USE_SSL = env_bool("SMTP_USE_SSL", False)
 DEFAULT_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", EMAIL_HOST_USER or "no-reply@notechondria.local")
-EMAIL_VERIFICATION_TTL_HOURS = int(os.getenv("EMAIL_VERIFICATION_TTL_HOURS", "24"))
+EMAIL_VERIFICATION_TTL_HOURS = int(os.getenv("SMTP_EMAIL_VERIFICATION_TTL_HOURS", "24"))
 FRONTEND_VERIFY_URL = os.getenv("FRONTEND_VERIFY_URL", "")

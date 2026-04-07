@@ -318,61 +318,57 @@ class _LearnerPageState extends State<_LearnerPage> {
               ),
               const SizedBox(height: 16),
             ],
-            Text(
-              widget.isAuthenticated ? 'Recent notes' : 'Local drafts',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            if (widget.isAuthenticated && widget.notes.isEmpty)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    localDrafts.isEmpty
-                        ? 'No cloud notes yet. Use the add button to create one.'
-                        : 'No synced cloud notes yet. Sync a local draft or create a new note.',
-                  ),
-                ),
+            if (localDrafts.isNotEmpty) ...[
+              Text(
+                'Local drafts',
+                style: Theme.of(context).textTheme.titleLarge,
               ),
-            if (!widget.isAuthenticated && localDrafts.isEmpty)
-              const Card(
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text(
-                    'No local drafts yet. Use the add button to create one and sync later after login.',
-                  ),
-                ),
-              ),
-            if (!widget.isAuthenticated)
-              for (final note in localDrafts)
-                _LearnerNoteCard(
-                  note: note,
-                  apiBaseUrl: widget.apiBaseUrl,
-                  isLocalDraft: true,
-                  onOpen: () => _openViewer(note),
-                ),
-            if (widget.isAuthenticated)
-              for (final note in widget.notes)
-                _LearnerNoteCard(
-                  note: note,
-                  apiBaseUrl: widget.apiBaseUrl,
-                  onOpen: () => _openViewer(note),
-                ),
-            if (widget.isAuthenticated && localDrafts.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              Text('Local drafts', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 12),
               for (final draft in localDrafts)
                 _LearnerNoteCard(
                   note: draft,
                   apiBaseUrl: widget.apiBaseUrl,
                   isLocalDraft: true,
-                  canSync: true,
+                  canSync: widget.isAuthenticated,
                   onOpen: () => _openViewer(draft),
-                  onSync: () => widget.onSyncLocalDraft(draft),
+                  onSync: widget.isAuthenticated
+                      ? () => widget.onSyncLocalDraft(draft)
+                      : null,
                 ),
+              const SizedBox(height: 20),
             ],
-            if (widget.isAuthenticated && widget.hasMoreNotes) ...[
+            Text(
+              widget.isAuthenticated ? 'Recent notes' : 'Public notes',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 12),
+            if (widget.notes.isEmpty && localDrafts.isEmpty)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    widget.isAuthenticated
+                        ? 'No cloud notes yet. Use the add button to create one.'
+                        : 'No notes yet. Use the add button to create a local draft.',
+                  ),
+                ),
+              ),
+            if (widget.notes.isEmpty && localDrafts.isNotEmpty && widget.isAuthenticated)
+              const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    'No synced cloud notes yet. Sync a local draft or create a new note.',
+                  ),
+                ),
+              ),
+            for (final note in widget.notes)
+              _LearnerNoteCard(
+                note: note,
+                apiBaseUrl: widget.apiBaseUrl,
+                onOpen: () => _openViewer(note),
+              ),
+            if (widget.hasMoreNotes) ...[
               const SizedBox(height: 12),
               Align(
                 alignment: Alignment.centerLeft,

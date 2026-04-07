@@ -523,8 +523,8 @@ class _DetailsBlockSyntax extends md.BlockSyntax {
   }
 }
 
-/// Renders `<details>` elements as a Material [ExpansionTile] with nested
-/// markdown inside the body.
+/// Renders `<details>` elements as a GitHub-style collapsible dropdown with
+/// nested markdown inside the body.
 class _DetailsBuilder extends MarkdownElementBuilder {
   @override
   Widget? visitElementAfterWithContext(
@@ -542,25 +542,31 @@ class _DetailsBuilder extends MarkdownElementBuilder {
         border: Border.all(color: theme.dividerColor),
         borderRadius: BorderRadius.circular(8),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Theme(
         data: theme.copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           tilePadding: const EdgeInsets.symmetric(horizontal: 12),
           childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          backgroundColor: Colors.transparent,
+          collapsedBackgroundColor: Colors.transparent,
+          shape: const Border(),
+          collapsedShape: const Border(),
           title: Text(
             summary,
             style: (preferredStyle ?? theme.textTheme.bodyLarge)
                 ?.copyWith(fontWeight: FontWeight.w600),
           ),
           children: [
-            MarkdownBody(
-              data: body,
-              selectable: true,
-              builders: _markdownBuilders(),
-              inlineSyntaxes: _markdownInlineSyntaxes(),
-              blockSyntaxes: _markdownBlockSyntaxes(),
-              styleSheet: _markdownStyleSheet(context),
-            ),
+            if (body.isNotEmpty)
+              MarkdownBody(
+                data: body,
+                selectable: true,
+                builders: _markdownBuilders(),
+                inlineSyntaxes: _markdownInlineSyntaxes(),
+                blockSyntaxes: _markdownBlockSyntaxes(),
+                styleSheet: _markdownStyleSheet(context),
+              ),
           ],
         ),
       ),

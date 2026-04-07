@@ -9,15 +9,15 @@ class ApiCorsMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        is_api_request = request.path.startswith("/api/")
+        is_cors_path = request.path.startswith("/api/") or request.path.startswith("/media/")
         origin = request.headers.get("Origin", "")
 
-        if is_api_request and request.method == "OPTIONS":
+        if is_cors_path and request.method == "OPTIONS":
             response = HttpResponse(status=204)
         else:
             response = self.get_response(request)
 
-        if not is_api_request or not origin:
+        if not is_cors_path or not origin:
             return response
 
         if self._is_allowed_origin(origin):
