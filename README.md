@@ -50,5 +50,5 @@ done
 ## Developer scripts
 
 ```english
-Continue working on this project, with prompts in ./docs/TASK.md
+Continue working on this project, with prompts in ./docs/TASK.md. 
 ```
