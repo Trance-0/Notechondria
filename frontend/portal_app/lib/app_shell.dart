@@ -257,10 +257,22 @@ class _AppShellState extends State<AppShell> {
         } else {
           await widget.client.bindGithub(_token!, code, redirectUri: redirectUri);
         }
-        _appendUiLog('Linked ${state == 'google' ? 'Google' : 'GitHub'} account.');
+        final provider = state == 'google' ? 'Google' : 'GitHub';
+        _appendUiLog('Linked $provider account.');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('$provider account linked successfully.')),
+          );
+        }
         return true;
       } catch (error) {
-        _appendUiLog('Account linking failed: ${error.toString().replaceFirst("Exception: ", "")}');
+        final msg = error.toString().replaceFirst('Exception: ', '');
+        _appendUiLog('Account linking failed: $msg');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Account linking failed: $msg')),
+          );
+        }
         return false;
       }
     }

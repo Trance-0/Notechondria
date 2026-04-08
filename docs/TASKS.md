@@ -25,7 +25,13 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 > Urgent
 
+- [x] Start migration of static file storage to Cloudflare R2, simplify the deployment process for backend and ensure the persistent storage.
+  - [x] Add additional instructions for setting up Cloudflare R2 when deploying the backend with render to ensure the static assets are uploaded and accessible.
+  - [x] Rewire the backend to use Cloudflare R2 for static assets if the credentials are provided when deploying the backend with render. Raise an error if the credentials are not provided. Otherwise, when deploying the backend with docker compose, use the persistent volume and nginx for cdn delivery.
+  - [x] Add the necessary items and credential updates to `sample.render.env`. I will fill them later. be sure to start the var name with `CLOUDFLARE_R2_` to avoid conflict with other env vars. Put them together as a new section.
 - [x] Create startup animation. Repeating Citric acid cycle (part of respiration process). You may need to check for the detail for how the chemicals are loaded and cycled. Make a simple flutter animation to demonstrate that, and make smooth quit when frontend resources are loaded or timeout (set to 10 seconds Max).
+  - [x] Slow down the animation a bit, it is too fast now. Remote the 'citric acid cycle' title.
+  - [x] Replaced English chemical names with structural formula representations (organic acid structures, not benzene rings — Krebs cycle metabolites are small organic acids).
   - [x] When editor/planner/portal is opened, start the animation.
   - [x] The animation text is too small, Try to make the animation rotates (citric acid cycle) axis at left center of the screen. And show each step by rotating the cycle to the middle of the screen. Align all text horizontally (Do not rotate the text, just move the text along the circle).
 - [x] Create other transitional animation for page transitions (fade in/out, slide in/out, etc.)
@@ -42,7 +48,7 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 ### Note view
 
 - [x] In vertical view, the navbar item, where shows `Notechondria Editor` should be removed and replace with current folder name `Inbox`, `All notes`, etc.
-- [ ] Implement lazy loading for the note list, do not load all notes at once.
+- [x] Implement lazy loading for the note list, do not load all notes at once. Remove the load more button, activate the lazy loading on scroll to bottom.
 - [x] Note that currently the offline ui will create two inbox folder that cannot be deleted.
 - [x] Directly remove the delete button for the default `inbox` folder. Replace with helper text that it cannot be deleted.
 
@@ -125,7 +131,8 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 - [x] Add registration via google, use google oauth2 api (env variables are defined in `sample.text.env`, be sure to verify on the backend and capture the callback url from google redirect is on backend, be sure to take user back to frontend app after successful login/register. Ask for appropriate data like email, username from google to create user profiles.)
 - [x] Add registration via Github, use Github App api (env variables are defined in `sample.text.env`, be sure to verify on the backend and capture the callback url from github redirect is on backend, and also handle the webhook post from github with verifications, be sure to take user back to frontend app after successful login/register. Ask for appropriate data like email, username from google to create user profiles.)
-- [x] Allow existing users to bind their social accounts and login using them, currently support github and google accounts. (put in ui for the after login, show their binding accounts belows the social link (one line for google, one line for github. If no binding account, show the button to trigger the binding process (Online account settings widget), if user has binding accounts, show the button to trigger switch binding third party accounts))
+- [ ] Allow existing users to bind their social accounts and login using them, currently support github and google accounts. (put in ui for the after login, show their binding accounts belows the social link (one line for google, one line for github. If no binding account, show the button to trigger the binding process (Online account settings widget), if user has binding accounts, show the button to trigger switch binding third party accounts))
+  - [x] Backend is not redirecting the results properly. It should render a static display show if the user has binding accounts successfully or not. And the binding status should be updated in the user profile if binding is successful on the backend. This also holds for google and github accounts. And register pages as well.
 - [x] Implement login via third party services (Github, Google) reject, if the account is not registered. Show the error window for user to register account first.
 - [x] Add the necessary items and credential updates to `sample.render.env`
 

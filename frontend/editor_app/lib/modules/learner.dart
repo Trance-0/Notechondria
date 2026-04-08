@@ -83,11 +83,21 @@ class _LearnerPage extends StatefulWidget {
 
 class _LearnerPageState extends State<_LearnerPage> {
   late final TextEditingController _searchController;
+  late final ScrollController _scrollController;
 
   @override
   void initState() {
     super.initState();
     _searchController = TextEditingController(text: widget.searchQuery);
+    _scrollController = ScrollController()..addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (!widget.hasMoreNotes || widget.isLoadingMore) return;
+    final pos = _scrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 200) {
+      widget.onLoadMore();
+    }
   }
 
   @override
@@ -101,6 +111,7 @@ class _LearnerPageState extends State<_LearnerPage> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -245,6 +256,7 @@ class _LearnerPageState extends State<_LearnerPage> {
     return Stack(
       children: [
         ListView(
+          controller: _scrollController,
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
           children: [
             TextField(
@@ -374,20 +386,9 @@ class _LearnerPageState extends State<_LearnerPage> {
                   onOpen: () => _openViewer(widget.notes[i]),
                 ),
               ),
-            if (widget.hasMoreNotes) ...[
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: OutlinedButton(
-                  onPressed: widget.isLoadingMore
-                      ? null
-                      : () {
-                          widget.onLoadMore();
-                        },
-                  child:
-                      Text(widget.isLoadingMore ? 'Loading...' : 'Load more'),
-                ),
-              ),
+            if (widget.isLoadingMore) ...[
+              const SizedBox(height: 16),
+              const Center(child: CircularProgressIndicator()),
             ],
           ],
         ),

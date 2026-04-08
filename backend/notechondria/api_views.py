@@ -1,4 +1,9 @@
+import os
+from urllib.parse import urlencode
+
+from django.conf import settings
 from django.http import (
+    HttpResponse,
     HttpResponseBadRequest,
     HttpResponseForbidden,
     HttpResponseNotFound,
@@ -50,3 +55,91 @@ def api_server_error(request):
     if response is not None:
         return response
     return HttpResponseServerError("Internal server error.")
+
+
+def _oauth_result_page(title, message, success=True):
+    """Return a minimal HTML page that shows an OAuth result and auto-closes."""
+    colour = "#16a34a" if success else "#dc2626"
+    icon = "\u2714" if success else "\u2716"  # ✔ or ✖
+    return HttpResponse(
+        f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{title}</title>
+<style>
+  body {{ font-family: system-ui, sans-serif; display: flex;
+         justify-content: center; align-items: center; min-height: 100vh;
+         margin: 0; background: #f8fafc; color: #1e293b; }}
+  .card {{ text-align: center; padding: 2rem 3rem; border-radius: 16px;
+           background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.1); }}
+  .icon {{ font-size: 3rem; color: {colour}; }}
+  h1 {{ font-size: 1.25rem; margin: .75rem 0 .5rem; }}
+  p {{ color: #64748b; margin: 0; }}
+  .hint {{ margin-top: 1rem; font-size: .85rem; color: #94a3b8; }}
+</style></head><body>
+<div class="card">
+  <div class="icon">{icon}</div>
+  <h1>{title}</h1>
+  <p>{message}</p>
+  <p class="hint">You can close this tab and return to the app.</p>
+</div></body></html>""",
+        content_type="text/html",
+    )
+
+
+def oauth_callback(request, provider):
+    """Handle GET redirect from Google / GitHub after the user authorises.
+
+    For login / register flows the view redirects to the frontend app with the
+    ``code`` and ``state`` query parameters so the SPA can exchange them.
+
+    For bind flows (``state`` ends with ``_bind``) the backend exchanges the
+    code itself and renders a static success / failure page.
+    """
+    code = request.GET.get("code", "")
+    state = request.GET.get("state", "")
+    error = request.GET.get("error", "")
+
+    if error:
+        return _oauth_result_page(
+            "Authentication failed",
+            f"The provider returned an error: {error}",
+            success=False,
+        )
+
+    if not code:
+        return _oauth_result_page(
+            "Authentication failed",
+            "No authorisation code received from the provider.",
+            success=False,
+        )
+
+    # Determine the frontend origin to redirect to.
+    frontend_origin = os.getenv("FRONTEND_ORIGIN", "").rstrip("/")
+
+    # Default frontend path is the editor app.
+    frontend_path = "/Notechondria/editor/"
+    if frontend_origin:
+        redirect_target = f"{frontend_origin}{frontend_path}"
+    else:
+        # Fallback: same origin (Docker Compose where gateway routes everything)
+        redirect_target = frontend_path
+
+    params = urlencode({"code": code, "state": state})
+    redirect_url = f"{redirect_target}?{params}"
+
+    return HttpResponse(
+        f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta http-equiv="refresh" content="0;url={redirect_url}">
+<title>Redirecting…</title>
+<style>
+  body {{ font-family: system-ui, sans-serif; display: flex;
+         justify-content: center; align-items: center; min-height: 100vh;
+         margin: 0; background: #f8fafc; color: #1e293b; }}
+</style></head><body>
+<p>Redirecting to the app…</p>
+<script>window.location.replace({redirect_url!r});</script>
+</body></html>""",
+        content_type="text/html",
+    )

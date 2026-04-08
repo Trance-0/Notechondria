@@ -4,8 +4,8 @@ part of notechondria_frontend;
 ///
 /// The cycle axis is at the left center of the screen. It rotates to bring
 /// each metabolite to the screen center, with byproducts pulsing outward.
-/// All text remains horizontal. The animation loops until [onFinished] fires
-/// or the user taps the screen.
+/// Metabolites are shown as simplified structural formulas. The animation
+/// loops until [onFinished] fires or the user taps the screen.
 class _SplashScreen extends StatefulWidget {
   const _SplashScreen({
     required this.appTitle,
@@ -28,7 +28,7 @@ class _SplashScreenState extends State<_SplashScreen>
   static const _metabolites = [
     'Citrate',
     'Isocitrate',
-    '\u03b1-Ketoglutarate', // α-Ketoglutarate
+    '\u03b1-Ketoglutarate',
     'Succinyl-CoA',
     'Succinate',
     'Fumarate',
@@ -36,23 +36,23 @@ class _SplashScreenState extends State<_SplashScreen>
     'Oxaloacetate',
   ];
 
-  // Byproducts emitted at each step (index = step producing it).
+  // Byproducts emitted at each step.
   static const _byproducts = <int, List<String>>{
-    0: ['NADH'], // Oxaloacetate + Acetyl-CoA → Citrate
-    2: ['CO\u2082', 'NADH'], // Isocitrate → α-KG
-    3: ['CO\u2082', 'NADH'], // α-KG → Succinyl-CoA
-    4: ['GTP'], // Succinyl-CoA → Succinate
-    5: ['FADH\u2082'], // Succinate → Fumarate
-    7: ['NADH'], // Malate → Oxaloacetate
+    0: ['NADH'],
+    2: ['CO\u2082', 'NADH'],
+    3: ['CO\u2082', 'NADH'],
+    4: ['GTP'],
+    5: ['FADH\u2082'],
+    7: ['NADH'],
   };
 
   @override
   void initState() {
     super.initState();
-    // One full cycle = 4 seconds, loops forever.
+    // One full cycle = 8 seconds, loops forever.
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 4000),
+      duration: const Duration(milliseconds: 8000),
     )..repeat();
   }
 
@@ -163,27 +163,26 @@ class _KrebsCyclePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
-    // Axis at left center of screen.
     final center = Offset(0, h / 2);
     final radius = w * 0.5;
     final n = metabolites.length;
-
-    // Rotate so the active step is always at angle 0 (rightmost = screen center).
     final rotationAngle = -2 * math.pi * progress;
 
     // Orbit ring.
-    final ringPaint = Paint()
-      ..color = ringColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5;
-    canvas.drawCircle(center, radius, ringPaint);
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = ringColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5,
+    );
 
-    // Connecting arrows between adjacent nodes.
+    // Connecting arrows.
     final arrowPaint = Paint()
       ..color = subtleColor.withValues(alpha: 0.3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
-
     for (var i = 0; i < n; i++) {
       final a1 = 2 * math.pi * i / n + rotationAngle;
       final a2 = 2 * math.pi * ((i + 1) % n) / n + rotationAngle;
@@ -204,7 +203,7 @@ class _KrebsCyclePainter extends CustomPainter {
     final activeStep = (progress * n).floor() % n;
     final stepFraction = (progress * n) % 1.0;
 
-    // Metabolite nodes.
+    // Metabolite nodes with structural formulas.
     for (var i = 0; i < n; i++) {
       final angle = 2 * math.pi * i / n + rotationAngle;
       final pos = center + Offset(math.cos(angle), math.sin(angle)) * radius;
@@ -213,7 +212,6 @@ class _KrebsCyclePainter extends CustomPainter {
       final isActive = i == activeStep;
       final nr =
           isActive ? 10.0 + 3.0 * math.sin(stepFraction * math.pi) : 7.0;
-      // Smooth fade near the left screen edge.
       final fade = ((pos.dx + 20) / 80).clamp(0.0, 1.0);
 
       canvas.drawCircle(
@@ -236,21 +234,23 @@ class _KrebsCyclePainter extends CustomPainter {
         );
       }
 
-      // Label — left-align on right side, right-align on left side.
+      // Structural formula drawn near the node.
       final cosA = math.cos(angle);
-      final lbl = pos + Offset(math.cos(angle), math.sin(angle)) * (nr + 8);
-      _drawText(
+      final formulaCenter =
+          pos + Offset(math.cos(angle), math.sin(angle)) * (nr + 40);
+      final formulaAlpha = (isActive ? 1.0 : 0.5) * fade;
+      final scale = isActive ? 1.0 : 0.8;
+      _drawStructuralFormula(
         canvas,
-        metabolites[i],
-        lbl,
-        textColor.withValues(alpha: (isActive ? 1.0 : 0.6) * fade),
-        isActive ? 16.0 : 14.0,
-        isActive ? FontWeight.w600 : FontWeight.w400,
-        xAnchor: cosA > 0.3 ? 0.0 : (cosA < -0.3 ? 1.0 : 0.5),
+        i,
+        formulaCenter,
+        formulaAlpha,
+        scale,
+        cosA,
       );
     }
 
-    // Byproducts flying outward from active step.
+    // Byproducts flying outward.
     if (byproducts.containsKey(activeStep)) {
       final products = byproducts[activeStep]!;
       final angle = 2 * math.pi * activeStep / n + rotationAngle;
@@ -260,7 +260,7 @@ class _KrebsCyclePainter extends CustomPainter {
         for (var j = 0; j < products.length; j++) {
           final spread = (j - (products.length - 1) / 2) * 0.3;
           final fa = angle + spread;
-          final fd = radius + 45 + 30 * stepFraction;
+          final fd = radius + 65 + 30 * stepFraction;
           final fp = center + Offset(math.cos(fa), math.sin(fa)) * fd;
           final flyAlpha = (1.0 - stepFraction).clamp(0.0, 1.0);
           final cosF = math.cos(fa);
@@ -277,23 +277,12 @@ class _KrebsCyclePainter extends CustomPainter {
       }
     }
 
-    // "Citric Acid Cycle" label inside the visible arc.
-    _drawText(
-      canvas,
-      'Citric Acid\nCycle',
-      Offset(w * 0.22, h / 2),
-      subtleColor.withValues(alpha: 0.3),
-      18.0,
-      FontWeight.w500,
-      textAlign: TextAlign.center,
-    );
-
-    // Acetyl-CoA entry arrow (follows Citrate node as it rotates).
-    final ea = rotationAngle; // index 0: 2π * 0 / n + rotation
+    // Acetyl-CoA entry arrow.
+    final ea = rotationAngle;
     final ep = center + Offset(math.cos(ea), math.sin(ea)) * radius;
     if (ep.dx > -30) {
       final dir = Offset(math.cos(ea), math.sin(ea));
-      final aStart = center + dir * (radius + 55);
+      final aStart = center + dir * (radius + 75);
       final aEnd = center + dir * (radius + 18);
       canvas.drawLine(
         aStart,
@@ -303,8 +292,7 @@ class _KrebsCyclePainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2.0,
       );
-      final ha =
-          math.atan2(aEnd.dy - aStart.dy, aEnd.dx - aStart.dx);
+      final ha = math.atan2(aEnd.dy - aStart.dy, aEnd.dx - aStart.dx);
       canvas.drawPath(
         Path()
           ..moveTo(aEnd.dx, aEnd.dy)
@@ -317,16 +305,159 @@ class _KrebsCyclePainter extends CustomPainter {
           ..color = nodeColor.withValues(alpha: 0.5)
           ..style = PaintingStyle.fill,
       );
-      final cosE = math.cos(ea);
+      // Acetyl-CoA structural: CH₃-C(=O)-S-CoA
       _drawText(
         canvas,
-        'Acetyl-CoA',
+        'CH\u2083\u2013CO\u2013S\u2013CoA',
         aStart + dir * 12,
         nodeColor.withValues(alpha: 0.6),
-        13.0,
+        11.0,
         FontWeight.w500,
-        xAnchor: cosE > 0.3 ? 0.0 : (cosE < -0.3 ? 1.0 : 0.5),
+        xAnchor: math.cos(ea) > 0.3 ? 0.0 : (math.cos(ea) < -0.3 ? 1.0 : 0.5),
       );
+    }
+  }
+
+  /// Draws a simplified structural formula for the metabolite at [index].
+  /// Each formula shows the carbon backbone with key functional groups using
+  /// standard chemical notation (COOH, C=O, OH, CoA, etc.).
+  void _drawStructuralFormula(
+    Canvas canvas,
+    int index,
+    Offset center,
+    double alpha,
+    double scale,
+    double cosAngle,
+  ) {
+    final color = textColor.withValues(alpha: alpha);
+    final fs = 9.0 * scale;
+
+    // Horizontal anchor: formulas are drawn left-to-right from an anchor.
+    // Shift so the formula doesn't overlap the node.
+    final xAnchor = cosAngle > 0.3 ? 0.0 : (cosAngle < -0.3 ? 1.0 : 0.5);
+
+    switch (index) {
+      case 0: // Citrate: HOOC-CH₂-C(OH)(COOH)-CH₂-COOH
+        _drawFormulaLine(canvas, center, [
+          'HOOC', '\u2013', 'CH\u2082', '\u2013', 'C', '(OH)', '\u2013',
+          'CH\u2082', '\u2013', 'COOH',
+        ], color, fs, xAnchor);
+        // Mark the middle C with a branch: COOH going up
+        final midX = center.dx + (xAnchor == 0.0 ? 42 * scale : -12 * scale);
+        _drawText(canvas, '|', Offset(midX, center.dy - 6 * scale),
+            color.withValues(alpha: alpha * 0.6), fs * 0.8, FontWeight.w400);
+        _drawText(canvas, 'COOH', Offset(midX, center.dy - 14 * scale),
+            color, fs * 0.8, FontWeight.w500);
+        break;
+
+      case 1: // Isocitrate: HOOC-CH₂-CH(COOH)-CH(OH)-COOH
+        _drawFormulaLine(canvas, center, [
+          'HOOC', '\u2013', 'CH\u2082', '\u2013', 'CH', '\u2013', 'CH',
+          '(OH)', '\u2013', 'COOH',
+        ], color, fs, xAnchor);
+        final midX = center.dx + (xAnchor == 0.0 ? 36 * scale : -18 * scale);
+        _drawText(canvas, '|', Offset(midX, center.dy - 6 * scale),
+            color.withValues(alpha: alpha * 0.6), fs * 0.8, FontWeight.w400);
+        _drawText(canvas, 'COOH', Offset(midX, center.dy - 14 * scale),
+            color, fs * 0.8, FontWeight.w500);
+        break;
+
+      case 2: // α-Ketoglutarate: HOOC-CH₂-CH₂-CO-COOH
+        _drawFormulaLine(canvas, center, [
+          'HOOC', '\u2013', 'CH\u2082', '\u2013', 'CH\u2082', '\u2013',
+          'CO', '\u2013', 'COOH',
+        ], color, fs, xAnchor);
+        // Double-bond indicator above CO
+        final coX = center.dx + (xAnchor == 0.0 ? 48 * scale : -8 * scale);
+        _drawText(canvas, '=O', Offset(coX, center.dy - 10 * scale),
+            color, fs * 0.8, FontWeight.w500);
+        break;
+
+      case 3: // Succinyl-CoA: HOOC-CH₂-CH₂-CO-S-CoA
+        _drawFormulaLine(canvas, center, [
+          'HOOC', '\u2013', 'CH\u2082', '\u2013', 'CH\u2082', '\u2013',
+          'CO', '\u2013', 'S', '\u2013', 'CoA',
+        ], color, fs, xAnchor);
+        break;
+
+      case 4: // Succinate: HOOC-CH₂-CH₂-COOH
+        _drawFormulaLine(canvas, center, [
+          'HOOC', '\u2013', 'CH\u2082', '\u2013', 'CH\u2082', '\u2013',
+          'COOH',
+        ], color, fs, xAnchor);
+        break;
+
+      case 5: // Fumarate: HOOC-CH=CH-COOH (trans)
+        _drawFormulaLine(canvas, center, [
+          'HOOC', '\u2013', 'CH', '=', 'CH', '\u2013', 'COOH',
+        ], color, fs, xAnchor);
+        break;
+
+      case 6: // Malate: HOOC-CH₂-CH(OH)-COOH
+        _drawFormulaLine(canvas, center, [
+          'HOOC', '\u2013', 'CH\u2082', '\u2013', 'CH', '(OH)', '\u2013',
+          'COOH',
+        ], color, fs, xAnchor);
+        break;
+
+      case 7: // Oxaloacetate: HOOC-CO-CH₂-COOH
+        _drawFormulaLine(canvas, center, [
+          'HOOC', '\u2013', 'CO', '\u2013', 'CH\u2082', '\u2013', 'COOH',
+        ], color, fs, xAnchor);
+        final coX = center.dx + (xAnchor == 0.0 ? 20 * scale : -32 * scale);
+        _drawText(canvas, '=O', Offset(coX, center.dy - 10 * scale),
+            color, fs * 0.8, FontWeight.w500);
+        break;
+    }
+  }
+
+  /// Renders a horizontal formula as a sequence of text segments.
+  void _drawFormulaLine(
+    Canvas canvas,
+    Offset center,
+    List<String> parts,
+    Color color,
+    double fontSize,
+    double xAnchor,
+  ) {
+    // Measure total width first.
+    double totalWidth = 0;
+    final widths = <double>[];
+    for (final part in parts) {
+      final tp = TextPainter(
+        text: TextSpan(
+          text: part,
+          style: TextStyle(
+            color: color,
+            fontSize: fontSize,
+            fontWeight: FontWeight.w500,
+            fontFamily: 'sans-serif',
+            height: 1.2,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      widths.add(tp.width);
+      totalWidth += tp.width;
+    }
+    double x = center.dx - totalWidth * xAnchor;
+    final y = center.dy;
+    for (var i = 0; i < parts.length; i++) {
+      final tp = TextPainter(
+        text: TextSpan(
+          text: parts[i],
+          style: TextStyle(
+            color: color,
+            fontSize: fontSize,
+            fontWeight: parts[i].length > 1 ? FontWeight.w500 : FontWeight.w400,
+            fontFamily: 'sans-serif',
+            height: 1.2,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(x, y - tp.height / 2));
+      x += widths[i];
     }
   }
 

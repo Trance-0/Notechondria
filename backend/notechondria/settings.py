@@ -84,6 +84,7 @@ INSTALLED_APPS = [
     'creators',
     'rest_framework',
     'rest_framework.authtoken',
+    'storages',
 ]
 
 MIDDLEWARE = [
@@ -279,6 +280,75 @@ MEDIA_URL = '/media/'
 
 # keep Django and nginx pointed at the same media directory regardless of DEBUG
 MEDIA_ROOT = env_path('DJANGO_PRODUCTION_MEDIA_ROOT', BASE_DIR / 'mediafiles')
+
+# ---------------------------------------------------------------------------
+# Cloudflare R2 storage (S3-compatible)
+# ---------------------------------------------------------------------------
+# When CLOUDFLARE_R2_BUCKET_NAME is set, both static and media files are
+# served from R2.  This is required on Render (no persistent disk) and
+# optional for Docker Compose (persistent volumes + nginx work fine).
+_R2_BUCKET = os.getenv('CLOUDFLARE_R2_BUCKET_NAME', '').strip()
+_R2_ACCOUNT_ID = os.getenv('CLOUDFLARE_R2_ACCOUNT_ID', '').strip()
+_R2_ACCESS_KEY = os.getenv('CLOUDFLARE_R2_ACCESS_KEY_ID', '').strip()
+_R2_SECRET_KEY = os.getenv('CLOUDFLARE_R2_SECRET_ACCESS_KEY', '').strip()
+_R2_CUSTOM_DOMAIN = os.getenv('CLOUDFLARE_R2_CUSTOM_DOMAIN', '').strip()
+
+if _R2_BUCKET:
+    # Validate that all required credentials are present.
+    _missing = [
+        name for name, val in [
+            ('CLOUDFLARE_R2_ACCOUNT_ID', _R2_ACCOUNT_ID),
+            ('CLOUDFLARE_R2_ACCESS_KEY_ID', _R2_ACCESS_KEY),
+            ('CLOUDFLARE_R2_SECRET_ACCESS_KEY', _R2_SECRET_KEY),
+        ] if not val
+    ]
+    if _missing:
+        raise RuntimeError(
+            f"Cloudflare R2 bucket is configured (CLOUDFLARE_R2_BUCKET_NAME={_R2_BUCKET!r}) "
+            f"but the following required env vars are missing: {', '.join(_missing)}"
+        )
+
+    # S3-compatible endpoint for Cloudflare R2.
+    _R2_ENDPOINT = f'https://{_R2_ACCOUNT_ID}.r2.cloudflarestorage.com'
+
+    # Public URL base.  When a Cloudflare R2 custom domain (or r2.dev
+    # subdomain) is set, use it.  Otherwise fall back to the S3 endpoint.
+    _R2_URL_BASE = f'https://{_R2_CUSTOM_DOMAIN}' if _R2_CUSTOM_DOMAIN else _R2_ENDPOINT
+
+    STORAGES = {
+        'default': {
+            'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage',
+            'OPTIONS': {
+                'bucket_name': _R2_BUCKET,
+                'endpoint_url': _R2_ENDPOINT,
+                'access_key': _R2_ACCESS_KEY,
+                'secret_key': _R2_SECRET_KEY,
+                'custom_domain': _R2_CUSTOM_DOMAIN or None,
+                'default_acl': None,
+                'location': 'media',
+                'file_overwrite': False,
+                'signature_version': 's3v4',
+                'region_name': 'auto',
+            },
+        },
+        'staticfiles': {
+            'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage',
+            'OPTIONS': {
+                'bucket_name': _R2_BUCKET,
+                'endpoint_url': _R2_ENDPOINT,
+                'access_key': _R2_ACCESS_KEY,
+                'secret_key': _R2_SECRET_KEY,
+                'custom_domain': _R2_CUSTOM_DOMAIN or None,
+                'default_acl': None,
+                'location': 'static',
+                'file_overwrite': True,
+                'signature_version': 's3v4',
+                'region_name': 'auto',
+            },
+        },
+    }
+    STATIC_URL = f'{_R2_URL_BASE}/static/'
+    MEDIA_URL = f'{_R2_URL_BASE}/media/'
 
 # Offline development tag
 OFFLINE = False
