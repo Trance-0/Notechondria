@@ -149,9 +149,9 @@ GITHUB_AUTHORIZED_REDIRECT_URI=
 GOOGLE_OAUTH_CLIENT_ID=
 GOOGLE_OAUTH_CLIENT_SECRET=
 GOOGLE_AUTHORIZED_REDIRECT_URI=
-APP_IMAGE=trancezero/notechondria:build-${BUILD_NUMBER}
-NGINX_IMAGE=trancezero/nginx:build-${BUILD_NUMBER}
-FRONTEND_IMAGE=trancezero/notechondria-frontend:build-${BUILD_NUMBER}
+APP_IMAGE=trancezero/notechondria:v0.1.9.${BUILD_NUMBER}
+NGINX_IMAGE=trancezero/nginx:v0.1.9.${BUILD_NUMBER}
+FRONTEND_IMAGE=trancezero/notechondria-frontend:v0.1.9.${BUILD_NUMBER}
 ```
 
 Important formatting notes:
@@ -249,6 +249,7 @@ The relevant files are:
 - `deployment/jenkins/scripts/deploy_backend.sh`
 - `deployment/jenkins/scripts/deploy_frontends.sh`
 - `deployment/jenkins/scripts/deploy_gateway.sh`
+- `deployment/docker/gateway/docker-compose.yml`
 - `deployment/render/scripts/render_backend_start.sh`
 - `docs/deployment/render_free_tier.md`
 
@@ -266,11 +267,18 @@ Each frontend app has its own standalone Compose stack:
 - `frontend/planner_app`
 - `frontend/portal_app`
 
-All frontend stacks connect to the shared Docker network:
+The gateway reverse proxy has its own Compose stack:
+
+- `deployment/docker/gateway`
+
+All frontend stacks and the gateway connect to the shared Docker network:
 
 - `NOTECHONDRIA_SHARED_NETWORK`, default `notechondria-shared`
-- backend `app` and backend `nginx` join that network
-- each frontend nginx container joins that network and proxies backend traffic to `http://nginx`
+- backend `app` and backend `nginx` join that network; `nginx` is aliased as `backend_nginx`
+- each frontend container joins that network with an alias (`editor_frontend`, `planner_frontend`, `portal_frontend`) and proxies backend traffic to `http://nginx`
+- the gateway resolves services by their network aliases
+
+The frontend and gateway deploy scripts use the individual per-app Compose files, not the root full-stack `docker-compose.yml`. The root file is intended for local all-in-one development only.
 
 Jenkins only needs Docker access. It does not need host `python` or host `pg_dump`.
 The Django container talks to PostgreSQL through the internal Compose service host `db`.
@@ -292,7 +300,7 @@ The backend entrypoint now runs `collectstatic --clear`, verifies that Django ad
 `prepare_env.sh` also normalizes `PRODUCTION_STATIC_ROOT` and `PRODUCTION_MEDIA_ROOT` to Linux-container-safe absolute paths so Windows-hosted Jenkins shells cannot accidentally leak host-style values such as `C:/...` into the container runtime.
 The test stage does not use the postgres container; it runs Django tests with `settings_test` directly in an app container without the production entrypoint.
 The app service must not mount a named volume over `/home/notechondria`, because that path contains the Django code copied into the image during build.
-The Jenkins build can tag images with the current build number using `APP_IMAGE`, `NGINX_IMAGE`, and `FRONTEND_IMAGE`, for example `trancezero/notechondria:build-${BUILD_NUMBER}`.
+The Jenkins build tags images with version and build number using `APP_IMAGE`, `NGINX_IMAGE`, and `FRONTEND_IMAGE`. The version is read from the `VERSION` file at the repo root by `prepare_env.sh`, producing tags like `v0.1.8.42` (`v<VERSION>.<BUILD_NUMBER>`). To bump the version, edit `VERSION` and commit. Each local Jenkins instance uses its own `BUILD_NUMBER`, so different machines produce distinct tags without conflicts.
 
 ### PostgreSQL volume behavior
 

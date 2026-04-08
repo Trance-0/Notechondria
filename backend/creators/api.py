@@ -425,6 +425,27 @@ class RegisterApiView(APIView):
         )
 
 
+class ValidateInvitationApiView(APIView):
+    """Check whether an invitation code is required and, if provided, valid.
+
+    Returns ``{"required": bool, "valid": bool}``.  The code is **not**
+    consumed — consumption happens during registration or OAuth sign-up.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        required = InvitationCode.objects.exists()
+        code = (request.data.get("invitation_code") or "").strip()
+        if not required:
+            return Response({"required": False, "valid": True})
+        if not code:
+            return Response({"required": True, "valid": False})
+        code_hash = InvitationCode.hash_code(code)
+        invite = InvitationCode.objects.filter(code_hash=code_hash).first()
+        valid = invite is not None and invite.is_valid()
+        return Response({"required": True, "valid": valid})
+
+
 class VerifyEmailApiView(APIView):
     permission_classes = [permissions.AllowAny]
 

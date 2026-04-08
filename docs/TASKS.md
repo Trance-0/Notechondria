@@ -15,6 +15,8 @@ Add items if
 
 For the bug you fixed on this round, create a new `<Pending-version>.<inc-numeral>.md` in ./docs/versions, move your finished item (delete the completed item in this file) to this new file, follow the templated defined in previous files.
 
+**Versioning rule:** On each update, increment the third digit in `./VERSION` (e.g. `0.1.8` -> `0.1.9`). The first two digits (`0.1`) are controlled by humans only — never change them. The `VERSION` file is read by `prepare_env.sh` to tag Docker images as `v<VERSION>.<BUILD_NUMBER>`.
+
 Let me know any environment variables need to be updated. After all edits are done, check every test passed. COMMIT and I will push after check.
 
 Always finish `> Urgent` tasks first if exists.
@@ -104,17 +106,17 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 ### Settings
 
-- [ ] Register windows
-  - [ ] First, check for Invitation code (implement that in backend, plain sha 256 and compare with the record added in backend admin site) (backend: `InvitationCode` model with SHA-256 hash, auto-hash on save, consume on use; required only when codes exist in DB) Note, the invitation code is separated from the email verification code. The invitation code is used for registering new users only for testing.
-  - [ ] back and confirm button (when confirm is clicked, verify the invitation code and move to the next window if successful)
-  - [ ] After invitation code is verified, Select one from the three: email, google, github
-  - [ ] When user selects google or github, show their corresponding redirect and implement that
-  - [ ] When user selects email, show the following form
-    - [ ] Input fields in the following order: Username (verify be distinct)
-    - [ ] Email, on the same row (email verification send button, verification),
-    - [ ] (only when invitation code is checked and not used in backend) Enable email verification (60s resend, 6 digit code with expiration, only store hash code in backend), we will set smtp params in environment variables. (backend: 6-digit codes stored as SHA-256 hash via `VerificationCode.generate_code()`, 60s cooldown in `ResendVerificationSerializer`)
-    - [ ] password, (with validation, 8 digit minimum with simple measurement for strong password), repeat password (backend: `RegisterSerializer` with username field, 8-char min, uppercase+lowercase+digit/special validation)
-    - [ ] Back, and register (frontend implementation) (new `_RegisterDialog` with username, email, password, confirm password, invitation code fields; client updated with new signature)
+- [x] Register windows
+  - [x] First, check for Invitation code (implement that in backend, plain sha 256 and compare with the record added in backend admin site) (backend: `InvitationCode` model with SHA-256 hash, auto-hash on save, consume on use; required only when codes exist in DB) Note, the invitation code is separated from the email verification code. The invitation code is used for registering new users only for testing.
+  - [x] back and confirm button (when confirm is clicked, verify the invitation code and move to the next window if successful)
+  - [x] After invitation code is verified, Select one from the three: email, google, github
+  - [x] When user selects google or github, show their corresponding redirect and implement that
+  - [x] When user selects email, show the following form
+    - [x] Input fields in the following order: Username (verify be distinct)
+    - [x] Email, on the same row (email verification send button, verification),
+    - [x] (only when invitation code is checked and not used in backend) Enable email verification (60s resend, 6 digit code with expiration, only store hash code in backend), we will set smtp params in environment variables. (backend: 6-digit codes stored as SHA-256 hash via `VerificationCode.generate_code()`, 60s cooldown in `ResendVerificationSerializer`)
+    - [x] password, (with validation, 8 digit minimum with simple measurement for strong password), repeat password (backend: `RegisterSerializer` with username field, 8-char min, uppercase+lowercase+digit/special validation)
+    - [x] Back, and register (frontend implementation) (new `_RegisterDialog` with username, email, password, confirm password, invitation code fields; client updated with new signature)
 
 > Urgent
 

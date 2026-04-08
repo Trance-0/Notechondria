@@ -14,6 +14,7 @@ from creators.api import (
     SessionApiView,
     SocialAccountListApiView,
     SocialAccountUnlinkApiView,
+    ValidateInvitationApiView,
     VerifyEmailApiView,
 )
 from notes.api import (
@@ -52,6 +53,7 @@ from notes.api import (
 urlpatterns = [
     path("health/", FrontPageApiView.health, name="health"),
     path("auth/register/", RegisterApiView.as_view(), name="register"),
+    path("auth/validate-invitation/", ValidateInvitationApiView.as_view(), name="validate-invitation"),
     path("auth/verify-email/", VerifyEmailApiView.as_view(), name="verify-email"),
     path("auth/resend-verification/", ResendVerificationApiView.as_view(), name="resend-verification"),
     path("auth/login/", LoginApiView.as_view(), name="login"),

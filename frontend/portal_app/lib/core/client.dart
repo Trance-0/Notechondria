@@ -104,7 +104,13 @@ abstract class NotechondriaClient {
   Future<Map<String, dynamic>> unsubscribeCourse(String token, int courseId);
   Future<Map<String, dynamic>> openCourse(String token, int courseId);
   Future<Map<String, dynamic>> restoreTemplateCourses(String token);
-  Future<Map<String, dynamic>> register(String email, String password);
+  Future<Map<String, dynamic>> register(
+    String username,
+    String email,
+    String password, {
+    String invitationCode = '',
+  });
+  Future<Map<String, dynamic>> validateInvitation(String invitationCode);
   Future<Map<String, dynamic>> verifyEmail(String email, String code);
   Future<Map<String, dynamic>> resendVerification(String email);
   Future<Map<String, dynamic>> login(String email, String password);
@@ -670,11 +676,33 @@ class HttpNotechondriaClient implements NotechondriaClient {
   }
 
   @override
-  Future<Map<String, dynamic>> register(String email, String password) async {
+  Future<Map<String, dynamic>> register(
+    String username,
+    String email,
+    String password, {
+    String invitationCode = '',
+  }) async {
     final uri = _uri('/auth/register/');
+    final payload = <String, dynamic>{
+      'username': username,
+      'email': email,
+      'password': password,
+    };
+    if (invitationCode.isNotEmpty) {
+      payload['invitation_code'] = invitationCode;
+    }
+    final response = await _post(uri, payload: payload);
+    return Map<String, dynamic>.from(
+      await _decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> validateInvitation(String invitationCode) async {
+    final uri = _uri('/auth/validate-invitation/');
     final response = await _post(
       uri,
-      payload: {'email': email, 'password': password},
+      payload: {'invitation_code': invitationCode},
     );
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),

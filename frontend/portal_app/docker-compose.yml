@@ -19,7 +19,9 @@ services:
     ports:
       - ${PORTAL_FRONTEND_HOST_PORT:-9063}:80
     networks:
-      - notechondria-shared
+      notechondria-shared:
+        aliases:
+          - portal_frontend
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/healthz || exit 1"]
       interval: 10s

@@ -12,6 +12,7 @@ class _SettingsPage extends StatefulWidget {
     required this.onSave,
     required this.onLogout,
     required this.onRegister,
+    required this.onValidateInvitation,
     required this.onVerify,
     required this.onResendVerification,
     required this.onLogin,
@@ -60,6 +61,7 @@ class _SettingsPage extends StatefulWidget {
     String password, {
     String invitationCode,
   }) onRegister;
+  final Future<Map<String, dynamic>> Function(String code) onValidateInvitation;
   final Future<ActionFeedback> Function(String email, String code) onVerify;
   final Future<ActionFeedback> Function(String email) onResendVerification;
   final Future<ActionFeedback> Function(String email, String password) onLogin;
@@ -69,8 +71,8 @@ class _SettingsPage extends StatefulWidget {
     String code,
     String password,
   ) onConfirmPasswordReset;
-  final VoidCallback? onGoogleLogin;
-  final VoidCallback? onGithubLogin;
+  final void Function(String invitationCode)? onGoogleLogin;
+  final void Function(String invitationCode)? onGithubLogin;
   final Future<void> Function(Map<String, dynamic> note) onRestoreDeletedNote;
   final Future<void> Function() onEmptyDeletedNotes;
   final Future<void> Function() onCopyLogs;
@@ -579,6 +581,7 @@ class _SettingsPageState extends State<_SettingsPage> {
               const SizedBox(height: 12),
               _AuthHub(
                 onRegister: widget.onRegister,
+                onValidateInvitation: widget.onValidateInvitation,
                 onVerify: widget.onVerify,
                 onResendVerification: widget.onResendVerification,
                 onLogin: widget.onLogin,

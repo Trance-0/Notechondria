@@ -90,6 +90,7 @@ class _AppShellState extends State<AppShell> {
   // ---------------------------------------------------------------------------
   int _selectedIndex = 0;
   bool _isLoading = true;
+  bool _showSplash = true;
   String? _errorMessage;
   String? _token;
   Map<String, dynamic>? _profile;
@@ -207,7 +208,7 @@ class _AppShellState extends State<AppShell> {
 
   Future<void> _bootstrapApp() async {
     _splashTimer = Timer(const Duration(seconds: 10), () {
-      if (mounted && _isLoading) setState(() => _isLoading = false);
+      if (mounted && _isLoading) setState(() { _isLoading = false; _showSplash = false; });
     });
     await _loadLocalState();
     // Check for OAuth callback before restoring session.
@@ -227,7 +228,7 @@ class _AppShellState extends State<AppShell> {
   // OAuth helpers
   // ---------------------------------------------------------------------------
 
-  Future<void> _launchOAuth(String provider) async {
+  Future<void> _launchOAuth(String provider, {String invitationCode = ''}) async {
     try {
       final config = await widget.client.getOAuthConfig();
       final providerConfig = Map<String, dynamic>.from(
@@ -239,9 +240,10 @@ class _AppShellState extends State<AppShell> {
         _appendUiLog('$provider OAuth not configured (missing client_id).');
         return;
       }
-      // Save redirect_uri so we can send it with the code exchange.
+      // Save redirect_uri and invitation code so we can send them with the code exchange.
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('oauth_redirect_uri', redirectUri);
+      await prefs.setString('oauth_invitation_code', invitationCode);
 
       final String authUrl;
       if (provider == 'google') {
@@ -284,14 +286,16 @@ class _AppShellState extends State<AppShell> {
 
     final prefs = await SharedPreferences.getInstance();
     final redirectUri = prefs.getString('oauth_redirect_uri') ?? '';
+    final invitationCode = prefs.getString('oauth_invitation_code') ?? '';
     await prefs.remove('oauth_redirect_uri');
+    await prefs.remove('oauth_invitation_code');
 
     try {
       final Map<String, dynamic> result;
       if (state == 'google') {
-        result = await widget.client.loginWithGoogle(code, redirectUri: redirectUri);
+        result = await widget.client.loginWithGoogle(code, redirectUri: redirectUri, invitationCode: invitationCode);
       } else {
-        result = await widget.client.loginWithGithub(code, redirectUri: redirectUri);
+        result = await widget.client.loginWithGithub(code, redirectUri: redirectUri, invitationCode: invitationCode);
       }
       await _applyAuthPayload(result);
       _appendUiLog('Signed in via ${state == 'google' ? 'Google' : 'GitHub'}.');
@@ -380,12 +384,6 @@ class _AppShellState extends State<AppShell> {
     await _LocalAppStore.clearSession();
   }
 
-  bool get _hasRenderableLocalState =>
-      (_frontPage?.isNotEmpty ?? false) ||
-      _courses.isNotEmpty ||
-      _localCourses.isNotEmpty ||
-      _localDrafts.isNotEmpty ||
-      _selectedIndex == 4;
 
   void _appendUiLog(String message) {
     final timestamp = DateTime.now().toIso8601String();
@@ -741,6 +739,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       _learnerNotesOffset = learnerNotes.length;
       _errorMessage = errors.isEmpty ? null : errors.first;
       _isLoading = false;
+      _showSplash = false;
     });
     if (updatedCache) {
       await _persistLocalCache();
@@ -3467,11 +3466,11 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 250),
       child: SelectionArea(
-        child: _isLoading && !_hasRenderableLocalState
+        child: _showSplash
             ? _SplashScreen(
                 appTitle: widget.appTitle,
                 onFinished: () {
-                  if (_isLoading) setState(() => _isLoading = false);
+                  setState(() { _showSplash = false; if (_isLoading) _isLoading = false; });
                 },
               )
             : Column(
@@ -3588,13 +3587,14 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           onSave: _updateSettings,
           onLogout: _logout,
           onRegister: _register,
+          onValidateInvitation: (code) => widget.client.validateInvitation(code),
           onVerify: _verify,
           onResendVerification: _resendVerification,
           onLogin: _login,
           onRequestPasswordReset: _requestPasswordReset,
           onConfirmPasswordReset: _confirmPasswordReset,
-          onGoogleLogin: () => _launchOAuth('google'),
-          onGithubLogin: () => _launchOAuth('github'),
+          onGoogleLogin: (invitationCode) => _launchOAuth('google', invitationCode: invitationCode),
+          onGithubLogin: (invitationCode) => _launchOAuth('github', invitationCode: invitationCode),
           onRestoreDeletedNote: _restoreDeletedNote,
           onEmptyDeletedNotes: _emptyDeletedNotes,
           onCopyLogs: _copyFrontendLogs,

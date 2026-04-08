@@ -5,6 +5,18 @@ OUTPUT_PATH=${1:-.env.deploy}
 SOURCE_PATH=${2:-}
 DEFAULT_FRONTEND_PUBLIC_ORIGIN="http://localhost:${FRONTEND_HOST_PORT:-9060}"
 
+# Read project version from VERSION file at repo root for image tagging.
+# Falls back to "0.0.0" when the file is missing.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="${SCRIPT_DIR}/../../.."
+VERSION_FILE="${REPO_ROOT}/VERSION"
+if [[ -f "$VERSION_FILE" ]]; then
+  PROJECT_VERSION="$(tr -d '\r\n' < "$VERSION_FILE")"
+else
+  PROJECT_VERSION="0.0.0"
+fi
+VERSION_TAG="v${PROJECT_VERSION}.${BUILD_NUMBER:-local}"
+
 normalize_container_path_value() {
   local value="${1:-}"
   local fallback="$2"
@@ -180,9 +192,9 @@ GITHUB_AUTHORIZED_REDIRECT_URI=${GITHUB_AUTHORIZED_REDIRECT_URI:-}
 GOOGLE_OAUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID:-}
 GOOGLE_OAUTH_CLIENT_SECRET=${GOOGLE_OAUTH_CLIENT_SECRET:-}
 GOOGLE_AUTHORIZED_REDIRECT_URI=${GOOGLE_AUTHORIZED_REDIRECT_URI:-}
-APP_IMAGE=${APP_IMAGE:-trancezero/notechondria:build-${BUILD_NUMBER:-local}}
-NGINX_IMAGE=${NGINX_IMAGE:-trancezero/nginx:build-${BUILD_NUMBER:-local}}
-FRONTEND_IMAGE=${FRONTEND_IMAGE:-trancezero/notechondria-frontend:build-${BUILD_NUMBER:-local}}
+APP_IMAGE=${APP_IMAGE:-trancezero/notechondria:${VERSION_TAG}}
+NGINX_IMAGE=${NGINX_IMAGE:-trancezero/nginx:${VERSION_TAG}}
+FRONTEND_IMAGE=${FRONTEND_IMAGE:-trancezero/notechondria-frontend:${VERSION_TAG}}
 DB_AUTO_REINIT_IF_MISMATCH=${DB_AUTO_REINIT_IF_MISMATCH:-False}
 EOF
 fi

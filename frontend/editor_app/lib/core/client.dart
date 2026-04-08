@@ -127,6 +127,7 @@ abstract class NotechondriaClient {
     String password, {
     String invitationCode = '',
   });
+  Future<Map<String, dynamic>> validateInvitation(String invitationCode);
   Future<Map<String, dynamic>> verifyEmail(String email, String code);
   Future<Map<String, dynamic>> resendVerification(String email);
   Future<Map<String, dynamic>> login(String email, String password);
@@ -758,6 +759,18 @@ class HttpNotechondriaClient implements NotechondriaClient {
       payload['invitation_code'] = invitationCode;
     }
     final response = await _post(uri, payload: payload);
+    return Map<String, dynamic>.from(
+      await _decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> validateInvitation(String invitationCode) async {
+    final uri = _uri('/auth/validate-invitation/');
+    final response = await _post(
+      uri,
+      payload: {'invitation_code': invitationCode},
+    );
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),
     );

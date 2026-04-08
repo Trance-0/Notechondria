@@ -1,0 +1,21 @@
+name: notechondria-gateway
+
+networks:
+  notechondria-shared:
+    external: true
+    name: ${NOTECHONDRIA_SHARED_NETWORK:-notechondria-shared}
+
+services:
+  gateway_nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "${ROOT_HTTP_PORT:-8080}:80"
+    volumes:
+      - ../nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - notechondria-shared
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12

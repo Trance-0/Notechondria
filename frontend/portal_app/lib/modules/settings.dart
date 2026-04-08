@@ -10,6 +10,7 @@ class _SettingsPage extends StatefulWidget {
     required this.onSave,
     required this.onLogout,
     required this.onRegister,
+    required this.onValidateInvitation,
     required this.onVerify,
     required this.onResendVerification,
     required this.onLogin,
@@ -50,8 +51,13 @@ class _SettingsPage extends StatefulWidget {
     String apiBaseUrl,
   ) onSave;
   final Future<void> Function() onLogout;
-  final Future<ActionFeedback> Function(String email, String password)
-      onRegister;
+  final Future<ActionFeedback> Function(
+    String username,
+    String email,
+    String password, {
+    String invitationCode,
+  }) onRegister;
+  final Future<Map<String, dynamic>> Function(String code) onValidateInvitation;
   final Future<ActionFeedback> Function(String email, String code) onVerify;
   final Future<ActionFeedback> Function(String email) onResendVerification;
   final Future<ActionFeedback> Function(String email, String password) onLogin;
@@ -61,8 +67,8 @@ class _SettingsPage extends StatefulWidget {
     String code,
     String password,
   ) onConfirmPasswordReset;
-  final VoidCallback? onGoogleLogin;
-  final VoidCallback? onGithubLogin;
+  final void Function(String invitationCode)? onGoogleLogin;
+  final void Function(String invitationCode)? onGithubLogin;
   final Future<void> Function(Map<String, dynamic> note) onRestoreDeletedNote;
   final Future<void> Function() onEmptyDeletedNotes;
   final Future<void> Function() onCopyLogs;
@@ -308,6 +314,7 @@ class _SettingsPageState extends State<_SettingsPage> {
           const SizedBox(height: 16),
           _AuthHub(
             onRegister: widget.onRegister,
+            onValidateInvitation: widget.onValidateInvitation,
             onVerify: widget.onVerify,
             onResendVerification: widget.onResendVerification,
             onLogin: widget.onLogin,
@@ -632,6 +639,7 @@ class _SettingsPageState extends State<_SettingsPage> {
 class _AuthHub extends StatelessWidget {
   const _AuthHub({
     required this.onRegister,
+    required this.onValidateInvitation,
     required this.onVerify,
     required this.onResendVerification,
     required this.onLogin,
@@ -641,8 +649,13 @@ class _AuthHub extends StatelessWidget {
     this.onGithubLogin,
   });
 
-  final Future<ActionFeedback> Function(String email, String password)
-      onRegister;
+  final Future<ActionFeedback> Function(
+    String username,
+    String email,
+    String password, {
+    String invitationCode,
+  }) onRegister;
+  final Future<Map<String, dynamic>> Function(String code) onValidateInvitation;
   final Future<ActionFeedback> Function(String email, String code) onVerify;
   final Future<ActionFeedback> Function(String email) onResendVerification;
   final Future<ActionFeedback> Function(String email, String password) onLogin;
@@ -652,8 +665,8 @@ class _AuthHub extends StatelessWidget {
     String code,
     String password,
   ) onConfirmPasswordReset;
-  final VoidCallback? onGoogleLogin;
-  final VoidCallback? onGithubLogin;
+  final void Function(String invitationCode)? onGoogleLogin;
+  final void Function(String invitationCode)? onGithubLogin;
 
   Future<void> _openDialog(BuildContext context, Widget dialog) {
     return showDialog<void>(
@@ -685,12 +698,12 @@ class _AuthHub extends StatelessWidget {
                 FilledButton(
                   onPressed: () => _openDialog(
                     context,
-                    _EmailPasswordDialog(
-                      title: 'Sign up',
-                      description:
-                          'Create an account with email and password. Verification code arrives by email or server log fallback.',
-                      submitLabel: 'Create account',
-                      onSubmit: onRegister,
+                    _RegistrationWizard(
+                      onValidateInvitation: onValidateInvitation,
+                      onRegister: onRegister,
+                      onResendVerification: onResendVerification,
+                      onGoogleLogin: onGoogleLogin,
+                      onGithubLogin: onGithubLogin,
                     ),
                   ),
                   child: const Text('Sign up'),
@@ -735,35 +748,249 @@ class _AuthHub extends StatelessWidget {
                 ),
               ],
             ),
-            if (onGoogleLogin != null || onGithubLogin != null) ...[
-              const SizedBox(height: 12),
-              const Divider(),
-              const SizedBox(height: 4),
-              const Text('Or continue with a social account:'),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  if (onGoogleLogin != null)
-                    OutlinedButton.icon(
-                      onPressed: onGoogleLogin,
-                      icon: const Icon(Icons.g_mobiledata, size: 22),
-                      label: const Text('Google'),
-                    ),
-                  if (onGithubLogin != null)
-                    OutlinedButton.icon(
-                      onPressed: onGithubLogin,
-                      icon: const Icon(Icons.code, size: 18),
-                      label: const Text('GitHub'),
-                    ),
-                ],
-              ),
-            ],
           ],
         ),
       ),
     );
+  }
+}
+
+/// Multi-step registration wizard.
+class _RegistrationWizard extends StatefulWidget {
+  const _RegistrationWizard({
+    required this.onValidateInvitation,
+    required this.onRegister,
+    required this.onResendVerification,
+    this.onGoogleLogin,
+    this.onGithubLogin,
+  });
+
+  final Future<Map<String, dynamic>> Function(String code) onValidateInvitation;
+  final Future<ActionFeedback> Function(
+    String username,
+    String email,
+    String password, {
+    String invitationCode,
+  }) onRegister;
+  final Future<ActionFeedback> Function(String email) onResendVerification;
+  final void Function(String invitationCode)? onGoogleLogin;
+  final void Function(String invitationCode)? onGithubLogin;
+
+  @override
+  State<_RegistrationWizard> createState() => _RegistrationWizardState();
+}
+
+class _RegistrationWizardState extends State<_RegistrationWizard> {
+  int _step = 0;
+  final _invitationController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  ActionFeedback? _feedback;
+  bool _submitting = false;
+  String _validatedInvitationCode = '';
+  bool _emailRegistered = false;
+  int _resendCooldown = 0;
+  Timer? _cooldownTimer;
+
+  @override
+  void dispose() {
+    _cooldownTimer?.cancel();
+    _invitationController.dispose();
+    _usernameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  void _startCooldown() {
+    _cooldownTimer?.cancel();
+    setState(() => _resendCooldown = 60);
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) { timer.cancel(); return; }
+      setState(() {
+        _resendCooldown--;
+        if (_resendCooldown <= 0) timer.cancel();
+      });
+    });
+  }
+
+  Future<void> _validateInvitation() async {
+    final code = _invitationController.text.trim();
+    setState(() { _submitting = true; _feedback = null; });
+    try {
+      final result = await widget.onValidateInvitation(code);
+      if (!mounted) return;
+      final required = result['required'] == true;
+      final valid = result['valid'] == true;
+      if (!required) {
+        setState(() { _submitting = false; _validatedInvitationCode = ''; _step = 1; });
+        return;
+      }
+      if (valid) {
+        setState(() { _submitting = false; _validatedInvitationCode = code; _step = 1; });
+      } else {
+        setState(() {
+          _submitting = false;
+          _feedback = const ActionFeedback(message: 'Invalid or expired invitation code.', isError: true);
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _feedback = ActionFeedback(message: e.toString().replaceFirst('Exception: ', ''), isError: true);
+      });
+    }
+  }
+
+  String? _validateEmailForm() {
+    if (_usernameController.text.trim().isEmpty) return 'Username is required.';
+    if (_emailController.text.trim().isEmpty) return 'Email is required.';
+    final pw = _passwordController.text;
+    if (pw.length < 8) return 'Password must be at least 8 characters.';
+    if (!pw.contains(RegExp(r'[A-Z]')) || !pw.contains(RegExp(r'[a-z]')) || !pw.contains(RegExp(r'[^a-zA-Z]'))) {
+      return 'Password needs uppercase, lowercase, and a digit or special character.';
+    }
+    if (pw != _confirmPasswordController.text) return 'Passwords do not match.';
+    return null;
+  }
+
+  Future<void> _submitEmailRegistration() async {
+    final error = _validateEmailForm();
+    if (error != null) { setState(() { _feedback = ActionFeedback(message: error, isError: true); }); return; }
+    setState(() { _submitting = true; _feedback = null; });
+    final feedback = await widget.onRegister(
+      _usernameController.text.trim(), _emailController.text.trim(), _passwordController.text,
+      invitationCode: _validatedInvitationCode,
+    );
+    if (!mounted) return;
+    setState(() { _submitting = false; _feedback = feedback; if (!feedback.isError) _emailRegistered = true; });
+    if (!feedback.isError) _startCooldown();
+  }
+
+  Future<void> _resendCode() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) return;
+    setState(() { _submitting = true; _feedback = null; });
+    final feedback = await widget.onResendVerification(email);
+    if (!mounted) return;
+    setState(() { _submitting = false; _feedback = feedback; });
+    if (!feedback.isError) _startCooldown();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(_stepTitle),
+      content: SizedBox(
+        width: 400,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_step == 0) _buildInvitationStep(),
+              if (_step == 1) _buildMethodStep(),
+              if (_step == 2) _buildEmailFormStep(),
+              if (_feedback != null) ...[const SizedBox(height: 12), _FeedbackText(feedback: _feedback!)],
+            ],
+          ),
+        ),
+      ),
+      actions: _buildActions(),
+    );
+  }
+
+  String get _stepTitle {
+    switch (_step) {
+      case 0: return 'Invitation code';
+      case 1: return 'Choose sign-up method';
+      case 2: return _emailRegistered ? 'Verify your email' : 'Create account';
+      default: return 'Sign up';
+    }
+  }
+
+  Widget _buildInvitationStep() {
+    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text('Enter an invitation code to continue registration.'),
+      const SizedBox(height: 16),
+      TextField(
+        controller: _invitationController, textInputAction: TextInputAction.done,
+        onSubmitted: (_) => _submitting ? null : _validateInvitation(),
+        decoration: const InputDecoration(labelText: 'Invitation code', border: OutlineInputBorder()),
+      ),
+    ]);
+  }
+
+  Widget _buildMethodStep() {
+    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text('How would you like to register?'),
+      const SizedBox(height: 16),
+      SizedBox(width: double.infinity, child: FilledButton.icon(
+        onPressed: () => setState(() { _step = 2; _feedback = null; }),
+        icon: const Icon(Icons.email_outlined), label: const Text('Register with email'),
+      )),
+      if (widget.onGoogleLogin != null) ...[const SizedBox(height: 10), SizedBox(width: double.infinity, child: OutlinedButton.icon(
+        onPressed: () { widget.onGoogleLogin!(_validatedInvitationCode); Navigator.of(context).pop(); },
+        icon: const Icon(Icons.g_mobiledata, size: 22), label: const Text('Continue with Google'),
+      ))],
+      if (widget.onGithubLogin != null) ...[const SizedBox(height: 10), SizedBox(width: double.infinity, child: OutlinedButton.icon(
+        onPressed: () { widget.onGithubLogin!(_validatedInvitationCode); Navigator.of(context).pop(); },
+        icon: const Icon(Icons.code, size: 18), label: const Text('Continue with GitHub'),
+      ))],
+    ]);
+  }
+
+  Widget _buildEmailFormStep() {
+    if (_emailRegistered) {
+      return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('A 6-digit verification code was sent to ${_emailController.text.trim()}. '
+            'Enter it on the "Verify email" dialog to activate your account.'),
+        const SizedBox(height: 12),
+        Align(alignment: Alignment.centerRight, child: TextButton(
+          onPressed: _submitting || _resendCooldown > 0 ? null : _resendCode,
+          child: Text(_resendCooldown > 0 ? 'Resend code (${_resendCooldown}s)' : 'Resend code'),
+        )),
+      ]);
+    }
+    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text('A verification code will be sent to your email after registration.'),
+      const SizedBox(height: 16),
+      TextField(controller: _usernameController, textInputAction: TextInputAction.next,
+        decoration: const InputDecoration(labelText: 'Username', helperText: 'Letters, numbers, hyphens, underscores.', border: OutlineInputBorder())),
+      const SizedBox(height: 12),
+      TextField(controller: _emailController, keyboardType: TextInputType.emailAddress, textInputAction: TextInputAction.next,
+        decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder())),
+      const SizedBox(height: 12),
+      TextField(controller: _passwordController, obscureText: true, textInputAction: TextInputAction.next,
+        decoration: const InputDecoration(labelText: 'Password', helperText: 'Min 8 chars, uppercase + lowercase + digit/special.', border: OutlineInputBorder())),
+      const SizedBox(height: 12),
+      TextField(controller: _confirmPasswordController, obscureText: true, textInputAction: TextInputAction.done,
+        onSubmitted: (_) => _submitting ? null : _submitEmailRegistration(),
+        decoration: const InputDecoration(labelText: 'Confirm password', border: OutlineInputBorder())),
+    ]);
+  }
+
+  List<Widget> _buildActions() {
+    switch (_step) {
+      case 0: return [
+        TextButton(onPressed: _submitting ? null : () => Navigator.of(context).pop(), child: const Text('Close')),
+        FilledButton(onPressed: _submitting ? null : _validateInvitation, child: Text(_submitting ? 'Checking...' : 'Confirm')),
+      ];
+      case 1: return [
+        TextButton(onPressed: () => setState(() { _step = 0; _feedback = null; }), child: const Text('Back')),
+      ];
+      case 2:
+        if (_emailRegistered) return [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close'))];
+        return [
+          TextButton(onPressed: _submitting ? null : () => setState(() { _step = 1; _feedback = null; }), child: const Text('Back')),
+          FilledButton(onPressed: _submitting ? null : _submitEmailRegistration, child: Text(_submitting ? 'Creating...' : 'Register')),
+        ];
+      default: return [];
+    }
   }
 }
 
