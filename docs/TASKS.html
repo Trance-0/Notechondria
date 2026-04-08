@@ -203,17 +203,17 @@ Create startup animation. Repeating Citric acid cycle (part of respiration proce
 <ul>
 <li><input disabled="" type="checkbox" checked=""/>
 When editor/planner/portal is opened, start the animation.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+The animation text is too small, Try to make the animation rotates (citric acid cycle) axis at left center of the screen. And show each step by rotating the cycle to the middle of the screen. Align all text horizontally (Do not rotate the text, just move the text along the circle).</li>
 </ul>
 </li>
 <li><input disabled="" type="checkbox" checked=""/>
 Create other transitional animation for page transitions (fade in/out, slide in/out, etc.)
 <ul>
 <li><input disabled="" type="checkbox" checked=""/>
-slide in animation not found for transitions from note view to note editor</li>
+create slide in animation for transitions from <strong>note view</strong> to <strong>note editor</strong></li>
 <li><input disabled="" type="checkbox" checked=""/>
 fade in for each loaded cards, from top to bottom</li>
-<li><input disabled="" type="checkbox" checked=""/>
-slide in from right and fade in animation for category view (for each category items)</li>
 </ul>
 </li>
 <li><input disabled="" type="checkbox" checked=""/>
@@ -231,6 +231,10 @@ In Edit category, besides category name, add a selector for course icon (select 
 In vertical view, the navbar item, where shows <code>Notechondria Editor</code> should be removed and replace with current folder name <code>Inbox</code>, <code>All notes</code>, etc.</li>
 <li><input disabled="" type="checkbox"/>
 Implement lazy loading for the note list, do not load all notes at once.</li>
+<li><input disabled="" type="checkbox"/>
+Note that currently the offline ui will create two inbox folder that cannot be deleted.</li>
+<li><input disabled="" type="checkbox"/>
+Directly remove the delete button for the default <code>inbox</code> folder. Replace with helper text that it cannot be deleted.</li>
 </ul>
 <h4 id="search"><a class="header" href="#search">Search</a></h4>
 <h3 id="note-preview"><a class="header" href="#note-preview">Note preview</a></h3>
@@ -249,6 +253,8 @@ Add a lower right add button (the same as add notes) for inserting attachment (i
 Google Chorme password manager is still not detecting the login widget and auto fill, find out why and fix it.</li>
 <li><input disabled="" type="checkbox"/>
 Add few other options on the same line as <code>Logout</code> button. It should be arranged as <code>Change email</code>, <code>Change password</code>, <code>Logout</code>.</li>
+<li><input disabled="" type="checkbox"/>
+Add social link validation, must be url.</li>
 </ul>
 <h4 id="editor-preferences"><a class="header" href="#editor-preferences">Editor Preferences</a></h4>
 <h2 id="planner"><a class="header" href="#planner">Planner</a></h2>
@@ -340,7 +346,11 @@ Add registration via Github, use Github App api (env variables are defined in <c
 </li>
 <li>
 <p><input disabled="" type="checkbox" checked=""/>
-Allow existing users to bind their social accounts and login using them, currently support github and google accounts.</p>
+Allow existing users to bind their social accounts and login using them, currently support github and google accounts. (put in ui for the after login, show their binding accounts belows the social link (one line for google, one line for github. If no binding account, show the button to trigger the binding process (Online account settings widget), if user has binding accounts, show the button to trigger switch binding third party accounts))</p>
+</li>
+<li>
+<p><input disabled="" type="checkbox" checked=""/>
+Implement login via third party services (Github, Google) reject, if the account is not registered. Show the error window for user to register account first.</p>
 </li>
 <li>
 <p><input disabled="" type="checkbox" checked=""/>
