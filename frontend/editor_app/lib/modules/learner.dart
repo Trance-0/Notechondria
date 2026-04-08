@@ -160,7 +160,7 @@ class _LearnerPageState extends State<_LearnerPage> {
       detail['title']?.toString() ?? 'Untitled note',
       detail['description']?.toString() ?? '',
     );
-    await showDialog<void>(
+    await _showSlideInDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (context) => _NoteEditorDialog(
@@ -324,16 +324,19 @@ class _LearnerPageState extends State<_LearnerPage> {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 12),
-              for (final draft in localDrafts)
-                _LearnerNoteCard(
-                  note: draft,
-                  apiBaseUrl: widget.apiBaseUrl,
-                  isLocalDraft: true,
-                  canSync: widget.isAuthenticated,
-                  onOpen: () => _openViewer(draft),
-                  onSync: widget.isAuthenticated
-                      ? () => widget.onSyncLocalDraft(draft)
-                      : null,
+              for (var i = 0; i < localDrafts.length; i++)
+                _StaggeredFadeIn(
+                  index: i,
+                  child: _LearnerNoteCard(
+                    note: localDrafts[i],
+                    apiBaseUrl: widget.apiBaseUrl,
+                    isLocalDraft: true,
+                    canSync: widget.isAuthenticated,
+                    onOpen: () => _openViewer(localDrafts[i]),
+                    onSync: widget.isAuthenticated
+                        ? () => widget.onSyncLocalDraft(localDrafts[i])
+                        : null,
+                  ),
                 ),
               const SizedBox(height: 20),
             ],
@@ -362,11 +365,14 @@ class _LearnerPageState extends State<_LearnerPage> {
                   ),
                 ),
               ),
-            for (final note in widget.notes)
-              _LearnerNoteCard(
-                note: note,
-                apiBaseUrl: widget.apiBaseUrl,
-                onOpen: () => _openViewer(note),
+            for (var i = 0; i < widget.notes.length; i++)
+              _StaggeredFadeIn(
+                index: i,
+                child: _LearnerNoteCard(
+                  note: widget.notes[i],
+                  apiBaseUrl: widget.apiBaseUrl,
+                  onOpen: () => _openViewer(widget.notes[i]),
+                ),
               ),
             if (widget.hasMoreNotes) ...[
               const SizedBox(height: 12),

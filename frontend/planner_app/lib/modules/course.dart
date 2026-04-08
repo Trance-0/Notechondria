@@ -422,88 +422,92 @@ class _CoursePageState extends State<_CoursePage> {
                 ),
               ),
             ),
-          for (final course in visibleCourses)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Card(
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  onTap: () => _openCourse(course),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final compact = constraints.maxWidth < 720;
-                        final content = Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    course['title']?.toString() ?? 'Course',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleLarge
-                                        ?.copyWith(fontWeight: FontWeight.w700),
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: course['is_subscribed'] == true
-                                      ? () => widget.onUnsubscribe(course)
-                                      : (widget.isAuthenticated
-                                          ? () => widget.onSubscribe(course)
-                                          : () => _openCourse(course)),
-                                  child: Text(
-                                    course['is_subscribed'] == true
-                                        ? 'Unsubscribe'
-                                        : (widget.isAuthenticated
-                                            ? 'Subscribe'
-                                            : 'Open'),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Text(
-                              course['description']?.toString() ?? '',
-                              maxLines: compact ? 3 : 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                _CourseChip(
-                                  label:
-                                      '${course['subscriber_count'] ?? 0} subscribed',
-                                ),
-                                if (course['is_local_course'] == true)
-                                  const _CourseChip(label: 'Local only'),
-                              ],
-                            ),
-                          ],
-                        );
-                        if (compact) {
-                          return Column(
+          for (var i = 0; i < visibleCourses.length; i++)
+            _StaggeredFadeIn(
+              index: i,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Card(
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () => _openCourse(visibleCourses[i]),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final course = visibleCourses[i];
+                          final compact = constraints.maxWidth < 720;
+                          final content = Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _courseImage(course, height: 112),
-                              const SizedBox(height: 14),
-                              content,
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      course['title']?.toString() ?? 'Course',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleLarge
+                                          ?.copyWith(fontWeight: FontWeight.w700),
+                                    ),
+                                  ),
+                                  TextButton(
+                                    onPressed: course['is_subscribed'] == true
+                                        ? () => widget.onUnsubscribe(course)
+                                        : (widget.isAuthenticated
+                                            ? () => widget.onSubscribe(course)
+                                            : () => _openCourse(course)),
+                                    child: Text(
+                                      course['is_subscribed'] == true
+                                          ? 'Unsubscribe'
+                                          : (widget.isAuthenticated
+                                              ? 'Subscribe'
+                                              : 'Open'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Text(
+                                course['description']?.toString() ?? '',
+                                maxLines: compact ? 3 : 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 10),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  _CourseChip(
+                                    label:
+                                        '${course['subscriber_count'] ?? 0} subscribed',
+                                  ),
+                                  if (course['is_local_course'] == true)
+                                    const _CourseChip(label: 'Local only'),
+                                ],
+                              ),
                             ],
                           );
-                        }
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _courseImage(course, width: 168, height: 112),
-                            const SizedBox(width: 16),
-                            Expanded(child: content),
-                          ],
-                        );
-                      },
+                          if (compact) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _courseImage(course, height: 112),
+                                const SizedBox(height: 14),
+                                content,
+                              ],
+                            );
+                          }
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _courseImage(course, width: 168, height: 112),
+                              const SizedBox(width: 16),
+                              Expanded(child: content),
+                            ],
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ),
@@ -685,26 +689,29 @@ class _CoursePageState extends State<_CoursePage> {
                 child: Text('No modules have been mapped for this course yet.'),
               ),
             ),
-          for (final module in modules)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Card(
-                child: ListTile(
-                  title: Text(module['title']?.toString() ?? 'Module'),
-                  subtitle: Text(
-                    module['description']?.toString() ?? '',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+          for (var i = 0; i < modules.length; i++)
+            _StaggeredFadeIn(
+              index: i,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Card(
+                  child: ListTile(
+                    title: Text(modules[i]['title']?.toString() ?? 'Module'),
+                    subtitle: Text(
+                      modules[i]['description']?.toString() ?? '',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: Text(
+                      '${(modules[i]['notes'] as List<dynamic>? ?? const []).length} note(s)',
+                    ),
+                    onTap: () {
+                      setState(() {
+                        _openedModule = modules[i];
+                        _moduleVisibleNotes = 4;
+                      });
+                    },
                   ),
-                  trailing: Text(
-                    '${(module['notes'] as List<dynamic>? ?? const []).length} note(s)',
-                  ),
-                  onTap: () {
-                    setState(() {
-                      _openedModule = module;
-                      _moduleVisibleNotes = 4;
-                    });
-                  },
                 ),
               ),
             ),
@@ -837,21 +844,24 @@ class _DiscussionBoard extends StatelessWidget {
             ),
           )
         else ...[
-          for (final note in visible)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Card(
-                child: ListTile(
-                  title: Text(note['title']?.toString() ?? 'Untitled note'),
-                  subtitle: Text(
-                    note['description']?.toString() ??
-                        note['excerpt']?.toString() ??
-                        '',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+          for (var i = 0; i < visible.length; i++)
+            _StaggeredFadeIn(
+              index: i,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Card(
+                  child: ListTile(
+                    title: Text(visible[i]['title']?.toString() ?? 'Untitled note'),
+                    subtitle: Text(
+                      visible[i]['description']?.toString() ??
+                          visible[i]['excerpt']?.toString() ??
+                          '',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: const Icon(Icons.arrow_forward_outlined),
+                    onTap: () => onOpenNote(visible[i]),
                   ),
-                  trailing: const Icon(Icons.arrow_forward_outlined),
-                  onTap: () => onOpenNote(note),
                 ),
               ),
             ),

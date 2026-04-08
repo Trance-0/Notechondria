@@ -417,6 +417,102 @@ List<String> _validateMarkdownSpec(String markdown) {
   return warnings;
 }
 
+/// Animates a child with a staggered fade + optional slide entrance.
+///
+/// Use [index] to stagger items in a list: each successive item starts its
+/// animation [staggerDelay] later (default 50ms per index). The slide comes
+/// from the direction specified by [slideOffset] (default: 4% from the bottom).
+class _StaggeredFadeIn extends StatefulWidget {
+  const _StaggeredFadeIn({
+    required this.index,
+    required this.child,
+    this.duration = const Duration(milliseconds: 350),
+    this.staggerDelay = const Duration(milliseconds: 50),
+    this.slideOffset = const Offset(0, 0.04),
+  });
+
+  final int index;
+  final Widget child;
+  final Duration duration;
+  final Duration staggerDelay;
+  final Offset slideOffset;
+
+  @override
+  State<_StaggeredFadeIn> createState() => _StaggeredFadeInState();
+}
+
+class _StaggeredFadeInState extends State<_StaggeredFadeIn>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _opacity;
+  late final Animation<Offset> _slide;
+  Timer? _delayTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: widget.duration);
+    _opacity = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
+    _slide = Tween<Offset>(begin: widget.slideOffset, end: Offset.zero)
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    final delay = widget.staggerDelay * widget.index;
+    if (delay > Duration.zero) {
+      _delayTimer = Timer(delay, () {
+        if (mounted) _controller.forward();
+      });
+    } else {
+      _controller.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _delayTimer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _opacity,
+      child: SlideTransition(
+        position: _slide,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+/// Shows a fullscreen dialog with a slide-from-right + fade entrance.
+Future<T?> _showSlideInDialog<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  bool barrierDismissible = true,
+}) {
+  return showGeneralDialog<T>(
+    context: context,
+    barrierDismissible: barrierDismissible,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    barrierColor: Colors.black54,
+    transitionDuration: const Duration(milliseconds: 300),
+    pageBuilder: (context, animation, secondaryAnimation) => builder(context),
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      final curved = CurvedAnimation(parent: animation, curve: Curves.easeOut);
+      return FadeTransition(
+        opacity: curved,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0.08, 0),
+            end: Offset.zero,
+          ).animate(curved),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
 /// Parses `$...$` and `$$...$$` LaTeX spans into markdown elements.
 class _LatexInlineSyntax extends md.InlineSyntax {
   _LatexInlineSyntax() : super(r'(?<!\\)\$\$([^$]+)\$\$|(?<!\\)\$([^$\n]+)\$');

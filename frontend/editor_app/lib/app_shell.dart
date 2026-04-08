@@ -3046,11 +3046,15 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
                           .toList(growable: false);
                       return Column(
                         children: [
-                          for (final cat in pinned)
-                            Padding(
-                              padding:
-                                  const EdgeInsets.fromLTRB(12, 0, 12, 4),
-                              child: _buildDrawerCategoryRow(cat),
+                          for (var ci = 0; ci < pinned.length; ci++)
+                            _StaggeredFadeIn(
+                              index: ci,
+                              slideOffset: const Offset(0.06, 0),
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(12, 0, 12, 4),
+                                child: _buildDrawerCategoryRow(pinned[ci]),
+                              ),
                             ),
                           Expanded(
                             child: ReorderableListView.builder(
@@ -3073,14 +3077,20 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
                                 final cat = draggable[index];
                                 final key = ValueKey(
                                     'dcat-${cat['id']?.toString() ?? index}');
-                                return Padding(
+                                return KeyedSubtree(
                                   key: key,
-                                  padding:
-                                      const EdgeInsets.only(bottom: 4),
-                                  child: ReorderableDragStartListener(
-                                    index: index,
-                                    child:
-                                        _buildDrawerCategoryRow(cat),
+                                  child: _StaggeredFadeIn(
+                                    index: index + pinned.length,
+                                    slideOffset: const Offset(0.06, 0),
+                                    child: Padding(
+                                      padding:
+                                          const EdgeInsets.only(bottom: 4),
+                                      child: ReorderableDragStartListener(
+                                        index: index,
+                                        child:
+                                            _buildDrawerCategoryRow(cat),
+                                      ),
+                                    ),
                                   ),
                                 );
                               },
@@ -3249,11 +3259,15 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
                               .toList(growable: false);
                           return Column(
                             children: [
-                              for (final cat in pinned)
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                      12, 0, 12, 4),
-                                  child: _buildCategoryRow(cat),
+                              for (var ci = 0; ci < pinned.length; ci++)
+                                _StaggeredFadeIn(
+                                  index: ci,
+                                  slideOffset: const Offset(0.06, 0),
+                                  child: Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                        12, 0, 12, 4),
+                                    child: _buildCategoryRow(pinned[ci]),
+                                  ),
                                 ),
                               Expanded(
                                 child: ReorderableListView.builder(
@@ -3281,12 +3295,18 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
                                     final cat = draggable[index];
                                     final key = ValueKey(
                                         'cat-${cat['id']?.toString() ?? index}');
-                                    return Padding(
+                                    return KeyedSubtree(
                                       key: key,
-                                      padding: const EdgeInsets.only(bottom: 4),
-                                      child: ReorderableDragStartListener(
-                                        index: index,
-                                        child: _buildCategoryRow(cat),
+                                      child: _StaggeredFadeIn(
+                                        index: index + pinned.length,
+                                        slideOffset: const Offset(0.06, 0),
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(bottom: 4),
+                                          child: ReorderableDragStartListener(
+                                            index: index,
+                                            child: _buildCategoryRow(cat),
+                                          ),
+                                        ),
                                       ),
                                     );
                                   },

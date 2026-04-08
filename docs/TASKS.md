@@ -24,7 +24,12 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 > Urgent
 
 - [x] Create startup animation. Repeating Citric acid cycle (part of respiration process). You may need to check for the detail for how the chemicals are loaded and cycled. Make a simple flutter animation to demonstrate that, and make smooth quit when frontend resources are loaded or timeout (set to 10 seconds Max).
+  - [x] When editor/planner/portal is opened, start the animation.
 - [x] Create other transitional animation for page transitions (fade in/out, slide in/out, etc.)
+  - [x] slide in animation not found for transitions from note view to note editor
+  - [x] fade in for each loaded cards, from top to bottom
+  - [x] slide in from right and fade in animation for category view (for each category items)
+- [x] Admin (perhaps other test accounts) avatar was reset on each deploy, only reset if it is empty, do not replace admin avatar if preset.
 
 ## Editor
 
@@ -100,10 +105,16 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 ### Settings
 
 - [ ] Register windows
-  - [x] Username, email, password (with validation, 8 digit minimum with simple measurement for strong password), repeat password (backend: `RegisterSerializer` with username field, 8-char min, uppercase+lowercase+digit/special validation)
-  - [x] Invitation code (implement that in backend, plain sha 256 and compare with the record added in backend admin site) (backend: `InvitationCode` model with SHA-256 hash, auto-hash on save, consume on use; required only when codes exist in DB) Note, the invitation code is separated from the email verification code. The invitation code is used for registering new users only for testing.
-  - [x] (only when invitation code is checked and not used in backend) Enable email verification (60s resend, 6 digit code with expiration, only store hash code in backend), we will set smtp params in environment variables. (backend: 6-digit codes stored as SHA-256 hash via `VerificationCode.generate_code()`, 60s cooldown in `ResendVerificationSerializer`)
-  - [x] Register (frontend implementation) (new `_RegisterDialog` with username, email, password, confirm password, invitation code fields; client updated with new signature)
+  - [ ] First, check for Invitation code (implement that in backend, plain sha 256 and compare with the record added in backend admin site) (backend: `InvitationCode` model with SHA-256 hash, auto-hash on save, consume on use; required only when codes exist in DB) Note, the invitation code is separated from the email verification code. The invitation code is used for registering new users only for testing.
+  - [ ] back and confirm button (when confirm is clicked, verify the invitation code and move to the next window if successful)
+  - [ ] After invitation code is verified, Select one from the three: email, google, github
+  - [ ] When user selects google or github, show their corresponding redirect and implement that
+  - [ ] When user selects email, show the following form
+    - [ ] Input fields in the following order: Username (verify be distinct)
+    - [ ] Email, on the same row (email verification send button, verification),
+    - [ ] (only when invitation code is checked and not used in backend) Enable email verification (60s resend, 6 digit code with expiration, only store hash code in backend), we will set smtp params in environment variables. (backend: 6-digit codes stored as SHA-256 hash via `VerificationCode.generate_code()`, 60s cooldown in `ResendVerificationSerializer`)
+    - [ ] password, (with validation, 8 digit minimum with simple measurement for strong password), repeat password (backend: `RegisterSerializer` with username field, 8-char min, uppercase+lowercase+digit/special validation)
+    - [ ] Back, and register (frontend implementation) (new `_RegisterDialog` with username, email, password, confirm password, invitation code fields; client updated with new signature)
 
 > Urgent
 
@@ -127,4 +138,4 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 ## Documentation pages
 
-- [ ] New version is added in doc, update the docs descriptions.
+- [ ] New `versions` is added in doc, update the docs descriptions and include the contents in docs.

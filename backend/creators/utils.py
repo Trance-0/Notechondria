@@ -95,7 +95,7 @@ def ensure_creator_avatar(creator: Creator) -> Creator:
 
 def ensure_creator(user: User) -> Creator:
     creator, created = Creator.objects.get_or_create(user_id=user)
-    if created or not creator.image or not creator_has_image_file(creator):
+    if created or not creator.image:
         attach_default_profile_image(creator)
         creator.save()
     return creator

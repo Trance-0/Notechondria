@@ -73,18 +73,20 @@ class _FrontPage extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Portal shell',
-                  style: Theme.of(context)
-                      .textTheme
-                      .headlineSmall
-                      ?.copyWith(fontWeight: FontWeight.w800),
+        _StaggeredFadeIn(
+          index: 0,
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Portal shell',
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 10),
                 Text(
@@ -115,8 +117,11 @@ class _FrontPage extends StatelessWidget {
             ),
           ),
         ),
+        ),
         const SizedBox(height: 18),
-        LayoutBuilder(
+        _StaggeredFadeIn(
+          index: 1,
+          child: LayoutBuilder(
           builder: (context, constraints) {
             final wide = constraints.maxWidth >= 860;
             final children = [
@@ -155,8 +160,11 @@ class _FrontPage extends StatelessWidget {
             );
           },
         ),
+        ),
         const SizedBox(height: 18),
-        Card(
+        _StaggeredFadeIn(
+          index: 2,
+          child: Card(
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -185,6 +193,7 @@ class _FrontPage extends StatelessWidget {
               ],
             ),
           ),
+        ),
         ),
       ],
     );
