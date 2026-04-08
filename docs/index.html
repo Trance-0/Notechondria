@@ -198,9 +198,25 @@
 </blockquote>
 <ul>
 <li><input disabled="" type="checkbox" checked=""/>
-Create startup animation. Repeating Citric acid cycle (part of respiration process). You may need to check for the detail for how the chemicals are loaded and cycled. Make a simple flutter animation to demonstrate that, and make smooth quit when frontend resources are loaded or timeout (set to 10 seconds Max).</li>
+Create startup animation. Repeating Citric acid cycle (part of respiration process). You may need to check for the detail for how the chemicals are loaded and cycled. Make a simple flutter animation to demonstrate that, and make smooth quit when frontend resources are loaded or timeout (set to 10 seconds Max).
+<ul>
 <li><input disabled="" type="checkbox" checked=""/>
-Create other transitional animation for page transitions (fade in/out, slide in/out, etc.)</li>
+When editor/planner/portal is opened, start the animation.</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Create other transitional animation for page transitions (fade in/out, slide in/out, etc.)
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+slide in animation not found for transitions from note view to note editor</li>
+<li><input disabled="" type="checkbox" checked=""/>
+fade in for each loaded cards, from top to bottom</li>
+<li><input disabled="" type="checkbox" checked=""/>
+slide in from right and fade in animation for category view (for each category items)</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Admin (perhaps other test accounts) avatar was reset on each deploy, only reset if it is empty, do not replace admin avatar if preset.</li>
 </ul>
 <h2 id="editor"><a class="header" href="#editor">Editor</a></h2>
 <h3 id="sidebarnavigation"><a class="header" href="#sidebarnavigation">Sidebar/Navigation</a></h3>
@@ -283,14 +299,29 @@ Embed from /planner/Activity view</li>
 <li><input disabled="" type="checkbox"/>
 Register windows
 <ul>
-<li><input disabled="" type="checkbox" checked=""/>
-Username, email, password (with validation, 8 digit minimum with simple measurement for strong password), repeat password (backend: <code>RegisterSerializer</code> with username field, 8-char min, uppercase+lowercase+digit/special validation)</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Invitation code (implement that in backend, plain sha 256 and compare with the record added in backend admin site) (backend: <code>InvitationCode</code> model with SHA-256 hash, auto-hash on save, consume on use; required only when codes exist in DB) Note, the invitation code is separated from the email verification code. The invitation code is used for registering new users only for testing.</li>
-<li><input disabled="" type="checkbox" checked=""/>
+<li><input disabled="" type="checkbox"/>
+First, check for Invitation code (implement that in backend, plain sha 256 and compare with the record added in backend admin site) (backend: <code>InvitationCode</code> model with SHA-256 hash, auto-hash on save, consume on use; required only when codes exist in DB) Note, the invitation code is separated from the email verification code. The invitation code is used for registering new users only for testing.</li>
+<li><input disabled="" type="checkbox"/>
+back and confirm button (when confirm is clicked, verify the invitation code and move to the next window if successful)</li>
+<li><input disabled="" type="checkbox"/>
+After invitation code is verified, Select one from the three: email, google, github</li>
+<li><input disabled="" type="checkbox"/>
+When user selects google or github, show their corresponding redirect and implement that</li>
+<li><input disabled="" type="checkbox"/>
+When user selects email, show the following form
+<ul>
+<li><input disabled="" type="checkbox"/>
+Input fields in the following order: Username (verify be distinct)</li>
+<li><input disabled="" type="checkbox"/>
+Email, on the same row (email verification send button, verification),</li>
+<li><input disabled="" type="checkbox"/>
 (only when invitation code is checked and not used in backend) Enable email verification (60s resend, 6 digit code with expiration, only store hash code in backend), we will set smtp params in environment variables. (backend: 6-digit codes stored as SHA-256 hash via <code>VerificationCode.generate_code()</code>, 60s cooldown in <code>ResendVerificationSerializer</code>)</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Register (frontend implementation) (new <code>_RegisterDialog</code> with username, email, password, confirm password, invitation code fields; client updated with new signature)</li>
+<li><input disabled="" type="checkbox"/>
+password, (with validation, 8 digit minimum with simple measurement for strong password), repeat password (backend: <code>RegisterSerializer</code> with username field, 8-char min, uppercase+lowercase+digit/special validation)</li>
+<li><input disabled="" type="checkbox"/>
+Back, and register (frontend implementation) (new <code>_RegisterDialog</code> with username, email, password, confirm password, invitation code fields; client updated with new signature)</li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -338,7 +369,7 @@ Enable fully functional MCP, enable AI to interact with the site when user creat
 <h2 id="documentation-pages"><a class="header" href="#documentation-pages">Documentation pages</a></h2>
 <ul>
 <li><input disabled="" type="checkbox"/>
-New version is added in doc, update the docs descriptions.</li>
+New <code>versions</code> is added in doc, update the docs descriptions and include the contents in docs.</li>
 </ul>
 
                     </main>
