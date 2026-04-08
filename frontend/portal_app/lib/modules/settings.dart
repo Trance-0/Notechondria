@@ -113,6 +113,7 @@ class _SettingsPageState extends State<_SettingsPage> {
   ActionFeedback? _saveFeedback;
   bool _saving = false;
   bool _uploadingAvatar = false;
+  String? _socialLinkError;
 
   bool get _isAuthenticated => widget.profile != null && widget.settings != null;
 
@@ -181,10 +182,21 @@ class _SettingsPageState extends State<_SettingsPage> {
     super.dispose();
   }
 
+  bool _isValidUrl(String value) {
+    final uri = Uri.tryParse(value);
+    return uri != null && uri.hasScheme && (uri.scheme == 'http' || uri.scheme == 'https');
+  }
+
   Future<void> _submitSettings() async {
+    final social = _socialController.text.trim();
+    if (social.isNotEmpty && !_isValidUrl(social)) {
+      setState(() => _socialLinkError = 'Must be a valid URL (https://...)');
+      return;
+    }
     setState(() {
       _saving = true;
       _saveFeedback = null;
+      _socialLinkError = null;
     });
     final feedback = await widget.onSave(
       _usernameController.text.trim(),
@@ -403,10 +415,17 @@ class _SettingsPageState extends State<_SettingsPage> {
           const SizedBox(height: 12),
           TextField(
             controller: _socialController,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Social link',
-              border: OutlineInputBorder(),
+              hintText: 'https://...',
+              border: const OutlineInputBorder(),
+              errorText: _socialLinkError,
             ),
+            onChanged: (_) {
+              if (_socialLinkError != null) {
+                setState(() => _socialLinkError = null);
+              }
+            },
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(

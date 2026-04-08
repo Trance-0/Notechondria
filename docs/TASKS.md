@@ -37,14 +37,14 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 ### Sidebar/Navigation
 
-- [ ] In Edit category, besides category name, add a selector for course icon (select from flutter sources)
+- [x] In Edit category, besides category name, add a selector for course icon (select from flutter sources)
 
 ### Note view
 
-- [ ] In vertical view, the navbar item, where shows `Notechondria Editor` should be removed and replace with current folder name `Inbox`, `All notes`, etc.
+- [x] In vertical view, the navbar item, where shows `Notechondria Editor` should be removed and replace with current folder name `Inbox`, `All notes`, etc.
 - [ ] Implement lazy loading for the note list, do not load all notes at once.
-- [ ] Note that currently the offline ui will create two inbox folder that cannot be deleted.
-- [ ] Directly remove the delete button for the default `inbox` folder. Replace with helper text that it cannot be deleted.
+- [x] Note that currently the offline ui will create two inbox folder that cannot be deleted.
+- [x] Directly remove the delete button for the default `inbox` folder. Replace with helper text that it cannot be deleted.
 
 #### Search
 
@@ -66,7 +66,7 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 - [ ] Google Chorme password manager is still not detecting the login widget and auto fill, find out why and fix it.
 - [ ] Add few other options on the same line as `Logout` button. It should be arranged as `Change email`, `Change password`, `Logout`.
-- [ ] Add social link validation, must be url.
+- [x] Add social link validation, must be url.
 
 #### Editor Preferences
 

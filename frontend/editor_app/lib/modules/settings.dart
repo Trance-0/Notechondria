@@ -117,6 +117,7 @@ class _SettingsPageState extends State<_SettingsPage> {
   String _themeMode = 'S';
   ActionFeedback? _saveFeedback;
   bool _saving = false;
+  String? _socialLinkError;
   bool _uploadingAvatar = false;
   bool get _isAuthenticated => widget.profile != null && widget.settings != null;
 
@@ -375,11 +376,22 @@ class _SettingsPageState extends State<_SettingsPage> {
     }
   }
 
+  bool _isValidUrl(String value) {
+    final uri = Uri.tryParse(value);
+    return uri != null && uri.hasScheme && (uri.scheme == 'http' || uri.scheme == 'https');
+  }
+
   Future<void> _submitSettings() async {
     if (_saving) return;
+    final social = _socialController.text.trim();
+    if (social.isNotEmpty && !_isValidUrl(social)) {
+      setState(() => _socialLinkError = 'Must be a valid URL (https://...)');
+      return;
+    }
     setState(() {
       _saving = true;
       _saveFeedback = null;
+      _socialLinkError = null;
     });
     final feedback = await widget.onSave(
       _usernameController.text.trim(),
@@ -750,10 +762,17 @@ class _SettingsPageState extends State<_SettingsPage> {
         const SizedBox(height: 12),
         TextField(
           controller: _socialController,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Social link',
-            border: OutlineInputBorder(),
+            hintText: 'https://...',
+            border: const OutlineInputBorder(),
+            errorText: _socialLinkError,
           ),
+          onChanged: (_) {
+            if (_socialLinkError != null) {
+              setState(() => _socialLinkError = null);
+            }
+          },
         ),
       ],
     );

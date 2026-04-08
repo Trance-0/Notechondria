@@ -31,6 +31,7 @@ class Course(models.Model):
     title = models.CharField(max_length=120, null=False)
     description = models.TextField(blank=True, null=True)
     cover_image = models.ImageField(upload_to=course_cover_path, blank=True, null=True)
+    icon = models.IntegerField(blank=True, null=True, help_text="Material Icons codePoint")
     is_default = models.BooleanField(default=False, null=False)
     # Explicit sort order for sidebar rendering. Defaults to 0; the reorder
     # endpoint rewrites this to match the client-supplied ordering so users

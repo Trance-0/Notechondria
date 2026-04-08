@@ -321,6 +321,7 @@ class CourseSerializer(serializers.ModelSerializer):
             "title",
             "description",
             "cover_image_url",
+            "icon",
             "is_default",
             "sort_order",
             "owner",
@@ -376,6 +377,7 @@ class CourseWriteSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=120)
     description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     client_course_id = serializers.CharField(required=False, allow_blank=True, max_length=64)
+    icon = serializers.IntegerField(required=False, allow_null=True)
 
 
 class NoteWriteSerializer(serializers.Serializer):
@@ -558,10 +560,15 @@ class CourseListApiView(APIView):
                 creator_id=creator,
                 client_course_id=client_course_id,
             ).first()
+        icon = serializer.validated_data.get("icon")
         if existing is not None:
             existing.title = title
             existing.description = description
-            existing.save(update_fields=["title", "description", "last_edit"])
+            update_fields = ["title", "description", "last_edit"]
+            if "icon" in serializer.validated_data:
+                existing.icon = icon
+                update_fields.append("icon")
+            existing.save(update_fields=update_fields)
             course = existing
             response_status = status.HTTP_200_OK
         else:
@@ -571,6 +578,7 @@ class CourseListApiView(APIView):
                 slug=unique_course_slug(title, fallback="local-course"),
                 title=title,
                 description=description,
+                icon=icon,
                 is_default=False,
             )
             response_status = status.HTTP_201_CREATED
@@ -625,6 +633,8 @@ class CourseDetailApiView(APIView):
             course.title = serializer.validated_data["title"].strip()
         if "description" in serializer.validated_data:
             course.description = serializer.validated_data.get("description") or ""
+        if "icon" in serializer.validated_data:
+            course.icon = serializer.validated_data.get("icon")
         course.save()
         subscription_map = active_subscription_map(creator)
         return Response(

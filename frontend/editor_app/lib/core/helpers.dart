@@ -513,6 +513,109 @@ Future<T?> _showSlideInDialog<T>({
   );
 }
 
+/// Curated set of Material Icons for course category selection.
+/// Values are `Icons.*_outlined.codePoint` integers.
+const Map<String, IconData> _kCourseIcons = {
+  'Folder': Icons.folder_outlined,
+  'School': Icons.school_outlined,
+  'Science': Icons.science_outlined,
+  'Book': Icons.menu_book_outlined,
+  'Code': Icons.code_outlined,
+  'Music': Icons.music_note_outlined,
+  'Art': Icons.palette_outlined,
+  'Math': Icons.calculate_outlined,
+  'Language': Icons.translate_outlined,
+  'History': Icons.history_edu_outlined,
+  'Sports': Icons.sports_outlined,
+  'Health': Icons.health_and_safety_outlined,
+  'Business': Icons.business_center_outlined,
+  'Engineering': Icons.engineering_outlined,
+  'Psychology': Icons.psychology_outlined,
+  'Globe': Icons.public_outlined,
+  'Computer': Icons.computer_outlined,
+  'Camera': Icons.camera_alt_outlined,
+  'Star': Icons.star_outlined,
+  'Heart': Icons.favorite_outlined,
+  'Lightbulb': Icons.lightbulb_outlined,
+  'Work': Icons.work_outlined,
+  'Biotech': Icons.biotech_outlined,
+  'Architecture': Icons.architecture_outlined,
+  'Travel': Icons.flight_outlined,
+  'Law': Icons.gavel_outlined,
+  'Finance': Icons.account_balance_outlined,
+  'Nature': Icons.eco_outlined,
+  'Design': Icons.design_services_outlined,
+  'Writing': Icons.edit_note_outlined,
+};
+
+/// Resolves the icon for a course map. Falls back to type-based defaults.
+IconData _courseIcon(Map<String, dynamic> course) {
+  final codePoint = (course['icon'] as num?)?.toInt();
+  if (codePoint != null) {
+    return IconData(codePoint, fontFamily: 'MaterialIcons');
+  }
+  if (course['is_local_course'] == true) return Icons.folder_outlined;
+  if (course['is_default'] == true) return Icons.inbox_outlined;
+  return Icons.school_outlined;
+}
+
+/// Shows a grid dialog for picking a course icon. Returns the selected
+/// codePoint, or `null` if cancelled. Pass [currentCodePoint] to highlight
+/// the currently selected icon.
+Future<int?> _showIconPickerDialog(BuildContext context, {int? currentCodePoint}) {
+  return showDialog<int>(
+    context: context,
+    builder: (ctx) {
+      final colorScheme = Theme.of(ctx).colorScheme;
+      return AlertDialog(
+        title: const Text('Choose icon'),
+        content: SizedBox(
+          width: 360,
+          child: GridView.count(
+            crossAxisCount: 5,
+            shrinkWrap: true,
+            mainAxisSpacing: 4,
+            crossAxisSpacing: 4,
+            children: _kCourseIcons.entries.map((entry) {
+              final isSelected = entry.value.codePoint == currentCodePoint;
+              return Tooltip(
+                message: entry.key,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => Navigator.of(ctx).pop(entry.value.codePoint),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? colorScheme.primaryContainer
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      border: isSelected
+                          ? Border.all(color: colorScheme.primary, width: 2)
+                          : null,
+                    ),
+                    child: Icon(
+                      entry.value,
+                      color: isSelected
+                          ? colorScheme.onPrimaryContainer
+                          : colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
 /// Parses `$...$` and `$$...$$` LaTeX spans into markdown elements.
 class _LatexInlineSyntax extends md.InlineSyntax {
   _LatexInlineSyntax() : super(r'(?<!\\)\$\$([^$]+)\$\$|(?<!\\)\$([^$\n]+)\$');

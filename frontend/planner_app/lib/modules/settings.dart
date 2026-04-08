@@ -117,6 +117,7 @@ class _SettingsPageState extends State<_SettingsPage> {
   ActionFeedback? _saveFeedback;
   bool _saving = false;
   bool _uploadingAvatar = false;
+  String? _socialLinkError;
 
   bool get _isAuthenticated => widget.profile != null && widget.settings != null;
 
@@ -197,10 +198,21 @@ class _SettingsPageState extends State<_SettingsPage> {
     super.dispose();
   }
 
+  bool _isValidUrl(String value) {
+    final uri = Uri.tryParse(value);
+    return uri != null && uri.hasScheme && (uri.scheme == 'http' || uri.scheme == 'https');
+  }
+
   Future<void> _submitSettings() async {
+    final social = _socialController.text.trim();
+    if (social.isNotEmpty && !_isValidUrl(social)) {
+      setState(() => _socialLinkError = 'Must be a valid URL (https://...)');
+      return;
+    }
     setState(() {
       _saving = true;
       _saveFeedback = null;
+      _socialLinkError = null;
     });
     final deadlineTimeWeight =
         double.tryParse(_deadlineTimeWeightController.text.trim()) ?? 1.0;

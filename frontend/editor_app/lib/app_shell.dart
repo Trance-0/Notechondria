@@ -709,6 +709,19 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       errors.add(error.toString().replaceFirst('Exception: ', ''));
     }
 
+    // If the remote courses include a default (Inbox) category, drop the
+    // local default to avoid a duplicate Inbox row in the sidebar.
+    if (courses.any((c) => c['is_default'] == true)) {
+      final hadLocalDefault =
+          _localCourses.any((c) => c['is_default'] == true);
+      if (hadLocalDefault) {
+        _localCourses = _localCourses
+            .where((c) => c['is_default'] != true)
+            .toList(growable: false);
+        await _persistLocalCourses();
+      }
+    }
+
     final selectedCourse = _chooseDefaultCourse(
       remoteCourses: courses,
       localCourses: _localCourses,
@@ -1460,7 +1473,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
   // ---------------------------------------------------------------------------
 
   /// Creates a new category. Cloud if signed in, otherwise local.
-  Future<ActionFeedback> _createCategory(String title) async {
+  Future<ActionFeedback> _createCategory(String title, {int? icon}) async {
     final trimmed = title.trim();
     if (trimmed.isEmpty) {
       return const ActionFeedback(
@@ -1472,6 +1485,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         final created = await widget.client.createCourse(token, {
           'title': trimmed,
           'description': '',
+          if (icon != null) 'icon': icon,
         });
         final decorated = _decorateRemoteCourse(created);
         setState(() {
@@ -1481,6 +1495,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         _appendUiLog("Created category '$trimmed'.");
       } else {
         final localCourse = _buildLocalCourse(title: trimmed);
+        if (icon != null) localCourse['icon'] = icon;
         setState(() {
           _localCourses = [..._localCourses, localCourse];
         });
@@ -1495,11 +1510,12 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     }
   }
 
-  /// Renames a category. Handles local-only and cloud courses.
-  Future<ActionFeedback> _renameCategory(
+  /// Updates a category title and/or icon. Handles local-only and cloud courses.
+  Future<ActionFeedback> _updateCategory(
     Map<String, dynamic> course,
-    String newTitle,
-  ) async {
+    String newTitle, {
+    int? icon,
+  }) async {
     final trimmed = newTitle.trim();
     if (trimmed.isEmpty) {
       return const ActionFeedback(
@@ -1507,7 +1523,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     }
     if (course['is_default'] == true) {
       return const ActionFeedback(
-          message: 'The default category cannot be renamed.', isError: true);
+          message: 'The default category cannot be edited.', isError: true);
     }
     final courseId = (course['id'] as num?)?.toInt();
     final isLocal = _isLocalCourse(course);
@@ -1516,11 +1532,15 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         setState(() {
           _localCourses = _localCourses
               .map((item) => item['id'] == course['id']
-                  ? {...item, 'title': trimmed}
+                  ? {...item, 'title': trimmed, 'icon': icon}
                   : item)
               .toList(growable: false);
           if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
-            _selectedCourse = {...?_selectedCourse, 'title': trimmed};
+            _selectedCourse = {
+              ...?_selectedCourse,
+              'title': trimmed,
+              'icon': icon,
+            };
           }
         });
         await _persistLocalCourses();
@@ -1528,12 +1548,12 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         final token = _token;
         if (token == null || token.isEmpty || courseId == null) {
           return const ActionFeedback(
-              message: 'Sign in to rename cloud categories.', isError: true);
+              message: 'Sign in to edit cloud categories.', isError: true);
         }
         final updated = await widget.client.updateCourse(
           token,
           courseId,
-          {'title': trimmed},
+          {'title': trimmed, 'icon': icon},
         );
         final decorated = _decorateRemoteCourse(updated);
         setState(() {
@@ -1548,11 +1568,11 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         });
         await _persistLocalCache();
       }
-      _appendUiLog("Renamed category to '$trimmed'.");
-      return ActionFeedback(message: "Renamed to '$trimmed'.");
+      _appendUiLog("Updated category '$trimmed'.");
+      return ActionFeedback(message: "Updated '$trimmed'.");
     } catch (error) {
       final message = error.toString().replaceFirst('Exception: ', '');
-      _appendUiLog('Rename category failed: $message');
+      _appendUiLog('Update category failed: $message');
       return ActionFeedback(message: message, isError: true);
     }
   }
@@ -1719,98 +1739,62 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     }
   }
 
-  /// Shows a simple dialog to create a new category.
+  /// Shows a dialog to create a new category with optional icon.
   Future<void> _promptCreateCategory() async {
     final controller = TextEditingController();
-    final title = await showDialog<String>(
+    final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('New category'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Category name',
-            border: OutlineInputBorder(),
-          ),
-          onSubmitted: (value) => Navigator.of(ctx).pop(value),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(controller.text),
-            child: const Text('Create'),
-          ),
-        ],
-      ),
+      builder: (ctx) => _CreateCategoryDialog(controller: controller),
     );
     controller.dispose();
-    if (title == null || title.trim().isEmpty) return;
-    await _createCategory(title);
+    if (result == null) return;
+    final title = result['title'] as String? ?? '';
+    if (title.trim().isEmpty) return;
+    final icon = result['icon'] as int?;
+    await _createCategory(title, icon: icon);
   }
 
-  /// Shows an edit dialog for a category (rename + delete).
+  /// Shows an edit dialog for a category (rename + icon + delete).
   Future<void> _promptEditCategory(Map<String, dynamic> course) async {
     if (course['is_default'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('The default category cannot be edited.'),
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.inbox_outlined),
+              const SizedBox(width: 8),
+              Text(course['title']?.toString() ?? 'Inbox'),
+            ],
+          ),
+          content: const Text(
+            'This is the default category. It cannot be renamed or deleted.\n\n'
+            'Notes that lose their category are automatically moved here.',
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK'),
+            ),
+          ],
         ),
       );
       return;
     }
     final controller =
         TextEditingController(text: course['title']?.toString() ?? '');
-    final result = await showDialog<String>(
+    final currentIcon = (course['icon'] as num?)?.toInt();
+    final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Edit category'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: controller,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Category name',
-                border: OutlineInputBorder(),
-              ),
-              onSubmitted: (value) => Navigator.of(ctx).pop('rename:$value'),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Deleting moves all notes to the default category.',
-              style: Theme.of(ctx).textTheme.bodySmall,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop('delete'),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(ctx).colorScheme.error,
-            ),
-            child: const Text('Delete'),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.of(ctx).pop('rename:${controller.text}'),
-            child: const Text('Rename'),
-          ),
-        ],
+      builder: (ctx) => _EditCategoryDialog(
+        controller: controller,
+        initialIcon: currentIcon,
       ),
     );
     controller.dispose();
     if (result == null) return;
-    if (result == 'delete') {
+    final action = result['action'] as String;
+    if (action == 'delete') {
       final confirmed = await _confirmWithDelay(
         title: 'Delete category?',
         message:
@@ -1824,8 +1808,10 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           );
         }
       }
-    } else if (result.startsWith('rename:')) {
-      final feedback = await _renameCategory(course, result.substring(7));
+    } else if (action == 'save') {
+      final newTitle = result['title'] as String? ?? '';
+      final newIcon = result['icon'] as int?;
+      final feedback = await _updateCategory(course, newTitle, icon: newIcon);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(feedback.message)),
@@ -3077,10 +3063,21 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
 
   /// Compact (mobile/narrow) layout with a hamburger drawer for navigation.
   Widget _buildCompactScaffold(BuildContext context) {
+    // Show current folder/category name instead of app title.
+    String compactTitle;
+    if (_selectedIndex == 1) {
+      if (_selectedCategoryId != null) {
+        compactTitle = _selectedCourse?['title']?.toString() ?? 'Category';
+      } else {
+        compactTitle = 'All Notes';
+      }
+    } else {
+      compactTitle = widget.appTitle;
+    }
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
-        title: Text(widget.appTitle),
+        title: Text(compactTitle),
         backgroundColor: Colors.transparent,
         leading: Builder(
           builder: (ctx) => IconButton(
@@ -3275,11 +3272,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         _promptEditCategory(cat);
       },
       child: _SidebarItem(
-        icon: cat['is_local_course'] == true
-            ? Icons.folder_outlined
-            : (cat['is_default'] == true
-                ? Icons.inbox_outlined
-                : Icons.school_outlined),
+        icon: _courseIcon(cat),
         label: cat['title']?.toString() ?? 'Category',
         selected: _selectedCategoryId == (cat['id'] as num?)?.toInt(),
         onTap: () {
@@ -3648,5 +3641,178 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       default:
         return const SizedBox.shrink();
     }
+  }
+}
+
+/// Dialog for creating a new category with optional icon.
+class _CreateCategoryDialog extends StatefulWidget {
+  const _CreateCategoryDialog({required this.controller});
+  final TextEditingController controller;
+
+  @override
+  State<_CreateCategoryDialog> createState() => _CreateCategoryDialogState();
+}
+
+class _CreateCategoryDialogState extends State<_CreateCategoryDialog> {
+  int? _selectedIcon;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('New category'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: widget.controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'Category name',
+              border: OutlineInputBorder(),
+            ),
+            onSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Text('Icon:', style: Theme.of(context).textTheme.bodyMedium),
+              const SizedBox(width: 12),
+              ActionChip(
+                avatar: Icon(
+                  _selectedIcon != null
+                      ? IconData(_selectedIcon!, fontFamily: 'MaterialIcons')
+                      : Icons.folder_outlined,
+                  size: 20,
+                ),
+                label: Text(_selectedIcon != null ? 'Change' : 'Choose'),
+                onPressed: () async {
+                  final picked = await _showIconPickerDialog(
+                    context,
+                    currentCodePoint: _selectedIcon,
+                  );
+                  if (picked != null) setState(() => _selectedIcon = picked);
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: const Text('Create'),
+        ),
+      ],
+    );
+  }
+
+  void _submit() {
+    Navigator.of(context).pop({
+      'title': widget.controller.text,
+      'icon': _selectedIcon,
+    });
+  }
+}
+
+/// Dialog for editing a category (rename + icon + delete).
+class _EditCategoryDialog extends StatefulWidget {
+  const _EditCategoryDialog({
+    required this.controller,
+    this.initialIcon,
+  });
+  final TextEditingController controller;
+  final int? initialIcon;
+
+  @override
+  State<_EditCategoryDialog> createState() => _EditCategoryDialogState();
+}
+
+class _EditCategoryDialogState extends State<_EditCategoryDialog> {
+  late int? _selectedIcon;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedIcon = widget.initialIcon;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Edit category'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: widget.controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'Category name',
+              border: OutlineInputBorder(),
+            ),
+            onSubmitted: (_) => _save(),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Text('Icon:', style: Theme.of(context).textTheme.bodyMedium),
+              const SizedBox(width: 12),
+              ActionChip(
+                avatar: Icon(
+                  _selectedIcon != null
+                      ? IconData(_selectedIcon!, fontFamily: 'MaterialIcons')
+                      : Icons.school_outlined,
+                  size: 20,
+                ),
+                label: Text(_selectedIcon != null ? 'Change' : 'Choose'),
+                onPressed: () async {
+                  final picked = await _showIconPickerDialog(
+                    context,
+                    currentCodePoint: _selectedIcon,
+                  );
+                  if (picked != null) setState(() => _selectedIcon = picked);
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Deleting moves all notes to the default category.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () =>
+              Navigator.of(context).pop({'action': 'delete'}),
+          style: TextButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.error,
+          ),
+          child: const Text('Delete'),
+        ),
+        FilledButton(
+          onPressed: _save,
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+
+  void _save() {
+    Navigator.of(context).pop({
+      'action': 'save',
+      'title': widget.controller.text,
+      'icon': _selectedIcon,
+    });
   }
 }
