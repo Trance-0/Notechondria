@@ -191,8 +191,17 @@
 </ul>
 <p>For the bug you fixed on this round, create a new <code>&lt;Pending-version&gt;.&lt;inc-numeral&gt;.md</code> in ./docs/versions, move your finished item (delete the completed item in this file) to this new file, follow the templated defined in previous files.</p>
 <p>Let me know any environment variables need to be updated. After all edits are done, check every test passed. COMMIT and I will push after check.</p>
-<p>Always finish urgent tasks first if exists.</p>
+<p>Always finish <code>&gt; Urgent</code> tasks first if exists.</p>
 <p>PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK</p>
+<blockquote>
+<p>Urgent</p>
+</blockquote>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Create startup animation. Repeating Citric acid cycle (part of respiration process). You may need to check for the detail for how the chemicals are loaded and cycled. Make a simple flutter animation to demonstrate that, and make smooth quit when frontend resources are loaded or timeout (set to 10 seconds Max).</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Create other transitional animation for page transitions (fade in/out, slide in/out, etc.)</li>
+</ul>
 <h2 id="editor"><a class="header" href="#editor">Editor</a></h2>
 <h3 id="sidebarnavigation"><a class="header" href="#sidebarnavigation">Sidebar/Navigation</a></h3>
 <ul>
@@ -200,6 +209,12 @@
 In Edit category, besides category name, add a selector for course icon (select from flutter sources)</li>
 </ul>
 <h3 id="note-view"><a class="header" href="#note-view">Note view</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"/>
+In vertical view, the navbar item, where shows <code>Notechondria Editor</code> should be removed and replace with current folder name <code>Inbox</code>, <code>All notes</code>, etc.</li>
+<li><input disabled="" type="checkbox"/>
+Implement lazy loading for the note list, do not load all notes at once.</li>
+</ul>
 <h4 id="search"><a class="header" href="#search">Search</a></h4>
 <h3 id="note-preview"><a class="header" href="#note-preview">Note preview</a></h3>
 <h3 id="note-editor"><a class="header" href="#note-editor">Note editor</a></h3>
@@ -212,6 +227,12 @@ Add a lower right add button (the same as add notes) for inserting attachment (i
 <h5 id="markdown-editor-1"><a class="header" href="#markdown-editor-1">Markdown editor</a></h5>
 <h3 id="editor-settings"><a class="header" href="#editor-settings">Editor Settings</a></h3>
 <h4 id="login-and-account-info"><a class="header" href="#login-and-account-info">Login and account info</a></h4>
+<ul>
+<li><input disabled="" type="checkbox"/>
+Google Chorme password manager is still not detecting the login widget and auto fill, find out why and fix it.</li>
+<li><input disabled="" type="checkbox"/>
+Add few other options on the same line as <code>Logout</code> button. It should be arranged as <code>Change email</code>, <code>Change password</code>, <code>Logout</code>.</li>
+</ul>
 <h4 id="editor-preferences"><a class="header" href="#editor-preferences">Editor Preferences</a></h4>
 <h2 id="planner"><a class="header" href="#planner">Planner</a></h2>
 <ul>
@@ -259,9 +280,8 @@ Embed from /planner/Activity view</li>
 </ul>
 <h3 id="settings"><a class="header" href="#settings">Settings</a></h3>
 <ul>
-<li>
-<p><input disabled="" type="checkbox"/>
-Register windows</p>
+<li><input disabled="" type="checkbox"/>
+Register windows
 <ul>
 <li><input disabled="" type="checkbox" checked=""/>
 Username, email, password (with validation, 8 digit minimum with simple measurement for strong password), repeat password (backend: <code>RegisterSerializer</code> with username field, 8-char min, uppercase+lowercase+digit/special validation)</li>
@@ -272,6 +292,27 @@ Invitation code (implement that in backend, plain sha 256 and compare with the r
 <li><input disabled="" type="checkbox" checked=""/>
 Register (frontend implementation) (new <code>_RegisterDialog</code> with username, email, password, confirm password, invitation code fields; client updated with new signature)</li>
 </ul>
+</li>
+</ul>
+<blockquote>
+<p>Urgent</p>
+</blockquote>
+<ul>
+<li>
+<p><input disabled="" type="checkbox"/>
+Add registration via google, use google oauth2 api (env variables are defined in <code>sample.text.env</code>, be sure to verify on the backend and capture the callback url from google redirect is on backend, be sure to take user back to frontend app after successful login/register. Ask for appropriate data like email, username from google to create user profiles.)</p>
+</li>
+<li>
+<p><input disabled="" type="checkbox"/>
+Add registration via Github, use Github App api (env variables are defined in <code>sample.text.env</code>, be sure to verify on the backend and capture the callback url from github redirect is on backend, and also handle the webhook post from github with verifications, be sure to take user back to frontend app after successful login/register. Ask for appropriate data like email, username from google to create user profiles.)</p>
+</li>
+<li>
+<p><input disabled="" type="checkbox"/>
+Allow existing users to bind their social accounts and login using them, currently support github and google accounts.</p>
+</li>
+<li>
+<p><input disabled="" type="checkbox"/>
+Add the necessary items and credential updates to <code>sample.render.env</code></p>
 </li>
 <li>
 <p><input disabled="" type="checkbox"/>
@@ -285,7 +326,7 @@ Embed from all setting from the micro services included.</p>
 <h2 id="backend"><a class="header" href="#backend">Backend</a></h2>
 <ul>
 <li><input disabled="" type="checkbox"/>
-Edit the admin portal for django, show the ow</li>
+Edit the admin portal for django, show the owner name for each item (by their first name + last name). If they have parent objects, (for example, if a note is a comment type, it should show the title for the parent note as well. Include other meta data in admin edit portals, like date created etc for better views.)</li>
 <li><input disabled="" type="checkbox"/>
 Create welcome notes for new users showing the functionality of this site, add the welcome note to the template and inbox course.</li>
 </ul>
