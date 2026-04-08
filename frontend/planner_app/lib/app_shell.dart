@@ -111,6 +111,7 @@ class _AppShellState extends State<AppShell> {
   bool _isLoadingMoreNotes = false;
   bool _coursePanelExpanded = true;
   int _learnerNotesOffset = 0;
+  Timer? _splashTimer;
   String _learnerSearchQuery = '';
   final List<String> _uiLogs = <String>[];
 
@@ -172,8 +173,17 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<void> _bootstrapApp() async {
+    _splashTimer = Timer(const Duration(seconds: 10), () {
+      if (mounted && _isLoading) setState(() => _isLoading = false);
+    });
     await _loadLocalState();
     await _loadInitialData();
+  }
+
+  @override
+  void dispose() {
+    _splashTimer?.cancel();
+    super.dispose();
   }
 
   bool get _hasRenderableLocalState =>
@@ -2632,7 +2642,12 @@ Capture deadlines, sequencing, and blockers here.''',
       duration: const Duration(milliseconds: 250),
       child: SelectionArea(
         child: _isLoading && !_hasRenderableLocalState
-            ? const Center(child: CircularProgressIndicator())
+            ? _SplashScreen(
+                appTitle: widget.appTitle,
+                onFinished: () {
+                  if (_isLoading) setState(() => _isLoading = false);
+                },
+              )
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -2682,7 +2697,29 @@ Capture deadlines, sequencing, and blockers here.''',
                         ),
                       ),
                     ),
-                  Expanded(child: _buildPage()),
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      transitionBuilder: (child, animation) {
+                        return FadeTransition(
+                          opacity: animation,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0.03, 0),
+                              end: Offset.zero,
+                            ).animate(animation),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: KeyedSubtree(
+                        key: ValueKey<int>(_selectedIndex),
+                        child: _buildPage(),
+                      ),
+                    ),
+                  ),
                 ],
               ),
       ),

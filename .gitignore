@@ -104,3 +104,6 @@ backend/static/monaco-editor/esm/
 
 # Claude
 .claude/
+
+# Private keys
+*.pem

@@ -26,6 +26,7 @@ part 'components/avatar.dart';
 part 'components/debug_widgets.dart';
 part 'components/error_state.dart';
 part 'components/note_viewer.dart';
+part 'components/splash_screen.dart';
 part 'modules/front.dart';
 part 'modules/learner.dart';
 part 'modules/course.dart';

@@ -30,6 +30,7 @@ part 'components/auth_dialogs.dart';
 part 'components/debug_widgets.dart';
 part 'components/error_state.dart';
 part 'components/note_viewer.dart';
+part 'components/splash_screen.dart';
 part 'modules/learner.dart';
 part 'modules/note_editor.dart';
 part 'modules/note_metadata.dart';

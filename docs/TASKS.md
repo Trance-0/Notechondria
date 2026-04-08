@@ -17,9 +17,14 @@ For the bug you fixed on this round, create a new `<Pending-version>.<inc-numera
 
 Let me know any environment variables need to be updated. After all edits are done, check every test passed. COMMIT and I will push after check.
 
-Always finish urgent tasks first if exists.
+Always finish `> Urgent` tasks first if exists.
 
 PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
+
+> Urgent
+
+- [x] Create startup animation. Repeating Citric acid cycle (part of respiration process). You may need to check for the detail for how the chemicals are loaded and cycled. Make a simple flutter animation to demonstrate that, and make smooth quit when frontend resources are loaded or timeout (set to 10 seconds Max).
+- [x] Create other transitional animation for page transitions (fade in/out, slide in/out, etc.)
 
 ## Editor
 
@@ -28,6 +33,9 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 - [ ] In Edit category, besides category name, add a selector for course icon (select from flutter sources)
 
 ### Note view
+
+- [ ] In vertical view, the navbar item, where shows `Notechondria Editor` should be removed and replace with current folder name `Inbox`, `All notes`, etc.
+- [ ] Implement lazy loading for the note list, do not load all notes at once.
 
 #### Search
 
@@ -46,6 +54,9 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 ### Editor Settings
 
 #### Login and account info
+
+- [ ] Google Chorme password manager is still not detecting the login widget and auto fill, find out why and fix it.
+- [ ] Add few other options on the same line as `Logout` button. It should be arranged as `Change email`, `Change password`, `Logout`.
 
 #### Editor Preferences
 
@@ -94,13 +105,20 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
   - [x] (only when invitation code is checked and not used in backend) Enable email verification (60s resend, 6 digit code with expiration, only store hash code in backend), we will set smtp params in environment variables. (backend: 6-digit codes stored as SHA-256 hash via `VerificationCode.generate_code()`, 60s cooldown in `ResendVerificationSerializer`)
   - [x] Register (frontend implementation) (new `_RegisterDialog` with username, email, password, confirm password, invitation code fields; client updated with new signature)
 
+> Urgent
+
+- [ ] Add registration via google, use google oauth2 api (env variables are defined in `sample.text.env`, be sure to verify on the backend and capture the callback url from google redirect is on backend, be sure to take user back to frontend app after successful login/register. Ask for appropriate data like email, username from google to create user profiles.)
+- [ ] Add registration via Github, use Github App api (env variables are defined in `sample.text.env`, be sure to verify on the backend and capture the callback url from github redirect is on backend, and also handle the webhook post from github with verifications, be sure to take user back to frontend app after successful login/register. Ask for appropriate data like email, username from google to create user profiles.)
+- [ ] Allow existing users to bind their social accounts and login using them, currently support github and google accounts.
+- [ ] Add the necessary items and credential updates to `sample.render.env`
+
 - [ ] Embed from all setting from the micro services included.
   - Editor settings
   - Planner settings
 
 ## Backend
 
-- [ ] Edit the admin portal for django, show the ow
+- [ ] Edit the admin portal for django, show the owner name for each item (by their first name + last name). If they have parent objects, (for example, if a note is a comment type, it should show the title for the parent note as well. Include other meta data in admin edit portals, like date created etc for better views.)
 - [ ] Create welcome notes for new users showing the functionality of this site, add the welcome note to the template and inbox course.
 
 ### MCP

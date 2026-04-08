@@ -111,6 +111,7 @@ class _AppShellState extends State<AppShell> {
   bool _coursePanelExpanded = true;
   int _learnerNotesOffset = 0;
   String _learnerSearchQuery = '';
+  Timer? _splashTimer;
   /// Learner search scope: 'personal' (default) = only the user's own notes,
   /// 'all' = user's notes plus public notes from any other user.
   String _learnerSearchScope = 'personal';
@@ -198,7 +199,16 @@ class _AppShellState extends State<AppShell> {
     _bootstrapApp();
   }
 
+  @override
+  void dispose() {
+    _splashTimer?.cancel();
+    super.dispose();
+  }
+
   Future<void> _bootstrapApp() async {
+    _splashTimer = Timer(const Duration(seconds: 10), () {
+      if (mounted && _isLoading) setState(() => _isLoading = false);
+    });
     await _loadLocalState();
     await _restoreSession();
     await _loadInitialData();
@@ -3355,7 +3365,12 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       duration: const Duration(milliseconds: 250),
       child: SelectionArea(
         child: _isLoading && !_hasRenderableLocalState
-            ? const Center(child: CircularProgressIndicator())
+            ? _SplashScreen(
+                appTitle: widget.appTitle,
+                onFinished: () {
+                  if (_isLoading) setState(() => _isLoading = false);
+                },
+              )
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -3394,7 +3409,29 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
                         ),
                       ),
                     ),
-                  Expanded(child: _buildPage()),
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      transitionBuilder: (child, animation) {
+                        return FadeTransition(
+                          opacity: animation,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0.03, 0),
+                              end: Offset.zero,
+                            ).animate(animation),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: KeyedSubtree(
+                        key: ValueKey<int>(_selectedIndex),
+                        child: _buildPage(),
+                      ),
+                    ),
+                  ),
                 ],
               ),
       ),
