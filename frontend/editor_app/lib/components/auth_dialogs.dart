@@ -12,6 +12,8 @@ class _AuthHub extends StatelessWidget {
     required this.onConfirmPasswordReset,
     this.onGoogleLogin,
     this.onGithubLogin,
+    this.onGoogleLoginOnly,
+    this.onGithubLoginOnly,
   });
 
   final Future<ActionFeedback> Function(
@@ -32,6 +34,8 @@ class _AuthHub extends StatelessWidget {
   ) onConfirmPasswordReset;
   final void Function(String invitationCode)? onGoogleLogin;
   final void Function(String invitationCode)? onGithubLogin;
+  final VoidCallback? onGoogleLoginOnly;
+  final VoidCallback? onGithubLoginOnly;
 
   Future<void> _openDialog(BuildContext context, Widget dialog) {
     return showDialog<void>(
@@ -112,6 +116,31 @@ class _AuthHub extends StatelessWidget {
                 ),
               ],
             ),
+            if (onGoogleLoginOnly != null || onGithubLoginOnly != null) ...[
+              const SizedBox(height: 12),
+              const Divider(),
+              const SizedBox(height: 4),
+              Text('Or sign in with', style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  if (onGoogleLoginOnly != null)
+                    OutlinedButton.icon(
+                      onPressed: onGoogleLoginOnly,
+                      icon: const Icon(Icons.g_mobiledata, size: 20),
+                      label: const Text('Google'),
+                    ),
+                  if (onGithubLoginOnly != null)
+                    OutlinedButton.icon(
+                      onPressed: onGithubLoginOnly,
+                      icon: const Icon(Icons.code, size: 20),
+                      label: const Text('GitHub'),
+                    ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

@@ -1,6 +1,8 @@
 from django.urls import path
 
 from creators.api import (
+    BindGithubApiView,
+    BindGoogleApiView,
     GitHubOAuthApiView,
     GoogleOAuthApiView,
     LoginApiView,
@@ -66,6 +68,8 @@ urlpatterns = [
     path("auth/github/", GitHubOAuthApiView.as_view(), name="github-oauth"),
     path("auth/social-accounts/", SocialAccountListApiView.as_view(), name="social-accounts"),
     path("auth/social-accounts/<str:provider>/", SocialAccountUnlinkApiView.as_view(), name="social-account-unlink"),
+    path("auth/bind/google/", BindGoogleApiView.as_view(), name="bind-google"),
+    path("auth/bind/github/", BindGithubApiView.as_view(), name="bind-github"),
     path("front-page/", FrontPageApiView.as_view(), name="front-page"),
     path("courses/", CourseListApiView.as_view(), name="course-list"),
     path("courses/reorder/", CourseReorderApiView.as_view(), name="course-reorder"),

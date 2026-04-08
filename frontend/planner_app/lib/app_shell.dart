@@ -186,7 +186,7 @@ class _AppShellState extends State<AppShell> {
   // OAuth helpers
   // ---------------------------------------------------------------------------
 
-  Future<void> _launchOAuth(String provider, {String invitationCode = ''}) async {
+  Future<void> _launchOAuth(String provider, {String invitationCode = '', String intent = 'register'}) async {
     try {
       final config = await widget.client.getOAuthConfig();
       final providerConfig = Map<String, dynamic>.from(
@@ -201,6 +201,7 @@ class _AppShellState extends State<AppShell> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('oauth_redirect_uri', redirectUri);
       await prefs.setString('oauth_invitation_code', invitationCode);
+      await prefs.setString('oauth_intent', intent);
 
       final String authUrl;
       if (provider == 'google') {
@@ -241,21 +242,48 @@ class _AppShellState extends State<AppShell> {
     final prefs = await SharedPreferences.getInstance();
     final redirectUri = prefs.getString('oauth_redirect_uri') ?? '';
     final invitationCode = prefs.getString('oauth_invitation_code') ?? '';
+    final intent = prefs.getString('oauth_intent') ?? 'register';
     await prefs.remove('oauth_redirect_uri');
     await prefs.remove('oauth_invitation_code');
+    await prefs.remove('oauth_intent');
+
+    if (intent == 'bind' && _token != null) {
+      try {
+        if (state == 'google') {
+          await widget.client.bindGoogle(_token!, code, redirectUri: redirectUri);
+        } else {
+          await widget.client.bindGithub(_token!, code, redirectUri: redirectUri);
+        }
+        _appendUiLog('Linked ${state == 'google' ? 'Google' : 'GitHub'} account.');
+        return true;
+      } catch (error) {
+        _appendUiLog('Account linking failed: ${error.toString().replaceFirst("Exception: ", "")}');
+        return false;
+      }
+    }
 
     try {
       final Map<String, dynamic> result;
       if (state == 'google') {
-        result = await widget.client.loginWithGoogle(code, redirectUri: redirectUri, invitationCode: invitationCode);
+        result = await widget.client.loginWithGoogle(code, redirectUri: redirectUri, invitationCode: invitationCode, intent: intent);
       } else {
-        result = await widget.client.loginWithGithub(code, redirectUri: redirectUri, invitationCode: invitationCode);
+        result = await widget.client.loginWithGithub(code, redirectUri: redirectUri, invitationCode: invitationCode, intent: intent);
       }
       await _applyAuthPayload(result);
       _appendUiLog('Signed in via ${state == 'google' ? 'Google' : 'GitHub'}.');
       return true;
     } catch (error) {
-      _appendUiLog('OAuth login failed: ${error.toString().replaceFirst("Exception: ", "")}');
+      final msg = error.toString().replaceFirst('Exception: ', '');
+      if (msg.contains('not_registered') || msg.contains('No account found')) {
+        _appendUiLog('No account found. Please register first.');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No account found for this identity. Please register first.')),
+          );
+        }
+      } else {
+        _appendUiLog('OAuth login failed: $msg');
+      }
       return false;
     }
   }
@@ -2897,6 +2925,12 @@ Capture deadlines, sequencing, and blockers here.''',
           onConfirmPasswordReset: _confirmPasswordReset,
           onGoogleLogin: (invitationCode) => _launchOAuth('google', invitationCode: invitationCode),
           onGithubLogin: (invitationCode) => _launchOAuth('github', invitationCode: invitationCode),
+          onGoogleLoginOnly: () => _launchOAuth('google', intent: 'login'),
+          onGithubLoginOnly: () => _launchOAuth('github', intent: 'login'),
+          onBindGoogle: () => _launchOAuth('google', intent: 'bind'),
+          onBindGithub: () => _launchOAuth('github', intent: 'bind'),
+          onListSocialAccounts: _token != null ? () => widget.client.listSocialAccounts(_token!) : null,
+          onUnlinkSocialAccount: _token != null ? (provider) => widget.client.unlinkSocialAccount(_token!, provider) : null,
           onRestoreDeletedNote: _restoreDeletedNote,
           onEmptyDeletedNotes: _emptyDeletedNotes,
           onCopyLogs: _copyFrontendLogs,

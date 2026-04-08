@@ -2,9 +2,10 @@ part of notechondria_frontend;
 
 /// Splash screen showing an animated Citric acid cycle (Krebs cycle).
 ///
-/// Molecules orbit a central ring, with byproducts (CO2, NADH, FADH2, GTP)
-/// pulsing outward at their respective reaction steps. The animation loops
-/// continuously until [onFinished] fires or 10 seconds elapse.
+/// The cycle axis is at the left center of the screen. It rotates to bring
+/// each metabolite to the screen center, with byproducts pulsing outward.
+/// All text remains horizontal. The animation loops until [onFinished] fires
+/// or the user taps the screen.
 class _SplashScreen extends StatefulWidget {
   const _SplashScreen({
     required this.appTitle,
@@ -36,9 +37,8 @@ class _SplashScreenState extends State<_SplashScreen>
   ];
 
   // Byproducts emitted at each step (index = step producing it).
-  // null means no notable byproduct at that step.
   static const _byproducts = <int, List<String>>{
-    0: ['NADH'], // Oxaloacetate + Acetyl-CoA → Citrate (regeneration produces NADH)
+    0: ['NADH'], // Oxaloacetate + Acetyl-CoA → Citrate
     2: ['CO\u2082', 'NADH'], // Isocitrate → α-KG
     3: ['CO\u2082', 'NADH'], // α-KG → Succinyl-CoA
     4: ['GTP'], // Succinyl-CoA → Succinate
@@ -82,49 +82,56 @@ class _SplashScreenState extends State<_SplashScreen>
       onTap: dismiss,
       child: Container(
         color: bgColor,
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 300,
-                height: 300,
-                child: AnimatedBuilder(
-                  animation: _controller,
-                  builder: (context, _) {
-                    return CustomPaint(
-                      painter: _KrebsCyclePainter(
-                        progress: _controller.value,
-                        metabolites: _metabolites,
-                        byproducts: _byproducts,
-                        nodeColor: nodeColor,
-                        ringColor: ringColor,
-                        textColor: textColor,
-                        subtleColor: subtleColor,
-                        isDark: isDark,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return Stack(
+              children: [
+                Positioned.fill(
+                  child: AnimatedBuilder(
+                    animation: _controller,
+                    builder: (context, _) {
+                      return CustomPaint(
+                        painter: _KrebsCyclePainter(
+                          progress: _controller.value,
+                          metabolites: _metabolites,
+                          byproducts: _byproducts,
+                          nodeColor: nodeColor,
+                          ringColor: ringColor,
+                          textColor: textColor,
+                          subtleColor: subtleColor,
+                          isDark: isDark,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                Positioned(
+                  right: constraints.maxWidth * 0.08,
+                  bottom: constraints.maxHeight * 0.12,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        widget.appTitle,
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: textColor,
+                        ),
                       ),
-                      size: const Size(300, 300),
-                    );
-                  },
+                      const SizedBox(height: 8),
+                      Text(
+                        'Loading...',
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: subtleColor,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                widget.appTitle,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: textColor,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Loading...',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: subtleColor,
-                ),
-              ),
-            ],
-          ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -154,153 +161,173 @@ class _KrebsCyclePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width * 0.36;
+    final w = size.width;
+    final h = size.height;
+    // Axis at left center of screen.
+    final center = Offset(0, h / 2);
+    final radius = w * 0.5;
     final n = metabolites.length;
 
-    // Draw orbit ring.
+    // Rotate so the active step is always at angle 0 (rightmost = screen center).
+    final rotationAngle = -2 * math.pi * progress;
+
+    // Orbit ring.
     final ringPaint = Paint()
       ..color = ringColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
+      ..strokeWidth = 2.5;
     canvas.drawCircle(center, radius, ringPaint);
 
-    // Draw connecting arrows between nodes.
+    // Connecting arrows between adjacent nodes.
     final arrowPaint = Paint()
       ..color = subtleColor.withValues(alpha: 0.3)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
+      ..strokeWidth = 1.5;
 
     for (var i = 0; i < n; i++) {
-      final angle1 = -math.pi / 2 + (2 * math.pi * i / n);
-      final angle2 = -math.pi / 2 + (2 * math.pi * ((i + 1) % n) / n);
-      final p1 = center + Offset(math.cos(angle1), math.sin(angle1)) * radius;
-      final p2 = center + Offset(math.cos(angle2), math.sin(angle2)) * radius;
-      // Draw arc-like line between nodes.
-      final midAngle = (angle1 + angle2) / 2;
-      final cp = center +
-          Offset(math.cos(midAngle), math.sin(midAngle)) * (radius * 0.85);
-      final path = Path()
-        ..moveTo(p1.dx, p1.dy)
-        ..quadraticBezierTo(cp.dx, cp.dy, p2.dx, p2.dy);
-      canvas.drawPath(path, arrowPaint);
-    }
-
-    // Current active step (which metabolite the "glow" is on).
-    final activeStep = (progress * n).floor() % n;
-    final stepFraction = (progress * n) % 1.0;
-
-    // Draw metabolite nodes.
-    for (var i = 0; i < n; i++) {
-      final angle = -math.pi / 2 + (2 * math.pi * i / n);
-      final pos = center + Offset(math.cos(angle), math.sin(angle)) * radius;
-
-      final isActive = i == activeStep;
-      final nodeRadius = isActive ? 6.0 + 2.0 * math.sin(stepFraction * math.pi) : 4.5;
-      final alpha = isActive ? 1.0 : 0.5;
-
-      // Node dot.
-      final dotPaint = Paint()
-        ..color = nodeColor.withValues(alpha: alpha)
-        ..style = PaintingStyle.fill;
-      canvas.drawCircle(pos, nodeRadius, dotPaint);
-
-      // Glow ring on active node.
-      if (isActive) {
-        final glowPaint = Paint()
-          ..color = nodeColor.withValues(alpha: 0.25 * (1.0 - stepFraction))
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.0;
-        canvas.drawCircle(pos, nodeRadius + 4.0 + 6.0 * stepFraction, glowPaint);
-      }
-
-      // Label.
-      final labelOffset = center +
-          Offset(math.cos(angle), math.sin(angle)) * (radius + 18);
-      _drawText(
-        canvas,
-        metabolites[i],
-        labelOffset,
-        isActive
-            ? textColor
-            : subtleColor.withValues(alpha: 0.6),
-        isActive ? 10.0 : 9.0,
-        isActive ? FontWeight.w600 : FontWeight.w400,
+      final a1 = 2 * math.pi * i / n + rotationAngle;
+      final a2 = 2 * math.pi * ((i + 1) % n) / n + rotationAngle;
+      final p1 = center + Offset(math.cos(a1), math.sin(a1)) * radius;
+      final p2 = center + Offset(math.cos(a2), math.sin(a2)) * radius;
+      if (p1.dx < -60 && p2.dx < -60) continue;
+      final mid = (a1 + a2) / 2;
+      final cp =
+          center + Offset(math.cos(mid), math.sin(mid)) * (radius * 0.85);
+      canvas.drawPath(
+        Path()
+          ..moveTo(p1.dx, p1.dy)
+          ..quadraticBezierTo(cp.dx, cp.dy, p2.dx, p2.dy),
+        arrowPaint,
       );
     }
 
-    // Draw byproducts flying outward from active step.
+    final activeStep = (progress * n).floor() % n;
+    final stepFraction = (progress * n) % 1.0;
+
+    // Metabolite nodes.
+    for (var i = 0; i < n; i++) {
+      final angle = 2 * math.pi * i / n + rotationAngle;
+      final pos = center + Offset(math.cos(angle), math.sin(angle)) * radius;
+      if (pos.dx < -60) continue;
+
+      final isActive = i == activeStep;
+      final nr =
+          isActive ? 10.0 + 3.0 * math.sin(stepFraction * math.pi) : 7.0;
+      // Smooth fade near the left screen edge.
+      final fade = ((pos.dx + 20) / 80).clamp(0.0, 1.0);
+
+      canvas.drawCircle(
+        pos,
+        nr,
+        Paint()
+          ..color = nodeColor.withValues(alpha: (isActive ? 1.0 : 0.5) * fade)
+          ..style = PaintingStyle.fill,
+      );
+
+      if (isActive) {
+        canvas.drawCircle(
+          pos,
+          nr + 6.0 + 8.0 * stepFraction,
+          Paint()
+            ..color = nodeColor.withValues(
+                alpha: 0.25 * (1.0 - stepFraction) * fade)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.5,
+        );
+      }
+
+      // Label — left-align on right side, right-align on left side.
+      final cosA = math.cos(angle);
+      final lbl = pos + Offset(math.cos(angle), math.sin(angle)) * (nr + 8);
+      _drawText(
+        canvas,
+        metabolites[i],
+        lbl,
+        textColor.withValues(alpha: (isActive ? 1.0 : 0.6) * fade),
+        isActive ? 16.0 : 14.0,
+        isActive ? FontWeight.w600 : FontWeight.w400,
+        xAnchor: cosA > 0.3 ? 0.0 : (cosA < -0.3 ? 1.0 : 0.5),
+      );
+    }
+
+    // Byproducts flying outward from active step.
     if (byproducts.containsKey(activeStep)) {
       final products = byproducts[activeStep]!;
-      final angle = -math.pi / 2 + (2 * math.pi * activeStep / n);
-      for (var j = 0; j < products.length; j++) {
-        final spread = (j - (products.length - 1) / 2) * 0.3;
-        final flyAngle = angle + spread;
-        final flyDist = radius + 40 + 25 * stepFraction;
-        final flyPos = center +
-            Offset(math.cos(flyAngle), math.sin(flyAngle)) * flyDist;
-        final flyAlpha = (1.0 - stepFraction).clamp(0.0, 1.0);
-        _drawText(
-          canvas,
-          products[j],
-          flyPos,
-          nodeColor.withValues(alpha: flyAlpha * 0.8),
-          8.5,
-          FontWeight.w600,
-        );
+      final angle = 2 * math.pi * activeStep / n + rotationAngle;
+      final base =
+          center + Offset(math.cos(angle), math.sin(angle)) * radius;
+      if (base.dx > -30) {
+        for (var j = 0; j < products.length; j++) {
+          final spread = (j - (products.length - 1) / 2) * 0.3;
+          final fa = angle + spread;
+          final fd = radius + 45 + 30 * stepFraction;
+          final fp = center + Offset(math.cos(fa), math.sin(fa)) * fd;
+          final flyAlpha = (1.0 - stepFraction).clamp(0.0, 1.0);
+          final cosF = math.cos(fa);
+          _drawText(
+            canvas,
+            products[j],
+            fp,
+            nodeColor.withValues(alpha: flyAlpha * 0.8),
+            13.0,
+            FontWeight.w600,
+            xAnchor: cosF > 0.3 ? 0.0 : (cosF < -0.3 ? 1.0 : 0.5),
+          );
+        }
       }
     }
 
-    // Central label.
+    // "Citric Acid Cycle" label inside the visible arc.
     _drawText(
       canvas,
       'Citric Acid\nCycle',
-      center,
-      subtleColor.withValues(alpha: 0.4),
-      11.0,
+      Offset(w * 0.22, h / 2),
+      subtleColor.withValues(alpha: 0.3),
+      18.0,
       FontWeight.w500,
       textAlign: TextAlign.center,
     );
 
-    // Acetyl-CoA arrow entering at Oxaloacetate/Citrate junction.
-    final entryAngle = -math.pi / 2 + (2 * math.pi * 0 / n); // Citrate position
-    final arrowStart = center +
-        Offset(math.cos(entryAngle), math.sin(entryAngle)) * (radius + 45);
-    final arrowEnd = center +
-        Offset(math.cos(entryAngle), math.sin(entryAngle)) * (radius + 14);
-    final entryPaint = Paint()
-      ..color = nodeColor.withValues(alpha: 0.5)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    canvas.drawLine(arrowStart, arrowEnd, entryPaint);
-    // Arrowhead.
-    final headAngle = math.atan2(
-        arrowEnd.dy - arrowStart.dy, arrowEnd.dx - arrowStart.dx);
-    final headSize = 5.0;
-    final headPath = Path()
-      ..moveTo(arrowEnd.dx, arrowEnd.dy)
-      ..lineTo(
-        arrowEnd.dx - headSize * math.cos(headAngle - 0.4),
-        arrowEnd.dy - headSize * math.sin(headAngle - 0.4),
-      )
-      ..lineTo(
-        arrowEnd.dx - headSize * math.cos(headAngle + 0.4),
-        arrowEnd.dy - headSize * math.sin(headAngle + 0.4),
-      )
-      ..close();
-    canvas.drawPath(
-        headPath,
+    // Acetyl-CoA entry arrow (follows Citrate node as it rotates).
+    final ea = rotationAngle; // index 0: 2π * 0 / n + rotation
+    final ep = center + Offset(math.cos(ea), math.sin(ea)) * radius;
+    if (ep.dx > -30) {
+      final dir = Offset(math.cos(ea), math.sin(ea));
+      final aStart = center + dir * (radius + 55);
+      final aEnd = center + dir * (radius + 18);
+      canvas.drawLine(
+        aStart,
+        aEnd,
         Paint()
           ..color = nodeColor.withValues(alpha: 0.5)
-          ..style = PaintingStyle.fill);
-    _drawText(
-      canvas,
-      'Acetyl-CoA',
-      arrowStart + const Offset(0, -8),
-      nodeColor.withValues(alpha: 0.6),
-      8.5,
-      FontWeight.w500,
-    );
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0,
+      );
+      final ha =
+          math.atan2(aEnd.dy - aStart.dy, aEnd.dx - aStart.dx);
+      canvas.drawPath(
+        Path()
+          ..moveTo(aEnd.dx, aEnd.dy)
+          ..lineTo(aEnd.dx - 7 * math.cos(ha - 0.4),
+              aEnd.dy - 7 * math.sin(ha - 0.4))
+          ..lineTo(aEnd.dx - 7 * math.cos(ha + 0.4),
+              aEnd.dy - 7 * math.sin(ha + 0.4))
+          ..close(),
+        Paint()
+          ..color = nodeColor.withValues(alpha: 0.5)
+          ..style = PaintingStyle.fill,
+      );
+      final cosE = math.cos(ea);
+      _drawText(
+        canvas,
+        'Acetyl-CoA',
+        aStart + dir * 12,
+        nodeColor.withValues(alpha: 0.6),
+        13.0,
+        FontWeight.w500,
+        xAnchor: cosE > 0.3 ? 0.0 : (cosE < -0.3 ? 1.0 : 0.5),
+      );
+    }
   }
 
   void _drawText(
@@ -311,23 +338,23 @@ class _KrebsCyclePainter extends CustomPainter {
     double fontSize,
     FontWeight fontWeight, {
     TextAlign textAlign = TextAlign.center,
+    double xAnchor = 0.5,
   }) {
-    final textSpan = TextSpan(
-      text: text,
-      style: TextStyle(
-        color: color,
-        fontSize: fontSize,
-        fontWeight: fontWeight,
-        fontFamily: 'sans-serif',
-        height: 1.2,
-      ),
-    );
     final tp = TextPainter(
-      text: textSpan,
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          color: color,
+          fontSize: fontSize,
+          fontWeight: fontWeight,
+          fontFamily: 'sans-serif',
+          height: 1.2,
+        ),
+      ),
       textAlign: textAlign,
       textDirection: TextDirection.ltr,
     )..layout();
-    tp.paint(canvas, position - Offset(tp.width / 2, tp.height / 2));
+    tp.paint(canvas, position - Offset(tp.width * xAnchor, tp.height / 2));
   }
 
   @override

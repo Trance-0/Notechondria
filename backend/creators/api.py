@@ -589,9 +589,14 @@ def _validate_invitation_if_required(invitation_code: str):
 def _get_or_create_oauth_user(provider: str, provider_uid: str, email: str,
                               username: str, display_name: str,
                               extra_data: dict, invitation_code: str = "",
-                              request=None):
+                              intent: str = "register", request=None):
     """Find an existing user linked to this social account, or create a new
-    one.  Returns the ``auth_payload`` dict ready for the frontend."""
+    one.  Returns the ``auth_payload`` dict ready for the frontend.
+
+    *intent* controls what happens when no existing user is found:
+    - ``"register"`` (default): create a new account (validates invitation code).
+    - ``"login"``: reject with 404 so the frontend can prompt registration.
+    """
 
     # 1. Check for existing social link.
     social = SocialAccount.objects.filter(
@@ -624,7 +629,11 @@ def _get_or_create_oauth_user(provider: str, provider_uid: str, email: str,
         ensure_creator(user)
         return auth_payload(user, request=request)
 
-    # 3. New user — validate invitation code if required.
+    # 3. No existing user found.
+    if intent == "login":
+        return None  # Caller returns 404 to prompt registration.
+
+    # intent == "register": create a new account.
     _validate_invitation_if_required(invitation_code)
 
     # Deduplicate username.
@@ -692,6 +701,10 @@ class GoogleOAuthSerializer(serializers.Serializer):
     invitation_code = serializers.CharField(
         required=False, allow_blank=True, default="",
     )
+    intent = serializers.ChoiceField(
+        choices=["login", "register"], default="register", required=False,
+        help_text="'login' rejects unregistered users; 'register' creates them.",
+    )
 
     def validate(self, attrs):
         code = (attrs.get("code") or "").strip()
@@ -721,6 +734,7 @@ class GoogleOAuthApiView(APIView):
         raw_id_token = (data.get("id_token") or "").strip()
         redirect_uri = (data.get("redirect_uri") or "").strip() or settings.GOOGLE_AUTHORIZED_REDIRECT_URI
         invitation_code = data.get("invitation_code", "")
+        intent = data.get("intent", "register")
 
         if code:
             # Exchange authorization code for tokens.
@@ -781,8 +795,15 @@ class GoogleOAuthApiView(APIView):
             display_name=name,
             extra_data={"picture": info.get("picture", ""), "locale": info.get("locale", "")},
             invitation_code=invitation_code,
+            intent=intent,
             request=request,
         )
+        if payload is None:
+            return Response(
+                {"detail": "No account found for this Google identity. Please register first.",
+                 "code": "not_registered"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         return Response(payload)
 
 
@@ -800,6 +821,10 @@ class GitHubOAuthSerializer(serializers.Serializer):
     )
     invitation_code = serializers.CharField(
         required=False, allow_blank=True, default="",
+    )
+    intent = serializers.ChoiceField(
+        choices=["login", "register"], default="register", required=False,
+        help_text="'login' rejects unregistered users; 'register' creates them.",
     )
 
 
@@ -819,6 +844,7 @@ class GitHubOAuthApiView(APIView):
         code = data["code"]
         redirect_uri = (data.get("redirect_uri") or "").strip() or settings.GITHUB_AUTHORIZED_REDIRECT_URI
         invitation_code = data.get("invitation_code", "")
+        intent = data.get("intent", "register")
 
         # Exchange code for access token.
         token_payload = {
@@ -898,8 +924,15 @@ class GitHubOAuthApiView(APIView):
                 "html_url": gh_user.get("html_url", ""),
             },
             invitation_code=invitation_code,
+            intent=intent,
             request=request,
         )
+        if payload is None:
+            return Response(
+                {"detail": "No account found for this GitHub identity. Please register first.",
+                 "code": "not_registered"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         return Response(payload)
 
 
@@ -932,3 +965,189 @@ class SocialAccountUnlinkApiView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class _BindOAuthMixin:
+    """Shared logic for authenticated social-account binding views."""
+
+    def _bind_social_account(self, user, provider, provider_uid, email, extra_data):
+        """Create or update a SocialAccount link for *user*."""
+        social, created = SocialAccount.objects.update_or_create(
+            user=user,
+            provider=provider,
+            defaults={
+                "provider_uid": str(provider_uid),
+                "email": email,
+                "extra_data": extra_data,
+            },
+        )
+        # If this provider_uid was previously linked to a different user, reject.
+        conflict = SocialAccount.objects.filter(
+            provider=provider, provider_uid=str(provider_uid),
+        ).exclude(user=user).first()
+        if conflict is not None:
+            return Response(
+                {"detail": "This account is already linked to another user."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response({
+            "id": social.id,
+            "provider": social.provider,
+            "provider_uid": social.provider_uid,
+            "email": social.email,
+        }, status=status.HTTP_200_OK if not created else status.HTTP_201_CREATED)
+
+
+class BindGoogleApiView(_BindOAuthMixin, APIView):
+    """Link a Google account to the authenticated user.
+
+    POST /api/v1/auth/bind/google/
+    Body: { "code": "..." } or { "id_token": "..." }
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = GoogleOAuthSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        code = (data.get("code") or "").strip()
+        raw_id_token = (data.get("id_token") or "").strip()
+        redirect_uri = (data.get("redirect_uri") or "").strip() or settings.GOOGLE_AUTHORIZED_REDIRECT_URI
+
+        if code:
+            token_resp = http_requests.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "code": code,
+                    "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
+                    "client_secret": settings.GOOGLE_OAUTH_CLIENT_SECRET,
+                    "redirect_uri": redirect_uri,
+                    "grant_type": "authorization_code",
+                },
+                timeout=15,
+            )
+            if token_resp.status_code != 200:
+                return Response(
+                    {"detail": "Failed to exchange Google authorization code."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            raw_id_token = token_resp.json().get("id_token", "")
+
+        if not raw_id_token:
+            return Response(
+                {"detail": "No ID token received from Google."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        verify_resp = http_requests.get(
+            "https://oauth2.googleapis.com/tokeninfo",
+            params={"id_token": raw_id_token},
+            timeout=10,
+        )
+        if verify_resp.status_code != 200:
+            return Response(
+                {"detail": "Google ID token verification failed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        info = verify_resp.json()
+        if info.get("aud", "") != settings.GOOGLE_OAUTH_CLIENT_ID:
+            return Response(
+                {"detail": "ID token audience mismatch."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return self._bind_social_account(
+            user=request.user,
+            provider="google",
+            provider_uid=info.get("sub", ""),
+            email=info.get("email", ""),
+            extra_data={"picture": info.get("picture", ""), "locale": info.get("locale", "")},
+        )
+
+
+class BindGithubApiView(_BindOAuthMixin, APIView):
+    """Link a GitHub account to the authenticated user.
+
+    POST /api/v1/auth/bind/github/
+    Body: { "code": "..." }
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = GitHubOAuthSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        code = data["code"]
+        redirect_uri = (data.get("redirect_uri") or "").strip() or settings.GITHUB_AUTHORIZED_REDIRECT_URI
+
+        token_payload = {
+            "client_id": settings.GITHUB_APP_CLIENT_ID,
+            "client_secret": settings.GITHUB_APP_CLIENT_SECRET,
+            "code": code,
+        }
+        if redirect_uri:
+            token_payload["redirect_uri"] = redirect_uri
+        token_resp = http_requests.post(
+            "https://github.com/login/oauth/access_token",
+            json=token_payload,
+            headers={"Accept": "application/json"},
+            timeout=15,
+        )
+        if token_resp.status_code != 200:
+            return Response(
+                {"detail": "Failed to exchange GitHub authorization code."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        token_data = token_resp.json()
+        access_token = token_data.get("access_token", "")
+        if not access_token:
+            error_desc = token_data.get("error_description", token_data.get("error", "unknown"))
+            return Response(
+                {"detail": f"GitHub OAuth error: {error_desc}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user_resp = http_requests.get(
+            "https://api.github.com/user",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Accept": "application/vnd.github+json",
+            },
+            timeout=10,
+        )
+        if user_resp.status_code != 200:
+            return Response(
+                {"detail": "Failed to fetch GitHub user profile."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        gh_user = user_resp.json()
+
+        email = gh_user.get("email") or ""
+        if not email:
+            emails_resp = http_requests.get(
+                "https://api.github.com/user/emails",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Accept": "application/vnd.github+json",
+                },
+                timeout=10,
+            )
+            if emails_resp.status_code == 200:
+                for em in emails_resp.json():
+                    if em.get("primary") and em.get("verified"):
+                        email = em["email"]
+                        break
+
+        return self._bind_social_account(
+            user=request.user,
+            provider="github",
+            provider_uid=str(gh_user.get("id", "")),
+            email=email,
+            extra_data={
+                "login": gh_user.get("login", ""),
+                "avatar_url": gh_user.get("avatar_url", ""),
+                "html_url": gh_user.get("html_url", ""),
+            },
+        )

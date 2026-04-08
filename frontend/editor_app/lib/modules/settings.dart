@@ -31,6 +31,12 @@ class _SettingsPage extends StatefulWidget {
     required this.uiLogs,
     this.onGoogleLogin,
     this.onGithubLogin,
+    this.onGoogleLoginOnly,
+    this.onGithubLoginOnly,
+    this.onBindGoogle,
+    this.onBindGithub,
+    this.onListSocialAccounts,
+    this.onUnlinkSocialAccount,
     this.onDownloadConfig,
     this.apiBaseUrl,
     this.debugSnapshotListenable,
@@ -73,6 +79,12 @@ class _SettingsPage extends StatefulWidget {
   ) onConfirmPasswordReset;
   final void Function(String invitationCode)? onGoogleLogin;
   final void Function(String invitationCode)? onGithubLogin;
+  final VoidCallback? onGoogleLoginOnly;
+  final VoidCallback? onGithubLoginOnly;
+  final VoidCallback? onBindGoogle;
+  final VoidCallback? onBindGithub;
+  final Future<List<Map<String, dynamic>>> Function()? onListSocialAccounts;
+  final Future<void> Function(String provider)? onUnlinkSocialAccount;
   final Future<void> Function(Map<String, dynamic> note) onRestoreDeletedNote;
   final Future<void> Function() onEmptyDeletedNotes;
   final Future<void> Function() onCopyLogs;
@@ -589,6 +601,8 @@ class _SettingsPageState extends State<_SettingsPage> {
                 onConfirmPasswordReset: widget.onConfirmPasswordReset,
                 onGoogleLogin: widget.onGoogleLogin,
                 onGithubLogin: widget.onGithubLogin,
+                onGoogleLoginOnly: widget.onGoogleLoginOnly,
+                onGithubLoginOnly: widget.onGithubLoginOnly,
               ),
             ] else ...[
               _buildProfileFields(context),
@@ -596,6 +610,14 @@ class _SettingsPageState extends State<_SettingsPage> {
               _buildSectionButtons(
                 hasChanges: _hasProfileChanges,
                 onCancel: _cancelProfileChanges,
+              ),
+              const SizedBox(height: 20),
+              // ---- Connected accounts subsection ----
+              _ConnectedAccountsSection(
+                onListSocialAccounts: widget.onListSocialAccounts,
+                onUnlinkSocialAccount: widget.onUnlinkSocialAccount,
+                onBindGoogle: widget.onBindGoogle,
+                onBindGithub: widget.onBindGithub,
               ),
               const SizedBox(height: 20),
               // ---- Sync subsection ----
@@ -984,6 +1006,130 @@ class _SettingsPageState extends State<_SettingsPage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Shows linked Google/GitHub accounts with bind/unbind controls.
+class _ConnectedAccountsSection extends StatefulWidget {
+  const _ConnectedAccountsSection({
+    this.onListSocialAccounts,
+    this.onUnlinkSocialAccount,
+    this.onBindGoogle,
+    this.onBindGithub,
+  });
+
+  final Future<List<Map<String, dynamic>>> Function()? onListSocialAccounts;
+  final Future<void> Function(String provider)? onUnlinkSocialAccount;
+  final VoidCallback? onBindGoogle;
+  final VoidCallback? onBindGithub;
+
+  @override
+  State<_ConnectedAccountsSection> createState() =>
+      _ConnectedAccountsSectionState();
+}
+
+class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
+  List<Map<String, dynamic>>? _accounts;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (widget.onListSocialAccounts == null) {
+      setState(() => _loading = false);
+      return;
+    }
+    try {
+      final accounts = await widget.onListSocialAccounts!();
+      if (mounted) setState(() { _accounts = accounts; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Map<String, dynamic>? _accountFor(String provider) {
+    return _accounts?.cast<Map<String, dynamic>?>().firstWhere(
+      (a) => a?['provider'] == provider,
+      orElse: () => null,
+    );
+  }
+
+  Future<void> _unlink(String provider) async {
+    if (widget.onUnlinkSocialAccount == null) return;
+    try {
+      await widget.onUnlinkSocialAccount!(provider);
+      await _load();
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasAnyProvider = widget.onBindGoogle != null || widget.onBindGithub != null;
+    if (!hasAnyProvider && widget.onListSocialAccounts == null) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Connected accounts',
+          style: Theme.of(context)
+              .textTheme
+              .labelLarge
+              ?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        if (_loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: LinearProgressIndicator(minHeight: 2),
+          )
+        else ...[
+          _buildProviderRow(context, 'google', 'Google', Icons.g_mobiledata, widget.onBindGoogle),
+          _buildProviderRow(context, 'github', 'GitHub', Icons.code, widget.onBindGithub),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildProviderRow(
+    BuildContext context,
+    String provider,
+    String label,
+    IconData icon,
+    VoidCallback? onBind,
+  ) {
+    final account = _accountFor(provider);
+    final linked = account != null;
+    final email = account?['email']?.toString() ?? '';
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(label),
+      subtitle: linked
+          ? Text(email.isNotEmpty ? email : 'Linked')
+          : const Text('Not linked'),
+      dense: true,
+      trailing: linked
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (onBind != null)
+                  TextButton(onPressed: onBind, child: const Text('Switch')),
+                TextButton(
+                  onPressed: () => _unlink(provider),
+                  child: Text('Unlink',
+                      style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                ),
+              ],
+            )
+          : onBind != null
+              ? TextButton(onPressed: onBind, child: Text('Link $label'))
+              : null,
     );
   }
 }

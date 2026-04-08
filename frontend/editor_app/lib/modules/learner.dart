@@ -196,7 +196,7 @@ class _LearnerPageState extends State<_LearnerPage> {
     final isLocal = (detail['id'] as num?)?.toInt() != null &&
         ((detail['id'] as num).toInt() < 0);
     final canEdit = isOwner || isLocal;
-    await showDialog<void>(
+    await _showSlideInDialog<void>(
       context: context,
       builder: (context) => _NoteViewerDialog(
         note: detail,

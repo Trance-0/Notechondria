@@ -503,7 +503,7 @@ Future<T?> _showSlideInDialog<T>({
         opacity: curved,
         child: SlideTransition(
           position: Tween<Offset>(
-            begin: const Offset(0.08, 0),
+            begin: const Offset(0.3, 0),
             end: Offset.zero,
           ).animate(curved),
           child: child,
