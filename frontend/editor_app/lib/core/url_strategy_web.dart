@@ -9,3 +9,7 @@ void browserPushState(String url) {
 void browserReplaceState(String url) {
   html.window.history.replaceState(null, '', url);
 }
+
+void browserRedirect(String url) {
+  html.window.location.href = url;
+}

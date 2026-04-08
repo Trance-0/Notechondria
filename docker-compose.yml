@@ -14,8 +14,8 @@ services:
 
   app:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     environment:
       POSTGRE_USERNAME: ${POSTGRE_USERNAME:-postgres}
       POSTGRE_PASSWORD: ${POSTGRE_PASSWORD:-postgres}

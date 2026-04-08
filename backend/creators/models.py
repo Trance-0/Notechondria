@@ -85,6 +85,38 @@ class Creator(models.Model):
         """for better list display"""
         return f"{self.user_id.get_full_name()}"
 
+class SocialProviderChoices(models.TextChoices):
+    GOOGLE = "google", _("Google")
+    GITHUB = "github", _("GitHub")
+
+
+class SocialAccount(models.Model):
+    """Links a Django user to an external OAuth provider account."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="social_accounts",
+    )
+    provider = models.CharField(
+        max_length=16,
+        choices=SocialProviderChoices.choices,
+    )
+    provider_uid = models.CharField(
+        max_length=255,
+        help_text="Unique ID from the OAuth provider (e.g. Google sub, GitHub id).",
+    )
+    email = models.EmailField(blank=True, default="")
+    extra_data = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("provider", "provider_uid")
+
+    def __str__(self):
+        return f"{self.provider}:{self.provider_uid} → {self.user.username}"
+
+
 class VerificationChoices(models.TextChoices):
     """User group choices, may be more efficient if use django internal group"""
 

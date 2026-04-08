@@ -118,10 +118,10 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 > Urgent
 
-- [ ] Add registration via google, use google oauth2 api (env variables are defined in `sample.text.env`, be sure to verify on the backend and capture the callback url from google redirect is on backend, be sure to take user back to frontend app after successful login/register. Ask for appropriate data like email, username from google to create user profiles.)
-- [ ] Add registration via Github, use Github App api (env variables are defined in `sample.text.env`, be sure to verify on the backend and capture the callback url from github redirect is on backend, and also handle the webhook post from github with verifications, be sure to take user back to frontend app after successful login/register. Ask for appropriate data like email, username from google to create user profiles.)
-- [ ] Allow existing users to bind their social accounts and login using them, currently support github and google accounts.
-- [ ] Add the necessary items and credential updates to `sample.render.env`
+- [x] Add registration via google, use google oauth2 api (env variables are defined in `sample.text.env`, be sure to verify on the backend and capture the callback url from google redirect is on backend, be sure to take user back to frontend app after successful login/register. Ask for appropriate data like email, username from google to create user profiles.)
+- [x] Add registration via Github, use Github App api (env variables are defined in `sample.text.env`, be sure to verify on the backend and capture the callback url from github redirect is on backend, and also handle the webhook post from github with verifications, be sure to take user back to frontend app after successful login/register. Ask for appropriate data like email, username from google to create user profiles.)
+- [x] Allow existing users to bind their social accounts and login using them, currently support github and google accounts.
+- [x] Add the necessary items and credential updates to `sample.render.env`
 
 - [ ] Embed from all setting from the micro services included.
   - Editor settings

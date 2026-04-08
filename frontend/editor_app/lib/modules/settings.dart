@@ -28,6 +28,8 @@ class _SettingsPage extends StatefulWidget {
     required this.localDraftCount,
     required this.localCourseCount,
     required this.uiLogs,
+    this.onGoogleLogin,
+    this.onGithubLogin,
     this.onDownloadConfig,
     this.apiBaseUrl,
     this.debugSnapshotListenable,
@@ -67,6 +69,8 @@ class _SettingsPage extends StatefulWidget {
     String code,
     String password,
   ) onConfirmPasswordReset;
+  final VoidCallback? onGoogleLogin;
+  final VoidCallback? onGithubLogin;
   final Future<void> Function(Map<String, dynamic> note) onRestoreDeletedNote;
   final Future<void> Function() onEmptyDeletedNotes;
   final Future<void> Function() onCopyLogs;
@@ -580,6 +584,8 @@ class _SettingsPageState extends State<_SettingsPage> {
                 onLogin: widget.onLogin,
                 onRequestPasswordReset: widget.onRequestPasswordReset,
                 onConfirmPasswordReset: widget.onConfirmPasswordReset,
+                onGoogleLogin: widget.onGoogleLogin,
+                onGithubLogin: widget.onGithubLogin,
               ),
             ] else ...[
               _buildProfileFields(context),

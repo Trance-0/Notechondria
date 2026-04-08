@@ -15,6 +15,8 @@ class _SettingsPage extends StatefulWidget {
     required this.onLogin,
     required this.onRequestPasswordReset,
     required this.onConfirmPasswordReset,
+    this.onGoogleLogin,
+    this.onGithubLogin,
     required this.onRestoreDeletedNote,
     required this.onEmptyDeletedNotes,
     required this.onCopyLogs,
@@ -61,6 +63,8 @@ class _SettingsPage extends StatefulWidget {
     String code,
     String password,
   ) onConfirmPasswordReset;
+  final VoidCallback? onGoogleLogin;
+  final VoidCallback? onGithubLogin;
   final Future<void> Function(Map<String, dynamic> note) onRestoreDeletedNote;
   final Future<void> Function() onEmptyDeletedNotes;
   final Future<void> Function() onCopyLogs;
@@ -351,6 +355,8 @@ class _SettingsPageState extends State<_SettingsPage> {
                     onLogin: widget.onLogin,
                     onRequestPasswordReset: widget.onRequestPasswordReset,
                     onConfirmPasswordReset: widget.onConfirmPasswordReset,
+                    onGoogleLogin: widget.onGoogleLogin,
+                    onGithubLogin: widget.onGithubLogin,
                   ),
                 ] else ...[
                   Text(
@@ -596,6 +602,8 @@ class _AuthHub extends StatelessWidget {
     required this.onLogin,
     required this.onRequestPasswordReset,
     required this.onConfirmPasswordReset,
+    this.onGoogleLogin,
+    this.onGithubLogin,
   });
 
   final Future<ActionFeedback> Function(String email, String password)
@@ -609,6 +617,8 @@ class _AuthHub extends StatelessWidget {
     String code,
     String password,
   ) onConfirmPasswordReset;
+  final VoidCallback? onGoogleLogin;
+  final VoidCallback? onGithubLogin;
 
   Future<void> _openDialog(BuildContext context, Widget dialog) {
     return showDialog<void>(
@@ -690,6 +700,31 @@ class _AuthHub extends StatelessWidget {
                 ),
               ],
             ),
+            if (onGoogleLogin != null || onGithubLogin != null) ...[
+              const SizedBox(height: 12),
+              const Divider(),
+              const SizedBox(height: 4),
+              const Text('Or continue with a social account:'),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  if (onGoogleLogin != null)
+                    OutlinedButton.icon(
+                      onPressed: onGoogleLogin,
+                      icon: const Icon(Icons.g_mobiledata, size: 22),
+                      label: const Text('Google'),
+                    ),
+                  if (onGithubLogin != null)
+                    OutlinedButton.icon(
+                      onPressed: onGithubLogin,
+                      icon: const Icon(Icons.code, size: 18),
+                      label: const Text('GitHub'),
+                    ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

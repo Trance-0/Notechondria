@@ -210,12 +210,95 @@ class _AppShellState extends State<AppShell> {
       if (mounted && _isLoading) setState(() => _isLoading = false);
     });
     await _loadLocalState();
-    await _restoreSession();
+    // Check for OAuth callback before restoring session.
+    final oauthHandled = await _handleOAuthCallback();
+    if (!oauthHandled) {
+      await _restoreSession();
+    }
     await _loadInitialData();
     // Deep-link: if the URL contains a note UUID, load it.
     final deepLinkUuid = _parseNoteUuidFromUrl();
     if (deepLinkUuid != null) {
       await _openNoteByUuid(deepLinkUuid);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // OAuth helpers
+  // ---------------------------------------------------------------------------
+
+  Future<void> _launchOAuth(String provider) async {
+    try {
+      final config = await widget.client.getOAuthConfig();
+      final providerConfig = Map<String, dynamic>.from(
+        config[provider] as Map? ?? {},
+      );
+      final clientId = providerConfig['client_id']?.toString() ?? '';
+      final redirectUri = providerConfig['redirect_uri']?.toString() ?? '';
+      if (clientId.isEmpty) {
+        _appendUiLog('$provider OAuth not configured (missing client_id).');
+        return;
+      }
+      // Save redirect_uri so we can send it with the code exchange.
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('oauth_redirect_uri', redirectUri);
+
+      final String authUrl;
+      if (provider == 'google') {
+        authUrl = Uri.https('accounts.google.com', '/o/oauth2/v2/auth', {
+          'client_id': clientId,
+          'redirect_uri': redirectUri,
+          'response_type': 'code',
+          'scope': 'openid email profile',
+          'state': 'google',
+          'access_type': 'offline',
+          'prompt': 'select_account',
+        }).toString();
+      } else {
+        authUrl = Uri.https('github.com', '/login/oauth/authorize', {
+          'client_id': clientId,
+          'redirect_uri': redirectUri,
+          'scope': 'user:email',
+          'state': 'github',
+        }).toString();
+      }
+      url_strategy.browserRedirect(authUrl);
+    } catch (error) {
+      _appendUiLog('OAuth launch failed: ${error.toString().replaceFirst("Exception: ", "")}');
+    }
+  }
+
+  /// Check [Uri.base] for an OAuth callback `?code=&state=` and complete login.
+  /// Returns true if an OAuth callback was handled.
+  Future<bool> _handleOAuthCallback() async {
+    if (!kIsWeb) return false;
+    final uri = Uri.base;
+    final code = uri.queryParameters['code'];
+    final state = uri.queryParameters['state'];
+    if (code == null || code.isEmpty) return false;
+    if (state != 'google' && state != 'github') return false;
+
+    // Clean the URL so a page refresh doesn't re-process the code.
+    final cleanUrl = uri.removeFragment().replace(queryParameters: {}).toString();
+    url_strategy.browserReplaceState(cleanUrl);
+
+    final prefs = await SharedPreferences.getInstance();
+    final redirectUri = prefs.getString('oauth_redirect_uri') ?? '';
+    await prefs.remove('oauth_redirect_uri');
+
+    try {
+      final Map<String, dynamic> result;
+      if (state == 'google') {
+        result = await widget.client.loginWithGoogle(code, redirectUri: redirectUri);
+      } else {
+        result = await widget.client.loginWithGithub(code, redirectUri: redirectUri);
+      }
+      await _applyAuthPayload(result);
+      _appendUiLog('Signed in via ${state == 'google' ? 'Google' : 'GitHub'}.');
+      return true;
+    } catch (error) {
+      _appendUiLog('OAuth login failed: ${error.toString().replaceFirst("Exception: ", "")}');
+      return false;
     }
   }
 
@@ -3510,6 +3593,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           onLogin: _login,
           onRequestPasswordReset: _requestPasswordReset,
           onConfirmPasswordReset: _confirmPasswordReset,
+          onGoogleLogin: () => _launchOAuth('google'),
+          onGithubLogin: () => _launchOAuth('github'),
           onRestoreDeletedNote: _restoreDeletedNote,
           onEmptyDeletedNotes: _emptyDeletedNotes,
           onCopyLogs: _copyFrontendLogs,

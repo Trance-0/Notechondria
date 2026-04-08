@@ -1,14 +1,19 @@
 from django.urls import path
 
 from creators.api import (
+    GitHubOAuthApiView,
+    GoogleOAuthApiView,
     LoginApiView,
     LogoutApiView,
+    OAuthConfigApiView,
     PasswordResetConfirmApiView,
     PasswordResetRequestApiView,
     RegisterApiView,
     ResendVerificationApiView,
     SettingsApiView,
     SessionApiView,
+    SocialAccountListApiView,
+    SocialAccountUnlinkApiView,
     VerifyEmailApiView,
 )
 from notes.api import (
@@ -54,6 +59,11 @@ urlpatterns = [
     path("auth/password-reset/confirm/", PasswordResetConfirmApiView.as_view(), name="password-reset-confirm"),
     path("auth/logout/", LogoutApiView.as_view(), name="logout"),
     path("auth/session/", SessionApiView.as_view(), name="session"),
+    path("auth/oauth-config/", OAuthConfigApiView.as_view(), name="oauth-config"),
+    path("auth/google/", GoogleOAuthApiView.as_view(), name="google-oauth"),
+    path("auth/github/", GitHubOAuthApiView.as_view(), name="github-oauth"),
+    path("auth/social-accounts/", SocialAccountListApiView.as_view(), name="social-accounts"),
+    path("auth/social-accounts/<str:provider>/", SocialAccountUnlinkApiView.as_view(), name="social-account-unlink"),
     path("front-page/", FrontPageApiView.as_view(), name="front-page"),
     path("courses/", CourseListApiView.as_view(), name="course-list"),
     path("courses/reorder/", CourseReorderApiView.as_view(), name="course-reorder"),

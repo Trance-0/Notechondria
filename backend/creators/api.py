@@ -11,7 +11,10 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import InvitationCode, VerificationChoices, VerificationCode
+import logging
+import requests as http_requests
+
+from .models import InvitationCode, SocialAccount, VerificationChoices, VerificationCode
 from .utils import (
     ensure_creator,
     ensure_creator_avatar,
@@ -534,3 +537,377 @@ class SettingsApiView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(SettingsSerializer(creator, context={"request": request}).data)
+
+
+# ---------------------------------------------------------------------------
+# OAuth helpers
+# ---------------------------------------------------------------------------
+
+logger = logging.getLogger("django")
+
+
+def _validate_invitation_if_required(invitation_code: str):
+    """Validate and consume an invitation code when the invitation system is
+    active. Raises ``serializers.ValidationError`` on failure."""
+    if not InvitationCode.objects.exists():
+        return
+    code = invitation_code.strip()
+    if not code:
+        raise serializers.ValidationError(
+            {"invitation_code": "An invitation code is required to register."}
+        )
+    code_hash = InvitationCode.hash_code(code)
+    invite = InvitationCode.objects.filter(code_hash=code_hash).first()
+    if invite is None or not invite.is_valid():
+        raise serializers.ValidationError(
+            {"invitation_code": "Invalid or expired invitation code."}
+        )
+    invite.consume()
+
+
+def _get_or_create_oauth_user(provider: str, provider_uid: str, email: str,
+                              username: str, display_name: str,
+                              extra_data: dict, invitation_code: str = "",
+                              request=None):
+    """Find an existing user linked to this social account, or create a new
+    one.  Returns the ``auth_payload`` dict ready for the frontend."""
+
+    # 1. Check for existing social link.
+    social = SocialAccount.objects.filter(
+        provider=provider, provider_uid=str(provider_uid)
+    ).select_related("user").first()
+
+    if social is not None:
+        user = social.user
+        if not user.is_active:
+            user.is_active = True
+            user.save(update_fields=["is_active"])
+        social.extra_data = extra_data
+        social.save(update_fields=["extra_data"])
+        ensure_creator(user)
+        return auth_payload(user, request=request)
+
+    # 2. Check if a user with this email already exists — link the account.
+    user = User.objects.filter(email__iexact=email).first() if email else None
+    if user is not None:
+        SocialAccount.objects.create(
+            user=user,
+            provider=provider,
+            provider_uid=str(provider_uid),
+            email=email,
+            extra_data=extra_data,
+        )
+        if not user.is_active:
+            user.is_active = True
+            user.save(update_fields=["is_active"])
+        ensure_creator(user)
+        return auth_payload(user, request=request)
+
+    # 3. New user — validate invitation code if required.
+    _validate_invitation_if_required(invitation_code)
+
+    # Deduplicate username.
+    base_username = username or email.split("@")[0] if email else f"{provider}_user"
+    candidate = base_username[:150]
+    suffix = 0
+    while User.objects.filter(username__iexact=candidate).exists():
+        suffix += 1
+        candidate = f"{base_username[:145]}_{suffix}"
+
+    user = User.objects.create(
+        username=candidate,
+        email=email or "",
+        first_name=(display_name or "").split()[0][:30] if display_name else "",
+        last_name=" ".join((display_name or "").split()[1:])[:150] if display_name else "",
+        is_active=True,
+    )
+    user.set_unusable_password()
+    user.save()
+    SocialAccount.objects.create(
+        user=user,
+        provider=provider,
+        provider_uid=str(provider_uid),
+        email=email,
+        extra_data=extra_data,
+    )
+    ensure_creator(user)
+    return auth_payload(user, request=request)
+
+
+# ---------------------------------------------------------------------------
+# Google OAuth
+# ---------------------------------------------------------------------------
+
+class OAuthConfigApiView(APIView):
+    """Return public OAuth client IDs and redirect URIs for the frontend."""
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        return Response({
+            "google": {
+                "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
+                "redirect_uri": settings.GOOGLE_AUTHORIZED_REDIRECT_URI,
+            },
+            "github": {
+                "client_id": settings.GITHUB_APP_CLIENT_ID,
+                "redirect_uri": settings.GITHUB_AUTHORIZED_REDIRECT_URI,
+            },
+        })
+
+
+class GoogleOAuthSerializer(serializers.Serializer):
+    code = serializers.CharField(
+        required=False, allow_blank=True,
+        help_text="Authorization code from Google redirect.",
+    )
+    id_token = serializers.CharField(
+        required=False, allow_blank=True,
+        help_text="ID token from Google Sign-In (client-side flow).",
+    )
+    redirect_uri = serializers.CharField(
+        required=False, allow_blank=True, default="",
+        help_text="Redirect URI used in the authorization request (must match).",
+    )
+    invitation_code = serializers.CharField(
+        required=False, allow_blank=True, default="",
+    )
+
+    def validate(self, attrs):
+        code = (attrs.get("code") or "").strip()
+        id_token = (attrs.get("id_token") or "").strip()
+        if not code and not id_token:
+            raise serializers.ValidationError(
+                "Either 'code' (authorization code) or 'id_token' is required."
+            )
+        return attrs
+
+
+class GoogleOAuthApiView(APIView):
+    """Exchange a Google authorization code or ID token for an app auth token.
+
+    POST /api/v1/auth/google/
+    Body: { "code": "...", "invitation_code": "..." }
+       or { "id_token": "...", "invitation_code": "..." }
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = GoogleOAuthSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        code = (data.get("code") or "").strip()
+        raw_id_token = (data.get("id_token") or "").strip()
+        redirect_uri = (data.get("redirect_uri") or "").strip() or settings.GOOGLE_AUTHORIZED_REDIRECT_URI
+        invitation_code = data.get("invitation_code", "")
+
+        if code:
+            # Exchange authorization code for tokens.
+            token_resp = http_requests.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "code": code,
+                    "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
+                    "client_secret": settings.GOOGLE_OAUTH_CLIENT_SECRET,
+                    "redirect_uri": redirect_uri,
+                    "grant_type": "authorization_code",
+                },
+                timeout=15,
+            )
+            if token_resp.status_code != 200:
+                logger.warning("Google token exchange failed: %s", token_resp.text)
+                return Response(
+                    {"detail": "Failed to exchange Google authorization code."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            raw_id_token = token_resp.json().get("id_token", "")
+
+        if not raw_id_token:
+            return Response(
+                {"detail": "No ID token received from Google."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Verify the ID token via Google's tokeninfo endpoint.
+        verify_resp = http_requests.get(
+            "https://oauth2.googleapis.com/tokeninfo",
+            params={"id_token": raw_id_token},
+            timeout=10,
+        )
+        if verify_resp.status_code != 200:
+            return Response(
+                {"detail": "Google ID token verification failed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        info = verify_resp.json()
+        aud = info.get("aud", "")
+        if aud != settings.GOOGLE_OAUTH_CLIENT_ID:
+            return Response(
+                {"detail": "ID token audience mismatch."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        google_uid = info.get("sub", "")
+        email = info.get("email", "")
+        name = info.get("name", "")
+        username = email.split("@")[0] if email else f"google_{google_uid}"
+
+        payload = _get_or_create_oauth_user(
+            provider="google",
+            provider_uid=google_uid,
+            email=email,
+            username=username,
+            display_name=name,
+            extra_data={"picture": info.get("picture", ""), "locale": info.get("locale", "")},
+            invitation_code=invitation_code,
+            request=request,
+        )
+        return Response(payload)
+
+
+# ---------------------------------------------------------------------------
+# GitHub OAuth
+# ---------------------------------------------------------------------------
+
+class GitHubOAuthSerializer(serializers.Serializer):
+    code = serializers.CharField(
+        help_text="Authorization code from GitHub redirect.",
+    )
+    redirect_uri = serializers.CharField(
+        required=False, allow_blank=True, default="",
+        help_text="Redirect URI used in the authorization request.",
+    )
+    invitation_code = serializers.CharField(
+        required=False, allow_blank=True, default="",
+    )
+
+
+class GitHubOAuthApiView(APIView):
+    """Exchange a GitHub authorization code for an app auth token.
+
+    POST /api/v1/auth/github/
+    Body: { "code": "...", "invitation_code": "..." }
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = GitHubOAuthSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        code = data["code"]
+        redirect_uri = (data.get("redirect_uri") or "").strip() or settings.GITHUB_AUTHORIZED_REDIRECT_URI
+        invitation_code = data.get("invitation_code", "")
+
+        # Exchange code for access token.
+        token_payload = {
+            "client_id": settings.GITHUB_APP_CLIENT_ID,
+            "client_secret": settings.GITHUB_APP_CLIENT_SECRET,
+            "code": code,
+        }
+        if redirect_uri:
+            token_payload["redirect_uri"] = redirect_uri
+        token_resp = http_requests.post(
+            "https://github.com/login/oauth/access_token",
+            json=token_payload,
+            headers={"Accept": "application/json"},
+            timeout=15,
+        )
+        if token_resp.status_code != 200:
+            logger.warning("GitHub token exchange failed: %s", token_resp.text)
+            return Response(
+                {"detail": "Failed to exchange GitHub authorization code."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        token_data = token_resp.json()
+        access_token = token_data.get("access_token", "")
+        if not access_token:
+            error_desc = token_data.get("error_description", token_data.get("error", "unknown"))
+            return Response(
+                {"detail": f"GitHub OAuth error: {error_desc}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Fetch user profile.
+        user_resp = http_requests.get(
+            "https://api.github.com/user",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Accept": "application/vnd.github+json",
+            },
+            timeout=10,
+        )
+        if user_resp.status_code != 200:
+            return Response(
+                {"detail": "Failed to fetch GitHub user profile."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        gh_user = user_resp.json()
+
+        # Fetch primary email if not public.
+        email = gh_user.get("email") or ""
+        if not email:
+            emails_resp = http_requests.get(
+                "https://api.github.com/user/emails",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Accept": "application/vnd.github+json",
+                },
+                timeout=10,
+            )
+            if emails_resp.status_code == 200:
+                for em in emails_resp.json():
+                    if em.get("primary") and em.get("verified"):
+                        email = em["email"]
+                        break
+
+        github_uid = str(gh_user.get("id", ""))
+        username = gh_user.get("login", "") or f"github_{github_uid}"
+        display_name = gh_user.get("name", "") or username
+
+        payload = _get_or_create_oauth_user(
+            provider="github",
+            provider_uid=github_uid,
+            email=email,
+            username=username,
+            display_name=display_name,
+            extra_data={
+                "login": gh_user.get("login", ""),
+                "avatar_url": gh_user.get("avatar_url", ""),
+                "html_url": gh_user.get("html_url", ""),
+            },
+            invitation_code=invitation_code,
+            request=request,
+        )
+        return Response(payload)
+
+
+# ---------------------------------------------------------------------------
+# Social Account Binding (for authenticated users)
+# ---------------------------------------------------------------------------
+
+class SocialAccountListApiView(APIView):
+    """List connected social accounts for the authenticated user."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        accounts = SocialAccount.objects.filter(user=request.user).values(
+            "id", "provider", "provider_uid", "email", "created_at",
+        )
+        return Response(list(accounts))
+
+
+class SocialAccountUnlinkApiView(APIView):
+    """Unlink a social account from the authenticated user."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, provider):
+        deleted, _ = SocialAccount.objects.filter(
+            user=request.user, provider=provider,
+        ).delete()
+        if not deleted:
+            return Response(
+                {"detail": f"No {provider} account linked."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)

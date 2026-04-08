@@ -12,6 +12,78 @@ Related docs:
 1. Copy `deployment/docker/.env.example` to `.env` for local Docker-based full-stack work.
 2. Fill PostgreSQL credentials, Django secret key, and optional GitHub app keys.
 
+### Jenkins first-time setup (new users)
+
+If this is your first time setting up Jenkins for this project, follow these steps.
+
+**1. Install Jenkins**
+
+Download and install Jenkins from <https://www.jenkins.io/download/>. On Windows, run the MSI installer and accept defaults. On Linux, use the official apt/yum repository.
+
+**2. Install required plugins**
+
+From the Jenkins dashboard: `Manage Jenkins` > `Plugins` > `Available plugins`. Search for and install each of the following:
+
+| Plugin | Purpose |
+|---|---|
+| **Pipeline** | Enables `Jenkinsfile`-based pipeline jobs |
+| **Pipeline: Stage View** | Visual stage progress in the dashboard |
+| **Environment Injector** (EnvInject) | Injects variables from Properties Content into builds |
+| **Docker Pipeline** | Lets pipeline steps interact with Docker |
+| **Git** | SCM checkout support (usually pre-installed) |
+| **Credentials** | Manages secrets (usually pre-installed) |
+
+After installing, restart Jenkins when prompted.
+
+**3. Configure Docker access**
+
+Jenkins must be able to run `docker` and `docker compose` commands. Verify with:
+
+```bash
+docker --version
+docker compose version
+```
+
+On Linux, add the `jenkins` user to the `docker` group:
+
+```bash
+sudo usermod -aG docker jenkins
+sudo systemctl restart jenkins
+```
+
+On Windows, ensure Docker Desktop is running and the Jenkins service account has access.
+
+**4. Create the pipeline job**
+
+1. From the dashboard, click `New Item`.
+2. Enter a name (e.g., `notechondria`), select `Pipeline`, and click OK.
+3. Under **Pipeline**, set:
+   - Definition: `Pipeline script from SCM`
+   - SCM: `Git`
+   - Repository URL: your clone URL (HTTPS for public repos, SSH for private)
+   - Branch Specifier: `*/codex` (or your deployment branch)
+   - Script Path: `Jenkinsfile`
+4. Click Save.
+
+**5. Inject environment variables**
+
+The pipeline reads deployment credentials from Jenkins-injected environment variables (not a committed `.env` file). Set them up via the **Environment Injector** plugin:
+
+1. Open the job configuration.
+2. Scroll to **Build Environment** and check `Inject environment variables to the build process`.
+3. In the **Properties Content** text area, paste the variables listed in the next section.
+4. Save the job.
+
+**6. First build**
+
+Click `Build Now`. The first run will pull Docker images and build containers, which may take several minutes. Check the console output for errors.
+
+Common first-run issues:
+- **Port conflicts**: Change `APP_HOST_PORT`, `DB_HOST_PORT`, etc. if another service uses those ports.
+- **Docker not found**: Ensure Docker is installed and accessible to the Jenkins user.
+- **Git long paths (Windows)**: Run `git config --system core.longpaths true` in an admin shell.
+- **Missing backup**: The first backup step may skip because no database exists yet. This is expected.
+
 ### Jenkins-injected deployment env
 
 Do not commit the real deployment `.env` file. Instead, inject deployment variables in Jenkins and let the pipeline materialize `.env.deploy` during the build.
@@ -73,6 +145,10 @@ GITHUB_APP_CLIENT_ID=
 GITHUB_APP_CLIENT_SECRET=
 GITHUB_APP_PRIVATE_KEY_PATH=
 GITHUB_APP_WEBHOOK_SECRET=
+GITHUB_AUTHORIZED_REDIRECT_URI=
+GOOGLE_OAUTH_CLIENT_ID=
+GOOGLE_OAUTH_CLIENT_SECRET=
+GOOGLE_AUTHORIZED_REDIRECT_URI=
 APP_IMAGE=trancezero/notechondria:build-${BUILD_NUMBER}
 NGINX_IMAGE=trancezero/nginx:build-${BUILD_NUMBER}
 FRONTEND_IMAGE=trancezero/notechondria-frontend:build-${BUILD_NUMBER}

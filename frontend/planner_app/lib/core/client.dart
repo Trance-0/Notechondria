@@ -107,6 +107,9 @@ abstract class NotechondriaClient {
   Future<Map<String, dynamic>> verifyEmail(String email, String code);
   Future<Map<String, dynamic>> resendVerification(String email);
   Future<Map<String, dynamic>> login(String email, String password);
+  Future<Map<String, dynamic>> loginWithGoogle(String code, {String redirectUri = '', String invitationCode = ''});
+  Future<Map<String, dynamic>> loginWithGithub(String code, {String redirectUri = '', String invitationCode = ''});
+  Future<Map<String, dynamic>> getOAuthConfig();
   Future<Map<String, dynamic>> requestPasswordReset(String email);
   Future<Map<String, dynamic>> confirmPasswordReset(
     String email,
@@ -698,6 +701,39 @@ class HttpNotechondriaClient implements NotechondriaClient {
     );
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> loginWithGoogle(String code, {String redirectUri = '', String invitationCode = ''}) async {
+    final uri = _uri('/auth/google/');
+    final payload = <String, dynamic>{'code': code};
+    if (redirectUri.isNotEmpty) payload['redirect_uri'] = redirectUri;
+    if (invitationCode.isNotEmpty) payload['invitation_code'] = invitationCode;
+    final response = await _post(uri, payload: payload);
+    return Map<String, dynamic>.from(
+      await _decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> loginWithGithub(String code, {String redirectUri = '', String invitationCode = ''}) async {
+    final uri = _uri('/auth/github/');
+    final payload = <String, dynamic>{'code': code};
+    if (redirectUri.isNotEmpty) payload['redirect_uri'] = redirectUri;
+    if (invitationCode.isNotEmpty) payload['invitation_code'] = invitationCode;
+    final response = await _post(uri, payload: payload);
+    return Map<String, dynamic>.from(
+      await _decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> getOAuthConfig() async {
+    final uri = _uri('/auth/oauth-config/');
+    final response = await _get(uri);
+    return Map<String, dynamic>.from(
+      await _decode(response, uri: uri, method: 'GET'),
     );
   }
 

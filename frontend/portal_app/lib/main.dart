@@ -17,6 +17,9 @@ import 'package:markdown/markdown.dart' as md;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
+import 'core/url_strategy.dart'
+    if (dart.library.html) 'core/url_strategy_web.dart' as url_strategy;
+
 part 'app_shell.dart';
 part 'core/client.dart';
 part 'core/helpers.dart';
