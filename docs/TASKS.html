@@ -190,6 +190,7 @@
 <li>A big task that needs to be decomposed into smaller tasks, and test on each steps.</li>
 </ul>
 <p>For the bug you fixed on this round, create a new <code>&lt;Pending-version&gt;.&lt;inc-numeral&gt;.md</code> in ./docs/versions, move your finished item (delete the completed item in this file) to this new file, follow the templated defined in previous files.</p>
+<p><strong>Versioning rule:</strong> On each update, increment the third digit in <code>./VERSION</code> (e.g. <code>0.1.8</code> -&gt; <code>0.1.9</code>). The first two digits (<code>0.1</code>) are controlled by humans only — never change them. The <code>VERSION</code> file is read by <code>prepare_env.sh</code> to tag Docker images as <code>v&lt;VERSION&gt;.&lt;BUILD_NUMBER&gt;</code>.</p>
 <p>Let me know any environment variables need to be updated. After all edits are done, check every test passed. COMMIT and I will push after check.</p>
 <p>Always finish <code>&gt; Urgent</code> tasks first if exists.</p>
 <p>PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK</p>
@@ -296,29 +297,29 @@ Embed from /planner/Activity view</li>
 </ul>
 <h3 id="settings"><a class="header" href="#settings">Settings</a></h3>
 <ul>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Register windows
 <ul>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 First, check for Invitation code (implement that in backend, plain sha 256 and compare with the record added in backend admin site) (backend: <code>InvitationCode</code> model with SHA-256 hash, auto-hash on save, consume on use; required only when codes exist in DB) Note, the invitation code is separated from the email verification code. The invitation code is used for registering new users only for testing.</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 back and confirm button (when confirm is clicked, verify the invitation code and move to the next window if successful)</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 After invitation code is verified, Select one from the three: email, google, github</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 When user selects google or github, show their corresponding redirect and implement that</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 When user selects email, show the following form
 <ul>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Input fields in the following order: Username (verify be distinct)</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Email, on the same row (email verification send button, verification),</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 (only when invitation code is checked and not used in backend) Enable email verification (60s resend, 6 digit code with expiration, only store hash code in backend), we will set smtp params in environment variables. (backend: 6-digit codes stored as SHA-256 hash via <code>VerificationCode.generate_code()</code>, 60s cooldown in <code>ResendVerificationSerializer</code>)</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 password, (with validation, 8 digit minimum with simple measurement for strong password), repeat password (backend: <code>RegisterSerializer</code> with username field, 8-char min, uppercase+lowercase+digit/special validation)</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Back, and register (frontend implementation) (new <code>_RegisterDialog</code> with username, email, password, confirm password, invitation code fields; client updated with new signature)</li>
 </ul>
 </li>

@@ -188,6 +188,7 @@
 <li>A big task that needs to be decomposed into smaller tasks, and test on each steps.</li>
 </ul>
 <p>For the bug you fixed on this round, create a new <code>&lt;Pending-version&gt;.&lt;inc-numeral&gt;.md</code> in ./docs/versions, move your finished item (delete the completed item in this file) to this new file, follow the templated defined in previous files.</p>
+<p><strong>Versioning rule:</strong> On each update, increment the third digit in <code>./VERSION</code> (e.g. <code>0.1.8</code> -&gt; <code>0.1.9</code>). The first two digits (<code>0.1</code>) are controlled by humans only — never change them. The <code>VERSION</code> file is read by <code>prepare_env.sh</code> to tag Docker images as <code>v&lt;VERSION&gt;.&lt;BUILD_NUMBER&gt;</code>.</p>
 <p>Let me know any environment variables need to be updated. After all edits are done, check every test passed. COMMIT and I will push after check.</p>
 <p>Always finish <code>&gt; Urgent</code> tasks first if exists.</p>
 <p>PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK</p>
@@ -294,29 +295,29 @@ Embed from /planner/Activity view</li>
 </ul>
 <h3 id="settings"><a class="header" href="#settings">Settings</a></h3>
 <ul>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Register windows
 <ul>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 First, check for Invitation code (implement that in backend, plain sha 256 and compare with the record added in backend admin site) (backend: <code>InvitationCode</code> model with SHA-256 hash, auto-hash on save, consume on use; required only when codes exist in DB) Note, the invitation code is separated from the email verification code. The invitation code is used for registering new users only for testing.</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 back and confirm button (when confirm is clicked, verify the invitation code and move to the next window if successful)</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 After invitation code is verified, Select one from the three: email, google, github</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 When user selects google or github, show their corresponding redirect and implement that</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 When user selects email, show the following form
 <ul>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Input fields in the following order: Username (verify be distinct)</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Email, on the same row (email verification send button, verification),</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 (only when invitation code is checked and not used in backend) Enable email verification (60s resend, 6 digit code with expiration, only store hash code in backend), we will set smtp params in environment variables. (backend: 6-digit codes stored as SHA-256 hash via <code>VerificationCode.generate_code()</code>, 60s cooldown in <code>ResendVerificationSerializer</code>)</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 password, (with validation, 8 digit minimum with simple measurement for strong password), repeat password (backend: <code>RegisterSerializer</code> with username field, 8-char min, uppercase+lowercase+digit/special validation)</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Back, and register (frontend implementation) (new <code>_RegisterDialog</code> with username, email, password, confirm password, invitation code fields; client updated with new signature)</li>
 </ul>
 </li>
@@ -560,9 +561,9 @@ GITHUB_AUTHORIZED_REDIRECT_URI=
 GOOGLE_OAUTH_CLIENT_ID=
 GOOGLE_OAUTH_CLIENT_SECRET=
 GOOGLE_AUTHORIZED_REDIRECT_URI=
-APP_IMAGE=trancezero/notechondria:build-${BUILD_NUMBER}
-NGINX_IMAGE=trancezero/nginx:build-${BUILD_NUMBER}
-FRONTEND_IMAGE=trancezero/notechondria-frontend:build-${BUILD_NUMBER}
+APP_IMAGE=trancezero/notechondria:v0.1.9.${BUILD_NUMBER}
+NGINX_IMAGE=trancezero/nginx:v0.1.9.${BUILD_NUMBER}
+FRONTEND_IMAGE=trancezero/notechondria-frontend:v0.1.9.${BUILD_NUMBER}
 </code></pre>
 <p>Important formatting notes:</p>
 <ul>
@@ -643,6 +644,7 @@ bash deployment/jenkins/scripts/test_backend.sh /workspace/Notechondria /workspa
 <li><code>deployment/jenkins/scripts/deploy_backend.sh</code></li>
 <li><code>deployment/jenkins/scripts/deploy_frontends.sh</code></li>
 <li><code>deployment/jenkins/scripts/deploy_gateway.sh</code></li>
+<li><code>deployment/docker/gateway/docker-compose.yml</code></li>
 <li><code>deployment/render/scripts/render_backend_start.sh</code></li>
 <li><code>docs/deployment/render_free_tier.md</code></li>
 </ul>
@@ -659,12 +661,18 @@ bash deployment/jenkins/scripts/test_backend.sh /workspace/Notechondria /workspa
 <li><code>frontend/planner_app</code></li>
 <li><code>frontend/portal_app</code></li>
 </ul>
-<p>All frontend stacks connect to the shared Docker network:</p>
+<p>The gateway reverse proxy has its own Compose stack:</p>
+<ul>
+<li><code>deployment/docker/gateway</code></li>
+</ul>
+<p>All frontend stacks and the gateway connect to the shared Docker network:</p>
 <ul>
 <li><code>NOTECHONDRIA_SHARED_NETWORK</code>, default <code>notechondria-shared</code></li>
-<li>backend <code>app</code> and backend <code>nginx</code> join that network</li>
-<li>each frontend nginx container joins that network and proxies backend traffic to <code>http://nginx</code></li>
+<li>backend <code>app</code> and backend <code>nginx</code> join that network; <code>nginx</code> is aliased as <code>backend_nginx</code></li>
+<li>each frontend container joins that network with an alias (<code>editor_frontend</code>, <code>planner_frontend</code>, <code>portal_frontend</code>) and proxies backend traffic to <code>http://nginx</code></li>
+<li>the gateway resolves services by their network aliases</li>
 </ul>
+<p>The frontend and gateway deploy scripts use the individual per-app Compose files, not the root full-stack <code>docker-compose.yml</code>. The root file is intended for local all-in-one development only.</p>
 <p>Jenkins only needs Docker access. It does not need host <code>python</code> or host <code>pg_dump</code>.
 The Django container talks to PostgreSQL through the internal Compose service host <code>db</code>.
 Internal container ports stay fixed:</p>
@@ -685,7 +693,7 @@ The backend entrypoint now runs <code>collectstatic --clear</code>, verifies tha
 <code>prepare_env.sh</code> also normalizes <code>PRODUCTION_STATIC_ROOT</code> and <code>PRODUCTION_MEDIA_ROOT</code> to Linux-container-safe absolute paths so Windows-hosted Jenkins shells cannot accidentally leak host-style values such as <code>C:/...</code> into the container runtime.
 The test stage does not use the postgres container; it runs Django tests with <code>settings_test</code> directly in an app container without the production entrypoint.
 The app service must not mount a named volume over <code>/home/notechondria</code>, because that path contains the Django code copied into the image during build.
-The Jenkins build can tag images with the current build number using <code>APP_IMAGE</code>, <code>NGINX_IMAGE</code>, and <code>FRONTEND_IMAGE</code>, for example <code>trancezero/notechondria:build-${BUILD_NUMBER}</code>.</p>
+The Jenkins build tags images with version and build number using <code>APP_IMAGE</code>, <code>NGINX_IMAGE</code>, and <code>FRONTEND_IMAGE</code>. The version is read from the <code>VERSION</code> file at the repo root by <code>prepare_env.sh</code>, producing tags like <code>v0.1.8.42</code> (<code>v&lt;VERSION&gt;.&lt;BUILD_NUMBER&gt;</code>). To bump the version, edit <code>VERSION</code> and commit. Each local Jenkins instance uses its own <code>BUILD_NUMBER</code>, so different machines produce distinct tags without conflicts.</p>
 <h3 id="postgresql-volume-behavior"><a class="header" href="#postgresql-volume-behavior">PostgreSQL volume behavior</a></h3>
 <p>The <code>db</code> container uses a persistent Docker volume. PostgreSQL reads <code>POSTGRES_USER</code>, <code>POSTGRES_PASSWORD</code>, and <code>POSTGRES_DB</code> only when the data directory is initialized the first time.</p>
 <p>If you later change <code>POSTGRE_USERNAME</code> or <code>POSTGRE_DB</code> in Jenkins but keep the same Docker volume, the container will start with the old cluster state and the new role may not exist. In that case you must do one of these:</p>
