@@ -222,17 +222,6 @@ When editor/planner/portal is opened, start the animation.</li>
 The animation text is too small, Try to make the animation rotates (citric acid cycle) axis at left center of the screen. And show each step by rotating the cycle to the middle of the screen. Align all text horizontally (Do not rotate the text, just move the text along the circle).</li>
 </ul>
 </li>
-<li><input disabled="" type="checkbox" checked=""/>
-Create other transitional animation for page transitions (fade in/out, slide in/out, etc.)
-<ul>
-<li><input disabled="" type="checkbox" checked=""/>
-create slide in animation for transitions from <strong>note view</strong> to <strong>note editor</strong></li>
-<li><input disabled="" type="checkbox" checked=""/>
-fade in for each loaded cards, from top to bottom</li>
-</ul>
-</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Admin (perhaps other test accounts) avatar was reset on each deploy, only reset if it is empty, do not replace admin avatar if preset.</li>
 </ul>
 <h2 id="editor"><a class="header" href="#editor">Editor</a></h2>
 <h3 id="sidebarnavigation"><a class="header" href="#sidebarnavigation">Sidebar/Navigation</a></h3>
@@ -266,10 +255,6 @@ Add a lower right add button (the same as add notes) for inserting attachment (i
 <ul>
 <li><input disabled="" type="checkbox" checked=""/>
 Google Chrome password manager is still not detecting the login widget and auto fill, find out why and fix it.</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Add few other options on the same line as <code>Logout</code> button. It should be arranged as <code>Change email</code>, <code>Change password</code>, <code>Logout</code>.</li>
-<li><input disabled="" type="checkbox" checked=""/>
-Add social link validation, must be url.</li>
 </ul>
 <h4 id="editor-preferences"><a class="header" href="#editor-preferences">Editor Preferences</a></h4>
 <h2 id="planner"><a class="header" href="#planner">Planner</a></h2>
@@ -386,15 +371,15 @@ Embed from all setting from the micro services included.</p>
 </ul>
 <h2 id="backend"><a class="header" href="#backend">Backend</a></h2>
 <ul>
-<li><input disabled="" type="checkbox" checked=""/>
-Edit the admin portal for django, show the owner name for each item (by their first name + last name). If they have parent objects, (for example, if a note is a comment type, it should show the title for the parent note as well. Include other meta data in admin edit portals, like date created etc for better views.)</li>
 <li><input disabled="" type="checkbox"/>
-Create welcome notes for new users showing the functionality of this site, add the welcome note to the template and inbox course. (modify the template no)</li>
+Create welcome notes for new users showing the functionality of this site, add the welcome note to the template and inbox course. (modify the current registered starter course to just one welcome note in inbox.)</li>
 </ul>
 <h3 id="mcp"><a class="header" href="#mcp">MCP</a></h3>
 <ul>
 <li><input disabled="" type="checkbox"/>
-Enable fully functional MCP, enable AI to interact with the site when user creates API keys, let it able to access all backend functions that manage the user's data (note operations, user profile, course operations, etc).</li>
+Add the api key field(read-only) after <code>motto</code> field of user settings. Add rotation button after the api field to generate new api key, the api key should be only visible in front end after user click rotate and the backend should only store the hash of the api key only. (frontend api key is 32 digit hex string)</li>
+<li><input disabled="" type="checkbox"/>
+Enable fully functional MCP, enable AI to interact with the site using the user api key, let it able to access all backend functions that manage the user's data (note operations, user profile, course operations, etc). It should fully on backend.</li>
 </ul>
 <h2 id="documentation-pages"><a class="header" href="#documentation-pages">Documentation pages</a></h2>
 <ul>
