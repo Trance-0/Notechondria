@@ -108,51 +108,54 @@ Example `Properties Content`:
 ```properties
 DJANGO_SECRET_KEY=replace-with-real-secret
 DJANGO_DEBUG=False
-DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,app.example.com
-DJANGO_ALLOWED_HOSTS_COMPOSE=localhost 127.0.0.1 app.example.com
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+DJANGO_ALLOWED_HOSTS_COMPOSE=localhost 127.0.0.1
 DJANGO_CSRF_TRUSTED_ORIGINS=http://localhost:9080,http://localhost:9060
 DJANGO_LOG_LEVEL=INFO
 DJANGO_LOG_FILE_NAME=notechondria
 DJANGO_SUPERUSER_USERNAME=admin
 DJANGO_SUPERUSER_EMAIL=admin@example.com
-DJANGO_SUPERUSER_PASSWORD=change-me
-APP_HOST_PORT=9080
-BACKEND_HOST_PORT=9090
-FRONTEND_HOST_PORT=9060
-DB_HOST_PORT=9032
+DJANGO_SUPERUSER_PASSWORD=replace-with-real-password
+BACKEND_CUSTOM_DOMAIN=
+DJANGO_PRODUCTION_STATIC_ROOT=/home/staticfiles/
+DJANGO_PRODUCTION_MEDIA_ROOT=/home/mediafiles/
 POSTGRE_USERNAME=postgres
 POSTGRE_PASSWORD=replace-with-real-password
 POSTGRE_HOST=db
 POSTGRE_PORT=5432
 POSTGRE_DB=postgres
-DJANGO_PRODUCTION_STATIC_ROOT=/home/staticfiles/
-DJANGO_PRODUCTION_MEDIA_ROOT=/home/mediafiles/
-OPENAI_API_KEY=
-SMTP_HOST=
-SMTP_PORT=587
-SMTP_USERNAME=
-SMTP_PASSWORD=
+APP_HOST_PORT=9080
+BACKEND_HOST_PORT=9090
+FRONTEND_HOST_PORT=9060
+DB_HOST_PORT=9032
+ROOT_HTTP_PORT=8080
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_USERNAME=replace-with-real-email
+SMTP_PASSWORD=replace-with-real-app-password
 SMTP_USE_TLS=True
 SMTP_USE_SSL=False
 SMTP_FROM_EMAIL=no-reply@example.com
 SMTP_EMAIL_VERIFICATION_TTL_HOURS=24
+FRONTEND_ORIGIN=
 FRONTEND_VERIFY_URL=http://localhost:9060/#/verify
 FRONTEND_API_BASE_URL=http://localhost:9060/api/v1
 FRONTEND_BACKEND_ORIGIN=http://nginx
-NOTECHONDRIA_SHARED_NETWORK=notechondria-shared
+APP_BASE_HREF=/
+OPENAI_API_KEY=
 GITHUB_APP_ID=
 GITHUB_APP_CLIENT_ID=
 GITHUB_APP_CLIENT_SECRET=
-GITHUB_APP_PRIVATE_KEY_PATH=
 GITHUB_APP_WEBHOOK_SECRET=
 GITHUB_AUTHORIZED_REDIRECT_URI=
 GOOGLE_OAUTH_CLIENT_ID=
 GOOGLE_OAUTH_CLIENT_SECRET=
 GOOGLE_AUTHORIZED_REDIRECT_URI=
-APP_IMAGE=trancezero/notechondria:v0.1.9.${BUILD_NUMBER}
-NGINX_IMAGE=trancezero/nginx:v0.1.9.${BUILD_NUMBER}
-FRONTEND_IMAGE=trancezero/notechondria-frontend:v0.1.9.${BUILD_NUMBER}
+NOTECHONDRIA_SHARED_NETWORK=notechondria-shared
+DB_AUTO_REINIT_IF_MISMATCH=False
 ```
+
+Note: `APP_IMAGE`, `NGINX_IMAGE`, and `FRONTEND_IMAGE` are **not** listed above because `prepare_env.sh` auto-generates them from the `VERSION` file and the Jenkins `BUILD_NUMBER` (e.g. `v0.1.14.42`). You only need to set them here if you want to override the auto-generated tags.
 
 Important formatting notes:
 
@@ -174,6 +177,7 @@ Jenkins must provide at least:
 - `POSTGRE_HOST`
 - `POSTGRE_PORT`
 - `POSTGRE_DB`
+- `SMTP_HOST`, `SMTP_USERNAME`, `SMTP_PASSWORD` (required for email verification during registration)
 
 ## 2) Local Docker deployment
 
