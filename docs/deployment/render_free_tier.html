@@ -229,6 +229,42 @@
 <li><code>python manage.py collectstatic --noinput --clear</code></li>
 <li><code>gunicorn notechondria.wsgi:application --bind 0.0.0.0:$PORT</code></li>
 </ol>
+<h2 id="cloudflare-r2-storage-required"><a class="header" href="#cloudflare-r2-storage-required">Cloudflare R2 storage (required)</a></h2>
+<p>Render free-tier has an ephemeral filesystem — user-uploaded media files are
+lost on every restart. Cloudflare R2 provides S3-compatible persistent storage.</p>
+<h3 id="setup"><a class="header" href="#setup">Setup</a></h3>
+<ol>
+<li><strong>Create an R2 bucket</strong> in the Cloudflare dashboard.</li>
+<li><strong>Create an API token</strong> under R2 &gt; Manage R2 API Tokens with read/write
+access to the bucket.</li>
+<li><strong>(Optional)</strong> Connect a custom domain or enable the <code>r2.dev</code> subdomain for
+public access to the bucket.</li>
+<li><strong>Set these environment variables</strong> in the Render dashboard:</li>
+</ol>
+<div class="table-wrapper"><table><thead><tr><th>Variable</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>CLOUDFLARE_R2_BUCKET_NAME</code></td><td>R2 bucket name</td></tr>
+<tr><td><code>CLOUDFLARE_R2_ACCOUNT_ID</code></td><td>Cloudflare account ID (found in the dashboard URL or API section)</td></tr>
+<tr><td><code>CLOUDFLARE_R2_ACCESS_KEY_ID</code></td><td>R2 API token access key</td></tr>
+<tr><td><code>CLOUDFLARE_R2_SECRET_ACCESS_KEY</code></td><td>R2 API token secret key</td></tr>
+<tr><td><code>CLOUDFLARE_R2_CUSTOM_DOMAIN</code></td><td><em>(optional)</em> Public hostname for the bucket (e.g. <code>cdn.example.com</code>)</td></tr>
+</tbody></table>
+</div>
+<p>When <code>CLOUDFLARE_R2_BUCKET_NAME</code> is set, Django automatically uses R2 for both
+static files (<code>collectstatic</code>) and media files (user uploads, avatars, course
+images). If the bucket name is set but any of the three required credentials
+are missing, the app will fail to start with a clear error message.</p>
+<h3 id="how-it-works"><a class="header" href="#how-it-works">How it works</a></h3>
+<ul>
+<li><code>collectstatic --noinput --clear</code> uploads built static assets to
+<code>&lt;bucket&gt;/static/</code> on every deploy.</li>
+<li>User-uploaded media is stored under <code>&lt;bucket&gt;/media/</code>.</li>
+<li>URLs are generated pointing to the custom domain (if set) or the R2 S3
+endpoint.</li>
+</ul>
+<h3 id="docker-compose-local"><a class="header" href="#docker-compose-local">Docker Compose (local)</a></h3>
+<p>When deploying with Docker Compose, <strong>do not</strong> set <code>CLOUDFLARE_R2_BUCKET_NAME</code>.
+The backend will use the local filesystem with persistent Docker volumes, and
+nginx will serve static and media files directly.</p>
 <h2 id="notes"><a class="header" href="#notes">Notes</a></h2>
 <ul>
 <li>This is backend-only. The three frontend apps deploy separately to GitHub Pages.</li>

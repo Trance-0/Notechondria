@@ -197,8 +197,25 @@
 </blockquote>
 <ul>
 <li><input disabled="" type="checkbox" checked=""/>
+Start migration of static file storage to Cloudflare R2, simplify the deployment process for backend and ensure the persistent storage.
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Add additional instructions for setting up Cloudflare R2 when deploying the backend with render to ensure the static assets are uploaded and accessible.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Rewire the backend to use Cloudflare R2 for static assets if the credentials are provided when deploying the backend with render. Raise an error if the credentials are not provided. Otherwise, when deploying the backend with docker compose, use the persistent volume and nginx for cdn delivery.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Add the necessary items and credential updates to <code>sample.render.env</code>. I will fill them later. be sure to start the var name with <code>CLOUDFLARE_R2_</code> to avoid conflict with other env vars. Put them together as a new section.</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox" checked=""/>
 Create startup animation. Repeating Citric acid cycle (part of respiration process). You may need to check for the detail for how the chemicals are loaded and cycled. Make a simple flutter animation to demonstrate that, and make smooth quit when frontend resources are loaded or timeout (set to 10 seconds Max).
 <ul>
+<li><input disabled="" type="checkbox" checked=""/>
+The animation don't cover the whole screen (the sidebar is not covered). The animation should be full screen.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Slow down the animation a bit, it is too fast now. Remote the 'citric acid cycle' title.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Replaced English chemical names with structural formula representations (organic acid structures, not benzene rings — Krebs cycle metabolites are small organic acids).</li>
 <li><input disabled="" type="checkbox" checked=""/>
 When editor/planner/portal is opened, start the animation.</li>
 <li><input disabled="" type="checkbox" checked=""/>
@@ -220,18 +237,18 @@ Admin (perhaps other test accounts) avatar was reset on each deploy, only reset 
 <h2 id="editor"><a class="header" href="#editor">Editor</a></h2>
 <h3 id="sidebarnavigation"><a class="header" href="#sidebarnavigation">Sidebar/Navigation</a></h3>
 <ul>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 In Edit category, besides category name, add a selector for course icon (select from flutter sources)</li>
 </ul>
 <h3 id="note-view"><a class="header" href="#note-view">Note view</a></h3>
 <ul>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 In vertical view, the navbar item, where shows <code>Notechondria Editor</code> should be removed and replace with current folder name <code>Inbox</code>, <code>All notes</code>, etc.</li>
-<li><input disabled="" type="checkbox"/>
-Implement lazy loading for the note list, do not load all notes at once.</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
+Implement lazy loading for the note list, do not load all notes at once. Remove the load more button, activate the lazy loading on scroll to bottom.</li>
+<li><input disabled="" type="checkbox" checked=""/>
 Note that currently the offline ui will create two inbox folder that cannot be deleted.</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Directly remove the delete button for the default <code>inbox</code> folder. Replace with helper text that it cannot be deleted.</li>
 </ul>
 <h4 id="search"><a class="header" href="#search">Search</a></h4>
@@ -248,10 +265,10 @@ Add a lower right add button (the same as add notes) for inserting attachment (i
 <h4 id="login-and-account-info"><a class="header" href="#login-and-account-info">Login and account info</a></h4>
 <ul>
 <li><input disabled="" type="checkbox"/>
-Google Chorme password manager is still not detecting the login widget and auto fill, find out why and fix it.</li>
+Google Chrome password manager is still not detecting the login widget and auto fill, find out why and fix it.</li>
 <li><input disabled="" type="checkbox"/>
 Add few other options on the same line as <code>Logout</code> button. It should be arranged as <code>Change email</code>, <code>Change password</code>, <code>Logout</code>.</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Add social link validation, must be url.</li>
 </ul>
 <h4 id="editor-preferences"><a class="header" href="#editor-preferences">Editor Preferences</a></h4>
@@ -343,8 +360,12 @@ Add registration via google, use google oauth2 api (env variables are defined in
 Add registration via Github, use Github App api (env variables are defined in <code>sample.text.env</code>, be sure to verify on the backend and capture the callback url from github redirect is on backend, and also handle the webhook post from github with verifications, be sure to take user back to frontend app after successful login/register. Ask for appropriate data like email, username from google to create user profiles.)</p>
 </li>
 <li>
-<p><input disabled="" type="checkbox" checked=""/>
+<p><input disabled="" type="checkbox"/>
 Allow existing users to bind their social accounts and login using them, currently support github and google accounts. (put in ui for the after login, show their binding accounts belows the social link (one line for google, one line for github. If no binding account, show the button to trigger the binding process (Online account settings widget), if user has binding accounts, show the button to trigger switch binding third party accounts))</p>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Backend is not redirecting the results properly. It should render a static display show if the user has binding accounts successfully or not. And the binding status should be updated in the user profile if binding is successful on the backend. This also holds for google and github accounts. And register pages as well.</li>
+</ul>
 </li>
 <li>
 <p><input disabled="" type="checkbox" checked=""/>
@@ -808,6 +829,42 @@ On a first deployment, the backup step may skip automatically because there is n
 <li><code>python manage.py collectstatic --noinput --clear</code></li>
 <li><code>gunicorn notechondria.wsgi:application --bind 0.0.0.0:$PORT</code></li>
 </ol>
+<h2 id="cloudflare-r2-storage-required"><a class="header" href="#cloudflare-r2-storage-required">Cloudflare R2 storage (required)</a></h2>
+<p>Render free-tier has an ephemeral filesystem — user-uploaded media files are
+lost on every restart. Cloudflare R2 provides S3-compatible persistent storage.</p>
+<h3 id="setup"><a class="header" href="#setup">Setup</a></h3>
+<ol>
+<li><strong>Create an R2 bucket</strong> in the Cloudflare dashboard.</li>
+<li><strong>Create an API token</strong> under R2 &gt; Manage R2 API Tokens with read/write
+access to the bucket.</li>
+<li><strong>(Optional)</strong> Connect a custom domain or enable the <code>r2.dev</code> subdomain for
+public access to the bucket.</li>
+<li><strong>Set these environment variables</strong> in the Render dashboard:</li>
+</ol>
+<div class="table-wrapper"><table><thead><tr><th>Variable</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>CLOUDFLARE_R2_BUCKET_NAME</code></td><td>R2 bucket name</td></tr>
+<tr><td><code>CLOUDFLARE_R2_ACCOUNT_ID</code></td><td>Cloudflare account ID (found in the dashboard URL or API section)</td></tr>
+<tr><td><code>CLOUDFLARE_R2_ACCESS_KEY_ID</code></td><td>R2 API token access key</td></tr>
+<tr><td><code>CLOUDFLARE_R2_SECRET_ACCESS_KEY</code></td><td>R2 API token secret key</td></tr>
+<tr><td><code>CLOUDFLARE_R2_CUSTOM_DOMAIN</code></td><td><em>(optional)</em> Public hostname for the bucket (e.g. <code>cdn.example.com</code>)</td></tr>
+</tbody></table>
+</div>
+<p>When <code>CLOUDFLARE_R2_BUCKET_NAME</code> is set, Django automatically uses R2 for both
+static files (<code>collectstatic</code>) and media files (user uploads, avatars, course
+images). If the bucket name is set but any of the three required credentials
+are missing, the app will fail to start with a clear error message.</p>
+<h3 id="how-it-works"><a class="header" href="#how-it-works">How it works</a></h3>
+<ul>
+<li><code>collectstatic --noinput --clear</code> uploads built static assets to
+<code>&lt;bucket&gt;/static/</code> on every deploy.</li>
+<li>User-uploaded media is stored under <code>&lt;bucket&gt;/media/</code>.</li>
+<li>URLs are generated pointing to the custom domain (if set) or the R2 S3
+endpoint.</li>
+</ul>
+<h3 id="docker-compose-local"><a class="header" href="#docker-compose-local">Docker Compose (local)</a></h3>
+<p>When deploying with Docker Compose, <strong>do not</strong> set <code>CLOUDFLARE_R2_BUCKET_NAME</code>.
+The backend will use the local filesystem with persistent Docker volumes, and
+nginx will serve static and media files directly.</p>
 <h2 id="notes"><a class="header" href="#notes">Notes</a></h2>
 <ul>
 <li>This is backend-only. The three frontend apps deploy separately to GitHub Pages.</li>
