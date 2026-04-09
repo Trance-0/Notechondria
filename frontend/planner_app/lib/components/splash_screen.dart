@@ -3,9 +3,9 @@ part of notechondria_frontend;
 /// Splash screen showing an animated Citric acid cycle (Krebs cycle).
 ///
 /// The cycle axis is at the left center of the screen. It rotates to bring
-/// each metabolite to the screen center, with byproducts pulsing outward.
-/// Metabolites are shown as simplified structural formulas. The animation
-/// loops until [onFinished] fires or the user taps the screen.
+/// each metabolite to the screen center. The active metabolite is shown as
+/// a large 2D skeletal structural formula in the center-right area.
+/// The animation loops until [onFinished] fires or the user taps the screen.
 class _SplashScreen extends StatefulWidget {
   const _SplashScreen({
     required this.appTitle,
@@ -203,7 +203,7 @@ class _KrebsCyclePainter extends CustomPainter {
     final activeStep = (progress * n).floor() % n;
     final stepFraction = (progress * n) % 1.0;
 
-    // Metabolite nodes with structural formulas.
+    // Metabolite nodes (dots only — structural formulas drawn separately).
     for (var i = 0; i < n; i++) {
       final angle = 2 * math.pi * i / n + rotationAngle;
       final pos = center + Offset(math.cos(angle), math.sin(angle)) * radius;
@@ -234,19 +234,19 @@ class _KrebsCyclePainter extends CustomPainter {
         );
       }
 
-      // Structural formula drawn near the node.
+      // Small metabolite name near the node.
+      final nameOffset =
+          pos + Offset(math.cos(angle), math.sin(angle)) * (nr + 14);
       final cosA = math.cos(angle);
-      final formulaCenter =
-          pos + Offset(math.cos(angle), math.sin(angle)) * (nr + 40);
-      final formulaAlpha = (isActive ? 1.0 : 0.5) * fade;
-      final scale = isActive ? 1.0 : 0.8;
-      _drawStructuralFormula(
+      _drawText(
         canvas,
-        i,
-        formulaCenter,
-        formulaAlpha,
-        scale,
-        cosA,
+        metabolites[i],
+        nameOffset,
+        (isActive ? textColor : subtleColor).withValues(
+            alpha: (isActive ? 0.9 : 0.4) * fade),
+        isActive ? 11.0 : 9.0,
+        isActive ? FontWeight.w600 : FontWeight.w400,
+        xAnchor: cosA > 0.3 ? 0.0 : (cosA < -0.3 ? 1.0 : 0.5),
       );
     }
 
@@ -305,10 +305,9 @@ class _KrebsCyclePainter extends CustomPainter {
           ..color = nodeColor.withValues(alpha: 0.5)
           ..style = PaintingStyle.fill,
       );
-      // Acetyl-CoA structural: CH₃-C(=O)-S-CoA
       _drawText(
         canvas,
-        'CH\u2083\u2013CO\u2013S\u2013CoA',
+        'Acetyl-CoA',
         aStart + dir * 12,
         nodeColor.withValues(alpha: 0.6),
         11.0,
@@ -316,149 +315,233 @@ class _KrebsCyclePainter extends CustomPainter {
         xAnchor: math.cos(ea) > 0.3 ? 0.0 : (math.cos(ea) < -0.3 ? 1.0 : 0.5),
       );
     }
+
+    // -----------------------------------------------------------------------
+    // Active metabolite: large structural formula in center-right area.
+    // -----------------------------------------------------------------------
+    final formulaCenter = Offset(w * 0.55, h * 0.38);
+    final formulaAlpha = (0.4 + 0.6 * math.sin(stepFraction * math.pi))
+        .clamp(0.0, 1.0);
+    _drawSkeletalFormula(canvas, activeStep, formulaCenter, formulaAlpha, w);
   }
 
-  /// Draws a simplified structural formula for the metabolite at [index].
-  /// Each formula shows the carbon backbone with key functional groups using
-  /// standard chemical notation (COOH, C=O, OH, CoA, etc.).
-  void _drawStructuralFormula(
+  // =========================================================================
+  // 2-D skeletal structural formula drawing
+  // =========================================================================
+
+  void _drawSkeletalFormula(
     Canvas canvas,
     int index,
-    Offset center,
+    Offset origin,
     double alpha,
-    double scale,
-    double cosAngle,
+    double canvasWidth,
   ) {
-    final color = textColor.withValues(alpha: alpha);
-    final fs = 9.0 * scale;
+    final bondLen = (canvasWidth * 0.058).clamp(28.0, 48.0);
+    final fontSize = (bondLen * 0.36).clamp(10.0, 16.0);
+    final bondPaint = Paint()
+      ..color = textColor.withValues(alpha: alpha * 0.85)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round;
+    final doubleBondPaint = Paint()
+      ..color = textColor.withValues(alpha: alpha * 0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+    final labelColor = textColor.withValues(alpha: alpha);
+    final accentColor = nodeColor.withValues(alpha: alpha * 0.9);
 
-    // Horizontal anchor: formulas are drawn left-to-right from an anchor.
-    // Shift so the formula doesn't overlap the node.
-    final xAnchor = cosAngle > 0.3 ? 0.0 : (cosAngle < -0.3 ? 1.0 : 0.5);
+    const zigUp = Offset(1.0, -0.5);
+    const zigDown = Offset(1.0, 0.5);
+
+    Offset normalize(Offset o) {
+      final len = o.distance;
+      return len > 0 ? o / len : o;
+    }
+
+    Offset zig(Offset from, Offset dir) =>
+        from + normalize(dir) * bondLen;
+
+    void drawBond(Offset a, Offset b) {
+      canvas.drawLine(a, b, bondPaint);
+    }
+
+    void drawDoubleBond(Offset a, Offset b) {
+      canvas.drawLine(a, b, bondPaint);
+      final perp = normalize(Offset(-(b.dy - a.dy), b.dx - a.dx)) * 4.0;
+      canvas.drawLine(a + perp, b + perp, doubleBondPaint);
+    }
+
+    void label(Offset pos, String text, {double xAnchor = 0.5}) {
+      _drawText(canvas, text, pos, labelColor, fontSize,
+          FontWeight.w600, xAnchor: xAnchor);
+    }
+
+    void accentLabel(Offset pos, String text, {double xAnchor = 0.5}) {
+      _drawText(canvas, text, pos, accentColor, fontSize,
+          FontWeight.w700, xAnchor: xAnchor);
+    }
+
+    final branchUp = Offset(0, -bondLen * 0.55);
+    final branchDown = Offset(0, bondLen * 0.55);
 
     switch (index) {
-      case 0: // Citrate: HOOC-CH₂-C(OH)(COOH)-CH₂-COOH
-        _drawFormulaLine(canvas, center, [
-          'HOOC', '\u2013', 'CH\u2082', '\u2013', 'C', '(OH)', '\u2013',
-          'CH\u2082', '\u2013', 'COOH',
-        ], color, fs, xAnchor);
-        // Mark the middle C with a branch: COOH going up
-        final midX = center.dx + (xAnchor == 0.0 ? 42 * scale : -12 * scale);
-        _drawText(canvas, '|', Offset(midX, center.dy - 6 * scale),
-            color.withValues(alpha: alpha * 0.6), fs * 0.8, FontWeight.w400);
-        _drawText(canvas, 'COOH', Offset(midX, center.dy - 14 * scale),
-            color, fs * 0.8, FontWeight.w500);
+      case 0:
+        final c1 = origin + Offset(-bondLen * 2.5, 0);
+        final c2 = zig(c1, zigDown);
+        final c3 = zig(c2, zigUp);
+        final c4 = zig(c3, zigDown);
+        final c5 = zig(c4, zigUp);
+        label(c1 + const Offset(-8, 0), 'HOOC', xAnchor: 1.0);
+        drawBond(c1, c2);
+        label(c2 + branchDown * 0.5, 'H\u2082', xAnchor: 0.5);
+        drawBond(c2, c3);
+        drawBond(c3, c4);
+        label(c4 + branchDown * 0.5, 'H\u2082', xAnchor: 0.5);
+        drawBond(c4, c5);
+        label(c5 + const Offset(8, 0), 'COOH', xAnchor: 0.0);
+        final brUp0 = c3 + branchUp;
+        drawBond(c3, brUp0);
+        accentLabel(brUp0 + branchUp * 0.4, 'COOH');
+        final brDn0 = c3 + branchDown;
+        drawBond(c3, brDn0);
+        accentLabel(brDn0 + branchDown * 0.4, 'OH');
         break;
 
-      case 1: // Isocitrate: HOOC-CH₂-CH(COOH)-CH(OH)-COOH
-        _drawFormulaLine(canvas, center, [
-          'HOOC', '\u2013', 'CH\u2082', '\u2013', 'CH', '\u2013', 'CH',
-          '(OH)', '\u2013', 'COOH',
-        ], color, fs, xAnchor);
-        final midX = center.dx + (xAnchor == 0.0 ? 36 * scale : -18 * scale);
-        _drawText(canvas, '|', Offset(midX, center.dy - 6 * scale),
-            color.withValues(alpha: alpha * 0.6), fs * 0.8, FontWeight.w400);
-        _drawText(canvas, 'COOH', Offset(midX, center.dy - 14 * scale),
-            color, fs * 0.8, FontWeight.w500);
+      case 1:
+        final c1 = origin + Offset(-bondLen * 2.5, 0);
+        final c2 = zig(c1, zigDown);
+        final c3 = zig(c2, zigUp);
+        final c4 = zig(c3, zigDown);
+        final c5 = zig(c4, zigUp);
+        label(c1 + const Offset(-8, 0), 'HOOC', xAnchor: 1.0);
+        drawBond(c1, c2);
+        label(c2 + branchDown * 0.5, 'H\u2082', xAnchor: 0.5);
+        drawBond(c2, c3);
+        drawBond(c3, c4);
+        drawBond(c4, c5);
+        label(c5 + const Offset(8, 0), 'COOH', xAnchor: 0.0);
+        final brUp1 = c3 + branchUp;
+        drawBond(c3, brUp1);
+        accentLabel(brUp1 + branchUp * 0.4, 'COOH');
+        final brDn4 = c4 + branchDown;
+        drawBond(c4, brDn4);
+        accentLabel(brDn4 + branchDown * 0.4, 'OH');
         break;
 
-      case 2: // α-Ketoglutarate: HOOC-CH₂-CH₂-CO-COOH
-        _drawFormulaLine(canvas, center, [
-          'HOOC', '\u2013', 'CH\u2082', '\u2013', 'CH\u2082', '\u2013',
-          'CO', '\u2013', 'COOH',
-        ], color, fs, xAnchor);
-        // Double-bond indicator above CO
-        final coX = center.dx + (xAnchor == 0.0 ? 48 * scale : -8 * scale);
-        _drawText(canvas, '=O', Offset(coX, center.dy - 10 * scale),
-            color, fs * 0.8, FontWeight.w500);
+      case 2:
+        final c1 = origin + Offset(-bondLen * 2.0, 0);
+        final c2 = zig(c1, zigDown);
+        final c3 = zig(c2, zigUp);
+        final c4 = zig(c3, zigDown);
+        final c5 = zig(c4, zigUp);
+        label(c1 + const Offset(-8, 0), 'HOOC', xAnchor: 1.0);
+        drawBond(c1, c2);
+        label(c2 + branchDown * 0.5, 'H\u2082', xAnchor: 0.5);
+        drawBond(c2, c3);
+        label(c3 + branchUp * 0.5, 'H\u2082', xAnchor: 0.5);
+        drawBond(c3, c4);
+        final oxo2 = c4 + branchDown;
+        drawDoubleBond(c4, oxo2);
+        accentLabel(oxo2 + branchDown * 0.4, 'O');
+        drawBond(c4, c5);
+        label(c5 + const Offset(8, 0), 'COOH', xAnchor: 0.0);
         break;
 
-      case 3: // Succinyl-CoA: HOOC-CH₂-CH₂-CO-S-CoA
-        _drawFormulaLine(canvas, center, [
-          'HOOC', '\u2013', 'CH\u2082', '\u2013', 'CH\u2082', '\u2013',
-          'CO', '\u2013', 'S', '\u2013', 'CoA',
-        ], color, fs, xAnchor);
+      case 3:
+        final c1 = origin + Offset(-bondLen * 2.5, 0);
+        final c2 = zig(c1, zigDown);
+        final c3 = zig(c2, zigUp);
+        final c4 = zig(c3, zigDown);
+        final c5 = zig(c4, zigUp);
+        final c6 = zig(c5, zigDown);
+        label(c1 + const Offset(-8, 0), 'HOOC', xAnchor: 1.0);
+        drawBond(c1, c2);
+        label(c2 + branchDown * 0.5, 'H\u2082', xAnchor: 0.5);
+        drawBond(c2, c3);
+        label(c3 + branchUp * 0.5, 'H\u2082', xAnchor: 0.5);
+        drawBond(c3, c4);
+        final oxo3 = c4 + branchDown;
+        drawDoubleBond(c4, oxo3);
+        accentLabel(oxo3 + branchDown * 0.4, 'O');
+        drawBond(c4, c5);
+        accentLabel(c5 + branchUp * 0.5, 'S', xAnchor: 0.5);
+        drawBond(c5, c6);
+        label(c6 + const Offset(8, 0), 'CoA', xAnchor: 0.0);
         break;
 
-      case 4: // Succinate: HOOC-CH₂-CH₂-COOH
-        _drawFormulaLine(canvas, center, [
-          'HOOC', '\u2013', 'CH\u2082', '\u2013', 'CH\u2082', '\u2013',
-          'COOH',
-        ], color, fs, xAnchor);
+      case 4:
+        final c1 = origin + Offset(-bondLen * 1.5, 0);
+        final c2 = zig(c1, zigDown);
+        final c3 = zig(c2, zigUp);
+        final c4 = zig(c3, zigDown);
+        label(c1 + const Offset(-8, 0), 'HOOC', xAnchor: 1.0);
+        drawBond(c1, c2);
+        label(c2 + branchDown * 0.5, 'H\u2082', xAnchor: 0.5);
+        drawBond(c2, c3);
+        label(c3 + branchUp * 0.5, 'H\u2082', xAnchor: 0.5);
+        drawBond(c3, c4);
+        label(c4 + const Offset(8, 0), 'COOH', xAnchor: 0.0);
         break;
 
-      case 5: // Fumarate: HOOC-CH=CH-COOH (trans)
-        _drawFormulaLine(canvas, center, [
-          'HOOC', '\u2013', 'CH', '=', 'CH', '\u2013', 'COOH',
-        ], color, fs, xAnchor);
+      case 5:
+        final c1 = origin + Offset(-bondLen * 1.5, 0);
+        final c2 = zig(c1, zigDown);
+        final c3 = zig(c2, zigUp);
+        final c4 = zig(c3, zigDown);
+        label(c1 + const Offset(-8, 0), 'HOOC', xAnchor: 1.0);
+        drawBond(c1, c2);
+        drawDoubleBond(c2, c3);
+        accentLabel(
+          Offset((c2.dx + c3.dx) / 2, (c2.dy + c3.dy) / 2) + branchUp * 0.6,
+          'trans',
+          xAnchor: 0.5,
+        );
+        drawBond(c3, c4);
+        label(c4 + const Offset(8, 0), 'COOH', xAnchor: 0.0);
         break;
 
-      case 6: // Malate: HOOC-CH₂-CH(OH)-COOH
-        _drawFormulaLine(canvas, center, [
-          'HOOC', '\u2013', 'CH\u2082', '\u2013', 'CH', '(OH)', '\u2013',
-          'COOH',
-        ], color, fs, xAnchor);
+      case 6:
+        final c1 = origin + Offset(-bondLen * 1.5, 0);
+        final c2 = zig(c1, zigDown);
+        final c3 = zig(c2, zigUp);
+        final c4 = zig(c3, zigDown);
+        label(c1 + const Offset(-8, 0), 'HOOC', xAnchor: 1.0);
+        drawBond(c1, c2);
+        label(c2 + branchDown * 0.5, 'H\u2082', xAnchor: 0.5);
+        drawBond(c2, c3);
+        drawBond(c3, c4);
+        label(c4 + const Offset(8, 0), 'COOH', xAnchor: 0.0);
+        final brDn3 = c3 + branchUp;
+        drawBond(c3, brDn3);
+        accentLabel(brDn3 + branchUp * 0.4, 'OH');
         break;
 
-      case 7: // Oxaloacetate: HOOC-CO-CH₂-COOH
-        _drawFormulaLine(canvas, center, [
-          'HOOC', '\u2013', 'CO', '\u2013', 'CH\u2082', '\u2013', 'COOH',
-        ], color, fs, xAnchor);
-        final coX = center.dx + (xAnchor == 0.0 ? 20 * scale : -32 * scale);
-        _drawText(canvas, '=O', Offset(coX, center.dy - 10 * scale),
-            color, fs * 0.8, FontWeight.w500);
+      case 7:
+        final c1 = origin + Offset(-bondLen * 1.5, 0);
+        final c2 = zig(c1, zigDown);
+        final c3 = zig(c2, zigUp);
+        final c4 = zig(c3, zigDown);
+        label(c1 + const Offset(-8, 0), 'HOOC', xAnchor: 1.0);
+        drawBond(c1, c2);
+        final oxo7 = c2 + branchDown;
+        drawDoubleBond(c2, oxo7);
+        accentLabel(oxo7 + branchDown * 0.4, 'O');
+        drawBond(c2, c3);
+        label(c3 + branchUp * 0.5, 'H\u2082', xAnchor: 0.5);
+        drawBond(c3, c4);
+        label(c4 + const Offset(8, 0), 'COOH', xAnchor: 0.0);
         break;
     }
-  }
 
-  /// Renders a horizontal formula as a sequence of text segments.
-  void _drawFormulaLine(
-    Canvas canvas,
-    Offset center,
-    List<String> parts,
-    Color color,
-    double fontSize,
-    double xAnchor,
-  ) {
-    // Measure total width first.
-    double totalWidth = 0;
-    final widths = <double>[];
-    for (final part in parts) {
-      final tp = TextPainter(
-        text: TextSpan(
-          text: part,
-          style: TextStyle(
-            color: color,
-            fontSize: fontSize,
-            fontWeight: FontWeight.w500,
-            fontFamily: 'sans-serif',
-            height: 1.2,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      widths.add(tp.width);
-      totalWidth += tp.width;
-    }
-    double x = center.dx - totalWidth * xAnchor;
-    final y = center.dy;
-    for (var i = 0; i < parts.length; i++) {
-      final tp = TextPainter(
-        text: TextSpan(
-          text: parts[i],
-          style: TextStyle(
-            color: color,
-            fontSize: fontSize,
-            fontWeight: parts[i].length > 1 ? FontWeight.w500 : FontWeight.w400,
-            fontFamily: 'sans-serif',
-            height: 1.2,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      tp.paint(canvas, Offset(x, y - tp.height / 2));
-      x += widths[i];
-    }
+    _drawText(
+      canvas,
+      metabolites[index],
+      origin + Offset(0, -bondLen * 1.8),
+      nodeColor.withValues(alpha: alpha),
+      fontSize * 1.4,
+      FontWeight.w700,
+    );
   }
 
   void _drawText(

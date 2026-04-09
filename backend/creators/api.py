@@ -872,8 +872,14 @@ class GoogleOAuthApiView(APIView):
             )
             if token_resp.status_code != 200:
                 logger.warning("Google token exchange failed: %s", token_resp.text)
+                error_detail = "Failed to exchange Google authorization code."
+                try:
+                    err = token_resp.json()
+                    error_detail = err.get("error_description", err.get("error", error_detail))
+                except Exception:
+                    pass
                 return Response(
-                    {"detail": "Failed to exchange Google authorization code."},
+                    {"detail": error_detail},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             raw_id_token = token_resp.json().get("id_token", "")
@@ -983,8 +989,14 @@ class GitHubOAuthApiView(APIView):
         )
         if token_resp.status_code != 200:
             logger.warning("GitHub token exchange failed: %s", token_resp.text)
+            error_detail = "Failed to exchange GitHub authorization code."
+            try:
+                err = token_resp.json()
+                error_detail = err.get("error_description", err.get("error", error_detail))
+            except Exception:
+                pass
             return Response(
-                {"detail": "Failed to exchange GitHub authorization code."},
+                {"detail": error_detail},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         token_data = token_resp.json()

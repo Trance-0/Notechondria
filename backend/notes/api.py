@@ -30,6 +30,7 @@ from .models import (
     HeatmapActivityTypeChoices,
     Note,
     NoteActivitySession,
+    NoteAttachment,
     NoteBlock,
     NoteVersion,
     NoteBlockTypeChoices,
@@ -1617,3 +1618,77 @@ def split_markdown_sections(markdown: str, fallback_title: str):
     if current_lines or not sections:
         sections.append({"title": current_title, "body": "\n".join(current_lines).strip() or markdown.strip()})
     return sections
+
+
+# ---------------------------------------------------------------------------
+# Note Attachments
+# ---------------------------------------------------------------------------
+
+_MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024  # 20 MB
+
+
+def attachment_payload(attachment: NoteAttachment, request):
+    return {
+        "id": attachment.id,
+        "note_id": attachment.note_id_id,
+        "original_filename": attachment.original_filename,
+        "file_size": attachment.file_size,
+        "content_type": attachment.content_type,
+        "url": absolute_media_url(request, attachment.file.url if attachment.file else ""),
+        "date_created": attachment.date_created.isoformat() if attachment.date_created else None,
+    }
+
+
+class NoteAttachmentApiView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, note_id):
+        note = require_note_access(request, note_id)
+        attachments = NoteAttachment.objects.filter(note_id=note)
+        return Response([attachment_payload(a, request) for a in attachments])
+
+    def post(self, request, note_id):
+        note = require_note_access(request, note_id)
+        if note.creator_id.user_id_id != request.user.id:
+            return Response(
+                {"detail": "Only the owner can upload attachments."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        uploaded = request.FILES.get("file")
+        if not uploaded:
+            return Response(
+                {"detail": "No file provided."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if uploaded.size > _MAX_ATTACHMENT_SIZE:
+            return Response(
+                {"detail": f"File exceeds maximum size of {_MAX_ATTACHMENT_SIZE // (1024 * 1024)} MB."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        attachment = NoteAttachment.objects.create(
+            note_id=note,
+            file=uploaded,
+            original_filename=uploaded.name or "untitled",
+            file_size=uploaded.size,
+            content_type=uploaded.content_type or "",
+        )
+        return Response(
+            attachment_payload(attachment, request),
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class NoteAttachmentDetailApiView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, note_id, attachment_id):
+        note = require_note_access(request, note_id)
+        if note.creator_id.user_id_id != request.user.id:
+            return Response(
+                {"detail": "Only the owner can delete attachments."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        attachment = get_object_or_404(NoteAttachment, pk=attachment_id, note_id=note)
+        attachment.file.delete(save=False)
+        attachment.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

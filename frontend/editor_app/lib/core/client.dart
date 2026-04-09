@@ -155,6 +155,20 @@ abstract class NotechondriaClient {
     Map<String, dynamic> payload,
   );
   Future<Map<String, dynamic>> uploadAvatar(String token, XFile file);
+  Future<List<Map<String, dynamic>>> listNoteAttachments(
+    String token,
+    int noteId,
+  );
+  Future<Map<String, dynamic>> uploadNoteAttachment(
+    String token,
+    int noteId,
+    XFile file,
+  );
+  Future<void> deleteNoteAttachment(
+    String token,
+    int noteId,
+    int attachmentId,
+  );
   Future<List<Map<String, dynamic>>> getPlannerEvents(String token);
   Future<Map<String, dynamic>> createPlannerEvent(
     String token,
@@ -1013,6 +1027,56 @@ class HttpNotechondriaClient implements NotechondriaClient {
     return Map<String, dynamic>.from(
       await _decode(streamed, uri: uri, method: 'PATCH'),
     );
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> listNoteAttachments(
+    String token,
+    int noteId,
+  ) async {
+    final uri = _uri('/notes/$noteId/attachments/');
+    final response = await _get(uri, token: token);
+    final data =
+        await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
+    return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+  }
+
+  @override
+  Future<Map<String, dynamic>> uploadNoteAttachment(
+    String token,
+    int noteId,
+    XFile file,
+  ) async {
+    final uri = _uri('/notes/$noteId/attachments/');
+    final request = http.MultipartRequest('POST', uri)
+      ..headers.addAll(_headers(token: token))
+      ..files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          await file.readAsBytes(),
+          filename: file.name,
+        ),
+      );
+    final streamed = await _send(
+        'POST', uri, () => request.send().then(http.Response.fromStream));
+    return Map<String, dynamic>.from(
+      await _decode(streamed, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
+  Future<void> deleteNoteAttachment(
+    String token,
+    int noteId,
+    int attachmentId,
+  ) async {
+    final uri = _uri('/notes/$noteId/attachments/$attachmentId/');
+    final response = await _send(
+      'DELETE',
+      uri,
+      () => _httpClient.delete(uri, headers: _headers(token: token)),
+    );
+    await _decode(response, uri: uri, method: 'DELETE');
   }
 
   @override

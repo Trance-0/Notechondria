@@ -388,6 +388,7 @@ class _AppShellState extends State<AppShell> {
           onGetHistory: _getNoteHistory,
           onRestoreVersion: _restoreNoteVersion,
           onLogEvent: _appendUiLog,
+          onUploadAttachment: _uploadNoteAttachment,
         ),
       );
     } else {
@@ -2440,6 +2441,15 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     }
   }
 
+  Future<Map<String, dynamic>> _uploadNoteAttachment(
+      int noteId, XFile file) async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      throw Exception('Sign in to upload attachments.');
+    }
+    return widget.client.uploadNoteAttachment(token, noteId, file);
+  }
+
   Future<List<Map<String, dynamic>>> _getNoteHistory(int noteId) async {
     final token = _token;
     if (token == null || token.isEmpty || noteId < 0) return const [];
@@ -3618,6 +3628,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           onSyncLocalDraft: _syncLocalDraft,
           onSyncAllLocalDrafts: _syncAllLocalDrafts,
           onLogEvent: _appendUiLog,
+          onUploadAttachment: _uploadNoteAttachment,
         );
       case 4:
         return _SettingsPage(

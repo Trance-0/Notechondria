@@ -350,6 +350,10 @@ if _R2_BUCKET:
     STATIC_URL = f'{_R2_URL_BASE}/static/'
     MEDIA_URL = f'{_R2_URL_BASE}/media/'
 
+# Maximum upload size: 20 MB (for note attachments).
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
+
 # Offline development tag
 OFFLINE = False
 

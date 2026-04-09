@@ -484,7 +484,8 @@ class _StaggeredFadeInState extends State<_StaggeredFadeIn>
   }
 }
 
-/// Shows a fullscreen dialog with a slide-from-right + fade entrance.
+/// Shows a fullscreen dialog with a slide-from-right + fade entrance and
+/// a gaussian-blurred backdrop.
 Future<T?> _showSlideInDialog<T>({
   required BuildContext context,
   required WidgetBuilder builder,
@@ -494,9 +495,26 @@ Future<T?> _showSlideInDialog<T>({
     context: context,
     barrierDismissible: barrierDismissible,
     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-    barrierColor: Colors.black54,
+    barrierColor: Colors.transparent,
     transitionDuration: const Duration(milliseconds: 300),
-    pageBuilder: (context, animation, secondaryAnimation) => builder(context),
+    pageBuilder: (context, animation, secondaryAnimation) {
+      return Stack(
+        children: [
+          // Blurred + tinted backdrop.
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: barrierDismissible ? () => Navigator.of(context).pop() : null,
+              behavior: HitTestBehavior.opaque,
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+                child: ColoredBox(color: Colors.black.withValues(alpha: 0.35)),
+              ),
+            ),
+          ),
+          builder(context),
+        ],
+      );
+    },
     transitionBuilder: (context, animation, secondaryAnimation, child) {
       final curved = CurvedAnimation(parent: animation, curve: Curves.easeOut);
       return FadeTransition(
@@ -508,6 +526,44 @@ Future<T?> _showSlideInDialog<T>({
           ).animate(curved),
           child: child,
         ),
+      );
+    },
+  );
+}
+
+/// Shows a standard dialog with a gaussian-blurred backdrop.
+Future<T?> _showBlurDialog<T>({
+  required BuildContext context,
+  required Widget child,
+  bool barrierDismissible = true,
+}) {
+  return showGeneralDialog<T>(
+    context: context,
+    barrierDismissible: barrierDismissible,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    barrierColor: Colors.transparent,
+    transitionDuration: const Duration(milliseconds: 200),
+    pageBuilder: (context, animation, secondaryAnimation) {
+      return Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: barrierDismissible ? () => Navigator.of(context).pop() : null,
+              behavior: HitTestBehavior.opaque,
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+                child: ColoredBox(color: Colors.black.withValues(alpha: 0.35)),
+              ),
+            ),
+          ),
+          Center(child: child),
+        ],
+      );
+    },
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+        child: child,
       );
     },
   );

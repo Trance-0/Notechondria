@@ -39,7 +39,7 @@ jobs:
 
       - name: Build editor_app
         working-directory: frontend/editor_app
-        run: flutter build web --release --base-href /Notechondria/editor/ --no-web-resources-cdn
+        run: flutter build web --release --web-renderer html --base-href /Notechondria/editor/ --no-web-resources-cdn
 
       - name: Test planner_app
         working-directory: frontend/planner_app
@@ -49,7 +49,7 @@ jobs:
 
       - name: Build planner_app
         working-directory: frontend/planner_app
-        run: flutter build web --release --base-href /Notechondria/planner/ --no-web-resources-cdn
+        run: flutter build web --release --web-renderer html --base-href /Notechondria/planner/ --no-web-resources-cdn
 
       - name: Test portal_app
         working-directory: frontend/portal_app
@@ -59,7 +59,7 @@ jobs:
 
       - name: Build portal_app
         working-directory: frontend/portal_app
-        run: flutter build web --release --base-href /Notechondria/portal/ --no-web-resources-cdn
+        run: flutter build web --release --web-renderer html --base-href /Notechondria/portal/ --no-web-resources-cdn
 
       - name: Disable service worker bootstrap in Pages builds
         run: |

@@ -11,6 +11,7 @@ class _NoteEditorDialog extends StatefulWidget {
     required this.onGetHistory,
     required this.onRestoreVersion,
     required this.onLogEvent,
+    this.onUploadAttachment,
   });
 
   final Map<String, dynamic> note;
@@ -26,6 +27,8 @@ class _NoteEditorDialog extends StatefulWidget {
   final Future<Map<String, dynamic>> Function(int noteId, int versionId)
       onRestoreVersion;
   final ValueChanged<String> onLogEvent;
+  final Future<Map<String, dynamic>> Function(int noteId, XFile file)?
+      onUploadAttachment;
 
   @override
   State<_NoteEditorDialog> createState() => _NoteEditorDialogState();
@@ -416,6 +419,47 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
     _handleChanged();
   }
 
+  Future<void> _pickAndUploadAttachment() async {
+    final noteId = _note['id'] as int?;
+    if (noteId == null || noteId < 0 || widget.onUploadAttachment == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Save the note before adding attachments.')),
+      );
+      return;
+    }
+    final xfile = await openFile(acceptedTypeGroups: const [
+      XTypeGroup(label: 'All files'),
+    ]);
+    if (xfile == null) return;
+    final bytes = await xfile.readAsBytes();
+    const maxSize = 20 * 1024 * 1024;
+    if (bytes.length > maxSize) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('File exceeds 20 MB limit.')),
+        );
+      }
+      return;
+    }
+    try {
+      final attachment = await widget.onUploadAttachment!(noteId, xfile);
+      final url = attachment['url']?.toString() ?? '';
+      final filename = attachment['original_filename']?.toString() ?? xfile.name;
+      final contentType = attachment['content_type']?.toString() ?? '';
+      final isImage = contentType.startsWith('image/');
+      final embed = isImage ? '![$filename]($url)' : '[$filename]($url)';
+      _bodyController.text = '${_bodyController.text}\n\n$embed';
+      _handleChanged();
+      widget.onLogEvent('Attachment uploaded: $filename');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Upload failed: $e')),
+        );
+      }
+    }
+  }
+
   /// Full-width live markdown editor. Emulates Typora-style inline rendering:
   /// every paragraph renders as a `MarkdownBody` preview until the user taps
   /// it, at which point that single paragraph swaps into a borderless
@@ -682,19 +726,33 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(20),
-                child: isLiveMarkdown
-                    ? _buildLiveMarkdownEditor()
-                    : TextField(
-                            controller: _bodyController,
-                            maxLines: null,
-                            expands: true,
-                            textAlignVertical: TextAlignVertical.top,
-                            decoration: const InputDecoration(
-                              hintText: 'Write your note...',
-                              border: OutlineInputBorder(),
-                              alignLabelWithHint: true,
-                            ),
-                          ),
+                child: Stack(
+                  children: [
+                    isLiveMarkdown
+                        ? _buildLiveMarkdownEditor()
+                        : TextField(
+                                controller: _bodyController,
+                                maxLines: null,
+                                expands: true,
+                                textAlignVertical: TextAlignVertical.top,
+                                decoration: const InputDecoration(
+                                  hintText: 'Write your note...',
+                                  border: OutlineInputBorder(),
+                                  alignLabelWithHint: true,
+                                ),
+                              ),
+                    if (widget.onUploadAttachment != null)
+                      Positioned(
+                        right: 12,
+                        bottom: 12,
+                        child: FloatingActionButton.small(
+                          onPressed: _pickAndUploadAttachment,
+                          tooltip: 'Attach file',
+                          child: const Icon(Icons.attach_file),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ],

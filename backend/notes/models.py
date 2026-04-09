@@ -525,6 +525,32 @@ class NoteBlock(models.Model):
         else:
             return f'<-- Unsupported type: {type}--> {self.text}'
 
+def note_attachment_path(instance, filename):
+    return "user_upload/user_{0}/notes/note_{1}/{2}".format(
+        instance.note_id.creator_id.user_id.id, instance.note_id.id, filename
+    )
+
+
+class NoteAttachment(models.Model):
+    note_id = models.ForeignKey(
+        Note,
+        related_name="attachments",
+        on_delete=models.CASCADE,
+        null=False,
+    )
+    file = models.FileField(upload_to=note_attachment_path, null=False)
+    original_filename = models.CharField(max_length=255, null=False)
+    file_size = models.PositiveBigIntegerField(null=False)
+    content_type = models.CharField(max_length=128, blank=True, default="")
+    date_created = models.DateTimeField(auto_now_add=True, null=False)
+
+    class Meta:
+        ordering = ["-date_created", "-id"]
+
+    def __str__(self) -> str:
+        return f"{self.original_filename} ({self.note_id.title})"
+
+
 class NoteIndex(models.Model):
     note_id = models.ForeignKey(
         Note,

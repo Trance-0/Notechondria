@@ -38,9 +38,9 @@ class _AuthHub extends StatelessWidget {
   final VoidCallback? onGithubLoginOnly;
 
   Future<void> _openDialog(BuildContext context, Widget dialog) {
-    return showDialog<void>(
+    return _showBlurDialog<void>(
       context: context,
-      builder: (context) => dialog,
+      child: dialog,
     );
   }
 
@@ -685,6 +685,10 @@ class _EmailPasswordDialogState extends State<_EmailPasswordDialog> {
                 ],
               ),
             ),
+            if (_submitting) ...[
+              const SizedBox(height: 16),
+              const Center(child: CircularProgressIndicator()),
+            ],
             if (_feedback != null) ...[
               const SizedBox(height: 12),
               _FeedbackText(feedback: _feedback!),

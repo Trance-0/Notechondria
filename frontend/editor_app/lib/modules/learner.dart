@@ -33,6 +33,7 @@ class _LearnerPage extends StatefulWidget {
     required this.onSyncLocalDraft,
     required this.onSyncAllLocalDrafts,
     required this.onLogEvent,
+    this.onUploadAttachment,
   });
 
   final List<Map<String, dynamic>> notes;
@@ -76,6 +77,8 @@ class _LearnerPage extends StatefulWidget {
       onSyncLocalDraft;
   final Future<void> Function() onSyncAllLocalDrafts;
   final ValueChanged<String> onLogEvent;
+  final Future<Map<String, dynamic>> Function(int noteId, XFile file)?
+      onUploadAttachment;
 
   @override
   State<_LearnerPage> createState() => _LearnerPageState();
@@ -183,6 +186,7 @@ class _LearnerPageState extends State<_LearnerPage> {
         onGetHistory: widget.onGetNoteHistory,
         onRestoreVersion: widget.onRestoreNoteVersion,
         onLogEvent: widget.onLogEvent,
+        onUploadAttachment: widget.onUploadAttachment,
       ),
     );
     final refreshed = await widget.onFetchNoteDetail(detail['id'] as int);

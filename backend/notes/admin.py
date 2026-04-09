@@ -7,6 +7,7 @@ from .models import (
     CourseSubscription,
     HeatmapActivity,
     Note,
+    NoteAttachment,
     NoteBlock,
     NoteIndex,
     NoteVersion,
@@ -260,6 +261,17 @@ class RecycleBinEntryAdmin(admin.ModelAdmin):
             return "-"
         name = obj.creator_id.user_id.get_full_name()
         return name if name.strip() else obj.creator_id.user_id.username
+
+    @admin.display(description="Note", ordering="note_id__title")
+    def note_title(self, obj):
+        return obj.note_id.title if obj.note_id else "-"
+
+
+@admin.register(NoteAttachment)
+class NoteAttachmentAdmin(admin.ModelAdmin):
+    list_display = ("original_filename", "note_title", "file_size", "content_type", "date_created")
+    search_fields = ("original_filename", "note_id__title")
+    readonly_fields = ("date_created",)
 
     @admin.display(description="Note", ordering="note_id__title")
     def note_title(self, obj):
