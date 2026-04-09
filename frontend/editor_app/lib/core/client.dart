@@ -144,8 +144,9 @@ abstract class NotechondriaClient {
     String code,
     String password,
   );
-  Future<Map<String, dynamic>> changePassword(String token, String currentPassword, String newPassword);
-  Future<Map<String, dynamic>> changeEmailRequest(String token, String newEmail);
+  Future<Map<String, dynamic>> sendIdentityCode(String token);
+  Future<Map<String, dynamic>> changePassword(String token, String currentPassword, String newPassword, String identityCode);
+  Future<Map<String, dynamic>> changeEmailRequest(String token, String newEmail, String identityCode);
   Future<Map<String, dynamic>> changeEmailConfirm(String token, String newEmail, String code);
   Future<Map<String, dynamic>> checkSession(String token);
   Future<void> logout(String token);
@@ -939,7 +940,18 @@ class HttpNotechondriaClient implements NotechondriaClient {
   }
 
   @override
-  Future<Map<String, dynamic>> changePassword(String token, String currentPassword, String newPassword) async {
+  Future<Map<String, dynamic>> sendIdentityCode(String token) async {
+    final uri = _uri('/auth/send-identity-code/');
+    final response = await _send(
+      'POST',
+      uri,
+      () => _httpClient.post(uri, headers: _headers(token: token)),
+    );
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'POST'));
+  }
+
+  @override
+  Future<Map<String, dynamic>> changePassword(String token, String currentPassword, String newPassword, String identityCode) async {
     final uri = _uri('/auth/change-password/');
     final response = await _send(
       'POST',
@@ -947,19 +959,21 @@ class HttpNotechondriaClient implements NotechondriaClient {
       () => _httpClient.post(uri, headers: _headers(token: token), body: jsonEncode({
         'current_password': currentPassword,
         'new_password': newPassword,
+        'identity_code': identityCode,
       })),
     );
     return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'POST'));
   }
 
   @override
-  Future<Map<String, dynamic>> changeEmailRequest(String token, String newEmail) async {
+  Future<Map<String, dynamic>> changeEmailRequest(String token, String newEmail, String identityCode) async {
     final uri = _uri('/auth/change-email/');
     final response = await _send(
       'POST',
       uri,
       () => _httpClient.post(uri, headers: _headers(token: token), body: jsonEncode({
         'new_email': newEmail,
+        'identity_code': identityCode,
       })),
     );
     return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'POST'));

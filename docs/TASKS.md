@@ -35,10 +35,6 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
   - [x] Replaced English chemical names with structural formula representations (organic acid structures, not benzene rings — Krebs cycle metabolites are small organic acids).
   - [x] When editor/planner/portal is opened, start the animation.
   - [x] The animation text is too small, Try to make the animation rotates (citric acid cycle) axis at left center of the screen. And show each step by rotating the cycle to the middle of the screen. Align all text horizontally (Do not rotate the text, just move the text along the circle).
-- [x] Create other transitional animation for page transitions (fade in/out, slide in/out, etc.)
-  - [x] create slide in animation for transitions from **note view** to **note editor**
-  - [x] fade in for each loaded cards, from top to bottom
-- [x] Admin (perhaps other test accounts) avatar was reset on each deploy, only reset if it is empty, do not replace admin avatar if preset.
 
 ## Editor
 
@@ -72,8 +68,6 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 #### Login and account info
 
 - [x] Google Chrome password manager is still not detecting the login widget and auto fill, find out why and fix it.
-- [x] Add few other options on the same line as `Logout` button. It should be arranged as `Change email`, `Change password`, `Logout`.
-- [x] Add social link validation, must be url.
 
 #### Editor Preferences
 
@@ -143,12 +137,12 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 ## Backend
 
-- [x] Edit the admin portal for django, show the owner name for each item (by their first name + last name). If they have parent objects, (for example, if a note is a comment type, it should show the title for the parent note as well. Include other meta data in admin edit portals, like date created etc for better views.)
-- [ ] Create welcome notes for new users showing the functionality of this site, add the welcome note to the template and inbox course. (modify the template no)
+- [ ] Create welcome notes for new users showing the functionality of this site, add the welcome note to the template and inbox course. (modify the current registered starter course to just one welcome note in inbox.)
 
 ### MCP
 
-- [ ] Enable fully functional MCP, enable AI to interact with the site when user creates API keys, let it able to access all backend functions that manage the user's data (note operations, user profile, course operations, etc).
+- [ ] Add the api key field(read-only) after `motto` field of user settings. Add rotation button after the api field to generate new api key, the api key should be only visible in front end after user click rotate and the backend should only store the hash of the api key only. (frontend api key is 32 digit hex string)
+- [ ] Enable fully functional MCP, enable AI to interact with the site using the user api key, let it able to access all backend functions that manage the user's data (note operations, user profile, course operations, etc). It should fully on backend.
 
 ## Documentation pages
 

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, time
 
 from django.core.management import call_command
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -62,7 +62,15 @@ def absolute_media_url(request, raw_url: str) -> str:
     if not raw_url:
         return ""
     if raw_url.startswith("http://") or raw_url.startswith("https://"):
-        return raw_url
+        # When R2/S3 storage is configured MEDIA_URL is an absolute URL
+        # (e.g. https://r2-domain.com/media/).  Rewrite those to same-origin
+        # /media/ paths so the frontend can load them without CORS issues
+        # (Flutter Web CanvasKit uses fetch(), not <img> tags).
+        media_url = getattr(settings, "MEDIA_URL", "/media/")
+        if media_url.startswith("http") and raw_url.startswith(media_url):
+            raw_url = "/media/" + raw_url[len(media_url):]
+        else:
+            return raw_url
     if request is None:
         return raw_url
     host = (
@@ -251,16 +259,16 @@ class NoteSummarySerializer(serializers.ModelSerializer):
         ]
 
     def get_excerpt(self, obj):
-        first_text_block = (
-            NoteBlock.objects.filter(note_id=obj)
-            .exclude(text__isnull=True)
-            .exclude(text__exact="")
-            .order_by("date_created")
-            .first()
-        )
-        if first_text_block is None:
-            return (obj.content or obj.description or "")[:220]
-        return first_text_block.text[:220]
+        # Prefer note.content (always populated on save) to avoid an extra
+        # NoteBlock query per row — this is the main N+1 hot-spot.
+        if obj.content:
+            lines = obj.content.strip()
+            if lines.startswith("# "):
+                lines = lines.split("\n", 1)[-1].strip()
+            return lines[:220]
+        if obj.description:
+            return obj.description[:220]
+        return ""
 
     def get_preview_lines(self, obj):
         return note_preview_lines(obj)
@@ -358,6 +366,8 @@ class CourseSerializer(serializers.ModelSerializer):
         return creator_summary_payload(obj.creator_id, request)
 
     def get_subscriber_count(self, obj):
+        if hasattr(obj, "_subscriber_count"):
+            return obj._subscriber_count
         return CourseSubscription.objects.filter(course_id=obj, is_active=True).count()
 
     def get_is_subscribed(self, obj):
@@ -476,6 +486,9 @@ class FrontPageApiView(APIView):
         courses = list(
             Course.objects.select_related("creator_id__user_id")
             .prefetch_related("media_items")
+            .annotate(_subscriber_count=Count(
+                "subscriptions", filter=Q(subscriptions__is_active=True),
+            ))
             .all()
         )
         courses.sort(key=lambda course: course_sort_key(course, subscription_map))
@@ -491,24 +504,16 @@ class FrontPageApiView(APIView):
             "request": request,
             "subscription_map": subscription_map,
         }
+        carousel_data = CourseSerializer(carousel_courses, many=True, context=serializer_context).data
+        recommended_data = NoteSummarySerializer(
+            recommended_notes, many=True, context={"request": request},
+        ).data
         payload = {
             "default_course": CourseSerializer(default_course, context=serializer_context).data if default_course else None,
-            "carousel_courses": CourseSerializer(carousel_courses, many=True, context=serializer_context).data,
-            "recent_notes": NoteSummarySerializer(
-                recommended_notes[:6],
-                many=True,
-                context={"request": request},
-            ).data,
-            "recommended_notes": NoteSummarySerializer(
-                recommended_notes,
-                many=True,
-                context={"request": request},
-            ).data,
-            "collections": CourseSerializer(
-                carousel_courses,
-                many=True,
-                context=serializer_context,
-            ).data,
+            "carousel_courses": carousel_data,
+            "recent_notes": recommended_data[:6],
+            "recommended_notes": recommended_data,
+            "collections": carousel_data,
         }
         if request.user.is_authenticated:
             payload["heatmap"] = build_heatmap_payload(ensure_creator(request.user))
@@ -532,6 +537,9 @@ class CourseListApiView(APIView):
         courses = list(
             Course.objects.select_related("creator_id__user_id")
             .prefetch_related("media_items")
+            .annotate(_subscriber_count=Count(
+                "subscriptions", filter=Q(subscriptions__is_active=True),
+            ))
             .all()
         )
         courses.sort(key=lambda course: course_sort_key(course, subscription_map))

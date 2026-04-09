@@ -612,15 +612,7 @@ class _KrebsCyclePainter extends CustomPainter {
         break;
     }
 
-    // Metabolite name label above the structure.
-    _drawText(
-      canvas,
-      metabolites[index],
-      origin + Offset(0, -bondLen * 1.8),
-      nodeColor.withValues(alpha: alpha),
-      fontSize * 1.4,
-      FontWeight.w700,
-    );
+    // (Metabolite name already drawn near the orbit node – no duplicate here.)
   }
 
   void _drawText(

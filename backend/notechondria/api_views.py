@@ -1,8 +1,11 @@
+import logging
 import os
 from urllib.parse import urlencode
 
+import requests as http_requests
 from django.conf import settings
 from django.http import (
+    Http404,
     HttpResponse,
     HttpResponseBadRequest,
     HttpResponseForbidden,
@@ -10,6 +13,8 @@ from django.http import (
     HttpResponseServerError,
     JsonResponse,
 )
+
+logger = logging.getLogger("django")
 
 
 def health_check(request):
@@ -143,3 +148,34 @@ def oauth_callback(request, provider):
 </body></html>""",
         content_type="text/html",
     )
+
+
+def media_serve(request, path):
+    """Serve media files: try local disk first, proxy to R2 if configured.
+
+    When Cloudflare R2 is the storage backend the API rewrites media URLs to
+    same-origin ``/media/`` paths so Flutter Web's CanvasKit renderer can load
+    them without CORS issues.  This view fulfils those requests by proxying to
+    R2 when the file is not on the local filesystem.
+    """
+    local_path = os.path.join(settings.MEDIA_ROOT, path)
+    if os.path.isfile(local_path):
+        from django.views.static import serve
+        return serve(request, path, settings.MEDIA_ROOT)
+
+    media_url = getattr(settings, "MEDIA_URL", "/media/")
+    if media_url.startswith("http"):
+        target = f"{media_url}{path}"
+        try:
+            resp = http_requests.get(target, timeout=30, stream=True)
+            if resp.status_code == 200:
+                django_resp = HttpResponse(
+                    resp.content,
+                    content_type=resp.headers.get("Content-Type", "application/octet-stream"),
+                )
+                django_resp["Cache-Control"] = "public, max-age=86400"
+                return django_resp
+        except Exception as exc:
+            logger.warning("media_serve: failed to proxy %s: %s", target, exc)
+
+    raise Http404(f"Media file not found: {path}")

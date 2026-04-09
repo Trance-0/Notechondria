@@ -31,7 +31,10 @@ class _RemoteMedia extends StatelessWidget {
     return Image.network(
       imageUrl,
       fit: fit,
-      errorBuilder: (_, __, ___) => fallback,
+      errorBuilder: (_, error, stackTrace) {
+        debugPrint('[_RemoteMedia] failed to load image: $imageUrl — $error');
+        return fallback;
+      },
     );
   }
 }

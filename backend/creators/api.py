@@ -16,6 +16,7 @@ import requests as http_requests
 
 from .models import InvitationCode, SocialAccount, VerificationChoices, VerificationCode
 from .utils import (
+    _send_code_email,
     ensure_creator,
     ensure_creator_avatar,
     issue_password_reset_code,
@@ -520,9 +521,72 @@ class PasswordResetConfirmApiView(APIView):
         return Response({"message": "Password updated. You can now log in."})
 
 
+class SendIdentityCodeApiView(APIView):
+    """Send a 6-digit verification code to the authenticated user's current
+    email.  Used as a pre-step before sensitive account changes (email /
+    password)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        email = request.user.email
+        if not email:
+            return Response(
+                {"detail": "No email address on file for this account."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Invalidate any outstanding identity codes for this user.
+        VerificationCode.objects.filter(
+            usage=VerificationChoices.FUNCTION,
+            function=f"verify_identity:{request.user.id}",
+        ).update(max_use=0)
+        from datetime import timedelta
+        vc = VerificationCode(
+            expire_date=now() + timedelta(hours=settings.EMAIL_VERIFICATION_TTL_HOURS),
+            usage=VerificationChoices.FUNCTION,
+            function=f"verify_identity:{request.user.id}",
+        )
+        plaintext = vc.generate_code()
+        vc.save()
+        delivery = _send_code_email(
+            email,
+            plaintext,
+            subject="Verify your identity \u2013 Notechondria",
+            intro="Use this code to verify your identity before making account changes.",
+            action_label="Open settings",
+        )
+        # Mask email for the frontend display.
+        at = email.find("@")
+        masked = email[0] + "***" + email[at:] if at > 0 else "***"
+        return Response({
+            "message": delivery["message"],
+            "delivery_fallback": delivery.get("fallback", False),
+            "masked_email": masked,
+        })
+
+
+def _consume_identity_code(user, code_value):
+    """Validate and consume an identity-verification code.
+    Returns the ``VerificationCode`` on success, or ``None`` if invalid."""
+    if not code_value:
+        return None
+    code_hash = VerificationCode.hash_code(code_value)
+    vc = VerificationCode.objects.filter(
+        code=code_hash,
+        function=f"verify_identity:{user.id}",
+        usage=VerificationChoices.FUNCTION,
+        max_use__gt=0,
+        expire_date__gt=now(),
+    ).first()
+    if vc is not None:
+        vc.max_use = 0
+        vc.save(update_fields=["max_use"])
+    return vc
+
+
 class ChangePasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField(write_only=True)
     new_password = serializers.CharField(write_only=True, min_length=8)
+    identity_code = serializers.CharField(write_only=True)
 
     def validate_new_password(self, value):
         has_upper = any(c.isupper() for c in value)
@@ -542,6 +606,13 @@ class ChangePasswordApiView(APIView):
         serializer = ChangePasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = request.user
+        # Verify identity code (sent to current email).
+        vc = _consume_identity_code(user, serializer.validated_data["identity_code"])
+        if vc is None:
+            return Response(
+                {"detail": "Invalid or expired identity verification code."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         if not user.check_password(serializer.validated_data["current_password"]):
             return Response(
                 {"detail": "Current password is incorrect."},
@@ -557,6 +628,7 @@ class ChangePasswordApiView(APIView):
 
 class ChangeEmailRequestSerializer(serializers.Serializer):
     new_email = serializers.EmailField()
+    identity_code = serializers.CharField()
 
     def validate_new_email(self, value):
         normalised = value.lower()
@@ -600,6 +672,13 @@ class ChangeEmailApiView(APIView):
     def _request(self, request):
         serializer = ChangeEmailRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        # Verify identity code (sent to current email).
+        vc = _consume_identity_code(request.user, serializer.validated_data["identity_code"])
+        if vc is None:
+            return Response(
+                {"detail": "Invalid or expired identity verification code."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         new_email = serializer.validated_data["new_email"]
         # Invalidate old change-email codes for this address.
         VerificationCode.objects.filter(
@@ -823,8 +902,8 @@ class GoogleOAuthSerializer(serializers.Serializer):
         required=False, allow_blank=True, default="",
     )
     intent = serializers.ChoiceField(
-        choices=["login", "register"], default="register", required=False,
-        help_text="'login' rejects unregistered users; 'register' creates them.",
+        choices=["login", "register", "bind"], default="register", required=False,
+        help_text="'login' rejects unregistered users; 'register' creates them; 'bind' links to existing account.",
     )
 
     def validate(self, attrs):
@@ -950,8 +1029,8 @@ class GitHubOAuthSerializer(serializers.Serializer):
         required=False, allow_blank=True, default="",
     )
     intent = serializers.ChoiceField(
-        choices=["login", "register"], default="register", required=False,
-        help_text="'login' rejects unregistered users; 'register' creates them.",
+        choices=["login", "register", "bind"], default="register", required=False,
+        help_text="'login' rejects unregistered users; 'register' creates them; 'bind' links to existing account.",
     )
 
 

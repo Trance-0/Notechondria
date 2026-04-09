@@ -37,6 +37,7 @@ class _SettingsPage extends StatefulWidget {
     this.onBindGithub,
     this.onListSocialAccounts,
     this.onUnlinkSocialAccount,
+    this.onSendIdentityCode,
     this.onChangePassword,
     this.onChangeEmailRequest,
     this.onChangeEmailConfirm,
@@ -96,8 +97,9 @@ class _SettingsPage extends StatefulWidget {
   final Future<ActionFeedback> Function() onPullCloudData;
   final Future<ActionFeedback> Function() onClearLocalData;
   final Future<ActionFeedback> Function() onRestoreTemplateCourses;
-  final Future<Map<String, dynamic>> Function(String currentPassword, String newPassword)? onChangePassword;
-  final Future<Map<String, dynamic>> Function(String newEmail)? onChangeEmailRequest;
+  final Future<Map<String, dynamic>> Function()? onSendIdentityCode;
+  final Future<Map<String, dynamic>> Function(String currentPassword, String newPassword, String identityCode)? onChangePassword;
+  final Future<Map<String, dynamic>> Function(String newEmail, String identityCode)? onChangeEmailRequest;
   final Future<Map<String, dynamic>> Function(String newEmail, String code)? onChangeEmailConfirm;
   final Future<void> Function()? onDownloadConfig;
   final int localDraftCount;
@@ -696,137 +698,66 @@ class _SettingsPageState extends State<_SettingsPage> {
 
   /// Profile fields shown when authenticated: avatar, name, motto, social link.
   void _openChangePasswordDialog(BuildContext context) {
+    final identityCodeCtrl = TextEditingController();
     final currentPwCtrl = TextEditingController();
     final newPwCtrl = TextEditingController();
     final confirmPwCtrl = TextEditingController();
     String? error;
+    String? maskedEmail;
     bool submitting = false;
-    showDialog<void>(
+    bool identityVerified = false;
+    _showBlurDialog<void>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
+      child: StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Change password'),
-          content: SizedBox(
-            width: 360,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: currentPwCtrl,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Current password',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: newPwCtrl,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'New password',
-                    helperText: 'Min 8 chars, uppercase + lowercase + digit/special.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: confirmPwCtrl,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Confirm new password',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (error != null) ...[
-                  const SizedBox(height: 12),
-                  Text(error!, style: const TextStyle(color: Color(0xFFB91C1C), fontWeight: FontWeight.w600)),
-                ],
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: submitting ? null : () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: submitting ? null : () async {
-                if (newPwCtrl.text != confirmPwCtrl.text) {
-                  setDialogState(() => error = 'Passwords do not match.');
-                  return;
-                }
-                if (newPwCtrl.text.length < 8) {
-                  setDialogState(() => error = 'Password must be at least 8 characters.');
-                  return;
-                }
-                setDialogState(() { submitting = true; error = null; });
-                try {
-                  await widget.onChangePassword!(currentPwCtrl.text, newPwCtrl.text);
-                  if (ctx.mounted) Navigator.of(ctx).pop();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Password changed.')),
-                    );
-                  }
-                } catch (e) {
-                  setDialogState(() {
-                    submitting = false;
-                    error = e.toString().replaceFirst('Exception: ', '');
-                  });
-                }
-              },
-              child: Text(submitting ? 'Saving...' : 'Change password'),
-            ),
-          ],
-        ),
-      ),
-    ).then((_) {
-      currentPwCtrl.dispose();
-      newPwCtrl.dispose();
-      confirmPwCtrl.dispose();
-    });
-  }
-
-  void _openChangeEmailDialog(BuildContext context) {
-    final emailCtrl = TextEditingController();
-    final codeCtrl = TextEditingController();
-    String? error;
-    String? successMessage;
-    bool submitting = false;
-    bool codeSent = false;
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Change email'),
+          title: Text(identityVerified ? 'Change password' : 'Verify your identity'),
           content: SizedBox(
             width: 360,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (!codeSent)
-                  const Text('A verification code will be sent to your new email.'),
-                if (codeSent)
-                  Text('A code was sent to ${emailCtrl.text}. Enter it below.'),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: emailCtrl,
-                  enabled: !codeSent,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'New email',
-                    border: OutlineInputBorder(),
+                if (!identityVerified) ...[
+                  if (maskedEmail == null)
+                    const Text('A verification code will be sent to your current email.'),
+                  if (maskedEmail != null) ...[
+                    Text('A code was sent to $maskedEmail. Enter it below.'),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: identityCodeCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: '6-digit identity code',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ],
+                if (identityVerified) ...[
+                  TextField(
+                    controller: currentPwCtrl,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Current password',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-                if (codeSent) ...[
                   const SizedBox(height: 12),
                   TextField(
-                    controller: codeCtrl,
-                    keyboardType: TextInputType.number,
+                    controller: newPwCtrl,
+                    obscureText: true,
                     decoration: const InputDecoration(
-                      labelText: '6-digit code',
+                      labelText: 'New password',
+                      helperText: 'Min 8 chars, uppercase + lowercase + digit/special.',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: confirmPwCtrl,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Confirm new password',
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -835,10 +766,6 @@ class _SettingsPageState extends State<_SettingsPage> {
                   const SizedBox(height: 12),
                   Text(error!, style: const TextStyle(color: Color(0xFFB91C1C), fontWeight: FontWeight.w600)),
                 ],
-                if (successMessage != null) ...[
-                  const SizedBox(height: 12),
-                  Text(successMessage!, style: const TextStyle(color: Color(0xFF166534), fontWeight: FontWeight.w600)),
-                ],
               ],
             ),
           ),
@@ -847,20 +774,15 @@ class _SettingsPageState extends State<_SettingsPage> {
               onPressed: submitting ? null : () => Navigator.of(ctx).pop(),
               child: const Text('Cancel'),
             ),
-            if (!codeSent)
+            if (!identityVerified && maskedEmail == null)
               FilledButton(
                 onPressed: submitting ? null : () async {
-                  if (emailCtrl.text.trim().isEmpty) {
-                    setDialogState(() => error = 'Enter a new email address.');
-                    return;
-                  }
                   setDialogState(() { submitting = true; error = null; });
                   try {
-                    final result = await widget.onChangeEmailRequest!(emailCtrl.text.trim());
+                    final result = await widget.onSendIdentityCode!();
                     setDialogState(() {
                       submitting = false;
-                      codeSent = true;
-                      successMessage = result['message']?.toString();
+                      maskedEmail = result['masked_email']?.toString() ?? '***';
                     });
                   } catch (e) {
                     setDialogState(() {
@@ -871,20 +793,37 @@ class _SettingsPageState extends State<_SettingsPage> {
                 },
                 child: Text(submitting ? 'Sending...' : 'Send code'),
               ),
-            if (codeSent)
+            if (!identityVerified && maskedEmail != null)
               FilledButton(
-                onPressed: submitting ? null : () async {
-                  if (codeCtrl.text.trim().isEmpty) {
+                onPressed: submitting ? null : () {
+                  if (identityCodeCtrl.text.trim().isEmpty) {
                     setDialogState(() => error = 'Enter the verification code.');
                     return;
                   }
-                  setDialogState(() { submitting = true; error = null; successMessage = null; });
+                  setDialogState(() { identityVerified = true; error = null; });
+                },
+                child: const Text('Verify'),
+              ),
+            if (identityVerified)
+              FilledButton(
+                onPressed: submitting ? null : () async {
+                  if (newPwCtrl.text != confirmPwCtrl.text) {
+                    setDialogState(() => error = 'Passwords do not match.');
+                    return;
+                  }
+                  if (newPwCtrl.text.length < 8) {
+                    setDialogState(() => error = 'Password must be at least 8 characters.');
+                    return;
+                  }
+                  setDialogState(() { submitting = true; error = null; });
                   try {
-                    await widget.onChangeEmailConfirm!(emailCtrl.text.trim(), codeCtrl.text.trim());
+                    await widget.onChangePassword!(
+                      currentPwCtrl.text, newPwCtrl.text, identityCodeCtrl.text.trim(),
+                    );
                     if (ctx.mounted) Navigator.of(ctx).pop();
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Email updated.')),
+                        const SnackBar(content: Text('Password changed.')),
                       );
                     }
                   } catch (e) {
@@ -894,12 +833,199 @@ class _SettingsPageState extends State<_SettingsPage> {
                     });
                   }
                 },
-                child: Text(submitting ? 'Verifying...' : 'Confirm'),
+                child: Text(submitting ? 'Saving...' : 'Change password'),
               ),
           ],
         ),
       ),
     ).then((_) {
+      identityCodeCtrl.dispose();
+      currentPwCtrl.dispose();
+      newPwCtrl.dispose();
+      confirmPwCtrl.dispose();
+    });
+  }
+
+  void _openChangeEmailDialog(BuildContext context) {
+    final identityCodeCtrl = TextEditingController();
+    final emailCtrl = TextEditingController();
+    final codeCtrl = TextEditingController();
+    String? error;
+    String? successMessage;
+    String? maskedEmail;
+    bool submitting = false;
+    bool identityVerified = false;
+    bool codeSent = false;
+    _showBlurDialog<void>(
+      context: context,
+      child: StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final String title;
+          if (!identityVerified) {
+            title = 'Verify your identity';
+          } else if (!codeSent) {
+            title = 'Change email';
+          } else {
+            title = 'Confirm new email';
+          }
+          return AlertDialog(
+            title: Text(title),
+            content: SizedBox(
+              width: 360,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Step 0: identity verification
+                  if (!identityVerified) ...[
+                    if (maskedEmail == null)
+                      const Text('A verification code will be sent to your current email.'),
+                    if (maskedEmail != null) ...[
+                      Text('A code was sent to $maskedEmail. Enter it below.'),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: identityCodeCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: '6-digit identity code',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
+                  ],
+                  // Step 1: enter new email
+                  if (identityVerified && !codeSent) ...[
+                    const Text('Enter your new email address.'),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(
+                        labelText: 'New email',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                  // Step 2: confirm code sent to new email
+                  if (identityVerified && codeSent) ...[
+                    Text('A code was sent to ${emailCtrl.text}. Enter it below.'),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: codeCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: '6-digit code',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                  if (error != null) ...[
+                    const SizedBox(height: 12),
+                    Text(error!, style: const TextStyle(color: Color(0xFFB91C1C), fontWeight: FontWeight.w600)),
+                  ],
+                  if (successMessage != null) ...[
+                    const SizedBox(height: 12),
+                    Text(successMessage!, style: const TextStyle(color: Color(0xFF166534), fontWeight: FontWeight.w600)),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: submitting ? null : () => Navigator.of(ctx).pop(),
+                child: const Text('Cancel'),
+              ),
+              // Step 0a: send identity code
+              if (!identityVerified && maskedEmail == null)
+                FilledButton(
+                  onPressed: submitting ? null : () async {
+                    setDialogState(() { submitting = true; error = null; });
+                    try {
+                      final result = await widget.onSendIdentityCode!();
+                      setDialogState(() {
+                        submitting = false;
+                        maskedEmail = result['masked_email']?.toString() ?? '***';
+                      });
+                    } catch (e) {
+                      setDialogState(() {
+                        submitting = false;
+                        error = e.toString().replaceFirst('Exception: ', '');
+                      });
+                    }
+                  },
+                  child: Text(submitting ? 'Sending...' : 'Send code'),
+                ),
+              // Step 0b: verify identity code (client-side gate)
+              if (!identityVerified && maskedEmail != null)
+                FilledButton(
+                  onPressed: submitting ? null : () {
+                    if (identityCodeCtrl.text.trim().isEmpty) {
+                      setDialogState(() => error = 'Enter the verification code.');
+                      return;
+                    }
+                    setDialogState(() { identityVerified = true; error = null; });
+                  },
+                  child: const Text('Verify'),
+                ),
+              // Step 1: send code to new email
+              if (identityVerified && !codeSent)
+                FilledButton(
+                  onPressed: submitting ? null : () async {
+                    if (emailCtrl.text.trim().isEmpty) {
+                      setDialogState(() => error = 'Enter a new email address.');
+                      return;
+                    }
+                    setDialogState(() { submitting = true; error = null; });
+                    try {
+                      final result = await widget.onChangeEmailRequest!(
+                        emailCtrl.text.trim(), identityCodeCtrl.text.trim(),
+                      );
+                      setDialogState(() {
+                        submitting = false;
+                        codeSent = true;
+                        successMessage = result['message']?.toString();
+                      });
+                    } catch (e) {
+                      setDialogState(() {
+                        submitting = false;
+                        error = e.toString().replaceFirst('Exception: ', '');
+                      });
+                    }
+                  },
+                  child: Text(submitting ? 'Sending...' : 'Send code'),
+                ),
+              // Step 2: confirm new email code
+              if (identityVerified && codeSent)
+                FilledButton(
+                  onPressed: submitting ? null : () async {
+                    if (codeCtrl.text.trim().isEmpty) {
+                      setDialogState(() => error = 'Enter the verification code.');
+                      return;
+                    }
+                    setDialogState(() { submitting = true; error = null; successMessage = null; });
+                    try {
+                      await widget.onChangeEmailConfirm!(emailCtrl.text.trim(), codeCtrl.text.trim());
+                      if (ctx.mounted) Navigator.of(ctx).pop();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Email updated.')),
+                        );
+                      }
+                    } catch (e) {
+                      setDialogState(() {
+                        submitting = false;
+                        error = e.toString().replaceFirst('Exception: ', '');
+                      });
+                    }
+                  },
+                  child: Text(submitting ? 'Verifying...' : 'Confirm'),
+                ),
+            ],
+          );
+        },
+      ),
+    ).then((_) {
+      identityCodeCtrl.dispose();
       emailCtrl.dispose();
       codeCtrl.dispose();
     });
