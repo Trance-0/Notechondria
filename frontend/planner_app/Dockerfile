@@ -23,7 +23,7 @@ RUN flutter test test/smoke_test.dart
 FROM frontend_base AS frontend_build
 ARG FRONTEND_API_BASE_URL=http://localhost:9060/api/v1
 ARG APP_BASE_HREF=/
-RUN flutter build web --release --web-renderer html --no-tree-shake-icons --base-href ${APP_BASE_HREF} --dart-define=API_BASE_URL=${FRONTEND_API_BASE_URL}
+RUN flutter build web --release --no-tree-shake-icons --base-href ${APP_BASE_HREF} --dart-define=API_BASE_URL=${FRONTEND_API_BASE_URL}
 
 FROM nginx:1.27-alpine AS frontend_runtime
 ENV FRONTEND_BACKEND_ORIGIN=http://nginx
