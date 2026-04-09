@@ -266,9 +266,9 @@ Add a lower right add button (the same as add notes) for inserting attachment (i
 <h3 id="editor-settings"><a class="header" href="#editor-settings">Editor Settings</a></h3>
 <h4 id="login-and-account-info"><a class="header" href="#login-and-account-info">Login and account info</a></h4>
 <ul>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Google Chrome password manager is still not detecting the login widget and auto fill, find out why and fix it.</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Add few other options on the same line as <code>Logout</code> button. It should be arranged as <code>Change email</code>, <code>Change password</code>, <code>Logout</code>.</li>
 <li><input disabled="" type="checkbox" checked=""/>
 Add social link validation, must be url.</li>
@@ -362,7 +362,7 @@ Add registration via google, use google oauth2 api (env variables are defined in
 Add registration via Github, use Github App api (env variables are defined in <code>sample.text.env</code>, be sure to verify on the backend and capture the callback url from github redirect is on backend, and also handle the webhook post from github with verifications, be sure to take user back to frontend app after successful login/register. Ask for appropriate data like email, username from google to create user profiles.)</p>
 </li>
 <li>
-<p><input disabled="" type="checkbox"/>
+<p><input disabled="" type="checkbox" checked=""/>
 Allow existing users to bind their social accounts and login using them, currently support github and google accounts. (put in ui for the after login, show their binding accounts belows the social link (one line for google, one line for github. If no binding account, show the button to trigger the binding process (Online account settings widget), if user has binding accounts, show the button to trigger switch binding third party accounts))</p>
 <ul>
 <li><input disabled="" type="checkbox" checked=""/>
@@ -388,10 +388,10 @@ Embed from all setting from the micro services included.</p>
 </ul>
 <h2 id="backend"><a class="header" href="#backend">Backend</a></h2>
 <ul>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Edit the admin portal for django, show the owner name for each item (by their first name + last name). If they have parent objects, (for example, if a note is a comment type, it should show the title for the parent note as well. Include other meta data in admin edit portals, like date created etc for better views.)</li>
 <li><input disabled="" type="checkbox"/>
-Create welcome notes for new users showing the functionality of this site, add the welcome note to the template and inbox course.</li>
+Create welcome notes for new users showing the functionality of this site, add the welcome note to the template and inbox course. (modify the template no)</li>
 </ul>
 <h3 id="mcp"><a class="header" href="#mcp">MCP</a></h3>
 <ul>
