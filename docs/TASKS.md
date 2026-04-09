@@ -30,6 +30,7 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
   - [x] Rewire the backend to use Cloudflare R2 for static assets if the credentials are provided when deploying the backend with render. Raise an error if the credentials are not provided. Otherwise, when deploying the backend with docker compose, use the persistent volume and nginx for cdn delivery.
   - [x] Add the necessary items and credential updates to `sample.render.env`. I will fill them later. be sure to start the var name with `CLOUDFLARE_R2_` to avoid conflict with other env vars. Put them together as a new section.
 - [x] Create startup animation. Repeating Citric acid cycle (part of respiration process). You may need to check for the detail for how the chemicals are loaded and cycled. Make a simple flutter animation to demonstrate that, and make smooth quit when frontend resources are loaded or timeout (set to 10 seconds Max).
+  - [x] The animation don't cover the whole screen (the sidebar is not covered). The animation should be full screen.
   - [x] Slow down the animation a bit, it is too fast now. Remote the 'citric acid cycle' title.
   - [x] Replaced English chemical names with structural formula representations (organic acid structures, not benzene rings — Krebs cycle metabolites are small organic acids).
   - [x] When editor/planner/portal is opened, start the animation.
@@ -70,7 +71,7 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 #### Login and account info
 
-- [ ] Google Chorme password manager is still not detecting the login widget and auto fill, find out why and fix it.
+- [ ] Google Chrome password manager is still not detecting the login widget and auto fill, find out why and fix it.
 - [ ] Add few other options on the same line as `Logout` button. It should be arranged as `Change email`, `Change password`, `Logout`.
 - [x] Add social link validation, must be url.
 

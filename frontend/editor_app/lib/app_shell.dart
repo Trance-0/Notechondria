@@ -3064,13 +3064,29 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
   // ---------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
+    final scaffold = LayoutBuilder(
       builder: (context, constraints) {
         final isWideLayout = constraints.maxWidth >= 960;
         if (isWideLayout) return _buildWideScaffold(context);
         return _buildCompactScaffold(context);
       },
     );
+    if (_showSplash) {
+      return Stack(
+        children: [
+          scaffold,
+          Positioned.fill(
+            child: _SplashScreen(
+              appTitle: widget.appTitle,
+              onFinished: () {
+                setState(() { _showSplash = false; if (_isLoading) _isLoading = false; });
+              },
+            ),
+          ),
+        ],
+      );
+    }
+    return scaffold;
   }
 
   /// Compact (mobile/narrow) layout with a hamburger drawer for navigation.
@@ -3499,16 +3515,9 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 250),
       child: SelectionArea(
-        child: _showSplash
-            ? _SplashScreen(
-                appTitle: widget.appTitle,
-                onFinished: () {
-                  setState(() { _showSplash = false; if (_isLoading) _isLoading = false; });
-                },
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
                   if (_isLoading)
                     const LinearProgressIndicator(minHeight: 2),
                   if (_errorMessage != null)
@@ -3567,8 +3576,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
                       ),
                     ),
                   ),
-                ],
-              ),
+          ],
+        ),
       ),
     );
   }
@@ -3692,7 +3701,7 @@ class _CreateCategoryDialogState extends State<_CreateCategoryDialog> {
               ActionChip(
                 avatar: Icon(
                   _selectedIcon != null
-                      ? IconData(_selectedIcon!, fontFamily: 'MaterialIcons')
+                      ? _iconFromCodePoint(_selectedIcon!)
                       : Icons.folder_outlined,
                   size: 20,
                 ),
@@ -3777,7 +3786,7 @@ class _EditCategoryDialogState extends State<_EditCategoryDialog> {
               ActionChip(
                 avatar: Icon(
                   _selectedIcon != null
-                      ? IconData(_selectedIcon!, fontFamily: 'MaterialIcons')
+                      ? _iconFromCodePoint(_selectedIcon!)
                       : Icons.school_outlined,
                   size: 20,
                 ),

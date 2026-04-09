@@ -548,11 +548,23 @@ const Map<String, IconData> _kCourseIcons = {
   'Writing': Icons.edit_note_outlined,
 };
 
+/// Reverse lookup: codePoint -> constant IconData from the curated set.
+/// Avoids non-constant IconData constructors that break icon tree-shaking.
+final Map<int, IconData> _kCodePointToIcon = {
+  for (final icon in _kCourseIcons.values) icon.codePoint: icon,
+};
+
+/// Resolves a codePoint integer to its constant IconData, with a fallback.
+IconData _iconFromCodePoint(int? codePoint, {IconData fallback = Icons.school_outlined}) {
+  if (codePoint == null) return fallback;
+  return _kCodePointToIcon[codePoint] ?? fallback;
+}
+
 /// Resolves the icon for a course map. Falls back to type-based defaults.
 IconData _courseIcon(Map<String, dynamic> course) {
   final codePoint = (course['icon'] as num?)?.toInt();
   if (codePoint != null) {
-    return IconData(codePoint, fontFamily: 'MaterialIcons');
+    return _iconFromCodePoint(codePoint);
   }
   if (course['is_local_course'] == true) return Icons.folder_outlined;
   if (course['is_default'] == true) return Icons.inbox_outlined;

@@ -2609,7 +2609,7 @@ Capture deadlines, sequencing, and blockers here.''',
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
+    final scaffold = LayoutBuilder(
       builder: (context, constraints) {
         final isWideLayout = constraints.maxWidth >= 960;
         if (isWideLayout) {
@@ -2618,6 +2618,22 @@ Capture deadlines, sequencing, and blockers here.''',
         return _buildCompactScaffold();
       },
     );
+    if (_showSplash) {
+      return Stack(
+        children: [
+          scaffold,
+          Positioned.fill(
+            child: _SplashScreen(
+              appTitle: widget.appTitle,
+              onFinished: () {
+                setState(() { _showSplash = false; if (_isLoading) _isLoading = false; });
+              },
+            ),
+          ),
+        ],
+      );
+    }
+    return scaffold;
   }
 
   Widget _buildCompactScaffold() {
@@ -2764,16 +2780,9 @@ Capture deadlines, sequencing, and blockers here.''',
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 250),
       child: SelectionArea(
-        child: _showSplash
-            ? _SplashScreen(
-                appTitle: widget.appTitle,
-                onFinished: () {
-                  setState(() { _showSplash = false; if (_isLoading) _isLoading = false; });
-                },
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
                   if (_isLoading)
                     const LinearProgressIndicator(minHeight: 2),
                   if (_errorMessage != null)
@@ -2843,8 +2852,8 @@ Capture deadlines, sequencing, and blockers here.''',
                       ),
                     ),
                   ),
-                ],
-              ),
+          ],
+        ),
       ),
     );
   }
