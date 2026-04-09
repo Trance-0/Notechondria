@@ -89,7 +89,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="TASKS.html">Tasks</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">API</li><li class="chapter-item expanded "><a href="api/backend_api_spec.html"><strong aria-hidden="true">1.</strong> Backend API Specification</a></li><li class="chapter-item expanded affix "><li class="part-title">Deployment</li><li class="chapter-item expanded "><a href="deployment/deploy.html"><strong aria-hidden="true">2.</strong> Deployment Guide</a></li><li class="chapter-item expanded "><a href="deployment/render_free_tier.html"><strong aria-hidden="true">3.</strong> Render Free Tier</a></li><li class="chapter-item expanded affix "><li class="part-title">Development</li><li class="chapter-item expanded "><a href="development/python_environments.html"><strong aria-hidden="true">4.</strong> Python Environments</a></li><li class="chapter-item expanded "><a href="canvas_like_calendar_mvp.html"><strong aria-hidden="true">5.</strong> Canvas-like Calendar MVP</a></li><li class="chapter-item expanded affix "><li class="part-title">Integrations</li><li class="chapter-item expanded "><a href="integrations/github_app_integration.html"><strong aria-hidden="true">6.</strong> GitHub App Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">Operations</li><li class="chapter-item expanded "><a href="operations/postgres_migration.html"><strong aria-hidden="true">7.</strong> PostgreSQL Migration</a></li><li class="chapter-item expanded affix "><li class="part-title">Testing</li><li class="chapter-item expanded "><a href="testing/backend_test_plan.html"><strong aria-hidden="true">8.</strong> Backend Test Plan</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="TASKS.html">Tasks</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">API</li><li class="chapter-item expanded "><a href="api/backend_api_spec.html"><strong aria-hidden="true">1.</strong> Backend API Specification</a></li><li class="chapter-item expanded affix "><li class="part-title">Deployment</li><li class="chapter-item expanded "><a href="deployment/deploy.html"><strong aria-hidden="true">2.</strong> Deployment Guide</a></li><li class="chapter-item expanded "><a href="deployment/render_free_tier.html"><strong aria-hidden="true">3.</strong> Render Free Tier</a></li><li class="chapter-item expanded affix "><li class="part-title">Development</li><li class="chapter-item expanded "><a href="development/local_dev.html"><strong aria-hidden="true">4.</strong> Local Development Guide</a></li><li class="chapter-item expanded "><a href="development/python_environments.html"><strong aria-hidden="true">5.</strong> Python Environments</a></li><li class="chapter-item expanded "><a href="canvas_like_calendar_mvp.html"><strong aria-hidden="true">6.</strong> Canvas-like Calendar MVP</a></li><li class="chapter-item expanded affix "><li class="part-title">Integrations</li><li class="chapter-item expanded "><a href="integrations/github_app_integration.html"><strong aria-hidden="true">7.</strong> GitHub App Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">Operations</li><li class="chapter-item expanded "><a href="operations/postgres_migration.html"><strong aria-hidden="true">8.</strong> PostgreSQL Migration</a></li><li class="chapter-item expanded affix "><li class="part-title">Testing</li><li class="chapter-item expanded "><a href="testing/backend_test_plan.html"><strong aria-hidden="true">9.</strong> Backend Test Plan</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -875,6 +875,136 @@ nginx will serve static and media files directly.</p>
 <li>If migrations are slow, startup time may increase.</li>
 <li>If <code>bootstrap_platform</code> is not needed for a given environment, it safely tolerates failure in the script.</li>
 </ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="local-development-guide"><a class="header" href="#local-development-guide">Local Development Guide</a></h1>
+<p>This page describes how to set up and run each component locally for
+development and debugging.</p>
+<h2 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Tool</th><th>Version</th><th>Notes</th></tr></thead><tbody>
+<tr><td>Flutter SDK</td><td>stable channel (&gt;=3.24)</td><td><code>flutter doctor</code> to verify</td></tr>
+<tr><td>Python</td><td>3.11+</td><td>Backend only</td></tr>
+<tr><td>Docker &amp; Docker Compose</td><td>latest</td><td>Full-stack or individual services</td></tr>
+<tr><td>Node.js</td><td>20+</td><td>GitHub Actions only (not needed locally)</td></tr>
+</tbody></table>
+</div>
+<h2 id="frontend-flutter-web"><a class="header" href="#frontend-flutter-web">Frontend (Flutter Web)</a></h2>
+<p>All three frontend apps live under <code>frontend/</code> and share the same workflow.</p>
+<h3 id="install-dependencies"><a class="header" href="#install-dependencies">Install dependencies</a></h3>
+<pre><code class="language-bash">cd frontend/editor_app
+flutter pub get
+</code></pre>
+<p>Repeat for <code>planner_app</code> and <code>portal_app</code> if needed.</p>
+<h3 id="run-in-development-mode"><a class="header" href="#run-in-development-mode">Run in development mode</a></h3>
+<pre><code class="language-bash"># Editor app (default port 9060)
+cd frontend/editor_app
+flutter run -d chrome --web-port 9060
+
+# Planner app
+cd frontend/planner_app
+flutter run -d chrome --web-port 9061
+
+# Portal app
+cd frontend/portal_app
+flutter run -d chrome --web-port 9062
+</code></pre>
+<p>The dev server supports hot-reload. Press <code>r</code> in the terminal to reload,
+<code>R</code> for full restart.</p>
+<h4 id="pointing-at-a-local-backend"><a class="header" href="#pointing-at-a-local-backend">Pointing at a local backend</a></h4>
+<p>By default the frontend reads <code>API_BASE_URL</code> from the compile-time
+<code>--dart-define</code>. During <code>flutter run</code> you can override it:</p>
+<pre><code class="language-bash">flutter run -d chrome --web-port 9060 \
+  --dart-define=API_BASE_URL=http://localhost:9090/api/v1
+</code></pre>
+<h3 id="run-tests"><a class="header" href="#run-tests">Run tests</a></h3>
+<pre><code class="language-bash">cd frontend/editor_app
+flutter test test/smoke_test.dart -r compact
+</code></pre>
+<h3 id="build-for-production-local-preview"><a class="header" href="#build-for-production-local-preview">Build for production (local preview)</a></h3>
+<pre><code class="language-bash">cd frontend/editor_app
+flutter build web --release --no-tree-shake-icons
+# Output: build/web/
+# Serve with any static server:
+cd build/web &amp;&amp; python3 -m http.server 8080
+</code></pre>
+<h2 id="backend-django"><a class="header" href="#backend-django">Backend (Django)</a></h2>
+<h3 id="set-up-python-environment"><a class="header" href="#set-up-python-environment">Set up Python environment</a></h3>
+<pre><code class="language-bash">cd backend
+python -m venv .venv
+# Windows:
+.venv\Scripts\activate
+# macOS/Linux:
+source .venv/bin/activate
+
+pip install -r requirements.txt
+</code></pre>
+<h3 id="configure-environment"><a class="header" href="#configure-environment">Configure environment</a></h3>
+<pre><code class="language-bash">cp ../sample.env ../.env
+# Edit ../.env with your database credentials and secrets
+</code></pre>
+<h3 id="run-migrations-and-create-superuser"><a class="header" href="#run-migrations-and-create-superuser">Run migrations and create superuser</a></h3>
+<pre><code class="language-bash">cd backend
+python manage.py migrate
+python manage.py createsuperuser
+</code></pre>
+<h3 id="start-the-development-server"><a class="header" href="#start-the-development-server">Start the development server</a></h3>
+<pre><code class="language-bash">cd backend
+python manage.py runserver 0.0.0.0:9090
+</code></pre>
+<p>The admin panel is at <code>http://localhost:9090/admin/</code>.</p>
+<h3 id="run-backend-tests"><a class="header" href="#run-backend-tests">Run backend tests</a></h3>
+<pre><code class="language-bash">cd backend
+python manage.py test --settings=notechondria.settings_test
+</code></pre>
+<p>Or with pytest:</p>
+<pre><code class="language-bash">cd backend
+python -m pytest
+</code></pre>
+<h2 id="full-stack-docker-compose"><a class="header" href="#full-stack-docker-compose">Full Stack (Docker Compose)</a></h2>
+<p>To run everything together:</p>
+<pre><code class="language-bash">cp sample.env .env
+# Edit .env as needed
+
+docker compose up --build -d
+</code></pre>
+<p>This starts the backend, database, nginx gateway, and all three frontend
+apps. The editor is at <code>http://localhost:8080/editor/</code>, planner at
+<code>/planner/</code>, portal at <code>/portal/</code>.</p>
+<h3 id="viewing-logs"><a class="header" href="#viewing-logs">Viewing logs</a></h3>
+<pre><code class="language-bash"># All services
+docker compose logs -f
+
+# Single service
+docker compose logs -f app
+</code></pre>
+<h3 id="rebuilding-after-code-changes"><a class="header" href="#rebuilding-after-code-changes">Rebuilding after code changes</a></h3>
+<pre><code class="language-bash"># Backend only
+docker compose build app nginx &amp;&amp; docker compose up -d app nginx
+
+# Frontend only (e.g. editor)
+cd frontend/editor_app
+docker compose build &amp;&amp; docker compose up -d
+</code></pre>
+<h2 id="debugging-tips"><a class="header" href="#debugging-tips">Debugging Tips</a></h2>
+<h3 id="frontend-webgl-fallback-warning"><a class="header" href="#frontend-webgl-fallback-warning">Frontend: WebGL fallback warning</a></h3>
+<p>If you see <code>WARNING: Falling back to CPU-only rendering. Reason: webGLVersion is -1</code>, this is expected in environments without GPU
+acceleration (CI, some VMs). Flutter automatically falls back to the HTML
+renderer, which works correctly but may feel slower in dev tools.</p>
+<h3 id="frontend-cors-issues-with-avatars"><a class="header" href="#frontend-cors-issues-with-avatars">Frontend: CORS issues with avatars</a></h3>
+<p>When running the frontend dev server against a remote backend, avatar
+images from Cloudflare R2 may fail to load due to CORS. Configure the
+R2 bucket CORS policy to allow your local origin (<code>http://localhost:9060</code>).</p>
+<h3 id="backend-django-import-warnings-in-ide"><a class="header" href="#backend-django-import-warnings-in-ide">Backend: Django import warnings in IDE</a></h3>
+<p>If your IDE shows unresolved import warnings for <code>django</code> or
+<code>rest_framework</code>, make sure the Python interpreter is set to the virtual
+environment at <code>backend/.venv/</code>.</p>
+<h3 id="backend-checking-oauth-logs"><a class="header" href="#backend-checking-oauth-logs">Backend: checking OAuth logs</a></h3>
+<p>OAuth binding issues are logged at INFO/WARNING level. To see them:</p>
+<pre><code class="language-bash"># In Docker
+docker compose logs -f app | grep -i "bind\|oauth"
+
+# Local dev
+# Logs go to the file configured by DJANGO_LOG_FILE_NAME in .env
+tail -f logs/notechondria.log | grep -i "bind\|oauth"
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="python-environment-setup-for-developers"><a class="header" href="#python-environment-setup-for-developers">Python Environment Setup for Developers</a></h1>
 <p>This repo's backend lives in <code>backend/</code> and is currently verified most often with <code>uv</code>, but plain <code>conda</code> + <code>pip</code> also works well for local development.</p>
 <h2 id="recommended-python-version"><a class="header" href="#recommended-python-version">Recommended Python version</a></h2>
