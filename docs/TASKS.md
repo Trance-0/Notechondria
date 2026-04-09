@@ -71,8 +71,8 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 #### Login and account info
 
-- [ ] Google Chrome password manager is still not detecting the login widget and auto fill, find out why and fix it.
-- [ ] Add few other options on the same line as `Logout` button. It should be arranged as `Change email`, `Change password`, `Logout`.
+- [x] Google Chrome password manager is still not detecting the login widget and auto fill, find out why and fix it.
+- [x] Add few other options on the same line as `Logout` button. It should be arranged as `Change email`, `Change password`, `Logout`.
 - [x] Add social link validation, must be url.
 
 #### Editor Preferences
@@ -132,7 +132,7 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 - [x] Add registration via google, use google oauth2 api (env variables are defined in `sample.text.env`, be sure to verify on the backend and capture the callback url from google redirect is on backend, be sure to take user back to frontend app after successful login/register. Ask for appropriate data like email, username from google to create user profiles.)
 - [x] Add registration via Github, use Github App api (env variables are defined in `sample.text.env`, be sure to verify on the backend and capture the callback url from github redirect is on backend, and also handle the webhook post from github with verifications, be sure to take user back to frontend app after successful login/register. Ask for appropriate data like email, username from google to create user profiles.)
-- [ ] Allow existing users to bind their social accounts and login using them, currently support github and google accounts. (put in ui for the after login, show their binding accounts belows the social link (one line for google, one line for github. If no binding account, show the button to trigger the binding process (Online account settings widget), if user has binding accounts, show the button to trigger switch binding third party accounts))
+- [x] Allow existing users to bind their social accounts and login using them, currently support github and google accounts. (put in ui for the after login, show their binding accounts belows the social link (one line for google, one line for github. If no binding account, show the button to trigger the binding process (Online account settings widget), if user has binding accounts, show the button to trigger switch binding third party accounts))
   - [x] Backend is not redirecting the results properly. It should render a static display show if the user has binding accounts successfully or not. And the binding status should be updated in the user profile if binding is successful on the backend. This also holds for google and github accounts. And register pages as well.
 - [x] Implement login via third party services (Github, Google) reject, if the account is not registered. Show the error window for user to register account first.
 - [x] Add the necessary items and credential updates to `sample.render.env`
@@ -143,8 +143,8 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 ## Backend
 
-- [ ] Edit the admin portal for django, show the owner name for each item (by their first name + last name). If they have parent objects, (for example, if a note is a comment type, it should show the title for the parent note as well. Include other meta data in admin edit portals, like date created etc for better views.)
-- [ ] Create welcome notes for new users showing the functionality of this site, add the welcome note to the template and inbox course.
+- [x] Edit the admin portal for django, show the owner name for each item (by their first name + last name). If they have parent objects, (for example, if a note is a comment type, it should show the title for the parent note as well. Include other meta data in admin edit portals, like date created etc for better views.)
+- [ ] Create welcome notes for new users showing the functionality of this site, add the welcome note to the template and inbox course. (modify the template no)
 
 ### MCP
 

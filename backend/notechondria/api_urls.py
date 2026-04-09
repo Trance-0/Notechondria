@@ -3,6 +3,8 @@ from django.urls import path
 from creators.api import (
     BindGithubApiView,
     BindGoogleApiView,
+    ChangeEmailApiView,
+    ChangePasswordApiView,
     GitHubOAuthApiView,
     GoogleOAuthApiView,
     LoginApiView,
@@ -61,6 +63,8 @@ urlpatterns = [
     path("auth/login/", LoginApiView.as_view(), name="login"),
     path("auth/password-reset/", PasswordResetRequestApiView.as_view(), name="password-reset"),
     path("auth/password-reset/confirm/", PasswordResetConfirmApiView.as_view(), name="password-reset-confirm"),
+    path("auth/change-password/", ChangePasswordApiView.as_view(), name="change-password"),
+    path("auth/change-email/", ChangeEmailApiView.as_view(), name="change-email"),
     path("auth/logout/", LogoutApiView.as_view(), name="logout"),
     path("auth/session/", SessionApiView.as_view(), name="session"),
     path("auth/oauth-config/", OAuthConfigApiView.as_view(), name="oauth-config"),

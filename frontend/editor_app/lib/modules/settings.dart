@@ -37,6 +37,9 @@ class _SettingsPage extends StatefulWidget {
     this.onBindGithub,
     this.onListSocialAccounts,
     this.onUnlinkSocialAccount,
+    this.onChangePassword,
+    this.onChangeEmailRequest,
+    this.onChangeEmailConfirm,
     this.onDownloadConfig,
     this.apiBaseUrl,
     this.debugSnapshotListenable,
@@ -93,6 +96,9 @@ class _SettingsPage extends StatefulWidget {
   final Future<ActionFeedback> Function() onPullCloudData;
   final Future<ActionFeedback> Function() onClearLocalData;
   final Future<ActionFeedback> Function() onRestoreTemplateCourses;
+  final Future<Map<String, dynamic>> Function(String currentPassword, String newPassword)? onChangePassword;
+  final Future<Map<String, dynamic>> Function(String newEmail)? onChangeEmailRequest;
+  final Future<Map<String, dynamic>> Function(String newEmail, String code)? onChangeEmailConfirm;
   final Future<void> Function()? onDownloadConfig;
   final int localDraftCount;
   final int localCourseCount;
@@ -660,12 +666,26 @@ class _SettingsPageState extends State<_SettingsPage> {
                 onTap: () => _runMaintenanceAction(widget.onPullCloudData),
               ),
               const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: OutlinedButton(
-                  onPressed: widget.onLogout,
-                  child: const Text('Logout'),
-                ),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                alignment: WrapAlignment.start,
+                children: [
+                  if (widget.onChangeEmailRequest != null)
+                    OutlinedButton(
+                      onPressed: () => _openChangeEmailDialog(context),
+                      child: const Text('Change email'),
+                    ),
+                  if (widget.onChangePassword != null)
+                    OutlinedButton(
+                      onPressed: () => _openChangePasswordDialog(context),
+                      child: const Text('Change password'),
+                    ),
+                  OutlinedButton(
+                    onPressed: widget.onLogout,
+                    child: const Text('Logout'),
+                  ),
+                ],
               ),
             ],
           ],
@@ -675,6 +695,216 @@ class _SettingsPageState extends State<_SettingsPage> {
   }
 
   /// Profile fields shown when authenticated: avatar, name, motto, social link.
+  void _openChangePasswordDialog(BuildContext context) {
+    final currentPwCtrl = TextEditingController();
+    final newPwCtrl = TextEditingController();
+    final confirmPwCtrl = TextEditingController();
+    String? error;
+    bool submitting = false;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Change password'),
+          content: SizedBox(
+            width: 360,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: currentPwCtrl,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Current password',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: newPwCtrl,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'New password',
+                    helperText: 'Min 8 chars, uppercase + lowercase + digit/special.',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: confirmPwCtrl,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Confirm new password',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 12),
+                  Text(error!, style: const TextStyle(color: Color(0xFFB91C1C), fontWeight: FontWeight.w600)),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: submitting ? null : () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: submitting ? null : () async {
+                if (newPwCtrl.text != confirmPwCtrl.text) {
+                  setDialogState(() => error = 'Passwords do not match.');
+                  return;
+                }
+                if (newPwCtrl.text.length < 8) {
+                  setDialogState(() => error = 'Password must be at least 8 characters.');
+                  return;
+                }
+                setDialogState(() { submitting = true; error = null; });
+                try {
+                  await widget.onChangePassword!(currentPwCtrl.text, newPwCtrl.text);
+                  if (ctx.mounted) Navigator.of(ctx).pop();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Password changed.')),
+                    );
+                  }
+                } catch (e) {
+                  setDialogState(() {
+                    submitting = false;
+                    error = e.toString().replaceFirst('Exception: ', '');
+                  });
+                }
+              },
+              child: Text(submitting ? 'Saving...' : 'Change password'),
+            ),
+          ],
+        ),
+      ),
+    ).then((_) {
+      currentPwCtrl.dispose();
+      newPwCtrl.dispose();
+      confirmPwCtrl.dispose();
+    });
+  }
+
+  void _openChangeEmailDialog(BuildContext context) {
+    final emailCtrl = TextEditingController();
+    final codeCtrl = TextEditingController();
+    String? error;
+    String? successMessage;
+    bool submitting = false;
+    bool codeSent = false;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Change email'),
+          content: SizedBox(
+            width: 360,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (!codeSent)
+                  const Text('A verification code will be sent to your new email.'),
+                if (codeSent)
+                  Text('A code was sent to ${emailCtrl.text}. Enter it below.'),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: emailCtrl,
+                  enabled: !codeSent,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'New email',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                if (codeSent) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: codeCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: '6-digit code',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+                if (error != null) ...[
+                  const SizedBox(height: 12),
+                  Text(error!, style: const TextStyle(color: Color(0xFFB91C1C), fontWeight: FontWeight.w600)),
+                ],
+                if (successMessage != null) ...[
+                  const SizedBox(height: 12),
+                  Text(successMessage!, style: const TextStyle(color: Color(0xFF166534), fontWeight: FontWeight.w600)),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: submitting ? null : () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            if (!codeSent)
+              FilledButton(
+                onPressed: submitting ? null : () async {
+                  if (emailCtrl.text.trim().isEmpty) {
+                    setDialogState(() => error = 'Enter a new email address.');
+                    return;
+                  }
+                  setDialogState(() { submitting = true; error = null; });
+                  try {
+                    final result = await widget.onChangeEmailRequest!(emailCtrl.text.trim());
+                    setDialogState(() {
+                      submitting = false;
+                      codeSent = true;
+                      successMessage = result['message']?.toString();
+                    });
+                  } catch (e) {
+                    setDialogState(() {
+                      submitting = false;
+                      error = e.toString().replaceFirst('Exception: ', '');
+                    });
+                  }
+                },
+                child: Text(submitting ? 'Sending...' : 'Send code'),
+              ),
+            if (codeSent)
+              FilledButton(
+                onPressed: submitting ? null : () async {
+                  if (codeCtrl.text.trim().isEmpty) {
+                    setDialogState(() => error = 'Enter the verification code.');
+                    return;
+                  }
+                  setDialogState(() { submitting = true; error = null; successMessage = null; });
+                  try {
+                    await widget.onChangeEmailConfirm!(emailCtrl.text.trim(), codeCtrl.text.trim());
+                    if (ctx.mounted) Navigator.of(ctx).pop();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Email updated.')),
+                      );
+                    }
+                  } catch (e) {
+                    setDialogState(() {
+                      submitting = false;
+                      error = e.toString().replaceFirst('Exception: ', '');
+                    });
+                  }
+                },
+                child: Text(submitting ? 'Verifying...' : 'Confirm'),
+              ),
+          ],
+        ),
+      ),
+    ).then((_) {
+      emailCtrl.dispose();
+      codeCtrl.dispose();
+    });
+  }
+
   Widget _buildProfileFields(BuildContext context) {
     final avatarUrl = widget.profile?['image_url']?.toString() ??
         widget.settings?['image_url']?.toString();

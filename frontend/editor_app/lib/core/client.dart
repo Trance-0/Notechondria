@@ -144,6 +144,9 @@ abstract class NotechondriaClient {
     String code,
     String password,
   );
+  Future<Map<String, dynamic>> changePassword(String token, String currentPassword, String newPassword);
+  Future<Map<String, dynamic>> changeEmailRequest(String token, String newEmail);
+  Future<Map<String, dynamic>> changeEmailConfirm(String token, String newEmail, String code);
   Future<Map<String, dynamic>> checkSession(String token);
   Future<void> logout(String token);
   Future<Map<String, dynamic>> getSettings(String token);
@@ -919,6 +922,47 @@ class HttpNotechondriaClient implements NotechondriaClient {
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'GET'),
     );
+  }
+
+  @override
+  Future<Map<String, dynamic>> changePassword(String token, String currentPassword, String newPassword) async {
+    final uri = _uri('/auth/change-password/');
+    final response = await _send(
+      'POST',
+      uri,
+      () => _httpClient.post(uri, headers: _headers(token: token), body: jsonEncode({
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      })),
+    );
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'POST'));
+  }
+
+  @override
+  Future<Map<String, dynamic>> changeEmailRequest(String token, String newEmail) async {
+    final uri = _uri('/auth/change-email/');
+    final response = await _send(
+      'POST',
+      uri,
+      () => _httpClient.post(uri, headers: _headers(token: token), body: jsonEncode({
+        'new_email': newEmail,
+      })),
+    );
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'POST'));
+  }
+
+  @override
+  Future<Map<String, dynamic>> changeEmailConfirm(String token, String newEmail, String code) async {
+    final uri = _uri('/auth/change-email/');
+    final response = await _send(
+      'POST',
+      uri,
+      () => _httpClient.post(uri, headers: _headers(token: token), body: jsonEncode({
+        'new_email': newEmail,
+        'code': code,
+      })),
+    );
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'POST'));
   }
 
   @override

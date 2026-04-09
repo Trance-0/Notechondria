@@ -38,7 +38,7 @@ tiktoken==0.6.0
 tqdm==4.66.1
 typing_extensions==4.9.0
 tzdata==2023.4
-urllib3==2.1.0
+urllib3>=1.25.4,<1.27
 whitenoise==6.5.0
 django-storages[s3]==1.14.4
 boto3==1.35.0

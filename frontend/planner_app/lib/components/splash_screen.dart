@@ -49,10 +49,10 @@ class _SplashScreenState extends State<_SplashScreen>
   @override
   void initState() {
     super.initState();
-    // One full cycle = 8 seconds, loops forever.
+    // One full cycle = 12 seconds, loops forever.
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 8000),
+      duration: const Duration(milliseconds: 12000),
     )..repeat();
   }
 

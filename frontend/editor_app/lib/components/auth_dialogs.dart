@@ -471,57 +471,63 @@ class _RegistrationWizardState extends State<_RegistrationWizard> {
         ],
       );
     }
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'A verification code will be sent to your email after registration.',
-        ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: _usernameController,
-          textInputAction: TextInputAction.next,
-          decoration: const InputDecoration(
-            labelText: 'Username',
-            helperText: 'Letters, numbers, hyphens, underscores.',
-            border: OutlineInputBorder(),
+    return AutofillGroup(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'A verification code will be sent to your email after registration.',
           ),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _emailController,
-          keyboardType: TextInputType.emailAddress,
-          textInputAction: TextInputAction.next,
-          decoration: const InputDecoration(
-            labelText: 'Email',
-            border: OutlineInputBorder(),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _usernameController,
+            autofillHints: const [AutofillHints.newUsername],
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(
+              labelText: 'Username',
+              helperText: 'Letters, numbers, hyphens, underscores.',
+              border: OutlineInputBorder(),
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _passwordController,
-          obscureText: true,
-          textInputAction: TextInputAction.next,
-          decoration: const InputDecoration(
-            labelText: 'Password',
-            helperText: 'Min 8 chars, uppercase + lowercase + digit/special.',
-            border: OutlineInputBorder(),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _emailController,
+            autofillHints: const [AutofillHints.email],
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(
+              labelText: 'Email',
+              border: OutlineInputBorder(),
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _confirmPasswordController,
-          obscureText: true,
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) =>
-              _submitting ? null : _submitEmailRegistration(),
-          decoration: const InputDecoration(
-            labelText: 'Confirm password',
-            border: OutlineInputBorder(),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _passwordController,
+            obscureText: true,
+            autofillHints: const [AutofillHints.newPassword],
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(
+              labelText: 'Password',
+              helperText: 'Min 8 chars, uppercase + lowercase + digit/special.',
+              border: OutlineInputBorder(),
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 12),
+          TextField(
+            controller: _confirmPasswordController,
+            obscureText: true,
+            autofillHints: const [AutofillHints.newPassword],
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) =>
+                _submitting ? null : _submitEmailRegistration(),
+            decoration: const InputDecoration(
+              labelText: 'Confirm password',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -625,11 +631,13 @@ class _EmailPasswordDialogState extends State<_EmailPasswordDialog> {
       _feedback = feedback;
     });
     if (!feedback.isError && widget.title == 'Login') {
-      // Signals the platform/browser that this autofill context finished
-      // successfully, which is what triggers Chrome's "Save password?" prompt
-      // on web. Without this the dialog pops before the browser associates
-      // the submission with the credential form, so the prompt never fires.
+      // Signal the browser that this autofill context finished successfully.
+      // Chrome needs a brief delay between finishAutofillContext and the DOM
+      // removal (dialog close) to capture the credentials and show the
+      // "Save password?" prompt.
       TextInput.finishAutofillContext();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      if (!mounted) return;
       Navigator.of(context).pop();
     }
   }
@@ -654,7 +662,7 @@ class _EmailPasswordDialogState extends State<_EmailPasswordDialog> {
                 children: [
                   TextField(
                     controller: _emailController,
-                    autofillHints: const [AutofillHints.username, AutofillHints.email],
+                    autofillHints: const [AutofillHints.username],
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                     decoration: InputDecoration(

@@ -520,6 +520,127 @@ class PasswordResetConfirmApiView(APIView):
         return Response({"message": "Password updated. You can now log in."})
 
 
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate_new_password(self, value):
+        has_upper = any(c.isupper() for c in value)
+        has_lower = any(c.islower() for c in value)
+        has_other = any(not c.isalpha() for c in value)
+        if not (has_upper and has_lower and has_other):
+            raise serializers.ValidationError(
+                "Password needs uppercase, lowercase, and a digit or special character."
+            )
+        return value
+
+
+class ChangePasswordApiView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        if not user.check_password(serializer.validated_data["current_password"]):
+            return Response(
+                {"detail": "Current password is incorrect."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        user.set_password(serializer.validated_data["new_password"])
+        user.save(update_fields=["password"])
+        # Rotate auth token so old sessions are invalidated.
+        Token.objects.filter(user=user).delete()
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({"message": "Password changed.", "token": token.key})
+
+
+class ChangeEmailRequestSerializer(serializers.Serializer):
+    new_email = serializers.EmailField()
+
+    def validate_new_email(self, value):
+        normalised = value.lower()
+        if User.objects.filter(email__iexact=normalised).exists():
+            raise serializers.ValidationError("This email is already in use.")
+        return normalised
+
+
+class ChangeEmailConfirmSerializer(serializers.Serializer):
+    new_email = serializers.EmailField()
+    code = serializers.CharField()
+
+    def validate(self, attrs):
+        email = attrs["new_email"].lower()
+        code_hash = VerificationCode.hash_code(attrs["code"])
+        verification = VerificationCode.objects.filter(
+            code=code_hash,
+            function=f"change_email:{email}",
+            usage=VerificationChoices.FUNCTION,
+            max_use__gt=0,
+            expire_date__gt=now(),
+        ).first()
+        if verification is None:
+            raise serializers.ValidationError("Invalid or expired verification code.")
+        if User.objects.filter(email__iexact=email).exists():
+            raise serializers.ValidationError("This email is already in use.")
+        attrs["verification"] = verification
+        return attrs
+
+
+class ChangeEmailApiView(APIView):
+    """Two-step email change: POST without `code` sends a verification code to
+    the new email.  POST with `code` confirms and updates the email."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if "code" in request.data and request.data["code"]:
+            return self._confirm(request)
+        return self._request(request)
+
+    def _request(self, request):
+        serializer = ChangeEmailRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        new_email = serializer.validated_data["new_email"]
+        # Invalidate old change-email codes for this address.
+        VerificationCode.objects.filter(
+            usage=VerificationChoices.FUNCTION,
+            function=f"change_email:{new_email}",
+        ).update(max_use=0)
+        from datetime import timedelta
+        vc = VerificationCode(
+            expire_date=now() + timedelta(hours=settings.EMAIL_VERIFICATION_TTL_HOURS),
+            usage=VerificationChoices.FUNCTION,
+            function=f"change_email:{new_email}",
+        )
+        plaintext = vc.generate_code()
+        vc.save()
+        from .utils import _send_code_email
+        delivery = _send_code_email(
+            new_email,
+            plaintext,
+            subject="Confirm your new Notechondria email",
+            intro="Use this code to confirm your new email address.",
+            action_label="Open settings",
+        )
+        return Response({
+            "message": delivery["message"],
+            "delivery_fallback": delivery.get("fallback", False),
+            "email": new_email,
+        })
+
+    def _confirm(self, request):
+        serializer = ChangeEmailConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        new_email = serializer.validated_data["new_email"]
+        verification = serializer.validated_data["verification"]
+        user = request.user
+        user.email = new_email
+        user.save(update_fields=["email"])
+        verification.max_use = 0
+        verification.save(update_fields=["max_use"])
+        return Response({"message": "Email updated.", "email": new_email})
+
+
 class LogoutApiView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
