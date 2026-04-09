@@ -15,6 +15,7 @@
 
 # Development
 
+- [Local Development Guide](development/local_dev.md)
 - [Python Environments](development/python_environments.md)
 - [Canvas-like Calendar MVP](canvas_like_calendar_mvp.md)
 

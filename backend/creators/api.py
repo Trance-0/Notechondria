@@ -1105,6 +1105,10 @@ class _BindOAuthMixin:
 
     def _bind_social_account(self, user, provider, provider_uid, email, extra_data):
         """Create or update a SocialAccount link for *user*."""
+        logger.info(
+            "Bind %s: user=%s uid=%s email=%s",
+            provider, user.username, provider_uid, email,
+        )
         social, created = SocialAccount.objects.update_or_create(
             user=user,
             provider=provider,
@@ -1119,10 +1123,15 @@ class _BindOAuthMixin:
             provider=provider, provider_uid=str(provider_uid),
         ).exclude(user=user).first()
         if conflict is not None:
+            logger.warning(
+                "Bind %s conflict: uid=%s already linked to user_id=%s",
+                provider, provider_uid, conflict.user_id,
+            )
             return Response(
                 {"detail": "This account is already linked to another user."},
                 status=status.HTTP_409_CONFLICT,
             )
+        logger.info("Bind %s %s: social_id=%s", provider, "created" if created else "updated", social.id)
         return Response({
             "id": social.id,
             "provider": social.provider,
@@ -1140,6 +1149,7 @@ class BindGoogleApiView(_BindOAuthMixin, APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
+        logger.info("BindGoogle: user=%s payload_keys=%s", request.user.username, list(request.data.keys()))
         serializer = GoogleOAuthSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
@@ -1147,6 +1157,7 @@ class BindGoogleApiView(_BindOAuthMixin, APIView):
         code = (data.get("code") or "").strip()
         raw_id_token = (data.get("id_token") or "").strip()
         redirect_uri = (data.get("redirect_uri") or "").strip() or settings.GOOGLE_AUTHORIZED_REDIRECT_URI
+        logger.info("BindGoogle: redirect_uri=%s has_code=%s has_id_token=%s", redirect_uri, bool(code), bool(raw_id_token))
 
         if code:
             token_resp = http_requests.post(
@@ -1161,13 +1172,22 @@ class BindGoogleApiView(_BindOAuthMixin, APIView):
                 timeout=15,
             )
             if token_resp.status_code != 200:
+                logger.warning("BindGoogle token exchange failed (%s): %s", token_resp.status_code, token_resp.text)
+                error_detail = "Failed to exchange Google authorization code."
+                try:
+                    err = token_resp.json()
+                    error_detail = err.get("error_description", err.get("error", error_detail))
+                except Exception:
+                    pass
                 return Response(
-                    {"detail": "Failed to exchange Google authorization code."},
+                    {"detail": error_detail},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             raw_id_token = token_resp.json().get("id_token", "")
+            logger.info("BindGoogle: token exchange OK, got id_token=%s", bool(raw_id_token))
 
         if not raw_id_token:
+            logger.warning("BindGoogle: no id_token after exchange")
             return Response(
                 {"detail": "No ID token received from Google."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -1179,17 +1199,20 @@ class BindGoogleApiView(_BindOAuthMixin, APIView):
             timeout=10,
         )
         if verify_resp.status_code != 200:
+            logger.warning("BindGoogle: tokeninfo verify failed (%s): %s", verify_resp.status_code, verify_resp.text)
             return Response(
                 {"detail": "Google ID token verification failed."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         info = verify_resp.json()
         if info.get("aud", "") != settings.GOOGLE_OAUTH_CLIENT_ID:
+            logger.warning("BindGoogle: audience mismatch got=%s expected=%s", info.get("aud"), settings.GOOGLE_OAUTH_CLIENT_ID)
             return Response(
                 {"detail": "ID token audience mismatch."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        logger.info("BindGoogle: verified sub=%s email=%s", info.get("sub"), info.get("email"))
         return self._bind_social_account(
             user=request.user,
             provider="google",
@@ -1208,12 +1231,14 @@ class BindGithubApiView(_BindOAuthMixin, APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
+        logger.info("BindGitHub: user=%s payload_keys=%s", request.user.username, list(request.data.keys()))
         serializer = GitHubOAuthSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
         code = data["code"]
         redirect_uri = (data.get("redirect_uri") or "").strip() or settings.GITHUB_AUTHORIZED_REDIRECT_URI
+        logger.info("BindGitHub: redirect_uri=%s", redirect_uri)
 
         token_payload = {
             "client_id": settings.GITHUB_APP_CLIENT_ID,
@@ -1229,18 +1254,27 @@ class BindGithubApiView(_BindOAuthMixin, APIView):
             timeout=15,
         )
         if token_resp.status_code != 200:
+            logger.warning("BindGitHub token exchange failed (%s): %s", token_resp.status_code, token_resp.text)
+            error_detail = "Failed to exchange GitHub authorization code."
+            try:
+                err = token_resp.json()
+                error_detail = err.get("error_description", err.get("error", error_detail))
+            except Exception:
+                pass
             return Response(
-                {"detail": "Failed to exchange GitHub authorization code."},
+                {"detail": error_detail},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         token_data = token_resp.json()
         access_token = token_data.get("access_token", "")
         if not access_token:
             error_desc = token_data.get("error_description", token_data.get("error", "unknown"))
+            logger.warning("BindGitHub: no access_token, error=%s", error_desc)
             return Response(
                 {"detail": f"GitHub OAuth error: {error_desc}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        logger.info("BindGitHub: token exchange OK")
 
         user_resp = http_requests.get(
             "https://api.github.com/user",
@@ -1251,11 +1285,13 @@ class BindGithubApiView(_BindOAuthMixin, APIView):
             timeout=10,
         )
         if user_resp.status_code != 200:
+            logger.warning("BindGitHub: user profile fetch failed (%s): %s", user_resp.status_code, user_resp.text)
             return Response(
                 {"detail": "Failed to fetch GitHub user profile."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         gh_user = user_resp.json()
+        logger.info("BindGitHub: fetched user login=%s id=%s", gh_user.get("login"), gh_user.get("id"))
 
         email = gh_user.get("email") or ""
         if not email:
@@ -1272,6 +1308,7 @@ class BindGithubApiView(_BindOAuthMixin, APIView):
                     if em.get("primary") and em.get("verified"):
                         email = em["email"]
                         break
+            logger.info("BindGitHub: resolved email=%s", email)
 
         return self._bind_social_account(
             user=request.user,

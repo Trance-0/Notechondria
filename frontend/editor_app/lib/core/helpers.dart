@@ -455,7 +455,10 @@ class _StaggeredFadeInState extends State<_StaggeredFadeIn>
     _opacity = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
     _slide = Tween<Offset>(begin: widget.slideOffset, end: Offset.zero)
         .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
-    final delay = widget.staggerDelay * widget.index;
+    // Cap stagger index so items beyond the first visible batch animate
+    // almost instantly instead of accumulating multi-second delays.
+    final effectiveIndex = widget.index.clamp(0, 10);
+    final delay = widget.staggerDelay * effectiveIndex;
     if (delay > Duration.zero) {
       _delayTimer = Timer(delay, () {
         if (mounted) _controller.forward();
