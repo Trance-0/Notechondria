@@ -427,6 +427,39 @@ class VerificationCodeModelTests(TestCase):
         self.assertEqual(len(vc.code), 64)  # SHA-256 hex digest
         self.assertEqual(vc.code, VerificationCode.hash_code(plaintext))
 
+
+class OAuthBindRejectionTests(TestCase):
+    """Public OAuth endpoints must refuse intent='bind'.
+
+    Binding requires an authenticated user — routing the bind through the
+    unauthenticated endpoint would either (a) log the caller in as whoever
+    owns the matching email or (b) mint a brand-new account from the
+    OAuth-provided username/email. Either outcome silently overwrites the
+    existing account from the original user's perspective, which is the
+    bug this guard exists to prevent.
+    """
+
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_google_public_endpoint_rejects_bind_intent(self):
+        response = self.client.post(
+            '/api/v1/auth/google/',
+            {'code': 'fake-authorization-code', 'intent': 'bind'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('bind', response.json().get('detail', '').lower())
+
+    def test_github_public_endpoint_rejects_bind_intent(self):
+        response = self.client.post(
+            '/api/v1/auth/github/',
+            {'code': 'fake-authorization-code', 'intent': 'bind'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('bind', response.json().get('detail', '').lower())
+
     def test_hash_code_is_deterministic(self):
         self.assertEqual(
             VerificationCode.hash_code('123456'),

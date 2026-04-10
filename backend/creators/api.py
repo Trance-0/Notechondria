@@ -959,6 +959,17 @@ class GoogleOAuthApiView(APIView):
         invitation_code = data.get("invitation_code", "")
         intent = data.get("intent", "register")
 
+        # "bind" is only valid on the authenticated /auth/bind/google/ endpoint;
+        # accepting it here would either log the user in as whoever owns the
+        # matching email or create a brand-new account using the OAuth-provided
+        # username/email — effectively overwriting the existing account from
+        # the user's point of view.
+        if intent == "bind":
+            return Response(
+                {"detail": "Account binding requires authentication. Use /api/v1/auth/bind/google/."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         if code:
             # Exchange authorization code for tokens.
             token_resp = http_requests.post(
@@ -1074,6 +1085,14 @@ class GitHubOAuthApiView(APIView):
         redirect_uri = (data.get("redirect_uri") or "").strip() or settings.GITHUB_AUTHORIZED_REDIRECT_URI
         invitation_code = data.get("invitation_code", "")
         intent = data.get("intent", "register")
+
+        # "bind" is only valid on the authenticated /auth/bind/github/ endpoint;
+        # see the matching guard in GoogleOAuthApiView for the reasoning.
+        if intent == "bind":
+            return Response(
+                {"detail": "Account binding requires authentication. Use /api/v1/auth/bind/github/."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Exchange code for access token.
         token_payload = {

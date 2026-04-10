@@ -3,9 +3,12 @@ part of notechondria_frontend;
 /// Splash screen showing an animated Citric acid cycle (Krebs cycle).
 ///
 /// The cycle axis is at the left center of the screen. It rotates to bring
-/// each metabolite to the screen center. The active metabolite's structural
-/// formula orbits with its node while text labels stay horizontal.
-/// Light-weight randomised particles simulate a chemical environment.
+/// each metabolite to the screen center. Each metabolite's structural
+/// formula is anchored to its node and freely moves out of screen as the
+/// cycle rotates — no English names are drawn next to the nodes. The
+/// background is dotted with tiny rotating structural formulas of small
+/// molecules that commonly accompany the cycle (H\u2082O, CO\u2082, NAD\u207a,
+/// pyruvate fragments, etc.).
 class _SplashScreen extends StatefulWidget {
   const _SplashScreen({
     required this.appTitle,
@@ -56,15 +59,20 @@ class _SplashScreenState extends State<_SplashScreen>
       vsync: this,
       duration: const Duration(milliseconds: 12000),
     )..repeat();
-    // Generate randomised particles once.
+    // Generate randomised particles once. Each particle is a tiny
+    // structural formula of a small molecule drifting around the cycle,
+    // with a random initial rotation and rotation speed.
     final rng = math.Random(42);
-    _particles = List.generate(40, (_) {
+    _particles = List.generate(26, (_) {
       return _Particle(
         angle: rng.nextDouble() * 2 * math.pi,
-        radiusFraction: 0.25 + rng.nextDouble() * 0.75,
-        speed: 0.15 + rng.nextDouble() * 0.6,
-        size: 1.5 + rng.nextDouble() * 3.0,
+        radiusFraction: 0.25 + rng.nextDouble() * 0.85,
+        speed: 0.12 + rng.nextDouble() * 0.55,
+        size: 0.75 + rng.nextDouble() * 0.75,
         drift: (rng.nextDouble() - 0.5) * 0.4,
+        rotation: rng.nextDouble() * 2 * math.pi,
+        rotationSpeed: (rng.nextDouble() - 0.5) * 0.9,
+        moleculeType: rng.nextInt(8),
       );
     });
   }
@@ -160,12 +168,18 @@ class _Particle {
     required this.speed,
     required this.size,
     required this.drift,
+    required this.rotation,
+    required this.rotationSpeed,
+    required this.moleculeType,
   });
   final double angle;
   final double radiusFraction;
   final double speed;
   final double size;
   final double drift;
+  final double rotation;
+  final double rotationSpeed;
+  final int moleculeType;
 }
 
 class _KrebsCyclePainter extends CustomPainter {
@@ -268,21 +282,9 @@ class _KrebsCyclePainter extends CustomPainter {
             ..strokeWidth = 2.5,
         );
       }
-
-      // Small metabolite name near the node (always horizontal).
-      final nameOffset =
-          pos + Offset(math.cos(angle), math.sin(angle)) * (nr + 14);
-      final cosA = math.cos(angle);
-      _drawText(
-        canvas,
-        metabolites[i],
-        nameOffset,
-        (isActive ? textColor : subtleColor).withValues(
-            alpha: (isActive ? 0.9 : 0.4) * fade),
-        isActive ? 11.0 : 9.0,
-        isActive ? FontWeight.w600 : FontWeight.w400,
-        xAnchor: cosA > 0.3 ? 0.0 : (cosA < -0.3 ? 1.0 : 0.5),
-      );
+      // English metabolite names are intentionally omitted — the only
+      // per-node chemical information is the structural formula that
+      // orbits with the active node below.
     }
 
     // Byproducts flying outward.
@@ -353,8 +355,10 @@ class _KrebsCyclePainter extends CustomPainter {
 
     // -----------------------------------------------------------------------
     // Active metabolite: structural formula orbits with the active node.
-    // The formula position follows the node but is offset outward so it
-    // doesn't overlap the cycle ring. Text labels stay horizontal.
+    // The formula is anchored to the node and offset outward; it is NOT
+    // clamped to stay on screen, so it naturally travels out of the viewport
+    // as the cycle rotates — exactly like a real chemical moving along the
+    // cycle orbit. Text labels stay horizontal.
     // -----------------------------------------------------------------------
     final activeAngle = 2 * math.pi * activeStep / n + rotationAngle;
     final activePos =
@@ -362,13 +366,10 @@ class _KrebsCyclePainter extends CustomPainter {
 
     // Only draw when the node is reasonably on-screen.
     if (activePos.dx > -30) {
-      // Push the formula outward from the node, clamped to stay on screen.
+      // Push the formula outward from the node along the orbit tangent
+      // so it trails behind/ahead of the node, free to move off-screen.
       final outDir = Offset(math.cos(activeAngle), math.sin(activeAngle));
-      final rawFormulaCenter = activePos + outDir * (radius * 0.38);
-      final formulaCenter = Offset(
-        rawFormulaCenter.dx.clamp(w * 0.15, w * 0.88),
-        rawFormulaCenter.dy.clamp(h * 0.10, h * 0.85),
-      );
+      final formulaCenter = activePos + outDir * (radius * 0.38);
       final formulaAlpha = (0.4 + 0.6 * math.sin(stepFraction * math.pi))
           .clamp(0.0, 1.0);
       _drawSkeletalFormula(
@@ -377,29 +378,147 @@ class _KrebsCyclePainter extends CustomPainter {
   }
 
   // =========================================================================
-  // Particle effects
+  // Particle effects — tiny rotating structural formulas of small molecules
+  // that accompany the citric acid cycle (H2O, CO2, NAD+, pyruvate, etc.).
+  // Each particle orbits at its own speed and spins at its own rate so the
+  // background feels alive.
   // =========================================================================
 
   void _drawParticles(
       Canvas canvas, Offset center, double radius, double w, double h) {
-    final particlePaint = Paint()..style = PaintingStyle.fill;
     for (final p in particles) {
       // Each particle orbits at its own speed and radius.
       final angle = p.angle + progress * 2 * math.pi * p.speed;
       final r = radius * p.radiusFraction;
-      final drift = math.sin(progress * 2 * math.pi * 3 + p.angle) * p.drift * radius * 0.15;
+      final drift =
+          math.sin(progress * 2 * math.pi * 3 + p.angle) * p.drift * radius * 0.15;
       final pos = center +
           Offset(math.cos(angle), math.sin(angle)) * r +
           Offset(0, drift);
-      if (pos.dx < -20 || pos.dx > w + 20 || pos.dy < -20 || pos.dy > h + 20) {
+      if (pos.dx < -40 || pos.dx > w + 40 || pos.dy < -40 || pos.dy > h + 40) {
         continue;
       }
-      // Fade based on screen position.
-      final fade = ((pos.dx + 20) / 100).clamp(0.0, 1.0);
-      final alpha = (0.12 + 0.18 * math.sin(progress * 2 * math.pi * 2 + p.angle * 3))
-          .clamp(0.0, 1.0) * fade;
-      particlePaint.color = nodeColor.withValues(alpha: alpha);
-      canvas.drawCircle(pos, p.size, particlePaint);
+      // Fade based on screen position so molecules appearing on the left
+      // edge gently phase in.
+      final fade = ((pos.dx + 40) / 120).clamp(0.0, 1.0);
+      final alpha = (0.22 + 0.12 * math.sin(progress * 2 * math.pi * 2 + p.angle * 3))
+              .clamp(0.0, 1.0) *
+          fade;
+      final rotation =
+          p.rotation + progress * 2 * math.pi * p.rotationSpeed;
+
+      canvas.save();
+      canvas.translate(pos.dx, pos.dy);
+      canvas.rotate(rotation);
+      _drawParticleMolecule(canvas, p.moleculeType, p.size, alpha);
+      canvas.restore();
+    }
+  }
+
+  /// Draw a tiny structural formula at the current canvas origin.
+  ///
+  /// Caller is expected to have already translated+rotated the canvas so
+  /// the molecule is centred at (0, 0). Eight different molecule sketches
+  /// are provided, selected by [type] modulo 8.
+  void _drawParticleMolecule(
+      Canvas canvas, int type, double scale, double alpha) {
+    final bl = 7.0 * scale; // bond length
+    final fs = 7.8 * scale; // font size
+    final bond = Paint()
+      ..color = textColor.withValues(alpha: alpha * 0.85)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.3
+      ..strokeCap = StrokeCap.round;
+    final accent = nodeColor.withValues(alpha: alpha);
+    final normal = textColor.withValues(alpha: alpha * 0.95);
+
+    void line(Offset a, Offset b) => canvas.drawLine(a, b, bond);
+
+    void doubleLine(Offset a, Offset b) {
+      line(a, b);
+      final d = b - a;
+      final len = d.distance;
+      if (len == 0) return;
+      final perp = Offset(-d.dy, d.dx) / len * 1.9;
+      line(a + perp, b + perp);
+    }
+
+    void lbl(String s, Offset pos, {Color? color, double? fsOverride}) {
+      _drawText(canvas, s, pos, color ?? normal, fsOverride ?? fs,
+          FontWeight.w600);
+    }
+
+    switch (type % 8) {
+      case 0: // H2O — bent "V" with central O
+        line(Offset.zero, Offset(-bl, bl * 0.7));
+        line(Offset.zero, Offset(bl, bl * 0.7));
+        lbl('O', const Offset(0, -1), color: accent);
+        lbl('H', Offset(-bl * 1.25, bl * 0.8));
+        lbl('H', Offset(bl * 1.25, bl * 0.8));
+        break;
+
+      case 1: // CO2 — linear O=C=O
+        doubleLine(Offset(-bl * 1.1, 0), Offset(-bl * 0.25, 0));
+        doubleLine(Offset(bl * 0.25, 0), Offset(bl * 1.1, 0));
+        lbl('C', Offset.zero, color: accent);
+        lbl('O', Offset(-bl * 1.7, 0));
+        lbl('O', Offset(bl * 1.7, 0));
+        break;
+
+      case 2: // -COOH carboxyl fragment
+        const c = Offset.zero;
+        line(Offset(-bl, bl * 0.5), c);
+        doubleLine(c, Offset(0, -bl));
+        line(c, Offset(bl, bl * 0.5));
+        lbl('O', Offset(0, -bl * 1.7), color: accent);
+        lbl('OH', Offset(bl * 1.55, bl * 0.6), color: accent);
+        break;
+
+      case 3: // Pyruvate fragment CH3-C(=O)-COOH (compact)
+        final c1 = Offset(-bl * 1.4, 0);
+        final c2 = Offset(-bl * 0.3, bl * 0.5);
+        final c3 = Offset(bl * 0.8, 0);
+        line(c1, c2);
+        line(c2, c3);
+        doubleLine(c2, Offset(-bl * 0.4, -bl * 0.8));
+        lbl('O', Offset(-bl * 0.4, -bl * 1.5), color: accent);
+        lbl('H₃C', Offset(-bl * 2.1, -bl * 0.1));
+        lbl('COOH', Offset(bl * 2.2, 0), color: accent);
+        break;
+
+      case 4: // NAD+ stylized as rounded label plate
+        final rect = Rect.fromCenter(
+            center: Offset.zero, width: bl * 3.6, height: bl * 1.7);
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(rect, const Radius.circular(3)),
+          bond,
+        );
+        lbl('NAD⁺', Offset.zero,
+            color: accent, fsOverride: fs * 0.85);
+        break;
+
+      case 5: // Phosphate Pi — P with four short bonds
+        for (var k = 0; k < 4; k++) {
+          final a = k * math.pi / 2 + math.pi / 4;
+          line(Offset.zero, Offset(math.cos(a), math.sin(a)) * bl);
+        }
+        lbl('P', Offset.zero, color: accent);
+        break;
+
+      case 6: // H+ proton — small ring with label
+        canvas.drawCircle(Offset.zero, bl * 0.45, bond);
+        lbl('H⁺', Offset(bl * 1.35, 0), color: accent);
+        break;
+
+      case 7: // FADH2 / Acetyl fragment — C-C with methyl and double bond O
+        final c1 = Offset(-bl, 0);
+        final c2 = Offset(bl * 0.2, 0);
+        line(c1, c2);
+        doubleLine(c2, Offset(bl * 0.9, -bl * 0.8));
+        lbl('O', Offset(bl * 0.9, -bl * 1.5), color: accent);
+        lbl('H₃C', Offset(-bl * 1.8, 0));
+        lbl('S-CoA', Offset(bl * 1.8, bl * 0.3), color: accent);
+        break;
     }
   }
 

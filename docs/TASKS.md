@@ -25,22 +25,13 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 > Urgent
 
-- [x] Start migration of static file storage to Cloudflare R2, simplify the deployment process for backend and ensure the persistent storage.
-  - [x] Add additional instructions for setting up Cloudflare R2 when deploying the backend with render to ensure the static assets are uploaded and accessible.
-  - [x] Rewire the backend to use Cloudflare R2 for static assets if the credentials are provided when deploying the backend with render. Raise an error if the credentials are not provided. Otherwise, when deploying the backend with docker compose, use the persistent volume and nginx for cdn delivery.
-  - [x] Add the necessary items and credential updates to `sample.render.env`. I will fill them later. be sure to start the var name with `CLOUDFLARE_R2_` to avoid conflict with other env vars. Put them together as a new section.
 - [x] Create startup animation. Repeating Citric acid cycle (part of respiration process). You may need to check for the detail for how the chemicals are loaded and cycled. Make a simple flutter animation to demonstrate that, and make smooth quit when frontend resources are loaded or timeout (set to 10 seconds Max).
-  - [x] The animation don't cover the whole screen (the sidebar is not covered). The animation should be full screen.
-  - [x] Slow down the animation a bit, it is too fast now. Remote the 'citric acid cycle' title.
-  - [x] Replaced English chemical names with structural formula representations (organic acid structures, not benzene rings — Krebs cycle metabolites are small organic acids).
-  - [x] When editor/planner/portal is opened, start the animation.
-  - [x] The animation text is too small, Try to make the animation rotates (citric acid cycle) axis at left center of the screen. And show each step by rotating the cycle to the middle of the screen. Align all text horizontally (Do not rotate the text, just move the text along the circle).
+  - [x] Remove the English name for the chemicals, let the chemical can move out of the screen (anchor with nodes on the cycle) instead of always staying in the screen.
+  - [x] Change the particle effects into random chemicals structural formula that might present in the citric acid cycle environment rather than just plain nodes. (with random rotation)
 
 ## Editor
 
 ### Sidebar/Navigation
-
-- [x] In Edit category, besides category name, add a selector for course icon (select from flutter sources)
 
 ### Note view
 
@@ -68,28 +59,619 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 #### Login and account info
 
 - [x] Google Chrome password manager is still not detecting the login widget and auto fill, find out why and fix it.
+- [x] Github and Google account binding for existing user should not change the username or email for existing accounts.
+- [x] API key (and the rotate button) should be placed directly above the connected accounts setting after user login. Currently the api key is not visible. And also add the helper text to show the mcp endpoint to the user.
 
 #### Editor Preferences
 
 ## Planner
 
-- [x] Remove the front page module, this should be added in portal app with recommendation algorithm.
+### Lerner view
 
-### Course list
+- [ ] List user's notes in each expandible folder grouped by their categories (course), use lazy loading and default chronological order (most recent on top). Default to expand all.
+
+### Course view
 
 - [ ] Make card like the one on Canvas, where upper half is preview image (if image not set, use theme color filled, for template course, we have feature images included) Then the card lower shows the related info.
 
-#### Course view
+#### Course detail
+
+- [ ] Implement the module and discussion board in each module, allow user to add the module and discussion board if the own the course. 
 
 ### Activity view
 
+- [ ] Implement the activity view, enable user to import their google calender event or ics file, when hold the add button.
+- [ ] Unable to subscribe event from google calendar sharing links. caught
+
+``` bash
+main.dart.js:1438 grm ERROR [iterable] ░░ No message or displaying the same message
+write @ Grammarly.js:2
+handleEvent @ Grammarly.js:2
+_logMessage @ Grammarly.js:2
+error @ Grammarly.js:2
+error @ Grammarly.js:2
+showIPM @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+e._trySubscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+v @ Grammarly.js:2
+m @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+e._trySubscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+s @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+g @ Grammarly.js:2
+c @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+g @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+e._trySubscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+m @ Grammarly.js:2
+S @ Grammarly.js:2
+_subscribe @ Grammarly.js:2
+UNSAFE_componentWillReceiveProps @ Grammarly.js:2
+aa @ Grammarly.js:2
+ka @ Grammarly.js:2
+wl @ Grammarly.js:2
+_c @ Grammarly.js:2
+mc @ Grammarly.js:2
+fc @ Grammarly.js:2
+ac @ Grammarly.js:2
+Hr @ Grammarly.js:2
+tc @ Grammarly.js:2
+enqueueSetState @ Grammarly.js:2
+v.setState @ Grammarly.js:2
+_handleValue @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+e.next @ Grammarly.js:2
+t._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+t.next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+_onSourceValues @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+e.next @ Grammarly.js:2
+t._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+t.next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+_onSourceValue @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+e.next @ Grammarly.js:2
+t._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+t.next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+set @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+_disposeIntegrations @ Grammarly.js:2
+V._disposeOnRemovedFields @ Grammarly.js:2
+e.next @ Grammarly.js:2
+t._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+t.next @ Grammarly.js:2
+next @ Grammarly.js:2
+e.next @ Grammarly.js:2
+t._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+e._trySubscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+v @ Grammarly.js:2
+m @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+childList
+bgo @ main.dart.js:1438
+b3Z @ main.dart.js:1520
+aKP @ main.dart.js:44487
+aAu @ main.dart.js:40015
+KB @ main.dart.js:85929
+(anonymous) @ main.dart.js:86412
+(anonymous) @ main.dart.js:5421
+$2 @ main.dart.js:48244
+x @ main.dart.js:5407
+auI @ main.dart.js:86422
+lK @ main.dart.js:86406
+(anonymous) @ main.dart.js:86494
+(anonymous) @ main.dart.js:5421
+$2 @ main.dart.js:48244
+x @ main.dart.js:5407
+aLG @ main.dart.js:86498
+d5 @ main.dart.js:86490
+aAy @ main.dart.js:87296
+Lz @ main.dart.js:87162
+Fc @ main.dart.js:90471
+anZ @ main.dart.js:90774
+(anonymous) @ main.dart.js:4224
+a6 @ main.dart.js:56632
+O0 @ main.dart.js:91991
+a5D @ main.dart.js:92099
+(anonymous) @ main.dart.js:4224
+bpu @ main.dart.js:5564
+bq5 @ main.dart.js:5566
+$1 @ main.dart.js:48185
+childList
+$1 @ main.dart.js:48192
+b94 @ main.dart.js:5571
+aW3 @ main.dart.js:5650
+h6 @ main.dart.js:5583
+a3U @ main.dart.js:56997
+aG8 @ main.dart.js:56973
+md @ main.dart.js:57061
+aIt @ main.dart.js:57054
+a_D @ main.dart.js:57048
+RW @ main.dart.js:57039
+MJ @ main.dart.js:57037
+asm @ main.dart.js:57025
+(anonymous) @ main.dart.js:4225
+qd @ main.dart.js:1092
+aNF @ main.dart.js:40833
+(anonymous) @ main.dart.js:4226
+uG @ main.dart.js:40898
+$1 @ main.dart.js:41125
+$1 @ main.dart.js:41114
+$1 @ main.dart.js:40901
+JK @ main.dart.js:48965
+$1 @ main.dart.js:48981
+bnL @ main.dart.js:7617
+(anonymous) @ main.dart.js:7608Understand this error
+main.dart.js:43988 grm ERROR [iterable] ░░ No message or displaying the same message
+write @ Grammarly.js:2
+handleEvent @ Grammarly.js:2
+_logMessage @ Grammarly.js:2
+error @ Grammarly.js:2
+error @ Grammarly.js:2
+showIPM @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+e._trySubscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+v @ Grammarly.js:2
+m @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+e._trySubscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+s @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+g @ Grammarly.js:2
+c @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+g @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+e._trySubscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+m @ Grammarly.js:2
+S @ Grammarly.js:2
+_subscribe @ Grammarly.js:2
+UNSAFE_componentWillMount @ Grammarly.js:2
+la @ Grammarly.js:2
+ka @ Grammarly.js:2
+wl @ Grammarly.js:2
+_c @ Grammarly.js:2
+mc @ Grammarly.js:2
+fc @ Grammarly.js:2
+ac @ Grammarly.js:2
+Hr @ Grammarly.js:2
+tc @ Grammarly.js:2
+enqueueSetState @ Grammarly.js:2
+v.setState @ Grammarly.js:2
+_handleValue @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+e.next @ Grammarly.js:2
+t._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+t.next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+_onSourceValues @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+e.next @ Grammarly.js:2
+t._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+t.next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+_onSourceValues @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+e.next @ Grammarly.js:2
+t._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+t.next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+set @ Grammarly.js:2
+updateState @ Grammarly.js:2
+updateState @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+e.next @ Grammarly.js:2
+t._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+t._execute @ Grammarly.js:2
+t.execute @ Grammarly.js:2
+t.flush @ Grammarly.js:2
+setInterval
+setInterval @ Grammarly.js:2
+t.requestAsyncId @ Grammarly.js:2
+t.schedule @ Grammarly.js:2
+e.schedule @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+e._trySubscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+v @ Grammarly.js:2
+m @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+t._subscribe @ Grammarly.js:2
+e._trySubscribe @ Grammarly.js:2
+t._trySubscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+s @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+_subscribeToIterablePopup @ Grammarly.js:2
+Ne @ Grammarly.js:2
+_render @ Grammarly.js:2
+_delayedStart @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+Promise.then
+ss @ Grammarly.js:2
+y @ Grammarly.js:2
+createFieldIntegration @ Grammarly.js:2
+_setFieldIntegration @ Grammarly.js:2
+_initInitialFieldIntegration @ Grammarly.js:2
+h @ Grammarly.js:2
+b @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+e.next @ Grammarly.js:2
+t._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+t._subscribe @ Grammarly.js:2
+e._trySubscribe @ Grammarly.js:2
+t._trySubscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+e._subscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+t @ Grammarly.js:2
+e.decorate @ Grammarly.js:2
+M @ Grammarly.js:2
+execute @ Grammarly.js:2
+_executeIntegrationRuleMatch @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+v @ Grammarly.js:2
+V._initializeOnNewField @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+e._trySubscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+o @ Grammarly.js:2
+e.subscribe @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+t._execute @ Grammarly.js:2
+t.execute @ Grammarly.js:2
+t.flush @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+Promise.then
+c @ Grammarly.js:2
+setImmediate @ Grammarly.js:2
+t.requestAsyncId @ Grammarly.js:2
+t.schedule @ Grammarly.js:2
+e.schedule @ Grammarly.js:2
+i @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+(anonymous) @ Grammarly.js:2
+a._next @ Grammarly.js:2
+t.next @ Grammarly.js:2
+t @ Grammarly.js:2
+ml @ main.dart.js:43988
+Bq @ main.dart.js:44081
+wC @ main.dart.js:44043
+Rk @ main.dart.js:44228
+aBf @ main.dart.js:44543
+ls @ main.dart.js:44452
+aKP @ main.dart.js:44521
+aAu @ main.dart.js:40015
+KB @ main.dart.js:85929
+(anonymous) @ main.dart.js:86412
+(anonymous) @ main.dart.js:5421
+$2 @ main.dart.js:48244
+x @ main.dart.js:5407
+auI @ main.dart.js:86422
+lK @ main.dart.js:86406
+(anonymous) @ main.dart.js:86494
+(anonymous) @ main.dart.js:5421
+$2 @ main.dart.js:48244
+x @ main.dart.js:5407
+aLG @ main.dart.js:86498
+d5 @ main.dart.js:86490
+kl @ main.dart.js:86491
+OI @ main.dart.js:87322
+Fc @ main.dart.js:90484
+anZ @ main.dart.js:90774
+(anonymous) @ main.dart.js:4224
+a6 @ main.dart.js:56632
+O0 @ main.dart.js:91991
+a5D @ main.dart.js:92099
+(anonymous) @ main.dart.js:4224
+bpu @ main.dart.js:5564
+bq5 @ main.dart.js:5566
+$1 @ main.dart.js:48185
+childList
+$1 @ main.dart.js:48192
+b94 @ main.dart.js:5571
+aW3 @ main.dart.js:5650
+h6 @ main.dart.js:5583
+a3U @ main.dart.js:56997
+aG8 @ main.dart.js:56973
+md @ main.dart.js:57061
+aIt @ main.dart.js:57054
+a_D @ main.dart.js:57048
+RW @ main.dart.js:57039
+MJ @ main.dart.js:57037
+asm @ main.dart.js:57025
+(anonymous) @ main.dart.js:4225
+qd @ main.dart.js:1092
+aNF @ main.dart.js:40833
+(anonymous) @ main.dart.js:4226
+uG @ main.dart.js:40898
+$1 @ main.dart.js:41125
+$1 @ main.dart.js:41114
+$1 @ main.dart.js:40901
+JK @ main.dart.js:48965
+$1 @ main.dart.js:48981
+bnL @ main.dart.js:7617
+(anonymous) @ main.dart.js:7608Understand this error
+4main.dart.js:6430 Uncaught Error
+    at Object.i (main.dart.js:4071:20)
+    at main.dart.js:114994:34
+    at aWp.a (main.dart.js:5421:63)
+    at aWp.$2 (main.dart.js:48244:14)
+    at Object.x (main.dart.js:5407:10)
+    at LL.aBy (main.dart.js:115001:10)
+    at LL.vt (main.dart.js:114989:23)
+    at LL.aBx (main.dart.js:114990:22)
+    at tear_off.$2 (main.dart.js:4226:67)
+    at main.dart.js:117659:16
+```
+
+- [ ] Add a confirmation page for imported calendar (show few details of the imported item, enable zip import for local import and auto parse the ical file).
+
+
 ### Planner Settings
 
-- [ ] Not migrated yet, continue migration
+- [ ] Not migrated yet (there is no setting page in this version at all, not in sidebar), continue migration
 
 ## Portal
 
 - [ ] Set the root url to portal, that is, `*.github.io/Notechondria/` should be directed to the portal app
+- [ ] For sidebar, add items (Front page, Course, Learner, Activity, and Settings)
 
 ### Front page
 
@@ -108,28 +690,7 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 - [ ] Embed from /planner/Activity view
 
-### Settings
-
-- [x] Register windows
-  - [x] First, check for Invitation code (implement that in backend, plain sha 256 and compare with the record added in backend admin site) (backend: `InvitationCode` model with SHA-256 hash, auto-hash on save, consume on use; required only when codes exist in DB) Note, the invitation code is separated from the email verification code. The invitation code is used for registering new users only for testing.
-  - [x] back and confirm button (when confirm is clicked, verify the invitation code and move to the next window if successful)
-  - [x] After invitation code is verified, Select one from the three: email, google, github
-  - [x] When user selects google or github, show their corresponding redirect and implement that
-  - [x] When user selects email, show the following form
-    - [x] Input fields in the following order: Username (verify be distinct)
-    - [x] Email, on the same row (email verification send button, verification),
-    - [x] (only when invitation code is checked and not used in backend) Enable email verification (60s resend, 6 digit code with expiration, only store hash code in backend), we will set smtp params in environment variables. (backend: 6-digit codes stored as SHA-256 hash via `VerificationCode.generate_code()`, 60s cooldown in `ResendVerificationSerializer`)
-    - [x] password, (with validation, 8 digit minimum with simple measurement for strong password), repeat password (backend: `RegisterSerializer` with username field, 8-char min, uppercase+lowercase+digit/special validation)
-    - [x] Back, and register (frontend implementation) (new `_RegisterDialog` with username, email, password, confirm password, invitation code fields; client updated with new signature)
-
-> Urgent
-
-- [x] Add registration via google, use google oauth2 api (env variables are defined in `sample.text.env`, be sure to verify on the backend and capture the callback url from google redirect is on backend, be sure to take user back to frontend app after successful login/register. Ask for appropriate data like email, username from google to create user profiles.)
-- [x] Add registration via Github, use Github App api (env variables are defined in `sample.text.env`, be sure to verify on the backend and capture the callback url from github redirect is on backend, and also handle the webhook post from github with verifications, be sure to take user back to frontend app after successful login/register. Ask for appropriate data like email, username from google to create user profiles.)
-- [x] Allow existing users to bind their social accounts and login using them, currently support github and google accounts. (put in ui for the after login, show their binding accounts belows the social link (one line for google, one line for github. If no binding account, show the button to trigger the binding process (Online account settings widget), if user has binding accounts, show the button to trigger switch binding third party accounts))
-  - [x] Backend is not redirecting the results properly. It should render a static display show if the user has binding accounts successfully or not. And the binding status should be updated in the user profile if binding is successful on the backend. This also holds for google and github accounts. And register pages as well.
-- [x] Implement login via third party services (Github, Google) reject, if the account is not registered. Show the error window for user to register account first.
-- [x] Add the necessary items and credential updates to `sample.render.env`
+### Portal Settings
 
 - [ ] Embed from all setting from the micro services included.
   - Editor settings
@@ -141,11 +702,6 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 ### MCP
 
-- [x] Add the api key field(read-only) after `motto` field of user settings. Add rotation button after the api field to generate new api key, the api key should be only visible in front end after user click rotate and the backend should only store the hash of the api key only. (frontend api key is 32 digit hex string)
-  - Backend done: `api_key_hash`/`api_key_prefix` on Creator model, `RotateApiKeyApiView`, `ApiKeyAuthentication` DRF backend. Frontend UI deferred (backend-only focus this version).
-- [x] Enable fully functional MCP, enable AI to interact with the site using the user api key, let it able to access all backend functions that manage the user's data (note operations, user profile, course operations, etc). It should fully on backend.
-  - Backend done: `mcp` Django app with MCP 2025-03-26 spec, Streamable HTTP transport, 23 tools (profile, notes, courses, activity, planner, versions, attachments).
-
 ## Documentation pages
 
-- [ ] New `versions` is added in doc, update the docs descriptions and include the contents in docs.
+- [ ] New `versions` is added in doc, update the docs descriptions and include the contents for each version updates in docs.

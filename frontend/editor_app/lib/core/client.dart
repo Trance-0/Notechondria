@@ -145,6 +145,7 @@ abstract class NotechondriaClient {
     String password,
   );
   Future<Map<String, dynamic>> sendIdentityCode(String token);
+  Future<Map<String, dynamic>> rotateApiKey(String token);
   Future<Map<String, dynamic>> changePassword(String token, String currentPassword, String newPassword, String identityCode);
   Future<Map<String, dynamic>> changeEmailRequest(String token, String newEmail, String identityCode);
   Future<Map<String, dynamic>> changeEmailConfirm(String token, String newEmail, String code);
@@ -942,6 +943,17 @@ class HttpNotechondriaClient implements NotechondriaClient {
   @override
   Future<Map<String, dynamic>> sendIdentityCode(String token) async {
     final uri = _uri('/auth/send-identity-code/');
+    final response = await _send(
+      'POST',
+      uri,
+      () => _httpClient.post(uri, headers: _headers(token: token)),
+    );
+    return Map<String, dynamic>.from(await _decode(response, uri: uri, method: 'POST'));
+  }
+
+  @override
+  Future<Map<String, dynamic>> rotateApiKey(String token) async {
+    final uri = _uri('/auth/rotate-api-key/');
     final response = await _send(
       'POST',
       uri,

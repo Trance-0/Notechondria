@@ -211,11 +211,14 @@ class _AppShellState extends State<AppShell> {
       if (mounted && _isLoading) setState(() { _isLoading = false; _showSplash = false; });
     });
     await _loadLocalState();
-    // Check for OAuth callback before restoring session.
-    final oauthHandled = await _handleOAuthCallback();
-    if (!oauthHandled) {
-      await _restoreSession();
-    }
+    // Restore the stored auth token BEFORE handling any OAuth callback.
+    // The bind flow needs `_token` to be non-null so it can call the
+    // authenticated /auth/bind/* endpoint; otherwise the fallback logic
+    // would hit the public /auth/<provider>/ endpoint and either log in
+    // as the OAuth identity's email owner or create a new account,
+    // effectively overwriting the current user.
+    await _restoreSession();
+    await _handleOAuthCallback();
     await _loadInitialData();
     // Deep-link: if the URL contains a note UUID, load it.
     final deepLinkUuid = _parseNoteUuidFromUrl();
@@ -3655,6 +3658,23 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           onListSocialAccounts: _token != null ? () => widget.client.listSocialAccounts(_token!) : null,
           onUnlinkSocialAccount: _token != null ? (provider) => widget.client.unlinkSocialAccount(_token!, provider) : null,
           onSendIdentityCode: _token != null ? () => widget.client.sendIdentityCode(_token!) : null,
+          onRotateApiKey: _token != null
+              ? () async {
+                  final result = await widget.client.rotateApiKey(_token!);
+                  // Merge the new prefix into the in-memory settings so the
+                  // UI shows the updated masked value after rebuild.
+                  final newPrefix = result['api_key_prefix']?.toString() ?? '';
+                  if (newPrefix.isNotEmpty && mounted) {
+                    setState(() {
+                      _settings = {
+                        ..._settings ?? <String, dynamic>{},
+                        'api_key_prefix': newPrefix,
+                      };
+                    });
+                  }
+                  return result;
+                }
+              : null,
           onChangePassword: _token != null ? (current, newPw, identityCode) => widget.client.changePassword(_token!, current, newPw, identityCode) : null,
           onChangeEmailRequest: _token != null ? (email, identityCode) => widget.client.changeEmailRequest(_token!, email, identityCode) : null,
           onChangeEmailConfirm: _token != null ? (email, code) => widget.client.changeEmailConfirm(_token!, email, code) : null,
