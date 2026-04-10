@@ -70,6 +70,14 @@ class Creator(models.Model):
         null=False,
     )
     api_base_url = models.CharField(max_length=255, default="http://localhost:9080/api/v1", null=False)
+    api_key_hash = models.CharField(
+        max_length=64, blank=True, default="",
+        help_text="SHA-256 hex digest of the user's MCP API key.",
+    )
+    api_key_prefix = models.CharField(
+        max_length=8, blank=True, default="",
+        help_text="First 8 chars of the plaintext API key (for display).",
+    )
     app_settings_json = models.TextField(blank=True, default="")
     app_settings_updated_at = models.DateTimeField(blank=True, null=True)
 

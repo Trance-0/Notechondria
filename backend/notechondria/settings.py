@@ -82,6 +82,7 @@ INSTALLED_APPS = [
     'gptutils',
     'notes',
     'creators',
+    'mcp',
     'rest_framework',
     'rest_framework.authtoken',
     'storages',
@@ -212,6 +213,7 @@ else:
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.TokenAuthentication",
+        "creators.authentication.ApiKeyAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",

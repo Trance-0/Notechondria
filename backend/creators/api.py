@@ -294,6 +294,7 @@ class SettingsSerializer(serializers.Serializer):
             "editor_mode": instance.editor_mode,
             "theme_preset": instance.theme_preset,
             "theme_mode": instance.theme_mode,
+            "api_key_prefix": instance.api_key_prefix or "",
             "api_base_url": instance.api_base_url,
             "app_settings": creator_app_settings_payload(instance),
             "app_settings_updated_at": instance.app_settings_updated_at.isoformat()
@@ -758,6 +759,28 @@ class SettingsApiView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(SettingsSerializer(creator, context={"request": request}).data)
+
+
+class RotateApiKeyApiView(APIView):
+    """Generate a new MCP API key for the authenticated user.
+
+    POST /api/v1/auth/rotate-api-key/
+    Returns the plaintext key ONCE.  Only the SHA-256 hash is stored.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        import hashlib
+        import secrets
+        creator = ensure_creator(request.user)
+        plaintext = f"ntc_{secrets.token_hex(16)}"  # 32 hex chars after prefix
+        creator.api_key_hash = hashlib.sha256(plaintext.encode()).hexdigest()
+        creator.api_key_prefix = plaintext[:8]
+        creator.save(update_fields=["api_key_hash", "api_key_prefix"])
+        return Response({
+            "api_key": plaintext,
+            "api_key_prefix": creator.api_key_prefix,
+        })
 
 
 # ---------------------------------------------------------------------------

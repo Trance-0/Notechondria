@@ -4,6 +4,7 @@ import re
 from difflib import SequenceMatcher
 from datetime import datetime, timedelta, time
 
+from django.conf import settings
 from django.core.management import call_command
 from django.db import transaction
 from django.db.models import Count, Q

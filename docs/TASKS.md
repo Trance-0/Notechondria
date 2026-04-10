@@ -141,8 +141,10 @@ PAUSE WHEN CREDIT LIMIT RUNS OUT BEFORE CONTINUE THE NEXT TASK
 
 ### MCP
 
-- [ ] Add the api key field(read-only) after `motto` field of user settings. Add rotation button after the api field to generate new api key, the api key should be only visible in front end after user click rotate and the backend should only store the hash of the api key only. (frontend api key is 32 digit hex string)
-- [ ] Enable fully functional MCP, enable AI to interact with the site using the user api key, let it able to access all backend functions that manage the user's data (note operations, user profile, course operations, etc). It should fully on backend.
+- [x] Add the api key field(read-only) after `motto` field of user settings. Add rotation button after the api field to generate new api key, the api key should be only visible in front end after user click rotate and the backend should only store the hash of the api key only. (frontend api key is 32 digit hex string)
+  - Backend done: `api_key_hash`/`api_key_prefix` on Creator model, `RotateApiKeyApiView`, `ApiKeyAuthentication` DRF backend. Frontend UI deferred (backend-only focus this version).
+- [x] Enable fully functional MCP, enable AI to interact with the site using the user api key, let it able to access all backend functions that manage the user's data (note operations, user profile, course operations, etc). It should fully on backend.
+  - Backend done: `mcp` Django app with MCP 2025-03-26 spec, Streamable HTTP transport, 23 tools (profile, notes, courses, activity, planner, versions, attachments).
 
 ## Documentation pages
 

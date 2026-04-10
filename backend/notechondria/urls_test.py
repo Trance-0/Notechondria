@@ -4,6 +4,7 @@ from . import api_views, views
 urlpatterns = [
     path('', api_views.health_check, name='home'),
     path('api/v1/', include(('notechondria.api_urls', 'api'), namespace='api')),
+    path('mcp/', include('mcp.urls')),
     path('about/', views.about, name='about'),
     path('dashboard/', views.dashboard, name='dashboard'),
     path('search/', views.about, name='search'),

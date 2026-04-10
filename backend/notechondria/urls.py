@@ -17,6 +17,7 @@ handler500 = "notechondria.api_views.api_server_error"
 urlpatterns = [
     path('', api_views.health_check, name="health-root"),
     path('api/v1/', include(('notechondria.api_urls', 'api'), namespace='api')),
+    path('mcp/', include('mcp.urls')),
     path('auth/google/callback', api_views.oauth_callback, {'provider': 'google'}, name="google-oauth-callback"),
     path('auth/github/callback', api_views.oauth_callback, {'provider': 'github'}, name="github-oauth-callback"),
     path('admin/', admin.site.urls),
