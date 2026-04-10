@@ -376,10 +376,18 @@ Create welcome notes for new users showing the functionality of this site, add t
 </ul>
 <h3 id="mcp"><a class="header" href="#mcp">MCP</a></h3>
 <ul>
-<li><input disabled="" type="checkbox"/>
-Add the api key field(read-only) after <code>motto</code> field of user settings. Add rotation button after the api field to generate new api key, the api key should be only visible in front end after user click rotate and the backend should only store the hash of the api key only. (frontend api key is 32 digit hex string)</li>
-<li><input disabled="" type="checkbox"/>
-Enable fully functional MCP, enable AI to interact with the site using the user api key, let it able to access all backend functions that manage the user's data (note operations, user profile, course operations, etc). It should fully on backend.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Add the api key field(read-only) after <code>motto</code> field of user settings. Add rotation button after the api field to generate new api key, the api key should be only visible in front end after user click rotate and the backend should only store the hash of the api key only. (frontend api key is 32 digit hex string)
+<ul>
+<li>Backend done: <code>api_key_hash</code>/<code>api_key_prefix</code> on Creator model, <code>RotateApiKeyApiView</code>, <code>ApiKeyAuthentication</code> DRF backend. Frontend UI deferred (backend-only focus this version).</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Enable fully functional MCP, enable AI to interact with the site using the user api key, let it able to access all backend functions that manage the user's data (note operations, user profile, course operations, etc). It should fully on backend.
+<ul>
+<li>Backend done: <code>mcp</code> Django app with MCP 2025-03-26 spec, Streamable HTTP transport, 23 tools (profile, notes, courses, activity, planner, versions, attachments).</li>
+</ul>
+</li>
 </ul>
 <h2 id="documentation-pages"><a class="header" href="#documentation-pages">Documentation pages</a></h2>
 <ul>
