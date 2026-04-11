@@ -1,0 +1,320 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>0.1.14 - Notechondria Documentation</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "navy";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../TASKS.html">Tasks</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">API</li><li class="chapter-item expanded "><a href="../api/backend_api_spec.html"><strong aria-hidden="true">1.</strong> Backend API Specification</a></li><li class="chapter-item expanded affix "><li class="part-title">Deployment</li><li class="chapter-item expanded "><a href="../deployment/deploy.html"><strong aria-hidden="true">2.</strong> Deployment Guide</a></li><li class="chapter-item expanded "><a href="../deployment/render_free_tier.html"><strong aria-hidden="true">3.</strong> Render Free Tier</a></li><li class="chapter-item expanded affix "><li class="part-title">Development</li><li class="chapter-item expanded "><a href="../development/local_dev.html"><strong aria-hidden="true">4.</strong> Local Development Guide</a></li><li class="chapter-item expanded "><a href="../development/python_environments.html"><strong aria-hidden="true">5.</strong> Python Environments</a></li><li class="chapter-item expanded "><a href="../canvas_like_calendar_mvp.html"><strong aria-hidden="true">6.</strong> Canvas-like Calendar MVP</a></li><li class="chapter-item expanded affix "><li class="part-title">Integrations</li><li class="chapter-item expanded "><a href="../integrations/github_app_integration.html"><strong aria-hidden="true">7.</strong> GitHub App Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">Operations</li><li class="chapter-item expanded "><a href="../operations/postgres_migration.html"><strong aria-hidden="true">8.</strong> PostgreSQL Migration</a></li><li class="chapter-item expanded affix "><li class="part-title">Testing</li><li class="chapter-item expanded "><a href="../testing/backend_test_plan.html"><strong aria-hidden="true">9.</strong> Backend Test Plan</a></li><li class="chapter-item expanded affix "><li class="part-title">Versions</li><li class="chapter-item expanded "><a href="../versions/0.1.18.html"><strong aria-hidden="true">10.</strong> 0.1.18 — Ics import dialog, calendar subscribe fix, welcome note, portal root</a></li><li class="chapter-item expanded "><a href="../versions/0.1.17.html"><strong aria-hidden="true">11.</strong> 0.1.17 — Splash polish, OAuth bind guard, API key visibility</a></li><li class="chapter-item expanded "><a href="../versions/0.1.16.html"><strong aria-hidden="true">12.</strong> 0.1.16 — MCP server, API key auth, front-page + media fixes</a></li><li class="chapter-item expanded "><a href="../versions/0.1.15.html"><strong aria-hidden="true">13.</strong> 0.1.15</a></li><li class="chapter-item expanded "><a href="../versions/0.1.14.html" class="active"><strong aria-hidden="true">14.</strong> 0.1.14</a></li><li class="chapter-item expanded "><a href="../versions/0.1.13.html"><strong aria-hidden="true">15.</strong> 0.1.13</a></li><li class="chapter-item expanded "><a href="../versions/0.1.12.html"><strong aria-hidden="true">16.</strong> 0.1.12</a></li><li class="chapter-item expanded "><a href="../versions/0.1.11.html"><strong aria-hidden="true">17.</strong> 0.1.11</a></li><li class="chapter-item expanded "><a href="../versions/0.1.10.html"><strong aria-hidden="true">18.</strong> 0.1.10</a></li><li class="chapter-item expanded "><a href="../versions/0.1.9.html"><strong aria-hidden="true">19.</strong> 0.1.9</a></li><li class="chapter-item expanded "><a href="../versions/0.1.8.html"><strong aria-hidden="true">20.</strong> 0.1.8</a></li><li class="chapter-item expanded "><a href="../versions/0.1.7.html"><strong aria-hidden="true">21.</strong> 0.1.7</a></li><li class="chapter-item expanded "><a href="../versions/0.1.6.html"><strong aria-hidden="true">22.</strong> 0.1.6</a></li><li class="chapter-item expanded "><a href="../versions/0.1.5.html"><strong aria-hidden="true">23.</strong> 0.1.5</a></li><li class="chapter-item expanded "><a href="../versions/0.1.4.html"><strong aria-hidden="true">24.</strong> 0.1.4</a></li><li class="chapter-item expanded "><a href="../versions/0.1.3.html"><strong aria-hidden="true">25.</strong> 0.1.3</a></li><li class="chapter-item expanded "><a href="../versions/0.1.2.html"><strong aria-hidden="true">26.</strong> 0.1.2</a></li><li class="chapter-item expanded "><a href="../versions/0.1.1.html"><strong aria-hidden="true">27.</strong> 0.1.1</a></li><li class="chapter-item expanded "><a href="../versions/0.1.0.html"><strong aria-hidden="true">28.</strong> 0.1.0</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Notechondria Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria/edit/codex/docs/./versions/0.1.14.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="notechondria"><a class="header" href="#notechondria">Notechondria</a></h1>
+<p>Version: 0.1.14
+Build Date: 2026-04-08T00:00</p>
+<h2 id="whats-changed"><a class="header" href="#whats-changed">What's Changed</a></h2>
+<h3 id="jenkins-build-fixes"><a class="header" href="#jenkins-build-fixes">Jenkins build fixes</a></h3>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Fixed <code>boto3==1.35.0</code> / <code>urllib3==2.1.0</code> dependency conflict by downgrading urllib3 pin to <code>&gt;=1.25.4,&lt;1.27</code> (compatible with botocore).</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Added <code>--no-tree-shake-icons</code> to <code>flutter build web</code> in all three frontend Dockerfiles to fix icon tree-shaking build failures.</li>
+</ul>
+<h3 id="django-admin-portal-improvements"><a class="header" href="#django-admin-portal-improvements">Django admin portal improvements</a></h3>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Enhanced all admin list views across <code>creators</code>, <code>notes</code>, and <code>gptutils</code> apps with owner names (first + last name), parent object titles, metadata columns, filters, and search fields.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Registered previously unregistered models: <code>SocialAccount</code>, <code>NoteVersion</code>, <code>NoteActivitySession</code>, <code>Tag</code>.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Added inline views: <code>NoteVersionInline</code> on Note admin, <code>CourseMediaInline</code> on Course admin.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Note admin now shows parent note title for comment-type notes.</li>
+</ul>
+<h3 id="change-email-and-change-password"><a class="header" href="#change-email-and-change-password">Change email and change password</a></h3>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Added <code>POST /api/v1/auth/change-password/</code> endpoint (validates current password, rotates auth token on success).</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Added <code>POST /api/v1/auth/change-email/</code> endpoint (two-step: sends 6-digit verification code to new email, then confirms with code).</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Added <code>changePassword</code>, <code>changeEmailRequest</code>, <code>changeEmailConfirm</code> methods to the Flutter API client.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Replaced single Logout button with a row of <code>Change email</code>, <code>Change password</code>, and <code>Logout</code> buttons in editor settings.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Created dialog UIs for both change-password and change-email flows with validation and feedback.</li>
+</ul>
+<h3 id="chrome-password-manager-autofill"><a class="header" href="#chrome-password-manager-autofill">Chrome password manager autofill</a></h3>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Added <code>AutofillGroup</code> with <code>autofillHints</code> (<code>newUsername</code>, <code>email</code>, <code>newPassword</code>) to the registration form fields.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Simplified login field autofill hint to <code>AutofillHints.username</code> only (was <code>[username, email]</code> which confused Chrome).</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Added 100ms delay between <code>TextInput.finishAutofillContext()</code> and dialog close to allow Chrome to capture credentials.</li>
+</ul>
+<h3 id="splash-animation-speed"><a class="header" href="#splash-animation-speed">Splash animation speed</a></h3>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Slowed Krebs cycle animation from 8s to 12s per cycle across all three apps (~65% of previous speed).</li>
+</ul>
+<h3 id="environment-and-deployment"><a class="header" href="#environment-and-deployment">Environment and deployment</a></h3>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Populated <code>sample.jenkins.env</code> with all required environment variables for Jenkins deployment.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Added <code>FRONTEND_ORIGIN</code> variable to <code>prepare_env.sh</code> for shell-based env generation.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Removed Cloudflare R2 variables from <code>prepare_env.sh</code> (Jenkins deploys via Docker volumes, R2 is only for Render).</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Updated <code>docs/deployment/deploy.md</code> Properties Content example with complete variable set, added image tag auto-generation note, added SMTP to required variable list.</li>
+</ul>
+<h2 id="files-changed"><a class="header" href="#files-changed">Files Changed</a></h2>
+<ul>
+<li><code>backend/requirements.txt</code> -- Downgraded urllib3 pin for boto3 compatibility</li>
+<li><code>backend/requirements-render.txt</code> -- Same urllib3 fix</li>
+<li><code>backend/creators/admin.py</code> -- Enhanced admin for Creator, SocialAccount, InvitationCode, VerificationCode</li>
+<li><code>backend/notes/admin.py</code> -- Enhanced admin for all note/course/planner models with owner names and metadata</li>
+<li><code>backend/gptutils/admin.py</code> -- Enhanced admin for Conversation and Message with owner names</li>
+<li><code>backend/creators/api.py</code> -- Added ChangePasswordApiView, ChangeEmailApiView with serializers</li>
+<li><code>backend/notechondria/api_urls.py</code> -- Added change-password and change-email URL routes</li>
+<li><code>frontend/editor_app/Dockerfile</code> -- Added --no-tree-shake-icons</li>
+<li><code>frontend/planner_app/Dockerfile</code> -- Added --no-tree-shake-icons</li>
+<li><code>frontend/portal_app/Dockerfile</code> -- Added --no-tree-shake-icons</li>
+<li><code>frontend/editor_app/lib/core/client.dart</code> -- Added changePassword, changeEmailRequest, changeEmailConfirm methods</li>
+<li><code>frontend/editor_app/lib/modules/settings.dart</code> -- Change email/password dialogs and buttons</li>
+<li><code>frontend/editor_app/lib/app_shell.dart</code> -- Wired change-email/password callbacks to settings page</li>
+<li><code>frontend/editor_app/lib/components/auth_dialogs.dart</code> -- Autofill hints fix, finishAutofillContext delay</li>
+<li><code>frontend/editor_app/lib/components/splash_screen.dart</code> -- Animation duration 8s to 12s</li>
+<li><code>frontend/planner_app/lib/components/splash_screen.dart</code> -- Same animation speed change</li>
+<li><code>frontend/portal_app/lib/components/splash_screen.dart</code> -- Same animation speed change</li>
+<li><code>sample.jenkins.env</code> -- Populated with all deployment variables</li>
+<li><code>deployment/jenkins/scripts/prepare_env.sh</code> -- Added FRONTEND_ORIGIN, removed R2 vars (Docker volumes used instead)</li>
+<li><code>docs/deployment/deploy.md</code> -- Updated Properties Content example, added SMTP to required list, added image tag note</li>
+<li><code>sample.env</code> -- Updated image tags to v0.1.14.local</li>
+<li><code>VERSION</code> -- Bumped from 0.1.13 to 0.1.14</li>
+<li><code>docs/versions/0.1.14.md</code> -- This version document</li>
+<li><code>docs/TASKS.md</code> -- Marked completed items</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../versions/0.1.15.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../versions/0.1.13.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../versions/0.1.15.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../versions/0.1.13.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

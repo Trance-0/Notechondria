@@ -1,0 +1,319 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>0.1.9 - Notechondria Documentation</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "navy";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../TASKS.html">Tasks</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">API</li><li class="chapter-item expanded "><a href="../api/backend_api_spec.html"><strong aria-hidden="true">1.</strong> Backend API Specification</a></li><li class="chapter-item expanded affix "><li class="part-title">Deployment</li><li class="chapter-item expanded "><a href="../deployment/deploy.html"><strong aria-hidden="true">2.</strong> Deployment Guide</a></li><li class="chapter-item expanded "><a href="../deployment/render_free_tier.html"><strong aria-hidden="true">3.</strong> Render Free Tier</a></li><li class="chapter-item expanded affix "><li class="part-title">Development</li><li class="chapter-item expanded "><a href="../development/local_dev.html"><strong aria-hidden="true">4.</strong> Local Development Guide</a></li><li class="chapter-item expanded "><a href="../development/python_environments.html"><strong aria-hidden="true">5.</strong> Python Environments</a></li><li class="chapter-item expanded "><a href="../canvas_like_calendar_mvp.html"><strong aria-hidden="true">6.</strong> Canvas-like Calendar MVP</a></li><li class="chapter-item expanded affix "><li class="part-title">Integrations</li><li class="chapter-item expanded "><a href="../integrations/github_app_integration.html"><strong aria-hidden="true">7.</strong> GitHub App Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">Operations</li><li class="chapter-item expanded "><a href="../operations/postgres_migration.html"><strong aria-hidden="true">8.</strong> PostgreSQL Migration</a></li><li class="chapter-item expanded affix "><li class="part-title">Testing</li><li class="chapter-item expanded "><a href="../testing/backend_test_plan.html"><strong aria-hidden="true">9.</strong> Backend Test Plan</a></li><li class="chapter-item expanded affix "><li class="part-title">Versions</li><li class="chapter-item expanded "><a href="../versions/0.1.18.html"><strong aria-hidden="true">10.</strong> 0.1.18 — Ics import dialog, calendar subscribe fix, welcome note, portal root</a></li><li class="chapter-item expanded "><a href="../versions/0.1.17.html"><strong aria-hidden="true">11.</strong> 0.1.17 — Splash polish, OAuth bind guard, API key visibility</a></li><li class="chapter-item expanded "><a href="../versions/0.1.16.html"><strong aria-hidden="true">12.</strong> 0.1.16 — MCP server, API key auth, front-page + media fixes</a></li><li class="chapter-item expanded "><a href="../versions/0.1.15.html"><strong aria-hidden="true">13.</strong> 0.1.15</a></li><li class="chapter-item expanded "><a href="../versions/0.1.14.html"><strong aria-hidden="true">14.</strong> 0.1.14</a></li><li class="chapter-item expanded "><a href="../versions/0.1.13.html"><strong aria-hidden="true">15.</strong> 0.1.13</a></li><li class="chapter-item expanded "><a href="../versions/0.1.12.html"><strong aria-hidden="true">16.</strong> 0.1.12</a></li><li class="chapter-item expanded "><a href="../versions/0.1.11.html"><strong aria-hidden="true">17.</strong> 0.1.11</a></li><li class="chapter-item expanded "><a href="../versions/0.1.10.html"><strong aria-hidden="true">18.</strong> 0.1.10</a></li><li class="chapter-item expanded "><a href="../versions/0.1.9.html" class="active"><strong aria-hidden="true">19.</strong> 0.1.9</a></li><li class="chapter-item expanded "><a href="../versions/0.1.8.html"><strong aria-hidden="true">20.</strong> 0.1.8</a></li><li class="chapter-item expanded "><a href="../versions/0.1.7.html"><strong aria-hidden="true">21.</strong> 0.1.7</a></li><li class="chapter-item expanded "><a href="../versions/0.1.6.html"><strong aria-hidden="true">22.</strong> 0.1.6</a></li><li class="chapter-item expanded "><a href="../versions/0.1.5.html"><strong aria-hidden="true">23.</strong> 0.1.5</a></li><li class="chapter-item expanded "><a href="../versions/0.1.4.html"><strong aria-hidden="true">24.</strong> 0.1.4</a></li><li class="chapter-item expanded "><a href="../versions/0.1.3.html"><strong aria-hidden="true">25.</strong> 0.1.3</a></li><li class="chapter-item expanded "><a href="../versions/0.1.2.html"><strong aria-hidden="true">26.</strong> 0.1.2</a></li><li class="chapter-item expanded "><a href="../versions/0.1.1.html"><strong aria-hidden="true">27.</strong> 0.1.1</a></li><li class="chapter-item expanded "><a href="../versions/0.1.0.html"><strong aria-hidden="true">28.</strong> 0.1.0</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Notechondria Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria/edit/codex/docs/./versions/0.1.9.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="notechondria"><a class="header" href="#notechondria">Notechondria</a></h1>
+<p>Version: 0.1.9
+Build Date: 2026-04-08T00:00</p>
+<h2 id="whats-changed"><a class="header" href="#whats-changed">What's Changed</a></h2>
+<h3 id="registration-wizard"><a class="header" href="#registration-wizard">Registration wizard</a></h3>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Added <code>ValidateInvitationApiView</code> backend endpoint (<code>POST /api/v1/auth/validate-invitation/</code>) that checks invitation code validity without consuming it. Returns <code>{required, valid}</code>.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Replaced simple <code>_RegisterDialog</code> with multi-step <code>_RegistrationWizard</code> in all three apps (editor, planner, portal):
+<ul>
+<li>Step 0: Invitation code input with Back/Confirm.</li>
+<li>Step 1: Registration method selection (Email, Google, GitHub).</li>
+<li>Step 2: Email registration form with username, email, password (8+ chars, strength validation), confirm password, and Back/Register buttons. Post-registration shows verification prompt with resend cooldown.</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Updated <code>register()</code> client method signatures across all three apps to accept <code>username</code> and optional <code>invitationCode</code>.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Added <code>validateInvitation()</code> client method to all three apps.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+OAuth callbacks now accept and persist invitation code through <code>SharedPreferences</code> so it survives the redirect flow.</li>
+</ul>
+<h3 id="version-tagged-docker-images"><a class="header" href="#version-tagged-docker-images">Version-tagged Docker images</a></h3>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Created <code>VERSION</code> file at repo root to define the project version.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Updated <code>prepare_env.sh</code> to read <code>VERSION</code> file and produce image tags in <code>v&lt;VERSION&gt;.&lt;BUILD_NUMBER&gt;</code> format (e.g. <code>v0.1.9.42</code>).</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Updated <code>sample.env</code> image tags to <code>v0.1.9.local</code>.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Updated <code>docs/deployment/deploy.md</code> with version tagging documentation.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Added versioning rule to <code>TASKS.md</code> so future agents increment the third digit on each update.</li>
+</ul>
+<h3 id="splash-screen-fix"><a class="header" href="#splash-screen-fix">Splash screen fix</a></h3>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Fixed splash screen being skipped when local cached state existed. Replaced <code>_isLoading &amp;&amp; !_hasRenderableLocalState</code> condition with dedicated <code>_showSplash</code> flag in all three apps.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Splash now always displays on startup (including web with slow backend) and dismisses only when initial data loads or the 10-second timeout fires.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Removed unused <code>_hasRenderableLocalState</code> getter from all three apps.</li>
+</ul>
+<h3 id="frontend-deploy-port-conflict-fix"><a class="header" href="#frontend-deploy-port-conflict-fix">Frontend deploy port conflict fix</a></h3>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Fixed <code>deploy_frontends.sh</code> using root full-stack <code>docker-compose.yml</code> which pulled in db/app/nginx via <code>depends_on</code> chains, causing port 9032 conflict with the already-running backend db container.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+<code>deploy_frontends.sh</code> now deploys each frontend from its own standalone Compose file (<code>frontend/*/docker-compose.yml</code>) which only defines the frontend service on the shared external network.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+<code>deploy_gateway.sh</code> now uses a standalone gateway Compose file (<code>deployment/docker/gateway/docker-compose.yml</code>) instead of the root compose.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Added network aliases to backend nginx (<code>backend_nginx</code>), editor (<code>editor_frontend</code>), planner (<code>planner_frontend</code>), and portal (<code>portal_frontend</code>) so the gateway can resolve services by name across separate Compose projects.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Both frontend and gateway deploy scripts now call <code>ensure_shared_network.sh</code> before starting containers, preventing race conditions when backend and frontend deploy in parallel.</li>
+</ul>
+<h2 id="files-changed"><a class="header" href="#files-changed">Files Changed</a></h2>
+<ul>
+<li><code>backend/creators/api.py</code> -- Added ValidateInvitationApiView</li>
+<li><code>backend/notechondria/api_urls.py</code> -- Added validate-invitation URL route</li>
+<li><code>backend/docker-compose.yml</code> -- Added <code>backend_nginx</code> network alias to nginx service</li>
+<li><code>VERSION</code> -- New: project version file (0.1.9)</li>
+<li><code>sample.env</code> -- Updated image tags to version format</li>
+<li><code>deployment/jenkins/scripts/prepare_env.sh</code> -- VERSION file reading and version-tagged image defaults</li>
+<li><code>deployment/jenkins/scripts/deploy_frontends.sh</code> -- Use individual frontend compose files instead of root compose</li>
+<li><code>deployment/jenkins/scripts/deploy_gateway.sh</code> -- Use standalone gateway compose instead of root compose</li>
+<li><code>deployment/docker/gateway/docker-compose.yml</code> -- New: standalone gateway compose file</li>
+<li><code>docs/deployment/deploy.md</code> -- Version tagging and compose stack documentation updates</li>
+<li><code>frontend/editor_app/docker-compose.yml</code> -- Added <code>editor_frontend</code> network alias</li>
+<li><code>frontend/editor_app/lib/core/client.dart</code> -- Added validateInvitation, updated register signature</li>
+<li><code>frontend/editor_app/lib/components/auth_dialogs.dart</code> -- Replaced _RegisterDialog with _RegistrationWizard</li>
+<li><code>frontend/editor_app/lib/modules/settings.dart</code> -- Wired onValidateInvitation, updated OAuth callback types</li>
+<li><code>frontend/editor_app/lib/app_shell.dart</code> -- Added _showSplash flag, invitation code persistence in OAuth flow, removed _hasRenderableLocalState</li>
+<li><code>frontend/planner_app/docker-compose.yml</code> -- Added <code>planner_frontend</code> network alias</li>
+<li><code>frontend/planner_app/lib/core/client.dart</code> -- Added validateInvitation, updated register signature</li>
+<li><code>frontend/planner_app/lib/modules/settings.dart</code> -- Added _RegistrationWizard, updated _AuthHub and _SettingsPage</li>
+<li><code>frontend/planner_app/lib/app_shell.dart</code> -- Added _showSplash flag, updated register/OAuth signatures, removed _hasRenderableLocalState</li>
+<li><code>frontend/portal_app/docker-compose.yml</code> -- Added <code>portal_frontend</code> network alias</li>
+<li><code>frontend/portal_app/lib/core/client.dart</code> -- Added validateInvitation, updated register signature</li>
+<li><code>frontend/portal_app/lib/modules/settings.dart</code> -- Added _RegistrationWizard, updated _AuthHub and _SettingsPage</li>
+<li><code>frontend/portal_app/lib/app_shell.dart</code> -- Added _showSplash flag, updated register/OAuth signatures, removed _hasRenderableLocalState</li>
+<li><code>docs/versions/0.1.9.md</code> -- This version document</li>
+<li><code>docs/TASKS.md</code> -- Marked registration wizard tasks complete, added versioning rule</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../versions/0.1.10.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../versions/0.1.8.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../versions/0.1.10.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../versions/0.1.8.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

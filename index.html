@@ -3,41 +3,23 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Notechondria Frontends</title>
+  <title>Notechondria</title>
+  <meta http-equiv="refresh" content="0; url=./portal/" />
+  <link rel="canonical" href="./portal/" />
+  <script>
+    // Preserve any query/hash the user arrived with so deep links work.
+    (function () {
+      var target = './portal/' + (window.location.search || '') + (window.location.hash || '');
+      window.location.replace(target);
+    })();
+  </script>
   <style>
     :root { color-scheme: dark; }
     body { font-family: system-ui, sans-serif; margin: 0; padding: 32px; background: #0f172a; color: #e5e7eb; }
-    .wrap { max-width: 860px; margin: 0 auto; }
-    .cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 16px; margin-top: 24px; }
-    .card { background: #111827; border: 1px solid #374151; border-radius: 16px; padding: 20px; }
-    a { color: #93c5fd; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    h1,h2 { margin-top: 0; }
-    code { background: #1f2937; padding: 2px 6px; border-radius: 6px; }
+    a { color: #93c5fd; }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Notechondria Frontends</h1>
-    <p>This Pages site publishes the three split frontend apps from the <code>codex</code> branch.</p>
-    <div class="cards">
-      <div class="card">
-        <h2><a href="./editor/">Editor</a></h2>
-        <p>Offline-first markdown editor with local drafts, search, and sync-oriented settings.</p>
-      </div>
-      <div class="card">
-        <h2><a href="./planner/">Planner</a></h2>
-        <p>Course planning, activity/calendar workflows, and module discussion surfaces.</p>
-      </div>
-      <div class="card">
-        <h2><a href="./portal/">Portal</a></h2>
-        <p>Online auth, cloud preferences, and orchestration links into the other workspaces.</p>
-      </div>
-      <div class="card">
-        <h2><a href="./docs/">Documentation</a></h2>
-        <p>Developer and user guides, API specs, deployment instructions, and operations runbooks.</p>
-      </div>
-    </div>
-  </div>
+  <p>Redirecting to the <a href="./portal/">Notechondria portal</a>…</p>
 </body>
 </html>
