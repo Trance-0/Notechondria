@@ -123,18 +123,18 @@ class _AppShellState extends State<AppShell> {
           : null;
 
   static const List<String> _titles = [
-    'Portal Home',
-    'Editor Route',
-    'Planner Route',
-    'Planner Activity',
-    'Cloud Settings',
+    'Front page',
+    'Learner',
+    'Course',
+    'Activity',
+    'Settings',
   ];
 
   static const List<NavigationDestination> _destinations = [
-    NavigationDestination(icon: Icon(Icons.hub_outlined), label: 'Portal'),
+    NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Front page'),
     NavigationDestination(
-        icon: Icon(Icons.menu_book_outlined), label: 'Editor'),
-    NavigationDestination(icon: Icon(Icons.school_outlined), label: 'Planner'),
+        icon: Icon(Icons.menu_book_outlined), label: 'Learner'),
+    NavigationDestination(icon: Icon(Icons.school_outlined), label: 'Course'),
     NavigationDestination(
         icon: Icon(Icons.timeline_outlined), label: 'Activity'),
     NavigationDestination(

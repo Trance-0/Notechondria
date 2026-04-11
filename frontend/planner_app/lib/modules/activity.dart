@@ -1058,24 +1058,316 @@ Future<void> _showCreatePlannerEventDialog(
   descriptionController.dispose();
 }
 
-/// Opens a local iCal file picker and forwards the result to the callback.
+/// Lightweight iCalendar parse result used by the import confirmation dialog.
+class _IcalPreview {
+  _IcalPreview({
+    required this.summary,
+    required this.eventCount,
+    required this.firstStart,
+    required this.lastStart,
+    required this.sampleEvents,
+  });
+
+  final String summary;
+  final int eventCount;
+  final DateTime? firstStart;
+  final DateTime? lastStart;
+  final List<_IcalSampleEvent> sampleEvents;
+}
+
+class _IcalSampleEvent {
+  const _IcalSampleEvent({
+    required this.summary,
+    required this.start,
+  });
+
+  final String summary;
+  final DateTime? start;
+}
+
+/// Parses the subset of iCalendar we care about for the confirmation page.
+/// We only extract SUMMARY and DTSTART since that is enough to show the user
+/// a meaningful preview before committing the import.
+_IcalPreview _parseIcalPreview(String raw) {
+  // Line unfolding per RFC 5545: a leading space/tab on a line continues the
+  // previous line.
+  final normalized = raw.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+  final rawLines = normalized.split('\n');
+  final lines = <String>[];
+  for (final line in rawLines) {
+    if (line.isEmpty) continue;
+    if ((line.startsWith(' ') || line.startsWith('\t')) && lines.isNotEmpty) {
+      lines[lines.length - 1] = lines.last + line.substring(1);
+    } else {
+      lines.add(line);
+    }
+  }
+
+  String calendarSummary = '';
+  var inEvent = false;
+  var currentSummary = '';
+  DateTime? currentStart;
+  final events = <_IcalSampleEvent>[];
+  DateTime? firstStart;
+  DateTime? lastStart;
+
+  DateTime? parseIcalDate(String rawValue) {
+    // Strip parameters like TZID=...
+    final value = rawValue.trim();
+    if (value.isEmpty) return null;
+    // Formats: 20250401T120000Z, 20250401T120000, 20250401
+    try {
+      if (value.length >= 15 && value.contains('T')) {
+        final year = int.parse(value.substring(0, 4));
+        final month = int.parse(value.substring(4, 6));
+        final day = int.parse(value.substring(6, 8));
+        final hour = int.parse(value.substring(9, 11));
+        final minute = int.parse(value.substring(11, 13));
+        final second = int.parse(value.substring(13, 15));
+        final isUtc = value.endsWith('Z');
+        return isUtc
+            ? DateTime.utc(year, month, day, hour, minute, second)
+            : DateTime(year, month, day, hour, minute, second);
+      }
+      if (value.length == 8) {
+        final year = int.parse(value.substring(0, 4));
+        final month = int.parse(value.substring(4, 6));
+        final day = int.parse(value.substring(6, 8));
+        return DateTime(year, month, day);
+      }
+    } catch (_) {
+      return null;
+    }
+    return null;
+  }
+
+  for (final line in lines) {
+    if (line == 'BEGIN:VEVENT') {
+      inEvent = true;
+      currentSummary = '';
+      currentStart = null;
+      continue;
+    }
+    if (line == 'END:VEVENT') {
+      events.add(
+        _IcalSampleEvent(
+          summary: currentSummary.isEmpty ? '(untitled event)' : currentSummary,
+          start: currentStart,
+        ),
+      );
+      if (currentStart != null) {
+        if (firstStart == null || currentStart.isBefore(firstStart)) {
+          firstStart = currentStart;
+        }
+        if (lastStart == null || currentStart.isAfter(lastStart)) {
+          lastStart = currentStart;
+        }
+      }
+      inEvent = false;
+      continue;
+    }
+    if (inEvent) {
+      if (line.startsWith('SUMMARY')) {
+        final colonAt = line.indexOf(':');
+        if (colonAt >= 0) {
+          currentSummary = line.substring(colonAt + 1).trim();
+        }
+      } else if (line.startsWith('DTSTART')) {
+        final colonAt = line.indexOf(':');
+        if (colonAt >= 0) {
+          currentStart = parseIcalDate(line.substring(colonAt + 1));
+        }
+      }
+    } else if (line.startsWith('X-WR-CALNAME')) {
+      final colonAt = line.indexOf(':');
+      if (colonAt >= 0) {
+        calendarSummary = line.substring(colonAt + 1).trim();
+      }
+    }
+  }
+
+  events.sort((a, b) {
+    if (a.start == null && b.start == null) return 0;
+    if (a.start == null) return 1;
+    if (b.start == null) return -1;
+    return a.start!.compareTo(b.start!);
+  });
+
+  return _IcalPreview(
+    summary: calendarSummary,
+    eventCount: events.length,
+    firstStart: firstStart,
+    lastStart: lastStart,
+    sampleEvents: events.take(5).toList(growable: false),
+  );
+}
+
+/// Returns the first .ics entry from a zip archive (as UTF-8 text), or null
+/// if no .ics files are present.
+String? _extractFirstIcsFromZip(List<int> bytes) {
+  try {
+    final decoder = ZipDecoder();
+    final archive = decoder.decodeBytes(bytes);
+    for (final file in archive) {
+      if (file.isFile && file.name.toLowerCase().endsWith('.ics')) {
+        return utf8.decode(file.content as List<int>, allowMalformed: true);
+      }
+    }
+  } catch (_) {
+    return null;
+  }
+  return null;
+}
+
+/// Opens a local iCal/zip file picker, parses a preview, and shows a
+/// confirmation page with the event summary before forwarding to the
+/// backend via [onImport]. Accepts both .ics files and .zip archives
+/// (extracting the first .ics entry from the archive).
 Future<void> _showImportCalendarDialog(
   BuildContext context,
   Future<void> Function(String rawIcal, String title, {int? courseId}) onImport,
 ) async {
   final file = await openFile(
     acceptedTypeGroups: [
-      const XTypeGroup(label: 'iCal', extensions: ['ics'])
+      const XTypeGroup(label: 'iCal or zip', extensions: ['ics', 'zip'])
     ],
   );
   if (file == null) {
     return;
   }
-  final rawIcal = await file.readAsString();
+  String? rawIcal;
+  final lowerName = file.name.toLowerCase();
+  if (lowerName.endsWith('.zip')) {
+    final bytes = await file.readAsBytes();
+    rawIcal = _extractFirstIcsFromZip(bytes);
+    if (rawIcal == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No .ics file found inside the archive.')),
+        );
+      }
+      return;
+    }
+  } else {
+    rawIcal = await file.readAsString();
+  }
   if (!context.mounted) {
     return;
   }
-  await onImport(rawIcal, file.name);
+
+  final preview = _parseIcalPreview(rawIcal);
+  final defaultTitle = preview.summary.isNotEmpty
+      ? preview.summary
+      : file.name.replaceAll(RegExp(r'\.(ics|zip)$', caseSensitive: false), '');
+  final titleController = TextEditingController(text: defaultTitle);
+  var importing = false;
+
+  await showDialog<void>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        title: const Text('Review calendar import'),
+        content: SizedBox(
+          width: 460,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Source: ${file.name}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${preview.eventCount} event${preview.eventCount == 1 ? '' : 's'} parsed',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                if (preview.firstStart != null && preview.lastStart != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Date range: '
+                    '${preview.firstStart!.toIso8601String().split("T").first}'
+                    ' → '
+                    '${preview.lastStart!.toIso8601String().split("T").first}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+                const SizedBox(height: 12),
+                if (preview.sampleEvents.isNotEmpty) ...[
+                  Text(
+                    'Preview (up to 5 events):',
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                  const SizedBox(height: 6),
+                  for (final event in preview.sampleEvents)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('• '),
+                          Expanded(
+                            child: Text(
+                              event.start != null
+                                  ? '${event.summary} — ${event.start!.toIso8601String()}'
+                                  : event.summary,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                ],
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Calendar title',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: importing ? null : () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: importing
+                ? null
+                : () async {
+                    setState(() => importing = true);
+                    try {
+                      final title = titleController.text.trim().isEmpty
+                          ? 'Imported calendar'
+                          : titleController.text.trim();
+                      await onImport(rawIcal!, title);
+                      if (context.mounted) {
+                        Navigator.of(context).pop();
+                      }
+                    } catch (error) {
+                      setState(() => importing = false);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Import failed: $error')),
+                        );
+                      }
+                    }
+                  },
+            child: Text(importing ? 'Importing...' : 'Confirm import'),
+          ),
+        ],
+      ),
+    ),
+  );
+  titleController.dispose();
 }
 
 /// Opens a dialog for subscribing to a remote iCal feed.
@@ -1090,9 +1382,10 @@ Future<void> _showSubscribeCalendarDialog(
     builder: (context) => AlertDialog(
       title: const Text('Subscribe to calendar'),
       content: SizedBox(
-        width: 360,
+        width: 380,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TextField(
               controller: titleController,
@@ -1103,7 +1396,17 @@ Future<void> _showSubscribeCalendarDialog(
             TextField(
               controller: urlController,
               decoration: const InputDecoration(
-                  labelText: 'iCal URL', border: OutlineInputBorder()),
+                labelText: 'iCal URL or Google share link',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Supports Google Calendar share links (public URL or cid link) '
+              'and direct .ics URLs from iCloud, Outlook, or any iCal feed. '
+              'For best results, use "Secret address in iCal format" from '
+              'Google Calendar settings.',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
         ),

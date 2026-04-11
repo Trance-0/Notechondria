@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -39,7 +40,8 @@ void main() {
     const NotechondriaApp(
       initialIndex: 1,
       title: 'Notechondria Planner',
-      visibleIndices: <int>[0, 1, 2],
+      // 0=Learner, 1=Course, 2=Activity, 3=Settings
+      visibleIndices: <int>[0, 1, 2, 3],
     ),
   );
 }

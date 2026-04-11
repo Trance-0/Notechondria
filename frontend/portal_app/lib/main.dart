@@ -15,7 +15,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:http/http.dart' as http;
 import 'package:markdown/markdown.dart' as md;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher_string.dart';
 
 import 'core/url_strategy.dart'
     if (dart.library.html) 'core/url_strategy_web.dart' as url_strategy;
@@ -41,7 +40,9 @@ void main() {
     const NotechondriaApp(
       initialIndex: 0,
       title: 'Notechondria Portal',
-      visibleIndices: <int>[0, 4],
+      // 0=Front page, 1=Learner (from editor), 2=Course (from planner),
+      // 3=Activity (from planner), 4=Settings. All five visible in portal.
+      visibleIndices: <int>[0, 1, 2, 3, 4],
     ),
   );
 }

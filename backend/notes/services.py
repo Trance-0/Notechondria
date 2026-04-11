@@ -1,4 +1,6 @@
+import base64
 from datetime import datetime, timedelta, timezone as dt_timezone
+import urllib.parse
 import urllib.request
 
 from django.db.models import Count, Max, Sum
@@ -6,11 +8,13 @@ from django.utils import timezone
 
 from .models import (
     CalendarFeed,
+    Course,
     HeatmapActivity,
     HeatmapActivityTypeChoices,
     Note,
     NoteActivitySession,
     NoteBlock,
+    NoteBlockTypeChoices,
     NoteVersion,
     NoteIndex,
     PlannerEvent,
@@ -235,11 +239,171 @@ def parse_ical_datetime(raw_value: str):
     raise ValueError(f"Unsupported iCal datetime format: {raw_value}")
 
 
+def normalize_calendar_url(url: str) -> str:
+    """Convert common Google Calendar share URLs into their ``.ics`` form.
+
+    Users frequently paste the HTML share link from Google Calendar (the one
+    behind the "public URL" or "share" button) instead of the
+    ``Secret address in iCal format``. The HTML URLs can't be parsed as iCal,
+    so we rewrite them to the canonical
+    ``https://calendar.google.com/calendar/ical/<id>/public/basic.ics`` form
+    when we can confidently recover the calendar id.
+
+    Supported input shapes:
+
+    - ``https://calendar.google.com/calendar/ical/.../basic.ics`` (returned as-is)
+    - ``https://calendar.google.com/calendar/embed?src=<id>&...``
+    - ``https://calendar.google.com/calendar/u/0/r?cid=<base64>``
+    - ``https://calendar.google.com/calendar?cid=<base64>``
+
+    For any other URL (iCloud, Outlook, raw ``.ics`` files), the original URL
+    is returned unchanged so existing subscriptions keep working.
+    """
+
+    if not url:
+        return url
+    try:
+        parsed = urllib.parse.urlsplit(url)
+    except ValueError:
+        return url
+    host = (parsed.netloc or "").lower()
+    if "calendar.google.com" not in host:
+        return url
+    # Already an iCal endpoint — no rewrite needed.
+    if "/calendar/ical/" in parsed.path:
+        return url
+    query = urllib.parse.parse_qs(parsed.query)
+    cal_id = None
+    src_values = query.get("src") or []
+    if src_values:
+        cal_id = src_values[0]
+    if cal_id is None:
+        cid_values = query.get("cid") or []
+        if cid_values:
+            raw_cid = cid_values[0]
+            # Google's cid= parameter is base64-url encoded, occasionally
+            # without padding. Re-pad before decoding.
+            padding = "=" * (-len(raw_cid) % 4)
+            try:
+                decoded = base64.urlsafe_b64decode(raw_cid + padding)
+                cal_id = decoded.decode("utf-8", errors="ignore").strip()
+            except Exception:
+                cal_id = None
+    if not cal_id:
+        return url
+    quoted = urllib.parse.quote(cal_id, safe="")
+    return f"https://calendar.google.com/calendar/ical/{quoted}/public/basic.ics"
+
+
+WELCOME_NOTE_TITLE = "Welcome to Notechondria"
+
+WELCOME_NOTE_BODY = (
+    "Notechondria is an integrated workspace for taking notes, planning study "
+    "sessions, and sharing public courses. Here are a few things to try first:\n\n"
+    "- **Editor** — create a new note from the `+` button. Notes live inside "
+    "categories (this one is your Inbox); drag categories in the sidebar to "
+    "reorder them.\n"
+    "- **Planner** — the Course view shows subscribed courses and their "
+    "modules, and the Activity view lets you import an `.ics` file or "
+    "subscribe to a Google Calendar share link.\n"
+    "- **Portal** — the front page highlights recent public courses and an "
+    "activity heatmap for the whole platform.\n\n"
+    "### Keyboard shortcuts\n\n"
+    "- `Ctrl/Cmd + S` — save the current note\n"
+    "- Long-press the floating add button in Activity to import calendar "
+    "files or subscribe to a calendar feed\n\n"
+    "Feel free to delete this welcome note once you're done exploring. Your "
+    "Inbox category itself is pinned and cannot be removed — it's where any "
+    "orphaned notes are moved when you delete a category."
+)
+
+
+def seed_inbox_and_welcome_note(creator) -> Note | None:
+    """Ensure *creator* has a default Inbox category with a welcome note.
+
+    Idempotent — if the Inbox already exists with at least one note, this is
+    a no-op. Used by the email-verify and OAuth-register flows so new users
+    land on a non-empty workspace the first time they sign in.
+
+    Returns the welcome ``Note`` if one was created, or ``None`` if nothing
+    had to be done.
+    """
+
+    # Late imports avoid a circular dependency with ``notes.api`` (which in
+    # turn imports from ``services``).
+    from django.utils.text import slugify
+    from notechondria.utils import generate_unique_id
+
+    inbox = (
+        Course.objects.filter(creator_id=creator, is_default=True)
+        .order_by("id")
+        .first()
+    )
+    if inbox is None:
+        base = slugify("inbox") or "inbox"
+        slug_candidate = f"{base}-{creator.id}"
+        counter = 2
+        while Course.objects.filter(slug=slug_candidate).exists():
+            slug_candidate = f"{base}-{creator.id}-{counter}"
+            counter += 1
+        inbox = Course.objects.create(
+            creator_id=creator,
+            slug=slug_candidate,
+            title="Inbox",
+            description="Default category",
+            is_default=True,
+        )
+
+    # If the Inbox already contains any non-deleted notes, do not insert a
+    # second welcome copy — the user has already been through onboarding.
+    if Note.objects.filter(course_id=inbox, deleted_at__isnull=True).exists():
+        return None
+
+    note = Note.objects.create(
+        creator_id=creator,
+        course_id=inbox,
+        sharing_id=generate_unique_id(Note, "sharing_id"),
+        title=WELCOME_NOTE_TITLE,
+        description="A quick tour of Notechondria's editor, planner and portal.",
+        editor_mode="G",
+        content=WELCOME_NOTE_BODY,
+    )
+    # Persist the welcome markdown as block content so the editor renders the
+    # same text regardless of which editor mode the user opens it with.
+    title_block = NoteBlock.objects.create(
+        creator_id=creator,
+        note_id=note,
+        block_type=NoteBlockTypeChoices.TITLE,
+        text=WELCOME_NOTE_TITLE,
+        is_AI_generated=False,
+    )
+    NoteIndex.objects.create(note_id=note, index=0, noteblock_id=title_block)
+    body_block = NoteBlock.objects.create(
+        creator_id=creator,
+        note_id=note,
+        block_type=NoteBlockTypeChoices.TEXT,
+        text=WELCOME_NOTE_BODY,
+        is_AI_generated=False,
+    )
+    NoteIndex.objects.create(note_id=note, index=1, noteblock_id=body_block)
+    return note
+
+
 def read_calendar_feed(feed: CalendarFeed) -> str:
     if feed.raw_ical:
         return feed.raw_ical
     if feed.source_url:
-        with urllib.request.urlopen(feed.source_url, timeout=10) as response:
+        target = normalize_calendar_url(feed.source_url)
+        request = urllib.request.Request(
+            target,
+            headers={
+                # Some providers (notably Google Calendar) reject requests
+                # without a real User-Agent header.
+                "User-Agent": "Notechondria/0.1 (+calendar-feed)",
+                "Accept": "text/calendar, */*;q=0.1",
+            },
+        )
+        with urllib.request.urlopen(request, timeout=10) as response:
             return response.read().decode("utf-8")
     return ""
 

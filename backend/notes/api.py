@@ -43,6 +43,7 @@ from .services import (
     block_word_count,
     build_heatmap_payload,
     calendar_week_payload,
+    normalize_calendar_url,
     note_word_count,
     note_markdown,
     note_preview_lines,
@@ -1479,12 +1480,18 @@ class CalendarFeedListCreateApiView(APIView):
         course = None
         if serializer.validated_data.get("course_id") is not None:
             course = get_object_or_404(Course, pk=serializer.validated_data["course_id"])
+        # Normalize Google Calendar share URLs to their canonical `.ics` form
+        # before persisting. This turns the HTML share link that users most
+        # commonly paste into a URL the feed reader can actually consume.
+        source_url = serializer.validated_data.get("source_url") or ""
+        if source_url:
+            source_url = normalize_calendar_url(source_url)
         feed = CalendarFeed.objects.create(
             creator_id=creator,
             course_id=course,
             title=serializer.validated_data["title"],
             source_kind=serializer.validated_data.get("source_kind", "I"),
-            source_url=serializer.validated_data.get("source_url") or "",
+            source_url=source_url,
             raw_ical=serializer.validated_data.get("raw_ical") or "",
             is_enabled=serializer.validated_data.get("is_enabled", True),
         )

@@ -460,6 +460,11 @@ class VerifyEmailApiView(APIView):
         user.save(update_fields=["is_active"])
         verification.max_use = 0
         verification.save(update_fields=["max_use"])
+        # First successful verification — make sure the new account lands on a
+        # non-empty workspace. The helper is idempotent, so re-verifying an
+        # existing account never duplicates the welcome note.
+        from notes.services import seed_inbox_and_welcome_note
+        seed_inbox_and_welcome_note(ensure_creator(user))
         return Response(auth_payload(user, request=request))
 
 
@@ -883,7 +888,10 @@ def _get_or_create_oauth_user(provider: str, provider_uid: str, email: str,
         email=email,
         extra_data=extra_data,
     )
-    ensure_creator(user)
+    # OAuth-created accounts skip the email-verify flow entirely, so seed the
+    # welcome note here instead. The helper is idempotent and cheap.
+    from notes.services import seed_inbox_and_welcome_note
+    seed_inbox_and_welcome_note(ensure_creator(user))
     return auth_payload(user, request=request)
 
 

@@ -1,5 +1,21 @@
 part of notechondria_frontend;
 
+/// Holds a group of notes that share a course (folder) for the grouped
+/// rendering in the learner view.
+class _NoteFolder {
+  _NoteFolder({
+    required this.key,
+    required this.title,
+    required this.courseId,
+    required this.notes,
+  });
+
+  final String key;
+  final String title;
+  final int? courseId;
+  final List<Map<String, dynamic>> notes;
+}
+
 /// Learner module centered on recent notes, search, and editing workflows.
 class _LearnerPage extends StatefulWidget {
   const _LearnerPage({
@@ -138,6 +154,56 @@ class _LearnerPageState extends State<_LearnerPage> {
     rows.sort((a, b) =>
         _localSearchScore(b, query).compareTo(_localSearchScore(a, query)));
     return rows;
+  }
+
+  /// Returns notes grouped by their course (folder) with most-recent-first
+  /// ordering within each group. Notes without a course land in an
+  /// "Uncategorized" bucket. The outer list is sorted by the group's most
+  /// recent note so the freshest folder floats to the top.
+  List<_NoteFolder> _groupNotesByCourse(List<Map<String, dynamic>> notes) {
+    if (notes.isEmpty) {
+      return const [];
+    }
+    final buckets = <String, _NoteFolder>{};
+    for (final note in notes) {
+      final course = Map<String, dynamic>.from(note['course'] as Map? ?? const {});
+      final courseId = (course['id'] as num?)?.toInt();
+      final key = courseId != null ? 'c$courseId' : 'none';
+      final title = (course['title']?.toString().trim().isNotEmpty ?? false)
+          ? course['title']!.toString()
+          : 'Uncategorized';
+      final bucket = buckets.putIfAbsent(
+        key,
+        () => _NoteFolder(
+          key: key,
+          title: title,
+          courseId: courseId,
+          notes: <Map<String, dynamic>>[],
+        ),
+      );
+      bucket.notes.add(note);
+    }
+    // Sort each bucket's notes by `updated_at` descending (fall back to `created_at`).
+    int compareRecency(Map<String, dynamic> a, Map<String, dynamic> b) {
+      final aTs = a['updated_at']?.toString() ??
+          a['created_at']?.toString() ??
+          '';
+      final bTs = b['updated_at']?.toString() ??
+          b['created_at']?.toString() ??
+          '';
+      return bTs.compareTo(aTs);
+    }
+    for (final bucket in buckets.values) {
+      bucket.notes.sort(compareRecency);
+    }
+    // Sort buckets by their most-recent note.
+    final folders = buckets.values.toList(growable: false);
+    folders.sort((a, b) {
+      if (a.notes.isEmpty) return 1;
+      if (b.notes.isEmpty) return -1;
+      return compareRecency(a.notes.first, b.notes.first);
+    });
+    return folders;
   }
 
   /// Opens the note editor and records the note-edit session around the dialog.
@@ -314,16 +380,18 @@ class _LearnerPageState extends State<_LearnerPage> {
                   onExport: () => widget.onExportNote(note),
                   onDelete: () => widget.onDeleteNote(note),
                 ),
+            // Cloud notes are grouped by course (folder) with expandable
+            // sections, chronological order within each folder, and all
+            // folders expanded by default.
             if (widget.isAuthenticated)
-              for (final note in widget.notes)
-                _LearnerNoteCard(
-                  note: note,
+              for (final folder in _groupNotesByCourse(widget.notes))
+                _NoteFolderSection(
+                  folder: folder,
                   apiBaseUrl: widget.apiBaseUrl,
-                  canEdit: true,
-                  onOpen: () => _openViewer(note),
-                  onEdit: () => _openEditor(note),
-                  onExport: () => widget.onExportNote(note),
-                  onDelete: () => widget.onDeleteNote(note),
+                  onOpen: _openViewer,
+                  onEdit: _openEditor,
+                  onExport: widget.onExportNote,
+                  onDelete: widget.onDeleteNote,
                 ),
             if (widget.isAuthenticated && localDrafts.isNotEmpty) ...[
               const SizedBox(height: 20),
@@ -382,6 +450,79 @@ class _LearnerPageState extends State<_LearnerPage> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Expandable folder grouping cloud notes by their course. Defaults to
+/// expanded so everything is visible at a glance, and each inner row is a
+/// regular `_LearnerNoteCard` so card behavior stays consistent with the
+/// previous flat rendering.
+class _NoteFolderSection extends StatefulWidget {
+  const _NoteFolderSection({
+    required this.folder,
+    required this.apiBaseUrl,
+    required this.onOpen,
+    required this.onEdit,
+    required this.onExport,
+    required this.onDelete,
+  });
+
+  final _NoteFolder folder;
+  final String? apiBaseUrl;
+  final void Function(Map<String, dynamic> note) onOpen;
+  final void Function(Map<String, dynamic> note) onEdit;
+  final Future<void> Function(Map<String, dynamic> note) onExport;
+  final Future<void> Function(Map<String, dynamic> note) onDelete;
+
+  @override
+  State<_NoteFolderSection> createState() => _NoteFolderSectionState();
+}
+
+class _NoteFolderSectionState extends State<_NoteFolderSection> {
+  bool _expanded = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Theme(
+        // Drop ExpansionTile's default divider so it blends into the card.
+        data: theme.copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: true,
+          onExpansionChanged: (value) => setState(() => _expanded = value),
+          leading: Icon(
+            _expanded ? Icons.folder_open_outlined : Icons.folder_outlined,
+            color: theme.colorScheme.primary,
+          ),
+          title: Text(
+            widget.folder.title,
+            style: theme.textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          subtitle: Text(
+            '${widget.folder.notes.length} note${widget.folder.notes.length == 1 ? '' : 's'}',
+            style: theme.textTheme.bodySmall,
+          ),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final note in widget.folder.notes)
+              _LearnerNoteCard(
+                note: note,
+                apiBaseUrl: widget.apiBaseUrl,
+                canEdit: true,
+                onOpen: () => widget.onOpen(note),
+                onEdit: () => widget.onEdit(note),
+                onExport: () => widget.onExport(note),
+                onDelete: () => widget.onDelete(note),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

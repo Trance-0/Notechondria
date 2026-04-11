@@ -24,7 +24,11 @@ from .models import (
     PlannerEvent,
     RecycleBinEntry,
 )
-from .services import parse_ical_datetime
+from .services import (
+    normalize_calendar_url,
+    parse_ical_datetime,
+    seed_inbox_and_welcome_note,
+)
 
 
 class NoteBlockMarkdownTests(TestCase):
@@ -973,3 +977,104 @@ class CalendarParsingTests(TestCase):
         self.assertEqual(parsed.year, 2026)
         self.assertEqual(parsed.hour, 15)
         self.assertEqual(parsed.minute, 0)
+
+
+class NormalizeCalendarUrlTests(TestCase):
+    def test_direct_ical_url_is_returned_as_is(self):
+        url = (
+            'https://calendar.google.com/calendar/ical/'
+            'example%40group.calendar.google.com/public/basic.ics'
+        )
+        self.assertEqual(normalize_calendar_url(url), url)
+
+    def test_icloud_webcal_passthrough(self):
+        url = 'https://p123-caldav.icloud.com/published/2/abcd'
+        self.assertEqual(normalize_calendar_url(url), url)
+
+    def test_google_embed_src_rewrite(self):
+        url = (
+            'https://calendar.google.com/calendar/embed?'
+            'src=example%40group.calendar.google.com&ctz=Asia%2FShanghai'
+        )
+        self.assertEqual(
+            normalize_calendar_url(url),
+            'https://calendar.google.com/calendar/ical/'
+            'example%40group.calendar.google.com/public/basic.ics',
+        )
+
+    def test_google_cid_rewrite(self):
+        # base64-url of "example@group.calendar.google.com"
+        import base64
+        cid = base64.urlsafe_b64encode(
+            b'example@group.calendar.google.com'
+        ).decode('ascii').rstrip('=')
+        url = f'https://calendar.google.com/calendar/u/0/r?cid={cid}'
+        self.assertEqual(
+            normalize_calendar_url(url),
+            'https://calendar.google.com/calendar/ical/'
+            'example%40group.calendar.google.com/public/basic.ics',
+        )
+
+    def test_empty_url_returned_unchanged(self):
+        self.assertEqual(normalize_calendar_url(''), '')
+
+
+class WelcomeNoteSeedingTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='welcome-user', password='pw')
+        self.creator = Creator.objects.create(user_id=self.user)
+
+    def test_seed_creates_inbox_and_welcome_note(self):
+        # Brand-new creator, no Inbox yet.
+        self.assertFalse(
+            Course.objects.filter(creator_id=self.creator).exists()
+        )
+        note = seed_inbox_and_welcome_note(self.creator)
+
+        self.assertIsNotNone(note)
+        inbox = Course.objects.get(creator_id=self.creator, is_default=True)
+        self.assertEqual(inbox.title, 'Inbox')
+        self.assertEqual(note.course_id, inbox)
+        self.assertIn('Welcome to Notechondria', note.title)
+        self.assertEqual(
+            NoteBlock.objects.filter(note_id=note).count(), 2
+        )
+
+    def test_seed_is_idempotent_when_inbox_has_notes(self):
+        inbox = Course.objects.create(
+            creator_id=self.creator,
+            slug='inbox-existing',
+            title='Inbox',
+            is_default=True,
+        )
+        Note.objects.create(
+            creator_id=self.creator,
+            course_id=inbox,
+            sharing_id='existing-note',
+            title='Existing',
+        )
+
+        result = seed_inbox_and_welcome_note(self.creator)
+
+        self.assertIsNone(result)
+        self.assertEqual(
+            Note.objects.filter(creator_id=self.creator, course_id=inbox).count(),
+            1,
+        )
+
+    def test_seed_reuses_existing_empty_inbox(self):
+        inbox = Course.objects.create(
+            creator_id=self.creator,
+            slug='inbox-empty',
+            title='Inbox',
+            is_default=True,
+        )
+
+        note = seed_inbox_and_welcome_note(self.creator)
+
+        self.assertIsNotNone(note)
+        self.assertEqual(note.course_id_id, inbox.id)
+        self.assertEqual(
+            Course.objects.filter(creator_id=self.creator, is_default=True).count(),
+            1,
+        )

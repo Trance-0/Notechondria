@@ -2703,14 +2703,18 @@ Capture deadlines, sequencing, and blockers here.''',
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Column(
                         children: [
-                          for (final index in _visibleIndices.where((index) => index != 4))
+                          // Non-settings entries only; Settings is pinned to
+                          // the bottom of the sidebar below. Planner_app has
+                          // only 4 modules (0=Learner, 1=Course, 2=Activity,
+                          // 3=Settings).
+                          for (final index in _visibleIndices.where((index) => index != 3))
                             _SidebarItem(
                               icon: (_destinations[index].icon as Icon).icon!,
                               label: _titles[index],
                               selected: _selectedIndex == index,
                               onTap: () => _selectActualIndex(index),
                             ),
-                          if (subscribedCourses.isNotEmpty && _visibleIndices.contains(2)) ...[
+                          if (subscribedCourses.isNotEmpty && _visibleIndices.contains(1)) ...[
                             const SizedBox(height: 12),
                             Flexible(
                               child: _WideCourseSidebarSection(
@@ -2725,7 +2729,7 @@ Capture deadlines, sequencing, and blockers here.''',
                                 },
                                 onSelectCourse: (course) {
                                   setState(() {
-                                    _selectedIndex = 2;
+                                    _selectedIndex = 1;
                                   });
                                   _selectCourse(course);
                                 },
@@ -2736,14 +2740,14 @@ Capture deadlines, sequencing, and blockers here.''',
                       ),
                     ),
                   ),
-                  if (_visibleIndices.contains(4))
+                  if (_visibleIndices.contains(3))
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
                       child: _SidebarItem(
                         icon: Icons.settings_outlined,
                         label: 'Settings',
-                        selected: _selectedIndex == 4,
-                        onTap: () => _selectActualIndex(4),
+                        selected: _selectedIndex == 3,
+                        onTap: () => _selectActualIndex(3),
                       ),
                     ),
                 ],
