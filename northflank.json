@@ -1,13 +1,6 @@
 {
   "apiVersion": "v1.2",
-  "name": "notechondria",
-  "description": "Notechondria backend and managed PostgreSQL on Northflank. Cloudflare R2 provides static and media storage.",
   "arguments": {},
-  "argumentOverrides": {},
-  "options": {
-    "autorun": false,
-    "concurrencyPolicy": "allow"
-  },
   "spec": {
     "kind": "Workflow",
     "spec": {
@@ -139,5 +132,17 @@
         }
       ]
     }
-  }
+  },
+  "options": {
+    "autorun": false,
+    "concurrencyPolicy": "allow"
+  },
+  "gitops": {
+    "repoUrl": "https://github.com/Trance-0/Notechondria",
+    "vcsService": "github",
+    "accountLogin": "Trance-0",
+    "branch": "codex",
+    "filePath": "/northflank.json"
+  },
+  "$schema": "https://api.northflank.com/v1/schemas/template"
 }
