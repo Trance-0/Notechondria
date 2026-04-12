@@ -53,18 +53,7 @@
               "instances": 1,
               "docker": {
                 "configType": "customCommand",
-                "customCommand": [
-                  "gunicorn",
-                  "notechondria.wsgi:application",
-                  "--chdir",
-                  "/home/notechondria",
-                  "--bind",
-                  "0.0.0.0:${PORT}",
-                  "--workers",
-                  "${WEB_CONCURRENCY}",
-                  "--timeout",
-                  "120"
-                ]
+                "customCommand": "gunicorn notechondria.wsgi:application --chdir /home/notechondria --bind 0.0.0.0:${PORT} --workers ${WEB_CONCURRENCY} --timeout 120"
               }
             },
             "ports": [
