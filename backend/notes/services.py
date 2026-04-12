@@ -1,5 +1,6 @@
 import base64
 from datetime import datetime, timedelta, timezone as dt_timezone
+from typing import Optional
 import urllib.parse
 import urllib.request
 
@@ -318,7 +319,7 @@ WELCOME_NOTE_BODY = (
 )
 
 
-def seed_inbox_and_welcome_note(creator) -> Note | None:
+def seed_inbox_and_welcome_note(creator) -> Optional[Note]:
     """Ensure *creator* has a default Inbox category with a welcome note.
 
     Idempotent — if the Inbox already exists with at least one note, this is

@@ -80,7 +80,16 @@ export DJANGO_PRODUCTION_MEDIA_ROOT
 mkdir -p "${DJANGO_PRODUCTION_STATIC_ROOT}"
 mkdir -p "${DJANGO_PRODUCTION_MEDIA_ROOT}"
 
-python manage.py migrate
+# Detect whether the target database has ever been migrated. If it hasn't,
+# or if any migrations are still unapplied, run `manage.py migrate`. On a
+# fresh Northflank/Render addon the schema is empty and this is what
+# bootstraps it; on an existing DB this is a no-op when nothing is pending.
+if python manage.py migrate --check >/dev/null 2>&1; then
+    echo "Database schema is up to date; skipping migrate."
+else
+    echo "Database schema is missing or has pending migrations; running migrate."
+    python manage.py migrate --noinput
+fi
 python manage.py bootstrap_platform
 echo "Collecting static files into ${DJANGO_PRODUCTION_STATIC_ROOT}"
 python manage.py collectstatic --noinput --clear
