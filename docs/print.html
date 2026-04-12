@@ -816,9 +816,14 @@ link it instead of pasting plaintext secrets.</p>
 </li>
 <li>
 <p><strong>Build and deploy.</strong> First build pulls Python 3.9, installs requirements,
-then the container starts. The entrypoint (<code>backend/entrypoint.sh</code>) waits
-for Postgres, runs <code>migrate</code>, <code>bootstrap_platform</code>, <code>collectstatic --clear</code>,
-then execs gunicorn.</p>
+then the container starts. The Dockerfile's <code>ENTRYPOINT ["/entrypoint.sh"]</code>
+waits for Postgres, runs <code>migrate</code>, <code>bootstrap_platform</code>, and
+<code>collectstatic --clear</code>, then execs the container command. Northflank sets
+that command (via the template's <code>customCommand</code>) to launch gunicorn on
+<code>${PORT}</code>. If you configure the service manually, set Docker config to
+<strong>Custom command only</strong> and paste:</p>
+<pre><code class="language-text">gunicorn notechondria.wsgi:application --chdir /home/notechondria --bind 0.0.0.0:${PORT} --workers ${WEB_CONCURRENCY} --timeout 120
+</code></pre>
 </li>
 </ol>
 <h2 id="required-environment-variables-1"><a class="header" href="#required-environment-variables-1">Required environment variables</a></h2>
