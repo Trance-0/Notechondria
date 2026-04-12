@@ -135,4 +135,19 @@ if missing:
 print("Verified Django admin and DRF static assets are present.")
 PY
 
+if [ "$#" -eq 0 ]; then
+    # No CMD supplied (Northflank's "configType: default" leaves Dockerfile
+    # CMD empty, and our Dockerfile doesn't declare one). Fall back to the
+    # gunicorn invocation we want everywhere. Docker-compose and Jenkins
+    # override this by passing `command:` explicitly.
+    port="${PORT:-8000}"
+    workers="${WEB_CONCURRENCY:-2}"
+    echo "No CMD passed; starting gunicorn on 0.0.0.0:${port} with ${workers} worker(s)."
+    exec gunicorn notechondria.wsgi:application \
+        --chdir /home/notechondria \
+        --bind "0.0.0.0:${port}" \
+        --workers "${workers}" \
+        --timeout 120
+fi
+
 exec "$@"
