@@ -84,9 +84,16 @@ The three Flutter frontends still deploy separately to GitHub Pages via
    link it instead of pasting plaintext secrets.
 
 6. **Build and deploy.** First build pulls Python 3.9, installs requirements,
-   then the container starts. The entrypoint (`backend/entrypoint.sh`) waits
-   for Postgres, runs `migrate`, `bootstrap_platform`, `collectstatic --clear`,
-   then execs gunicorn.
+   then the container starts. The Dockerfile's `ENTRYPOINT ["/entrypoint.sh"]`
+   waits for Postgres, runs `migrate`, `bootstrap_platform`, and
+   `collectstatic --clear`, then execs the container command. Northflank sets
+   that command (via the template's `customCommand`) to launch gunicorn on
+   `${PORT}`. If you configure the service manually, set Docker config to
+   **Custom command only** and paste:
+
+   ```text
+   gunicorn notechondria.wsgi:application --chdir /home/notechondria --bind 0.0.0.0:${PORT} --workers ${WEB_CONCURRENCY} --timeout 120
+   ```
 
 ## Required environment variables
 

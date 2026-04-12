@@ -52,12 +52,18 @@
             "deployment": {
               "instances": 1,
               "docker": {
-                "configType": "custom",
-                "customEntrypoint": ["/entrypoint.sh"],
+                "configType": "customCommand",
                 "customCommand": [
-                  "bash",
-                  "-c",
-                  "python manage.py migrate --noinput && python manage.py bootstrap_platform || true; python manage.py collectstatic --noinput --clear && exec gunicorn notechondria.wsgi:application --bind 0.0.0.0:${PORT} --workers ${WEB_CONCURRENCY} --timeout 120"
+                  "gunicorn",
+                  "notechondria.wsgi:application",
+                  "--chdir",
+                  "/home/notechondria",
+                  "--bind",
+                  "0.0.0.0:${PORT}",
+                  "--workers",
+                  "${WEB_CONCURRENCY}",
+                  "--timeout",
+                  "120"
                 ]
               }
             },
