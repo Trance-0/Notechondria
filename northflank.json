@@ -36,9 +36,8 @@
                   "tlsEnabled": true,
                   "billing": {
                     "replicas": 1,
-                    "storage": 4096,
-                    "storageClass": "ssd",
-                    "deploymentPlan": "nf-compute-20"
+                    "storage": 1024,
+                    "deploymentPlan": "notechondria-postgres-postgresql-0"
                   }
                 }
               },
@@ -48,8 +47,7 @@
                 "spec": {
                   "name": "notechondria-backend",
                   "billing": {
-                    "deploymentPlan": "nf-compute-20",
-                    "buildPlan": "nf-compute-400-16"
+                    "deploymentPlan": "notechondria-backend"
                   },
                   "deployment": {
                     "instances": 1,
@@ -67,7 +65,7 @@
                   "vcsData": {
                     "projectType": "github",
                     "projectUrl": "https://github.com/Trance-0/Notechondria",
-                    "projectBranch": "main"
+                    "projectBranch": "codex"
                   },
                   "buildSettings": {
                     "dockerfile": {
