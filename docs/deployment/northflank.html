@@ -1,0 +1,409 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Northflank - Notechondria Documentation</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "navy";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../TASKS.html">Tasks</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">API</li><li class="chapter-item expanded "><a href="../api/backend_api_spec.html"><strong aria-hidden="true">1.</strong> Backend API Specification</a></li><li class="chapter-item expanded affix "><li class="part-title">Deployment</li><li class="chapter-item expanded "><a href="../deployment/deploy.html"><strong aria-hidden="true">2.</strong> Deployment Guide</a></li><li class="chapter-item expanded "><a href="../deployment/render_free_tier.html"><strong aria-hidden="true">3.</strong> Render Free Tier</a></li><li class="chapter-item expanded "><a href="../deployment/northflank.html" class="active"><strong aria-hidden="true">4.</strong> Northflank</a></li><li class="chapter-item expanded affix "><li class="part-title">Development</li><li class="chapter-item expanded "><a href="../development/local_dev.html"><strong aria-hidden="true">5.</strong> Local Development Guide</a></li><li class="chapter-item expanded "><a href="../development/python_environments.html"><strong aria-hidden="true">6.</strong> Python Environments</a></li><li class="chapter-item expanded "><a href="../canvas_like_calendar_mvp.html"><strong aria-hidden="true">7.</strong> Canvas-like Calendar MVP</a></li><li class="chapter-item expanded affix "><li class="part-title">Integrations</li><li class="chapter-item expanded "><a href="../integrations/github_app_integration.html"><strong aria-hidden="true">8.</strong> GitHub App Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">Operations</li><li class="chapter-item expanded "><a href="../operations/postgres_migration.html"><strong aria-hidden="true">9.</strong> PostgreSQL Migration</a></li><li class="chapter-item expanded affix "><li class="part-title">Testing</li><li class="chapter-item expanded "><a href="../testing/backend_test_plan.html"><strong aria-hidden="true">10.</strong> Backend Test Plan</a></li><li class="chapter-item expanded affix "><li class="part-title">Versions</li><li class="chapter-item expanded "><a href="../versions/0.1.18.html"><strong aria-hidden="true">11.</strong> 0.1.18 — Ics import dialog, calendar subscribe fix, welcome note, portal root</a></li><li class="chapter-item expanded "><a href="../versions/0.1.17.html"><strong aria-hidden="true">12.</strong> 0.1.17 — Splash polish, OAuth bind guard, API key visibility</a></li><li class="chapter-item expanded "><a href="../versions/0.1.16.html"><strong aria-hidden="true">13.</strong> 0.1.16 — MCP server, API key auth, front-page + media fixes</a></li><li class="chapter-item expanded "><a href="../versions/0.1.15.html"><strong aria-hidden="true">14.</strong> 0.1.15</a></li><li class="chapter-item expanded "><a href="../versions/0.1.14.html"><strong aria-hidden="true">15.</strong> 0.1.14</a></li><li class="chapter-item expanded "><a href="../versions/0.1.13.html"><strong aria-hidden="true">16.</strong> 0.1.13</a></li><li class="chapter-item expanded "><a href="../versions/0.1.12.html"><strong aria-hidden="true">17.</strong> 0.1.12</a></li><li class="chapter-item expanded "><a href="../versions/0.1.11.html"><strong aria-hidden="true">18.</strong> 0.1.11</a></li><li class="chapter-item expanded "><a href="../versions/0.1.10.html"><strong aria-hidden="true">19.</strong> 0.1.10</a></li><li class="chapter-item expanded "><a href="../versions/0.1.9.html"><strong aria-hidden="true">20.</strong> 0.1.9</a></li><li class="chapter-item expanded "><a href="../versions/0.1.8.html"><strong aria-hidden="true">21.</strong> 0.1.8</a></li><li class="chapter-item expanded "><a href="../versions/0.1.7.html"><strong aria-hidden="true">22.</strong> 0.1.7</a></li><li class="chapter-item expanded "><a href="../versions/0.1.6.html"><strong aria-hidden="true">23.</strong> 0.1.6</a></li><li class="chapter-item expanded "><a href="../versions/0.1.5.html"><strong aria-hidden="true">24.</strong> 0.1.5</a></li><li class="chapter-item expanded "><a href="../versions/0.1.4.html"><strong aria-hidden="true">25.</strong> 0.1.4</a></li><li class="chapter-item expanded "><a href="../versions/0.1.3.html"><strong aria-hidden="true">26.</strong> 0.1.3</a></li><li class="chapter-item expanded "><a href="../versions/0.1.2.html"><strong aria-hidden="true">27.</strong> 0.1.2</a></li><li class="chapter-item expanded "><a href="../versions/0.1.1.html"><strong aria-hidden="true">28.</strong> 0.1.1</a></li><li class="chapter-item expanded "><a href="../versions/0.1.0.html"><strong aria-hidden="true">29.</strong> 0.1.0</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Notechondria Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria/edit/codex/docs/./deployment/northflank.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="northflank-backend-deployment"><a class="header" href="#northflank-backend-deployment">Northflank backend deployment</a></h1>
+<p>This document describes deploying the Notechondria Django backend to
+<a href="https://northflank.com/">Northflank</a> with Northflank's managed PostgreSQL
+addon. Cloudflare R2 continues to handle static and media storage, since
+Northflank service filesystems are ephemeral across redeploys.</p>
+<h2 id="what-this-covers"><a class="header" href="#what-this-covers">What this covers</a></h2>
+<ul>
+<li>Django backend only (one Northflank <code>Combined Service</code>)</li>
+<li>Managed PostgreSQL via the Northflank <code>postgres</code> addon</li>
+<li>Gunicorn web service on the Dockerfile-declared port <code>8000</code></li>
+<li>Static and media files on Cloudflare R2</li>
+</ul>
+<p>The three Flutter frontends still deploy separately to GitHub Pages via
+<code>.github/workflows/frontend-pages.yml</code>.</p>
+<h2 id="files-in-this-repo"><a class="header" href="#files-in-this-repo">Files in this repo</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Path</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><code>northflank.json</code></td><td>Northflank v1 template: project + postgres addon + combined service. Import via <code>northflank template create --file northflank.json</code> or the dashboard <code>Templates &gt; Create</code> UI.</td></tr>
+<tr><td><code>sample.northflank.env</code></td><td>Copyable env block for the backend service. Paste into <code>Service &gt; Environment &gt; Edit as text</code>.</td></tr>
+<tr><td><code>deployment/northflank/scripts/northflank_start.sh</code></td><td>Optional start script. Use this as the Combined Service custom command if you prefer not to keep the boot logic inline.</td></tr>
+<tr><td><code>backend/Dockerfile</code></td><td>Unchanged — build context is the repo root with <code>dockerFilePath: /backend/Dockerfile</code>.</td></tr>
+</tbody></table>
+</div>
+<h2 id="option-a--apply-the-template-recommended"><a class="header" href="#option-a--apply-the-template-recommended">Option A — Apply the template (recommended)</a></h2>
+<ol>
+<li>
+<p><strong>Install the Northflank CLI</strong> and authenticate:</p>
+<pre><code class="language-bash">npm install -g @northflank/cli
+northflank login
+</code></pre>
+</li>
+<li>
+<p><strong>Apply the template</strong>, overriding arguments for your repo/region as needed:</p>
+<pre><code class="language-bash">northflank template create --file northflank.json \
+  --arg NF_VCS_URL=https://github.com/&lt;you&gt;/Notechondria \
+  --arg NF_VCS_BRANCH=main \
+  --arg NF_PROJECT_REGION=us-central
+</code></pre>
+<p>This creates a project called <code>notechondria</code>, a <code>notechondria-postgres</code>
+addon, and a <code>notechondria-backend</code> Combined Service that builds from the
+repo's <code>backend/Dockerfile</code>.</p>
+</li>
+<li>
+<p><strong>Configure secrets</strong> — the template seeds <code>DJANGO_SECRET_KEY</code> with
+<code>REPLACE_ME_FROM_SECRET_GROUP</code>. Create a Secret Group (e.g. <code>notechondria-secrets</code>),
+add the variables from <code>sample.northflank.env</code>, and link it to the service.</p>
+</li>
+<li>
+<p><strong>Link the addon</strong> — from the service page, <code>Environment &gt; Link addon &gt; notechondria-postgres</code> and pick the preset that maps to
+<code>POSTGRE_HOST</code>/<code>POSTGRE_PORT</code>/<code>POSTGRE_DB</code>/<code>POSTGRE_USERNAME</code>/<code>POSTGRE_PASSWORD</code>.
+(The template wires these via <code>${refs.postgres.*}</code>, but linking ensures
+rotation on addon recreation.)</p>
+</li>
+<li>
+<p><strong>Trigger the first build</strong> from <code>Service &gt; Builds &gt; Start build</code>.</p>
+</li>
+</ol>
+<h2 id="option-b--manual-setup-in-the-dashboard"><a class="header" href="#option-b--manual-setup-in-the-dashboard">Option B — Manual setup in the dashboard</a></h2>
+<ol>
+<li>
+<p><strong>Create a project.</strong> <code>Create project &gt; notechondria</code>, pick a region close
+to your users.</p>
+</li>
+<li>
+<p><strong>Provision PostgreSQL.</strong> <code>Addons &gt; Add addon &gt; PostgreSQL</code>. Pick version
+<code>15.x</code>, 1 replica, at least 4GB storage. Name it <code>notechondria-postgres</code>.
+Enable TLS. Wait for <code>Running</code>.</p>
+</li>
+<li>
+<p><strong>Create the backend service.</strong> <code>Create new &gt; Combined service</code>.</p>
+<ul>
+<li><strong>Name:</strong> <code>notechondria-backend</code></li>
+<li><strong>VCS:</strong> select your fork of this repo, branch <code>main</code> (or <code>codex</code>).</li>
+<li><strong>Build method:</strong> Dockerfile
+<ul>
+<li><strong>Dockerfile path:</strong> <code>/backend/Dockerfile</code></li>
+<li><strong>Build context / work dir:</strong> <code>/</code> (repo root — required because the
+Dockerfile <code>COPY backend/</code> and <code>COPY sample/</code> commands run from there)</li>
+</ul>
+</li>
+<li><strong>Port:</strong> <code>8000</code>, HTTP, public.</li>
+<li><strong>Resources:</strong> <code>nf-compute-20</code> is enough for a smoke deployment.</li>
+</ul>
+</li>
+<li>
+<p><strong>Link the PostgreSQL addon</strong> to inject <code>POSTGRE_*</code> and <code>DATABASE_URL</code>.</p>
+</li>
+<li>
+<p><strong>Add the backend env variables</strong> from <code>sample.northflank.env</code> (paste into
+<code>Environment &gt; Edit as text</code>). Put every credential into a Secret Group and
+link it instead of pasting plaintext secrets.</p>
+</li>
+<li>
+<p><strong>Build and deploy.</strong> First build pulls Python 3.9, installs requirements,
+then the container starts. The entrypoint (<code>backend/entrypoint.sh</code>) waits
+for Postgres, runs <code>migrate</code>, <code>bootstrap_platform</code>, <code>collectstatic --clear</code>,
+then execs gunicorn.</p>
+</li>
+</ol>
+<h2 id="required-environment-variables"><a class="header" href="#required-environment-variables">Required environment variables</a></h2>
+<p>Set these in the Northflank dashboard (or via the Secret Group):</p>
+<h3 id="django-core"><a class="header" href="#django-core">Django core</a></h3>
+<ul>
+<li><code>DJANGO_SECRET_KEY</code> — 50-char random string</li>
+<li><code>DJANGO_ALLOWED_HOSTS</code> — e.g. <code>*</code> or <code>&lt;service&gt;--notechondria.&lt;region&gt;.code.run,notechondria.example.com</code></li>
+<li><code>DJANGO_CSRF_TRUSTED_ORIGINS</code> — e.g. <code>https://*.code.run,https://notechondria.example.com</code></li>
+<li><code>DJANGO_DEBUG=False</code></li>
+<li><code>BACKEND_CUSTOM_DOMAIN</code> <em>(optional)</em> — custom domain attached via
+<code>Project &gt; Domains</code></li>
+</ul>
+<h3 id="database"><a class="header" href="#database">Database</a></h3>
+<p>Provided by the addon link:</p>
+<ul>
+<li><code>DATABASE_URL</code></li>
+<li><code>POSTGRE_HOST</code>, <code>POSTGRE_PORT</code>, <code>POSTGRE_DB</code>, <code>POSTGRE_USERNAME</code>, <code>POSTGRE_PASSWORD</code></li>
+</ul>
+<h3 id="cloudflare-r2-required"><a class="header" href="#cloudflare-r2-required">Cloudflare R2 (required)</a></h3>
+<p>Same five variables as the Render deployment — the code paths are identical:</p>
+<div class="table-wrapper"><table><thead><tr><th>Variable</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>CLOUDFLARE_R2_BUCKET_NAME</code></td><td>R2 bucket name</td></tr>
+<tr><td><code>CLOUDFLARE_R2_ACCOUNT_ID</code></td><td>Cloudflare account ID</td></tr>
+<tr><td><code>CLOUDFLARE_R2_ACCESS_KEY_ID</code></td><td>R2 API token access key</td></tr>
+<tr><td><code>CLOUDFLARE_R2_SECRET_ACCESS_KEY</code></td><td>R2 API token secret key</td></tr>
+<tr><td><code>CLOUDFLARE_R2_CUSTOM_DOMAIN</code> <em>(optional)</em></td><td>Public R2 hostname</td></tr>
+</tbody></table>
+</div>
+<p>When <code>CLOUDFLARE_R2_BUCKET_NAME</code> is set, Django auto-switches to R2 for both
+static and media files. <strong>If the bucket name is set but any of the three
+required credentials are missing, the app will fail to start.</strong></p>
+<h3 id="smtp-and-oauth"><a class="header" href="#smtp-and-oauth">SMTP and OAuth</a></h3>
+<p>Optional but required if you use email verification or social sign-in — see
+<code>sample.northflank.env</code> for the full list (<code>SMTP_*</code>, <code>GOOGLE_OAUTH_*</code>,
+<code>GITHUB_APP_*</code>).</p>
+<h2 id="runtime-behaviour"><a class="header" href="#runtime-behaviour">Runtime behaviour</a></h2>
+<ul>
+<li>Northflank injects <code>PORT</code>; the Dockerfile <code>EXPOSE 8000</code> must match the
+service port setting. The template uses <code>8000</code> for both.</li>
+<li><code>entrypoint.sh</code> waits up to 300 s for <code>POSTGRE_HOST:POSTGRE_PORT</code> before
+running <code>migrate</code>. If the addon link is missing or the password is wrong, the
+container exits with a clear error.</li>
+<li><code>collectstatic --noinput --clear</code> uploads built assets to
+<code>&lt;bucket&gt;/static/</code> on every deploy; user uploads live under <code>&lt;bucket&gt;/media/</code>.</li>
+<li>Health check: hit <code>/api/health/</code> (returns <code>200 OK</code>). Configure under
+<code>Service &gt; Advanced &gt; Health checks</code>.</li>
+</ul>
+<h2 id="custom-domains"><a class="header" href="#custom-domains">Custom domains</a></h2>
+<p>Northflank publishes services at
+<code>https://&lt;service&gt;--&lt;project&gt;.&lt;region&gt;.code.run</code>. To use a custom domain:</p>
+<ol>
+<li><code>Project &gt; Domains &gt; Add domain</code>, enter the apex or subdomain.</li>
+<li>Add the DNS records Northflank shows you.</li>
+<li>Set <code>BACKEND_CUSTOM_DOMAIN</code> and update <code>DJANGO_ALLOWED_HOSTS</code> +
+<code>DJANGO_CSRF_TRUSTED_ORIGINS</code> to include it.</li>
+<li>Update your GitHub Pages frontend config so the portal/editor/planner call
+the new hostname.</li>
+</ol>
+<h2 id="troubleshooting"><a class="header" href="#troubleshooting">Troubleshooting</a></h2>
+<ul>
+<li><strong>Build fails on <code>COPY backend/</code></strong> — build context is the repo root. Confirm
+<code>buildSettings.dockerfile.dockerWorkDir</code> is <code>/</code>, not <code>/backend</code>.</li>
+<li><strong><code>migrate</code> hangs on <code>Waiting for postgres...</code></strong> — the addon link is missing
+or the service can't reach it. Verify the <code>POSTGRE_HOST</code> env var resolves
+inside the container (<code>Service &gt; Exec &gt; nslookup</code>).</li>
+<li><strong>Static files 404</strong> — <code>CLOUDFLARE_R2_CUSTOM_DOMAIN</code> probably isn't set;
+URLs fall back to the S3 endpoint which the browser won't load cross-origin.
+Either set the custom domain or enable the <code>r2.dev</code> public subdomain.</li>
+<li><strong>First login returns 403</strong> — <code>DJANGO_CSRF_TRUSTED_ORIGINS</code> must include
+the exact origin (scheme + host) of the frontend making the POST.</li>
+</ul>
+<h2 id="notes"><a class="header" href="#notes">Notes</a></h2>
+<ul>
+<li>This is backend-only. Frontends still deploy via GitHub Pages.</li>
+<li>The Dockerfile is shared across Jenkins, Render, and Northflank — no
+platform-specific build image.</li>
+<li>To tear everything down, delete the Combined Service first, then the
+addon, then the project. Addon data is not retained once deleted.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../deployment/render_free_tier.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../development/local_dev.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../deployment/render_free_tier.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../development/local_dev.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
