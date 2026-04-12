@@ -1,0 +1,114 @@
+{
+  "apiVersion": "v1",
+  "name": "notechondria",
+  "description": "Notechondria backend + managed PostgreSQL on Northflank. Cloudflare R2 is used for static and media storage (see sample.northflank.env).",
+  "arguments": {
+    "NF_PROJECT_NAME": "notechondria",
+    "NF_PROJECT_REGION": "us-central",
+    "NF_VCS_URL": "https://github.com/trance-0/Notechondria",
+    "NF_VCS_BRANCH": "main",
+    "NF_VCS_TYPE": "github",
+    "NF_COMPUTE_PLAN": "nf-compute-20"
+  },
+  "project": {
+    "spec": {
+      "name": "${args.NF_PROJECT_NAME}",
+      "description": "Notechondria backend and managed PostgreSQL",
+      "color": "#0070f3",
+      "region": "${args.NF_PROJECT_REGION}"
+    }
+  },
+  "spec": {
+    "kind": "Workflow",
+    "spec": {
+      "type": "sequential",
+      "context": {
+        "projectId": "${refs.project.id}"
+      },
+      "steps": [
+        {
+          "kind": "Addon",
+          "ref": "postgres",
+          "spec": {
+            "name": "notechondria-postgres",
+            "type": "postgres",
+            "version": "15.8",
+            "tlsEnabled": true,
+            "billing": {
+              "deploymentPlan": "${args.NF_COMPUTE_PLAN}",
+              "storage": 4096,
+              "replicas": 1
+            }
+          }
+        },
+        {
+          "kind": "CombinedService",
+          "ref": "backend",
+          "spec": {
+            "name": "notechondria-backend",
+            "billing": {
+              "deploymentPlan": "${args.NF_COMPUTE_PLAN}"
+            },
+            "deployment": {
+              "instances": 1,
+              "docker": {
+                "configType": "custom",
+                "customEntrypoint": ["/entrypoint.sh"],
+                "customCommand": [
+                  "bash",
+                  "-c",
+                  "python manage.py migrate --noinput && python manage.py bootstrap_platform || true; python manage.py collectstatic --noinput --clear && exec gunicorn notechondria.wsgi:application --bind 0.0.0.0:${PORT} --workers ${WEB_CONCURRENCY} --timeout 120"
+                ]
+              }
+            },
+            "ports": [
+              {
+                "name": "http",
+                "internalPort": 8000,
+                "public": true,
+                "protocol": "HTTP",
+                "domains": []
+              }
+            ],
+            "buildConfiguration": {
+              "pathIgnoreRules": [
+                "frontend/**",
+                "docs/**",
+                "deployment/jenkins/**",
+                "deployment/render/**",
+                "deployment/docker/**"
+              ]
+            },
+            "buildSettings": {
+              "dockerfile": {
+                "buildEngine": "kaniko",
+                "dockerFilePath": "/backend/Dockerfile",
+                "dockerWorkDir": "/"
+              }
+            },
+            "vcsData": {
+              "projectUrl": "${args.NF_VCS_URL}",
+              "projectBranch": "${args.NF_VCS_BRANCH}",
+              "projectType": "${args.NF_VCS_TYPE}"
+            },
+            "runtimeEnvironment": {
+              "PORT": "8000",
+              "WEB_CONCURRENCY": "2",
+              "PYTHONUNBUFFERED": "1",
+              "DJANGO_DEBUG": "False",
+              "DJANGO_ALLOWED_HOSTS": "*",
+              "DJANGO_CSRF_TRUSTED_ORIGINS": "https://*.code.run",
+              "DJANGO_SECRET_KEY": "REPLACE_ME_FROM_SECRET_GROUP",
+              "DATABASE_URL": "${refs.postgres.connection.external.url}",
+              "POSTGRE_HOST": "${refs.postgres.connection.internal.host}",
+              "POSTGRE_PORT": "${refs.postgres.connection.internal.port}",
+              "POSTGRE_DB": "${refs.postgres.credentials.database}",
+              "POSTGRE_USERNAME": "${refs.postgres.credentials.username}",
+              "POSTGRE_PASSWORD": "${refs.postgres.credentials.password}"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

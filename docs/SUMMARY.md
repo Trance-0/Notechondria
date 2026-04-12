@@ -12,6 +12,7 @@
 
 - [Deployment Guide](deployment/deploy.md)
 - [Render Free Tier](deployment/render_free_tier.md)
+- [Northflank](deployment/northflank.md)
 
 # Development
 
