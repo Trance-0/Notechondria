@@ -91,7 +91,6 @@ backend/static/monaco-editor/esm/
 
 # Allow tracked template and source files
 !sample.env
-!sample.northflank.env
 !frontend/lib/
 !frontend/lib/**
 !frontend/test/
