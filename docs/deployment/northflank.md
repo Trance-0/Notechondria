@@ -19,7 +19,7 @@ The three Flutter frontends still deploy separately to GitHub Pages via
 
 | Path | Purpose |
 | --- | --- |
-| `northflank.json` | Northflank v1 template: project + postgres addon + combined service. Import via `northflank template create --file northflank.json` or the dashboard `Templates > Create` UI. |
+| `northflank.json` | Northflank `apiVersion: v1.2` template: `Project` step, nested `Workflow` with an `Addon` (PostgreSQL, `type: postgresql`) and a `CombinedService` built from the repo's `backend/Dockerfile`. Import via `northflank template create --file northflank.json` or the dashboard `Templates > Create` UI. |
 | `sample.northflank.env` | Copyable env block for the backend service. Paste into `Service > Environment > Edit as text`. |
 | `deployment/northflank/scripts/northflank_start.sh` | Optional start script. Use this as the Combined Service custom command if you prefer not to keep the boot logic inline. |
 | `backend/Dockerfile` | Unchanged — build context is the repo root with `dockerFilePath: /backend/Dockerfile`. |
@@ -33,39 +33,39 @@ The three Flutter frontends still deploy separately to GitHub Pages via
    northflank login
    ```
 
-2. **Apply the template**, overriding arguments for your repo/region as needed:
+2. **Edit the VCS URL** if you want to build from your fork. Open
+   `northflank.json` and change `steps[1].spec.steps[1].spec.vcsData.projectUrl`
+   to your repo URL, then apply the template:
 
    ```bash
-   northflank template create --file northflank.json \
-     --arg NF_VCS_URL=https://github.com/<you>/Notechondria \
-     --arg NF_VCS_BRANCH=main \
-     --arg NF_PROJECT_REGION=us-central
+   northflank template apply --file northflank.json
    ```
 
-   This creates a project called `notechondria`, a `notechondria-postgres`
-   addon, and a `notechondria-backend` Combined Service that builds from the
-   repo's `backend/Dockerfile`.
+   This creates a project named `notechondria`, a `notechondria-postgres`
+   addon (PostgreSQL, TLS on, 4 GB SSD), and a `notechondria-backend`
+   Combined Service that builds from `backend/Dockerfile`. The template wires
+   the PostgreSQL addon into the service's `runtimeEnvironment` via
+   `${refs.database.*}` so `POSTGRE_HOST`, `POSTGRE_PORT`, `POSTGRE_DB`,
+   `POSTGRE_USERNAME`, `POSTGRE_PASSWORD`, and `DATABASE_URL` are populated
+   automatically at deploy time.
 
 3. **Configure secrets** — the template seeds `DJANGO_SECRET_KEY` with
-   `REPLACE_ME_FROM_SECRET_GROUP`. Create a Secret Group (e.g. `notechondria-secrets`),
-   add the variables from `sample.northflank.env`, and link it to the service.
+   `REPLACE_ME_FROM_SECRET_GROUP`. Create a Secret Group
+   (`Project > Secrets > Create`), add the sensitive variables from
+   `sample.northflank.env` (`DJANGO_SECRET_KEY`, `SMTP_PASSWORD`, OAuth
+   secrets, R2 keys), and link it to the service under
+   `Service > Environment > Link secret group`.
 
-4. **Link the addon** — from the service page, `Environment > Link addon >
-   notechondria-postgres` and pick the preset that maps to
-   `POSTGRE_HOST`/`POSTGRE_PORT`/`POSTGRE_DB`/`POSTGRE_USERNAME`/`POSTGRE_PASSWORD`.
-   (The template wires these via `${refs.postgres.*}`, but linking ensures
-   rotation on addon recreation.)
-
-5. **Trigger the first build** from `Service > Builds > Start build`.
+4. **Trigger the first build** from `Service > Builds > Start build`.
 
 ## Option B — Manual setup in the dashboard
 
 1. **Create a project.** `Create project > notechondria`, pick a region close
    to your users.
 
-2. **Provision PostgreSQL.** `Addons > Add addon > PostgreSQL`. Pick version
-   `15.x`, 1 replica, at least 4GB storage. Name it `notechondria-postgres`.
-   Enable TLS. Wait for `Running`.
+2. **Provision PostgreSQL.** `Addons > Add addon > PostgreSQL` (addon type
+   key is `postgresql`). Pick `latest`, 1 replica, at least 4 GB SSD storage.
+   Name it `notechondria-postgres`. Enable TLS. Wait for `Running`.
 
 3. **Create the backend service.** `Create new > Combined service`.
    - **Name:** `notechondria-backend`
