@@ -739,7 +739,7 @@ Northflank service filesystems are ephemeral across redeploys.</p>
 <code>.github/workflows/frontend-pages.yml</code>.</p>
 <h2 id="files-in-this-repo"><a class="header" href="#files-in-this-repo">Files in this repo</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Path</th><th>Purpose</th></tr></thead><tbody>
-<tr><td><code>northflank.json</code></td><td>Northflank v1 template: project + postgres addon + combined service. Import via <code>northflank template create --file northflank.json</code> or the dashboard <code>Templates &gt; Create</code> UI.</td></tr>
+<tr><td><code>northflank.json</code></td><td>Northflank <code>apiVersion: v1.2</code> template: <code>Project</code> step, nested <code>Workflow</code> with an <code>Addon</code> (PostgreSQL, <code>type: postgresql</code>) and a <code>CombinedService</code> built from the repo's <code>backend/Dockerfile</code>. Import via <code>northflank template create --file northflank.json</code> or the dashboard <code>Templates &gt; Create</code> UI.</td></tr>
 <tr><td><code>sample.northflank.env</code></td><td>Copyable env block for the backend service. Paste into <code>Service &gt; Environment &gt; Edit as text</code>.</td></tr>
 <tr><td><code>deployment/northflank/scripts/northflank_start.sh</code></td><td>Optional start script. Use this as the Combined Service custom command if you prefer not to keep the boot logic inline.</td></tr>
 <tr><td><code>backend/Dockerfile</code></td><td>Unchanged — build context is the repo root with <code>dockerFilePath: /backend/Dockerfile</code>.</td></tr>
@@ -754,26 +754,26 @@ northflank login
 </code></pre>
 </li>
 <li>
-<p><strong>Apply the template</strong>, overriding arguments for your repo/region as needed:</p>
-<pre><code class="language-bash">northflank template create --file northflank.json \
-  --arg NF_VCS_URL=https://github.com/&lt;you&gt;/Notechondria \
-  --arg NF_VCS_BRANCH=main \
-  --arg NF_PROJECT_REGION=us-central
+<p><strong>Edit the VCS URL</strong> if you want to build from your fork. Open
+<code>northflank.json</code> and change <code>steps[1].spec.steps[1].spec.vcsData.projectUrl</code>
+to your repo URL, then apply the template:</p>
+<pre><code class="language-bash">northflank template apply --file northflank.json
 </code></pre>
-<p>This creates a project called <code>notechondria</code>, a <code>notechondria-postgres</code>
-addon, and a <code>notechondria-backend</code> Combined Service that builds from the
-repo's <code>backend/Dockerfile</code>.</p>
+<p>This creates a project named <code>notechondria</code>, a <code>notechondria-postgres</code>
+addon (PostgreSQL, TLS on, 4 GB SSD), and a <code>notechondria-backend</code>
+Combined Service that builds from <code>backend/Dockerfile</code>. The template wires
+the PostgreSQL addon into the service's <code>runtimeEnvironment</code> via
+<code>${refs.database.*}</code> so <code>POSTGRE_HOST</code>, <code>POSTGRE_PORT</code>, <code>POSTGRE_DB</code>,
+<code>POSTGRE_USERNAME</code>, <code>POSTGRE_PASSWORD</code>, and <code>DATABASE_URL</code> are populated
+automatically at deploy time.</p>
 </li>
 <li>
 <p><strong>Configure secrets</strong> — the template seeds <code>DJANGO_SECRET_KEY</code> with
-<code>REPLACE_ME_FROM_SECRET_GROUP</code>. Create a Secret Group (e.g. <code>notechondria-secrets</code>),
-add the variables from <code>sample.northflank.env</code>, and link it to the service.</p>
-</li>
-<li>
-<p><strong>Link the addon</strong> — from the service page, <code>Environment &gt; Link addon &gt; notechondria-postgres</code> and pick the preset that maps to
-<code>POSTGRE_HOST</code>/<code>POSTGRE_PORT</code>/<code>POSTGRE_DB</code>/<code>POSTGRE_USERNAME</code>/<code>POSTGRE_PASSWORD</code>.
-(The template wires these via <code>${refs.postgres.*}</code>, but linking ensures
-rotation on addon recreation.)</p>
+<code>REPLACE_ME_FROM_SECRET_GROUP</code>. Create a Secret Group
+(<code>Project &gt; Secrets &gt; Create</code>), add the sensitive variables from
+<code>sample.northflank.env</code> (<code>DJANGO_SECRET_KEY</code>, <code>SMTP_PASSWORD</code>, OAuth
+secrets, R2 keys), and link it to the service under
+<code>Service &gt; Environment &gt; Link secret group</code>.</p>
 </li>
 <li>
 <p><strong>Trigger the first build</strong> from <code>Service &gt; Builds &gt; Start build</code>.</p>
@@ -786,9 +786,9 @@ rotation on addon recreation.)</p>
 to your users.</p>
 </li>
 <li>
-<p><strong>Provision PostgreSQL.</strong> <code>Addons &gt; Add addon &gt; PostgreSQL</code>. Pick version
-<code>15.x</code>, 1 replica, at least 4GB storage. Name it <code>notechondria-postgres</code>.
-Enable TLS. Wait for <code>Running</code>.</p>
+<p><strong>Provision PostgreSQL.</strong> <code>Addons &gt; Add addon &gt; PostgreSQL</code> (addon type
+key is <code>postgresql</code>). Pick <code>latest</code>, 1 replica, at least 4 GB SSD storage.
+Name it <code>notechondria-postgres</code>. Enable TLS. Wait for <code>Running</code>.</p>
 </li>
 <li>
 <p><strong>Create the backend service.</strong> <code>Create new &gt; Combined service</code>.</p>
