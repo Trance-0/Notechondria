@@ -1,7 +1,99 @@
+import logging
+import sys
+import time
 from urllib.parse import urlparse
 
 from django.conf import settings
 from django.http import HttpResponse
+
+_access_logger = logging.getLogger("notechondria.access")
+
+
+class _AnsiColor:
+    """ANSI SGR color codes. Emitted only when the access log's destination
+    is a TTY; otherwise the colors are suppressed so we don't splatter
+    escape sequences into Jenkins/Render/Northflank captured stdout."""
+
+    RESET = "\x1b[0m"
+    BOLD = "\x1b[1m"
+    DIM = "\x1b[2m"
+    CYAN = "\x1b[36m"   # INFO — 2xx under threshold
+    YELLOW = "\x1b[33m"  # WARNING — 3xx/4xx, or slow 2xx
+    RED = "\x1b[31m"    # CRITICAL — 5xx, or very slow anything
+    MAGENTA = "\x1b[35m"  # HTTP method highlight
+
+
+def _stdout_is_tty() -> bool:
+    try:
+        return sys.stdout.isatty()
+    except Exception:
+        return False
+
+
+# Cache TTY detection once at import time. If operators want colors in
+# captured logs anyway they can set DJANGO_ACCESS_LOG_FORCE_COLOR=1.
+_COLOR_ENABLED = (
+    _stdout_is_tty()
+    or str(
+        __import__("os").environ.get("DJANGO_ACCESS_LOG_FORCE_COLOR", "")
+    ).strip().lower()
+    in {"1", "true", "yes"}
+)
+
+
+def _paint(text: str, color: str) -> str:
+    if not _COLOR_ENABLED:
+        return text
+    return f"{color}{text}{_AnsiColor.RESET}"
+
+
+# Thresholds (ms). Tune per your comfort; defaults align with
+# typical p95/p99 targets for a DRF API on a small instance.
+_WARN_MS = 500.0
+_CRITICAL_MS = 2000.0
+
+
+class RequestTimingMiddleware:
+    """Time every HTTP request and log the result under `notechondria.access`.
+
+    Format (tab-separated for grep-friendliness, colored for humans):
+
+        <status> <duration_ms>ms <METHOD> <path>
+
+    Color and log level are picked from status + duration:
+      * 5xx OR duration >= _CRITICAL_MS → logger.critical + red
+      * 4xx OR duration >= _WARN_MS     → logger.warning + yellow
+      * everything else                 → logger.info + cyan
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        start = time.monotonic()
+        response = self.get_response(request)
+        duration_ms = (time.monotonic() - start) * 1000.0
+
+        status = getattr(response, "status_code", 0)
+        method = request.method or "?"
+        path = request.get_full_path() if hasattr(request, "get_full_path") else request.path
+
+        if status >= 500 or duration_ms >= _CRITICAL_MS:
+            color = _AnsiColor.RED
+            log = _access_logger.critical
+        elif status >= 400 or duration_ms >= _WARN_MS:
+            color = _AnsiColor.YELLOW
+            log = _access_logger.warning
+        else:
+            color = _AnsiColor.CYAN
+            log = _access_logger.info
+
+        status_text = _paint(f"{status}", color + _AnsiColor.BOLD)
+        duration_text = _paint(f"{duration_ms:7.1f}ms", color)
+        method_text = _paint(f"{method:<6}", _AnsiColor.MAGENTA)
+        log("%s  %s  %s %s", status_text, duration_text, method_text, path)
+
+        return response
 
 
 class ApiCorsMiddleware:

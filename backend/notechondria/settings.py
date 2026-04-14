@@ -89,6 +89,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # RequestTimingMiddleware is first so it captures the full end-to-end
+    # wall time, including everything downstream (auth, CORS, views, DB).
+    'notechondria.middleware.RequestTimingMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -159,6 +162,13 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
         },
+        # dedicated handler for RequestTimingMiddleware: minimal formatter,
+        # DEBUG level so info/warning/critical all pass through.
+        'console_access': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'access',
+        },
         # print level in log file
         'file': {
             # de-comment the line below for detailed (super detailed) debug in django
@@ -175,11 +185,21 @@ LOGGING = {
         'verbose': {
             'format': u'%(levelname)s [%(asctime)s] %(name)s.%(funcName)s:%(lineno)s- %(message)r',
         },
+        # RequestTimingMiddleware emits already-colored messages; keep the
+        # formatter minimal so we don't escape-mangle the ANSI sequences.
+        'access': {
+            'format': '%(asctime)s %(levelname)-8s %(message)s',
+        },
     },
     'loggers': {
         'django': {
             'handlers': ['console'],
             'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+        },
+        'notechondria.access': {
+            'handlers': ['console_access'],
+            'level': 'INFO',
+            'propagate': False,
         },
     },
     # all the logging will propagate to root. so use root to save your log
