@@ -1,5 +1,7 @@
 from django.urls import path
 
+from notechondria.api_views import handshake as handshake_view
+
 from creators.api import (
     BindGithubApiView,
     BindGoogleApiView,
@@ -60,6 +62,7 @@ from notes.api import (
 
 urlpatterns = [
     path("health/", FrontPageApiView.health, name="health"),
+    path("handshake/", handshake_view, name="handshake"),
     path("auth/register/", RegisterApiView.as_view(), name="register"),
     path("auth/validate-invitation/", ValidateInvitationApiView.as_view(), name="validate-invitation"),
     path("auth/verify-email/", VerifyEmailApiView.as_view(), name="verify-email"),

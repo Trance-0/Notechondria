@@ -146,6 +146,50 @@ abstract class NotechondriaClient {
   );
 }
 
+/// Outcome of a backend handshake probe. See
+/// `HttpNotechondriaClient.verifyHandshake` for how this is populated.
+class HandshakeResult {
+  const HandshakeResult._({
+    required this.ok,
+    required this.error,
+    required this.service,
+    required this.apiVersion,
+    required this.version,
+    required this.capabilities,
+  });
+
+  factory HandshakeResult.success({
+    required String service,
+    required String apiVersion,
+    required String version,
+    required Map<String, dynamic> capabilities,
+  }) =>
+      HandshakeResult._(
+        ok: true,
+        error: null,
+        service: service,
+        apiVersion: apiVersion,
+        version: version,
+        capabilities: capabilities,
+      );
+
+  factory HandshakeResult.failure(String message) => HandshakeResult._(
+        ok: false,
+        error: message,
+        service: '',
+        apiVersion: '',
+        version: '',
+        capabilities: const <String, dynamic>{},
+      );
+
+  final bool ok;
+  final String? error;
+  final String service;
+  final String apiVersion;
+  final String version;
+  final Map<String, dynamic> capabilities;
+}
+
 /// Default HTTP implementation of the Notechondria REST client.
 class HttpNotechondriaClient implements NotechondriaClient {
   HttpNotechondriaClient({http.Client? httpClient, String? initialBaseUrl})
@@ -163,6 +207,59 @@ class HttpNotechondriaClient implements NotechondriaClient {
   /// Updates the client base URL while preserving `/api/v1` normalization.
   void updateBaseUrl(String raw) {
     _baseUrl = _normalizeBaseUrl(raw);
+  }
+
+  /// Probes a candidate backend URL with GET `<base>/handshake/` to confirm
+  /// it's a Notechondria backend with a compatible API version. Callers
+  /// should use this before persisting a user-entered API base URL in
+  /// Settings, so a typo or a foreign server doesn't silently strand the
+  /// user offline. Does NOT mutate `_baseUrl`.
+  Future<HandshakeResult> verifyHandshake(String rawCandidateBaseUrl) async {
+    final normalized = _normalizeBaseUrl(rawCandidateBaseUrl);
+    final target = Uri.parse('$normalized/handshake/');
+    try {
+      final response = await _httpClient
+          .get(target, headers: {'Accept': 'application/json'})
+          .timeout(const Duration(seconds: 8));
+      if (response.statusCode != 200) {
+        return HandshakeResult.failure(
+          'Handshake got HTTP ${response.statusCode} from $target. '
+          'Expected 200.',
+        );
+      }
+      final dynamic parsed = jsonDecode(response.body);
+      if (parsed is! Map<String, dynamic>) {
+        return HandshakeResult.failure(
+          'Handshake response was not JSON object. '
+          'Is $target really a Notechondria backend?',
+        );
+      }
+      final service = parsed['service']?.toString() ?? '';
+      final apiVersion = parsed['api_version']?.toString() ?? '';
+      if (service != 'notechondria-backend') {
+        return HandshakeResult.failure(
+          'Handshake service="$service" — expected "notechondria-backend". '
+          'Refusing to switch to a non-Notechondria server.',
+        );
+      }
+      if (apiVersion != 'v1') {
+        return HandshakeResult.failure(
+          'Backend api_version="$apiVersion" — this client only supports v1.',
+        );
+      }
+      return HandshakeResult.success(
+        service: service,
+        apiVersion: apiVersion,
+        version: parsed['version']?.toString() ?? 'unknown',
+        capabilities: parsed['capabilities'] is Map<String, dynamic>
+            ? Map<String, dynamic>.from(parsed['capabilities'] as Map)
+            : const <String, dynamic>{},
+      );
+    } on TimeoutException {
+      return HandshakeResult.failure('Handshake timed out after 8s hitting $target.');
+    } catch (error) {
+      return HandshakeResult.failure('Handshake request failed: $error');
+    }
   }
 
   static String _resolveBaseUrl() {

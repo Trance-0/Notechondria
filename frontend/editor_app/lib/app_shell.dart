@@ -1322,6 +1322,20 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     }
     if (!_sameTrimmedValue(nextApiBase, currentApiBase)) {
       changedFields.add('API base');
+      // Before committing a user-entered API URL, confirm it's really a
+      // Notechondria backend with compatible API version. If the handshake
+      // fails we abort the save — keeping the old URL is safer than silently
+      // stranding the user on a dead/foreign host.
+      final client = widget.client;
+      if (client is HttpNotechondriaClient) {
+        final handshake = await client.verifyHandshake(nextApiBase);
+        if (!handshake.ok) {
+          return ActionFeedback(
+            message:
+                'Backend handshake failed for $nextApiBase: ${handshake.error ?? 'unknown error'}',
+          );
+        }
+      }
     }
     final updatedAt = DateTime.now().toUtc().toIso8601String();
     await _applyLocalAppSettings({

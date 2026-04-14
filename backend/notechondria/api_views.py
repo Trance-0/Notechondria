@@ -1,5 +1,7 @@
 import logging
 import os
+from pathlib import Path
+from typing import Optional
 from urllib.parse import urlencode
 
 import requests as http_requests
@@ -13,12 +15,64 @@ from django.http import (
     HttpResponseServerError,
     JsonResponse,
 )
+from django.views.decorators.http import require_GET
 
 logger = logging.getLogger("django")
 
+HANDSHAKE_SERVICE_ID = "notechondria-backend"
+HANDSHAKE_API_VERSION = "v1"
+# Capabilities the frontend can feature-flag against. Bump an entry (or add
+# a new one) when the shape of an endpoint or a response payload changes in
+# a way that old clients cannot parse.
+HANDSHAKE_CAPABILITIES = {
+    "auth": 1,
+    "notes": 1,
+    "courses": 1,
+    "planner": 1,
+    "calendar_feeds": 1,
+    "attachments": 1,
+    "mcp": 1,
+}
+
+_cached_backend_version: Optional[str] = None
+
+
+def _read_backend_version() -> str:
+    global _cached_backend_version
+    if _cached_backend_version is not None:
+        return _cached_backend_version
+    candidate = Path(settings.BASE_DIR).parent / "VERSION"
+    try:
+        _cached_backend_version = candidate.read_text(encoding="utf-8").strip() or "0.0.0"
+    except OSError:
+        _cached_backend_version = "0.0.0"
+    return _cached_backend_version
+
 
 def health_check(request):
-    return JsonResponse({"status": "ok", "service": "notechondria-backend"})
+    return JsonResponse({"status": "ok", "service": HANDSHAKE_SERVICE_ID})
+
+
+@require_GET
+def handshake(request):
+    """Identify this backend to a client that just pointed at a new API URL.
+
+    Frontends (editor/planner/portal) call GET /api/v1/handshake/ whenever the
+    user edits the API base URL in Settings. A correct response proves two
+    things: (a) the URL really is a Notechondria backend and not a random
+    server, and (b) the client's capability expectations are compatible with
+    the server's. If `service` doesn't match HANDSHAKE_SERVICE_ID or
+    `api_version` doesn't match HANDSHAKE_API_VERSION, the frontend refuses
+    to switch.
+    """
+    return JsonResponse(
+        {
+            "service": HANDSHAKE_SERVICE_ID,
+            "api_version": HANDSHAKE_API_VERSION,
+            "version": _read_backend_version(),
+            "capabilities": HANDSHAKE_CAPABILITIES,
+        }
+    )
 
 
 def _api_error_response(request, message, status_code):

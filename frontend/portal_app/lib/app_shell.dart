@@ -1434,6 +1434,20 @@ class _AppShellState extends State<AppShell> {
     }
     if (!_sameTrimmedValue(nextApiBase, currentApiBase)) {
       changedFields.add('API base');
+      // Before committing a user-entered API URL, confirm it's really a
+      // Notechondria backend with compatible API version. If the handshake
+      // fails we abort the save so the user keeps the old URL rather than
+      // silently ending up on a dead/foreign host.
+      final client = widget.client;
+      if (client is HttpNotechondriaClient) {
+        final handshake = await client.verifyHandshake(nextApiBase);
+        if (!handshake.ok) {
+          return ActionFeedback(
+            message:
+                'Backend handshake failed for $nextApiBase: ${handshake.error ?? 'unknown error'}',
+          );
+        }
+      }
     }
     final updatedAt = DateTime.now().toUtc().toIso8601String();
     await _applyLocalAppSettings({
