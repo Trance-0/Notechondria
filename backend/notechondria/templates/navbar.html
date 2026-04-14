@@ -37,17 +37,9 @@
                                     hx-swap="innerHTML">Create notes</div></li>
                             </ul>
                         </li>
-                        <!-- Extra dropdown -->
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="" role="button" data-bs-toggle="dropdown"
-                                aria-expanded="false">
-                                Utilities
-                            </a>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="{% url 'gptutils:main' %}">Start conversation</a>
-                                </li>
-                            </ul>
-                        </li>
+                        {# Utilities dropdown removed — "Start conversation" pointed at
+                           the now-stubbed gptutils views. Re-enable once the external
+                           AI microservice is wired (see docs/development/ai_integration.md). #}
                         {% endif %}
                     </ul>
 
