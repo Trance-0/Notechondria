@@ -22,7 +22,13 @@ RUN pip3 install -r requirements.txt --no-cache-dir
 WORKDIR ${APP_HOME}
 COPY backend/ .
 COPY sample/ /home/sample/
-COPY AGENTS.md /home/AGENTS.md
+# bootstrap_platform seeds a starter note from this file's content. We
+# used to copy the repo-root AGENTS.md, but that pointer file was
+# removed in favour of docs/index.md (project-local rules) plus the
+# agents/ submodule (shared rules). Use docs/index.md as the seed
+# source; resolve_codex_path in bootstrap_platform matches the target
+# path unchanged.
+COPY docs/index.md /home/AGENTS.md
 
 # add entrypoint to root
 ADD backend/entrypoint.sh /entrypoint.sh

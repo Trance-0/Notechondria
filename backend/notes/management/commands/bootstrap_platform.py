@@ -209,6 +209,12 @@ class Command(BaseCommand):
 
     @staticmethod
     def resolve_codex_path():
+        # In the Docker image the Dockerfile now copies `docs/index.md`
+        # to `/home/AGENTS.md`, so the `/home/AGENTS.md` candidate still
+        # works (BASE_DIR is `/home/notechondria`). In a source checkout
+        # the root `AGENTS.md` is gone, so fall back to `docs/index.md`
+        # (project-local rules) or the shared `agents/AGENTS.md`
+        # submodule file.
         candidates = [
             settings.BASE_DIR.parent / "AGENTS.md",
             settings.BASE_DIR.parent / "CODEX.md",
@@ -216,6 +222,10 @@ class Command(BaseCommand):
             settings.BASE_DIR / "CODEX.md",
             settings.BASE_DIR.parent.parent / "AGENTS.md",
             settings.BASE_DIR.parent.parent / "CODEX.md",
+            settings.BASE_DIR.parent.parent / "docs" / "index.md",
+            settings.BASE_DIR.parent / "docs" / "index.md",
+            settings.BASE_DIR.parent.parent / "agents" / "AGENTS.md",
+            settings.BASE_DIR.parent / "agents" / "AGENTS.md",
             settings.BASE_DIR.parent / "agents.md",
             settings.BASE_DIR.parent / "codex.md",
             settings.BASE_DIR / "agents.md",
@@ -226,7 +236,10 @@ class Command(BaseCommand):
         for candidate in candidates:
             if candidate.exists():
                 return candidate
-        raise FileNotFoundError("Could not find AGENTS.md or CODEX.md in expected runtime locations.")
+        raise FileNotFoundError(
+            "Could not find AGENTS.md, docs/index.md, agents/AGENTS.md, or "
+            "CODEX.md in expected runtime locations."
+        )
 
     def attach_course_cover(self, course: Course, cover_path):
         resolved_cover_path = self.resolve_course_asset_path(course.slug, cover_path)

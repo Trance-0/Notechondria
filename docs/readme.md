@@ -82,5 +82,6 @@ Four supported paths, each with its own folder under `deployment/`:
 - [`docs/testing/backend_test_plan.md`](testing/backend_test_plan.md) —
   backend test plan.
 - [`../LLM_CHECK.md`](../LLM_CHECK.md) — end-of-round checklist.
-- [`../AGENTS.md`](../AGENTS.md) — agent rules (inherited via the
-  `Trance-0/AGENTS.md` submodule at `.agents/`).
+- [`index.md`](index.md) — project-local agent rules (§0) and long-form
+  architecture notes. The canonical cross-project rules are in the
+  `Trance-0/AGENTS.md` submodule at [`../agents/`](../agents/).

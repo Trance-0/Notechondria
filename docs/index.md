@@ -1,10 +1,56 @@
 # Notechondria — Long-Form Agent Handoff
 
-Deep architectural and operational detail for Notechondria. This file was
-migrated from the repo-root `AGENTS.md`; the root `AGENTS.md` now points at
-the shared agent-rules submodule (`.agents/`) plus this file.
+Deep architectural and operational detail for Notechondria. This file is the
+single source of truth for project-local agent instructions; the root
+`AGENTS.md` was removed and its contents folded here. The canonical
+cross-project rules live in the [`agents/`](../agents/) submodule
+(pinned to [`Trance-0/AGENTS.md`](https://github.com/Trance-0/AGENTS.md)).
 
-Read [`docs/readme.md`](readme.md) first for a human-facing overview.
+Read this file in order:
+
+1. [`agents/AGENTS.md`](../agents/AGENTS.md) — shared dev contract
+   (tone, scope discipline, per-stack expectations, commit rules).
+2. §0 below — **project-specific overrides** that beat the shared contract
+   when they conflict.
+3. The rest of this file — architecture, deploy topology, open-work list.
+4. [`LLM_CHECK.md`](../LLM_CHECK.md) — end-of-round checklist.
+5. [`docs/readme.md`](readme.md) — human-facing summary of how the
+   project works.
+
+---
+
+## 0. Project-specific overrides
+
+Rules in this section **override** the shared ruleset in
+[`agents/AGENTS.md`](../agents/AGENTS.md) when they conflict. Keep this
+section short; deeper explanations belong in later sections.
+
+- **Upstream target branch is `codex`, not `main`.** Any PR to upstream
+  targets `Trance-0/Notechondria:codex`.
+- **Frontend is three standalone Flutter apps** under
+  `frontend/editor_app/`, `frontend/planner_app/`, `frontend/portal_app/`.
+  Do not merge them back into a monolith.
+- **Backend tests run with
+  `DJANGO_SETTINGS_MODULE=notechondria.settings_test`**; that settings
+  file must define a non-empty `SECRET_KEY`.
+- **Vendor SDK clients (OpenAI, etc.) must initialize lazily at call
+  time**, never at module import. As of 0.1.18 the OpenAI SDK is removed
+  entirely — future AI goes through an external microservice over HTTP
+  (see [`docs/development/ai_integration.md`](development/ai_integration.md)).
+- **`backend/requirements-render.txt` stays free of heavy ML packages**
+  (`torch`, `llvmlite`, `numba`, etc.) for Render free-tier compatibility.
+  `backend/requirements.txt` itself is also now pruned of that stack.
+- **GitHub Pages builds use the project-site base paths**
+  `/Notechondria/editor/`, `/Notechondria/planner/`,
+  `/Notechondria/portal/`.
+- **Never assume host ports** (`80`, `443`, `8080`, `5432`, …) are free;
+  verify on the target machine before assigning.
+- **Target Python 3.9.** The Dockerfile pins `python:3.9.18-bullseye`,
+  so do NOT use PEP 604 unions (`X | Y`) in runtime annotations — use
+  `typing.Optional` / `typing.Union`. This overrides
+  `agents/AGENTS.md` §4.1's "target 3.11+" default.
+
+---
 
 ---
 
@@ -35,10 +81,10 @@ Read [`docs/readme.md`](readme.md) first for a human-facing overview.
   per-version notes.
 - `sample/` — seeded example course content and media.
 - `course_template/` — older course template artifacts.
-- `AGENTS.md` (root) — thin pointer; rules inherited from the `.agents/`
-  submodule (`Trance-0/AGENTS.md`).
 - `LLM_CHECK.md` — end-of-round checklist and pitfall log.
-- `.agents/` — git submodule pinning the canonical agent rules.
+- `agents/` — git submodule pinning the canonical agent rules
+  (`Trance-0/AGENTS.md`). The root `AGENTS.md` was removed; project-local
+  overrides now live in §0 above.
 
 ## 3. Backend design
 
