@@ -1,5 +1,7 @@
 # Summary
 
+[Project Overview](readme.md)
+[Long-Form Agent Handoff](index.md)
 [Tasks](TASKS.md)
 
 ---
