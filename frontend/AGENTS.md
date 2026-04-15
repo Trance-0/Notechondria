@@ -20,7 +20,7 @@ Implemented now:
 - compact view uses a three-dot menu button in the app bar instead of a bottom NavigationBar
 - reduced settings surface (no section numbering):
   - Login and sync (includes user profile: avatar, username, email, motto, social link when authenticated)
-  - Editor preferences (editor mode, theme, API base URL)
+  - App preferences (editor mode, theme, API base URL) — renamed from "Editor preferences" in 0.1.20 so it can be reused across the three apps.
   - Configuration (config file download, maintenance actions, recycle bin)
   - Debug log (simplified: only recent UI logs with copy button, no verbose API debug card)
 - stale modules removed: `front.dart`, `course.dart`, `activity.dart` — only `learner.dart` and `settings.dart` remain

@@ -14,7 +14,10 @@
 
 # Server (backend)
 
-- [Backend — Django + DRF](server/backend.md)
+- [Backend overview](server/backend.md)
+- [`creators` app](server/creators.md)
+- [`notes` app](server/notes.md)
+- [`mcp` app](server/mcp.md)
 
 # API
 
@@ -32,6 +35,7 @@
 - [Local Development Guide](development/local_dev.md)
 - [Python Environments](development/python_environments.md)
 - [AI Integration (stub status and forward plan)](development/ai_integration.md)
+- [Storage model (Django + frontend offline)](development/storage_model.md)
 - [Canvas-like Calendar Product Concept](development/canvas_like_calendar_mvp.md)
 
 # Integrations
@@ -52,6 +56,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.20 — Per-app server docs, storage model, login subtitle, lock API URL, bug fixes](versions/0.1.20.md)
 - [0.1.19 — Splash version display, deploy overview, settings handshake docs](versions/0.1.19.md)
 - [0.1.18 — Ics import dialog, calendar subscribe fix, welcome note, portal root](versions/0.1.18.md)
 - [0.1.17 — Splash polish, OAuth bind guard, API key visibility](versions/0.1.17.md)

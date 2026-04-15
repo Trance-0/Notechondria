@@ -1,6 +1,6 @@
 part of notechondria_frontend;
 
-/// Editor-focused settings page with login/sync, profile, editor preferences,
+/// Editor-focused settings page with login/sync, profile, app preferences,
 /// config file download, and a simplified debug log.
 class _SettingsPage extends StatefulWidget {
   const _SettingsPage({
@@ -625,6 +625,7 @@ class _SettingsPageState extends State<_SettingsPage> {
                 onGithubLogin: widget.onGithubLogin,
                 onGoogleLoginOnly: widget.onGoogleLoginOnly,
                 onGithubLoginOnly: widget.onGithubLoginOnly,
+                apiBaseUrl: widget.apiBaseUrl,
               ),
             ] else ...[
               _buildProfileFields(context),
@@ -1190,8 +1191,11 @@ class _SettingsPageState extends State<_SettingsPage> {
     );
   }
 
-  /// Editor preferences: editor mode, theme, API base URL. Every control
+  /// App preferences: editor mode, theme, API base URL. Every control
   /// works without an account and auto-saves on change — no explicit button.
+  /// Renamed from "Editor preferences" in 0.1.20 so the same label can be
+  /// reused unchanged across editor/planner/portal once the shared Settings
+  /// widget lands.
   Widget _buildOfflinePreferencesSection(BuildContext context) {
     return Card(
       child: Padding(
@@ -1205,7 +1209,7 @@ class _SettingsPageState extends State<_SettingsPage> {
                     color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 8),
                 Text(
-                  'Editor preferences',
+                  'App preferences',
                   style: Theme.of(context)
                       .textTheme
                       .titleMedium
@@ -1276,11 +1280,25 @@ class _SettingsPageState extends State<_SettingsPage> {
               ],
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: _apiBaseController,
-              decoration: const InputDecoration(
-                labelText: 'API base URL',
-                border: OutlineInputBorder(),
+            // API base URL is locked while the user is signed in: changing
+            // backend mid-session would invalidate the token and lose
+            // cached remote data. Tooltip explains the path forward
+            // (logout first, then change).
+            Tooltip(
+              message: _isAuthenticated
+                  ? 'Log out before changing the API base URL. A logged-in '
+                      'token is only valid against its issuing backend.'
+                  : '',
+              child: TextField(
+                controller: _apiBaseController,
+                enabled: !_isAuthenticated,
+                decoration: InputDecoration(
+                  labelText: 'API base URL',
+                  border: const OutlineInputBorder(),
+                  helperText: _isAuthenticated
+                      ? 'Locked while signed in. Log out to change.'
+                      : null,
+                ),
               ),
             ),
             const SizedBox(height: 12),

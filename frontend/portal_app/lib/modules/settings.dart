@@ -348,6 +348,7 @@ class _SettingsPageState extends State<_SettingsPage> {
             onGithubLogin: widget.onGithubLogin,
             onGoogleLoginOnly: widget.onGoogleLoginOnly,
             onGithubLoginOnly: widget.onGithubLoginOnly,
+            apiBaseUrl: widget.apiBaseUrl,
           ),
           const SizedBox(height: 24),
         ] else ...[
@@ -502,13 +503,22 @@ class _SettingsPageState extends State<_SettingsPage> {
           ],
         ),
         const SizedBox(height: 12),
-        TextField(
-          controller: _apiBaseController,
-          decoration: const InputDecoration(
-            labelText: 'API base URL',
-            hintText: 'http://localhost:9060/api/v1',
-            helperText: 'Stored locally and mirrored to the profile on login.',
-            border: OutlineInputBorder(),
+        Tooltip(
+          message: _isAuthenticated
+              ? 'Log out before changing the API base URL. A logged-in '
+                  'token is only valid against its issuing backend.'
+              : '',
+          child: TextField(
+            controller: _apiBaseController,
+            enabled: !_isAuthenticated,
+            decoration: InputDecoration(
+              labelText: 'API base URL',
+              hintText: 'http://localhost:9060/api/v1',
+              helperText: _isAuthenticated
+                  ? 'Locked while signed in. Log out to change.'
+                  : 'Stored locally and mirrored to the profile on login.',
+              border: const OutlineInputBorder(),
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -676,6 +686,21 @@ class _SettingsPageState extends State<_SettingsPage> {
   }
 }
 
+/// Formats the login dialog's API-host subtitle. Accepts the full
+/// `api_base_url` (may include `/api/v1`) and returns `Signing in to
+/// <host>` so the user can verify which backend they're hitting.
+String _apiHostSubtitle(String? apiBaseUrl) {
+  final raw = (apiBaseUrl ?? '').trim();
+  if (raw.isEmpty) return '';
+  try {
+    final parsed = Uri.parse(raw);
+    final host = parsed.hasAuthority ? parsed.authority : raw;
+    return 'Signing in to $host';
+  } catch (_) {
+    return 'Signing in to $raw';
+  }
+}
+
 class _AuthHub extends StatelessWidget {
   const _AuthHub({
     required this.onRegister,
@@ -689,7 +714,11 @@ class _AuthHub extends StatelessWidget {
     this.onGithubLogin,
     this.onGoogleLoginOnly,
     this.onGithubLoginOnly,
+    this.apiBaseUrl,
   });
+
+  /// Current API base URL, displayed as subtitle in the Login dialog.
+  final String? apiBaseUrl;
 
   final Future<ActionFeedback> Function(
     String username,
@@ -771,8 +800,7 @@ class _AuthHub extends StatelessWidget {
                     context,
                     _EmailPasswordDialog(
                       title: 'Login',
-                      description:
-                          'Sign in with your email and password. Admin username also works for the bootstrapped Django admin account.',
+                      description: _apiHostSubtitle(apiBaseUrl),
                       submitLabel: 'Login',
                       emailLabel: 'Email or username',
                       onSubmit: onLogin,

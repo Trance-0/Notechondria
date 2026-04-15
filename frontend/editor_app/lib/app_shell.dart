@@ -295,8 +295,32 @@ class _AppShellState extends State<AppShell> {
     await prefs.remove('oauth_invitation_code');
     await prefs.remove('oauth_intent');
 
-    // Bind flow: user is already authenticated, link the social account.
-    if (intent == 'bind' && _token != null) {
+    // Bind flow: user should already be authenticated. We handle three
+    // cases distinctly so the user gets a coherent error:
+    //   - bind + token      -> call /auth/bind/<provider>/ (authenticated).
+    //   - bind + no token   -> the session expired between clicking the
+    //                          button and the OAuth callback; don't fall
+    //                          through to the login endpoint (it would
+    //                          reject intent=bind with a 400 that looks
+    //                          like a backend bug). Tell the user to
+    //                          sign in again and retry.
+    if (intent == 'bind') {
+      if (_token == null || _token!.isEmpty) {
+        _appendUiLog(
+          'Account linking requires an active session. Please sign in first, '
+          'then try linking the account again.',
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Sign in first, then try linking the account again.',
+              ),
+            ),
+          );
+        }
+        return false;
+      }
       try {
         if (state == 'google') {
           await widget.client.bindGoogle(_token!, code, redirectUri: redirectUri);
@@ -784,7 +808,27 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       errors.add(error.toString().replaceFirst('Exception: ', ''));
     }
 
+    // Detect a rejected DRF token (revoked server-side, or signed by a
+    // different SECRET_KEY after a deploy) and clear the local session
+    // so the user sees the auth UI instead of silently dropping into
+    // offline mode with a stale identity.
+    final sessionRejected = _token != null &&
+        _token!.isNotEmpty &&
+        errors.any((message) {
+          final lower = message.toLowerCase();
+          return lower.contains('invalid token') ||
+              lower.contains('authentication credentials were not provided') ||
+              lower.contains('token_not_valid');
+        });
+    if (sessionRejected) {
+      await _LocalAppStore.clearSession();
+    }
+
     setState(() {
+      if (sessionRejected) {
+        _token = null;
+        _profile = null;
+      }
       _frontPage = frontPage;
       _courses = courses;
       _selectedCourse = selectedCourse;
@@ -804,7 +848,9 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     _appendUiLog(
       errors.isEmpty
           ? 'Initial data loaded.'
-          : 'Initial load used offline fallback: ${errors.first}',
+          : sessionRejected
+              ? 'Session expired — signed out. Please sign in again.'
+              : 'Initial load used offline fallback: ${errors.first}',
     );
   }
 

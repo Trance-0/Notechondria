@@ -1,5 +1,21 @@
 part of notechondria_frontend;
 
+/// Formats the login dialog's API-host subtitle. Accepts the full
+/// `api_base_url` (may include `/api/v1`) and returns `Signing in to
+/// <host>` so the user can verify they're hitting the right backend
+/// before typing credentials.
+String _apiHostSubtitle(String? apiBaseUrl) {
+  final raw = (apiBaseUrl ?? '').trim();
+  if (raw.isEmpty) return '';
+  try {
+    final parsed = Uri.parse(raw);
+    final host = parsed.hasAuthority ? parsed.authority : raw;
+    return 'Signing in to $host';
+  } catch (_) {
+    return 'Signing in to $raw';
+  }
+}
+
 /// Compact auth hub with sign-up, verify, login, and password-reset dialogs.
 class _AuthHub extends StatelessWidget {
   const _AuthHub({
@@ -14,7 +30,13 @@ class _AuthHub extends StatelessWidget {
     this.onGithubLogin,
     this.onGoogleLoginOnly,
     this.onGithubLoginOnly,
+    this.apiBaseUrl,
   });
+
+  /// The currently-configured API base URL. The login dialog shows its
+  /// host as a subtitle so the user can confirm which backend they're
+  /// signing into before typing credentials.
+  final String? apiBaseUrl;
 
   final Future<ActionFeedback> Function(
     String username,
@@ -96,7 +118,7 @@ class _AuthHub extends StatelessWidget {
                     context,
                     _EmailPasswordDialog(
                       title: 'Login',
-                      description: '',
+                      description: _apiHostSubtitle(apiBaseUrl),
                       submitLabel: 'Login',
                       emailLabel: 'Email or username',
                       onSubmit: onLogin,

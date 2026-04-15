@@ -1,4 +1,4 @@
-# TASKS
+# TODO
 
 Pending version: 0.1
 
@@ -18,8 +18,10 @@ Here is a list of task we need to do now after testing, finishing and solve thes
 
 ## Bugs
 
-- [ ] Initial load used offline fallback: Invalid token.
-- [ ] OAuth login failed: Account binding requires authentication. Use /api/v1/auth/bind/google/.
+- [ ] Replicate the 0.1.20 editor_app bug fixes (invalid-token
+  session-clear + bind-without-token short-circuit) into planner_app
+  and portal_app. Their `app_shell.dart` files inline the same flow
+  as editor's but were not touched this round.
 
 ## Global reusable components
 
@@ -27,7 +29,7 @@ Here is a list of task we need to do now after testing, finishing and solve thes
   - The Sidebar/Navigation is a container that could be reused, so that when you fix the bug in editor app, you don't need to fix the one in portal app, and vice versa.
   - The debug window should be reused between editor and portal app.
   - Login account window should be reused between editor and portal app.
-  - The local app preference (currently named as `Editor preferences` in editor app, rename it to `App preferences`) should be reused between editor and portal app.
+  - The local app preference should be reused between editor and portal app. (Renamed to "App preferences" in 0.1.20 so the label is already neutral; still inlined in three copies.)
 
 ### Start up animations
 
@@ -50,8 +52,6 @@ Here is a list of task we need to do now after testing, finishing and solve thes
   still need to be ported into `portal_app/lib/modules/settings.dart` — this
   requires syncing client methods, app_shell callback wiring, and the
   `_ApiKeySection` widget.
-- [ ] Lock API base URL if user logged in and show tooltip to let user logout before change API base url.
-- [ ] In login window, show the api base domain name as subtitle after `Login` title.
 
 ### App preferences
 
@@ -117,6 +117,3 @@ Here is a list of task we need to do now after testing, finishing and solve thes
 ### MCP
 
 ## Documentation pages
-
-- [ ] ""URGENT"": The backend is written in one long file, which is hard to read and maintain, split it into multiple files categorized by apps in the `backend/` folder (e.g `gptutil`,`notes`,`creator`). With more detailed explanation for each api call with example outputs.
-- [ ] ""URGENT"": Pay special attention on how django backend manage the storage of user data and how frontend manages the storage of user data for offline local users. The structure storage of note class, course class, and others.

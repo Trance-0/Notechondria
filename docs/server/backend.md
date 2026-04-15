@@ -31,14 +31,16 @@ Related: [agent rules (§0)](../index.md#0-project-specific-overrides),
 
 ## Django apps
 
-Four project-local apps registered in `INSTALLED_APPS`:
+Four project-local apps registered in `INSTALLED_APPS`. Per-app
+docs cover models, views, services, and example request/response
+payloads:
 
-| App | Path | Role |
-| --- | --- | --- |
-| [`creators`](#creators-app) | `backend/creators/` | Accounts, OAuth, API keys, settings. |
-| [`notes`](#notes-app) | `backend/notes/` | Notes, courses, planner events, calendar feeds, recycle bin, attachments. |
-| [`mcp`](#mcp-app) | `backend/mcp/` | Model-Context-Protocol server: 21 tools, API-key auth, 39 tests. |
-| [`gptutils`](#gptutils-app-stubbed) | `backend/gptutils/` | Parked — AI chat models stay, call sites stubbed. See [ai_integration.md](../development/ai_integration.md). |
+| App | Path | Role | Per-app doc |
+| --- | --- | --- | --- |
+| `creators` | `backend/creators/` | Accounts, OAuth, API keys, settings, identity-code verification. | [creators.md](creators.md) |
+| `notes` | `backend/notes/` | Notes, courses, planner events, calendar feeds, recycle bin, attachments. | [notes.md](notes.md) |
+| `mcp` | `backend/mcp/` | Model-Context-Protocol server: 21 tools, API-key auth, 39 tests. | [mcp.md](mcp.md) |
+| `gptutils` | `backend/gptutils/` | Parked — AI chat models stay, call sites stubbed. | [`development/ai_integration.md`](../development/ai_integration.md) |
 
 Plus DRF (`rest_framework`, `rest_framework.authtoken`).
 
@@ -56,142 +58,26 @@ site-wide endpoints, API v1 under
 | `/mcp/` | `mcp/urls.py` | Model-Context-Protocol server. |
 | `/auth/google/callback` | `urls.py` → `api_views.oauth_callback` | Google OAuth redirect. |
 | `/auth/github/callback` | `urls.py` → `api_views.oauth_callback` | GitHub OAuth redirect. |
-| `/admin/` | Django admin. |
+| `/admin/` | Django admin. | Built-in. |
 
 Full API surface is documented in
 [`docs/api/backend_api_spec.md`](../api/backend_api_spec.md).
 
-## `creators` app
+## Per-app deep dives
 
-`backend/creators/`. Account and auth layer.
+The detailed model/view/services/example-payload reference for each
+app lives in its own file:
 
-### Key models (`creators/models.py`)
+- [`creators.md`](creators.md) — accounts, sessions, OAuth, API
+  keys, settings, identity-code verification.
+- [`notes.md`](notes.md) — notes, courses, planner events, calendar
+  feeds, recycle bin, attachments, activity heatmap, version
+  history. Includes `notes/services.py` helpers
+  (`normalize_calendar_url`, `seed_inbox_and_welcome_note`,
+  `parse_ical_datetime`).
+- [`mcp.md`](mcp.md) — Model-Context-Protocol tool surface.
 
-- `Creator` — one row per user; wraps `User` with a display name,
-  avatar, motto, social link, API key hash, identity code, email
-  verification state. Every `request.user` that needs a "creator
-  context" flows through `ensure_creator(user)` in
-  `backend/notechondria/utils.py`.
-- `CreatorApiKey` / `CreatorInvitation` / `CreatorOauthIdentity` —
-  one-to-many relations for API keys, invitation codes, and OAuth
-  provider identities (Google, GitHub).
-
-### Key API views (`creators/api.py`)
-
-Mounted under `/api/v1/auth/...` by `api_urls.py`. Highlights:
-
-- `LoginApiView`, `RegisterApiView`, `LogoutApiView`,
-  `SessionApiView` — DRF TokenAuthentication flow.
-- `VerifyEmailApiView`, `ResendVerificationApiView` — email code flow.
-- `GoogleOAuthApiView`, `GitHubOAuthApiView`, `BindGoogleApiView`,
-  `BindGithubApiView`, `SocialAccountListApiView`,
-  `SocialAccountUnlinkApiView` — OAuth + account binding. On
-  new-user creation both paths call
-  [`seed_inbox_and_welcome_note(creator)`](#notes-services).
-- `SettingsApiView`, `OAuthConfigApiView`,
-  `RotateApiKeyApiView`, `SendIdentityCodeApiView`,
-  `ChangePasswordApiView`, `ChangeEmailApiView` — settings surface
-  consumed by Settings in all three frontends.
-- `PasswordResetRequestApiView`, `PasswordResetConfirmApiView`.
-- `ValidateInvitationApiView`.
-
-### Custom authentication
-
-`creators/authentication.py` provides `ApiKeyAuthentication`, wired
-into DRF via `DEFAULT_AUTHENTICATION_CLASSES`. This is what the MCP
-server uses for tool calls.
-
-## `notes` app
-
-`backend/notes/`. Content, courses, planner, recycle bin.
-
-### Key models (`notes/models.py`)
-
-- `Course` — a category/workspace; `is_default=True` means "Inbox"
-  (pinned, undeletable). `CourseMedia`, `CourseSubscription`,
-  `CourseOperationLog` are one-to-many support tables.
-- `Note` — the unit of content. Has `Course` FK, visibility,
-  optional UUID routing token, version ancestry. Accessed via
-  `NoteDetailApiView` by PK or `NoteByUuidApiView` by UUID.
-- `NoteBlock` — child rows per note; `block_type` chooses between
-  TEXT, TITLE, IMAGE, CODE, etc. (see `NoteBlockTypeChoices`).
-  `NoteIndex` stores the render order.
-- `NoteAttachment` — file upload on a note (uses
-  `note_attachment_path(instance, filename)` for the storage path).
-- `NoteVersion` — snapshot history; `NoteSnapshotApiView` /
-  `NoteRestoreApiView` drive rollback.
-- `RecycleBinEntry` — soft-delete; restore/empty via
-  `DeletedNoteListApiView` / `DeletedNoteRestoreApiView` /
-  `DeletedNoteEmptyApiView`.
-- `PlannerEvent` — calendar-backed task. `HeatmapActivity` stores
-  per-day activity counts.
-- `CalendarFeed` — subscribed iCal URL. The `source_url` is
-  normalized by [`normalize_calendar_url`](#notes-services) on create.
-- `NoteActivitySession` — per-note editing sessions for heatmap
-  attribution.
-- `Tag`, `ValidationRecord` — classification and audit.
-
-### Key API views (`notes/api.py`)
-
-Mounted under `/api/v1/...`:
-
-- [`FrontPageApiView`](#front-page-and-handshake) (with
-  `FrontPageApiView.health` at `/api/v1/health/`).
-- Course CRUD: `CourseListApiView`, `CourseDetailApiView`,
-  `CourseReorderApiView`, `CourseNotesApiView`,
-  `CourseSubscribeApiView`, `TemplateCourseRestoreApiView`.
-- Note CRUD: `NoteListCreateApiView`, `NoteDetailApiView`,
-  `NoteByUuidApiView`, `NoteBlocksApiView`, `SingleBlockApiView`,
-  `ReorderBlocksApiView`.
-- Versioning: `NoteHistoryApiView`, `NoteSnapshotApiView`,
-  `NoteRestoreApiView`.
-- Recycle bin: `DeletedNoteListApiView`,
-  `DeletedNoteRestoreApiView`, `DeletedNoteEmptyApiView`.
-- Planner / activity: `ActivityApiView`, `ActivityWeekApiView`,
-  `PlannerEvent*ApiView`.
-- Calendar feeds: `CalendarFeedListCreateApiView` (calls
-  `normalize_calendar_url` before save), `CalendarFeedDetailApiView`.
-- Attachments: `NoteAttachmentListCreateApiView`,
-  `NoteAttachmentDetailApiView`.
-
-### `notes` services (`notes/services.py`)
-
-Pure-function helpers, no request-cycle binding:
-
-- `normalize_calendar_url(url)` — rewrites Google Calendar share URLs
-  to canonical `.ics` form (`embed?src=<id>`, `?cid=<base64>` with
-  repad, pass-through for direct `.ics` and non-Google URLs).
-- `read_calendar_feed(url)` — fetches with a
-  `Notechondria/0.1 (+calendar-feed)` User-Agent.
-- `parse_ical_datetime(value)` — helper used by the RFC-5545
-  preview dialog in [planner_app](../client/planner_app.md).
-- `seed_inbox_and_welcome_note(creator)` — idempotent; creates the
-  default `Inbox` Course + a welcome Note with TITLE and TEXT blocks
-  on first sign-in. Returns `Optional[Note]`. Late-imports
-  `django.utils.text.slugify` and
-  `notechondria.utils.generate_unique_id` to avoid circular imports.
-  Called by `VerifyEmailApiView.post` and `_get_or_create_oauth_user`
-  in [`creators/api.py`](#creators-app).
-
-### Management commands
-
-- `notes/management/commands/bootstrap_platform.py` —
-  `resolve_codex_path()` locates the seed file (candidates include
-  the repo-root `AGENTS.md` file variant, `docs/index.md`, and
-  `AGENTS.md/AGENTS.md` from the submodule). Seeds the admin user,
-  the demo CodeX user, and three sample courses (`Vibe Coding 101`,
-  `Meaning of Work in Age of AI`, `Self-identity and Expression in
-  Modern Arts`).
-
-## `mcp` app
-
-`backend/mcp/`. Model-Context-Protocol server.
-
-- `mcp/urls.py` mounts the MCP endpoint at `/mcp/`.
-- `mcp/tools.py` exports 21 tools; each imports lazily from
-  `notes.services` / `creators.api` to keep startup cheap.
-- Authentication uses `ApiKeyAuthentication` from `creators`.
-- 39 tests in `mcp/tests.py`.
+The remaining `gptutils` app is stubbed — see below.
 
 ## `gptutils` app (stubbed)
 
@@ -268,7 +154,7 @@ Runs before gunicorn on every container start:
    `DJANGO_PRODUCTION_{STATIC,MEDIA}_ROOT`.
 4. `manage.py migrate --check` — if non-zero, run `migrate --noinput`.
 5. `manage.py bootstrap_platform` (see
-   [`resolve_codex_path`](#management-commands)).
+   [`resolve_codex_path` in notes.md](notes.md#management-commands)).
 6. `manage.py collectstatic --noinput --clear` + a verification
    block that re-copies admin/DRF static assets if missing.
 7. If `$# -eq 0`, exec a default gunicorn (added 0.1.18 so
