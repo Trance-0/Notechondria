@@ -1,0 +1,403 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Overview - Notechondria Documentation</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "navy";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../index.html">Project Overview</a></li><li class="chapter-item expanded affix "><a href="../index.html">Long-Form Agent Handoff</a></li><li class="chapter-item expanded affix "><a href="../TODO.html">TODO</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">Client (frontend apps)</li><li class="chapter-item expanded "><a href="../client/editor_app.html"><strong aria-hidden="true">1.</strong> Editor app</a></li><li class="chapter-item expanded "><a href="../client/planner_app.html"><strong aria-hidden="true">2.</strong> Planner app</a></li><li class="chapter-item expanded "><a href="../client/portal_app.html"><strong aria-hidden="true">3.</strong> Portal app</a></li><li class="chapter-item expanded affix "><li class="part-title">Server (backend)</li><li class="chapter-item expanded "><a href="../server/backend.html"><strong aria-hidden="true">4.</strong> Backend — Django + DRF</a></li><li class="chapter-item expanded affix "><li class="part-title">API</li><li class="chapter-item expanded "><a href="../api/backend_api_spec.html"><strong aria-hidden="true">5.</strong> Backend API Specification</a></li><li class="chapter-item expanded affix "><li class="part-title">Deployment</li><li class="chapter-item expanded "><a href="../deployment/overview.html" class="active"><strong aria-hidden="true">6.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../deployment/deploy.html"><strong aria-hidden="true">7.</strong> Docker-compose / Jenkins Full-stack Guide</a></li><li class="chapter-item expanded "><a href="../deployment/render_free_tier.html"><strong aria-hidden="true">8.</strong> Render Free Tier (Backend)</a></li><li class="chapter-item expanded "><a href="../deployment/northflank.html"><strong aria-hidden="true">9.</strong> Northflank Free Tier (Backend)</a></li><li class="chapter-item expanded affix "><li class="part-title">Development</li><li class="chapter-item expanded "><a href="../development/local_dev.html"><strong aria-hidden="true">10.</strong> Local Development Guide</a></li><li class="chapter-item expanded "><a href="../development/python_environments.html"><strong aria-hidden="true">11.</strong> Python Environments</a></li><li class="chapter-item expanded "><a href="../development/ai_integration.html"><strong aria-hidden="true">12.</strong> AI Integration (stub status and forward plan)</a></li><li class="chapter-item expanded "><a href="../development/canvas_like_calendar_mvp.html"><strong aria-hidden="true">13.</strong> Canvas-like Calendar Product Concept</a></li><li class="chapter-item expanded affix "><li class="part-title">Integrations</li><li class="chapter-item expanded "><a href="../integrations/github_app_integration.html"><strong aria-hidden="true">14.</strong> GitHub App Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">Operations</li><li class="chapter-item expanded "><a href="../operations/postgres_migration.html"><strong aria-hidden="true">15.</strong> PostgreSQL Migration</a></li><li class="chapter-item expanded affix "><li class="part-title">Testing</li><li class="chapter-item expanded "><a href="../testing/backend_test_plan.html"><strong aria-hidden="true">16.</strong> Backend Test Plan</a></li><li class="chapter-item expanded affix "><li class="part-title">Versions</li><li class="chapter-item expanded "><a href="../versions/0.1.19.html"><strong aria-hidden="true">17.</strong> 0.1.19 — Splash version display, deploy overview, settings handshake docs</a></li><li class="chapter-item expanded "><a href="../versions/0.1.18.html"><strong aria-hidden="true">18.</strong> 0.1.18 — Ics import dialog, calendar subscribe fix, welcome note, portal root</a></li><li class="chapter-item expanded "><a href="../versions/0.1.17.html"><strong aria-hidden="true">19.</strong> 0.1.17 — Splash polish, OAuth bind guard, API key visibility</a></li><li class="chapter-item expanded "><a href="../versions/0.1.16.html"><strong aria-hidden="true">20.</strong> 0.1.16 — MCP server, API key auth, front-page + media fixes</a></li><li class="chapter-item expanded "><a href="../versions/0.1.15.html"><strong aria-hidden="true">21.</strong> 0.1.15</a></li><li class="chapter-item expanded "><a href="../versions/0.1.14.html"><strong aria-hidden="true">22.</strong> 0.1.14</a></li><li class="chapter-item expanded "><a href="../versions/0.1.13.html"><strong aria-hidden="true">23.</strong> 0.1.13</a></li><li class="chapter-item expanded "><a href="../versions/0.1.12.html"><strong aria-hidden="true">24.</strong> 0.1.12</a></li><li class="chapter-item expanded "><a href="../versions/0.1.11.html"><strong aria-hidden="true">25.</strong> 0.1.11</a></li><li class="chapter-item expanded "><a href="../versions/0.1.10.html"><strong aria-hidden="true">26.</strong> 0.1.10</a></li><li class="chapter-item expanded "><a href="../versions/0.1.9.html"><strong aria-hidden="true">27.</strong> 0.1.9</a></li><li class="chapter-item expanded "><a href="../versions/0.1.8.html"><strong aria-hidden="true">28.</strong> 0.1.8</a></li><li class="chapter-item expanded "><a href="../versions/0.1.7.html"><strong aria-hidden="true">29.</strong> 0.1.7</a></li><li class="chapter-item expanded "><a href="../versions/0.1.6.html"><strong aria-hidden="true">30.</strong> 0.1.6</a></li><li class="chapter-item expanded "><a href="../versions/0.1.5.html"><strong aria-hidden="true">31.</strong> 0.1.5</a></li><li class="chapter-item expanded "><a href="../versions/0.1.4.html"><strong aria-hidden="true">32.</strong> 0.1.4</a></li><li class="chapter-item expanded "><a href="../versions/0.1.3.html"><strong aria-hidden="true">33.</strong> 0.1.3</a></li><li class="chapter-item expanded "><a href="../versions/0.1.2.html"><strong aria-hidden="true">34.</strong> 0.1.2</a></li><li class="chapter-item expanded "><a href="../versions/0.1.1.html"><strong aria-hidden="true">35.</strong> 0.1.1</a></li><li class="chapter-item expanded "><a href="../versions/0.1.0.html"><strong aria-hidden="true">36.</strong> 0.1.0</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Notechondria Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria/edit/codex/docs/./deployment/overview.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="deployment-overview"><a class="header" href="#deployment-overview">Deployment overview</a></h1>
+<p>Notechondria splits cleanly into two deployable surfaces:</p>
+<div class="table-wrapper"><table><thead><tr><th>Surface</th><th>Code path</th><th>Deploy targets</th></tr></thead><tbody>
+<tr><td>Backend (Django + DRF + Postgres)</td><td><a href="../../backend/"><code>backend/</code></a></td><td>Docker-compose [full stack], Render free-tier, Northflank free-tier, Railway <em>(untested)</em></td></tr>
+<tr><td>Frontend (3 Flutter apps)</td><td><a href="../../frontend/editor_app/"><code>frontend/editor_app/</code></a>, <a href="../../frontend/planner_app/"><code>planner_app/</code></a>, <a href="../../frontend/portal_app/"><code>portal_app/</code></a></td><td>GitHub Pages</td></tr>
+<tr><td>Static + media storage</td><td>n/a</td><td>Cloudflare R2 (S3-compatible)</td></tr>
+</tbody></table>
+</div>
+<p>The three Flutter apps and the backend are independently deployable.
+Cross-component contracts:</p>
+<ul>
+<li>All frontends call the same backend over <code>/api/v1/...</code>. Per-app
+defaults baked at build time via <code>--dart-define=DEFAULT_API_URL=...</code>
+with a fallback constant in each app's
+<code>lib/core/helpers.dart</code> (<code>_kDefaultApiUrl</code>).</li>
+<li>Frontends call <code>/api/v1/handshake/</code> before committing a
+user-changed API base URL — see
+<a href="../server/backend.html#handshake">server/backend.md#handshake</a>.</li>
+<li>Backend serves static + uploaded media through Cloudflare R2 when
+<code>CLOUDFLARE_R2_BUCKET_NAME</code> is set; otherwise falls back to
+WhiteNoise (Render) or local volumes (Docker).</li>
+</ul>
+<p>Pick the deploy path you need:</p>
+<h2 id="1-docker-compose-full-stack"><a class="header" href="#1-docker-compose-full-stack">1. Docker-compose [full stack]</a></h2>
+<p>End-to-end self-hosted deployment. Backend + Postgres + nginx
+gateway + all three frontend apps in one compose stack. Same shape
+as Jenkins runs in CI.</p>
+<ul>
+<li><strong>Compose file:</strong> root <a href="../../docker-compose.yml"><code>docker-compose.yml</code></a>.</li>
+<li><strong>Per-component composes:</strong> <a href="../../backend/docker-compose.yml"><code>backend/docker-compose.yml</code></a>,
+per-app composes under <code>frontend/&lt;app&gt;/docker-compose.yml</code>,
+gateway under <a href="../../deployment/docker/"><code>deployment/docker/gateway/</code></a>.</li>
+<li><strong>Pipeline:</strong> <a href="../../Jenkinsfile"><code>Jenkinsfile</code></a> +
+<a href="../../deployment/jenkins/scripts/"><code>deployment/jenkins/scripts/</code></a>
+(env prep, postgres backup, ensure-db-ready, test/deploy backend,
+test/deploy frontends, deploy gateway).</li>
+<li><strong>Detailed runbook:</strong> <a href="deploy.html">deploy.md</a>.</li>
+</ul>
+<p>Run locally:</p>
+<pre><code class="language-bash">cp sample.env .env       # then fill in DB password and SECRET_KEY
+docker compose up --build
+</code></pre>
+<p>Image tags follow <code>v&lt;VERSION&gt;.&lt;BUILD_NUMBER&gt;</code> from
+<a href="../../VERSION"><code>./VERSION</code></a> (read by
+<code>deployment/jenkins/scripts/prepare_env.sh</code>).</p>
+<h2 id="2-github-pages-frontend"><a class="header" href="#2-github-pages-frontend">2. GitHub Pages [Frontend]</a></h2>
+<p>Builds and publishes all three Flutter web apps to <code>gh-pages</code> under
+<code>/Notechondria/&lt;editor|planner|portal&gt;/</code>. Root <code>/Notechondria/</code>
+meta-refreshes to <code>/Notechondria/portal/</code>.</p>
+<ul>
+<li><strong>Workflow:</strong> <a href="../../.github/workflows/frontend-pages.yml"><code>.github/workflows/frontend-pages.yml</code></a>.</li>
+<li><strong>Build flags per app</strong> (added 0.1.19):
+<ul>
+<li><code>--base-href /Notechondria/&lt;app&gt;/</code> — required for project sites.</li>
+<li><code>--no-web-resources-cdn</code> — bundle Flutter runtime locally.</li>
+<li><code>--dart-define=APP_VERSION=$(cat VERSION)</code> — propagate version
+to splash screen + debug surface.</li>
+</ul>
+</li>
+<li><strong>Test gate:</strong> each app's <code>test/smoke_test.dart</code> must pass before
+build.</li>
+<li><strong>Trigger:</strong> push to <code>codex</code> (or whichever branch the workflow
+is configured for) + manual <code>workflow_dispatch</code>.</li>
+</ul>
+<p>To override the backend a frontend points at (for staging or a fork
+deployment), pass an extra <code>--dart-define=DEFAULT_API_URL=https://your-backend/api/v1</code>
+in each <code>flutter build web</code> step.</p>
+<h2 id="3-cloudflare-r2-cdn"><a class="header" href="#3-cloudflare-r2-cdn">3. Cloudflare R2 [CDN]</a></h2>
+<p>S3-compatible bucket holding static assets and user-uploaded media.
+Required for Render and Northflank because both have ephemeral
+container filesystems.</p>
+<ul>
+<li>
+<p><strong>Setup:</strong> <a href="https://developers.cloudflare.com/r2/"><code>https://developers.cloudflare.com/r2/</code></a>.
+Create a bucket, mint an R2 API token with read/write, optionally
+attach a custom domain.</p>
+</li>
+<li>
+<p><strong>Backend env vars</strong> (all five required if <code>CLOUDFLARE_R2_BUCKET_NAME</code>
+is set; otherwise none of them are):</p>
+<div class="table-wrapper"><table><thead><tr><th>Variable</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><code>CLOUDFLARE_R2_BUCKET_NAME</code></td><td>Bucket name</td></tr>
+<tr><td><code>CLOUDFLARE_R2_ACCOUNT_ID</code></td><td>Cloudflare account ID</td></tr>
+<tr><td><code>CLOUDFLARE_R2_ACCESS_KEY_ID</code></td><td>R2 API token access key</td></tr>
+<tr><td><code>CLOUDFLARE_R2_SECRET_ACCESS_KEY</code></td><td>R2 API token secret key</td></tr>
+<tr><td><code>CLOUDFLARE_R2_CUSTOM_DOMAIN</code></td><td><em>(optional)</em> public hostname</td></tr>
+</tbody></table>
+</div></li>
+<li>
+<p><strong>What lives there:</strong> <code>&lt;bucket&gt;/static/</code> (overwritten on every
+<code>collectstatic --noinput --clear</code>) and <code>&lt;bucket&gt;/media/</code> (user
+uploads, course covers, attachments).</p>
+</li>
+<li>
+<p><strong>Local Docker:</strong> <strong>do not</strong> set <code>CLOUDFLARE_R2_BUCKET_NAME</code> —
+the backend serves static via WhiteNoise/nginx and stores media
+on a local volume.</p>
+</li>
+</ul>
+<h2 id="4-render-free-tier-backend"><a class="header" href="#4-render-free-tier-backend">4. Render free-tier [Backend]</a></h2>
+<p>Backend-only PaaS deploy. Render provides PostgreSQL via
+<code>DATABASE_URL</code>, no persistent disk for media → R2 is required.</p>
+<ul>
+<li><strong>Detailed runbook:</strong> <a href="render_free_tier.html">render_free_tier.md</a>.</li>
+<li><strong>Start script:</strong> <a href="../../render-deploy.sh"><code>render-deploy.sh</code></a>
+→ <a href="../../deployment/render/scripts/render_backend_start.sh"><code>deployment/render/scripts/render_backend_start.sh</code></a>.</li>
+<li><strong>Required env:</strong> <code>DJANGO_SECRET_KEY</code>, <code>DATABASE_URL</code>,
+<code>DJANGO_ALLOWED_HOSTS</code>, <code>DJANGO_CSRF_TRUSTED_ORIGINS</code>, the five
+Cloudflare R2 vars. SMTP + OAuth as needed.</li>
+<li><strong>Build command:</strong> <code>pip install -r backend/requirements.txt</code>
+(the older <code>requirements-render.txt</code> is kept around but
+<code>requirements.txt</code> itself is now also pruned of the torch/whisper
+stack — see <a href="../development/ai_integration.html"><code>docs/development/ai_integration.md</code></a>).</li>
+<li><strong>Cold start gotcha:</strong> free instances cold-start slowly; first
+request after idle can take ~30 s.</li>
+</ul>
+<h2 id="5-northflank-free-tier-backend"><a class="header" href="#5-northflank-free-tier-backend">5. Northflank free-tier [Backend]</a></h2>
+<p>Backend-only deploy with a managed Postgres addon. Northflank
+service filesystems are ephemeral across redeploys → R2 is required.</p>
+<ul>
+<li><strong>Detailed runbook:</strong> <a href="northflank.html">northflank.md</a>.</li>
+<li><strong>Template:</strong> <a href="../../northflank.json"><code>northflank.json</code></a> (apiVersion
+<code>v1.2</code>) provisions a Project + a <code>notechondria-postgres</code> PostgreSQL
+addon + a <code>notechondria-backend</code> Combined Service that builds
+from <a href="../../backend/Dockerfile"><code>backend/Dockerfile</code></a>.</li>
+<li><strong>Apply:</strong> <code>northflank template apply --file northflank.json</code>
+(or import via the dashboard <code>Templates &gt; Create</code>).</li>
+<li><strong>Sample env:</strong> <a href="../../sample.northflank.env"><code>sample.northflank.env</code></a>
+enumerates every variable the service needs (mirrors the
+<code>sample.test.env</code> shape minus the Docker-compose-only knobs).</li>
+<li><strong>Docker config gotcha:</strong> <code>customCommand</code> overrides do not reach
+the Dockerfile ENTRYPOINT's <code>exec "$@"</code>, so the template uses
+<code>configType: "default"</code> and relies on
+<a href="../../backend/entrypoint.sh"><code>backend/entrypoint.sh</code></a>'s built-in
+gunicorn fallback (added 0.1.18).</li>
+</ul>
+<h2 id="6-railway-backend--untested"><a class="header" href="#6-railway-backend--untested">6. Railway [Backend] — untested</a></h2>
+<p>Railway is a credit-based PaaS similar to Render and Northflank.
+The maintainer is out of free-tier credits and has not validated
+the recipe; treat the steps below as a starting point.</p>
+<ul>
+<li><strong>Backend Dockerfile</strong> is the same as Render/Northflank — point
+Railway at <code>backend/Dockerfile</code> with the build context at the
+repo root (<code>Dockerfile path: backend/Dockerfile</code>,
+<code>Dockerfile context: .</code>).</li>
+<li><strong>Add a Postgres plugin</strong> in the project; Railway exposes
+<code>DATABASE_URL</code> automatically. Link it to the backend service.</li>
+<li><strong>Required env vars:</strong> same list as
+<a href="../../sample.northflank.env"><code>sample.northflank.env</code></a>, minus the
+Docker-compose-only knobs and minus the addon-supplied
+<code>POSTGRE_*</code>. Add the five Cloudflare R2 keys.</li>
+<li><strong>Health check:</strong> <code>GET /</code> (returns 200 from <code>health_check</code>).</li>
+<li><strong>Custom domain:</strong> Railway ships HTTPS by default; map your
+domain in the service's "Settings &gt; Networking", then add it to
+<code>DJANGO_ALLOWED_HOSTS</code> and <code>DJANGO_CSRF_TRUSTED_ORIGINS</code>.</li>
+<li><strong>CMD override:</strong> Railway honors the Dockerfile ENTRYPOINT, so
+no override needed — the entrypoint's gunicorn fallback runs.</li>
+<li><strong>Untested:</strong> all of the above is paper-only. If you wire it up,
+please file a PR with notes.</li>
+</ul>
+<h2 id="see-also"><a class="header" href="#see-also">See also</a></h2>
+<ul>
+<li><a href="../server/backend.html"><code>server/backend.md</code></a> — backend architecture
+with cross-references.</li>
+<li><a href="../client/"><code>client/</code></a> — per-app frontend docs.</li>
+<li><a href="../development/ai_integration.html"><code>development/ai_integration.md</code></a>
+— AI stub state and the planned external HTTP microservice.</li>
+<li><a href="../operations/postgres_migration.html"><code>operations/postgres_migration.md</code></a>
+— backup/restore runbook.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../api/backend_api_spec.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../deployment/deploy.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../api/backend_api_spec.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../deployment/deploy.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
