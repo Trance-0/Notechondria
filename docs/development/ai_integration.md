@@ -33,14 +33,14 @@ back to bundling AI libraries into the Django process:
    broke unrelated tests whenever `OPENAI_API_KEY` was missing from the
    environment at import time.
 
-Per `agents/AGENTS.md` §4.1 — "OpenAI / vendor SDK clients: initialize
+Per `AGENTS.md/AGENTS.md` §4.1 — "OpenAI / vendor SDK clients: initialize
 **lazily at call time**, never at module import" — we went one step
 further: the SDK is simply not installed. The few places that used to
 call it raise `NotImplementedError` instead.
 
 ## Current layout
 
-```
+```text
 backend/
 ├── gptutils/                       ← parked app; tables still in DB
 │   ├── apps.py                     (verbose_name signals stub status)

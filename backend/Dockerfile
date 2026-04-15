@@ -22,12 +22,12 @@ RUN pip3 install -r requirements.txt --no-cache-dir
 WORKDIR ${APP_HOME}
 COPY backend/ .
 COPY sample/ /home/sample/
-# bootstrap_platform seeds a starter note from this file's content. We
-# used to copy the repo-root AGENTS.md, but that pointer file was
-# removed in favour of docs/index.md (project-local rules) plus the
-# agents/ submodule (shared rules). Use docs/index.md as the seed
-# source; resolve_codex_path in bootstrap_platform matches the target
-# path unchanged.
+# bootstrap_platform seeds a starter note from this file's content.
+# Project-local rules now live in docs/index.md (the repo-root
+# AGENTS.md pointer file was removed; shared cross-project rules come
+# from the AGENTS.md/ submodule). Copy docs/index.md to /home/AGENTS.md
+# so resolve_codex_path in bootstrap_platform finds it at the same
+# container path as before.
 COPY docs/index.md /home/AGENTS.md
 
 # add entrypoint to root

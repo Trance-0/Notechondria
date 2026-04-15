@@ -2,9 +2,19 @@
 
 [Project Overview](readme.md)
 [Long-Form Agent Handoff](index.md)
-[Tasks](TASKS.md)
+[TODO](TODO.md)
 
 ---
+
+# Client (frontend apps)
+
+- [Editor app](client/editor_app.md)
+- [Planner app](client/planner_app.md)
+- [Portal app](client/portal_app.md)
+
+# Server (backend)
+
+- [Backend — Django + DRF](server/backend.md)
 
 # API
 
@@ -20,7 +30,8 @@
 
 - [Local Development Guide](development/local_dev.md)
 - [Python Environments](development/python_environments.md)
-- [Canvas-like Calendar MVP](canvas_like_calendar_mvp.md)
+- [AI Integration (stub status and forward plan)](development/ai_integration.md)
+- [Canvas-like Calendar Product Concept](development/canvas_like_calendar_mvp.md)
 
 # Integrations
 

@@ -91,7 +91,7 @@ jobs:
           touch /tmp/pages/.nojekyll
           # Root URL now points at the portal app directly — it already carries
           # its own navigation into Editor / Planner / Activity / Settings.
-          # See docs/TASKS.md (Portal section) and docs/versions/0.1.18.md.
+          # See docs/TODO.md (Portal section) and docs/versions/0.1.18.md.
           cat > /tmp/pages/index.html <<'EOF'
           <!doctype html>
           <html lang="en">
