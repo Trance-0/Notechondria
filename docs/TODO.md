@@ -25,11 +25,17 @@ Here is a list of task we need to do now after testing, finishing and solve thes
 
 ## Global reusable components
 
-- [ ]  **Urgent**: I see many components that should be reused but not formulated correctly, for example, 
-  - The Sidebar/Navigation is a container that could be reused, so that when you fix the bug in editor app, you don't need to fix the one in portal app, and vice versa.
-  - The debug window should be reused between editor and portal app.
-  - Login account window should be reused between editor and portal app.
-  - The local app preference should be reused between editor and portal app. (Renamed to "App preferences" in 0.1.20 so the label is already neutral; still inlined in three copies.)
+- [x] **Urgent**: Shared UI extracted into `frontend/notechondria_shared/`
+  in 0.1.21. Single source of truth for `SidebarItem` +
+  `ConfirmWithDelayDialog`, `ApiDebugCard` + `ApiDebugSummary`,
+  `ErrorStateView`, `SplashScreen`, the auth-dialog stack
+  (`AuthHub`, `RegistrationWizard`, `EmailPasswordDialog`,
+  `EmailCodeDialog`, `PasswordResetDialog`, `FeedbackText`), and
+  `AppPreferencesCard`. Cross-cutting models/utilities (`ActionFeedback`,
+  `ApiDebugSnapshot`, `showBlurDialog`, `formatCompactTimestamp`)
+  moved with them. Each app consumes the shared package via
+  `path: ../notechondria_shared` and imports the barrel once at
+  `lib/main.dart`.
 
 ### Start up animations
 

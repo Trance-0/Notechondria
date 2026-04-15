@@ -74,7 +74,9 @@ docs.
 ├── frontend/
 │   ├── editor_app/         ← see client/editor_app.md
 │   ├── planner_app/        ← see client/planner_app.md
-│   └── portal_app/         ← see client/portal_app.md
+│   ├── portal_app/         ← see client/portal_app.md
+│   └── notechondria_shared/ ← shared UI primitives consumed by the
+│                              three apps via path: ../notechondria_shared
 ├── deployment/             ← per-target CI/CD scripts (jenkins/,
 │                             docker/, render/, northflank/)
 ├── docs/                   ← this directory
@@ -125,9 +127,10 @@ Each of `editor_app`, `planner_app`, `portal_app` passes:
 - `flutter build web --release --base-href /Notechondria/<app>/
   --no-web-resources-cdn`
 
-The three apps still contain duplicated Flutter source copied from
-the prior monolith (the 0.1.x baseline). Structural separation is
-ahead of product-polish separation.
+Shared UI now lives in `frontend/notechondria_shared/` and is consumed
+by all three apps via a path-package dependency. Per-app `app_shell.dart`
+and `modules/settings.dart` still own each app's screen-level behavior;
+extract more shared widgets only when a duplication bug actually shows up.
 
 ## 5. Deployment topology (short)
 
@@ -147,8 +150,14 @@ Plus local Docker compose for dev.
 
 ## 6. Open work / caution list
 
-- The three Flutter apps still contain duplicated source copied from
-  the prior monolith; behavioral separation is partial.
+- Shared UI primitives (sidebar, splash, error-state, debug card, auth
+  dialogs, app-preferences rows, plus the `ActionFeedback` /
+  `ApiDebugSnapshot` models and `showBlurDialog` /
+  `formatCompactTimestamp` helpers) now live in
+  `frontend/notechondria_shared/`. Per-app `app_shell.dart` and
+  `modules/settings.dart` still hold their own behavior — extract more
+  shared widgets only when a real second-source-of-truth bug appears,
+  not preemptively.
 - Backend local verification still needs a reachable PostgreSQL
   service to complete full Django test runs.
 - Any future PR to upstream should target

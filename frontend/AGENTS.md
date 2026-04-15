@@ -7,6 +7,11 @@ This directory contains the three standalone Notechondria frontend apps.
 - `editor_app/` — offline-first note editor
 - `planner_app/` — course/module/calendar planner
 - `portal_app/` — router/orchestrator shell
+- `notechondria_shared/` — shared UI primitives consumed by all three
+  apps via `path: ../notechondria_shared`. Owns the sidebar row,
+  splash, error-state, debug card, auth-dialog stack, app-preferences
+  rows, and the cross-cutting `ActionFeedback` / `ApiDebugSnapshot`
+  models + `showBlurDialog` / `formatCompactTimestamp` helpers.
 - `README.md` — concise human overview
 
 ## Current progress
@@ -63,7 +68,12 @@ Still to deepen:
 
 1. Do not treat a green build as sufficient. Check the deployed behavior too.
 2. Prefer app-specific behavior over copying more of the monolith.
-3. If reusing monolith widgets, trim them into the app’s own purpose.
+3. If a widget is genuinely shared between two or more apps, put it in
+   `notechondria_shared/` and consume it via the path package — do not
+   copy-paste between apps. If a widget needs an app-specific tweak,
+   prefer adding a parameter / `Builder` slot to the shared widget over
+   forking it. Trim monolith leftovers into the app's own purpose only
+   when the widget is genuinely app-specific.
 4. Keep offline-first behavior working in `editor_app` and `planner_app`.
 5. Keep `portal_app` as orchestration shell, not integrated duplicate.
 6. Update `LLM_CHECK.md` when architectural or deployment assumptions change.
@@ -74,6 +84,7 @@ Still to deepen:
 From `frontend/`:
 
 ```bash
+(cd notechondria_shared && flutter pub get && flutter analyze)
 for app in editor_app planner_app portal_app; do
   (cd "$app" && flutter test test/smoke_test.dart -r compact)
   (cd "$app" && flutter build web --release --base-href "/${app%_app}/" --no-web-resources-cdn)
