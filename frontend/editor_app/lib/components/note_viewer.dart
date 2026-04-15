@@ -40,7 +40,7 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
       if ((course['title']?.toString() ?? '').isNotEmpty)
         course['title'].toString(),
       if ((note['last_edit']?.toString() ?? '').isNotEmpty)
-        _formatCompactTimestamp(note['last_edit'].toString()),
+        formatCompactTimestamp(note['last_edit'].toString()),
     ];
     return Dialog.fullscreen(
       child: SafeArea(

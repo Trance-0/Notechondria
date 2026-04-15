@@ -82,7 +82,7 @@ class _ApiDebugSummary extends StatelessWidget {
               const Text('No API response captured yet.')
             else ...[
               Text(
-                'Last response at ${_formatCompactTimestamp(snapshot!.recordedAt.toIso8601String())}',
+                'Last response at ${formatCompactTimestamp(snapshot!.recordedAt.toIso8601String())}',
                 style: theme.textTheme.bodySmall,
               ),
               const SizedBox(height: 4),

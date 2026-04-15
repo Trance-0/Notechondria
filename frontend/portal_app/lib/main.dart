@@ -14,6 +14,7 @@ import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:http/http.dart' as http;
 import 'package:markdown/markdown.dart' as md;
+import 'package:notechondria_shared/notechondria_shared.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/url_strategy.dart'

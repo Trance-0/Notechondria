@@ -621,7 +621,7 @@ class _CoursePageState extends State<_CoursePage> {
                               .isNotEmpty)
                             _CourseChip(
                               label:
-                                  'Opened ${_formatCompactTimestamp(activeCourse['last_opened_at'].toString())}',
+                                  'Opened ${formatCompactTimestamp(activeCourse['last_opened_at'].toString())}',
                             ),
                         ],
                       ),

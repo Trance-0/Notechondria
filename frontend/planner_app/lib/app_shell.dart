@@ -3082,7 +3082,7 @@ class _WideCourseSidebarSection extends StatelessWidget {
                                   .isNotEmpty) ...[
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Opened ${_formatCompactTimestamp(course['last_opened_at'].toString())}',
+                                  'Opened ${formatCompactTimestamp(course['last_opened_at'].toString())}',
                                   style: Theme.of(context)
                                       .textTheme
                                       .bodySmall

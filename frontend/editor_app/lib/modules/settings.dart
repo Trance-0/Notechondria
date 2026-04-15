@@ -720,7 +720,7 @@ class _SettingsPageState extends State<_SettingsPage> {
     String? maskedEmail;
     bool submitting = false;
     bool identityVerified = false;
-    _showBlurDialog<void>(
+    showBlurDialog<void>(
       context: context,
       child: StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
@@ -870,7 +870,7 @@ class _SettingsPageState extends State<_SettingsPage> {
     bool submitting = false;
     bool identityVerified = false;
     bool codeSent = false;
-    _showBlurDialog<void>(
+    showBlurDialog<void>(
       context: context,
       child: StatefulBuilder(
         builder: (ctx, setDialogState) {

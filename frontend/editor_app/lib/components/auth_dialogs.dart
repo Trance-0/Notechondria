@@ -60,7 +60,7 @@ class _AuthHub extends StatelessWidget {
   final VoidCallback? onGithubLoginOnly;
 
   Future<void> _openDialog(BuildContext context, Widget dialog) {
-    return _showBlurDialog<void>(
+    return showBlurDialog<void>(
       context: context,
       child: dialog,
     );

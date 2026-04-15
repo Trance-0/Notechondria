@@ -96,27 +96,6 @@ Map<String, dynamic> _decodeNoteMetadata(String raw) {
   }
 }
 
-/// Formats note timestamps for compact card footers.
-String _formatCompactTimestamp(String raw) {
-  if (raw.isEmpty) {
-    return '';
-  }
-  final parsed = DateTime.tryParse(raw);
-  if (parsed == null) {
-    return raw;
-  }
-  final now = DateTime.now();
-  final local = parsed.toLocal();
-  final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-  if (local.isAfter(startOfWeek) && local.year == now.year) {
-    return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][local.weekday - 1];
-  }
-  if (local.year == now.year) {
-    return '${local.month.toString().padLeft(2, '0')}/${local.day.toString().padLeft(2, '0')}';
-  }
-  return '${(local.year % 100).toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}/${local.day.toString().padLeft(2, '0')}';
-}
-
 /// Formats a local time for save status and activity surfaces.
 String _formatTime(DateTime value) {
   final hour = value.hour % 12 == 0 ? 12 : value.hour % 12;
@@ -536,44 +515,6 @@ Future<T?> _showSlideInDialog<T>({
           ).animate(curved),
           child: child,
         ),
-      );
-    },
-  );
-}
-
-/// Shows a standard dialog with a gaussian-blurred backdrop.
-Future<T?> _showBlurDialog<T>({
-  required BuildContext context,
-  required Widget child,
-  bool barrierDismissible = true,
-}) {
-  return showGeneralDialog<T>(
-    context: context,
-    barrierDismissible: barrierDismissible,
-    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-    barrierColor: Colors.transparent,
-    transitionDuration: const Duration(milliseconds: 200),
-    pageBuilder: (context, animation, secondaryAnimation) {
-      return Stack(
-        children: [
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: barrierDismissible ? () => Navigator.of(context).pop() : null,
-              behavior: HitTestBehavior.opaque,
-              child: BackdropFilter(
-                filter: ui.ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-                child: ColoredBox(color: Colors.black.withValues(alpha: 0.35)),
-              ),
-            ),
-          ),
-          Center(child: child),
-        ],
-      );
-    },
-    transitionBuilder: (context, animation, secondaryAnimation, child) {
-      return FadeTransition(
-        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-        child: child,
       );
     },
   );

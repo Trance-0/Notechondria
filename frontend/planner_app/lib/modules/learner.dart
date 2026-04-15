@@ -621,7 +621,7 @@ class _LearnerNoteCard extends StatelessWidget {
                               'Private',
                             if ((course['title']?.toString() ?? '').isNotEmpty)
                               course['title'].toString(),
-                            _formatCompactTimestamp(
+                            formatCompactTimestamp(
                               note['last_edit']?.toString() ?? '',
                             ),
                           ].join(' | '),

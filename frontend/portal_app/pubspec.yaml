@@ -17,6 +17,8 @@ dependencies:
   flutter_svg: ^2.1.0
   http: ^1.2.1
   markdown: ^7.3.0
+  notechondria_shared:
+    path: ../notechondria_shared
   shared_preferences: ^2.5.3
   url_launcher: ^6.3.2
 

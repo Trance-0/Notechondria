@@ -1,39 +1,5 @@
 part of notechondria_frontend;
 
-/// Reports user-facing success or failure feedback for an async action.
-class ActionFeedback {
-  const ActionFeedback({
-    required this.message,
-    this.isError = false,
-  });
-
-  final String message;
-  final bool isError;
-}
-
-/// Captures the last API response shape for frontend debugging surfaces.
-class ApiDebugSnapshot {
-  const ApiDebugSnapshot({
-    required this.recordedAt,
-    required this.method,
-    required this.url,
-    required this.statusCode,
-    required this.contentType,
-    required this.bodyPreview,
-    required this.looksLikeHtml,
-    this.note,
-  });
-
-  final DateTime recordedAt;
-  final String method;
-  final String url;
-  final int statusCode;
-  final String contentType;
-  final String bodyPreview;
-  final bool looksLikeHtml;
-  final String? note;
-}
-
 /// Defines the frontend contract for all Notechondria REST operations.
 abstract class NotechondriaClient {
   Future<Map<String, dynamic>> getFrontPage({String? token});
