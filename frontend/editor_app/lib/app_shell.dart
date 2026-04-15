@@ -3149,8 +3149,9 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         children: [
           scaffold,
           Positioned.fill(
-            child: _SplashScreen(
+            child: SplashScreen(
               appTitle: widget.appTitle,
+              appVersion: _kAppVersion,
               onFinished: () {
                 setState(() { _showSplash = false; if (_isLoading) _isLoading = false; });
               },

@@ -2637,8 +2637,9 @@ Capture deadlines, sequencing, and blockers here.''',
         children: [
           scaffold,
           Positioned.fill(
-            child: _SplashScreen(
+            child: SplashScreen(
               appTitle: widget.appTitle,
+              appVersion: _kAppVersion,
               onFinished: () {
                 setState(() { _showSplash = false; if (_isLoading) _isLoading = false; });
               },

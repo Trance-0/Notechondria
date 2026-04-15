@@ -1,33 +1,39 @@
-part of notechondria_frontend;
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
 
 /// Splash screen showing an animated Citric acid cycle (Krebs cycle).
 ///
 /// The cycle axis is at the left center of the screen. It rotates to bring
 /// each metabolite to the screen center. Each metabolite's structural
 /// formula is anchored to its node and freely moves out of screen as the
-/// cycle rotates — no English names are drawn next to the nodes. The
+/// cycle rotates - no English names are drawn next to the nodes. The
 /// background is dotted with tiny rotating structural formulas of small
-/// molecules that commonly accompany the cycle (H\u2082O, CO\u2082, NAD\u207a,
-/// pyruvate fragments, etc.).
-class _SplashScreen extends StatefulWidget {
-  const _SplashScreen({
+/// molecules that commonly accompany the cycle (H2O, CO2, NAD+, pyruvate
+/// fragments, etc.). The version string in the bottom-left is supplied by
+/// the host app via [appVersion] so each app can show its own
+/// build-time-injected `--dart-define=APP_VERSION=...` value.
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({
+    super.key,
     required this.appTitle,
+    required this.appVersion,
     this.onFinished,
   });
 
   final String appTitle;
+  final String appVersion;
   final VoidCallback? onFinished;
 
   @override
-  State<_SplashScreen> createState() => _SplashScreenState();
+  State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<_SplashScreen>
+class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   bool _dismissed = false;
 
-  // Citric acid cycle metabolites in order.
   static const _metabolites = [
     'Citrate',
     'Isocitrate',
@@ -39,7 +45,6 @@ class _SplashScreenState extends State<_SplashScreen>
     'Oxaloacetate',
   ];
 
-  // Byproducts emitted at each step.
   static const _byproducts = <int, List<String>>{
     0: ['NADH'],
     2: ['CO\u2082', 'NADH'],
@@ -49,7 +54,6 @@ class _SplashScreenState extends State<_SplashScreen>
     7: ['NADH'],
   };
 
-  // Pre-generated particle seeds (angle, radius-fraction, speed-factor, size).
   late final List<_Particle> _particles;
 
   @override
@@ -59,9 +63,6 @@ class _SplashScreenState extends State<_SplashScreen>
       vsync: this,
       duration: const Duration(milliseconds: 12000),
     )..repeat();
-    // Generate randomised particles once. Each particle is a tiny
-    // structural formula of a small molecule drifting around the cycle,
-    // with a random initial rotation and rotation speed.
     final rng = math.Random(42);
     _particles = List.generate(26, (_) {
       return _Particle(
@@ -155,7 +156,7 @@ class _SplashScreenState extends State<_SplashScreen>
                   left: constraints.maxWidth * 0.04,
                   bottom: constraints.maxHeight * 0.04,
                   child: Text(
-                    'v$_kAppVersion',
+                    'v${widget.appVersion}',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: subtleColor,
                       fontFeatures: const [FontFeature.tabularFigures()],
@@ -171,7 +172,6 @@ class _SplashScreenState extends State<_SplashScreen>
   }
 }
 
-/// Immutable particle seed created once in initState.
 class _Particle {
   const _Particle({
     required this.angle,
@@ -225,10 +225,8 @@ class _KrebsCyclePainter extends CustomPainter {
     final n = metabolites.length;
     final rotationAngle = -2 * math.pi * progress;
 
-    // --- Particles (behind everything) ---
     _drawParticles(canvas, center, radius, w, h);
 
-    // Orbit ring — thicker for visual weight.
     canvas.drawCircle(
       center,
       radius,
@@ -238,7 +236,6 @@ class _KrebsCyclePainter extends CustomPainter {
         ..strokeWidth = 4.5,
     );
 
-    // Connecting arrows.
     final arrowPaint = Paint()
       ..color = subtleColor.withValues(alpha: 0.3)
       ..style = PaintingStyle.stroke
@@ -263,7 +260,6 @@ class _KrebsCyclePainter extends CustomPainter {
     final activeStep = (progress * n).floor() % n;
     final stepFraction = (progress * n) % 1.0;
 
-    // Metabolite nodes.
     for (var i = 0; i < n; i++) {
       final angle = 2 * math.pi * i / n + rotationAngle;
       final pos = center + Offset(math.cos(angle), math.sin(angle)) * radius;
@@ -293,12 +289,8 @@ class _KrebsCyclePainter extends CustomPainter {
             ..strokeWidth = 2.5,
         );
       }
-      // English metabolite names are intentionally omitted — the only
-      // per-node chemical information is the structural formula that
-      // orbits with the active node below.
     }
 
-    // Byproducts flying outward.
     if (byproducts.containsKey(activeStep)) {
       final products = byproducts[activeStep]!;
       final angle = 2 * math.pi * activeStep / n + rotationAngle;
@@ -325,7 +317,6 @@ class _KrebsCyclePainter extends CustomPainter {
       }
     }
 
-    // Acetyl-CoA entry arrow.
     final ea = rotationAngle;
     final ep = center + Offset(math.cos(ea), math.sin(ea)) * radius;
     if (ep.dx > -30) {
@@ -364,21 +355,11 @@ class _KrebsCyclePainter extends CustomPainter {
       );
     }
 
-    // -----------------------------------------------------------------------
-    // Active metabolite: structural formula orbits with the active node.
-    // The formula is anchored to the node and offset outward; it is NOT
-    // clamped to stay on screen, so it naturally travels out of the viewport
-    // as the cycle rotates — exactly like a real chemical moving along the
-    // cycle orbit. Text labels stay horizontal.
-    // -----------------------------------------------------------------------
     final activeAngle = 2 * math.pi * activeStep / n + rotationAngle;
     final activePos =
         center + Offset(math.cos(activeAngle), math.sin(activeAngle)) * radius;
 
-    // Only draw when the node is reasonably on-screen.
     if (activePos.dx > -30) {
-      // Push the formula outward from the node along the orbit tangent
-      // so it trails behind/ahead of the node, free to move off-screen.
       final outDir = Offset(math.cos(activeAngle), math.sin(activeAngle));
       final formulaCenter = activePos + outDir * (radius * 0.38);
       final formulaAlpha = (0.4 + 0.6 * math.sin(stepFraction * math.pi))
@@ -388,17 +369,9 @@ class _KrebsCyclePainter extends CustomPainter {
     }
   }
 
-  // =========================================================================
-  // Particle effects — tiny rotating structural formulas of small molecules
-  // that accompany the citric acid cycle (H2O, CO2, NAD+, pyruvate, etc.).
-  // Each particle orbits at its own speed and spins at its own rate so the
-  // background feels alive.
-  // =========================================================================
-
   void _drawParticles(
       Canvas canvas, Offset center, double radius, double w, double h) {
     for (final p in particles) {
-      // Each particle orbits at its own speed and radius.
       final angle = p.angle + progress * 2 * math.pi * p.speed;
       final r = radius * p.radiusFraction;
       final drift =
@@ -409,8 +382,6 @@ class _KrebsCyclePainter extends CustomPainter {
       if (pos.dx < -40 || pos.dx > w + 40 || pos.dy < -40 || pos.dy > h + 40) {
         continue;
       }
-      // Fade based on screen position so molecules appearing on the left
-      // edge gently phase in.
       final fade = ((pos.dx + 40) / 120).clamp(0.0, 1.0);
       final alpha = (0.22 + 0.12 * math.sin(progress * 2 * math.pi * 2 + p.angle * 3))
               .clamp(0.0, 1.0) *
@@ -426,15 +397,10 @@ class _KrebsCyclePainter extends CustomPainter {
     }
   }
 
-  /// Draw a tiny structural formula at the current canvas origin.
-  ///
-  /// Caller is expected to have already translated+rotated the canvas so
-  /// the molecule is centred at (0, 0). Eight different molecule sketches
-  /// are provided, selected by [type] modulo 8.
   void _drawParticleMolecule(
       Canvas canvas, int type, double scale, double alpha) {
-    final bl = 7.0 * scale; // bond length
-    final fs = 7.8 * scale; // font size
+    final bl = 7.0 * scale;
+    final fs = 7.8 * scale;
     final bond = Paint()
       ..color = textColor.withValues(alpha: alpha * 0.85)
       ..style = PaintingStyle.stroke
@@ -460,7 +426,7 @@ class _KrebsCyclePainter extends CustomPainter {
     }
 
     switch (type % 8) {
-      case 0: // H2O — bent "V" with central O
+      case 0:
         line(Offset.zero, Offset(-bl, bl * 0.7));
         line(Offset.zero, Offset(bl, bl * 0.7));
         lbl('O', const Offset(0, -1), color: accent);
@@ -468,7 +434,7 @@ class _KrebsCyclePainter extends CustomPainter {
         lbl('H', Offset(bl * 1.25, bl * 0.8));
         break;
 
-      case 1: // CO2 — linear O=C=O
+      case 1:
         doubleLine(Offset(-bl * 1.1, 0), Offset(-bl * 0.25, 0));
         doubleLine(Offset(bl * 0.25, 0), Offset(bl * 1.1, 0));
         lbl('C', Offset.zero, color: accent);
@@ -476,7 +442,7 @@ class _KrebsCyclePainter extends CustomPainter {
         lbl('O', Offset(bl * 1.7, 0));
         break;
 
-      case 2: // -COOH carboxyl fragment
+      case 2:
         const c = Offset.zero;
         line(Offset(-bl, bl * 0.5), c);
         doubleLine(c, Offset(0, -bl));
@@ -485,7 +451,7 @@ class _KrebsCyclePainter extends CustomPainter {
         lbl('OH', Offset(bl * 1.55, bl * 0.6), color: accent);
         break;
 
-      case 3: // Pyruvate fragment CH3-C(=O)-COOH (compact)
+      case 3:
         final c1 = Offset(-bl * 1.4, 0);
         final c2 = Offset(-bl * 0.3, bl * 0.5);
         final c3 = Offset(bl * 0.8, 0);
@@ -497,7 +463,7 @@ class _KrebsCyclePainter extends CustomPainter {
         lbl('COOH', Offset(bl * 2.2, 0), color: accent);
         break;
 
-      case 4: // NAD+ stylized as rounded label plate
+      case 4:
         final rect = Rect.fromCenter(
             center: Offset.zero, width: bl * 3.6, height: bl * 1.7);
         canvas.drawRRect(
@@ -508,7 +474,7 @@ class _KrebsCyclePainter extends CustomPainter {
             color: accent, fsOverride: fs * 0.85);
         break;
 
-      case 5: // Phosphate Pi — P with four short bonds
+      case 5:
         for (var k = 0; k < 4; k++) {
           final a = k * math.pi / 2 + math.pi / 4;
           line(Offset.zero, Offset(math.cos(a), math.sin(a)) * bl);
@@ -516,12 +482,12 @@ class _KrebsCyclePainter extends CustomPainter {
         lbl('P', Offset.zero, color: accent);
         break;
 
-      case 6: // H+ proton — small ring with label
+      case 6:
         canvas.drawCircle(Offset.zero, bl * 0.45, bond);
         lbl('H⁺', Offset(bl * 1.35, 0), color: accent);
         break;
 
-      case 7: // FADH2 / Acetyl fragment — C-C with methyl and double bond O
+      case 7:
         final c1 = Offset(-bl, 0);
         final c2 = Offset(bl * 0.2, 0);
         line(c1, c2);
@@ -532,10 +498,6 @@ class _KrebsCyclePainter extends CustomPainter {
         break;
     }
   }
-
-  // =========================================================================
-  // 2-D skeletal structural formula drawing
-  // =========================================================================
 
   void _drawSkeletalFormula(
     Canvas canvas,
@@ -594,7 +556,7 @@ class _KrebsCyclePainter extends CustomPainter {
     final branchDown = Offset(0, bondLen * 0.55);
 
     switch (index) {
-      case 0: // Citrate
+      case 0:
         final c1 = origin + Offset(-bondLen * 2.5, 0);
         final c2 = zig(c1, zigDown);
         final c3 = zig(c2, zigUp);
@@ -616,7 +578,7 @@ class _KrebsCyclePainter extends CustomPainter {
         accentLabel(brDn + branchDown * 0.4, 'OH');
         break;
 
-      case 1: // Isocitrate
+      case 1:
         final c1 = origin + Offset(-bondLen * 2.5, 0);
         final c2 = zig(c1, zigDown);
         final c3 = zig(c2, zigUp);
@@ -637,7 +599,7 @@ class _KrebsCyclePainter extends CustomPainter {
         accentLabel(brDn4 + branchDown * 0.4, 'OH');
         break;
 
-      case 2: // α-Ketoglutarate
+      case 2:
         final c1 = origin + Offset(-bondLen * 2.0, 0);
         final c2 = zig(c1, zigDown);
         final c3 = zig(c2, zigUp);
@@ -656,7 +618,7 @@ class _KrebsCyclePainter extends CustomPainter {
         label(c5 + const Offset(8, 0), 'COOH', xAnchor: 0.0);
         break;
 
-      case 3: // Succinyl-CoA
+      case 3:
         final c1 = origin + Offset(-bondLen * 2.5, 0);
         final c2 = zig(c1, zigDown);
         final c3 = zig(c2, zigUp);
@@ -678,7 +640,7 @@ class _KrebsCyclePainter extends CustomPainter {
         label(c6 + const Offset(8, 0), 'CoA', xAnchor: 0.0);
         break;
 
-      case 4: // Succinate
+      case 4:
         final c1 = origin + Offset(-bondLen * 1.5, 0);
         final c2 = zig(c1, zigDown);
         final c3 = zig(c2, zigUp);
@@ -692,7 +654,7 @@ class _KrebsCyclePainter extends CustomPainter {
         label(c4 + const Offset(8, 0), 'COOH', xAnchor: 0.0);
         break;
 
-      case 5: // Fumarate
+      case 5:
         final c1 = origin + Offset(-bondLen * 1.5, 0);
         final c2 = zig(c1, zigDown);
         final c3 = zig(c2, zigUp);
@@ -709,7 +671,7 @@ class _KrebsCyclePainter extends CustomPainter {
         label(c4 + const Offset(8, 0), 'COOH', xAnchor: 0.0);
         break;
 
-      case 6: // Malate
+      case 6:
         final c1 = origin + Offset(-bondLen * 1.5, 0);
         final c2 = zig(c1, zigDown);
         final c3 = zig(c2, zigUp);
@@ -725,7 +687,7 @@ class _KrebsCyclePainter extends CustomPainter {
         accentLabel(brDn3 + branchUp * 0.4, 'OH');
         break;
 
-      case 7: // Oxaloacetate
+      case 7:
         final c1 = origin + Offset(-bondLen * 1.5, 0);
         final c2 = zig(c1, zigDown);
         final c3 = zig(c2, zigUp);
@@ -741,8 +703,6 @@ class _KrebsCyclePainter extends CustomPainter {
         label(c4 + const Offset(8, 0), 'COOH', xAnchor: 0.0);
         break;
     }
-
-    // (Metabolite name already drawn near the orbit node – no duplicate here.)
   }
 
   void _drawText(

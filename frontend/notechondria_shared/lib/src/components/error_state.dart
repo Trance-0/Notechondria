@@ -1,8 +1,12 @@
-part of notechondria_frontend;
+import 'package:flutter/material.dart';
+
+import '../models/api_debug_snapshot.dart';
+import 'debug_widgets.dart';
 
 /// Shared full-page error surface with retry and API diagnostics.
-class _ErrorState extends StatelessWidget {
-  const _ErrorState({
+class ErrorStateView extends StatelessWidget {
+  const ErrorStateView({
+    super.key,
     required this.message,
     required this.onRetry,
     this.apiBaseUrl,
