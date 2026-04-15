@@ -2604,7 +2604,7 @@ class _AppShellState extends State<AppShell> {
                       child: Column(
                         children: [
                           for (final index in _visibleIndices.where((index) => index != 4))
-                            _SidebarItem(
+                            SidebarItem(
                               icon: (_destinations[index].icon as Icon).icon!,
                               label: _titles[index],
                               selected: _selectedIndex == index,
@@ -2639,7 +2639,7 @@ class _AppShellState extends State<AppShell> {
                   if (_visibleIndices.contains(4))
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-                      child: _SidebarItem(
+                      child: SidebarItem(
                         icon: Icons.settings_outlined,
                         label: 'Settings',
                         selected: _selectedIndex == 4,

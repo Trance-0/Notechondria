@@ -445,7 +445,7 @@ class _SettingsPageState extends State<_SettingsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => const _ConfirmWithDelayDialog(
+      builder: (ctx) => const ConfirmWithDelayDialog(
         title: 'Clear all local data?',
         message:
             'This removes every local draft and local category from this device. Notes already synced to the cloud are not affected.',

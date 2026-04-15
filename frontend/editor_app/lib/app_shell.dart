@@ -1745,7 +1745,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       child: GestureDetector(
         onLongPress: () => _promptEditCategory(cat),
         onSecondaryTap: () => _promptEditCategory(cat),
-        child: _SidebarItem(
+        child: SidebarItem(
           icon: cat['is_local_course'] == true
               ? Icons.folder_outlined
               : (cat['is_default'] == true
@@ -1906,7 +1906,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
   }) async {
     final result = await showDialog<bool>(
       context: context,
-      builder: (ctx) => _ConfirmWithDelayDialog(
+      builder: (ctx) => ConfirmWithDelayDialog(
         title: title,
         message: message,
         confirmLabel: confirmLabel,
@@ -3197,7 +3197,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
               // "All Notes" item
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: _SidebarItem(
+                child: SidebarItem(
                   icon: Icons.menu_book_outlined,
                   label: 'All Notes',
                   selected:
@@ -3307,7 +3307,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
                           Padding(
                             padding:
                                 const EdgeInsets.fromLTRB(12, 4, 12, 8),
-                            child: _SidebarItem(
+                            child: SidebarItem(
                               icon: Icons.add_circle_outline,
                               label: 'New category',
                               selected: false,
@@ -3327,7 +3327,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
                 const SizedBox(height: 8),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: _SidebarItem(
+                  child: SidebarItem(
                     icon: Icons.add_circle_outline,
                     label: 'New category',
                     selected: false,
@@ -3342,7 +3342,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
               // Settings at bottom
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-                child: _SidebarItem(
+                child: SidebarItem(
                   icon: Icons.settings_outlined,
                   label: 'Settings',
                   selected: _selectedIndex == 4,
@@ -3372,7 +3372,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         Navigator.of(context).pop();
         _promptEditCategory(cat);
       },
-      child: _SidebarItem(
+      child: SidebarItem(
         icon: _courseIcon(cat),
         label: cat['title']?.toString() ?? 'Category',
         selected: _selectedCategoryId == (cat['id'] as num?)?.toInt(),
@@ -3406,7 +3406,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
                   // "All Notes" item
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: _SidebarItem(
+                    child: SidebarItem(
                       icon: Icons.menu_book_outlined,
                       label: 'All Notes',
                       selected: _selectedIndex == 1 &&
@@ -3519,7 +3519,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
                               Padding(
                                 padding: const EdgeInsets.fromLTRB(
                                     12, 4, 12, 8),
-                                child: _SidebarItem(
+                                child: SidebarItem(
                                   icon: Icons.add_circle_outline,
                                   label: 'New category',
                                   selected: false,
@@ -3536,7 +3536,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
                     const SizedBox(height: 8),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: _SidebarItem(
+                      child: SidebarItem(
                         icon: Icons.add_circle_outline,
                         label: 'New category',
                         selected: false,
@@ -3548,7 +3548,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
                   // Settings at bottom
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-                    child: _SidebarItem(
+                    child: SidebarItem(
                       icon: Icons.settings_outlined,
                       label: 'Settings',
                       selected: _selectedIndex == 4,

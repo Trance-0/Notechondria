@@ -2722,7 +2722,7 @@ Capture deadlines, sequencing, and blockers here.''',
                           // only 4 modules (0=Learner, 1=Course, 2=Activity,
                           // 3=Settings).
                           for (final index in _visibleIndices.where((index) => index != 3))
-                            _SidebarItem(
+                            SidebarItem(
                               icon: (_destinations[index].icon as Icon).icon!,
                               label: _titles[index],
                               selected: _selectedIndex == index,
@@ -2757,7 +2757,7 @@ Capture deadlines, sequencing, and blockers here.''',
                   if (_visibleIndices.contains(3))
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-                      child: _SidebarItem(
+                      child: SidebarItem(
                         icon: Icons.settings_outlined,
                         label: 'Settings',
                         selected: _selectedIndex == 3,

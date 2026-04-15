@@ -1,10 +1,13 @@
-part of notechondria_frontend;
+import 'dart:async';
+
+import 'package:flutter/material.dart';
 
 /// Confirmation dialog that disables its destructive button for [delaySeconds]
 /// to give the user a chance to reconsider. Used for clear-data and delete-
 /// category style operations.
-class _ConfirmWithDelayDialog extends StatefulWidget {
-  const _ConfirmWithDelayDialog({
+class ConfirmWithDelayDialog extends StatefulWidget {
+  const ConfirmWithDelayDialog({
+    super.key,
     required this.title,
     required this.message,
     this.confirmLabel = 'Delete',
@@ -17,11 +20,10 @@ class _ConfirmWithDelayDialog extends StatefulWidget {
   final int delaySeconds;
 
   @override
-  State<_ConfirmWithDelayDialog> createState() =>
-      _ConfirmWithDelayDialogState();
+  State<ConfirmWithDelayDialog> createState() => _ConfirmWithDelayDialogState();
 }
 
-class _ConfirmWithDelayDialogState extends State<_ConfirmWithDelayDialog> {
+class _ConfirmWithDelayDialogState extends State<ConfirmWithDelayDialog> {
   late int _remaining;
   Timer? _timer;
 
@@ -72,8 +74,9 @@ class _ConfirmWithDelayDialogState extends State<_ConfirmWithDelayDialog> {
 }
 
 /// Sidebar navigation row used by the wide desktop layout.
-class _SidebarItem extends StatelessWidget {
-  const _SidebarItem({
+class SidebarItem extends StatelessWidget {
+  const SidebarItem({
+    super.key,
     required this.icon,
     required this.label,
     required this.selected,
