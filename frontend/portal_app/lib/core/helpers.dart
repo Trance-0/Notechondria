@@ -113,6 +113,13 @@ String _formatTime(DateTime value) {
 const _kDefaultApiUrl = String.fromEnvironment('DEFAULT_API_URL',
     defaultValue: 'https://notechondria.trance-0.com/api/v1');
 
+/// Build-time app version. The release pipeline should pass
+/// `--dart-define=APP_VERSION=$(cat VERSION)` so the splash screen and any
+/// debug surface report the same version as the Docker image tag. The
+/// default tracks the value committed to the repo's ./VERSION file at the
+/// time of writing — bump both together.
+const _kAppVersion = String.fromEnvironment('APP_VERSION', defaultValue: '0.1.19');
+
 String _defaultApiBaseUrl() {
   if (kIsWeb) {
     final base = Uri.base;

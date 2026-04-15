@@ -22,9 +22,10 @@
 
 # Deployment
 
-- [Deployment Guide](deployment/deploy.md)
-- [Render Free Tier](deployment/render_free_tier.md)
-- [Northflank](deployment/northflank.md)
+- [Overview](deployment/overview.md)
+- [Docker-compose / Jenkins Full-stack Guide](deployment/deploy.md)
+- [Render Free Tier (Backend)](deployment/render_free_tier.md)
+- [Northflank Free Tier (Backend)](deployment/northflank.md)
 
 # Development
 
@@ -51,6 +52,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.19 — Splash version display, deploy overview, settings handshake docs](versions/0.1.19.md)
 - [0.1.18 — Ics import dialog, calendar subscribe fix, welcome note, portal root](versions/0.1.18.md)
 - [0.1.17 — Splash polish, OAuth bind guard, API key visibility](versions/0.1.17.md)
 - [0.1.16 — MCP server, API key auth, front-page + media fixes](versions/0.1.16.md)

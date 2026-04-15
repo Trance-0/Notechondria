@@ -31,6 +31,10 @@ jobs:
       - name: Enable Flutter web
         run: flutter config --enable-web
 
+      - name: Read app version from ./VERSION
+        id: appversion
+        run: echo "value=$(tr -d '\n' < VERSION)" >> "$GITHUB_OUTPUT"
+
       - name: Test editor_app
         working-directory: frontend/editor_app
         run: |
@@ -39,7 +43,7 @@ jobs:
 
       - name: Build editor_app
         working-directory: frontend/editor_app
-        run: flutter build web --release --base-href /Notechondria/editor/ --no-web-resources-cdn
+        run: flutter build web --release --base-href /Notechondria/editor/ --no-web-resources-cdn --dart-define=APP_VERSION=${{ steps.appversion.outputs.value }}
 
       - name: Test planner_app
         working-directory: frontend/planner_app
@@ -49,7 +53,7 @@ jobs:
 
       - name: Build planner_app
         working-directory: frontend/planner_app
-        run: flutter build web --release --base-href /Notechondria/planner/ --no-web-resources-cdn
+        run: flutter build web --release --base-href /Notechondria/planner/ --no-web-resources-cdn --dart-define=APP_VERSION=${{ steps.appversion.outputs.value }}
 
       - name: Test portal_app
         working-directory: frontend/portal_app
@@ -59,7 +63,7 @@ jobs:
 
       - name: Build portal_app
         working-directory: frontend/portal_app
-        run: flutter build web --release --base-href /Notechondria/portal/ --no-web-resources-cdn
+        run: flutter build web --release --base-href /Notechondria/portal/ --no-web-resources-cdn --dart-define=APP_VERSION=${{ steps.appversion.outputs.value }}
 
       - name: Disable service worker bootstrap in Pages builds
         run: |

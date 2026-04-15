@@ -151,6 +151,17 @@ class _SplashScreenState extends State<_SplashScreen>
                     ],
                   ),
                 ),
+                Positioned(
+                  left: constraints.maxWidth * 0.04,
+                  bottom: constraints.maxHeight * 0.04,
+                  child: Text(
+                    'v$_kAppVersion',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: subtleColor,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
               ],
             );
           },
