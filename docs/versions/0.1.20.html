@@ -1,0 +1,371 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>0.1.20 — Per-app server docs, storage model, login subtitle, lock API URL, bug fixes - Notechondria Documentation</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "navy";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../index.html">Project Overview</a></li><li class="chapter-item expanded affix "><a href="../index.html">Long-Form Agent Handoff</a></li><li class="chapter-item expanded affix "><a href="../TODO.html">TODO</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">Client (frontend apps)</li><li class="chapter-item expanded "><a href="../client/editor_app.html"><strong aria-hidden="true">1.</strong> Editor app</a></li><li class="chapter-item expanded "><a href="../client/planner_app.html"><strong aria-hidden="true">2.</strong> Planner app</a></li><li class="chapter-item expanded "><a href="../client/portal_app.html"><strong aria-hidden="true">3.</strong> Portal app</a></li><li class="chapter-item expanded affix "><li class="part-title">Server (backend)</li><li class="chapter-item expanded "><a href="../server/backend.html"><strong aria-hidden="true">4.</strong> Backend overview</a></li><li class="chapter-item expanded "><a href="../server/creators.html"><strong aria-hidden="true">5.</strong> creators app</a></li><li class="chapter-item expanded "><a href="../server/notes.html"><strong aria-hidden="true">6.</strong> notes app</a></li><li class="chapter-item expanded "><a href="../server/mcp.html"><strong aria-hidden="true">7.</strong> mcp app</a></li><li class="chapter-item expanded affix "><li class="part-title">API</li><li class="chapter-item expanded "><a href="../api/backend_api_spec.html"><strong aria-hidden="true">8.</strong> Backend API Specification</a></li><li class="chapter-item expanded affix "><li class="part-title">Deployment</li><li class="chapter-item expanded "><a href="../deployment/overview.html"><strong aria-hidden="true">9.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../deployment/deploy.html"><strong aria-hidden="true">10.</strong> Docker-compose / Jenkins Full-stack Guide</a></li><li class="chapter-item expanded "><a href="../deployment/render_free_tier.html"><strong aria-hidden="true">11.</strong> Render Free Tier (Backend)</a></li><li class="chapter-item expanded "><a href="../deployment/northflank.html"><strong aria-hidden="true">12.</strong> Northflank Free Tier (Backend)</a></li><li class="chapter-item expanded affix "><li class="part-title">Development</li><li class="chapter-item expanded "><a href="../development/local_dev.html"><strong aria-hidden="true">13.</strong> Local Development Guide</a></li><li class="chapter-item expanded "><a href="../development/python_environments.html"><strong aria-hidden="true">14.</strong> Python Environments</a></li><li class="chapter-item expanded "><a href="../development/ai_integration.html"><strong aria-hidden="true">15.</strong> AI Integration (stub status and forward plan)</a></li><li class="chapter-item expanded "><a href="../development/storage_model.html"><strong aria-hidden="true">16.</strong> Storage model (Django + frontend offline)</a></li><li class="chapter-item expanded "><a href="../development/canvas_like_calendar_mvp.html"><strong aria-hidden="true">17.</strong> Canvas-like Calendar Product Concept</a></li><li class="chapter-item expanded affix "><li class="part-title">Integrations</li><li class="chapter-item expanded "><a href="../integrations/github_app_integration.html"><strong aria-hidden="true">18.</strong> GitHub App Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">Operations</li><li class="chapter-item expanded "><a href="../operations/postgres_migration.html"><strong aria-hidden="true">19.</strong> PostgreSQL Migration</a></li><li class="chapter-item expanded affix "><li class="part-title">Testing</li><li class="chapter-item expanded "><a href="../testing/backend_test_plan.html"><strong aria-hidden="true">20.</strong> Backend Test Plan</a></li><li class="chapter-item expanded affix "><li class="part-title">Versions</li><li class="chapter-item expanded "><a href="../versions/0.1.21.html"><strong aria-hidden="true">21.</strong> 0.1.21 — Shared UI extracted into notechondria_shared package</a></li><li class="chapter-item expanded "><a href="../versions/0.1.20.html" class="active"><strong aria-hidden="true">22.</strong> 0.1.20 — Per-app server docs, storage model, login subtitle, lock API URL, bug fixes</a></li><li class="chapter-item expanded "><a href="../versions/0.1.19.html"><strong aria-hidden="true">23.</strong> 0.1.19 — Splash version display, deploy overview, settings handshake docs</a></li><li class="chapter-item expanded "><a href="../versions/0.1.18.html"><strong aria-hidden="true">24.</strong> 0.1.18 — Ics import dialog, calendar subscribe fix, welcome note, portal root</a></li><li class="chapter-item expanded "><a href="../versions/0.1.17.html"><strong aria-hidden="true">25.</strong> 0.1.17 — Splash polish, OAuth bind guard, API key visibility</a></li><li class="chapter-item expanded "><a href="../versions/0.1.16.html"><strong aria-hidden="true">26.</strong> 0.1.16 — MCP server, API key auth, front-page + media fixes</a></li><li class="chapter-item expanded "><a href="../versions/0.1.15.html"><strong aria-hidden="true">27.</strong> 0.1.15</a></li><li class="chapter-item expanded "><a href="../versions/0.1.14.html"><strong aria-hidden="true">28.</strong> 0.1.14</a></li><li class="chapter-item expanded "><a href="../versions/0.1.13.html"><strong aria-hidden="true">29.</strong> 0.1.13</a></li><li class="chapter-item expanded "><a href="../versions/0.1.12.html"><strong aria-hidden="true">30.</strong> 0.1.12</a></li><li class="chapter-item expanded "><a href="../versions/0.1.11.html"><strong aria-hidden="true">31.</strong> 0.1.11</a></li><li class="chapter-item expanded "><a href="../versions/0.1.10.html"><strong aria-hidden="true">32.</strong> 0.1.10</a></li><li class="chapter-item expanded "><a href="../versions/0.1.9.html"><strong aria-hidden="true">33.</strong> 0.1.9</a></li><li class="chapter-item expanded "><a href="../versions/0.1.8.html"><strong aria-hidden="true">34.</strong> 0.1.8</a></li><li class="chapter-item expanded "><a href="../versions/0.1.7.html"><strong aria-hidden="true">35.</strong> 0.1.7</a></li><li class="chapter-item expanded "><a href="../versions/0.1.6.html"><strong aria-hidden="true">36.</strong> 0.1.6</a></li><li class="chapter-item expanded "><a href="../versions/0.1.5.html"><strong aria-hidden="true">37.</strong> 0.1.5</a></li><li class="chapter-item expanded "><a href="../versions/0.1.4.html"><strong aria-hidden="true">38.</strong> 0.1.4</a></li><li class="chapter-item expanded "><a href="../versions/0.1.3.html"><strong aria-hidden="true">39.</strong> 0.1.3</a></li><li class="chapter-item expanded "><a href="../versions/0.1.2.html"><strong aria-hidden="true">40.</strong> 0.1.2</a></li><li class="chapter-item expanded "><a href="../versions/0.1.1.html"><strong aria-hidden="true">41.</strong> 0.1.1</a></li><li class="chapter-item expanded "><a href="../versions/0.1.0.html"><strong aria-hidden="true">42.</strong> 0.1.0</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Notechondria Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria/edit/codex/docs/./versions/0.1.20.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="notechondria"><a class="header" href="#notechondria">Notechondria</a></h1>
+<p>Version: 0.1.20
+Build Date: 2026-04-15T00:00</p>
+<h2 id="whats-changed"><a class="header" href="#whats-changed">What's Changed</a></h2>
+<h3 id="docs--per-app-server-split--storage-model-urgent"><a class="header" href="#docs--per-app-server-split--storage-model-urgent">Docs — per-app server split + storage model (URGENT)</a></h3>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+The old single-file <code>docs/server/backend.md</code> is now an overview
+that delegates to three per-app deep dives, each with example
+request/response payloads:
+<ul>
+<li><a href="../server/creators.html"><code>docs/server/creators.md</code></a> — accounts,
+sessions, OAuth, API keys, settings, identity-code verification.</li>
+<li><a href="../server/notes.html"><code>docs/server/notes.md</code></a> — notes, courses,
+planner events, calendar feeds, recycle bin, attachments,
+activity heatmap, version history. Includes the <code>notes/services.py</code>
+helper inventory.</li>
+<li><a href="../server/mcp.html"><code>docs/server/mcp.md</code></a> — MCP tool surface, 21
+tools, API-key auth, 39 tests.</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox" checked=""/>
+New <a href="../development/storage_model.html"><code>docs/development/storage_model.md</code></a>
+documents how user data is laid out across PostgreSQL + R2 (backend)
+and <code>SharedPreferences</code> (frontend). Covers the seven keys per app
+(<code>local_settings</code>, <code>local_drafts</code>, <code>local_courses</code>, <code>local_stats</code>,
+<code>local_cache</code>, <code>local_logs</code>, <code>session</code>), the frontend-backend
+reconciliation points, and the "<code>local_drafts</code> vs <code>local_cache</code>"
+distinction.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+<a href="../SUMMARY.html"><code>docs/SUMMARY.md</code></a> indexes the new per-app
+server docs + the storage-model doc.</li>
+</ul>
+<h3 id="login-window-shows-api-base-domain-3-apps"><a class="header" href="#login-window-shows-api-base-domain-3-apps">Login window shows API base domain (3 apps)</a></h3>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+The Login dialog's previously-empty or generic description line
+now reads <code>Signing in to &lt;host&gt;</code>, derived from the user's current
+<code>api_base_url</code>. Applies in editor / planner / portal via a shared
+<code>_apiHostSubtitle(apiBaseUrl)</code> helper and a new <code>apiBaseUrl</code>
+parameter on each app's <code>_AuthHub</code>.</li>
+</ul>
+<h3 id="settings--api-base-url-locked-when-signed-in-3-apps"><a class="header" href="#settings--api-base-url-locked-when-signed-in-3-apps">Settings — API base URL locked when signed in (3 apps)</a></h3>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+The API base URL <code>TextField</code> in Settings is now <code>enabled: false</code>
+when <code>_isAuthenticated</code>, wrapped in a <code>Tooltip</code> that explains "Log
+out before changing the API base URL. A logged-in token is only
+valid against its issuing backend." The input also shows a helper
+line <code>Locked while signed in. Log out to change.</code></li>
+</ul>
+<h3 id="app-preferences-rename"><a class="header" href="#app-preferences-rename">App preferences rename</a></h3>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+The editor app's settings section previously titled "Editor
+preferences" is now "App preferences" — same content, same auto-save
+behavior, but neutral wording so the widget can be reused across
+editor / planner / portal once the "Global reusable components"
+refactor in <a href="../TODO.html"><code>docs/TODO.md</code></a> lands.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+<a href="../../frontend/AGENTS.html"><code>frontend/AGENTS.md</code></a> bullet updated
+accordingly.</li>
+</ul>
+<h3 id="bug-fixes-editor_app"><a class="header" href="#bug-fixes-editor_app">Bug fixes (editor_app)</a></h3>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+<strong>Session expired silently ("Initial load used offline fallback:
+Invalid token")</strong> — when the initial data load hits a DRF <code>Invalid token</code> / <code>Authentication credentials were not provided</code> /
+<code>token_not_valid</code> error, the app now clears the persisted session
+(<code>_token</code>, <code>_profile</code>, and <code>notechondria.session</code>) and logs
+<code>Session expired — signed out. Please sign in again.</code> instead of
+silently dropping into offline mode with a stale identity.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+<strong>OAuth bind 401 with confusing "Use /api/v1/auth/bind/google/"
+backend message</strong> — the bind callback path in
+<a href="../../frontend/editor_app/lib/app_shell.dart"><code>frontend/editor_app/lib/app_shell.dart</code></a>
+<code>_handleOAuthCallback</code> used to fall through to the plain
+login endpoint with <code>intent=bind</code> when <code>_token</code> was null (session
+expired between clicking the button and the OAuth provider
+redirecting back). The backend rightly refused that with the
+pointer at the bind endpoint. The frontend now short-circuits
+<code>intent == 'bind' &amp;&amp; _token == null</code> with a user-visible "Sign in
+first, then try linking the account again" snackbar, so the user
+gets a coherent error instead of an apparent backend bug.</li>
+</ul>
+<h2 id="files-changed"><a class="header" href="#files-changed">Files Changed</a></h2>
+<h3 id="docs"><a class="header" href="#docs">Docs</a></h3>
+<ul>
+<li><code>docs/server/backend.md</code> — slimmed to an overview pointing at the
+three per-app docs.</li>
+<li><code>docs/server/creators.md</code> — new (detailed <code>creators</code> app doc).</li>
+<li><code>docs/server/notes.md</code> — new (detailed <code>notes</code> app doc).</li>
+<li><code>docs/server/mcp.md</code> — new (MCP server doc).</li>
+<li><code>docs/development/storage_model.md</code> — new (storage model).</li>
+<li><code>docs/SUMMARY.md</code> — re-indexed server + development sections.</li>
+</ul>
+<h3 id="frontend"><a class="header" href="#frontend">Frontend</a></h3>
+<ul>
+<li><code>VERSION</code> — bumped 0.1.19 → 0.1.20.</li>
+<li><code>frontend/editor_app/lib/core/helpers.dart</code>,
+<code>frontend/planner_app/lib/core/helpers.dart</code>,
+<code>frontend/portal_app/lib/core/helpers.dart</code> —
+<code>_kAppVersion</code> default bumped to match.</li>
+<li><code>frontend/editor_app/lib/components/auth_dialogs.dart</code> — added
+<code>_apiHostSubtitle</code> helper + <code>apiBaseUrl</code> parameter on <code>_AuthHub</code>;
+Login dialog uses the subtitle.</li>
+<li><code>frontend/planner_app/lib/modules/settings.dart</code> — same helper +
+parameter inline (planner keeps <code>_AuthHub</code> in this file, not in
+a separate <code>components/</code> file).</li>
+<li><code>frontend/portal_app/lib/modules/settings.dart</code> — same.</li>
+<li><code>frontend/editor_app/lib/modules/settings.dart</code> — wired
+<code>apiBaseUrl</code> into <code>_AuthHub</code>; renamed "Editor preferences" to
+"App preferences"; wrapped the API base <code>TextField</code> in a <code>Tooltip</code>
+and set <code>enabled: !_isAuthenticated</code>.</li>
+<li><code>frontend/planner_app/lib/modules/settings.dart</code> — same lock-tooltip
+treatment on the API base <code>TextField</code>.</li>
+<li><code>frontend/portal_app/lib/modules/settings.dart</code> — same.</li>
+<li><code>frontend/editor_app/lib/app_shell.dart</code> — invalid-token detection
+<ul>
+<li>session clear in the initial-load path; bind-without-token
+short-circuit in <code>_handleOAuthCallback</code>.</li>
+</ul>
+</li>
+<li><code>frontend/AGENTS.md</code> — reflects the "App preferences" rename.</li>
+</ul>
+<h2 id="notes--follow-ups"><a class="header" href="#notes--follow-ups">Notes / follow-ups</a></h2>
+<ul>
+<li>The two bug fixes above are in <strong>editor_app only</strong> this round.
+Planner and portal have the same offline-fallback and bind
+callback paths (inlined in their respective <code>app_shell.dart</code>);
+they should get the same treatment in a follow-up round.</li>
+<li>The "Global reusable components" URGENT TODO item (shared
+Sidebar/Navigation, Debug window, Login window, App preferences)
+is still pending — the rename and shared <code>_apiHostSubtitle</code>
+helper are the only steps toward it this round.</li>
+<li>The splash animation / chemistry work and the debug-log terminal
+UI remain open in TODO.md.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../versions/0.1.21.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../versions/0.1.19.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../versions/0.1.21.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../versions/0.1.19.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,428 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Storage model (Django + frontend offline) - Notechondria Documentation</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "navy";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../index.html">Project Overview</a></li><li class="chapter-item expanded affix "><a href="../index.html">Long-Form Agent Handoff</a></li><li class="chapter-item expanded affix "><a href="../TODO.html">TODO</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">Client (frontend apps)</li><li class="chapter-item expanded "><a href="../client/editor_app.html"><strong aria-hidden="true">1.</strong> Editor app</a></li><li class="chapter-item expanded "><a href="../client/planner_app.html"><strong aria-hidden="true">2.</strong> Planner app</a></li><li class="chapter-item expanded "><a href="../client/portal_app.html"><strong aria-hidden="true">3.</strong> Portal app</a></li><li class="chapter-item expanded affix "><li class="part-title">Server (backend)</li><li class="chapter-item expanded "><a href="../server/backend.html"><strong aria-hidden="true">4.</strong> Backend overview</a></li><li class="chapter-item expanded "><a href="../server/creators.html"><strong aria-hidden="true">5.</strong> creators app</a></li><li class="chapter-item expanded "><a href="../server/notes.html"><strong aria-hidden="true">6.</strong> notes app</a></li><li class="chapter-item expanded "><a href="../server/mcp.html"><strong aria-hidden="true">7.</strong> mcp app</a></li><li class="chapter-item expanded affix "><li class="part-title">API</li><li class="chapter-item expanded "><a href="../api/backend_api_spec.html"><strong aria-hidden="true">8.</strong> Backend API Specification</a></li><li class="chapter-item expanded affix "><li class="part-title">Deployment</li><li class="chapter-item expanded "><a href="../deployment/overview.html"><strong aria-hidden="true">9.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../deployment/deploy.html"><strong aria-hidden="true">10.</strong> Docker-compose / Jenkins Full-stack Guide</a></li><li class="chapter-item expanded "><a href="../deployment/render_free_tier.html"><strong aria-hidden="true">11.</strong> Render Free Tier (Backend)</a></li><li class="chapter-item expanded "><a href="../deployment/northflank.html"><strong aria-hidden="true">12.</strong> Northflank Free Tier (Backend)</a></li><li class="chapter-item expanded affix "><li class="part-title">Development</li><li class="chapter-item expanded "><a href="../development/local_dev.html"><strong aria-hidden="true">13.</strong> Local Development Guide</a></li><li class="chapter-item expanded "><a href="../development/python_environments.html"><strong aria-hidden="true">14.</strong> Python Environments</a></li><li class="chapter-item expanded "><a href="../development/ai_integration.html"><strong aria-hidden="true">15.</strong> AI Integration (stub status and forward plan)</a></li><li class="chapter-item expanded "><a href="../development/storage_model.html" class="active"><strong aria-hidden="true">16.</strong> Storage model (Django + frontend offline)</a></li><li class="chapter-item expanded "><a href="../development/canvas_like_calendar_mvp.html"><strong aria-hidden="true">17.</strong> Canvas-like Calendar Product Concept</a></li><li class="chapter-item expanded affix "><li class="part-title">Integrations</li><li class="chapter-item expanded "><a href="../integrations/github_app_integration.html"><strong aria-hidden="true">18.</strong> GitHub App Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">Operations</li><li class="chapter-item expanded "><a href="../operations/postgres_migration.html"><strong aria-hidden="true">19.</strong> PostgreSQL Migration</a></li><li class="chapter-item expanded affix "><li class="part-title">Testing</li><li class="chapter-item expanded "><a href="../testing/backend_test_plan.html"><strong aria-hidden="true">20.</strong> Backend Test Plan</a></li><li class="chapter-item expanded affix "><li class="part-title">Versions</li><li class="chapter-item expanded "><a href="../versions/0.1.21.html"><strong aria-hidden="true">21.</strong> 0.1.21 — Shared UI extracted into notechondria_shared package</a></li><li class="chapter-item expanded "><a href="../versions/0.1.20.html"><strong aria-hidden="true">22.</strong> 0.1.20 — Per-app server docs, storage model, login subtitle, lock API URL, bug fixes</a></li><li class="chapter-item expanded "><a href="../versions/0.1.19.html"><strong aria-hidden="true">23.</strong> 0.1.19 — Splash version display, deploy overview, settings handshake docs</a></li><li class="chapter-item expanded "><a href="../versions/0.1.18.html"><strong aria-hidden="true">24.</strong> 0.1.18 — Ics import dialog, calendar subscribe fix, welcome note, portal root</a></li><li class="chapter-item expanded "><a href="../versions/0.1.17.html"><strong aria-hidden="true">25.</strong> 0.1.17 — Splash polish, OAuth bind guard, API key visibility</a></li><li class="chapter-item expanded "><a href="../versions/0.1.16.html"><strong aria-hidden="true">26.</strong> 0.1.16 — MCP server, API key auth, front-page + media fixes</a></li><li class="chapter-item expanded "><a href="../versions/0.1.15.html"><strong aria-hidden="true">27.</strong> 0.1.15</a></li><li class="chapter-item expanded "><a href="../versions/0.1.14.html"><strong aria-hidden="true">28.</strong> 0.1.14</a></li><li class="chapter-item expanded "><a href="../versions/0.1.13.html"><strong aria-hidden="true">29.</strong> 0.1.13</a></li><li class="chapter-item expanded "><a href="../versions/0.1.12.html"><strong aria-hidden="true">30.</strong> 0.1.12</a></li><li class="chapter-item expanded "><a href="../versions/0.1.11.html"><strong aria-hidden="true">31.</strong> 0.1.11</a></li><li class="chapter-item expanded "><a href="../versions/0.1.10.html"><strong aria-hidden="true">32.</strong> 0.1.10</a></li><li class="chapter-item expanded "><a href="../versions/0.1.9.html"><strong aria-hidden="true">33.</strong> 0.1.9</a></li><li class="chapter-item expanded "><a href="../versions/0.1.8.html"><strong aria-hidden="true">34.</strong> 0.1.8</a></li><li class="chapter-item expanded "><a href="../versions/0.1.7.html"><strong aria-hidden="true">35.</strong> 0.1.7</a></li><li class="chapter-item expanded "><a href="../versions/0.1.6.html"><strong aria-hidden="true">36.</strong> 0.1.6</a></li><li class="chapter-item expanded "><a href="../versions/0.1.5.html"><strong aria-hidden="true">37.</strong> 0.1.5</a></li><li class="chapter-item expanded "><a href="../versions/0.1.4.html"><strong aria-hidden="true">38.</strong> 0.1.4</a></li><li class="chapter-item expanded "><a href="../versions/0.1.3.html"><strong aria-hidden="true">39.</strong> 0.1.3</a></li><li class="chapter-item expanded "><a href="../versions/0.1.2.html"><strong aria-hidden="true">40.</strong> 0.1.2</a></li><li class="chapter-item expanded "><a href="../versions/0.1.1.html"><strong aria-hidden="true">41.</strong> 0.1.1</a></li><li class="chapter-item expanded "><a href="../versions/0.1.0.html"><strong aria-hidden="true">42.</strong> 0.1.0</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Notechondria Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria/edit/codex/docs/./development/storage_model.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="storage-model--backend-django-and-frontend-offline"><a class="header" href="#storage-model--backend-django-and-frontend-offline">Storage model — backend (Django) and frontend (offline)</a></h1>
+<p>How user data is laid out and persisted across the two halves of
+Notechondria. This is the doc the URGENT TODO item asked for —
+"how Django backend manage the storage of user data and how
+frontend manages the storage of user data for offline local users.
+The structure storage of note class, course class, and others."</p>
+<p>Related: <a href="../server/notes.html"><code>server/notes.md</code></a>,
+<a href="../server/creators.html"><code>server/creators.md</code></a>,
+<a href="../client/editor_app.html"><code>client/editor_app.md</code></a>.</p>
+<h2 id="tldr"><a class="header" href="#tldr">TL;DR</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Layer</th><th>Tech</th><th>Lifetime</th><th>What lives there</th></tr></thead><tbody>
+<tr><td>Backend authoritative DB</td><td>PostgreSQL via Django ORM</td><td>Forever</td><td>Source of truth: users, creators, courses, notes, blocks, attachments, planner events, calendar feeds, recycle bin, version history.</td></tr>
+<tr><td>Backend file storage</td><td>Cloudflare R2 (cloud) or local disk (Docker dev)</td><td>Forever (R2) / volume-bound (local)</td><td>Static assets, user-uploaded media, course covers, note attachments.</td></tr>
+<tr><td>Frontend offline</td><td><code>SharedPreferences</code> JSON blobs (one per concern)</td><td>Until logout, manual clear, or the user clears site data</td><td>Local mirror of recently seen courses + notes, settings, draft notes, stats, cached front-page, UI logs, session token.</td></tr>
+</tbody></table>
+</div>
+<p>The frontend never persists to a structured local DB (no <code>sqflite</code>,
+no Hive). Everything is a JSON document under one of seven
+<code>SharedPreferences</code> keys per app.</p>
+<h2 id="backend-storage"><a class="header" href="#backend-storage">Backend storage</a></h2>
+<p>The <strong>only</strong> authoritative store is the Django ORM (PostgreSQL in
+production; in-memory sqlite in
+<a href="../../backend/notechondria/settings_test.py"><code>settings_test.py</code></a>).
+File blobs go to either Cloudflare R2 (when
+<code>CLOUDFLARE_R2_BUCKET_NAME</code> is set — Render and Northflank) or a
+local volume (Docker dev) — see
+<a href="../deployment/overview.html#3-cloudflare-r2-cdn"><code>deployment/overview.md</code> § Cloudflare R2</a>.</p>
+<h3 id="account--identity"><a class="header" href="#account--identity">Account / identity</a></h3>
+<p>Defined in <a href="../server/creators.html"><code>server/creators.md</code></a>. Wire-level
+shape:</p>
+<pre><code class="language-text">auth.User (Django built-in)
+  └── creators.Creator (1:1 by user_id)
+        ├── creators.CreatorApiKey (1:N — hashed only)
+        ├── creators.CreatorInvitation (1:N)
+        └── creators.CreatorOauthIdentity (1:N — google / github)
+</code></pre>
+<p><code>Creator</code> is the row everything else hangs off. Anywhere the
+backend needs the "creator context" of a <code>request.user</code>, it goes
+through <code>ensure_creator(user)</code> in
+<a href="../../backend/notechondria/utils.py"><code>backend/notechondria/utils.py</code></a>.</p>
+<h3 id="content--planning"><a class="header" href="#content--planning">Content / planning</a></h3>
+<p>Defined in <a href="../server/notes.html"><code>server/notes.md</code></a>. Shape:</p>
+<pre><code class="language-text">creators.Creator
+  ├── notes.Course (1:N) — `is_default=True` for the pinned Inbox
+  │     ├── notes.CourseMedia (1:N) — covers / banners
+  │     ├── notes.CourseSubscription (M:N to Creator)
+  │     ├── notes.CourseOperationLog (1:N audit trail)
+  │     └── notes.Note (1:N)
+  │           ├── notes.NoteIndex (1:N) — block ordering
+  │           │     └── notes.NoteBlock (M:N via NoteIndex)
+  │           ├── notes.NoteAttachment (1:N) — uploaded files
+  │           ├── notes.NoteVersion (1:N) — snapshots
+  │           ├── notes.RecycleBinEntry (1:1 when deleted)
+  │           └── notes.NoteActivitySession (1:N) — edit sessions
+  ├── notes.HeatmapActivity (1:N) — per-day rollup
+  ├── notes.PlannerEvent (1:N)
+  ├── notes.CalendarFeed (1:N)
+  └── notes.Tag, notes.ValidationRecord
+</code></pre>
+<p>Key invariants:</p>
+<ul>
+<li>Every creator has exactly one <code>Course</code> with <code>is_default=True</code> —
+the "Inbox", undeletable.</li>
+<li><code>Note → Course</code> is a hard FK; deleting the course's notes goes
+through the recycle bin first. Inbox cannot be deleted.</li>
+<li><code>NoteBlock</code> is M:N with <code>Note</code> via <code>NoteIndex(note_id, noteblock_id, index)</code> — the same block can render in multiple
+notes (transclusion). A "delete block from note" actually
+removes the <code>NoteIndex</code> row, leaving the <code>NoteBlock</code> itself
+alive.</li>
+<li><code>NoteVersion.snapshot</code> is a JSON dump of the note + all blocks
+at snapshot time, used by <code>NoteRestoreApiView</code>.</li>
+<li><code>RecycleBinEntry.restorable_until</code> defines when the soft-delete
+becomes hard. <code>DeletedNoteEmptyApiView</code> purges expired entries.</li>
+</ul>
+<h3 id="file-storage-paths"><a class="header" href="#file-storage-paths">File storage paths</a></h3>
+<p><code>models.py</code> declares per-relation upload-path helpers:</p>
+<div class="table-wrapper"><table><thead><tr><th>Helper</th><th>Resolves to</th></tr></thead><tbody>
+<tr><td><code>note_attachment_path(instance, filename)</code></td><td><code>user_upload/user_&lt;creator_user_id&gt;/notes/note_&lt;note_id&gt;/&lt;filename&gt;</code></td></tr>
+<tr><td><code>message_image_path</code> (gptutils, parked)</td><td><code>user_upload/user_&lt;id&gt;/conversations/chat_&lt;chat_id&gt;/msg_&lt;msg_id&gt;_img.&lt;ext&gt;</code></td></tr>
+<tr><td><code>message_file_path</code> (gptutils, parked)</td><td><code>user_upload/user_&lt;id&gt;/conversations/chat_&lt;chat_id&gt;/msg_&lt;msg_id&gt;_file.&lt;ext&gt;</code></td></tr>
+</tbody></table>
+</div>
+<p>When <code>CLOUDFLARE_R2_BUCKET_NAME</code> is set, Django Storages writes to
+<code>&lt;bucket&gt;/media/user_upload/...</code>. Otherwise to the configured
+<code>DJANGO_PRODUCTION_MEDIA_ROOT</code> (<code>/home/mediafiles</code> in the Docker
+image).</p>
+<p><code>collectstatic --noinput --clear</code> mirrors built static assets to
+<code>&lt;bucket&gt;/static/</code> (R2) or <code>DJANGO_PRODUCTION_STATIC_ROOT</code>
+(<code>/home/staticfiles</code> locally) on every container start — see
+<a href="../../backend/entrypoint.sh"><code>backend/entrypoint.sh</code></a>.</p>
+<h3 id="settings"><a class="header" href="#settings">Settings</a></h3>
+<p>User-editable settings live in two places:</p>
+<ul>
+<li><strong>DRF surface</strong>: <code>GET/PATCH /api/v1/settings/</code> —
+<code>SettingsApiView</code> reads/writes the canonical record on the
+server. Includes <code>app_settings</code> JSON for client-only knobs the
+server doesn't interpret.</li>
+<li><strong><code>Creator</code> row</strong>: profile-level fields (<code>display_name</code>,
+<code>motto</code>, <code>social_link</code>, <code>avatar</code>, <code>email</code>, <code>editor_mode</code>,
+<code>theme_preset</code>, <code>theme_mode</code>, <code>api_base_url</code>).</li>
+</ul>
+<p>The server is the source of truth when the user is signed in. The
+frontend reconciles by calling <code>GET /api/v1/settings/</code> on login
+and merging into the local <code>settings</code> blob (see below).</p>
+<h2 id="frontend-storage"><a class="header" href="#frontend-storage">Frontend storage</a></h2>
+<p>Each Flutter app has its own copy of
+<a href="../../frontend/editor_app/lib/core/local_store.dart"><code>core/local_store.dart</code></a>
+(planner and portal too). The class is <code>_LocalAppStore</code> and it's
+the <strong>single chokepoint</strong> for <code>SharedPreferences</code> reads/writes —
+no other file in the lib should call <code>SharedPreferences.getInstance()</code>.</p>
+<h3 id="keys"><a class="header" href="#keys">Keys</a></h3>
+<p>Seven JSON blobs per app, plus the session record:</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Type</th><th>Default factory</th><th>What it holds</th></tr></thead><tbody>
+<tr><td><code>notechondria.local_settings</code></td><td><code>Map&lt;String, dynamic&gt;</code></td><td><code>defaultSettings()</code></td><td>Local mirror of <code>/api/v1/settings/</code>: <code>theme_preset</code>, <code>theme_mode</code>, <code>api_base_url</code>, <code>updated_at</code>, <code>log_preferences</code>.</td></tr>
+<tr><td><code>notechondria.local_drafts</code></td><td><code>List&lt;Map&lt;String, dynamic&gt;&gt;</code></td><td><code>[]</code></td><td>Notes the user typed while offline; sync flow pushes them to <code>/api/v1/notes/</code> after login.</td></tr>
+<tr><td><code>notechondria.local_courses</code></td><td><code>List&lt;Map&lt;String, dynamic&gt;&gt;</code></td><td><code>[]</code></td><td>Locally created courses (pre-sync) plus the cached list of remote courses. The Inbox is created locally if no session exists.</td></tr>
+<tr><td><code>notechondria.local_stats</code></td><td><code>Map&lt;String, dynamic&gt;</code></td><td><code>defaultStats()</code></td><td>Counters: <code>local_drafts_created</code>, <code>local_drafts_synced</code>, <code>local_courses_created</code>, <code>local_courses_synced</code>, <code>avatar_updates</code>, <code>settings_saves</code>, <code>logs_copied</code>, <code>cache_clears</code>, <code>local_data_clears</code>, <code>sync_failures</code>, <code>last_sync_at</code>.</td></tr>
+<tr><td><code>notechondria.local_cache</code></td><td><code>Map&lt;String, dynamic&gt;</code></td><td><code>defaultCache()</code></td><td>Last-seen server payloads for offline render: <code>front_page</code> (cached <code>/api/v1/front-page/</code> response), <code>courses</code> (cached <code>/api/v1/courses/</code>), <code>activity</code> (cached planner data), <code>updated_at</code>.</td></tr>
+<tr><td><code>notechondria.local_logs</code></td><td><code>List&lt;String&gt;</code></td><td><code>[]</code></td><td>UI log lines surfaced in the debug drawer.</td></tr>
+<tr><td><code>notechondria.session</code></td><td><code>Map&lt;String, dynamic&gt;?</code></td><td><code>null</code></td><td>After login: <code>{token, user, saved_at}</code>. Cleared on logout. The DRF token is plaintext — same security posture as any web app's localStorage token.</td></tr>
+</tbody></table>
+</div>
+<p>All values are JSON-serialized via <code>dart:convert</code>. Decoding tolerates
+malformed values by falling back to the defaults (see
+<code>_decodeMap</code>/<code>_decodeList</code> in <code>local_store.dart</code>).</p>
+<h3 id="lifecycle"><a class="header" href="#lifecycle">Lifecycle</a></h3>
+<ol>
+<li><strong>Boot</strong> — <code>app_shell.dart::_loadLocalState</code> calls
+<code>_LocalAppStore.load()</code>, which reads all seven blobs in one
+pass. Then <code>_httpClient.updateBaseUrl(_localSettings['api_base_url'])</code>
+pre-points the API client at the persisted backend.</li>
+<li><strong>Login</strong> — <code>LoginApiView</code> returns <code>{token, user}</code>; the app
+calls <code>_LocalAppStore.saveSession(token, user)</code>. A subsequent
+<code>GET /api/v1/settings/</code> reconciles <code>_localSettings</code> with the
+server, then <code>_persistLocalSettings()</code> writes it back.</li>
+<li><strong>Settings save</strong> — <code>_handleUpdateSettings</code> (in
+<a href="../../frontend/editor_app/lib/app_shell.dart"><code>app_shell.dart</code></a>)
+reads form values, runs <code>verifyHandshake(nextApiBase)</code> if the
+API URL changed (see <a href="../server/backend.html#handshake">handshake</a>),
+then <code>_applyLocalAppSettings({...})</code> mutates <code>_localSettings</code>
+and <code>_persistLocalSettings()</code> flushes to disk. If signed in,
+the same payload is PATCHed to <code>/api/v1/settings/</code> for the
+server-side mirror.</li>
+<li><strong>Offline create</strong> — drafts and locally-created courses go
+into <code>notechondria.local_drafts</code> /
+<code>notechondria.local_courses</code> immediately. Sync flow on login
+pushes them up.</li>
+<li><strong>Sync</strong> — <code>_syncAllLocalData</code> walks the unsynced drafts/
+courses, posts each, and on success increments
+<code>local_drafts_synced</code> / <code>local_courses_synced</code>.</li>
+<li><strong>Logout</strong> — <code>_LocalAppStore</code> clears the session blob; other
+blobs are kept so the user's local-only work survives.</li>
+<li><strong>"Clear local data"</strong> — wipes all seven blobs back to
+defaults.</li>
+</ol>
+<h3 id="important-drafts-vs-cache"><a class="header" href="#important-drafts-vs-cache">Important: drafts vs cache</a></h3>
+<p><code>local_drafts</code> is <strong>content the user created that hasn't been
+sent to the server yet</strong>. Don't conflate with <code>local_cache</code>,
+which is <strong>server payloads cached for offline display</strong>. Sync
+empties <code>local_drafts</code> (after pushing); refresh refills
+<code>local_cache</code>.</p>
+<h2 id="cross-frontend--cross-backend-correspondence"><a class="header" href="#cross-frontend--cross-backend-correspondence">Cross-frontend / cross-backend correspondence</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Frontend blob</th><th>Server source of truth</th><th>Reconciliation point</th></tr></thead><tbody>
+<tr><td><code>local_settings</code></td><td><code>Creator</code> row + <code>app_settings</code> JSON</td><td><code>GET /api/v1/settings/</code> on login + <code>PATCH /api/v1/settings/</code> on save.</td></tr>
+<tr><td><code>local_drafts</code></td><td><code>notes.Note</code> rows</td><td><code>POST /api/v1/notes/</code> per draft, then drop from blob.</td></tr>
+<tr><td><code>local_courses</code></td><td><code>notes.Course</code> rows</td><td><code>POST /api/v1/courses/</code> per locally-created course; <code>GET /api/v1/courses/</code> populates the cached read-side.</td></tr>
+<tr><td><code>local_cache.front_page</code></td><td><code>FrontPageApiView</code> payload</td><td><code>GET /api/v1/front-page/</code> on boot + manual refresh.</td></tr>
+<tr><td><code>local_cache.courses</code></td><td><code>notes.Course</code> list</td><td>Same.</td></tr>
+<tr><td><code>local_cache.activity</code></td><td>Activity / planner endpoints</td><td>Same.</td></tr>
+<tr><td><code>session.token</code></td><td><code>authtoken.Token</code> row</td><td><code>LoginApiView</code> mints it; <code>LogoutApiView</code> revokes it server-side.</td></tr>
+</tbody></table>
+</div>
+<h2 id="known-issues-to-be-aware-of"><a class="header" href="#known-issues-to-be-aware-of">Known issues to be aware of</a></h2>
+<ul>
+<li><strong>Token expiry / "Invalid token"</strong> — the frontend's "offline
+fallback: Invalid token" message (in
+<a href="../TODO.html"><code>docs/TODO.md</code></a>) fires when a stored DRF token is
+rejected by the server (revoked, deleted, or signed by a
+different <code>SECRET_KEY</code>). The current behavior is to fall back to
+offline mode silently, which can mask the underlying issue. The
+right fix is to surface a "session expired — please sign in
+again" prompt and clear <code>notechondria.session</code>.</li>
+<li><strong>No server-side mirror of drafts</strong> — once a draft is in
+<code>local_drafts</code>, it's only on that device until sync. Users who
+log in from a second device do <strong>not</strong> see in-progress drafts.</li>
+<li><strong>Frontend never deletes stale cache entries</strong> — <code>local_cache</code>
+grows monotonically until "Clear local data" is invoked or the
+user clears site data. For long-lived sessions this is fine
+(each cache entry is small JSON), but it's worth knowing.</li>
+<li><strong><code>gptutils</code> tables stay</strong> — even though the AI app is stubbed
+(<a href="ai_integration.html"><code>development/ai_integration.md</code></a>), its
+tables (<code>gptutils_conversation</code>, <code>gptutils_message</code>) remain in
+the database via the existing migrations. Future external AI
+service can reuse them.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../development/ai_integration.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../development/canvas_like_calendar_mvp.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../development/ai_integration.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../development/canvas_like_calendar_mvp.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

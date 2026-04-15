@@ -1,0 +1,431 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>notes app - Notechondria Documentation</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "navy";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../index.html">Project Overview</a></li><li class="chapter-item expanded affix "><a href="../index.html">Long-Form Agent Handoff</a></li><li class="chapter-item expanded affix "><a href="../TODO.html">TODO</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">Client (frontend apps)</li><li class="chapter-item expanded "><a href="../client/editor_app.html"><strong aria-hidden="true">1.</strong> Editor app</a></li><li class="chapter-item expanded "><a href="../client/planner_app.html"><strong aria-hidden="true">2.</strong> Planner app</a></li><li class="chapter-item expanded "><a href="../client/portal_app.html"><strong aria-hidden="true">3.</strong> Portal app</a></li><li class="chapter-item expanded affix "><li class="part-title">Server (backend)</li><li class="chapter-item expanded "><a href="../server/backend.html"><strong aria-hidden="true">4.</strong> Backend overview</a></li><li class="chapter-item expanded "><a href="../server/creators.html"><strong aria-hidden="true">5.</strong> creators app</a></li><li class="chapter-item expanded "><a href="../server/notes.html" class="active"><strong aria-hidden="true">6.</strong> notes app</a></li><li class="chapter-item expanded "><a href="../server/mcp.html"><strong aria-hidden="true">7.</strong> mcp app</a></li><li class="chapter-item expanded affix "><li class="part-title">API</li><li class="chapter-item expanded "><a href="../api/backend_api_spec.html"><strong aria-hidden="true">8.</strong> Backend API Specification</a></li><li class="chapter-item expanded affix "><li class="part-title">Deployment</li><li class="chapter-item expanded "><a href="../deployment/overview.html"><strong aria-hidden="true">9.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../deployment/deploy.html"><strong aria-hidden="true">10.</strong> Docker-compose / Jenkins Full-stack Guide</a></li><li class="chapter-item expanded "><a href="../deployment/render_free_tier.html"><strong aria-hidden="true">11.</strong> Render Free Tier (Backend)</a></li><li class="chapter-item expanded "><a href="../deployment/northflank.html"><strong aria-hidden="true">12.</strong> Northflank Free Tier (Backend)</a></li><li class="chapter-item expanded affix "><li class="part-title">Development</li><li class="chapter-item expanded "><a href="../development/local_dev.html"><strong aria-hidden="true">13.</strong> Local Development Guide</a></li><li class="chapter-item expanded "><a href="../development/python_environments.html"><strong aria-hidden="true">14.</strong> Python Environments</a></li><li class="chapter-item expanded "><a href="../development/ai_integration.html"><strong aria-hidden="true">15.</strong> AI Integration (stub status and forward plan)</a></li><li class="chapter-item expanded "><a href="../development/storage_model.html"><strong aria-hidden="true">16.</strong> Storage model (Django + frontend offline)</a></li><li class="chapter-item expanded "><a href="../development/canvas_like_calendar_mvp.html"><strong aria-hidden="true">17.</strong> Canvas-like Calendar Product Concept</a></li><li class="chapter-item expanded affix "><li class="part-title">Integrations</li><li class="chapter-item expanded "><a href="../integrations/github_app_integration.html"><strong aria-hidden="true">18.</strong> GitHub App Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">Operations</li><li class="chapter-item expanded "><a href="../operations/postgres_migration.html"><strong aria-hidden="true">19.</strong> PostgreSQL Migration</a></li><li class="chapter-item expanded affix "><li class="part-title">Testing</li><li class="chapter-item expanded "><a href="../testing/backend_test_plan.html"><strong aria-hidden="true">20.</strong> Backend Test Plan</a></li><li class="chapter-item expanded affix "><li class="part-title">Versions</li><li class="chapter-item expanded "><a href="../versions/0.1.21.html"><strong aria-hidden="true">21.</strong> 0.1.21 — Shared UI extracted into notechondria_shared package</a></li><li class="chapter-item expanded "><a href="../versions/0.1.20.html"><strong aria-hidden="true">22.</strong> 0.1.20 — Per-app server docs, storage model, login subtitle, lock API URL, bug fixes</a></li><li class="chapter-item expanded "><a href="../versions/0.1.19.html"><strong aria-hidden="true">23.</strong> 0.1.19 — Splash version display, deploy overview, settings handshake docs</a></li><li class="chapter-item expanded "><a href="../versions/0.1.18.html"><strong aria-hidden="true">24.</strong> 0.1.18 — Ics import dialog, calendar subscribe fix, welcome note, portal root</a></li><li class="chapter-item expanded "><a href="../versions/0.1.17.html"><strong aria-hidden="true">25.</strong> 0.1.17 — Splash polish, OAuth bind guard, API key visibility</a></li><li class="chapter-item expanded "><a href="../versions/0.1.16.html"><strong aria-hidden="true">26.</strong> 0.1.16 — MCP server, API key auth, front-page + media fixes</a></li><li class="chapter-item expanded "><a href="../versions/0.1.15.html"><strong aria-hidden="true">27.</strong> 0.1.15</a></li><li class="chapter-item expanded "><a href="../versions/0.1.14.html"><strong aria-hidden="true">28.</strong> 0.1.14</a></li><li class="chapter-item expanded "><a href="../versions/0.1.13.html"><strong aria-hidden="true">29.</strong> 0.1.13</a></li><li class="chapter-item expanded "><a href="../versions/0.1.12.html"><strong aria-hidden="true">30.</strong> 0.1.12</a></li><li class="chapter-item expanded "><a href="../versions/0.1.11.html"><strong aria-hidden="true">31.</strong> 0.1.11</a></li><li class="chapter-item expanded "><a href="../versions/0.1.10.html"><strong aria-hidden="true">32.</strong> 0.1.10</a></li><li class="chapter-item expanded "><a href="../versions/0.1.9.html"><strong aria-hidden="true">33.</strong> 0.1.9</a></li><li class="chapter-item expanded "><a href="../versions/0.1.8.html"><strong aria-hidden="true">34.</strong> 0.1.8</a></li><li class="chapter-item expanded "><a href="../versions/0.1.7.html"><strong aria-hidden="true">35.</strong> 0.1.7</a></li><li class="chapter-item expanded "><a href="../versions/0.1.6.html"><strong aria-hidden="true">36.</strong> 0.1.6</a></li><li class="chapter-item expanded "><a href="../versions/0.1.5.html"><strong aria-hidden="true">37.</strong> 0.1.5</a></li><li class="chapter-item expanded "><a href="../versions/0.1.4.html"><strong aria-hidden="true">38.</strong> 0.1.4</a></li><li class="chapter-item expanded "><a href="../versions/0.1.3.html"><strong aria-hidden="true">39.</strong> 0.1.3</a></li><li class="chapter-item expanded "><a href="../versions/0.1.2.html"><strong aria-hidden="true">40.</strong> 0.1.2</a></li><li class="chapter-item expanded "><a href="../versions/0.1.1.html"><strong aria-hidden="true">41.</strong> 0.1.1</a></li><li class="chapter-item expanded "><a href="../versions/0.1.0.html"><strong aria-hidden="true">42.</strong> 0.1.0</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Notechondria Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria/edit/codex/docs/./server/notes.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="notes-app"><a class="header" href="#notes-app"><code>notes</code> app</a></h1>
+<p>Path: <a href="../../backend/notes/"><code>backend/notes/</code></a>.
+Responsibility: notes, courses (folders), planner events, calendar
+feeds, recycle bin, attachments, activity heatmap, version history.</p>
+<p>Index: <a href="backend.html"><code>server/backend.md</code></a>.
+Related: <a href="creators.html"><code>creators</code></a>, <a href="mcp.html"><code>mcp</code></a>,
+<a href="../development/storage_model.html">storage model</a>.</p>
+<h2 id="models-notesmodelspy"><a class="header" href="#models-notesmodelspy">Models (<code>notes/models.py</code>)</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Model</th><th>Key fields</th><th>Role</th></tr></thead><tbody>
+<tr><td><code>Course</code></td><td><code>creator_id</code> (FK), <code>title</code>, <code>description</code>, <code>is_default</code>, <code>is_public</code>, <code>slug</code>, <code>cover_image</code>, <code>icon</code>, <code>sort_order</code>, <code>client_course_id</code></td><td>A folder/category. <code>is_default=True</code> flags the pinned "Inbox" — undeletable, every user has exactly one.</td></tr>
+<tr><td><code>CourseMedia</code></td><td><code>course_id</code> (FK), <code>file</code>, <code>kind</code></td><td>Cover/banner uploads attached to a course.</td></tr>
+<tr><td><code>CourseSubscription</code></td><td><code>creator_id</code>, <code>course_id</code>, <code>is_active</code>, <code>subscribed_at</code></td><td>Many-to-many with payload: which creators are subscribed to which (public) courses.</td></tr>
+<tr><td><code>CourseOperationLog</code></td><td><code>creator_id</code>, <code>course_id</code>, <code>op</code>, <code>payload</code>, <code>at</code></td><td>Audit trail for course mutations.</td></tr>
+<tr><td><code>Note</code></td><td><code>course_id</code> (FK), <code>creator_id</code> (FK), <code>title</code>, <code>slug</code>, <code>uuid</code>, <code>is_public</code>, <code>visibility</code>, <code>last_edit</code>, <code>deleted_at</code>, <code>parent_note_id</code> (FK, nullable)</td><td>The unit of content. Reachable by <code>&lt;int:note_id&gt;</code> or <code>&lt;uuid:note_uuid&gt;</code>. <code>parent_note_id</code> lets a note be a comment on another.</td></tr>
+<tr><td><code>NoteBlock</code></td><td><code>block_type</code> (TEXT/TITLE/IMAGE/CODE/...), <code>text</code>, <code>args</code> (JSON), <code>image</code>, <code>file</code></td><td>Atomic content blob inside a note. Free-floating (multiple notes can render the same block via <code>NoteIndex</code>).</td></tr>
+<tr><td><code>NoteIndex</code></td><td><code>note_id</code> (FK), <code>noteblock_id</code> (FK), <code>index</code></td><td>Ordering table: which blocks belong to which note, in what order. The same <code>NoteBlock</code> can appear in multiple notes (transclusion).</td></tr>
+<tr><td><code>NoteAttachment</code></td><td><code>note_id</code> (FK), <code>file</code>, <code>original_filename</code>, <code>file_size</code>, <code>content_type</code>, <code>date_created</code></td><td>File uploads on a note. Storage path via <code>note_attachment_path(instance, filename)</code> → <code>user_upload/user_&lt;id&gt;/notes/note_&lt;id&gt;/&lt;filename&gt;</code>.</td></tr>
+<tr><td><code>NoteVersion</code></td><td><code>note_id</code> (FK), <code>snapshot</code> (JSON), <code>created_at</code>, <code>creator_id</code></td><td>Frozen snapshots for rollback.</td></tr>
+<tr><td><code>RecycleBinEntry</code></td><td><code>note_id</code> (FK), <code>creator_id</code>, <code>deleted_at</code>, <code>restorable_until</code></td><td>Soft-delete tracker.</td></tr>
+<tr><td><code>NoteActivitySession</code></td><td><code>note_id</code>, <code>creator_id</code>, <code>started_at</code>, <code>ended_at</code>, <code>keystrokes</code></td><td>Per-edit-session attribution → feeds <code>HeatmapActivity</code>.</td></tr>
+<tr><td><code>HeatmapActivity</code></td><td><code>creator_id</code>, <code>date</code>, <code>count</code>, <code>weight</code></td><td>Per-day rollup for the contribution heatmap.</td></tr>
+<tr><td><code>PlannerEvent</code></td><td><code>creator_id</code>, <code>title</code>, <code>event_date</code>, <code>is_completed</code>, <code>importance</code>, <code>source_feed_id</code> (FK, nullable)</td><td>A scheduled task or imported calendar event.</td></tr>
+<tr><td><code>CalendarFeed</code></td><td><code>creator_id</code>, <code>source_url</code>, <code>display_name</code>, <code>last_fetched_at</code>, <code>is_active</code></td><td>Subscribed iCal URL. <code>source_url</code> is normalized via <code>normalize_calendar_url(...)</code> on create.</td></tr>
+<tr><td><code>Tag</code>, <code>ValidationRecord</code></td><td>various</td><td>Classification + audit. Not yet exposed via the API surface.</td></tr>
+</tbody></table>
+</div>
+<p><code>NoteBlockTypeChoices</code> enumerates allowed <code>block_type</code> values:
+TEXT, TITLE, IMAGE, CODE, etc. — see the model file for the full
+list.</p>
+<h2 id="services-notesservicespy"><a class="header" href="#services-notesservicespy">Services (<code>notes/services.py</code>)</a></h2>
+<p>Pure helpers. No request-cycle binding.</p>
+<ul>
+<li><code>normalize_calendar_url(url)</code> — rewrites Google Calendar share
+URLs to canonical <code>.ics</code>. Handles <code>embed?src=&lt;id&gt;</code> and
+<code>?cid=&lt;base64&gt;</code> (with repad). Direct <code>.ics</code> and non-Google URLs
+pass through unchanged.</li>
+<li><code>read_calendar_feed(url)</code> — fetches with <code>User-Agent: Notechondria/0.1 (+calendar-feed)</code> and <code>Accept: text/calendar, */*;q=0.1</code> headers. Returns the raw text body.</li>
+<li><code>parse_ical_datetime(value)</code> — best-effort RFC-5545 datetime
+parser used by both the import preview and the periodic feed
+refresh.</li>
+<li><code>seed_inbox_and_welcome_note(creator) -&gt; Optional[Note]</code> —
+idempotent. Creates the default <code>Inbox</code> Course (if missing) and
+a welcome Note with TITLE + TEXT blocks (if Inbox is empty).
+Late-imports <code>django.utils.text.slugify</code> and
+<code>notechondria.utils.generate_unique_id</code> to avoid circular
+imports. Called by <code>VerifyEmailApiView.post</code> and
+<code>_get_or_create_oauth_user</code> in <a href="creators.html"><code>creators/api.py</code></a>.</li>
+</ul>
+<h2 id="api-surface-notesapipy"><a class="header" href="#api-surface-notesapipy">API surface (<code>notes/api.py</code>)</a></h2>
+<p>Mounted under <code>/api/v1/...</code> by
+<a href="../../backend/notechondria/api_urls.py"><code>api_urls.py</code></a>.</p>
+<h3 id="front-page--health"><a class="header" href="#front-page--health">Front page + health</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Method</th><th>Path</th><th>View</th><th>Auth</th></tr></thead><tbody>
+<tr><td>GET</td><td><code>/api/v1/health/</code></td><td><code>FrontPageApiView.health</code></td><td>AllowAny</td></tr>
+<tr><td>GET</td><td><code>/api/v1/front-page/</code></td><td><code>FrontPageApiView.get</code></td><td>AllowAny (gates extra payload on auth)</td></tr>
+</tbody></table>
+</div>
+<p>Example <code>front-page</code> response (anonymous viewer):</p>
+<pre><code class="language-json">{
+  "default_course": {"id": 1, "title": "Vibe Coding 101", "...": "..."},
+  "carousel_courses": [
+    {"id": 1, "title": "Vibe Coding 101", "is_subscribed": false, "...": "..."},
+    {"id": 2, "title": "Meaning of Work in Age of AI", "...": "..."}
+  ],
+  "recent_notes": [
+    {"id": 28, "title": "First note", "course_id": 1, "last_edit": "2026-04-12T22:36:27Z"}
+  ],
+  "recommended_notes": ["..."],
+  "collections": ["..."]
+}
+</code></pre>
+<p>When the request is authenticated the response also includes
+<code>heatmap</code> and <code>upcoming_events</code> keys.</p>
+<h3 id="courses"><a class="header" href="#courses">Courses</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Method</th><th>Path</th><th>View</th></tr></thead><tbody>
+<tr><td>GET / POST</td><td><code>/api/v1/courses/</code></td><td><code>CourseListApiView</code></td></tr>
+<tr><td>POST</td><td><code>/api/v1/courses/reorder/</code></td><td><code>CourseReorderApiView</code></td></tr>
+<tr><td>GET / PATCH / DELETE</td><td><code>/api/v1/courses/&lt;int:course_id&gt;/</code></td><td><code>CourseDetailApiView</code></td></tr>
+<tr><td>GET</td><td><code>/api/v1/courses/&lt;int:course_id&gt;/notes/</code></td><td><code>CourseNotesApiView</code></td></tr>
+<tr><td>POST / DELETE</td><td><code>/api/v1/courses/&lt;int:course_id&gt;/subscribe/</code></td><td><code>CourseSubscribeApiView</code></td></tr>
+<tr><td>POST</td><td><code>/api/v1/courses/&lt;int:course_id&gt;/open/</code></td><td><code>CourseOpenApiView</code></td></tr>
+<tr><td>POST</td><td><code>/api/v1/admin/template-courses/restore/</code></td><td><code>TemplateCourseRestoreApiView</code> (admin)</td></tr>
+</tbody></table>
+</div>
+<p>Example <code>GET /api/v1/courses/</code>:</p>
+<pre><code class="language-json">[
+  {
+    "id": 1,
+    "title": "Vibe Coding 101",
+    "is_default": false,
+    "is_public": true,
+    "subscriber_count": 4,
+    "is_subscribed": true,
+    "icon": "code",
+    "sort_order": 1
+  },
+  {"id": 2, "title": "Inbox", "is_default": true, "is_public": false, "...": "..."}
+]
+</code></pre>
+<p>DELETE on a course where <code>is_default=True</code> returns 400 — Inbox
+is undeletable. The frontend hides the delete affordance for
+default courses (editor 0.1.x change).</p>
+<h3 id="notes"><a class="header" href="#notes">Notes</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Method</th><th>Path</th><th>View</th></tr></thead><tbody>
+<tr><td>GET / POST</td><td><code>/api/v1/notes/</code></td><td><code>NoteListCreateApiView</code></td></tr>
+<tr><td>GET</td><td><code>/api/v1/notes/deleted/</code></td><td><code>DeletedNoteListApiView</code></td></tr>
+<tr><td>POST</td><td><code>/api/v1/notes/deleted/empty/</code></td><td><code>DeletedNoteEmptyApiView</code></td></tr>
+<tr><td>GET</td><td><code>/api/v1/notes/uuid/&lt;uuid:note_uuid&gt;/</code></td><td><code>NoteByUuidApiView</code></td></tr>
+<tr><td>GET / PATCH / DELETE</td><td><code>/api/v1/notes/&lt;int:note_id&gt;/</code></td><td><code>NoteDetailApiView</code></td></tr>
+<tr><td>POST</td><td><code>/api/v1/notes/&lt;int:note_id&gt;/restore/</code></td><td><code>DeletedNoteRestoreApiView</code></td></tr>
+<tr><td>GET</td><td><code>/api/v1/notes/&lt;int:note_id&gt;/history/</code></td><td><code>NoteHistoryApiView</code></td></tr>
+<tr><td>POST</td><td><code>/api/v1/notes/&lt;int:note_id&gt;/snapshot/</code></td><td><code>NoteSnapshotApiView</code></td></tr>
+<tr><td>POST</td><td><code>/api/v1/notes/&lt;int:note_id&gt;/restore/&lt;int:version_id&gt;/</code></td><td><code>NoteRestoreApiView</code></td></tr>
+<tr><td>GET / POST</td><td><code>/api/v1/notes/&lt;int:note_id&gt;/blocks/</code></td><td><code>NoteBlocksApiView</code></td></tr>
+<tr><td>POST</td><td><code>/api/v1/notes/&lt;int:note_id&gt;/reorder/</code></td><td><code>ReorderBlocksApiView</code></td></tr>
+<tr><td>GET / PATCH / DELETE</td><td><code>/api/v1/blocks/&lt;int:block_id&gt;/</code></td><td><code>SingleBlockApiView</code></td></tr>
+<tr><td>GET / POST</td><td><code>/api/v1/notes/&lt;int:note_id&gt;/attachments/</code></td><td><code>NoteAttachmentApiView</code></td></tr>
+<tr><td>GET / DELETE</td><td><code>/api/v1/notes/&lt;int:note_id&gt;/attachments/&lt;int:attachment_id&gt;/</code></td><td><code>NoteAttachmentDetailApiView</code></td></tr>
+</tbody></table>
+</div>
+<p>Example <code>GET /api/v1/notes/27/</code>:</p>
+<pre><code class="language-json">{
+  "id": 27,
+  "uuid": "1f8d6c4a-...",
+  "title": "First note",
+  "course_id": 1,
+  "is_public": true,
+  "visibility": "public",
+  "last_edit": "2026-04-12T22:36:27Z",
+  "deleted_at": null,
+  "blocks": [
+    {"id": 401, "block_type": "TITLE", "text": "First note"},
+    {"id": 402, "block_type": "TEXT",  "text": "Welcome to Notechondria."}
+  ]
+}
+</code></pre>
+<h3 id="activity-heatmap-calendar-feeds-planner-events"><a class="header" href="#activity-heatmap-calendar-feeds-planner-events">Activity, heatmap, calendar feeds, planner events</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Method</th><th>Path</th><th>View</th></tr></thead><tbody>
+<tr><td>GET / POST</td><td><code>/api/v1/activity/</code></td><td><code>ActivityApiView</code></td></tr>
+<tr><td>GET</td><td><code>/api/v1/activity/week/</code></td><td><code>ActivityWeekApiView</code></td></tr>
+<tr><td>GET</td><td><code>/api/v1/heatmap/</code></td><td><code>HeatmapApiView</code></td></tr>
+<tr><td>GET / POST</td><td><code>/api/v1/calendar-feeds/</code></td><td><code>CalendarFeedListCreateApiView</code> (POST runs <code>normalize_calendar_url</code>)</td></tr>
+<tr><td>GET / PATCH / DELETE</td><td><code>/api/v1/calendar-feeds/&lt;int:feed_id&gt;/</code></td><td><code>CalendarFeedDetailApiView</code></td></tr>
+<tr><td>GET / POST</td><td><code>/api/v1/planner-events/</code></td><td><code>PlannerEventListCreateApiView</code></td></tr>
+<tr><td>GET / PATCH / DELETE</td><td><code>/api/v1/planner-events/&lt;int:event_id&gt;/</code></td><td><code>PlannerEventDetailApiView</code></td></tr>
+<tr><td>GET / POST</td><td><code>/api/v1/note-sessions/</code></td><td><code>NoteSessionListCreateApiView</code></td></tr>
+<tr><td>GET / PATCH / DELETE</td><td><code>/api/v1/note-sessions/&lt;int:session_id&gt;/</code></td><td><code>NoteSessionDetailApiView</code></td></tr>
+</tbody></table>
+</div>
+<p>Example <code>GET /api/v1/heatmap/</code>:</p>
+<pre><code class="language-json">{
+  "weeks": [
+    {"week_start": "2026-03-30", "days": [
+      {"date": "2026-03-30", "count": 4, "weight": 0.6},
+      {"date": "2026-03-31", "count": 0, "weight": 0.0}
+    ]},
+    "..."
+  ]
+}
+</code></pre>
+<p>Example <code>POST /api/v1/calendar-feeds/</code>:</p>
+<pre><code class="language-json">{
+  "source_url": "https://calendar.google.com/calendar/embed?src=abc%40group.calendar.google.com",
+  "display_name": "Class schedule"
+}
+</code></pre>
+<p>The backend rewrites <code>source_url</code> to
+<code>https://calendar.google.com/calendar/ical/abc%40group.calendar.google.com/public/basic.ics</code>
+before saving.</p>
+<h2 id="management-commands"><a class="header" href="#management-commands">Management commands</a></h2>
+<p><code>notes/management/commands/bootstrap_platform.py</code>:</p>
+<ul>
+<li>Idempotent. Run on every container start by
+<a href="../../backend/entrypoint.sh"><code>backend/entrypoint.sh</code></a>.</li>
+<li>Creates the admin user from <code>DJANGO_SUPERUSER_*</code> env.</li>
+<li>Creates the demo <code>CodeX</code> user.</li>
+<li>Updates three sample courses from
+<a href="../../sample/"><code>sample/</code></a>: <code>Vibe Coding 101</code>,
+<code>Meaning of Work in Age of AI</code>, <code>Self-identity and Expression in Modern Arts</code>. Each course's notes are recreated each run.</li>
+<li><code>resolve_codex_path()</code> searches a candidate list (now
+<code>is_file()</code>-guarded after the AGENTS.md submodule reanchor) to
+find the seed file containing the agent rules; the result
+becomes the body of one of the demo notes.</li>
+</ul>
+<h2 id="frontend-cross-refs"><a class="header" href="#frontend-cross-refs">Frontend cross-refs</a></h2>
+<ul>
+<li>The "Learner" view in
+<a href="../client/editor_app.html">editor</a> /
+<a href="../client/planner_app.html">planner</a> /
+<a href="../client/portal_app.html">portal</a> is built on
+<code>/api/v1/courses/</code>, <code>/api/v1/courses/&lt;id&gt;/notes/</code>, and
+<code>/api/v1/notes/&lt;id&gt;/</code>.</li>
+<li>Calendar subscribe in
+<a href="../client/planner_app.html#calendar-subscription-flow">planner_app</a>
+→ <code>/api/v1/calendar-feeds/</code>.</li>
+<li>Welcome note seeding fires on first sign-in via
+<a href="creators.html"><code>creators</code> app</a> → <code>seed_inbox_and_welcome_note</code>.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../server/creators.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../server/mcp.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../server/creators.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../server/mcp.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
