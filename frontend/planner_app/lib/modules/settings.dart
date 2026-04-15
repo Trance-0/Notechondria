@@ -446,96 +446,48 @@ class _SettingsPageState extends State<_SettingsPage> {
                       ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _themePreset,
-                        items: _themePresetEntries.entries
-                            .map((entry) => DropdownMenuItem<String>(
-                                  value: entry.key,
-                                  child: Text(entry.value),
-                                ))
-                            .toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() => _themePreset = value);
-                          }
-                        },
-                        decoration: const InputDecoration(
-                          labelText: 'Theme preset',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _themeMode,
-                        items: const [
-                          DropdownMenuItem(value: 'S', child: Text('System')),
-                          DropdownMenuItem(value: 'L', child: Text('Light')),
-                          DropdownMenuItem(value: 'D', child: Text('Dark')),
+                AppPreferencesCard(
+                  editorMode: _editorMode,
+                  themePreset: _themePreset,
+                  themeMode: _themeMode,
+                  apiBaseController: _apiBaseController,
+                  isAuthenticated: _isAuthenticated,
+                  onEditorModeChanged: (v) => setState(() => _editorMode = v),
+                  onThemePresetChanged: (v) => setState(() => _themePreset = v),
+                  onThemeModeChanged: (v) => setState(() => _themeMode = v),
+                  extrasBuilder: (context) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _deadlineTimeWeightController,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: const InputDecoration(
+                                labelText: 'Deadline time weight (a)',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: _deadlineImportanceWeightController,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: const InputDecoration(
+                                labelText: 'Deadline importance weight (b)',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ),
                         ],
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() => _themeMode = value);
-                          }
-                        },
-                        decoration: const InputDecoration(
-                          labelText: 'Theme mode',
-                          border: OutlineInputBorder(),
-                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _deadlineTimeWeightController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(
-                          labelText: 'Deadline time weight (a)',
-                          border: OutlineInputBorder(),
-                        ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Deadlines sort by (a × time pressure) × (b × importance). Importance uses the existing event weight.',
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _deadlineImportanceWeightController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(
-                          labelText: 'Deadline importance weight (b)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Deadlines sort by (a × time pressure) × (b × importance). Importance uses the existing event weight.',
-                ),
-                const SizedBox(height: 12),
-                Tooltip(
-                  message: _isAuthenticated
-                      ? 'Log out before changing the API base URL. A logged-in '
-                          'token is only valid against its issuing backend.'
-                      : '',
-                  child: TextField(
-                    controller: _apiBaseController,
-                    enabled: !_isAuthenticated,
-                    decoration: InputDecoration(
-                      labelText: 'API base URL',
-                      border: const OutlineInputBorder(),
-                      helperText: _isAuthenticated
-                          ? 'Locked while signed in. Log out to change.'
-                          : null,
-                    ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 12),

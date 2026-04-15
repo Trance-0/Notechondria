@@ -1218,88 +1218,19 @@ class _SettingsPageState extends State<_SettingsPage> {
               ],
             ),
             const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: _editorMode,
-              items: const [
-                DropdownMenuItem(value: 'P', child: Text('Plain text editor')),
-                DropdownMenuItem(value: 'G', child: Text('Live markdown editor')),
-              ],
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _editorMode = value);
-                }
-              },
-              decoration: const InputDecoration(
-                labelText: 'Default editor',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _themePreset,
-                    items: _themePresetEntries.entries
-                        .map((entry) => DropdownMenuItem<String>(
-                              value: entry.key,
-                              child: Text(entry.value),
-                            ))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _themePreset = value);
-                      }
-                    },
-                    decoration: const InputDecoration(
-                      labelText: 'Theme preset',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _themeMode,
-                    items: const [
-                      DropdownMenuItem(value: 'S', child: Text('System')),
-                      DropdownMenuItem(value: 'L', child: Text('Light')),
-                      DropdownMenuItem(value: 'D', child: Text('Dark')),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _themeMode = value);
-                      }
-                    },
-                    decoration: const InputDecoration(
-                      labelText: 'Theme mode',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
             // API base URL is locked while the user is signed in: changing
             // backend mid-session would invalidate the token and lose
-            // cached remote data. Tooltip explains the path forward
-            // (logout first, then change).
-            Tooltip(
-              message: _isAuthenticated
-                  ? 'Log out before changing the API base URL. A logged-in '
-                      'token is only valid against its issuing backend.'
-                  : '',
-              child: TextField(
-                controller: _apiBaseController,
-                enabled: !_isAuthenticated,
-                decoration: InputDecoration(
-                  labelText: 'API base URL',
-                  border: const OutlineInputBorder(),
-                  helperText: _isAuthenticated
-                      ? 'Locked while signed in. Log out to change.'
-                      : null,
-                ),
-              ),
+            // cached remote data. The lock + tooltip live inside
+            // AppPreferencesCard.
+            AppPreferencesCard(
+              editorMode: _editorMode,
+              themePreset: _themePreset,
+              themeMode: _themeMode,
+              apiBaseController: _apiBaseController,
+              isAuthenticated: _isAuthenticated,
+              onEditorModeChanged: (v) => setState(() => _editorMode = v),
+              onThemePresetChanged: (v) => setState(() => _themePreset = v),
+              onThemeModeChanged: (v) => setState(() => _themeMode = v),
             ),
             const SizedBox(height: 12),
             _buildSectionButtons(
