@@ -1006,7 +1006,7 @@ Future<void> _showCreatePlannerEventDialog(
               ),
               if (feedback != null) ...[
                 const SizedBox(height: 12),
-                _FeedbackText(feedback: feedback!),
+                FeedbackText(feedback: feedback!),
               ],
             ],
           ),

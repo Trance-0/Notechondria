@@ -564,7 +564,7 @@ class _SettingsPageState extends State<_SettingsPage> {
         ),
         if (_saveFeedback != null) ...[
           const SizedBox(height: 12),
-          _FeedbackText(feedback: _saveFeedback!),
+          FeedbackText(feedback: _saveFeedback!),
         ],
         const SizedBox(height: 20),
         _buildOnlineAccountSection(context),
@@ -613,7 +613,7 @@ class _SettingsPageState extends State<_SettingsPage> {
                 'Sign in to sync notes with the cloud. Local notes stay editable even while signed out.',
               ),
               const SizedBox(height: 12),
-              _AuthHub(
+              AuthHub(
                 onRegister: widget.onRegister,
                 onValidateInvitation: widget.onValidateInvitation,
                 onVerify: widget.onVerify,

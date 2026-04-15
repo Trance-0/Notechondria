@@ -1,4 +1,10 @@
-part of notechondria_frontend;
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../models/action_feedback.dart';
+import '../utils/blur_dialog.dart';
 
 /// Formats the login dialog's API-host subtitle. Accepts the full
 /// `api_base_url` (may include `/api/v1`) and returns `Signing in to
@@ -17,8 +23,9 @@ String _apiHostSubtitle(String? apiBaseUrl) {
 }
 
 /// Compact auth hub with sign-up, verify, login, and password-reset dialogs.
-class _AuthHub extends StatelessWidget {
-  const _AuthHub({
+class AuthHub extends StatelessWidget {
+  const AuthHub({
+    super.key,
     required this.onRegister,
     required this.onValidateInvitation,
     required this.onVerify,
@@ -89,7 +96,7 @@ class _AuthHub extends StatelessWidget {
                 FilledButton(
                   onPressed: () => _openDialog(
                     context,
-                    _RegistrationWizard(
+                    RegistrationWizard(
                       onValidateInvitation: onValidateInvitation,
                       onRegister: onRegister,
                       onResendVerification: onResendVerification,
@@ -102,7 +109,7 @@ class _AuthHub extends StatelessWidget {
                 OutlinedButton(
                   onPressed: () => _openDialog(
                     context,
-                    _EmailCodeDialog(
+                    EmailCodeDialog(
                       title: 'Verify email',
                       description:
                           'Enter the 6-digit verification code sent to your email.',
@@ -116,7 +123,7 @@ class _AuthHub extends StatelessWidget {
                 OutlinedButton(
                   onPressed: () => _openDialog(
                     context,
-                    _EmailPasswordDialog(
+                    EmailPasswordDialog(
                       title: 'Login',
                       description: _apiHostSubtitle(apiBaseUrl),
                       submitLabel: 'Login',
@@ -129,7 +136,7 @@ class _AuthHub extends StatelessWidget {
                 TextButton(
                   onPressed: () => _openDialog(
                     context,
-                    _PasswordResetDialog(
+                    PasswordResetDialog(
                       onRequestPasswordReset: onRequestPasswordReset,
                       onConfirmPasswordReset: onConfirmPasswordReset,
                     ),
@@ -172,11 +179,12 @@ class _AuthHub extends StatelessWidget {
 
 /// Multi-step registration wizard.
 ///
-/// Step 0 – Invitation code (skipped automatically when no codes exist).
-/// Step 1 – Choose registration method: Email, Google, or GitHub.
-/// Step 2 – Email registration form (username, email + verify, password).
-class _RegistrationWizard extends StatefulWidget {
-  const _RegistrationWizard({
+/// Step 0 - Invitation code (skipped automatically when no codes exist).
+/// Step 1 - Choose registration method: Email, Google, or GitHub.
+/// Step 2 - Email registration form (username, email + verify, password).
+class RegistrationWizard extends StatefulWidget {
+  const RegistrationWizard({
+    super.key,
     required this.onValidateInvitation,
     required this.onRegister,
     required this.onResendVerification,
@@ -196,11 +204,11 @@ class _RegistrationWizard extends StatefulWidget {
   final void Function(String invitationCode)? onGithubLogin;
 
   @override
-  State<_RegistrationWizard> createState() => _RegistrationWizardState();
+  State<RegistrationWizard> createState() => _RegistrationWizardState();
 }
 
-class _RegistrationWizardState extends State<_RegistrationWizard> {
-  int _step = 0; // 0=invitation, 1=method, 2=email form
+class _RegistrationWizardState extends State<RegistrationWizard> {
+  int _step = 0;
   final _invitationController = TextEditingController();
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -210,7 +218,7 @@ class _RegistrationWizardState extends State<_RegistrationWizard> {
   ActionFeedback? _feedback;
   bool _submitting = false;
   String _validatedInvitationCode = '';
-  bool _emailRegistered = false; // true after register succeeds, show verify
+  bool _emailRegistered = false;
   int _resendCooldown = 0;
   Timer? _cooldownTimer;
 
@@ -253,7 +261,6 @@ class _RegistrationWizardState extends State<_RegistrationWizard> {
       final required = result['required'] == true;
       final valid = result['valid'] == true;
       if (!required) {
-        // No invitation codes in system — skip straight to method selection.
         setState(() {
           _submitting = false;
           _validatedInvitationCode = '';
@@ -372,7 +379,7 @@ class _RegistrationWizardState extends State<_RegistrationWizard> {
               if (_step == 2) _buildEmailFormStep(),
               if (_feedback != null) ...[
                 const SizedBox(height: 12),
-                _FeedbackText(feedback: _feedback!),
+                FeedbackText(feedback: _feedback!),
               ],
             ],
           ),
@@ -606,8 +613,9 @@ class _RegistrationWizardState extends State<_RegistrationWizard> {
   }
 }
 
-class _EmailPasswordDialog extends StatefulWidget {
-  const _EmailPasswordDialog({
+class EmailPasswordDialog extends StatefulWidget {
+  const EmailPasswordDialog({
+    super.key,
     required this.title,
     required this.description,
     required this.submitLabel,
@@ -622,10 +630,10 @@ class _EmailPasswordDialog extends StatefulWidget {
   final String emailLabel;
 
   @override
-  State<_EmailPasswordDialog> createState() => _EmailPasswordDialogState();
+  State<EmailPasswordDialog> createState() => _EmailPasswordDialogState();
 }
 
-class _EmailPasswordDialogState extends State<_EmailPasswordDialog> {
+class _EmailPasswordDialogState extends State<EmailPasswordDialog> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   ActionFeedback? _feedback;
@@ -713,7 +721,7 @@ class _EmailPasswordDialogState extends State<_EmailPasswordDialog> {
             ],
             if (_feedback != null) ...[
               const SizedBox(height: 12),
-              _FeedbackText(feedback: _feedback!),
+              FeedbackText(feedback: _feedback!),
             ],
           ],
         ),
@@ -732,8 +740,9 @@ class _EmailPasswordDialogState extends State<_EmailPasswordDialog> {
   }
 }
 
-class _EmailCodeDialog extends StatefulWidget {
-  const _EmailCodeDialog({
+class EmailCodeDialog extends StatefulWidget {
+  const EmailCodeDialog({
+    super.key,
     required this.title,
     required this.description,
     required this.submitLabel,
@@ -748,10 +757,10 @@ class _EmailCodeDialog extends StatefulWidget {
   final Future<ActionFeedback> Function(String email)? onResend;
 
   @override
-  State<_EmailCodeDialog> createState() => _EmailCodeDialogState();
+  State<EmailCodeDialog> createState() => _EmailCodeDialogState();
 }
 
-class _EmailCodeDialogState extends State<_EmailCodeDialog> {
+class _EmailCodeDialogState extends State<EmailCodeDialog> {
   final _emailController = TextEditingController();
   final _codeController = TextEditingController();
   ActionFeedback? _feedback;
@@ -874,7 +883,7 @@ class _EmailCodeDialogState extends State<_EmailCodeDialog> {
             ],
             if (_feedback != null) ...[
               const SizedBox(height: 12),
-              _FeedbackText(feedback: _feedback!),
+              FeedbackText(feedback: _feedback!),
             ],
           ],
         ),
@@ -893,8 +902,9 @@ class _EmailCodeDialogState extends State<_EmailCodeDialog> {
   }
 }
 
-class _PasswordResetDialog extends StatefulWidget {
-  const _PasswordResetDialog({
+class PasswordResetDialog extends StatefulWidget {
+  const PasswordResetDialog({
+    super.key,
     required this.onRequestPasswordReset,
     required this.onConfirmPasswordReset,
   });
@@ -907,10 +917,10 @@ class _PasswordResetDialog extends StatefulWidget {
   ) onConfirmPasswordReset;
 
   @override
-  State<_PasswordResetDialog> createState() => _PasswordResetDialogState();
+  State<PasswordResetDialog> createState() => _PasswordResetDialogState();
 }
 
-class _PasswordResetDialogState extends State<_PasswordResetDialog> {
+class _PasswordResetDialogState extends State<PasswordResetDialog> {
   final _emailController = TextEditingController();
   final _codeController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -1009,7 +1019,7 @@ class _PasswordResetDialogState extends State<_PasswordResetDialog> {
               ),
               if (_feedback != null) ...[
                 const SizedBox(height: 12),
-                _FeedbackText(feedback: _feedback!),
+                FeedbackText(feedback: _feedback!),
               ],
             ],
           ),
@@ -1051,8 +1061,8 @@ class _PasswordResetDialogState extends State<_PasswordResetDialog> {
 }
 
 /// Inline feedback text for form submissions.
-class _FeedbackText extends StatelessWidget {
-  const _FeedbackText({required this.feedback});
+class FeedbackText extends StatelessWidget {
+  const FeedbackText({super.key, required this.feedback});
 
   final ActionFeedback feedback;
 

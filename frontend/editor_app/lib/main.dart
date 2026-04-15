@@ -27,7 +27,6 @@ part 'core/client.dart';
 part 'core/helpers.dart';
 part 'core/local_store.dart';
 part 'components/avatar.dart';
-part 'components/auth_dialogs.dart';
 part 'components/note_viewer.dart';
 part 'modules/learner.dart';
 part 'modules/note_editor.dart';
