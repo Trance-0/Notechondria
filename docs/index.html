@@ -180,10 +180,54 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="notechondria--long-form-agent-handoff"><a class="header" href="#notechondria--long-form-agent-handoff">Notechondria — Long-Form Agent Handoff</a></h1>
-<p>Deep architectural and operational detail for Notechondria. This file was
-migrated from the repo-root <code>AGENTS.md</code>; the root <code>AGENTS.md</code> now points at
-the shared agent-rules submodule (<code>.agents/</code>) plus this file.</p>
-<p>Read <a href="readme.html"><code>docs/readme.md</code></a> first for a human-facing overview.</p>
+<p>Deep architectural and operational detail for Notechondria. This file is the
+single source of truth for project-local agent instructions; the root
+<code>AGENTS.md</code> was removed and its contents folded here. The canonical
+cross-project rules live in the <a href="../agents/"><code>agents/</code></a> submodule
+(pinned to <a href="https://github.com/Trance-0/AGENTS.md"><code>Trance-0/AGENTS.md</code></a>).</p>
+<p>Read this file in order:</p>
+<ol>
+<li><a href="../agents/AGENTS.html"><code>agents/AGENTS.md</code></a> — shared dev contract
+(tone, scope discipline, per-stack expectations, commit rules).</li>
+<li>§0 below — <strong>project-specific overrides</strong> that beat the shared contract
+when they conflict.</li>
+<li>The rest of this file — architecture, deploy topology, open-work list.</li>
+<li><a href="../LLM_CHECK.html"><code>LLM_CHECK.md</code></a> — end-of-round checklist.</li>
+<li><a href="readme.html"><code>docs/readme.md</code></a> — human-facing summary of how the
+project works.</li>
+</ol>
+<hr />
+<h2 id="0-project-specific-overrides"><a class="header" href="#0-project-specific-overrides">0. Project-specific overrides</a></h2>
+<p>Rules in this section <strong>override</strong> the shared ruleset in
+<a href="../agents/AGENTS.html"><code>agents/AGENTS.md</code></a> when they conflict. Keep this
+section short; deeper explanations belong in later sections.</p>
+<ul>
+<li><strong>Upstream target branch is <code>codex</code>, not <code>main</code>.</strong> Any PR to upstream
+targets <code>Trance-0/Notechondria:codex</code>.</li>
+<li><strong>Frontend is three standalone Flutter apps</strong> under
+<code>frontend/editor_app/</code>, <code>frontend/planner_app/</code>, <code>frontend/portal_app/</code>.
+Do not merge them back into a monolith.</li>
+<li><strong>Backend tests run with
+<code>DJANGO_SETTINGS_MODULE=notechondria.settings_test</code></strong>; that settings
+file must define a non-empty <code>SECRET_KEY</code>.</li>
+<li><strong>Vendor SDK clients (OpenAI, etc.) must initialize lazily at call
+time</strong>, never at module import. As of 0.1.18 the OpenAI SDK is removed
+entirely — future AI goes through an external microservice over HTTP
+(see <a href="development/ai_integration.html"><code>docs/development/ai_integration.md</code></a>).</li>
+<li><strong><code>backend/requirements-render.txt</code> stays free of heavy ML packages</strong>
+(<code>torch</code>, <code>llvmlite</code>, <code>numba</code>, etc.) for Render free-tier compatibility.
+<code>backend/requirements.txt</code> itself is also now pruned of that stack.</li>
+<li><strong>GitHub Pages builds use the project-site base paths</strong>
+<code>/Notechondria/editor/</code>, <code>/Notechondria/planner/</code>,
+<code>/Notechondria/portal/</code>.</li>
+<li><strong>Never assume host ports</strong> (<code>80</code>, <code>443</code>, <code>8080</code>, <code>5432</code>, …) are free;
+verify on the target machine before assigning.</li>
+<li><strong>Target Python 3.9.</strong> The Dockerfile pins <code>python:3.9.18-bullseye</code>,
+so do NOT use PEP 604 unions (<code>X | Y</code>) in runtime annotations — use
+<code>typing.Optional</code> / <code>typing.Union</code>. This overrides
+<code>agents/AGENTS.md</code> §4.1's "target 3.11+" default.</li>
+</ul>
+<hr />
 <hr />
 <h2 id="1-current-status"><a class="header" href="#1-current-status">1. Current status</a></h2>
 <ul>
@@ -215,10 +259,10 @@ deploy target (<code>jenkins/</code>, <code>docker/</code>, <code>render/</code>
 per-version notes.</li>
 <li><code>sample/</code> — seeded example course content and media.</li>
 <li><code>course_template/</code> — older course template artifacts.</li>
-<li><code>AGENTS.md</code> (root) — thin pointer; rules inherited from the <code>.agents/</code>
-submodule (<code>Trance-0/AGENTS.md</code>).</li>
 <li><code>LLM_CHECK.md</code> — end-of-round checklist and pitfall log.</li>
-<li><code>.agents/</code> — git submodule pinning the canonical agent rules.</li>
+<li><code>agents/</code> — git submodule pinning the canonical agent rules
+(<code>Trance-0/AGENTS.md</code>). The root <code>AGENTS.md</code> was removed; project-local
+overrides now live in §0 above.</li>
 </ul>
 <h2 id="3-backend-design"><a class="header" href="#3-backend-design">3. Backend design</a></h2>
 <h3 id="31-runtime-shape"><a class="header" href="#31-runtime-shape">3.1 Runtime shape</a></h3>
