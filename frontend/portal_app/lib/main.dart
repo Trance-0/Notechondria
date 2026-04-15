@@ -25,7 +25,6 @@ part 'core/client.dart';
 part 'core/helpers.dart';
 part 'core/local_store.dart';
 part 'components/avatar.dart';
-part 'components/debug_widgets.dart';
 part 'components/error_state.dart';
 part 'components/note_viewer.dart';
 part 'components/splash_screen.dart';

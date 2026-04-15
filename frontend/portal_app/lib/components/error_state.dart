@@ -24,7 +24,7 @@ class _ErrorState extends StatelessWidget {
           children: [
             Text(message, textAlign: TextAlign.center),
             const SizedBox(height: 16),
-            _ApiDebugSummary(
+            ApiDebugSummary(
               apiBaseUrl: apiBaseUrl,
               snapshot: debugSnapshot,
               history: const [],

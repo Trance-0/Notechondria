@@ -1,8 +1,13 @@
-part of notechondria_frontend;
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+
+import '../models/api_debug_snapshot.dart';
+import '../utils/compact_timestamp.dart';
 
 /// Shows the latest captured API response details for debugging.
-class _ApiDebugCard extends StatelessWidget {
-  const _ApiDebugCard({
+class ApiDebugCard extends StatelessWidget {
+  const ApiDebugCard({
+    super.key,
     required this.apiBaseUrl,
     required this.snapshotListenable,
     this.historyListenable,
@@ -15,7 +20,7 @@ class _ApiDebugCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (snapshotListenable == null) {
-      return _ApiDebugSummary(
+      return ApiDebugSummary(
         apiBaseUrl: apiBaseUrl,
         snapshot: null,
         history: const [],
@@ -26,7 +31,7 @@ class _ApiDebugCard extends StatelessWidget {
       return ValueListenableBuilder<ApiDebugSnapshot?>(
         valueListenable: snapshotListenable!,
         builder: (context, snapshot, child) {
-          return _ApiDebugSummary(
+          return ApiDebugSummary(
             apiBaseUrl: apiBaseUrl,
             snapshot: snapshot,
             history: const [],
@@ -40,7 +45,7 @@ class _ApiDebugCard extends StatelessWidget {
         return ValueListenableBuilder<ApiDebugSnapshot?>(
           valueListenable: snapshotListenable!,
           builder: (context, snapshot, child) {
-            return _ApiDebugSummary(
+            return ApiDebugSummary(
               apiBaseUrl: apiBaseUrl,
               snapshot: snapshot,
               history: entries,
@@ -53,8 +58,9 @@ class _ApiDebugCard extends StatelessWidget {
 }
 
 /// Renders a compact summary of the current API base URL and last response.
-class _ApiDebugSummary extends StatelessWidget {
-  const _ApiDebugSummary({
+class ApiDebugSummary extends StatelessWidget {
+  const ApiDebugSummary({
+    super.key,
     required this.apiBaseUrl,
     required this.snapshot,
     required this.history,
