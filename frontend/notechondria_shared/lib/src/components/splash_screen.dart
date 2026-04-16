@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Splash screen showing an animated Citric acid cycle (Krebs cycle).
@@ -13,25 +14,34 @@ import 'package:flutter/material.dart';
 /// fragments, etc.). The version string in the bottom-left is supplied by
 /// the host app via [appVersion] so each app can show its own
 /// build-time-injected `--dart-define=APP_VERSION=...` value.
+///
+/// The detailed loading-status line under the title is driven by
+/// [loadingStatus]. The host app typically wires a `ValueNotifier<String>`
+/// to it and pushes strings like `"Connecting to server"` or
+/// `"Loading public notes data"` as bootstrap progresses. When omitted the
+/// splash falls back to a static `"Loading..."` string.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({
     super.key,
     required this.appTitle,
     required this.appVersion,
     this.onFinished,
+    this.loadingStatus,
   });
 
   final String appTitle;
   final String appVersion;
   final VoidCallback? onFinished;
+  final ValueListenable<String>? loadingStatus;
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
 class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
+    with TickerProviderStateMixin {
+  late final AnimationController _cycleController;
+  late final AnimationController _fadeController;
   bool _dismissed = false;
 
   static const _metabolites = [
@@ -59,10 +69,14 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
+    _cycleController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 12000),
+      duration: const Duration(milliseconds: 16000),
     )..repeat();
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..forward();
     final rng = math.Random(42);
     _particles = List.generate(26, (_) {
       return _Particle(
@@ -80,7 +94,8 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
-    _controller.dispose();
+    _cycleController.dispose();
+    _fadeController.dispose();
     super.dispose();
   }
 
@@ -110,11 +125,11 @@ class _SplashScreenState extends State<SplashScreen>
               children: [
                 Positioned.fill(
                   child: AnimatedBuilder(
-                    animation: _controller,
+                    animation: _cycleController,
                     builder: (context, _) {
                       return CustomPaint(
                         painter: _KrebsCyclePainter(
-                          progress: _controller.value,
+                          progress: _cycleController.value,
                           metabolites: _metabolites,
                           byproducts: _byproducts,
                           particles: _particles,
@@ -131,25 +146,12 @@ class _SplashScreenState extends State<SplashScreen>
                 Positioned(
                   right: constraints.maxWidth * 0.08,
                   bottom: constraints.maxHeight * 0.12,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        widget.appTitle,
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: textColor,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Loading...',
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: subtleColor,
-                        ),
-                      ),
-                    ],
+                  child: _HeaderColumn(
+                    appTitle: widget.appTitle,
+                    textColor: textColor,
+                    subtleColor: subtleColor,
+                    fadeController: _fadeController,
+                    loadingStatus: widget.loadingStatus,
                   ),
                 ),
                 Positioned(
@@ -168,6 +170,114 @@ class _SplashScreenState extends State<SplashScreen>
           },
         ),
       ),
+    );
+  }
+}
+
+class _HeaderColumn extends StatelessWidget {
+  const _HeaderColumn({
+    required this.appTitle,
+    required this.textColor,
+    required this.subtleColor,
+    required this.fadeController,
+    required this.loadingStatus,
+  });
+
+  final String appTitle;
+  final Color textColor;
+  final Color subtleColor;
+  final AnimationController fadeController;
+  final ValueListenable<String>? loadingStatus;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final titleFade = CurvedAnimation(
+      parent: fadeController,
+      curve: const Interval(0.0, 0.7, curve: Curves.easeOut),
+    );
+    final statusFade = CurvedAnimation(
+      parent: fadeController,
+      curve: const Interval(0.35, 1.0, curve: Curves.easeOut),
+    );
+    final titleSlide = Tween<Offset>(
+      begin: const Offset(0, 0.18),
+      end: Offset.zero,
+    ).animate(titleFade);
+    final statusSlide = Tween<Offset>(
+      begin: const Offset(0, 0.25),
+      end: Offset.zero,
+    ).animate(statusFade);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FadeTransition(
+          opacity: titleFade,
+          child: SlideTransition(
+            position: titleSlide,
+            child: Text(
+              appTitle,
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: textColor,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        FadeTransition(
+          opacity: statusFade,
+          child: SlideTransition(
+            position: statusSlide,
+            child: _LoadingStatusText(
+              listenable: loadingStatus,
+              style: theme.textTheme.bodyLarge?.copyWith(color: subtleColor),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LoadingStatusText extends StatelessWidget {
+  const _LoadingStatusText({required this.listenable, required this.style});
+
+  final ValueListenable<String>? listenable;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    final defaultText = Text('Loading...', style: style);
+    final source = listenable;
+    if (source == null) return defaultText;
+    return ValueListenableBuilder<String>(
+      valueListenable: source,
+      builder: (context, value, _) {
+        final display = value.isEmpty ? 'Loading...' : value;
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 320),
+          switchInCurve: Curves.easeOut,
+          switchOutCurve: Curves.easeIn,
+          transitionBuilder: (child, anim) {
+            final slide = Tween<Offset>(
+              begin: const Offset(0, 0.2),
+              end: Offset.zero,
+            ).animate(anim);
+            return FadeTransition(
+              opacity: anim,
+              child: SlideTransition(position: slide, child: child),
+            );
+          },
+          child: Text(
+            display,
+            key: ValueKey<String>(display),
+            style: style,
+          ),
+        );
+      },
     );
   }
 }
@@ -344,15 +454,7 @@ class _KrebsCyclePainter extends CustomPainter {
           ..color = nodeColor.withValues(alpha: 0.5)
           ..style = PaintingStyle.fill,
       );
-      _drawText(
-        canvas,
-        'Acetyl-CoA',
-        aStart + dir * 12,
-        nodeColor.withValues(alpha: 0.6),
-        11.0,
-        FontWeight.w500,
-        xAnchor: math.cos(ea) > 0.3 ? 0.0 : (math.cos(ea) < -0.3 ? 1.0 : 0.5),
-      );
+      _drawAcetylCoA(canvas, aStart, dir);
     }
 
     final activeAngle = 2 * math.pi * activeStep / n + rotationAngle;
@@ -362,10 +464,21 @@ class _KrebsCyclePainter extends CustomPainter {
     if (activePos.dx > -30) {
       final outDir = Offset(math.cos(activeAngle), math.sin(activeAngle));
       final formulaCenter = activePos + outDir * (radius * 0.38);
-      final formulaAlpha = (0.4 + 0.6 * math.sin(stepFraction * math.pi))
-          .clamp(0.0, 1.0);
-      _drawSkeletalFormula(
-          canvas, activeStep, formulaCenter, formulaAlpha, w);
+      final peak = math.sin(stepFraction * math.pi).clamp(0.0, 1.0);
+      final baseAlpha = 0.35 + 0.55 * peak;
+      _drawSkeletalFormula(canvas, activeStep, formulaCenter, baseAlpha, w);
+
+      if (stepFraction > 0.6) {
+        final incomingIndex = (activeStep + 1) % n;
+        final t = ((stepFraction - 0.6) / 0.4).clamp(0.0, 1.0);
+        final nextAngle = 2 * math.pi * incomingIndex / n + rotationAngle;
+        final nextPos = center +
+            Offset(math.cos(nextAngle), math.sin(nextAngle)) * radius;
+        final nextOutDir = Offset(math.cos(nextAngle), math.sin(nextAngle));
+        final nextCenter = nextPos + nextOutDir * (radius * 0.38);
+        _drawSkeletalFormula(
+            canvas, incomingIndex, nextCenter, 0.8 * t, w);
+      }
     }
   }
 
@@ -459,7 +572,7 @@ class _KrebsCyclePainter extends CustomPainter {
         line(c2, c3);
         doubleLine(c2, Offset(-bl * 0.4, -bl * 0.8));
         lbl('O', Offset(-bl * 0.4, -bl * 1.5), color: accent);
-        lbl('H₃C', Offset(-bl * 2.1, -bl * 0.1));
+        lbl('H\u2083C', Offset(-bl * 2.1, -bl * 0.1));
         lbl('COOH', Offset(bl * 2.2, 0), color: accent);
         break;
 
@@ -470,7 +583,7 @@ class _KrebsCyclePainter extends CustomPainter {
           RRect.fromRectAndRadius(rect, const Radius.circular(3)),
           bond,
         );
-        lbl('NAD⁺', Offset.zero,
+        lbl('NAD\u207a', Offset.zero,
             color: accent, fsOverride: fs * 0.85);
         break;
 
@@ -484,7 +597,7 @@ class _KrebsCyclePainter extends CustomPainter {
 
       case 6:
         canvas.drawCircle(Offset.zero, bl * 0.45, bond);
-        lbl('H⁺', Offset(bl * 1.35, 0), color: accent);
+        lbl('H\u207a', Offset(bl * 1.35, 0), color: accent);
         break;
 
       case 7:
@@ -493,10 +606,62 @@ class _KrebsCyclePainter extends CustomPainter {
         line(c1, c2);
         doubleLine(c2, Offset(bl * 0.9, -bl * 0.8));
         lbl('O', Offset(bl * 0.9, -bl * 1.5), color: accent);
-        lbl('H₃C', Offset(-bl * 1.8, 0));
+        lbl('H\u2083C', Offset(-bl * 1.8, 0));
         lbl('S-CoA', Offset(bl * 1.8, bl * 0.3), color: accent);
         break;
     }
+  }
+
+  /// Skeletal formula for acetyl-CoA feeding the cycle. Drawn at [origin]
+  /// pointing inward along [dir] (unit vector from center outward).
+  void _drawAcetylCoA(Canvas canvas, Offset origin, Offset dir) {
+    const bondLen = 14.0;
+    const fontSize = 11.0;
+    final bondPaint = Paint()
+      ..color = textColor.withValues(alpha: 0.75)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.6
+      ..strokeCap = StrokeCap.round;
+    final doublePaint = Paint()
+      ..color = textColor.withValues(alpha: 0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round;
+    final labelColor = textColor.withValues(alpha: 0.9);
+    final accentColor = nodeColor.withValues(alpha: 0.85);
+
+    final perp = Offset(-dir.dy, dir.dx);
+    final outward = dir * -1;
+    final step = outward * bondLen;
+
+    final cMethyl = origin + outward * 6.0;
+    final cCarbonyl = cMethyl + step;
+    final sAtom = cCarbonyl + step;
+    final coaAnchor = sAtom + step * 0.9;
+    final oxo = cCarbonyl + perp * bondLen * 0.9;
+
+    _drawText(canvas, 'H\u2083C', cMethyl - dir * 6.0, labelColor, fontSize,
+        FontWeight.w700,
+        xAnchor: dir.dx > 0.3 ? 0.0 : (dir.dx < -0.3 ? 1.0 : 0.5));
+    canvas.drawLine(cMethyl + outward * 5.5, cCarbonyl - outward * 5.5, bondPaint);
+    canvas.drawLine(
+      cCarbonyl + perp * 2.5,
+      oxo - perp * 2.5,
+      bondPaint,
+    );
+    canvas.drawLine(
+      cCarbonyl + perp * 2.5 + outward * 2.0,
+      oxo - perp * 2.5 + outward * 2.0,
+      doublePaint,
+    );
+    _drawText(canvas, 'O', oxo + perp * 6.0, accentColor, fontSize,
+        FontWeight.w700);
+    canvas.drawLine(cCarbonyl + outward * 5.5, sAtom - outward * 5.5, bondPaint);
+    _drawText(canvas, 'S', sAtom, accentColor, fontSize, FontWeight.w700);
+    canvas.drawLine(sAtom + outward * 5.5, coaAnchor - outward * 2.0, bondPaint);
+    _drawText(canvas, 'CoA', coaAnchor + outward * 10.0, accentColor, fontSize,
+        FontWeight.w700,
+        xAnchor: dir.dx > 0.3 ? 1.0 : (dir.dx < -0.3 ? 0.0 : 0.5));
   }
 
   void _drawSkeletalFormula(
@@ -506,6 +671,7 @@ class _KrebsCyclePainter extends CustomPainter {
     double alpha,
     double canvasWidth,
   ) {
+    if (alpha <= 0.01) return;
     final bondLen = (canvasWidth * 0.058).clamp(28.0, 48.0);
     final fontSize = (bondLen * 0.36).clamp(10.0, 16.0);
     final bondPaint = Paint()

@@ -39,10 +39,10 @@ Here is a list of task we need to do now after testing, finishing and solve thes
 
 ### Start up animations
 
-- [ ] The current animation don't fits the theme of citric acid cycle, there is no animation for particle changing on each cycle step. Show the process how one chemical becomes the other with the detailed animation (Do not include any text, use structural formula instead).
-- [ ] Acetyl-CoA should be represented in structural formula instead of English name.
-- [ ] Chemical is bounded and the loading text is always `Loading...`, change the the text to more detailed context, like `Connecting to server`, `Loading public notes data`, etc.
-- [ ] Add fade in effects for title `Notechondria` and for detailed context texts on refresh and updates (e.g. `Loading public notes data`).
+- [ ] Byproduct labels (NADH, CO2, GTP, FADH2) are still drawn as text
+  alongside the cycle. Replace them with small structural/skeletal formulas
+  to fully satisfy the "do not include any text" intent. (Acetyl-CoA +
+  metabolite labels already moved to structural formulas in 0.1.22.)
 
 ### Sidebar/Navigation
 

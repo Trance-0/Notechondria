@@ -113,6 +113,8 @@ class _AppShellState extends State<AppShell> {
   bool _isLoadingMoreNotes = false;
   bool _coursePanelExpanded = true;
   Timer? _splashTimer;
+  final ValueNotifier<String> _splashStatus =
+      ValueNotifier<String>('Starting portal');
   int _learnerNotesOffset = 0;
   String _learnerSearchQuery = '';
   final List<String> _uiLogs = <String>[];
@@ -180,8 +182,11 @@ class _AppShellState extends State<AppShell> {
     _splashTimer = Timer(const Duration(seconds: 10), () {
       if (mounted) setState(() { _isLoading = false; _showSplash = false; });
     });
+    _splashStatus.value = 'Loading local state';
     await _loadLocalState();
+    _splashStatus.value = 'Completing sign-in';
     await _handleOAuthCallback();
+    _splashStatus.value = 'Connecting to server';
     await _loadInitialData();
   }
 
@@ -306,6 +311,7 @@ class _AppShellState extends State<AppShell> {
   @override
   void dispose() {
     _splashTimer?.cancel();
+    _splashStatus.dispose();
     super.dispose();
   }
 
@@ -2526,6 +2532,7 @@ class _AppShellState extends State<AppShell> {
             child: SplashScreen(
               appTitle: widget.appTitle,
               appVersion: _kAppVersion,
+              loadingStatus: _splashStatus,
               onFinished: () {
                 setState(() { _showSplash = false; if (_isLoading) _isLoading = false; });
               },

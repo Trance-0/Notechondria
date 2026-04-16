@@ -113,6 +113,8 @@ class _AppShellState extends State<AppShell> {
   int _learnerNotesOffset = 0;
   String _learnerSearchQuery = '';
   Timer? _splashTimer;
+  final ValueNotifier<String> _splashStatus =
+      ValueNotifier<String>('Starting editor');
   /// Learner search scope: 'personal' (default) = only the user's own notes,
   /// 'all' = user's notes plus public notes from any other user.
   String _learnerSearchScope = 'personal';
@@ -203,6 +205,7 @@ class _AppShellState extends State<AppShell> {
   @override
   void dispose() {
     _splashTimer?.cancel();
+    _splashStatus.dispose();
     super.dispose();
   }
 
@@ -210,6 +213,7 @@ class _AppShellState extends State<AppShell> {
     _splashTimer = Timer(const Duration(seconds: 10), () {
       if (mounted && _isLoading) setState(() { _isLoading = false; _showSplash = false; });
     });
+    _splashStatus.value = 'Loading local workspace';
     await _loadLocalState();
     // Restore the stored auth token BEFORE handling any OAuth callback.
     // The bind flow needs `_token` to be non-null so it can call the
@@ -217,8 +221,11 @@ class _AppShellState extends State<AppShell> {
     // would hit the public /auth/<provider>/ endpoint and either log in
     // as the OAuth identity's email owner or create a new account,
     // effectively overwriting the current user.
+    _splashStatus.value = 'Restoring session';
     await _restoreSession();
+    _splashStatus.value = 'Completing sign-in';
     await _handleOAuthCallback();
+    _splashStatus.value = 'Connecting to server';
     await _loadInitialData();
     // Deep-link: if the URL contains a note UUID, load it.
     final deepLinkUuid = _parseNoteUuidFromUrl();
@@ -734,12 +741,14 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     };
     var updatedCache = false;
 
+    _splashStatus.value = 'Loading public notes data';
     try {
       frontPage = await widget.client.getFrontPage(token: _token);
       updatedCache = true;
     } catch (error) {
       errors.add(error.toString().replaceFirst('Exception: ', ''));
     }
+    _splashStatus.value = 'Loading categories';
     try {
       courses = (await widget.client.getCourses(token: _token))
           .map(_decorateRemoteCourse)
@@ -794,6 +803,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     } else {
       deletedNotes = const [];
     }
+    _splashStatus.value = 'Loading notes';
     try {
       notePage = await widget.client.listNotes(
         token: (_token != null && _token!.isNotEmpty) ? _token : null,
@@ -3152,6 +3162,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
             child: SplashScreen(
               appTitle: widget.appTitle,
               appVersion: _kAppVersion,
+              loadingStatus: _splashStatus,
               onFinished: () {
                 setState(() { _showSplash = false; if (_isLoading) _isLoading = false; });
               },
