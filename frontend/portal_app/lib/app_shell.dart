@@ -118,6 +118,7 @@ class _AppShellState extends State<AppShell> {
   int _learnerNotesOffset = 0;
   String _learnerSearchQuery = '';
   final List<String> _uiLogs = <String>[];
+  final DebugLogController _logController = DebugLogController();
 
   HttpNotechondriaClient? get _httpClient =>
       widget.client is HttpNotechondriaClient
@@ -312,19 +313,53 @@ class _AppShellState extends State<AppShell> {
   void dispose() {
     _splashTimer?.cancel();
     _splashStatus.dispose();
+    _logController.dispose();
     super.dispose();
   }
 
 
   void _appendUiLog(String message) {
-    final timestamp = DateTime.now().toIso8601String();
+    _log(message: message, level: DebugLogLevel.info, source: '');
+  }
+
+  void _log({
+    required String message,
+    DebugLogLevel level = DebugLogLevel.debug,
+    String source = '',
+    int? durationMs,
+  }) {
+    final entry = DebugLogEntry(
+      timestamp: DateTime.now().toUtc(),
+      level: level,
+      source: source,
+      message: message,
+      durationMs: durationMs,
+    );
+    _logController.append(entry);
     setState(() {
-      _uiLogs.insert(0, '[$timestamp] $message');
+      _uiLogs.insert(0, entry.toPersistedString());
       if (_uiLogs.length > 80) {
         _uiLogs.removeRange(80, _uiLogs.length);
       }
     });
     unawaited(_persistUiLogs());
+  }
+
+  Map<String, Object?> _snapshotLocalStore() {
+    return <String, Object?>{
+      'settings': _localSettings,
+      'drafts': _localDrafts,
+      'courses': _localCourses,
+      'stats': _localStats,
+      'cache': _localCache,
+      'logs': _uiLogs,
+      'session': _token == null
+          ? null
+          : {
+              'token_present': true,
+              'profile': _profile ?? const <String, dynamic>{},
+            },
+    };
   }
 
   Future<void> _loadLocalState() async {
@@ -349,6 +384,10 @@ class _AppShellState extends State<AppShell> {
     _uiLogs
       ..clear()
       ..addAll(snapshot.logs);
+    _logController.replaceAll(
+      snapshot.logs.map(DebugLogEntry.fromPersistedString),
+    );
+    _logController.bindCacheProvider(_snapshotLocalStore);
     _frontPage = Map<String, dynamic>.from(
       snapshot.cache['front_page'] as Map? ?? const {},
     );
@@ -2882,6 +2921,7 @@ class _AppShellState extends State<AppShell> {
           apiBaseUrl: _httpClient?.baseUrl,
           debugSnapshotListenable: _httpClient?.debugSnapshot,
           debugHistoryListenable: _httpClient?.debugHistory,
+          debugLogController: _logController,
           uiLogs: _uiLogs,
         );
       default:

@@ -410,18 +410,14 @@ class _KrebsCyclePainter extends CustomPainter {
         for (var j = 0; j < products.length; j++) {
           final spread = (j - (products.length - 1) / 2) * 0.3;
           final fa = angle + spread;
-          final fd = radius + 65 + 30 * stepFraction;
+          final fd = radius + 75 + 35 * stepFraction;
           final fp = center + Offset(math.cos(fa), math.sin(fa)) * fd;
           final flyAlpha = (1.0 - stepFraction).clamp(0.0, 1.0);
-          final cosF = math.cos(fa);
-          _drawText(
+          _drawByproductFormula(
             canvas,
             products[j],
             fp,
-            nodeColor.withValues(alpha: flyAlpha * 0.8),
-            13.0,
-            FontWeight.w600,
-            xAnchor: cosF > 0.3 ? 0.0 : (cosF < -0.3 ? 1.0 : 0.5),
+            flyAlpha,
           );
         }
       }
@@ -662,6 +658,150 @@ class _KrebsCyclePainter extends CustomPainter {
     _drawText(canvas, 'CoA', coaAnchor + outward * 10.0, accentColor, fontSize,
         FontWeight.w700,
         xAnchor: dir.dx > 0.3 ? 1.0 : (dir.dx < -0.3 ? 0.0 : 0.5));
+  }
+
+  /// Compact schematic structural formula for a cycle byproduct. [origin] is
+  /// the flight position; alpha fades with the step. No English names are
+  /// drawn — just skeletal lines and element labels (O, N, P, H, etc.).
+  void _drawByproductFormula(
+      Canvas canvas, String species, Offset origin, double alpha) {
+    if (alpha <= 0.02) return;
+    final bond = Paint()
+      ..color = textColor.withValues(alpha: alpha * 0.85)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+    final bondSoft = Paint()
+      ..color = textColor.withValues(alpha: alpha * 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round;
+    final accent = nodeColor.withValues(alpha: alpha * 0.9);
+    final normal = textColor.withValues(alpha: alpha * 0.95);
+
+    void line(Offset a, Offset b, {bool soft = false}) {
+      canvas.drawLine(a, b, soft ? bondSoft : bond);
+    }
+
+    void doubleLine(Offset a, Offset b) {
+      final d = b - a;
+      final len = d.distance;
+      if (len == 0) return;
+      final perp = Offset(-d.dy, d.dx) / len * 2.0;
+      line(a, b);
+      line(a + perp, b + perp, soft: true);
+    }
+
+    void lbl(String s, Offset p, {Color? color, double size = 9.5}) {
+      _drawText(canvas, s, origin + p, color ?? normal, size, FontWeight.w700);
+    }
+
+    void ringHexagon(Offset c, double r, {List<int> doubleEdges = const []}) {
+      final pts = List<Offset>.generate(
+        6,
+        (k) => c +
+            Offset(
+              math.cos(math.pi / 6 + k * math.pi / 3),
+              math.sin(math.pi / 6 + k * math.pi / 3),
+            ) *
+                r,
+      );
+      for (var k = 0; k < 6; k++) {
+        final a = pts[k];
+        final b = pts[(k + 1) % 6];
+        if (doubleEdges.contains(k)) {
+          doubleLine(a, b);
+        } else {
+          line(a, b);
+        }
+      }
+    }
+
+    switch (species) {
+      case 'CO\u2082':
+        const oLeft = Offset(-12, 0);
+        const oRight = Offset(12, 0);
+        doubleLine(origin + const Offset(-4, 0), origin + oLeft + const Offset(4, 0));
+        doubleLine(origin + const Offset(4, 0), origin + oRight + const Offset(-4, 0));
+        lbl('O', oLeft, color: accent);
+        lbl('C', const Offset(0, 0));
+        lbl('O', oRight, color: accent);
+        break;
+
+      case 'NADH':
+        final ringC = origin + const Offset(-2, 0);
+        ringHexagon(ringC, 8.5, doubleEdges: [1, 3]);
+        lbl('N', Offset(ringC.dx - origin.dx + math.cos(math.pi / 6 + 5 * math.pi / 3) * 8.5,
+                ringC.dy - origin.dy + math.sin(math.pi / 6 + 5 * math.pi / 3) * 8.5),
+            color: accent,
+            size: 8.5);
+        final carbAnchor = ringC + const Offset(10, -3);
+        line(ringC + const Offset(7.4, -4.2), carbAnchor);
+        doubleLine(carbAnchor, carbAnchor + const Offset(3, -5));
+        lbl('O', Offset(carbAnchor.dx - origin.dx + 4, carbAnchor.dy - origin.dy - 7),
+            color: accent, size: 8.0);
+        lbl('NH\u2082', Offset(carbAnchor.dx - origin.dx + 7, carbAnchor.dy - origin.dy + 2),
+            color: accent, size: 7.5);
+        lbl('H', Offset(ringC.dx - origin.dx, ringC.dy - origin.dy - 14),
+            color: accent, size: 8.5);
+        break;
+
+      case 'FADH\u2082':
+        final c = origin + const Offset(-4, 0);
+        ringHexagon(c, 7.5, doubleEdges: [0, 2, 4]);
+        final c2 = c + const Offset(13, 0);
+        ringHexagon(c2, 7.5, doubleEdges: [1]);
+        final sideN = c2 + const Offset(8, -4);
+        line(c2 + const Offset(6.5, -4.2), sideN);
+        lbl('N', Offset(sideN.dx - origin.dx, sideN.dy - origin.dy),
+            color: accent, size: 8.0);
+        final sideO = c + const Offset(-8, -4);
+        doubleLine(c + const Offset(-6.5, -4.2), sideO);
+        lbl('O', Offset(sideO.dx - origin.dx - 3, sideO.dy - origin.dy - 2),
+            color: accent, size: 8.0);
+        lbl('H', const Offset(-4, 11), color: accent, size: 8.0);
+        lbl('H', const Offset(9, 11), color: accent, size: 8.0);
+        break;
+
+      case 'GTP':
+        final purineC = origin + const Offset(-8, 0);
+        ringHexagon(purineC, 6.5, doubleEdges: [1, 3]);
+        final ring2c = purineC + const Offset(10.5, 1);
+        final pts5 = List<Offset>.generate(
+          5,
+          (k) => ring2c +
+              Offset(
+                math.cos(-math.pi / 2 + k * 2 * math.pi / 5),
+                math.sin(-math.pi / 2 + k * 2 * math.pi / 5),
+              ) *
+                  5.5,
+        );
+        for (var k = 0; k < 5; k++) {
+          line(pts5[k], pts5[(k + 1) % 5]);
+        }
+        for (var i = 0; i < 3; i++) {
+          final cx = 4.0 + i * 9.0;
+          canvas.drawCircle(
+            origin + Offset(cx, 8.5),
+            2.8,
+            Paint()
+              ..color = accent
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 1.2,
+          );
+          if (i < 2) {
+            line(
+              origin + Offset(cx + 2.8, 8.5),
+              origin + Offset(cx + 9.0 - 2.8, 8.5),
+            );
+          }
+        }
+        break;
+
+      default:
+        _drawText(canvas, species, origin,
+            nodeColor.withValues(alpha: alpha * 0.8), 12.0, FontWeight.w600);
+    }
   }
 
   void _drawSkeletalFormula(

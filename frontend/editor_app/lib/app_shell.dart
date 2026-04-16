@@ -119,6 +119,7 @@ class _AppShellState extends State<AppShell> {
   /// 'all' = user's notes plus public notes from any other user.
   String _learnerSearchScope = 'personal';
   final List<String> _uiLogs = <String>[];
+  final DebugLogController _logController = DebugLogController();
 
   /// Currently selected category (course) for note filtering. null = all notes.
   int? _selectedCategoryId;
@@ -206,6 +207,7 @@ class _AppShellState extends State<AppShell> {
   void dispose() {
     _splashTimer?.cancel();
     _splashStatus.dispose();
+    _logController.dispose();
     super.dispose();
   }
 
@@ -461,14 +463,57 @@ class _AppShellState extends State<AppShell> {
 
 
   void _appendUiLog(String message) {
-    final timestamp = DateTime.now().toIso8601String();
+    _log(message: message, level: DebugLogLevel.info, source: '');
+  }
+
+  /// Richer variant of [_appendUiLog]. [source] is typically
+  /// `"ClassName._method"` and shows up in the debug log card next to the
+  /// level badge. [durationMs] is set for timed backend operations.
+  void _log({
+    required String message,
+    DebugLogLevel level = DebugLogLevel.debug,
+    String source = '',
+    int? durationMs,
+  }) {
+    final entry = DebugLogEntry(
+      timestamp: DateTime.now().toUtc(),
+      level: level,
+      source: source,
+      message: message,
+      durationMs: durationMs,
+    );
+    _logController.append(entry);
     setState(() {
-      _uiLogs.insert(0, '[$timestamp] $message');
+      _uiLogs.insert(0, entry.toPersistedString());
       if (_uiLogs.length > 80) {
         _uiLogs.removeRange(80, _uiLogs.length);
       }
     });
     unawaited(_persistUiLogs());
+  }
+
+  /// Wraps a backend call so its duration is recorded in the debug log at
+  /// Debug level. Re-throws after emitting the failure line.
+  Future<T> _timed<T>(String source, Future<T> Function() op) async {
+    final start = DateTime.now();
+    try {
+      final result = await op();
+      _log(
+        source: source,
+        message: 'ok',
+        level: DebugLogLevel.debug,
+        durationMs: DateTime.now().difference(start).inMilliseconds,
+      );
+      return result;
+    } catch (error) {
+      _log(
+        source: source,
+        message: 'failed: ${error.toString().replaceFirst("Exception: ", "")}',
+        level: DebugLogLevel.error,
+        durationMs: DateTime.now().difference(start).inMilliseconds,
+      );
+      rethrow;
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -496,6 +541,10 @@ class _AppShellState extends State<AppShell> {
     _uiLogs
       ..clear()
       ..addAll(snapshot.logs);
+    _logController.replaceAll(
+      snapshot.logs.map(DebugLogEntry.fromPersistedString),
+    );
+    _logController.bindCacheProvider(_snapshotLocalStore);
     _frontPage = Map<String, dynamic>.from(
       snapshot.cache['front_page'] as Map? ?? const {},
     );
@@ -549,6 +598,25 @@ class _AppShellState extends State<AppShell> {
 
   Future<void> _persistUiLogs() async {
     await _LocalAppStore.saveLogs(_uiLogs);
+  }
+
+  /// Snapshot of the in-memory "cache" the debug terminal can navigate with
+  /// `ls` / `cd`. Mirrors the persistence buckets of `_LocalAppStore`.
+  Map<String, Object?> _snapshotLocalStore() {
+    return <String, Object?>{
+      'settings': _localSettings,
+      'drafts': _localDrafts,
+      'courses': _localCourses,
+      'stats': _localStats,
+      'cache': _localCache,
+      'logs': _uiLogs,
+      'session': _token == null
+          ? null
+          : {
+              'token_present': true,
+              'profile': _profile ?? const <String, dynamic>{},
+            },
+    };
   }
 
   // ---------------------------------------------------------------------------
@@ -743,14 +811,20 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
 
     _splashStatus.value = 'Loading public notes data';
     try {
-      frontPage = await widget.client.getFrontPage(token: _token);
+      frontPage = await _timed(
+        'Editor._loadInitialData.getFrontPage',
+        () => widget.client.getFrontPage(token: _token),
+      );
       updatedCache = true;
     } catch (error) {
       errors.add(error.toString().replaceFirst('Exception: ', ''));
     }
     _splashStatus.value = 'Loading categories';
     try {
-      courses = (await widget.client.getCourses(token: _token))
+      courses = (await _timed(
+        'Editor._loadInitialData.getCourses',
+        () => widget.client.getCourses(token: _token),
+      ))
           .map(_decorateRemoteCourse)
           .toList(growable: false);
       updatedCache = true;
@@ -781,9 +855,12 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         courseNotes = _localNotesForCourse(selectedCourse);
       } else {
         try {
-          courseNotes = await widget.client.getCourseNotes(
-            selectedCourse['id'] as int,
-            token: _token,
+          courseNotes = await _timed(
+            'Editor._loadInitialData.getCourseNotes',
+            () => widget.client.getCourseNotes(
+              selectedCourse['id'] as int,
+              token: _token,
+            ),
           );
         } catch (error) {
           errors.add(error.toString().replaceFirst('Exception: ', ''));
@@ -805,11 +882,14 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     }
     _splashStatus.value = 'Loading notes';
     try {
-      notePage = await widget.client.listNotes(
-        token: (_token != null && _token!.isNotEmpty) ? _token : null,
-        limit: 20,
-        offset: 0,
-        scope: (_token != null && _token!.isNotEmpty) ? 'personal' : 'all',
+      notePage = await _timed(
+        'Editor._loadInitialData.listNotes',
+        () => widget.client.listNotes(
+          token: (_token != null && _token!.isNotEmpty) ? _token : null,
+          limit: 20,
+          offset: 0,
+          scope: (_token != null && _token!.isNotEmpty) ? 'personal' : 'all',
+        ),
       );
       learnerNotes = (notePage['results'] as List<dynamic>? ?? const [])
           .map((item) => Map<String, dynamic>.from(item as Map))
@@ -855,11 +935,18 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     if (updatedCache) {
       await _persistLocalCache();
     }
-    _appendUiLog(
-      errors.isEmpty
-          ? 'Initial data loaded.'
+    _log(
+      source: 'Editor._loadInitialData',
+      level: errors.isEmpty
+          ? DebugLogLevel.info
           : sessionRejected
-              ? 'Session expired — signed out. Please sign in again.'
+              ? DebugLogLevel.warning
+              : DebugLogLevel.warning,
+      message: errors.isEmpty
+          ? 'Initial Editor._loadInitialData data loaded '
+              '(${courses.length} categories, ${learnerNotes.length} notes).'
+          : sessionRejected
+              ? 'Session expired \u2014 signed out. Please sign in again.'
               : 'Initial load used offline fallback: ${errors.first}',
     );
   }
@@ -3764,6 +3851,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           apiBaseUrl: _httpClient?.baseUrl,
           debugSnapshotListenable: _httpClient?.debugSnapshot,
           debugHistoryListenable: _httpClient?.debugHistory,
+          debugLogController: _logController,
           uiLogs: _uiLogs,
         );
       default:

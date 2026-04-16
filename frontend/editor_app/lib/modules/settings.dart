@@ -46,6 +46,7 @@ class _SettingsPage extends StatefulWidget {
     this.apiBaseUrl,
     this.debugSnapshotListenable,
     this.debugHistoryListenable,
+    this.debugLogController,
   });
 
   final Map<String, dynamic>? profile;
@@ -110,6 +111,11 @@ class _SettingsPage extends StatefulWidget {
   final String? apiBaseUrl;
   final ValueListenable<ApiDebugSnapshot?>? debugSnapshotListenable;
   final ValueListenable<List<ApiDebugSnapshot>>? debugHistoryListenable;
+
+  /// Structured debug-log controller. When supplied the debug section
+  /// renders the shared `DebugLogCard` (level filter + terminal); otherwise
+  /// it falls back to the legacy string-list view.
+  final DebugLogController? debugLogController;
 
   @override
   State<_SettingsPage> createState() => _SettingsPageState();
@@ -1292,6 +1298,17 @@ class _SettingsPageState extends State<_SettingsPage> {
 
   /// Simplified debug log: local stats and recent UI logs with copy button.
   Widget _buildDebugSection(BuildContext context) {
+    final summary =
+        '${widget.localDraftCount} local draft(s), ${widget.localCourseCount} local category(ies).';
+    final controller = widget.debugLogController;
+    if (controller != null) {
+      return DebugLogCard(
+        controller: controller,
+        title: 'Debug log',
+        summary: summary,
+        onCopyLogs: widget.onCopyLogs,
+      );
+    }
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -1308,11 +1325,7 @@ class _SettingsPageState extends State<_SettingsPage> {
             const SizedBox(height: 8),
             Row(
               children: [
-                Expanded(
-                  child: Text(
-                    '${widget.localDraftCount} local draft(s), ${widget.localCourseCount} local category(ies).',
-                  ),
-                ),
+                Expanded(child: Text(summary)),
                 TextButton.icon(
                   onPressed: widget.onCopyLogs,
                   icon: const Icon(Icons.copy_all_outlined),

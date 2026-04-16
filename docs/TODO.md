@@ -39,11 +39,6 @@ Here is a list of task we need to do now after testing, finishing and solve thes
 
 ### Start up animations
 
-- [ ] Byproduct labels (NADH, CO2, GTP, FADH2) are still drawn as text
-  alongside the cycle. Replace them with small structural/skeletal formulas
-  to fully satisfy the "do not include any text" intent. (Acetyl-CoA +
-  metabolite labels already moved to structural formulas in 0.1.22.)
-
 ### Sidebar/Navigation
 
 - [ ] Sync the editor sidebar for the portal sidebar. (Removing title, `wide layout` texts. You may create a list of items/widgets that feed into the `sidebar` class, the `sidebar` should have some properties/functions like `header text` (used in vertical layout), `lower left item` (the `new category` trigger should lives in that))
@@ -63,12 +58,14 @@ Here is a list of task we need to do now after testing, finishing and solve thes
 
 ### Debug log window
 
-- [ ] Add label for debug level, e.g. `Error`, `Warning`, `Info`, `Debug`. Set debug level to `Debug` by default at this stage.
-- [ ] Many information is not complete and don't provide useful information. Instead of `Initial data loaded`, use `Initial <what class>, <what function> data loaded`.
-- [ ] Make log output for status and timing for each backend requests in debug log level.
-- [ ] Add terminal inputs on bottom of debug log. Add the following function supports
-  - `ls` and `cd` to navigate cache folder/directory. (I really hope you organized all the cache configurations correctly, or it will be pain here.)
-  - `clear` to clear the debug log.
+- [ ] Extend per-request timing instrumentation beyond editor_app's
+  bootstrap path: planner_app and portal_app still emit mostly Info-level
+  messages without `durationMs`. Adopt `_timed(...)` wrappers on their
+  bootstrap calls when that code stabilizes.
+- [ ] Migrate remaining `_appendUiLog(String)` callers to the richer
+  `_log({level, source, message})` form so `source` reflects the actual
+  emitting class/method. Current wrapper still records them at Info level
+  with an empty source, which reads as `-` in the log row.
 
 ## Editor
 

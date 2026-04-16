@@ -20,6 +20,13 @@ export 'src/components/auth_dialogs.dart'
         FeedbackText,
         PasswordResetDialog,
         RegistrationWizard;
+export 'src/components/debug_log.dart'
+    show
+        DebugLogCard,
+        DebugLogController,
+        DebugLogEntry,
+        DebugLogLevel,
+        DebugLogLevelLabel;
 export 'src/components/debug_widgets.dart' show ApiDebugCard, ApiDebugSummary;
 export 'src/components/error_state.dart' show ErrorStateView;
 export 'src/components/navigation.dart' show ConfirmWithDelayDialog, SidebarItem;

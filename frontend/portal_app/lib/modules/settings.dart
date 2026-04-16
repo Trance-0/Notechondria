@@ -39,6 +39,7 @@ class _SettingsPage extends StatefulWidget {
     this.apiBaseUrl,
     this.debugSnapshotListenable,
     this.debugHistoryListenable,
+    this.debugLogController,
   });
 
   final Map<String, dynamic>? profile;
@@ -96,6 +97,7 @@ class _SettingsPage extends StatefulWidget {
   final String? apiBaseUrl;
   final ValueListenable<ApiDebugSnapshot?>? debugSnapshotListenable;
   final ValueListenable<List<ApiDebugSnapshot>>? debugHistoryListenable;
+  final DebugLogController? debugLogController;
 
   @override
   State<_SettingsPage> createState() => _SettingsPageState();
@@ -572,44 +574,54 @@ class _SettingsPageState extends State<_SettingsPage> {
           ),
         ),
         const SizedBox(height: 24),
-        Row(
-          children: [
-            Expanded(
-              child: Text('Debug log',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w700)),
-            ),
-            TextButton.icon(
-              onPressed: widget.onCopyLogs,
-              icon: const Icon(Icons.copy_all_outlined),
-              label: const Text('Copy logs'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: SizedBox(
-            height: 260,
-            child: widget.uiLogs.isEmpty
-                ? const Center(child: Text('No frontend logs captured yet.'))
-                : ListView.builder(
-                    padding: const EdgeInsets.all(12),
-                    itemCount: widget.uiLogs.length,
-                    itemBuilder: (context, index) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: SelectableText(
-                        widget.uiLogs[index],
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(fontFamily: 'monospace'),
+        if (widget.debugLogController != null)
+          DebugLogCard(
+            controller: widget.debugLogController!,
+            title: 'Debug log',
+            summary:
+                '${widget.localDraftCount} local draft(s), ${widget.localCourseCount} local category(ies).',
+            onCopyLogs: widget.onCopyLogs,
+          )
+        else ...[
+          Row(
+            children: [
+              Expanded(
+                child: Text('Debug log',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700)),
+              ),
+              TextButton.icon(
+                onPressed: widget.onCopyLogs,
+                icon: const Icon(Icons.copy_all_outlined),
+                label: const Text('Copy logs'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: SizedBox(
+              height: 260,
+              child: widget.uiLogs.isEmpty
+                  ? const Center(child: Text('No frontend logs captured yet.'))
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: widget.uiLogs.length,
+                      itemBuilder: (context, index) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: SelectableText(
+                          widget.uiLogs[index],
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(fontFamily: 'monospace'),
+                        ),
                       ),
                     ),
-                  ),
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
