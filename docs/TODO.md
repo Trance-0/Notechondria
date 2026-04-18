@@ -147,11 +147,23 @@ Decompose by module so each round produces a reviewable diff. Order:
   `_restoreDeletedNote`, `_emptyDeletedNotes`, and `_syncAllLocalData`
   (all top-level sync entrypoint messages) migrated to
   `Editor.Sync.Notes/{pull,push,push_all,restore,empty_trash}` sources.
-- [ ] `Editor.LocalStore` round \u2014 starter workspace seed,
-  `_clearLocalData`, `_restoreTemplateCourses`, draft persistence
-  logging.
-- [ ] `Editor.UI` round \u2014 cosmetic info logs like
-  "Opened category X" (~30 sites).
+- [x] `Editor.LocalStore` round (0.1.33): `_ensureStarterWorkspace`,
+  `_clearLocalData`, `_restoreTemplateCourses`, `_copyFrontendLogs`,
+  `_downloadConfigFile`, and the ZIP-import per-entry skip log
+  migrated. Sources:
+  `Editor.LocalStore/{seed_starter,clear,restore_templates,copy_logs,download_config,import_zip}`.
+- [x] `Editor.UI` round (0.1.33): `_selectCourse`, `_selectNote`,
+  `_startNoteSession` / `_finishNoteSession`, the learner-notes list
+  load failure path, and the in-editor save/create offline-fallback
+  toasts migrated. Sources include
+  `Editor.UI/{open_course,open_note,note_session.start,note_session.finish}`
+  and `Editor.Sync.Notes/{list,create,save,delete,delete_local}`
+  (some UI actions escalated from `Editor.UI` to
+  `Editor.Sync.Notes` when they actually drive sync work).
+  No direct `_appendUiLog(String)` call sites remain in
+  `editor_app/lib/app_shell.dart`; the thin wrapper stays for
+  callback signatures (`onLogEvent: _appendUiLog`) that some
+  part-files still call.
 - [ ] `Planner.*` and `Portal.*` rounds \u2014 same module breakdown
   as editor.
 - [x] `Backend.Creators.Auth` + `Backend.Creators.Settings` round

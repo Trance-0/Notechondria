@@ -772,8 +772,14 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     await _persistLocalDrafts();
     await _persistLocalStats();
     await _persistLocalCache();
-    _appendUiLog(
-        'Seeded starter editor workspace for first-run offline use.');
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Editor.LocalStore/seed_starter',
+      message:
+          'Starter workspace seeded: '
+          'Editor.LocalStore/seed_starter \u2014 '
+          'first-run offline Inbox + 2 welcome drafts created.',
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -1166,8 +1172,14 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         _isLoadingMoreNotes = false;
         _errorMessage = error.toString().replaceFirst('Exception: ', '');
       });
-      _appendUiLog(
-          'Learner notes load failed: ${error.toString().replaceFirst('Exception: ', '')}');
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Editor.Sync.Notes/list',
+        message:
+            'Notes list load failed: '
+            'Editor.Sync.Notes/list \u2014 $cause.',
+      );
     }
   }
 
@@ -1180,11 +1192,14 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       _selectedNote = null;
     });
     _replaceNoteUrl(null);
-    if (_isLocalCourse(course)) {
-      _appendUiLog('Opened local category ${course['title']}.');
-    } else {
-      _appendUiLog('Opened category ${course['title']}.');
-    }
+    _log(
+      level: DebugLogLevel.debug,
+      source: 'Editor.UI/open_course',
+      message:
+          'Opened category: Editor.UI/open_course \u2014 '
+          '${_isLocalCourse(course) ? 'local ' : ''}'
+          "'${course['title']}' selected in learner view.",
+    );
     await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
   }
 
@@ -1204,8 +1219,13 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         _errorMessage = error.toString().replaceFirst('Exception: ', '');
         _isLoading = false;
       });
-      _appendUiLog(
-          'Note selection failed: ${error.toString().replaceFirst('Exception: ', '')}');
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Editor.UI/open_note',
+        message:
+            'Note not opened: Editor.UI/open_note \u2014 $cause.',
+      );
     }
   }
 
@@ -2878,14 +2898,22 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       );
       await _persistLocalDrafts();
       await _persistLocalStats();
-      final message = error.toString().replaceFirst('Exception: ', '');
+      final cause = error.toString().replaceFirst('Exception: ', '');
       setState(() {
         _selectedNote = draft;
         _selectedIndex = 1;
       });
-      _appendUiLog(
-          'Cloud create failed, saved local draft instead: $message');
-      _showMessage('Backend unavailable. Saved as a local draft.');
+      _log(
+        level: DebugLogLevel.warning,
+        source: 'Editor.Sync.Notes/create',
+        message:
+            'Note saved locally, cloud create deferred: '
+            'Editor.Sync.Notes/create \u2014 $cause.',
+      );
+      _showMessage(
+        'Note saved locally: Editor.Sync.Notes/create \u2014 '
+        'backend unavailable ($cause); kept as draft for next sync.',
+      );
       return draft;
     }
   }
@@ -2944,11 +2972,19 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         _buildOfflineFallbackDraft(sourceNote: sourceNote, payload: payload),
       );
       await _persistLocalDrafts();
-      final message = error.toString().replaceFirst('Exception: ', '');
+      final cause = error.toString().replaceFirst('Exception: ', '');
       setState(() => _selectedNote = fallbackDraft);
-      _appendUiLog(
-          'Cloud save failed, kept local draft instead: $message');
-      _showMessage('Backend unavailable. Changes were saved locally.');
+      _log(
+        level: DebugLogLevel.warning,
+        source: 'Editor.Sync.Notes/save',
+        message:
+            'Note save deferred to local draft: '
+            'Editor.Sync.Notes/save \u2014 $cause.',
+      );
+      _showMessage(
+        'Note saved locally: Editor.Sync.Notes/save \u2014 '
+        'backend unavailable ($cause); changes kept as a local draft.',
+      );
       return fallbackDraft;
     }
   }
@@ -3060,7 +3096,15 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         );
         importedCount += 1;
       } catch (error) {
-        _appendUiLog('Skipped "${entry.name}": $error');
+        _log(
+          level: DebugLogLevel.warning,
+          source: 'Editor.LocalStore/import_zip',
+          message:
+              'Archive entry skipped: '
+              'Editor.LocalStore/import_zip \u2014 '
+              '"${entry.name}": '
+              '${error.toString().replaceFirst('Exception: ', '')}.',
+        );
         skippedCount += 1;
       }
     }
@@ -3338,11 +3382,24 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         'summary': summary,
         'started_at': DateTime.now().toIso8601String(),
       });
-      _appendUiLog('Started note session for $title.');
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Editor.UI/note_session.start',
+        message:
+            'Note session started: '
+            'Editor.UI/note_session.start \u2014 '
+            'tracking edits to "$title".',
+      );
       return session['id'] as int?;
     } catch (error) {
-      _appendUiLog(
-          'Note session start failed: ${error.toString().replaceFirst('Exception: ', '')}');
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Editor.UI/note_session.start',
+        message:
+            'Note session not started: '
+            'Editor.UI/note_session.start \u2014 $cause.',
+      );
       return null;
     }
   }
@@ -3357,10 +3414,23 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         if (summary != null) 'summary': summary,
         'ended_at': DateTime.now().toIso8601String(),
       });
-      _appendUiLog('Finished note session ${sessionId.toString()}.');
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Editor.UI/note_session.finish',
+        message:
+            'Note session finished: '
+            'Editor.UI/note_session.finish \u2014 '
+            'session $sessionId closed on server.',
+      );
     } catch (error) {
-      _appendUiLog(
-          'Note session finish failed: ${error.toString().replaceFirst('Exception: ', '')}');
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      _log(
+        level: DebugLogLevel.warning,
+        source: 'Editor.UI/note_session.finish',
+        message:
+            'Note session not closed: '
+            'Editor.UI/note_session.finish \u2014 $cause.',
+      );
     }
   }
 
@@ -3376,18 +3446,36 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           .toList(growable: false);
       await _persistLocalDrafts();
       setState(() {});
-      _appendUiLog("Deleted local draft '${note['title']}'.");
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Editor.Sync.Notes/delete_local',
+        message:
+            "Local draft deleted: "
+            "Editor.Sync.Notes/delete_local \u2014 "
+            "'${note['title']}' removed from offline store.",
+      );
       return;
     }
     final token = _token;
     if (token == null || token.isEmpty) {
-      throw Exception('Sign in to delete notes.');
+      throw Exception(
+        'Note not deleted: '
+        'Editor.Sync.Notes/delete \u2014 '
+        'no cloud session; sign in first.',
+      );
     }
     await widget.client.deleteNote(token, noteId);
     _deletedNotes = await widget.client.getDeletedNotes(token);
     await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
     setState(() {});
-    _appendUiLog("Moved note '${note['title']}' to recycle bin.");
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Editor.Sync.Notes/delete',
+      message:
+          "Note moved to recycle bin: "
+          "Editor.Sync.Notes/delete \u2014 "
+          "'${note['title']}' soft-deleted on server.",
+    );
   }
 
   Future<void> _restoreDeletedNote(Map<String, dynamic> note) async {
@@ -3523,9 +3611,16 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       frontPage: _frontPage,
     );
     if (mounted) setState(() {});
-    _appendUiLog('Cleared all local data. Fresh Inbox created.');
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Editor.LocalStore/clear',
+      message:
+          'Local data cleared: Editor.LocalStore/clear \u2014 '
+          'all drafts/courses/stats/cache wiped and a fresh Inbox seeded.',
+    );
     return const ActionFeedback(
-        message: 'All local data cleared. Fresh Inbox created.');
+        message: 'Local data cleared: Editor.LocalStore/clear \u2014 '
+            'all drafts and categories wiped; fresh Inbox created.');
   }
 
   Future<void> _copyFrontendLogs() async {
@@ -3539,27 +3634,50 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       };
     });
     await _persistLocalStats();
-    _showMessage('Frontend logs copied.');
+    _showMessage(
+      'Logs copied: Editor.LocalStore/copy_logs \u2014 '
+      'frontend debug log now on the clipboard.',
+    );
   }
 
   Future<ActionFeedback> _restoreTemplateCourses() async {
     final token = _token;
     if (token == null || token.isEmpty) {
       return const ActionFeedback(
-          message: 'Sign in with an admin account first.', isError: true);
+          message: 'Template courses not restored: '
+              'Editor.LocalStore/restore_templates \u2014 '
+              'no cloud session; sign in with an admin account first.',
+          isError: true);
     }
     try {
       final result = await widget.client.restoreTemplateCourses(token);
       await _loadInitialData();
-      final message =
-          result['message']?.toString() ?? 'Template courses restored.';
-      _appendUiLog(message);
+      final serverMessage = result['message']?.toString();
+      final message = serverMessage != null && serverMessage.isNotEmpty
+          ? 'Template courses restored: '
+              'Editor.LocalStore/restore_templates \u2014 $serverMessage'
+          : 'Template courses restored: '
+              'Editor.LocalStore/restore_templates \u2014 '
+              'server seeded default category tree.';
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Editor.LocalStore/restore_templates',
+        message: message,
+      );
       _showMessage(message);
       return ActionFeedback(message: message);
     } catch (error) {
-      final message = error.toString().replaceFirst('Exception: ', '');
-      _appendUiLog('Template restore failed: $message');
-      return ActionFeedback(message: message, isError: true);
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Editor.LocalStore/restore_templates',
+        message: 'Template courses not restored: '
+            'Editor.LocalStore/restore_templates \u2014 $cause.',
+      );
+      return ActionFeedback(
+          message: 'Template courses not restored: '
+              'Editor.LocalStore/restore_templates \u2014 $cause.',
+          isError: true);
     }
   }
 
@@ -3605,10 +3723,30 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       final file = XFile.fromData(bytes,
           name: 'notechondria-$username.env', mimeType: 'text/plain');
       await file.saveTo(location.path);
-      _showMessage('Configuration file saved.');
-      _appendUiLog('Downloaded configuration file.');
+      _showMessage(
+        'Configuration file saved: '
+        'Editor.LocalStore/download_config \u2014 $username.env written.',
+      );
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Editor.LocalStore/download_config',
+        message:
+            'Configuration file downloaded: '
+            'Editor.LocalStore/download_config \u2014 '
+            'wrote $username.env to disk.',
+      );
     } catch (error) {
-      _showMessage(error.toString().replaceFirst('Exception: ', ''));
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      _showMessage(
+        'Configuration file not saved: '
+        'Editor.LocalStore/download_config \u2014 $cause.',
+      );
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Editor.LocalStore/download_config',
+        message: 'Configuration file not saved: '
+            'Editor.LocalStore/download_config \u2014 $cause.',
+      );
     }
   }
 
