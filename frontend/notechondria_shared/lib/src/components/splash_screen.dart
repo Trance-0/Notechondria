@@ -27,12 +27,19 @@ class SplashScreen extends StatefulWidget {
     required this.appVersion,
     this.onFinished,
     this.loadingStatus,
+    this.apiBaseUrl,
   });
 
   final String appTitle;
   final String appVersion;
   final VoidCallback? onFinished;
   final ValueListenable<String>? loadingStatus;
+
+  /// Backend base URL to display next to the version string. The splash
+  /// extracts and shows just the host (e.g. `notechondria.render.com`)
+  /// so the operator can see which deployment they're hitting. When null
+  /// or empty the splash shows `offline`.
+  final String? apiBaseUrl;
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -78,16 +85,17 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(milliseconds: 900),
     )..forward();
     final rng = math.Random(42);
-    _particles = List.generate(26, (_) {
+    _particles = List.generate(30, (_) {
       return _Particle(
-        angle: rng.nextDouble() * 2 * math.pi,
-        radiusFraction: 0.25 + rng.nextDouble() * 0.85,
-        speed: 0.12 + rng.nextDouble() * 0.55,
+        seedX: rng.nextDouble(),
+        seedY: rng.nextDouble(),
+        velocityX: (rng.nextDouble() - 0.5) * 0.6,
+        velocityY: (rng.nextDouble() - 0.5) * 0.45,
         size: 0.75 + rng.nextDouble() * 0.75,
-        drift: (rng.nextDouble() - 0.5) * 0.4,
         rotation: rng.nextDouble() * 2 * math.pi,
         rotationSpeed: (rng.nextDouble() - 0.5) * 0.9,
         moleculeType: rng.nextInt(8),
+        phase: rng.nextDouble() * 2 * math.pi,
       );
     });
   }
@@ -103,6 +111,18 @@ class _SplashScreenState extends State<SplashScreen>
     if (_dismissed) return;
     _dismissed = true;
     widget.onFinished?.call();
+  }
+
+  /// Formats the optional backend URL into a compact host tag shown next
+  /// to the version string. Empty / null / malformed URLs collapse to
+  /// `offline`. Relative paths (`/api/v1`) are shown verbatim so an
+  /// operator inspecting the splash can tell local-dev from remote-prod.
+  static String _formatBackendTag(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return 'offline';
+    final trimmed = raw.trim();
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null || uri.host.isEmpty) return trimmed;
+    return uri.host;
   }
 
   @override
@@ -158,7 +178,7 @@ class _SplashScreenState extends State<SplashScreen>
                   left: constraints.maxWidth * 0.04,
                   bottom: constraints.maxHeight * 0.04,
                   child: Text(
-                    'v${widget.appVersion}',
+                    'v${widget.appVersion} \u00b7 ${_formatBackendTag(widget.apiBaseUrl)}',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: subtleColor,
                       fontFeatures: const [FontFeature.tabularFigures()],
@@ -284,23 +304,38 @@ class _LoadingStatusText extends StatelessWidget {
 
 class _Particle {
   const _Particle({
-    required this.angle,
-    required this.radiusFraction,
-    required this.speed,
+    required this.seedX,
+    required this.seedY,
+    required this.velocityX,
+    required this.velocityY,
     required this.size,
-    required this.drift,
     required this.rotation,
     required this.rotationSpeed,
     required this.moleculeType,
+    required this.phase,
   });
-  final double angle;
-  final double radiusFraction;
-  final double speed;
+
+  /// Initial position as a 0..1 fraction of the viewport width / height.
+  /// The particle drifts away from this seed by `velocity * progress` and
+  /// wraps at viewport edges so it visits the whole screen, not only the
+  /// ring area.
+  final double seedX;
+  final double seedY;
+
+  /// Drift in viewport fractions per full splash progress cycle. Total
+  /// travel over one cycle = sqrt(vx^2 + vy^2) of the viewport's short
+  /// side. Independent from the cycle's rotation.
+  final double velocityX;
+  final double velocityY;
+
   final double size;
-  final double drift;
   final double rotation;
   final double rotationSpeed;
   final int moleculeType;
+
+  /// Shifts the particle's alpha-pulsing so neighbors don't strobe in
+  /// unison.
+  final double phase;
 }
 
 class _KrebsCyclePainter extends CustomPainter {
@@ -457,44 +492,87 @@ class _KrebsCyclePainter extends CustomPainter {
     final activePos =
         center + Offset(math.cos(activeAngle), math.sin(activeAngle)) * radius;
 
-    if (activePos.dx > -30) {
-      final outDir = Offset(math.cos(activeAngle), math.sin(activeAngle));
-      final formulaCenter = activePos + outDir * (radius * 0.38);
-      final peak = math.sin(stepFraction * math.pi).clamp(0.0, 1.0);
-      final baseAlpha = 0.35 + 0.55 * peak;
-      _drawSkeletalFormula(canvas, activeStep, formulaCenter, baseAlpha, w);
+    // Continuous morph between adjacent metabolites: the outgoing formula
+    // fades only in the last third of its step, the incoming one starts
+    // fading in at the same moment, and the previous formula lingers for
+    // the first third of a new step. There is therefore always at least
+    // one skeletal structure at near-full alpha on screen, with a window
+    // of overlap in between. This fixes the mobile-view gap where the
+    // former `sin(stepFraction * pi)` alpha curve dipped to 0 at each
+    // step boundary.
+    const crossFadeStart = 0.65; // outgoing begins to fade here
+    const inheritanceCutoff = 0.35; // previous lingers until here
 
-      if (stepFraction > 0.6) {
-        final incomingIndex = (activeStep + 1) % n;
-        final t = ((stepFraction - 0.6) / 0.4).clamp(0.0, 1.0);
-        final nextAngle = 2 * math.pi * incomingIndex / n + rotationAngle;
-        final nextPos = center +
-            Offset(math.cos(nextAngle), math.sin(nextAngle)) * radius;
-        final nextOutDir = Offset(math.cos(nextAngle), math.sin(nextAngle));
-        final nextCenter = nextPos + nextOutDir * (radius * 0.38);
-        _drawSkeletalFormula(
-            canvas, incomingIndex, nextCenter, 0.8 * t, w);
-      }
+    double fadeOut(double t) =>
+        t <= crossFadeStart ? 1.0 : 1.0 - (t - crossFadeStart) / (1.0 - crossFadeStart);
+    double fadeIn(double t) =>
+        t <= crossFadeStart ? 0.0 : (t - crossFadeStart) / (1.0 - crossFadeStart);
+    double inheritAlpha(double t) =>
+        t >= inheritanceCutoff ? 0.0 : 1.0 - t / inheritanceCutoff;
+
+    void paintFormulaAt(int stepIndex, double alpha) {
+      if (alpha <= 0.01) return;
+      final angle = 2 * math.pi * stepIndex / n + rotationAngle;
+      final pos = center + Offset(math.cos(angle), math.sin(angle)) * radius;
+      if (pos.dx < -30) return;
+      final outDir = Offset(math.cos(angle), math.sin(angle));
+      final anchor = pos + outDir * (radius * 0.38);
+      _drawSkeletalFormula(
+        canvas,
+        stepIndex,
+        anchor,
+        (0.35 + 0.55).clamp(0.0, 1.0) * alpha,
+        w,
+      );
+    }
+
+    if (activePos.dx > -30) {
+      // Previous formula still partially visible at the very start of a
+      // new step. Skip this on the wrap-around when stepIndex would map
+      // to an off-screen node.
+      final previousIndex = (activeStep - 1 + n) % n;
+      paintFormulaAt(previousIndex, inheritAlpha(stepFraction));
+
+      // Active formula: full alpha through most of the step, fading out
+      // only in the final crossfade window.
+      paintFormulaAt(activeStep, fadeOut(stepFraction));
+
+      // Incoming next metabolite.
+      final incomingIndex = (activeStep + 1) % n;
+      paintFormulaAt(incomingIndex, fadeIn(stepFraction));
     }
   }
 
   void _drawParticles(
       Canvas canvas, Offset center, double radius, double w, double h) {
+    // Particles wrap around an extended box so they never pop at the
+    // viewport edge. `margin` keeps half a molecule's worth of padding
+    // out of view on each side before wrapping.
+    const margin = 60.0;
+    final wrapW = w + margin * 2;
+    final wrapH = h + margin * 2;
     for (final p in particles) {
-      final angle = p.angle + progress * 2 * math.pi * p.speed;
-      final r = radius * p.radiusFraction;
-      final drift =
-          math.sin(progress * 2 * math.pi * 3 + p.angle) * p.drift * radius * 0.15;
-      final pos = center +
-          Offset(math.cos(angle), math.sin(angle)) * r +
-          Offset(0, drift);
-      if (pos.dx < -40 || pos.dx > w + 40 || pos.dy < -40 || pos.dy > h + 40) {
-        continue;
-      }
-      final fade = ((pos.dx + 40) / 120).clamp(0.0, 1.0);
-      final alpha = (0.22 + 0.12 * math.sin(progress * 2 * math.pi * 2 + p.angle * 3))
-              .clamp(0.0, 1.0) *
-          fade;
+      final driftX = math.sin(progress * 2 * math.pi + p.phase) * 0.04;
+      final driftY = math.cos(progress * 2 * math.pi + p.phase * 0.7) * 0.04;
+      final rawX = (p.seedX + p.velocityX * progress + driftX) % 1.0;
+      final rawY = (p.seedY + p.velocityY * progress + driftY) % 1.0;
+      final normX = rawX < 0 ? rawX + 1.0 : rawX;
+      final normY = rawY < 0 ? rawY + 1.0 : rawY;
+      final pos = Offset(
+        normX * wrapW - margin,
+        normY * wrapH - margin,
+      );
+
+      // Fade particles that overlap the cycle ring so they don't muddle
+      // the skeletal formulas, but leave them visible everywhere else.
+      final distanceFromRing = (pos - center).distance;
+      final ringProximity =
+          ((distanceFromRing - radius).abs() / 90.0).clamp(0.0, 1.0);
+      final baseAlpha =
+          (0.22 + 0.12 * math.sin(progress * 2 * math.pi * 2 + p.phase))
+              .clamp(0.0, 1.0);
+      final alpha = baseAlpha * (0.4 + 0.6 * ringProximity);
+
       final rotation =
           p.rotation + progress * 2 * math.pi * p.rotationSpeed;
 

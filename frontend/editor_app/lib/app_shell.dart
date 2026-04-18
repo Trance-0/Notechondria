@@ -154,9 +154,16 @@ class _AppShellState extends State<AppShell> {
 
   bool _showWidePageHeader(int index) => false;
 
-  /// All categories: local courses first, then remote courses.
-  List<Map<String, dynamic>> get _allCategories =>
-      [..._localCourses, ..._courses];
+  /// All categories visible in the sidebar. Cloud (`_courses`) rows are
+  /// hidden while the user is offline / signed out so the editor reads as
+  /// a local-only workspace until they re-authenticate. Cached cloud note
+  /// content stays addressable by UUID so mid-edit work isn't dropped.
+  List<Map<String, dynamic>> get _allCategories {
+    if (_token == null || _token!.isEmpty) {
+      return [..._localCourses];
+    }
+    return [..._localCourses, ..._courses];
+  }
 
   // ---------------------------------------------------------------------------
   // URL routing helpers (web only)
@@ -249,7 +256,13 @@ class _AppShellState extends State<AppShell> {
       final clientId = providerConfig['client_id']?.toString() ?? '';
       final redirectUri = providerConfig['redirect_uri']?.toString() ?? '';
       if (clientId.isEmpty) {
-        _appendUiLog('$provider OAuth not configured (missing client_id).');
+        _log(
+          level: DebugLogLevel.error,
+          source: 'Editor.Auth/oauth.launch',
+          message:
+              'Cannot start $provider sign-in: Editor.Auth/oauth.launch \u2014 '
+              'client_id missing in OAuth config for $provider.',
+        );
         return;
       }
       final prefs = await SharedPreferences.getInstance();
@@ -278,7 +291,13 @@ class _AppShellState extends State<AppShell> {
       }
       url_strategy.browserRedirect(authUrl);
     } catch (error) {
-      _appendUiLog('OAuth launch failed: ${error.toString().replaceFirst("Exception: ", "")}');
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Editor.Auth/oauth.launch',
+        message:
+            'OAuth sign-in could not start: Editor.Auth/oauth.launch \u2014 '
+            '${error.toString().replaceFirst("Exception: ", "")}.',
+      );
     }
   }
 
@@ -304,6 +323,14 @@ class _AppShellState extends State<AppShell> {
     await prefs.remove('oauth_invitation_code');
     await prefs.remove('oauth_intent');
 
+    // Surface provider-specific status on the splash so the user knows
+    // which third-party flow is completing. The splash widget
+    // cross-fades between these strings as the bootstrap advances.
+    final providerLabel = state == 'google' ? 'Google' : 'GitHub';
+    _splashStatus.value = intent == 'bind'
+        ? 'Linking $providerLabel account'
+        : 'Completing sign-in via $providerLabel';
+
     // Bind flow: user should already be authenticated. We handle three
     // cases distinctly so the user gets a coherent error:
     //   - bind + token      -> call /auth/bind/<provider>/ (authenticated).
@@ -315,15 +342,21 @@ class _AppShellState extends State<AppShell> {
     //                          sign in again and retry.
     if (intent == 'bind') {
       if (_token == null || _token!.isEmpty) {
-        _appendUiLog(
-          'Account linking requires an active session. Please sign in first, '
-          'then try linking the account again.',
+        _log(
+          level: DebugLogLevel.warning,
+          source: 'Editor.Auth/bind',
+          message:
+              'Account linking aborted: Editor.Auth/bind \u2014 session token '
+              'missing at OAuth callback (user signed out between click and '
+              'redirect).',
         );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                'Sign in first, then try linking the account again.',
+                'Account linking aborted: Editor.Auth/bind \u2014 your session '
+                'expired before the provider redirected back. Sign in first, '
+                'then try linking the account again.',
               ),
             ),
           );
@@ -337,19 +370,39 @@ class _AppShellState extends State<AppShell> {
           await widget.client.bindGithub(_token!, code, redirectUri: redirectUri);
         }
         final provider = state == 'google' ? 'Google' : 'GitHub';
-        _appendUiLog('Linked $provider account.');
+        _log(
+          level: DebugLogLevel.info,
+          source: 'Editor.Auth/bind',
+          message:
+              'Linked $provider account: Editor.Auth/bind \u2014 '
+              'server accepted the bind token.',
+        );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$provider account linked successfully.')),
+            SnackBar(
+              content: Text(
+                '$provider account linked: Editor.Auth/bind \u2014 '
+                'ready to sign in with $provider next time.',
+              ),
+            ),
           );
         }
         return true;
       } catch (error) {
         final msg = error.toString().replaceFirst('Exception: ', '');
-        _appendUiLog('Account linking failed: $msg');
+        _log(
+          level: DebugLogLevel.error,
+          source: 'Editor.Auth/bind',
+          message:
+              'Account linking failed: Editor.Auth/bind \u2014 $msg.',
+        );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Account linking failed: $msg')),
+            SnackBar(
+              content: Text(
+                'Account linking failed: Editor.Auth/bind \u2014 $msg.',
+              ),
+            ),
           );
         }
         return false;
@@ -364,19 +417,45 @@ class _AppShellState extends State<AppShell> {
         result = await widget.client.loginWithGithub(code, redirectUri: redirectUri, invitationCode: invitationCode, intent: intent);
       }
       await _applyAuthPayload(result);
-      _appendUiLog('Signed in via ${state == 'google' ? 'Google' : 'GitHub'}.');
+      final providerLabel = state == 'google' ? 'Google' : 'GitHub';
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Editor.Auth/oauth.callback',
+        message:
+            'Signed in via $providerLabel: Editor.Auth/oauth.callback \u2014 '
+            'server accepted the authorization code.',
+      );
       return true;
     } catch (error) {
       final msg = error.toString().replaceFirst('Exception: ', '');
+      // Preserved sentinel substrings: "not_registered" and "No account found"
+      // feed the registration-prompt branch below.
       if (msg.contains('not_registered') || msg.contains('No account found')) {
-        _appendUiLog('No account found. Please register first.');
+        _log(
+          level: DebugLogLevel.warning,
+          source: 'Editor.Auth/oauth.callback',
+          message:
+              'OAuth sign-in rejected: Editor.Auth/oauth.callback \u2014 '
+              'No account found for this identity (server replied '
+              'not_registered). Register first.',
+        );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No account found for this identity. Please register first.')),
+            const SnackBar(
+              content: Text(
+                'OAuth sign-in rejected: Editor.Auth/oauth.callback \u2014 '
+                'No account found for this identity. Please register first.',
+              ),
+            ),
           );
         }
       } else {
-        _appendUiLog('OAuth login failed: $msg');
+        _log(
+          level: DebugLogLevel.error,
+          source: 'Editor.Auth/oauth.callback',
+          message:
+              'OAuth sign-in failed: Editor.Auth/oauth.callback \u2014 $msg.',
+        );
       }
       return false;
     }
@@ -3267,6 +3346,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
               appTitle: widget.appTitle,
               appVersion: _kAppVersion,
               loadingStatus: _splashStatus,
+              apiBaseUrl: _localSettings['api_base_url']?.toString(),
               onFinished: () {
                 setState(() { _showSplash = false; if (_isLoading) _isLoading = false; });
               },

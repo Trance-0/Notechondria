@@ -39,11 +39,51 @@ Here is a list of task we need to do now after testing, finishing and solve thes
 
 ### Start up animations
 
+- [ ] Completing: mobile view cross-fade gap. On narrow layouts the
+  incoming metabolite skeletal formula currently fades in only after the
+  previous one has already faded out, producing a perceptible blank
+  moment. Spec: neither formula should fully fade away between steps —
+  the new one must start emerging before the old one has fully receded,
+  so there is always at least one visible structure. Tune cross-fade
+  overlap in `_drawSkeletalFormula` step-boundary logic
+  (`_KrebsCyclePainter.paint`) rather than only the outgoing alpha curve.
+- [ ] Background particles are currently anchored to the circle's radius
+  (`radiusFraction` × cycle radius) which keeps them visually inside the
+  ring. Spec: let them drift across the full screen (use screen-space
+  positions, seed from rng, bounce or wrap at viewport edges). The cycle
+  ring itself stays in place; only the tiny accompanying molecules move
+  freely.
+- [ ] Add the configured backend domain name after the version string in
+  the splash bottom-left. Shape: `v0.1.x · notechondria.render.com`
+  when `api_base_url` is set, or `v0.1.x · offline` when empty.
+  `SplashScreen` takes a new optional `apiBaseUrl` parameter sourced
+  from each app_shell's `_localSettings['api_base_url']`.
+
 ### Sidebar/Navigation
 
 - [ ] Sync the editor sidebar for the portal sidebar. (Removing title, `wide layout` texts. You may create a list of items/widgets that feed into the `sidebar` class, the `sidebar` should have some properties/functions like `header text` (used in vertical layout), `lower left item` (the `new category` trigger should lives in that))
 
 ### Login and account info
+
+- [ ] OAuth callback loading screen message. While the editor/portal/
+  planner is handling `_handleOAuthCallback`, the splash currently reads
+  "Completing sign-in" for all intents and both providers. Spec: when a
+  `?state=google|github` is present, set `_splashStatus.value` to
+  `'Completing sign-in via Google'` / `'Completing sign-in via GitHub'`.
+  If `intent=bind`, read `'Linking Google account'` etc. The splash
+  widget itself already cross-fades between statuses; this is just a
+  host-side string change.
+
+- [ ] Account linking error detail. Today `bind` failures surface as
+  `Account linking failed: HTTP 500` or plain `Internal Server Error`
+  text. Backend must catch each phase of `/api/v1/auth/bind/<provider>/`
+  (config lookup, token exchange, profile fetch, email match, DB write)
+  and return
+  `{"detail": "<consequence>: Backend.Creators.Auth/bind.<phase> \u2014 <cause>"}`
+  with a meaningful HTTP status (4xx for user-actionable, 5xx for true
+  server bugs). Frontend then logs the detail verbatim and shows it in
+  the SnackBar. Tests in `backend/creators/tests.py` must continue to
+  match the literal substring `bind` for intent rejection.
 
 - [ ] Full feature parity with editor Settings: API key section (with rotate
   button and MCP endpoint helper), password-change dialog with identity code
@@ -67,9 +107,80 @@ Here is a list of task we need to do now after testing, finishing and solve thes
   emitting class/method. Current wrapper still records them at Info level
   with an empty source, which reads as `-` in the log row.
 
+### §1.7 message-compliance migration (canonical AGENTS.md §1.7)
+
+The canonical AGENTS.md §1.7 now requires every error/warning/info
+message (frontend and backend) to contain three components:
+consequence + `<module>/<process>` + cause. The shape is
+`"<consequence>: <module>/<process> \u2014 <cause>"`. The canonical
+module names for this project are documented in
+[docs/AGENTS.md](./AGENTS.md).
+
+**Preserved parser sentinels** (must survive verbatim in any rewrite):
+
+- `invalid token`, `authentication credentials were not provided`,
+  `token_not_valid` \u2014 consumed by editor `_loadInitialData`
+  session-rejection detector.
+- `not_registered`, `No account found` \u2014 OAuth registration prompt
+  in editor/planner/portal `_handleOAuthCallback`.
+- `bind` \u2014 backend binding-rejection detail, asserted by
+  `backend/creators/tests.py`.
+
+Decompose by module so each round produces a reviewable diff. Order:
+
+- [x] OAuth launch + callback messages in editor_app (done in the 0.1.25
+  pass, see `docs/versions/0.1.25.md`). Remaining OAuth sites in
+  planner/portal still need the same treatment.
+- [ ] `Editor.Auth` round: editor_app `_register` / `_verify` /
+  `_resendVerification` / `_login` / `_requestPasswordReset` /
+  `_confirmPasswordReset` / `_applyAuthPayload` / `_logout`
+  (~14 `_appendUiLog` and `ActionFeedback` sites).
+- [ ] `Editor.Sync.Settings`, `Editor.Sync.Courses`, `Editor.Sync.Notes`,
+  `Editor.LocalStore` rounds \u2014 split one per module; each is
+  ~10\u201320 sites.
+- [ ] `Editor.UI` round \u2014 cosmetic info logs like
+  "Opened category X" (~30 sites).
+- [ ] `Planner.*` and `Portal.*` rounds \u2014 same module breakdown
+  as editor.
+- [ ] `Shared.AuthDialog` round \u2014 auth dialog stack error surfaces
+  in `frontend/notechondria_shared/lib/src/components/auth_dialogs.dart`.
+- [ ] `Backend.Creators.Auth` round \u2014 ~40
+  `serializers.ValidationError(...)` and `Response({"detail": ...})`
+  sites in `backend/creators/api.py`. Keep `bind` substring intact.
+- [ ] `Backend.Notes.*` round \u2014 ~20 sites in
+  `backend/notes/api.py`.
+- [ ] `Backend.Mcp.Protocol` + `Backend.Gptutils` rounds \u2014 smaller.
+
+Each round: rewrite, run `python manage.py test` (backend) or
+`flutter analyze` + `flutter test test/smoke_test.dart` (frontend),
+commit with `<module>: migrate messages to AGENTS.md \u00a71.7 shape`.
+Do not bundle unrelated changes.
+
 ## Editor
 
 ### Note view
+
+- [ ] Planner starter workspace currently seeds a single "Starter
+  planning course" + two planning drafts on first run
+  (`planner_app/lib/app_shell.dart` `_ensureStarterWorkspace`). For
+  offline-first parity with the editor (which already seeds only an
+  Inbox), review whether planner should have an analogous
+  "Inbox / scratchpad" category instead of a premade course \u2014 or
+  whether the planning-course semantics make a non-Inbox default the
+  right default for planner. Decide before changing; changing planner's
+  starter default is a UX break.
+- [ ] Extend the editor's cloud-category offline-hide behavior
+  (`editor_app/lib/app_shell.dart` `_allCategories` getter) to planner
+  and portal. The editor now hides cloud rows from the sidebar while
+  signed out so the app reads as local-only; planner and portal still
+  show cached cloud rows. Apply the same `_token == null || _token!.isEmpty`
+  gate in each app's sidebar source list.
+- [ ] Cloud category "subscribe but keep private" — a user can save a
+  reference to a cloud course as one of their local categories without
+  republishing it. Needs a new client method + backend endpoint
+  (`Backend.Notes.Courses/subscribe`) plus a sidebar action. Decompose
+  further before implementing: (a) design subscription data model,
+  (b) backend endpoint + tests, (c) frontend wiring.
 
 #### Search
 

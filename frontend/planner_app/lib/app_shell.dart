@@ -253,6 +253,11 @@ class _AppShellState extends State<AppShell> {
     await prefs.remove('oauth_invitation_code');
     await prefs.remove('oauth_intent');
 
+    final providerLabel = state == 'google' ? 'Google' : 'GitHub';
+    _splashStatus.value = intent == 'bind'
+        ? 'Linking $providerLabel account'
+        : 'Completing sign-in via $providerLabel';
+
     if (intent == 'bind' && _token != null) {
       try {
         if (state == 'google') {
@@ -2686,6 +2691,7 @@ Capture deadlines, sequencing, and blockers here.''',
               appTitle: widget.appTitle,
               appVersion: _kAppVersion,
               loadingStatus: _splashStatus,
+              apiBaseUrl: _localSettings['api_base_url']?.toString(),
               onFinished: () {
                 setState(() { _showSplash = false; if (_isLoading) _isLoading = false; });
               },
