@@ -140,8 +140,12 @@ Decompose by module so each round produces a reviewable diff. Order:
 - [ ] `Backend.Creators.Auth` round \u2014 ~40
   `serializers.ValidationError(...)` and `Response({"detail": ...})`
   sites in `backend/creators/api.py`. Keep `bind` substring intact.
-- [ ] `Backend.Notes.*` round \u2014 ~20 sites in
-  `backend/notes/api.py`.
+- [x] `Backend.Notes.*` round (0.1.28): every `Response({"detail": ...})`
+  and `serializers.ValidationError(...)` in `backend/notes/api.py`
+  migrated to `Backend.Notes.{Courses,Notes,Blocks}/<process>` shape.
+  Covers course CRUD (create/update/delete), note CRUD via id and UUID,
+  block add/update/delete/reorder, note access check,
+  history/snapshot/restore endpoints.
 - [ ] `Backend.Mcp.Protocol` + `Backend.Gptutils` rounds \u2014 smaller.
 
 Each round: rewrite, run `python manage.py test` (backend) or

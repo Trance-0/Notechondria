@@ -193,7 +193,11 @@ def require_note_access(request, note_id: int) -> Note:
         pk=note_id,
     )
     if not can_access_note(request, note):
-        raise serializers.ValidationError("You do not have access to this note.")
+        raise serializers.ValidationError(
+            "Note access denied: "
+            "Backend.Notes.Notes/access_check \u2014 "
+            "note is private and the requester is not its owner."
+        )
     return note
 
 
@@ -556,7 +560,11 @@ class CourseListApiView(APIView):
     def post(self, request):
         if not request.user.is_authenticated:
             return Response(
-                {"detail": "Authentication required."},
+                {"detail": (
+                    "Cannot create category: "
+                    "Backend.Notes.Courses/create \u2014 "
+                    "request has no authenticated user."
+                )},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
         creator = ensure_creator(request.user)
@@ -623,19 +631,31 @@ class CourseDetailApiView(APIView):
     def patch(self, request, course_id):
         if not request.user.is_authenticated:
             return Response(
-                {"detail": "Authentication required."},
+                {"detail": (
+                    "Cannot update category: "
+                    "Backend.Notes.Courses/update \u2014 "
+                    "request has no authenticated user."
+                )},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
         creator = ensure_creator(request.user)
         course = get_object_or_404(Course, pk=course_id)
         if course.creator_id_id != creator.id:
             return Response(
-                {"detail": "You can only edit your own categories."},
+                {"detail": (
+                    "Cannot update category: "
+                    "Backend.Notes.Courses/update \u2014 "
+                    "category is owned by a different creator."
+                )},
                 status=status.HTTP_403_FORBIDDEN,
             )
         if course.is_default:
             return Response(
-                {"detail": "The default category cannot be edited."},
+                {"detail": (
+                    "Cannot update category: "
+                    "Backend.Notes.Courses/update \u2014 "
+                    "the default (Inbox) category is protected from edits."
+                )},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         serializer = CourseWriteSerializer(data=request.data, partial=True)
@@ -658,19 +678,31 @@ class CourseDetailApiView(APIView):
     def delete(self, request, course_id):
         if not request.user.is_authenticated:
             return Response(
-                {"detail": "Authentication required."},
+                {"detail": (
+                    "Cannot delete category: "
+                    "Backend.Notes.Courses/delete \u2014 "
+                    "request has no authenticated user."
+                )},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
         creator = ensure_creator(request.user)
         course = get_object_or_404(Course, pk=course_id)
         if course.creator_id_id != creator.id:
             return Response(
-                {"detail": "You can only delete your own categories."},
+                {"detail": (
+                    "Cannot delete category: "
+                    "Backend.Notes.Courses/delete \u2014 "
+                    "category is owned by a different creator."
+                )},
                 status=status.HTTP_403_FORBIDDEN,
             )
         if course.is_default:
             return Response(
-                {"detail": "The default category cannot be deleted."},
+                {"detail": (
+                    "Cannot delete category: "
+                    "Backend.Notes.Courses/delete \u2014 "
+                    "the default (Inbox) category cannot be removed."
+                )},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         # Move owned notes into the user's default category before deletion.
@@ -917,10 +949,24 @@ class NoteDetailApiView(APIView):
 
     def patch(self, request, note_id):
         if not request.user.is_authenticated:
-            return Response({"detail": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {"detail": (
+                    "Cannot update note: "
+                    "Backend.Notes.Notes/update \u2014 "
+                    "request has no authenticated user."
+                )},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
         note = require_note_access(request, note_id)
         if note.creator_id.user_id_id != request.user.id:
-            return Response({"detail": "Only the owner can update this note."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": (
+                    "Cannot update note: "
+                    "Backend.Notes.Notes/update \u2014 "
+                    "note is owned by a different user."
+                )},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         serializer = NoteWriteSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         for field in ["title", "description", "metadata_json", "editor_mode", "is_public"]:
@@ -953,10 +999,24 @@ class NoteDetailApiView(APIView):
 
     def delete(self, request, note_id):
         if not request.user.is_authenticated:
-            return Response({"detail": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {"detail": (
+                    "Cannot delete note: "
+                    "Backend.Notes.Notes/delete \u2014 "
+                    "request has no authenticated user."
+                )},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
         note = require_note_access(request, note_id)
         if note.creator_id.user_id_id != request.user.id:
-            return Response({"detail": "Only the owner can delete this note."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": (
+                    "Cannot delete note: "
+                    "Backend.Notes.Notes/delete \u2014 "
+                    "note is owned by a different user."
+                )},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         # When a source note is deleted, its comments become private but are NOT deleted.
         note.comments.filter(deleted_at__isnull=True).update(is_public=False)
         note.deleted_at = timezone.now()
@@ -993,7 +1053,11 @@ class NoteByUuidApiView(APIView):
             uuid=note_uuid,
         )
         if not can_access_note(request, note):
-            raise serializers.ValidationError("You do not have access to this note.")
+            raise serializers.ValidationError(
+                "Note access denied: "
+                "Backend.Notes.Notes/access_check_by_uuid \u2014 "
+                "note is private and the requester is not its owner."
+            )
         return note
 
     def get(self, request, note_uuid):
@@ -1007,10 +1071,24 @@ class NoteByUuidApiView(APIView):
 
     def patch(self, request, note_uuid):
         if not request.user.is_authenticated:
-            return Response({"detail": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {"detail": (
+                    "Cannot update note: "
+                    "Backend.Notes.Notes/update_by_uuid \u2014 "
+                    "request has no authenticated user."
+                )},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
         note = self._get_note(request, note_uuid)
         if note.creator_id.user_id_id != request.user.id:
-            return Response({"detail": "Only the owner can update this note."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": (
+                    "Cannot update note: "
+                    "Backend.Notes.Notes/update_by_uuid \u2014 "
+                    "note is owned by a different user."
+                )},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         serializer = NoteWriteSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         for field in ["title", "description", "metadata_json", "editor_mode", "is_public"]:
@@ -1039,10 +1117,24 @@ class NoteByUuidApiView(APIView):
 
     def delete(self, request, note_uuid):
         if not request.user.is_authenticated:
-            return Response({"detail": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {"detail": (
+                    "Cannot delete note: "
+                    "Backend.Notes.Notes/delete_by_uuid \u2014 "
+                    "request has no authenticated user."
+                )},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
         note = self._get_note(request, note_uuid)
         if note.creator_id.user_id_id != request.user.id:
-            return Response({"detail": "Only the owner can delete this note."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": (
+                    "Cannot delete note: "
+                    "Backend.Notes.Notes/delete_by_uuid \u2014 "
+                    "note is owned by a different user."
+                )},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         note.comments.filter(deleted_at__isnull=True).update(is_public=False)
         note.deleted_at = timezone.now()
         note.is_public = False
@@ -1072,7 +1164,14 @@ class NoteBlocksApiView(APIView):
     def post(self, request, note_id):
         note = require_note_access(request, note_id)
         if note.creator_id.user_id_id != request.user.id:
-            return Response({"detail": "Only the owner can add blocks."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": (
+                    "Cannot add block: "
+                    "Backend.Notes.Blocks/add \u2014 "
+                    "parent note is owned by a different user."
+                )},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         serializer = BlockWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         next_index = NoteIndex.objects.filter(note_id=note).count()
@@ -1099,7 +1198,14 @@ class SingleBlockApiView(APIView):
     def patch(self, request, block_id):
         block = get_object_or_404(NoteBlock.objects.select_related("note_id", "creator_id__user_id"), pk=block_id)
         if block.creator_id.user_id_id != request.user.id:
-            return Response({"detail": "Only the owner can update this block."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": (
+                    "Cannot update block: "
+                    "Backend.Notes.Blocks/update \u2014 "
+                    "block is owned by a different user."
+                )},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         before_words = block_word_count(block)
         serializer = BlockWriteSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -1120,7 +1226,14 @@ class SingleBlockApiView(APIView):
     def delete(self, request, block_id):
         block = get_object_or_404(NoteBlock.objects.select_related("creator_id__user_id"), pk=block_id)
         if block.creator_id.user_id_id != request.user.id:
-            return Response({"detail": "Only the owner can delete this block."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": (
+                    "Cannot delete block: "
+                    "Backend.Notes.Blocks/delete \u2014 "
+                    "block is owned by a different user."
+                )},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         note = block.note_id
         previous_words = block_word_count(block)
         block.delete()
@@ -1136,7 +1249,14 @@ class ReorderBlocksApiView(APIView):
     def post(self, request, note_id):
         note = require_note_access(request, note_id)
         if note.creator_id.user_id_id != request.user.id:
-            return Response({"detail": "Only the owner can reorder blocks."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": (
+                    "Cannot reorder blocks: "
+                    "Backend.Notes.Blocks/reorder \u2014 "
+                    "parent note is owned by a different user."
+                )},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         serializer = ReorderSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         handles = {
@@ -1145,7 +1265,12 @@ class ReorderBlocksApiView(APIView):
         }
         ordered_ids = serializer.validated_data["ordered_block_ids"]
         if set(handles.keys()) != set(ordered_ids):
-            raise serializers.ValidationError("Reorder list must contain all block ids exactly once.")
+            raise serializers.ValidationError(
+                "Reorder list rejected: "
+                "Backend.Notes.Blocks/reorder \u2014 "
+                "ordered_block_ids must contain every existing block id "
+                "exactly once (no missing or duplicate ids)."
+            )
         for index, block_id in enumerate(ordered_ids):
             handle = handles[block_id]
             handle.index = index
@@ -1160,7 +1285,14 @@ class NoteHistoryApiView(APIView):
     def get(self, request, note_id):
         note = require_note_access(request, note_id)
         if note.creator_id.user_id_id != request.user.id:
-            return Response({"detail": "Only the owner can view note history."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": (
+                    "Cannot view note history: "
+                    "Backend.Notes.Notes/history \u2014 "
+                    "note is owned by a different user."
+                )},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         return Response(NoteVersionSerializer(note.versions.all()[:12], many=True).data)
 
 
@@ -1170,7 +1302,14 @@ class NoteSnapshotApiView(APIView):
     def post(self, request, note_id):
         note = require_note_access(request, note_id)
         if note.creator_id.user_id_id != request.user.id:
-            return Response({"detail": "Only the owner can snapshot this note."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": (
+                    "Cannot snapshot note: "
+                    "Backend.Notes.Notes/snapshot \u2014 "
+                    "note is owned by a different user."
+                )},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         version = snapshot_note_version(note, reason=request.data.get("reason", "manual"))
         return Response(NoteVersionSerializer(version).data, status=status.HTTP_201_CREATED)
 
@@ -1181,7 +1320,14 @@ class NoteRestoreApiView(APIView):
     def post(self, request, note_id, version_id):
         note = require_note_access(request, note_id)
         if note.creator_id.user_id_id != request.user.id:
-            return Response({"detail": "Only the owner can restore this note."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": (
+                    "Cannot restore note version: "
+                    "Backend.Notes.Notes/restore \u2014 "
+                    "note is owned by a different user."
+                )},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         version = get_object_or_404(NoteVersion, pk=version_id, note_id=note)
         snapshot_note_version(note, reason="before_restore")
         restore_note_version(note, version)
