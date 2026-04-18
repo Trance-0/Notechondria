@@ -577,6 +577,13 @@ planner/portal still need the same treatment.</li>
 0.1.26. Legacy <code>_appendUiLog</code> wrapper kept for call-site compatibility
 but primary error/info surfaces now use the full shape.</li>
 <li><input disabled="" type="checkbox" checked=""/>
+<code>Planner.Auth</code> and <code>Portal.Auth</code> rounds (0.1.27): same method
+surface migrated in both apps. OAuth launch + callback + bind failure
+paths now emit <code>Planner.Auth/*</code> / <code>Portal.Auth/*</code> sources. Preserved
+substring sentinels (<code>not_registered</code>, <code>No account found</code>) remain in
+the branch selector and in the log message body so the
+registration-prompt branch still fires.</li>
+<li><input disabled="" type="checkbox" checked=""/>
 <code>Backend.Creators.Auth/bind.*</code> phased details (0.1.26): bind
 endpoints for Google and GitHub now emit per-phase <code>detail</code> strings
 covering <code>config_lookup</code>, <code>token_exchange</code>, <code>token_verify</code> / profile
@@ -600,9 +607,13 @@ in <code>frontend/notechondria_shared/lib/src/components/auth_dialogs.dart</code
 <code>Backend.Creators.Auth</code> round \u2014 ~40
 <code>serializers.ValidationError(...)</code> and <code>Response({"detail": ...})</code>
 sites in <code>backend/creators/api.py</code>. Keep <code>bind</code> substring intact.</li>
-<li><input disabled="" type="checkbox"/>
-<code>Backend.Notes.*</code> round \u2014 ~20 sites in
-<code>backend/notes/api.py</code>.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+<code>Backend.Notes.*</code> round (0.1.28): every <code>Response({"detail": ...})</code>
+and <code>serializers.ValidationError(...)</code> in <code>backend/notes/api.py</code>
+migrated to <code>Backend.Notes.{Courses,Notes,Blocks}/&lt;process&gt;</code> shape.
+Covers course CRUD (create/update/delete), note CRUD via id and UUID,
+block add/update/delete/reorder, note access check,
+history/snapshot/restore endpoints.</li>
 <li><input disabled="" type="checkbox"/>
 <code>Backend.Mcp.Protocol</code> + <code>Backend.Gptutils</code> rounds \u2014 smaller.</li>
 </ul>
