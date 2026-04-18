@@ -601,12 +601,18 @@ action of <code>PasswordResetDialog</code> all migrated.</li>
 <code>_updateCategory</code>, <code>_deleteCategory</code>, <code>_reorderCategories</code>, and
 <code>_syncLocalCourse</code> in <code>editor_app/lib/app_shell.dart</code> rewritten to
 <code>Editor.Sync.Courses/{create,update,delete,reorder,push}</code> shape.</li>
-<li><input disabled="" type="checkbox"/>
-<code>Editor.Sync.Settings</code> round \u2014 <code>_updateSettings</code> +
-<code>_applyLocalAppSettings</code> + profile-save/avatar-upload.</li>
-<li><input disabled="" type="checkbox"/>
-<code>Editor.Sync.Notes</code> round \u2014 <code>_syncLocalDraft</code>,
-<code>_pullCloudNotesToLocal</code>, note save/load error paths.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+<code>Editor.Sync.Settings</code> round (0.1.32): <code>_updateSettings</code>
+save/no-change/save-locally/remote-fail paths + <code>_uploadAvatar</code>
+success/cancel/error paths migrated to
+<code>Editor.Sync.Settings/{save,avatar.upload}</code> sources.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+<code>Editor.Sync.Notes</code> round (0.1.32): <code>_pullCloudNotesToLocal</code>
+(missing-session, cancel, success, error), <code>_syncLocalDraft</code>
+(missing-session guard + cloud-copy and fresh-create success logs),
+<code>_restoreDeletedNote</code>, <code>_emptyDeletedNotes</code>, and <code>_syncAllLocalData</code>
+(all top-level sync entrypoint messages) migrated to
+<code>Editor.Sync.Notes/{pull,push,push_all,restore,empty_trash}</code> sources.</li>
 <li><input disabled="" type="checkbox"/>
 <code>Editor.LocalStore</code> round \u2014 starter workspace seed,
 <code>_clearLocalData</code>, <code>_restoreTemplateCourses</code>, draft persistence
