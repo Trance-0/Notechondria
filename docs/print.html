@@ -492,13 +492,6 @@ moved with them. Each app consumes the shared package via
 <code>lib/main.dart</code>.</li>
 </ul>
 <h3 id="start-up-animations"><a class="header" href="#start-up-animations">Start up animations</a></h3>
-<ul>
-<li><input disabled="" type="checkbox"/>
-Byproduct labels (NADH, CO2, GTP, FADH2) are still drawn as text
-alongside the cycle. Replace them with small structural/skeletal formulas
-to fully satisfy the "do not include any text" intent. (Acetyl-CoA +
-metabolite labels already moved to structural formulas in 0.1.22.)</li>
-</ul>
 <h3 id="sidebarnavigation"><a class="header" href="#sidebarnavigation">Sidebar/Navigation</a></h3>
 <ul>
 <li><input disabled="" type="checkbox"/>
@@ -520,18 +513,15 @@ requires syncing client methods, app_shell callback wiring, and the
 <h3 id="debug-log-window"><a class="header" href="#debug-log-window">Debug log window</a></h3>
 <ul>
 <li><input disabled="" type="checkbox"/>
-Add label for debug level, e.g. <code>Error</code>, <code>Warning</code>, <code>Info</code>, <code>Debug</code>. Set debug level to <code>Debug</code> by default at this stage.</li>
+Extend per-request timing instrumentation beyond editor_app's
+bootstrap path: planner_app and portal_app still emit mostly Info-level
+messages without <code>durationMs</code>. Adopt <code>_timed(...)</code> wrappers on their
+bootstrap calls when that code stabilizes.</li>
 <li><input disabled="" type="checkbox"/>
-Many information is not complete and don't provide useful information. Instead of <code>Initial data loaded</code>, use <code>Initial &lt;what class&gt;, &lt;what function&gt; data loaded</code>.</li>
-<li><input disabled="" type="checkbox"/>
-Make log output for status and timing for each backend requests in debug log level.</li>
-<li><input disabled="" type="checkbox"/>
-Add terminal inputs on bottom of debug log. Add the following function supports
-<ul>
-<li><code>ls</code> and <code>cd</code> to navigate cache folder/directory. (I really hope you organized all the cache configurations correctly, or it will be pain here.)</li>
-<li><code>clear</code> to clear the debug log.</li>
-</ul>
-</li>
+Migrate remaining <code>_appendUiLog(String)</code> callers to the richer
+<code>_log({level, source, message})</code> form so <code>source</code> reflects the actual
+emitting class/method. Current wrapper still records them at Info level
+with an empty source, which reads as <code>-</code> in the log row.</li>
 </ul>
 <h2 id="editor"><a class="header" href="#editor">Editor</a></h2>
 <h3 id="note-view"><a class="header" href="#note-view">Note view</a></h3>
