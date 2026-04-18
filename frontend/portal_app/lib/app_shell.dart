@@ -204,7 +204,13 @@ class _AppShellState extends State<AppShell> {
       final clientId = providerConfig['client_id']?.toString() ?? '';
       final redirectUri = providerConfig['redirect_uri']?.toString() ?? '';
       if (clientId.isEmpty) {
-        _appendUiLog('$provider OAuth not configured (missing client_id).');
+        _log(
+          level: DebugLogLevel.error,
+          source: 'Portal.Auth/oauth.launch',
+          message:
+              'Cannot start $provider sign-in: Portal.Auth/oauth.launch \u2014 '
+              'client_id missing in OAuth config for $provider.',
+        );
         return;
       }
       final prefs = await SharedPreferences.getInstance();
@@ -233,7 +239,13 @@ class _AppShellState extends State<AppShell> {
       }
       url_strategy.browserRedirect(authUrl);
     } catch (error) {
-      _appendUiLog('OAuth launch failed: ${error.toString().replaceFirst("Exception: ", "")}');
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Portal.Auth/oauth.launch',
+        message:
+            'OAuth sign-in could not start: Portal.Auth/oauth.launch \u2014 '
+            '${error.toString().replaceFirst("Exception: ", "")}.',
+      );
     }
   }
 
@@ -269,19 +281,39 @@ class _AppShellState extends State<AppShell> {
           await widget.client.bindGithub(_token!, code, redirectUri: redirectUri);
         }
         final provider = state == 'google' ? 'Google' : 'GitHub';
-        _appendUiLog('Linked $provider account.');
+        _log(
+          level: DebugLogLevel.info,
+          source: 'Portal.Auth/bind',
+          message:
+              'Linked $provider account: Portal.Auth/bind \u2014 '
+              'server accepted the bind token.',
+        );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$provider account linked successfully.')),
+            SnackBar(
+              content: Text(
+                '$provider account linked: Portal.Auth/bind \u2014 '
+                'ready to sign in with $provider next time.',
+              ),
+            ),
           );
         }
         return true;
       } catch (error) {
         final msg = error.toString().replaceFirst('Exception: ', '');
-        _appendUiLog('Account linking failed: $msg');
+        _log(
+          level: DebugLogLevel.error,
+          source: 'Portal.Auth/bind',
+          message:
+              'Account linking failed: Portal.Auth/bind \u2014 $msg.',
+        );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Account linking failed: $msg')),
+            SnackBar(
+              content: Text(
+                'Account linking failed: Portal.Auth/bind \u2014 $msg.',
+              ),
+            ),
           );
         }
         return false;
@@ -296,19 +328,45 @@ class _AppShellState extends State<AppShell> {
         result = await widget.client.loginWithGithub(code, redirectUri: redirectUri, invitationCode: invitationCode, intent: intent);
       }
       await _applyAuthPayload(result);
-      _appendUiLog('Signed in via ${state == 'google' ? 'Google' : 'GitHub'}.');
+      final providerName = state == 'google' ? 'Google' : 'GitHub';
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Portal.Auth/oauth.callback',
+        message:
+            'Signed in via $providerName: Portal.Auth/oauth.callback \u2014 '
+            'server accepted the authorization code.',
+      );
       return true;
     } catch (error) {
       final msg = error.toString().replaceFirst('Exception: ', '');
+      // Preserved sentinels: "not_registered" and "No account found"
+      // drive the registration-prompt branch below.
       if (msg.contains('not_registered') || msg.contains('No account found')) {
-        _appendUiLog('No account found. Please register first.');
+        _log(
+          level: DebugLogLevel.warning,
+          source: 'Portal.Auth/oauth.callback',
+          message:
+              'OAuth sign-in rejected: Portal.Auth/oauth.callback \u2014 '
+              'No account found for this identity (server replied '
+              'not_registered). Register first.',
+        );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No account found for this identity. Please register first.')),
+            const SnackBar(
+              content: Text(
+                'OAuth sign-in rejected: Portal.Auth/oauth.callback \u2014 '
+                'No account found for this identity. Please register first.',
+              ),
+            ),
           );
         }
       } else {
-        _appendUiLog('OAuth login failed: $msg');
+        _log(
+          level: DebugLogLevel.error,
+          source: 'Portal.Auth/oauth.callback',
+          message:
+              'OAuth sign-in failed: Portal.Auth/oauth.callback \u2014 $msg.',
+        );
       }
       return false;
     }
@@ -957,11 +1015,17 @@ class _AppShellState extends State<AppShell> {
       final result = await widget.client.register(
         username, email, password, invitationCode: invitationCode,
       );
+      final serverMessage = result['message']?.toString();
       return ActionFeedback(
-          message: result['message']?.toString() ?? 'Verification email sent.');
+          message: serverMessage != null && serverMessage.isNotEmpty
+              ? 'Registration queued: Portal.Auth/register \u2014 $serverMessage'
+              : 'Registration queued: Portal.Auth/register \u2014 '
+                  'verification email sent to $email.');
     } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
       return ActionFeedback(
-        message: error.toString().replaceFirst('Exception: ', ''),
+        message:
+            'Registration rejected: Portal.Auth/register \u2014 $cause',
         isError: true,
       );
     }
@@ -972,10 +1036,13 @@ class _AppShellState extends State<AppShell> {
       final result = await widget.client.verifyEmail(email, code);
       await _applyAuthPayload(result);
       return const ActionFeedback(
-          message: 'Email verified. You are now signed in.');
+          message:
+              'Signed in: Portal.Auth/verify \u2014 email verified and '
+              'session issued.');
     } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
       return ActionFeedback(
-        message: error.toString().replaceFirst('Exception: ', ''),
+        message: 'Email verification failed: Portal.Auth/verify \u2014 $cause',
         isError: true,
       );
     }
@@ -984,12 +1051,19 @@ class _AppShellState extends State<AppShell> {
   Future<ActionFeedback> _resendVerification(String email) async {
     try {
       final result = await widget.client.resendVerification(email);
+      final serverMessage = result['message']?.toString();
       return ActionFeedback(
-          message: result['message']?.toString() ??
-              'Verification code resent.');
+          message: serverMessage != null && serverMessage.isNotEmpty
+              ? 'Verification code resent: '
+                  'Portal.Auth/resend_verification \u2014 $serverMessage'
+              : 'Verification code resent: '
+                  'Portal.Auth/resend_verification \u2014 delivery queued '
+                  'to $email.');
     } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
       return ActionFeedback(
-          message: error.toString().replaceFirst('Exception: ', ''),
+          message: 'Verification code not resent: '
+              'Portal.Auth/resend_verification \u2014 $cause',
           isError: true);
     }
   }
@@ -998,10 +1072,13 @@ class _AppShellState extends State<AppShell> {
     try {
       final result = await widget.client.login(email, password);
       await _applyAuthPayload(result);
-      return const ActionFeedback(message: 'Login successful.');
+      return const ActionFeedback(
+          message: 'Signed in: Portal.Auth/login \u2014 '
+              'server accepted credentials.');
     } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
       return ActionFeedback(
-        message: error.toString().replaceFirst('Exception: ', ''),
+        message: 'Sign-in rejected: Portal.Auth/login \u2014 $cause',
         isError: true,
       );
     }
@@ -1010,12 +1087,18 @@ class _AppShellState extends State<AppShell> {
   Future<ActionFeedback> _requestPasswordReset(String email) async {
     try {
       final result = await widget.client.requestPasswordReset(email);
+      final serverMessage = result['message']?.toString();
       return ActionFeedback(
-          message:
-              result['message']?.toString() ?? 'Password reset email sent.');
+          message: serverMessage != null && serverMessage.isNotEmpty
+              ? 'Password reset email queued: '
+                  'Portal.Auth/password.reset.request \u2014 $serverMessage'
+              : 'Password reset email queued: '
+                  'Portal.Auth/password.reset.request \u2014 sent to $email.');
     } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
       return ActionFeedback(
-        message: error.toString().replaceFirst('Exception: ', ''),
+        message: 'Password reset email not sent: '
+            'Portal.Auth/password.reset.request \u2014 $cause',
         isError: true,
       );
     }
@@ -1026,11 +1109,19 @@ class _AppShellState extends State<AppShell> {
     try {
       final result =
           await widget.client.confirmPasswordReset(email, code, password);
+      final serverMessage = result['message']?.toString();
       return ActionFeedback(
-          message: result['message']?.toString() ?? 'Password updated.');
+          message: serverMessage != null && serverMessage.isNotEmpty
+              ? 'Password updated: '
+                  'Portal.Auth/password.reset.confirm \u2014 $serverMessage'
+              : 'Password updated: '
+                  'Portal.Auth/password.reset.confirm \u2014 '
+                  'server accepted reset code.');
     } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
       return ActionFeedback(
-        message: error.toString().replaceFirst('Exception: ', ''),
+        message: 'Password not updated: '
+            'Portal.Auth/password.reset.confirm \u2014 $cause',
         isError: true,
       );
     }
@@ -1131,8 +1222,15 @@ class _AppShellState extends State<AppShell> {
         'app_settings_updated_at':
             _localSettings['updated_at'] ?? DateTime.now().toUtc().toIso8601String(),
       };
-      _appendUiLog(
-          'Settings bootstrap after login fell back to local state: ${error.toString().replaceFirst('Exception: ', '')}');
+      _log(
+        level: DebugLogLevel.warning,
+        source: 'Portal.Sync.Settings/bootstrap',
+        message:
+            'Remote settings unavailable right after login: '
+            'Portal.Sync.Settings/bootstrap \u2014 '
+            '${error.toString().replaceFirst('Exception: ', '')}. '
+            'Using cached local settings.',
+      );
     }
     setState(() {
       _token = token;
@@ -1156,8 +1254,13 @@ class _AppShellState extends State<AppShell> {
     });
     await _loadInitialData();
     await _syncAllLocalData(showMessage: false);
-    _appendUiLog(
-        'Authenticated as ${user['username'] ?? user['email'] ?? 'user'}.');
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Portal.Auth/applyAuthPayload',
+      message:
+          'Session established: Portal.Auth/applyAuthPayload \u2014 '
+          'authenticated as ${user['username'] ?? user['email'] ?? 'user'}.',
+    );
   }
 
   Future<void> _logout() async {
@@ -1168,8 +1271,14 @@ class _AppShellState extends State<AppShell> {
     try {
       await widget.client.logout(token);
     } catch (error) {
-      _appendUiLog(
-          'Cloud logout failed, cleared local session anyway: ${error.toString().replaceFirst('Exception: ', '')}');
+      _log(
+        level: DebugLogLevel.warning,
+        source: 'Portal.Auth/logout',
+        message:
+            'Cloud logout call failed but local session cleared anyway: '
+            'Portal.Auth/logout \u2014 '
+            '${error.toString().replaceFirst('Exception: ', '')}.',
+      );
     }
     setState(() {
       _token = null;
@@ -1179,8 +1288,15 @@ class _AppShellState extends State<AppShell> {
       _deletedNotes = const [];
     });
     await _loadInitialData();
-    _showMessage('Signed out.');
-    _appendUiLog('Signed out.');
+    _showMessage(
+      'Signed out: Portal.Auth/logout \u2014 local session cleared.',
+    );
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Portal.Auth/logout',
+      message:
+          'Signed out: Portal.Auth/logout \u2014 local session cleared.',
+    );
   }
 
   bool _sameTrimmedValue(String a, String b) => a.trim() == b.trim();

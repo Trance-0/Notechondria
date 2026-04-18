@@ -116,6 +116,12 @@ Decompose by module so each round produces a reviewable diff. Order:
   `_confirmPasswordReset` / `_applyAuthPayload` / `_logout` migrated in
   0.1.26. Legacy `_appendUiLog` wrapper kept for call-site compatibility
   but primary error/info surfaces now use the full shape.
+- [x] `Planner.Auth` and `Portal.Auth` rounds (0.1.27): same method
+  surface migrated in both apps. OAuth launch + callback + bind failure
+  paths now emit `Planner.Auth/*` / `Portal.Auth/*` sources. Preserved
+  substring sentinels (`not_registered`, `No account found`) remain in
+  the branch selector and in the log message body so the
+  registration-prompt branch still fires.
 - [x] `Backend.Creators.Auth/bind.*` phased details (0.1.26): bind
   endpoints for Google and GitHub now emit per-phase `detail` strings
   covering `config_lookup`, `token_exchange`, `token_verify` / profile
