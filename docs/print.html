@@ -613,16 +613,50 @@ success/cancel/error paths migrated to
 <code>_restoreDeletedNote</code>, <code>_emptyDeletedNotes</code>, and <code>_syncAllLocalData</code>
 (all top-level sync entrypoint messages) migrated to
 <code>Editor.Sync.Notes/{pull,push,push_all,restore,empty_trash}</code> sources.</li>
-<li><input disabled="" type="checkbox"/>
-<code>Editor.LocalStore</code> round \u2014 starter workspace seed,
-<code>_clearLocalData</code>, <code>_restoreTemplateCourses</code>, draft persistence
-logging.</li>
-<li><input disabled="" type="checkbox"/>
-<code>Editor.UI</code> round \u2014 cosmetic info logs like
-"Opened category X" (~30 sites).</li>
-<li><input disabled="" type="checkbox"/>
-<code>Planner.*</code> and <code>Portal.*</code> rounds \u2014 same module breakdown
-as editor.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+<code>Editor.LocalStore</code> round (0.1.33): <code>_ensureStarterWorkspace</code>,
+<code>_clearLocalData</code>, <code>_restoreTemplateCourses</code>, <code>_copyFrontendLogs</code>,
+<code>_downloadConfigFile</code>, and the ZIP-import per-entry skip log
+migrated. Sources:
+<code>Editor.LocalStore/{seed_starter,clear,restore_templates,copy_logs,download_config,import_zip}</code>.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+<code>Editor.UI</code> round (0.1.33): <code>_selectCourse</code>, <code>_selectNote</code>,
+<code>_startNoteSession</code> / <code>_finishNoteSession</code>, the learner-notes list
+load failure path, and the in-editor save/create offline-fallback
+toasts migrated. Sources include
+<code>Editor.UI/{open_course,open_note,note_session.start,note_session.finish}</code>
+and <code>Editor.Sync.Notes/{list,create,save,delete,delete_local}</code>
+(some UI actions escalated from <code>Editor.UI</code> to
+<code>Editor.Sync.Notes</code> when they actually drive sync work).
+No direct <code>_appendUiLog(String)</code> call sites remain in
+<code>editor_app/lib/app_shell.dart</code>; the thin wrapper stays for
+callback signatures (<code>onLogEvent: _appendUiLog</code>) that some
+part-files still call.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+<code>Planner.*</code> round (0.1.34): every direct <code>_appendUiLog(String)</code>
+call site in <code>planner_app/lib/app_shell.dart</code> replaced with the
+structured <code>_log(...)</code> form. Migrated surfaces cover
+<code>Planner.LocalStore/{seed_starter,clear,clear_cache,copy_logs,restore_templates}</code>,
+<code>Planner.Sync.Settings/{save,avatar.upload}</code>,
+<code>Planner.Sync.Courses/{push,create_local,load,subscribe,unsubscribe}</code>,
+<code>Planner.Sync.Notes/{pull,push,create,save,save_local,delete,delete_local,restore,empty_trash,push_all,list}</code>,
+<code>Planner.Sync.Events/{create,create_local,toggle,toggle_local}</code>,
+<code>Planner.Sync.Calendar/{refresh,import,subscribe,toggle,delete}</code>,
+<code>Planner.Sync.Activity/load_week</code>, and
+<code>Planner.UI/{open_course,open_note,open_note_viewer,note_session.start,note_session.finish}</code>.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+<code>Portal.*</code> round (0.1.35): every direct <code>_appendUiLog(String)</code>
+call site in <code>portal_app/lib/app_shell.dart</code> replaced with the
+structured <code>_log(...)</code> form. Migrated surfaces cover
+<code>Portal.LocalStore/{seed_starter,clear,clear_cache,copy_logs,restore_templates}</code>,
+<code>Portal.Sync.FrontPage/{bootstrap,pull}</code>,
+<code>Portal.Sync.Settings/{save,avatar.upload}</code>,
+<code>Portal.Sync.Courses/{push,create_local,load,subscribe,unsubscribe}</code>,
+<code>Portal.Sync.Notes/{pull,push,create,save,save_local,delete,delete_local,restore,restore_version,empty_trash,push_all,list}</code>,
+<code>Portal.Sync.Events/{create,toggle}</code>,
+<code>Portal.Sync.Calendar/{refresh,import,subscribe,toggle,delete}</code>,
+<code>Portal.Sync.Activity/load_week</code>, and
+<code>Portal.UI/{open_course,open_note,open_note_viewer,note_session.start,note_session.finish}</code>.</li>
 <li><input disabled="" type="checkbox" checked=""/>
 <code>Backend.Creators.Auth</code> + <code>Backend.Creators.Settings</code> round
 (0.1.29): every non-bind <code>serializers.ValidationError(...)</code> and the
