@@ -137,9 +137,15 @@ Decompose by module so each round produces a reviewable diff. Order:
   as editor.
 - [ ] `Shared.AuthDialog` round \u2014 auth dialog stack error surfaces
   in `frontend/notechondria_shared/lib/src/components/auth_dialogs.dart`.
-- [ ] `Backend.Creators.Auth` round \u2014 ~40
-  `serializers.ValidationError(...)` and `Response({"detail": ...})`
-  sites in `backend/creators/api.py`. Keep `bind` substring intact.
+- [x] `Backend.Creators.Auth` + `Backend.Creators.Settings` round
+  (0.1.29): every non-bind `serializers.ValidationError(...)` and the
+  `Response({"detail": ...})` branches in the
+  `ChangePasswordApiView.post` path migrated to
+  `Backend.Creators.{Auth,Settings}/<process>` shape. Register /
+  login / verify / resend_verification / password.reset.{request,confirm}
+  / password.change / email.change.{request,confirm} / settings.update
+  / oauth.register all covered. Preserved `bind` substring sentinel
+  unchanged. 29 creators tests still pass.
 - [x] `Backend.Notes.*` round (0.1.28): every `Response({"detail": ...})`
   and `serializers.ValidationError(...)` in `backend/notes/api.py`
   migrated to `Backend.Notes.{Courses,Notes,Blocks}/<process>` shape.

@@ -103,13 +103,21 @@ class RegisterSerializer(serializers.Serializer):
 
     def validate_username(self, value):
         if User.objects.filter(username__iexact=value).exists():
-            raise serializers.ValidationError("This username is already taken.")
+            raise serializers.ValidationError(
+                "Registration rejected: "
+                "Backend.Creators.Auth/register.validate_username \u2014 "
+                "this username is already taken."
+            )
         return value
 
     def validate_email(self, value):
         existing = User.objects.filter(email__iexact=value).first()
         if existing and existing.is_active:
-            raise serializers.ValidationError("A verified account already exists for this email.")
+            raise serializers.ValidationError(
+                "Registration rejected: "
+                "Backend.Creators.Auth/register.validate_email \u2014 "
+                "a verified account already exists for this email."
+            )
         return value.lower()
 
     def validate_password(self, value):
@@ -118,7 +126,9 @@ class RegisterSerializer(serializers.Serializer):
         has_digit_or_special = any(not c.isalpha() for c in value)
         if not (has_upper and has_lower and has_digit_or_special):
             raise serializers.ValidationError(
-                "Password must contain at least one uppercase letter, "
+                "Registration rejected: "
+                "Backend.Creators.Auth/register.validate_password \u2014 "
+                "password must contain at least one uppercase letter, "
                 "one lowercase letter, and one digit or special character."
             )
         return value
@@ -129,7 +139,11 @@ class RegisterSerializer(serializers.Serializer):
         code_hash = InvitationCode.hash_code(value)
         invite = InvitationCode.objects.filter(code_hash=code_hash).first()
         if invite is None or not invite.is_valid():
-            raise serializers.ValidationError("Invalid or expired invitation code.")
+            raise serializers.ValidationError(
+                "Registration rejected: "
+                "Backend.Creators.Auth/register.validate_invitation_code \u2014 "
+                "invitation code is invalid or expired."
+            )
         return value
 
     def validate(self, attrs):
@@ -139,7 +153,12 @@ class RegisterSerializer(serializers.Serializer):
             code = attrs.get("invitation_code", "").strip()
             if not code:
                 raise serializers.ValidationError(
-                    {"invitation_code": "An invitation code is required to register."}
+                    {"invitation_code": (
+                        "Registration rejected: "
+                        "Backend.Creators.Auth/register.validate \u2014 "
+                        "an invitation code is required because this instance "
+                        "has at least one active invitation gate."
+                    )}
                 )
         return attrs
 
@@ -190,10 +209,18 @@ class VerifyEmailSerializer(serializers.Serializer):
             expire_date__gt=now(),
         ).first()
         if verification is None:
-            raise serializers.ValidationError("Invalid or expired verification code.")
+            raise serializers.ValidationError(
+                "Email verification failed: "
+                "Backend.Creators.Auth/verify \u2014 "
+                "verification code is invalid, expired, or already consumed."
+            )
         user = User.objects.filter(email__iexact=email).first()
         if user is None:
-            raise serializers.ValidationError("No pending account found for this email.")
+            raise serializers.ValidationError(
+                "Email verification failed: "
+                "Backend.Creators.Auth/verify \u2014 "
+                "no pending account found for this email."
+            )
         attrs["user"] = user
         attrs["verification"] = verification
         return attrs
@@ -207,16 +234,28 @@ class LoginSerializer(serializers.Serializer):
     def validate(self, attrs):
         identifier = (attrs.get("identifier") or attrs.get("email") or "").strip()
         if not identifier:
-            raise serializers.ValidationError("Email or username is required.")
+            raise serializers.ValidationError(
+                "Sign-in rejected: "
+                "Backend.Creators.Auth/login \u2014 "
+                "either email or username is required in the login payload."
+            )
         matched_user = User.objects.filter(email__iexact=identifier).first()
         if matched_user is None:
             matched_user = User.objects.filter(username__iexact=identifier).first()
         username = matched_user.username if matched_user else identifier
         user = authenticate(username=username, password=attrs["password"])
         if user is None:
-            raise serializers.ValidationError("Email/username/password mismatch.")
+            raise serializers.ValidationError(
+                "Sign-in rejected: "
+                "Backend.Creators.Auth/login \u2014 "
+                "email/username and password do not match any active account."
+            )
         if not user.is_active:
-            raise serializers.ValidationError("Email verification is still pending.")
+            raise serializers.ValidationError(
+                "Sign-in rejected: "
+                "Backend.Creators.Auth/login \u2014 "
+                "email verification is still pending for this account."
+            )
         attrs["user"] = user
         return attrs
 
@@ -227,9 +266,17 @@ class ResendVerificationSerializer(serializers.Serializer):
     def validate_email(self, value):
         user = User.objects.filter(email__iexact=value).first()
         if user is None:
-            raise serializers.ValidationError("No account found for this email.")
+            raise serializers.ValidationError(
+                "Verification code not resent: "
+                "Backend.Creators.Auth/resend_verification \u2014 "
+                "no account found for this email."
+            )
         if user.is_active:
-            raise serializers.ValidationError("This account is already verified.")
+            raise serializers.ValidationError(
+                "Verification code not resent: "
+                "Backend.Creators.Auth/resend_verification \u2014 "
+                "this account is already verified."
+            )
         # 60-second cooldown: reject if a valid code was issued less than
         # 60 seconds ago to prevent spamming the email endpoint.
         from datetime import timedelta
@@ -244,7 +291,10 @@ class ResendVerificationSerializer(serializers.Serializer):
             created_approx = recent.expire_date - timedelta(hours=ttl_hours)
             if (now() - created_approx).total_seconds() < 60:
                 raise serializers.ValidationError(
-                    "Please wait 60 seconds before requesting a new code."
+                    "Verification code not resent: "
+                    "Backend.Creators.Auth/resend_verification \u2014 "
+                    "cooldown is active; wait 60 seconds before requesting "
+                    "a new code."
                 )
         return value.lower()
 
@@ -306,7 +356,11 @@ class SettingsSerializer(serializers.Serializer):
         user = self.instance.user_id if self.instance is not None else None
         existing = User.objects.filter(username__iexact=value).exclude(pk=user.pk if user else None).first()
         if existing is not None:
-            raise serializers.ValidationError("This username is already in use.")
+            raise serializers.ValidationError(
+                "Settings not saved: "
+                "Backend.Creators.Settings/update.validate_username \u2014 "
+                "this username is already in use by another account."
+            )
         return value
 
     def validate_email(self, value):
@@ -315,7 +369,11 @@ class SettingsSerializer(serializers.Serializer):
             return user.email
         existing = User.objects.filter(email__iexact=value).exclude(pk=user.pk if user else None).first()
         if existing is not None:
-            raise serializers.ValidationError("This email is already in use.")
+            raise serializers.ValidationError(
+                "Settings not saved: "
+                "Backend.Creators.Settings/update.validate_email \u2014 "
+                "this email is already in use by another account."
+            )
         return value.lower()
 
     def validate_api_base_url(self, value):
@@ -323,7 +381,9 @@ class SettingsSerializer(serializers.Serializer):
         parsed = urlparse(normalized)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
             raise serializers.ValidationError(
-                "Use a full http:// or https:// API base URL."
+                "Settings not saved: "
+                "Backend.Creators.Settings/update.validate_api_base_url \u2014 "
+                "value must be a full http:// or https:// URL with a host."
             )
         return normalized
 
@@ -379,7 +439,11 @@ class PasswordResetRequestSerializer(serializers.Serializer):
     def validate_email(self, value):
         user = User.objects.filter(email__iexact=value).first()
         if user is None:
-            raise serializers.ValidationError("No account found for this email.")
+            raise serializers.ValidationError(
+                "Password reset email not sent: "
+                "Backend.Creators.Auth/password.reset.request \u2014 "
+                "no account found for this email."
+            )
         return value.lower()
 
 
@@ -399,10 +463,18 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
             expire_date__gt=now(),
         ).first()
         if verification is None:
-            raise serializers.ValidationError("Invalid or expired reset code.")
+            raise serializers.ValidationError(
+                "Password not updated: "
+                "Backend.Creators.Auth/password.reset.confirm \u2014 "
+                "reset code is invalid, expired, or already consumed."
+            )
         user = User.objects.filter(email__iexact=email).first()
         if user is None:
-            raise serializers.ValidationError("No account found for this email.")
+            raise serializers.ValidationError(
+                "Password not updated: "
+                "Backend.Creators.Auth/password.reset.confirm \u2014 "
+                "no account found for this email."
+            )
         attrs["user"] = user
         attrs["verification"] = verification
         return attrs
@@ -600,7 +672,10 @@ class ChangePasswordSerializer(serializers.Serializer):
         has_other = any(not c.isalpha() for c in value)
         if not (has_upper and has_lower and has_other):
             raise serializers.ValidationError(
-                "Password needs uppercase, lowercase, and a digit or special character."
+                "Password not updated: "
+                "Backend.Creators.Auth/password.change.validate \u2014 "
+                "password must contain at least one uppercase letter, one "
+                "lowercase letter, and one digit or special character."
             )
         return value
 
@@ -616,12 +691,21 @@ class ChangePasswordApiView(APIView):
         vc = _consume_identity_code(user, serializer.validated_data["identity_code"])
         if vc is None:
             return Response(
-                {"detail": "Invalid or expired identity verification code."},
+                {"detail": (
+                    "Password not updated: "
+                    "Backend.Creators.Auth/password.change \u2014 "
+                    "identity verification code is invalid, expired, or "
+                    "already consumed."
+                )},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         if not user.check_password(serializer.validated_data["current_password"]):
             return Response(
-                {"detail": "Current password is incorrect."},
+                {"detail": (
+                    "Password not updated: "
+                    "Backend.Creators.Auth/password.change \u2014 "
+                    "current password does not match."
+                )},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         user.set_password(serializer.validated_data["new_password"])
@@ -629,7 +713,14 @@ class ChangePasswordApiView(APIView):
         # Rotate auth token so old sessions are invalidated.
         Token.objects.filter(user=user).delete()
         token, _ = Token.objects.get_or_create(user=user)
-        return Response({"message": "Password changed.", "token": token.key})
+        return Response({
+            "message": (
+                "Password changed: "
+                "Backend.Creators.Auth/password.change \u2014 "
+                "session token rotated; previous sessions invalidated."
+            ),
+            "token": token.key,
+        })
 
 
 class ChangeEmailRequestSerializer(serializers.Serializer):
@@ -639,7 +730,11 @@ class ChangeEmailRequestSerializer(serializers.Serializer):
     def validate_new_email(self, value):
         normalised = value.lower()
         if User.objects.filter(email__iexact=normalised).exists():
-            raise serializers.ValidationError("This email is already in use.")
+            raise serializers.ValidationError(
+                "Email change aborted: "
+                "Backend.Creators.Auth/email.change.request \u2014 "
+                "this email is already in use by another account."
+            )
         return normalised
 
 
@@ -658,9 +753,17 @@ class ChangeEmailConfirmSerializer(serializers.Serializer):
             expire_date__gt=now(),
         ).first()
         if verification is None:
-            raise serializers.ValidationError("Invalid or expired verification code.")
+            raise serializers.ValidationError(
+                "Email change aborted: "
+                "Backend.Creators.Auth/email.change.confirm \u2014 "
+                "verification code is invalid, expired, or already consumed."
+            )
         if User.objects.filter(email__iexact=email).exists():
-            raise serializers.ValidationError("This email is already in use.")
+            raise serializers.ValidationError(
+                "Email change aborted: "
+                "Backend.Creators.Auth/email.change.confirm \u2014 "
+                "this email is already in use by another account."
+            )
         attrs["verification"] = verification
         return attrs
 
@@ -803,13 +906,22 @@ def _validate_invitation_if_required(invitation_code: str):
     code = invitation_code.strip()
     if not code:
         raise serializers.ValidationError(
-            {"invitation_code": "An invitation code is required to register."}
+            {"invitation_code": (
+                "Registration rejected: "
+                "Backend.Creators.Auth/oauth.register.validate_invitation_code \u2014 "
+                "this instance has active invitation gates; supply a valid "
+                "invitation code."
+            )}
         )
     code_hash = InvitationCode.hash_code(code)
     invite = InvitationCode.objects.filter(code_hash=code_hash).first()
     if invite is None or not invite.is_valid():
         raise serializers.ValidationError(
-            {"invitation_code": "Invalid or expired invitation code."}
+            {"invitation_code": (
+                "Registration rejected: "
+                "Backend.Creators.Auth/oauth.register.validate_invitation_code \u2014 "
+                "invitation code is invalid or expired."
+            )}
         )
     invite.consume()
 
@@ -942,7 +1054,10 @@ class GoogleOAuthSerializer(serializers.Serializer):
         id_token = (attrs.get("id_token") or "").strip()
         if not code and not id_token:
             raise serializers.ValidationError(
-                "Either 'code' (authorization code) or 'id_token' is required."
+                "OAuth request rejected: "
+                "Backend.Creators.Auth/oauth.google.validate \u2014 "
+                "payload must include either 'code' (authorization code) "
+                "or 'id_token'."
             )
         return attrs
 
