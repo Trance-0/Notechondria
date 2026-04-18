@@ -120818,7 +120818,7 @@ I(a){var s,r,q=this,p=A.i6(new A.aH7(q))
 if(q.f){s=q.a.f
 r=q.dy.h(0,"api_base_url")
 r=r==null?null:J.J(r)
-return A.ht(B.bQ,A.b([p,A.AO(0,new A.KS(s,"0.1.25",new A.aH8(q),q.k4,r,null))],t.p),B.w,B.bB,null)}return p},
+return A.ht(B.bQ,A.b([p,A.AO(0,new A.KS(s,"0.1.26",new A.aH8(q),q.k4,r,null))],t.p),B.w,B.bB,null)}return p},
 amc(){var s,r,q,p,o,n=this,m=null,l=n.d
 l=l!==2?A.al(B.rB[l],m,m,m,m,m,m,m,m):m
 s=n.Ym()
@@ -120879,9 +120879,13 @@ return A.Td(A.b2e(A.bp(k,B.bU,B.k,B.t,0,B.y)),B.qu,A.af4(),B.aj,B.aj,A.b3x())},
 amC(){var s,r,q,p,o,n,m,l,k,j=this,i=null
 switch(j.d){case 0:s=j.at
 r=j.ax
-q=A.W(j.Q,t.P)
-B.b.D(q,j.z)
-p=j.y
+q=j.w
+q=q==null||q.length===0
+p=t.P
+o=j.Q
+if(q)q=A.W(o,p)
+else{q=A.W(o,p)
+B.b.D(q,j.z)}p=j.y
 if(p==null)p=i
 else{p=J.U(p,"editor_mode")
 p=p==null?i:J.J(p)}if(p==null)p="P"

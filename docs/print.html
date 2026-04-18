@@ -523,32 +523,7 @@ Sync the editor sidebar for the portal sidebar. (Removing title, <code>wide layo
 </ul>
 <h3 id="login-and-account-info"><a class="header" href="#login-and-account-info">Login and account info</a></h3>
 <ul>
-<li>
-<p><input disabled="" type="checkbox"/>
-OAuth callback loading screen message. While the editor/portal/
-planner is handling <code>_handleOAuthCallback</code>, the splash currently reads
-"Completing sign-in" for all intents and both providers. Spec: when a
-<code>?state=google|github</code> is present, set <code>_splashStatus.value</code> to
-<code>'Completing sign-in via Google'</code> / <code>'Completing sign-in via GitHub'</code>.
-If <code>intent=bind</code>, read <code>'Linking Google account'</code> etc. The splash
-widget itself already cross-fades between statuses; this is just a
-host-side string change.</p>
-</li>
-<li>
-<p><input disabled="" type="checkbox"/>
-Account linking error detail. Today <code>bind</code> failures surface as
-<code>Account linking failed: HTTP 500</code> or plain <code>Internal Server Error</code>
-text. Backend must catch each phase of <code>/api/v1/auth/bind/&lt;provider&gt;/</code>
-(config lookup, token exchange, profile fetch, email match, DB write)
-and return
-<code>{"detail": "&lt;consequence&gt;: Backend.Creators.Auth/bind.&lt;phase&gt; \u2014 &lt;cause&gt;"}</code>
-with a meaningful HTTP status (4xx for user-actionable, 5xx for true
-server bugs). Frontend then logs the detail verbatim and shows it in
-the SnackBar. Tests in <code>backend/creators/tests.py</code> must continue to
-match the literal substring <code>bind</code> for intent rejection.</p>
-</li>
-<li>
-<p><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox"/>
 Full feature parity with editor Settings: API key section (with rotate
 button and MCP endpoint helper), password-change dialog with identity code
 verification, email-change dialog, config file download. As of 0.1.18 the
@@ -556,8 +531,7 @@ Settings module is visible in portal's sidebar and covers the basic
 account/preferences/sync surfaces, but the v0.1.17 editor-only additions
 still need to be ported into <code>portal_app/lib/modules/settings.dart</code> — this
 requires syncing client methods, app_shell callback wiring, and the
-<code>_ApiKeySection</code> widget.</p>
-</li>
+<code>_ApiKeySection</code> widget.</li>
 </ul>
 <h3 id="app-preferences"><a class="header" href="#app-preferences">App preferences</a></h3>
 <h3 id="debug-log-window"><a class="header" href="#debug-log-window">Debug log window</a></h3>
@@ -596,11 +570,19 @@ in editor/planner/portal <code>_handleOAuthCallback</code>.</li>
 OAuth launch + callback messages in editor_app (done in the 0.1.25
 pass, see <code>docs/versions/0.1.25.md</code>). Remaining OAuth sites in
 planner/portal still need the same treatment.</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 <code>Editor.Auth</code> round: editor_app <code>_register</code> / <code>_verify</code> /
 <code>_resendVerification</code> / <code>_login</code> / <code>_requestPasswordReset</code> /
-<code>_confirmPasswordReset</code> / <code>_applyAuthPayload</code> / <code>_logout</code>
-(~14 <code>_appendUiLog</code> and <code>ActionFeedback</code> sites).</li>
+<code>_confirmPasswordReset</code> / <code>_applyAuthPayload</code> / <code>_logout</code> migrated in
+0.1.26. Legacy <code>_appendUiLog</code> wrapper kept for call-site compatibility
+but primary error/info surfaces now use the full shape.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+<code>Backend.Creators.Auth/bind.*</code> phased details (0.1.26): bind
+endpoints for Google and GitHub now emit per-phase <code>detail</code> strings
+covering <code>config_lookup</code>, <code>token_exchange</code>, <code>token_verify</code> / profile
+fetch, and <code>db_write</code>. Network errors on the Google/GitHub side
+return <code>502</code>; missing server OAuth config returns <code>503</code>. The public
+<code>bind</code> substring sentinel in <code>creators.tests</code> is unchanged.</li>
 <li><input disabled="" type="checkbox"/>
 <code>Editor.Sync.Settings</code>, <code>Editor.Sync.Courses</code>, <code>Editor.Sync.Notes</code>,
 <code>Editor.LocalStore</code> rounds \u2014 split one per module; each is
@@ -641,13 +623,6 @@ Inbox), review whether planner should have an analogous
 whether the planning-course semantics make a non-Inbox default the
 right default for planner. Decide before changing; changing planner's
 starter default is a UX break.</li>
-<li><input disabled="" type="checkbox"/>
-Extend the editor's cloud-category offline-hide behavior
-(<code>editor_app/lib/app_shell.dart</code> <code>_allCategories</code> getter) to planner
-and portal. The editor now hides cloud rows from the sidebar while
-signed out so the app reads as local-only; planner and portal still
-show cached cloud rows. Apply the same <code>_token == null || _token!.isEmpty</code>
-gate in each app's sidebar source list.</li>
 <li><input disabled="" type="checkbox"/>
 Cloud category "subscribe but keep private" — a user can save a
 reference to a cloud course as one of their local categories without

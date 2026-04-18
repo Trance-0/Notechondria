@@ -119199,7 +119199,7 @@ I(a){var s,r,q=this,p=A.i3(new A.aGL(q))
 if(q.f){s=q.a.f
 r=q.fr.h(0,"api_base_url")
 r=r==null?null:J.I(r)
-return A.ho(B.bP,A.b([p,A.AH(0,new A.KC(s,"0.1.25",new A.aGM(q),q.k4,r,null))],t.p),B.y,B.bx,null)}return p},
+return A.ho(B.bP,A.b([p,A.AH(0,new A.KC(s,"0.1.26",new A.aGM(q),q.k4,r,null))],t.p),B.y,B.bx,null)}return p},
 alQ(){var s,r,q,p,o,n=this,m=null,l=n.d
 l=l!==3?A.ai(B.rq[l],m,m,m,m,m,m,m,m):m
 s=n.Yl()
@@ -119266,9 +119266,13 @@ q=q==null?i:q.b
 return new A.a5Z(s,r,q,j.gayM(),j.ga3o(),i)
 case 1:s=j.ax
 r=j.ay
-q=A.V(j.as,t.P)
-B.b.D(q,j.Q)
-p=j.y
+q=j.w
+q=q==null||q.length===0
+p=t.P
+o=j.as
+if(q)q=A.V(o,p)
+else{q=A.V(o,p)
+B.b.D(q,j.Q)}p=j.y
 if(p==null)p=i
 else{p=J.W(p,"editor_mode")
 p=p==null?i:J.I(p)}if(p==null)p="P"
