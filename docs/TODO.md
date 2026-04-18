@@ -175,7 +175,18 @@ Decompose by module so each round produces a reviewable diff. Order:
   `Planner.Sync.Calendar/{refresh,import,subscribe,toggle,delete}`,
   `Planner.Sync.Activity/load_week`, and
   `Planner.UI/{open_course,open_note,open_note_viewer,note_session.start,note_session.finish}`.
-- [ ] `Portal.*` round \u2014 same module breakdown as editor/planner.
+- [x] `Portal.*` round (0.1.35): every direct `_appendUiLog(String)`
+  call site in `portal_app/lib/app_shell.dart` replaced with the
+  structured `_log(...)` form. Migrated surfaces cover
+  `Portal.LocalStore/{seed_starter,clear,clear_cache,copy_logs,restore_templates}`,
+  `Portal.Sync.FrontPage/{bootstrap,pull}`,
+  `Portal.Sync.Settings/{save,avatar.upload}`,
+  `Portal.Sync.Courses/{push,create_local,load,subscribe,unsubscribe}`,
+  `Portal.Sync.Notes/{pull,push,create,save,save_local,delete,delete_local,restore,restore_version,empty_trash,push_all,list}`,
+  `Portal.Sync.Events/{create,toggle}`,
+  `Portal.Sync.Calendar/{refresh,import,subscribe,toggle,delete}`,
+  `Portal.Sync.Activity/load_week`, and
+  `Portal.UI/{open_course,open_note,open_note_viewer,note_session.start,note_session.finish}`.
 - [x] `Backend.Creators.Auth` + `Backend.Creators.Settings` round
   (0.1.29): every non-bind `serializers.ValidationError(...)` and the
   `Response({"detail": ...})` branches in the
