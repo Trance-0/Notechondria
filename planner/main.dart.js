@@ -116129,15 +116129,15 @@ case 6:case 1:return A.w(q,r)
 case 2:return A.v(o.at(-1),r)}})
 return A.x($async$Al,r)},
 aGb(){var s,r,q,p,o=this
-if(B.c.aq(o.f.a.a).length===0)return"Username is required."
-if(B.c.aq(o.r.a.a).length===0)return"Email is required."
+if(B.c.aq(o.f.a.a).length===0)return"Registration rejected: Shared.AuthDialog/register.validate_form \u2014 username is required."
+if(B.c.aq(o.r.a.a).length===0)return"Registration rejected: Shared.AuthDialog/register.validate_form \u2014 email is required."
 s=o.w.a.a
-if(s.length<8)return"Password must be at least 8 characters."
+if(s.length<8)return"Registration rejected: Shared.AuthDialog/register.validate_form \u2014 password must be at least 8 characters."
 r=B.c.p(s,A.aO("[A-Z]",!0,!1,!1))
 q=B.c.p(s,A.aO("[a-z]",!0,!1,!1))
 p=B.c.p(s,A.aO("[^a-zA-Z]",!0,!1,!1))
-if(!r||!q||!p)return"Password needs uppercase, lowercase, and a digit or special character."
-if(s!==o.x.a.a)return"Passwords do not match."
+if(!r||!q||!p)return"Registration rejected: Shared.AuthDialog/register.validate_form \u2014 password must contain uppercase, lowercase, and a digit or special character."
+if(s!==o.x.a.a)return"Registration rejected: Shared.AuthDialog/register.validate_form \u2014 passwords do not match."
 return null},
 Ac(){var s=0,r=A.y(t.H),q,p=this,o,n,m
 var $async$Ac=A.z(function(a,b){if(a===1)return A.v(b,r)
@@ -116241,7 +116241,7 @@ $S:0}
 A.aSr.prototype={
 $0(){var s=this.a
 s.Q=!1
-s.z=new A.cm(B.c.cg(J.J(this.b),"Exception: ",""),!0)},
+s.z=new A.cm("Registration blocked: Shared.AuthDialog/register.validate_invitation \u2014 "+B.c.cg(J.J(this.b),"Exception: ",""),!0)},
 $S:0}
 A.aSk.prototype={
 $0(){this.a.z=new A.cm(this.b,!0)},
@@ -116459,7 +116459,7 @@ A.aLT.prototype={
 $0(){if(--this.a.w<=0)this.b.b5(0)},
 $S:0}
 A.aLQ.prototype={
-$0(){this.a.f=B.a3q},
+$0(){this.a.f=B.a3p},
 $S:0}
 A.aLR.prototype={
 $0(){var s=this.a
@@ -116557,7 +116557,7 @@ if(s.f.a.a!==s.r.a.a){s.K(new A.aR6(s))
 return}s.A2(new A.aR7(s),!0)},
 $S:0}
 A.aR6.prototype={
-$0(){this.a.w=B.a3y},
+$0(){this.a.w=B.a3x},
 $S:0}
 A.aR7.prototype={
 $0(){var s=this.a,r=s.a
@@ -119358,7 +119358,7 @@ return A.m(n.a.c.Dk(a,b),$async$An)
 case 7:m=d
 s=8
 return A.m(n.lR(m),$async$An)
-case 8:q=B.a3x
+case 8:q=B.a3y
 s=1
 break
 p=2
@@ -119729,7 +119729,7 @@ return A.x($async$PA,r)},
 pS(){var s=0,r=A.y(t.sT),q,p=2,o=[],n=this,m,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1,a2,a3,a4,a5,a6,a7,a8,a9,b0,b1,b2,b3,b4
 var $async$pS=A.z(function(b5,b6){if(b5===1){o.push(b6)
 s=p}for(;;)switch(s){case 0:b3=n.w
-if(b3==null||b3.length===0){q=B.a3p
+if(b3==null||b3.length===0){q=B.a3q
 s=1
 break}p=4
 a6=t.P
@@ -120825,7 +120825,7 @@ I(a){var s,r,q=this,p=A.i6(new A.aH7(q))
 if(q.f){s=q.a.f
 r=q.dy.h(0,"api_base_url")
 r=r==null?null:J.J(r)
-return A.ht(B.bQ,A.b([p,A.AO(0,new A.KS(s,"0.1.28",new A.aH8(q),q.k4,r,null))],t.p),B.w,B.bB,null)}return p},
+return A.ht(B.bQ,A.b([p,A.AO(0,new A.KS(s,"0.1.31",new A.aH8(q),q.k4,r,null))],t.p),B.w,B.bB,null)}return p},
 amc(){var s,r,q,p,o,n=this,m=null,l=n.d
 l=l!==2?A.al(B.rD[l],m,m,m,m,m,m,m,m):m
 s=n.Ym()
@@ -132404,16 +132404,16 @@ B.p7=new A.yn(1,"requestedFocus")
 B.a3n=new A.yn(2,"receivedDomFocus")
 B.a3o=new A.yn(3,"receivedDomBlur")
 B.b2U=new A.afV(0,"unknown")
-B.a3p=new A.cm("Sign in to pull cloud notes.",!0)
-B.a3q=new A.cm("Enter your email first.",!0)
+B.a3p=new A.cm("Verification code not resent: Shared.AuthDialog/verify.resend \u2014 email field is empty; enter an email to resend to.",!0)
+B.a3q=new A.cm("Sign in to pull cloud notes.",!0)
 B.a3r=new A.cm("Signed in: Planner.Auth/login \u2014 server accepted credentials.",!1)
 B.a3s=new A.cm("Saved local planner event.",!1)
 B.a3t=new A.cm("Saved locally.",!1)
-B.a3u=new A.cm("Invalid or expired invitation code.",!0)
+B.a3u=new A.cm("Registration blocked: Shared.AuthDialog/register.validate_invitation \u2014 invitation code is invalid or expired.",!0)
 B.a3v=new A.cm("Sign in to sync local courses and drafts.",!0)
 B.a3w=new A.cm("No changes.",!1)
-B.a3x=new A.cm("Signed in: Planner.Auth/verify \u2014 email verified and session issued.",!1)
-B.a3y=new A.cm("Passwords do not match.",!0)
+B.a3x=new A.cm("Password not updated: Shared.AuthDialog/password.reset.confirm \u2014 new password and confirmation do not match.",!0)
+B.a3y=new A.cm("Signed in: Planner.Auth/verify \u2014 email verified and session issued.",!1)
 B.a3z=new A.cm("Future event added to the heatmap.",!1)
 B.a3A=new A.cm("Cloud pull cancelled.",!0)
 B.a3B=new A.cm("Local data synced to the cloud.",!1)

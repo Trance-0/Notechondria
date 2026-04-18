@@ -114320,15 +114320,15 @@ case 6:case 1:return A.w(q,r)
 case 2:return A.v(o.at(-1),r)}})
 return A.x($async$Ao,r)},
 aFs(){var s,r,q,p,o=this
-if(B.c.aw(o.f.a.a).length===0)return"Username is required."
-if(B.c.aw(o.r.a.a).length===0)return"Email is required."
+if(B.c.aw(o.f.a.a).length===0)return"Registration rejected: Shared.AuthDialog/register.validate_form \u2014 username is required."
+if(B.c.aw(o.r.a.a).length===0)return"Registration rejected: Shared.AuthDialog/register.validate_form \u2014 email is required."
 s=o.w.a.a
-if(s.length<8)return"Password must be at least 8 characters."
+if(s.length<8)return"Registration rejected: Shared.AuthDialog/register.validate_form \u2014 password must be at least 8 characters."
 r=B.c.p(s,A.aK("[A-Z]",!0,!1,!1))
 q=B.c.p(s,A.aK("[a-z]",!0,!1,!1))
 p=B.c.p(s,A.aK("[^a-zA-Z]",!0,!1,!1))
-if(!r||!q||!p)return"Password needs uppercase, lowercase, and a digit or special character."
-if(s!==o.x.a.a)return"Passwords do not match."
+if(!r||!q||!p)return"Registration rejected: Shared.AuthDialog/register.validate_form \u2014 password must contain uppercase, lowercase, and a digit or special character."
+if(s!==o.x.a.a)return"Registration rejected: Shared.AuthDialog/register.validate_form \u2014 passwords do not match."
 return null},
 Ag(){var s=0,r=A.y(t.H),q,p=this,o,n,m
 var $async$Ag=A.u(function(a,b){if(a===1)return A.v(b,r)
@@ -114432,7 +114432,7 @@ $S:0}
 A.aS4.prototype={
 $0(){var s=this.a
 s.Q=!1
-s.z=new A.bT(B.c.c6(J.I(this.b),"Exception: ",""),!0)},
+s.z=new A.bT("Registration blocked: Shared.AuthDialog/register.validate_invitation \u2014 "+B.c.c6(J.I(this.b),"Exception: ",""),!0)},
 $S:0}
 A.aRY.prototype={
 $0(){this.a.z=new A.bT(this.b,!0)},
@@ -114650,7 +114650,7 @@ A.aLC.prototype={
 $0(){if(--this.a.w<=0)this.b.b4(0)},
 $S:0}
 A.aLz.prototype={
-$0(){this.a.f=B.a3t},
+$0(){this.a.f=B.a3p},
 $S:0}
 A.aLA.prototype={
 $0(){var s=this.a
@@ -114748,7 +114748,7 @@ if(s.f.a.a!==s.r.a.a){s.K(new A.aQH(s))
 return}s.Aa(new A.aQI(s),!0)},
 $S:0}
 A.aQH.prototype={
-$0(){this.a.w=B.a3D},
+$0(){this.a.w=B.a3B},
 $S:0}
 A.aQI.prototype={
 $0(){var s=this.a,r=s.a
@@ -117659,7 +117659,7 @@ return A.m(n.a.c.Ce(a,b),$async$zK)
 case 7:m=d
 s=8
 return A.m(n.lQ(m),$async$zK)
-case 8:q=B.a3p
+case 8:q=B.a3q
 s=1
 break
 p=2
@@ -117969,7 +117969,7 @@ return A.x($async$PE,r)},
 pP(){var s=0,r=A.y(t.sT),q,p=2,o=[],n=this,m,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1,a2,a3,a4,a5,a6,a7,a8,a9,b0,b1,b2,b3,b4
 var $async$pP=A.u(function(b5,b6){if(b5===1){o.push(b6)
 s=p}for(;;)switch(s){case 0:b3=n.w
-if(b3==null||b3.length===0){q=B.a3r
+if(b3==null||b3.length===0){q=B.a3s
 s=1
 break}p=4
 a6=t.P
@@ -118229,7 +118229,7 @@ break}p=4
 s=7
 return A.m(A.b3P(B.ayW),$async$w3)
 case 7:m=b
-if(m==null){q=B.a3q
+if(m==null){q=B.a3r
 s=1
 break}s=8
 return A.m(n.a.c.y7(f,m),$async$w3)
@@ -118244,7 +118244,7 @@ s=9
 return A.m(n.i1(),$async$w3)
 case 9:n.K(new A.aGI(n,l))
 n.c3(B.a3,"Avatar updated.","")
-q=B.a3B
+q=B.a3C
 s=1
 break
 p=2
@@ -119080,7 +119080,7 @@ case 3:s=4
 return A.m(p.i1(),$async$z0)
 case 4:if(p.c!=null)p.K(new A.aFA())
 p.c3(B.a3,"Cleared cached remote data.","")
-q=B.a3C
+q=B.a3D
 s=1
 break
 case 1:return A.w(q,r)}})
@@ -119105,7 +119105,7 @@ case 4:s=5
 return A.m(p.i1(),$async$v6)
 case 5:if(p.c!=null)p.K(new A.aFB())
 p.c3(B.a3,"Removed local drafts and local courses.","")
-q=B.a3s
+q=B.a3t
 s=1
 break
 case 1:return A.w(q,r)}})
@@ -119206,7 +119206,7 @@ I(a){var s,r,q=this,p=A.i3(new A.aGL(q))
 if(q.f){s=q.a.f
 r=q.fr.h(0,"api_base_url")
 r=r==null?null:J.I(r)
-return A.ho(B.bP,A.b([p,A.AH(0,new A.KC(s,"0.1.28",new A.aGM(q),q.k4,r,null))],t.p),B.y,B.bx,null)}return p},
+return A.ho(B.bP,A.b([p,A.AH(0,new A.KC(s,"0.1.31",new A.aGM(q),q.k4,r,null))],t.p),B.y,B.bx,null)}return p},
 alQ(){var s,r,q,p,o,n=this,m=null,l=n.d
 l=l!==3?A.ai(B.rs[l],m,m,m,m,m,m,m,m):m
 s=n.Yl()
@@ -130986,21 +130986,21 @@ B.p3=new A.ym(1,"requestedFocus")
 B.a3n=new A.ym(2,"receivedDomFocus")
 B.a3o=new A.ym(3,"receivedDomBlur")
 B.b37=new A.afO(0,"unknown")
-B.a3p=new A.bT("Signed in: Portal.Auth/login \u2014 server accepted credentials.",!1)
-B.a3q=new A.bT("Avatar update cancelled.",!1)
-B.a3r=new A.bT("Sign in to pull cloud notes.",!0)
-B.a3s=new A.bT("Local drafts and local courses removed.",!1)
-B.a3t=new A.bT("Enter your email first.",!0)
+B.a3p=new A.bT("Verification code not resent: Shared.AuthDialog/verify.resend \u2014 email field is empty; enter an email to resend to.",!0)
+B.a3q=new A.bT("Signed in: Portal.Auth/login \u2014 server accepted credentials.",!1)
+B.a3r=new A.bT("Avatar update cancelled.",!1)
+B.a3s=new A.bT("Sign in to pull cloud notes.",!0)
+B.a3t=new A.bT("Local drafts and local courses removed.",!1)
 B.a3u=new A.bT("Sign in with an admin account first.",!0)
 B.a3v=new A.bT("Saved locally.",!1)
-B.a3w=new A.bT("Invalid or expired invitation code.",!0)
+B.a3w=new A.bT("Registration blocked: Shared.AuthDialog/register.validate_invitation \u2014 invitation code is invalid or expired.",!0)
 B.a3x=new A.bT("Sign in to sync local courses and drafts.",!0)
 B.a3y=new A.bT("Sign in first to update your avatar.",!0)
 B.a3z=new A.bT("Sign in first to create planning events.",!0)
 B.a3A=new A.bT("No changes.",!1)
-B.a3B=new A.bT("Avatar updated.",!1)
-B.a3C=new A.bT("Cached remote data cleared.",!1)
-B.a3D=new A.bT("Passwords do not match.",!0)
+B.a3B=new A.bT("Password not updated: Shared.AuthDialog/password.reset.confirm \u2014 new password and confirmation do not match.",!0)
+B.a3C=new A.bT("Avatar updated.",!1)
+B.a3D=new A.bT("Cached remote data cleared.",!1)
 B.a3E=new A.bT("Future event added to the heatmap.",!1)
 B.a3F=new A.bT("Signed in: Portal.Auth/verify \u2014 email verified and session issued.",!1)
 B.a3G=new A.bT("Cloud pull cancelled.",!0)

@@ -320,23 +320,43 @@ covering <code>config_lookup</code>, <code>token_exchange</code>, <code>token_ve
 fetch, and <code>db_write</code>. Network errors on the Google/GitHub side
 return <code>502</code>; missing server OAuth config returns <code>503</code>. The public
 <code>bind</code> substring sentinel in <code>creators.tests</code> is unchanged.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+<code>Shared.AuthDialog</code> round (0.1.31): invitation-validate and
+catch-all branches in <code>RegistrationWizard</code>; email-required validator
+in <code>EmailCodeDialog._resend</code>; client-side form validators in
+<code>_validateEmailForm</code>; password-match check in the reset-confirm
+action of <code>PasswordResetDialog</code> all migrated.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+<code>Editor.Sync.Courses</code> round (0.1.31): <code>_createCategory</code>,
+<code>_updateCategory</code>, <code>_deleteCategory</code>, <code>_reorderCategories</code>, and
+<code>_syncLocalCourse</code> in <code>editor_app/lib/app_shell.dart</code> rewritten to
+<code>Editor.Sync.Courses/{create,update,delete,reorder,push}</code> shape.</li>
 <li><input disabled="" type="checkbox"/>
-<code>Editor.Sync.Settings</code>, <code>Editor.Sync.Courses</code>, <code>Editor.Sync.Notes</code>,
-<code>Editor.LocalStore</code> rounds \u2014 split one per module; each is
-~10\u201320 sites.</li>
+<code>Editor.Sync.Settings</code> round \u2014 <code>_updateSettings</code> +
+<code>_applyLocalAppSettings</code> + profile-save/avatar-upload.</li>
+<li><input disabled="" type="checkbox"/>
+<code>Editor.Sync.Notes</code> round \u2014 <code>_syncLocalDraft</code>,
+<code>_pullCloudNotesToLocal</code>, note save/load error paths.</li>
+<li><input disabled="" type="checkbox"/>
+<code>Editor.LocalStore</code> round \u2014 starter workspace seed,
+<code>_clearLocalData</code>, <code>_restoreTemplateCourses</code>, draft persistence
+logging.</li>
 <li><input disabled="" type="checkbox"/>
 <code>Editor.UI</code> round \u2014 cosmetic info logs like
 "Opened category X" (~30 sites).</li>
 <li><input disabled="" type="checkbox"/>
 <code>Planner.*</code> and <code>Portal.*</code> rounds \u2014 same module breakdown
 as editor.</li>
-<li><input disabled="" type="checkbox"/>
-<code>Shared.AuthDialog</code> round \u2014 auth dialog stack error surfaces
-in <code>frontend/notechondria_shared/lib/src/components/auth_dialogs.dart</code>.</li>
-<li><input disabled="" type="checkbox"/>
-<code>Backend.Creators.Auth</code> round \u2014 ~40
-<code>serializers.ValidationError(...)</code> and <code>Response({"detail": ...})</code>
-sites in <code>backend/creators/api.py</code>. Keep <code>bind</code> substring intact.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+<code>Backend.Creators.Auth</code> + <code>Backend.Creators.Settings</code> round
+(0.1.29): every non-bind <code>serializers.ValidationError(...)</code> and the
+<code>Response({"detail": ...})</code> branches in the
+<code>ChangePasswordApiView.post</code> path migrated to
+<code>Backend.Creators.{Auth,Settings}/&lt;process&gt;</code> shape. Register /
+login / verify / resend_verification / password.reset.{request,confirm}
+/ password.change / email.change.{request,confirm} / settings.update
+/ oauth.register all covered. Preserved <code>bind</code> substring sentinel
+unchanged. 29 creators tests still pass.</li>
 <li><input disabled="" type="checkbox" checked=""/>
 <code>Backend.Notes.*</code> round (0.1.28): every <code>Response({"detail": ...})</code>
 and <code>serializers.ValidationError(...)</code> in <code>backend/notes/api.py</code>
@@ -344,8 +364,20 @@ migrated to <code>Backend.Notes.{Courses,Notes,Blocks}/&lt;process&gt;</code> sh
 Covers course CRUD (create/update/delete), note CRUD via id and UUID,
 block add/update/delete/reorder, note access check,
 history/snapshot/restore endpoints.</li>
-<li><input disabled="" type="checkbox"/>
-<code>Backend.Mcp.Protocol</code> + <code>Backend.Gptutils</code> rounds \u2014 smaller.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+<code>Backend.Mcp.Protocol</code> round (0.1.30): auth, parse, sse_get,
+session.delete, tools.call, and dispatch branches in
+<code>backend/mcp/views.py</code> and <code>backend/mcp/protocol.py</code> rewritten.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+<code>Backend.Gptutils</code> round (0.1.30): the <code>_AI_DISABLED_MESSAGE</code>
+pointer and the <code>ResizedImageValidator.validate</code> /
+<code>validate_user_name</code> raises in <code>backend/gptutils/forms.py</code> rewritten.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+<code>Backend.Creators.forms</code> (0.1.30): the <code>RepassValidator</code>,
+<code>ResizedImageValidator</code>, <code>validate_user_name</code>, and
+<code>validate_registration_code</code> raises in <code>backend/creators/forms.py</code>
+rewritten. These serve the legacy Django form-based registration UI;
+the DRF path is covered by the 0.1.29 round.</li>
 </ul>
 <p>Each round: rewrite, run <code>python manage.py test</code> (backend) or
 <code>flutter analyze</code> + <code>flutter test test/smoke_test.dart</code> (frontend),
