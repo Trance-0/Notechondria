@@ -131,7 +131,11 @@ def handle_request(body, user, creator):
         if tool_name not in _TOOLS:
             return _error_response(
                 METHOD_NOT_FOUND,
-                f"Unknown tool: {tool_name}",
+                (
+                    "MCP tool call rejected: "
+                    "Backend.Mcp.Protocol/tools.call \u2014 "
+                    f"no tool registered under name {tool_name!r}."
+                ),
                 req_id,
             )
         tool = _TOOLS[tool_name]
@@ -150,11 +154,23 @@ def handle_request(body, user, creator):
             return _result_response(
                 {
                     "content": [
-                        {"type": "text", "text": f"Error: {exc}"},
+                        {"type": "text", "text": (
+                            f"MCP tool call failed: "
+                            f"Backend.Mcp.Protocol/tools.call.{tool_name} \u2014 "
+                            f"{exc.__class__.__name__}: {exc}."
+                        )},
                     ],
                     "isError": True,
                 },
                 req_id,
             )
 
-    return _error_response(METHOD_NOT_FOUND, f"Unknown method: {method}", req_id)
+    return _error_response(
+        METHOD_NOT_FOUND,
+        (
+            "MCP request rejected: "
+            "Backend.Mcp.Protocol/dispatch \u2014 "
+            f"no handler for method {method!r}."
+        ),
+        req_id,
+    )

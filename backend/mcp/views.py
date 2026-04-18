@@ -33,9 +33,23 @@ class McpView(View):
         try:
             result = auth.authenticate(request)
         except Exception as exc:
-            return _json_error(401, str(exc))
+            return _json_error(
+                401,
+                (
+                    "MCP request rejected: "
+                    "Backend.Mcp.Protocol/authenticate \u2014 "
+                    f"{exc}."
+                ),
+            )
         if result is None:
-            return _json_error(401, "API key required. Use: Authorization: Bearer ntc_<key>")
+            return _json_error(
+                401,
+                (
+                    "MCP request rejected: "
+                    "Backend.Mcp.Protocol/authenticate \u2014 "
+                    "API key required. Use: Authorization: Bearer ntc_<key>."
+                ),
+            )
         user, _raw_key = result
         creator = getattr(request, "creator", None) or ensure_creator(user)
 
@@ -44,27 +58,44 @@ class McpView(View):
         if "json" not in content_type:
             return _json_error(
                 415,
-                "Content-Type must be application/json.",
+                (
+                    "MCP request rejected: "
+                    "Backend.Mcp.Protocol/parse \u2014 "
+                    "Content-Type must be application/json."
+                ),
             )
         try:
             body = json.loads(request.body)
         except (json.JSONDecodeError, ValueError):
             return protocol._error_response(
                 protocol.PARSE_ERROR,
-                "Invalid JSON.",
+                (
+                    "MCP request rejected: "
+                    "Backend.Mcp.Protocol/parse \u2014 "
+                    "request body is not valid JSON."
+                ),
                 http_status=400,
             )
 
         if not isinstance(body, dict):
             return protocol._error_response(
                 protocol.INVALID_REQUEST,
-                "Request must be a JSON object.",
+                (
+                    "MCP request rejected: "
+                    "Backend.Mcp.Protocol/parse \u2014 "
+                    "JSON-RPC payload must be a single object, not a list or scalar."
+                ),
                 http_status=400,
             )
         if body.get("jsonrpc") != protocol.JSONRPC_VERSION:
             return protocol._error_response(
                 protocol.INVALID_REQUEST,
-                'Missing or invalid "jsonrpc" field.',
+                (
+                    "MCP request rejected: "
+                    "Backend.Mcp.Protocol/parse \u2014 "
+                    'missing or invalid "jsonrpc" field '
+                    f'(expected "{protocol.JSONRPC_VERSION}").'
+                ),
                 body.get("id"),
                 http_status=400,
             )
@@ -88,13 +119,25 @@ class McpView(View):
         Clients can still use POST for all interactions.
         """
         return JsonResponse(
-            {"detail": "SSE notifications not implemented. Use POST for all MCP interactions."},
+            {"detail": (
+                "MCP request rejected: "
+                "Backend.Mcp.Protocol/sse_get \u2014 "
+                "server-initiated SSE notifications are not implemented; "
+                "use POST for all MCP interactions."
+            )},
             status=405,
         )
 
     def delete(self, request):
-        """Terminate session — acknowledge and return 200."""
-        return JsonResponse({"detail": "Session terminated."}, status=200)
+        """Terminate session \u2014 acknowledge and return 200."""
+        return JsonResponse(
+            {"detail": (
+                "MCP session terminated: "
+                "Backend.Mcp.Protocol/session.delete \u2014 "
+                "client requested DELETE on the MCP endpoint."
+            )},
+            status=200,
+        )
 
 
 def _json_error(status, message):

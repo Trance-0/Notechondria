@@ -36,7 +36,11 @@ class RepassValidator:
         """default validate function"""
         if password != self.repass:
             raise ValidationError(
-                _("This password did not match with your re-entered password.")
+                _(
+                    "Registration rejected: "
+                    "Backend.Creators.Auth/register.validate_repassword \u2014 "
+                    "password does not match the re-entered password."
+                )
             )
 
     def get_help_text(self):
@@ -59,7 +63,10 @@ class ResizedImageValidator:
         if w < self.x + self.width or h < self.y + self.height:
             raise ValidationError(
                 _(
-                    "The image size did not match with cropping parameters with expected width %(ew)d, height %(eh)d but actual data recieved is %(w)d, %(h)d"
+                    "Avatar crop rejected: "
+                    "Backend.Creators.Settings/avatar.validate \u2014 "
+                    "uploaded image is smaller than the requested crop "
+                    "(expected at least %(ew)dx%(eh)d, got %(w)dx%(h)d)."
                 ),
                 params={
                     "ew": self.x + self.width,
@@ -109,7 +116,11 @@ def validate_user_name(new_user_name, user=None) -> None:
         return
     if User.objects.filter(username=new_user_name).exists():
         raise ValidationError(
-            _("User name already exists %(server_user_name)s"),
+            _(
+                "Username rejected: "
+                "Backend.Creators.Auth/register.validate_user_name \u2014 "
+                "username %(server_user_name)s is already in use."
+            ),
             params={"server_user_name": new_user_name},
         )
 
@@ -125,7 +136,11 @@ def validate_registration_code(code) -> None:
         ):
             return
     raise ValidationError(
-        _("Validation code %(code)s does not exists or expired"),
+        _(
+            "Registration rejected: "
+            "Backend.Creators.Auth/register.validate_registration_code \u2014 "
+            "validation code %(code)s does not exist or has expired."
+        ),
         params={"code": code},
     )
 

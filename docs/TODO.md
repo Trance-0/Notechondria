@@ -152,7 +152,17 @@ Decompose by module so each round produces a reviewable diff. Order:
   Covers course CRUD (create/update/delete), note CRUD via id and UUID,
   block add/update/delete/reorder, note access check,
   history/snapshot/restore endpoints.
-- [ ] `Backend.Mcp.Protocol` + `Backend.Gptutils` rounds \u2014 smaller.
+- [x] `Backend.Mcp.Protocol` round (0.1.30): auth, parse, sse_get,
+  session.delete, tools.call, and dispatch branches in
+  `backend/mcp/views.py` and `backend/mcp/protocol.py` rewritten.
+- [x] `Backend.Gptutils` round (0.1.30): the `_AI_DISABLED_MESSAGE`
+  pointer and the `ResizedImageValidator.validate` /
+  `validate_user_name` raises in `backend/gptutils/forms.py` rewritten.
+- [x] `Backend.Creators.forms` (0.1.30): the `RepassValidator`,
+  `ResizedImageValidator`, `validate_user_name`, and
+  `validate_registration_code` raises in `backend/creators/forms.py`
+  rewritten. These serve the legacy Django form-based registration UI;
+  the DRF path is covered by the 0.1.29 round.
 
 Each round: rewrite, run `python manage.py test` (backend) or
 `flutter analyze` + `flutter test test/smoke_test.dart` (frontend),

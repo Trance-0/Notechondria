@@ -18,10 +18,12 @@ import logging
 logger = logging.getLogger("django")
 
 _AI_DISABLED_MESSAGE = (
-    "AI chat generation is disabled in this build. The openai SDK and "
-    "tiktoken were removed; reimplement this call against the future AI "
-    "microservice via HTTP (requests.post to its chat endpoint) before "
-    "re-enabling chat creation in the UI."
+    "AI chat generation unavailable: "
+    "Backend.Gptutils/chat.generate \u2014 "
+    "the OpenAI SDK and tiktoken were removed from the build; "
+    "reimplement this call against the future AI microservice via HTTP "
+    "(requests.post to its chat endpoint) before re-enabling chat "
+    "creation in the UI."
 )
 
 
