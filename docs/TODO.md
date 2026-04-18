@@ -71,8 +71,6 @@ Here is a list of task we need to do now after testing, finishing and solve thes
 
 ### Note view
 
-- [ ] Allow user to delete local category (except inbox) when no login. Do not sync anything, if they login, always pull, then merge.
-
 #### Search
 
 ### Note preview

@@ -833,14 +833,31 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     }
 
     // If the remote courses include a default (Inbox) category, drop the
-    // local default to avoid a duplicate Inbox row in the sidebar.
-    if (courses.any((c) => c['is_default'] == true)) {
-      final hadLocalDefault =
-          _localCourses.any((c) => c['is_default'] == true);
-      if (hadLocalDefault) {
+    // local default to avoid a duplicate Inbox row in the sidebar and
+    // remap any local drafts that pointed at the local Inbox to the
+    // remote Inbox so they sync correctly.
+    final remoteDefault = courses.cast<Map<String, dynamic>?>().firstWhere(
+      (c) => c?['is_default'] == true,
+      orElse: () => null,
+    );
+    if (remoteDefault != null) {
+      final localDefault = _localCourses.cast<Map<String, dynamic>?>().firstWhere(
+        (c) => c?['is_default'] == true,
+        orElse: () => null,
+      );
+      if (localDefault != null) {
+        final localDefaultId = (localDefault['id'] as num?)?.toInt();
+        final remoteDefaultId = (remoteDefault['id'] as num?)?.toInt();
         _localCourses = _localCourses
             .where((c) => c['is_default'] != true)
             .toList(growable: false);
+        if (localDefaultId != null && remoteDefaultId != null) {
+          _localDrafts = _localDrafts.map((draft) {
+            if (_draftCourseId(draft) != localDefaultId) return draft;
+            return _remapDraftCourseId(draft, localDefaultId, remoteDefaultId);
+          }).toList(growable: false);
+          await _persistLocalDrafts();
+        }
         await _persistLocalCourses();
       }
     }
