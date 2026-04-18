@@ -1803,7 +1803,10 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     final trimmed = title.trim();
     if (trimmed.isEmpty) {
       return const ActionFeedback(
-          message: 'Category name cannot be empty.', isError: true);
+          message: 'Category not created: '
+              'Editor.Sync.Courses/create \u2014 '
+              'title field is empty.',
+          isError: true);
     }
     final token = _token;
     try {
@@ -1818,7 +1821,13 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           _courses = [decorated, ..._courses];
         });
         await _persistLocalCache();
-        _appendUiLog("Created category '$trimmed'.");
+        _log(
+          level: DebugLogLevel.info,
+          source: 'Editor.Sync.Courses/create',
+          message:
+              "Created cloud category '$trimmed': "
+              "Editor.Sync.Courses/create \u2014 server accepted new course.",
+        );
       } else {
         final localCourse = _buildLocalCourse(title: trimmed);
         if (icon != null) localCourse['icon'] = icon;
@@ -1826,13 +1835,30 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           _localCourses = [..._localCourses, localCourse];
         });
         await _persistLocalCourses();
-        _appendUiLog("Created local category '$trimmed'.");
+        _log(
+          level: DebugLogLevel.info,
+          source: 'Editor.Sync.Courses/create',
+          message:
+              "Created local category '$trimmed': "
+              "Editor.Sync.Courses/create \u2014 "
+              "queued for sync on next sign-in.",
+        );
       }
-      return ActionFeedback(message: "Created '$trimmed'.");
+      return ActionFeedback(
+          message: "Category created: "
+              "Editor.Sync.Courses/create \u2014 '$trimmed' added.");
     } catch (error) {
-      final message = error.toString().replaceFirst('Exception: ', '');
-      _appendUiLog('Create category failed: $message');
-      return ActionFeedback(message: message, isError: true);
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Editor.Sync.Courses/create',
+        message: 'Category not created: '
+            'Editor.Sync.Courses/create \u2014 $cause.',
+      );
+      return ActionFeedback(
+          message: 'Category not created: '
+              'Editor.Sync.Courses/create \u2014 $cause.',
+          isError: true);
     }
   }
 
@@ -1845,11 +1871,17 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     final trimmed = newTitle.trim();
     if (trimmed.isEmpty) {
       return const ActionFeedback(
-          message: 'Category name cannot be empty.', isError: true);
+          message: 'Category not updated: '
+              'Editor.Sync.Courses/update \u2014 '
+              'title field is empty.',
+          isError: true);
     }
     if (course['is_default'] == true) {
       return const ActionFeedback(
-          message: 'The default category cannot be edited.', isError: true);
+          message: 'Category not updated: '
+              'Editor.Sync.Courses/update \u2014 '
+              'the default (Inbox) category is protected from edits.',
+          isError: true);
     }
     final courseId = (course['id'] as num?)?.toInt();
     final isLocal = _isLocalCourse(course);
@@ -1874,7 +1906,10 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         final token = _token;
         if (token == null || token.isEmpty || courseId == null) {
           return const ActionFeedback(
-              message: 'Sign in to edit cloud categories.', isError: true);
+              message: 'Category not updated: '
+                  'Editor.Sync.Courses/update \u2014 '
+                  'sign in first; cloud categories require a session.',
+              isError: true);
         }
         final updated = await widget.client.updateCourse(
           token,
@@ -1894,12 +1929,28 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         });
         await _persistLocalCache();
       }
-      _appendUiLog("Updated category '$trimmed'.");
-      return ActionFeedback(message: "Updated '$trimmed'.");
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Editor.Sync.Courses/update',
+        message:
+            "Category updated: Editor.Sync.Courses/update \u2014 "
+            "'$trimmed' renamed/re-iconed.",
+      );
+      return ActionFeedback(
+          message: "Category updated: Editor.Sync.Courses/update \u2014 "
+              "'$trimmed' saved.");
     } catch (error) {
-      final message = error.toString().replaceFirst('Exception: ', '');
-      _appendUiLog('Update category failed: $message');
-      return ActionFeedback(message: message, isError: true);
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Editor.Sync.Courses/update',
+        message: 'Category not updated: '
+            'Editor.Sync.Courses/update \u2014 $cause.',
+      );
+      return ActionFeedback(
+          message: 'Category not updated: '
+              'Editor.Sync.Courses/update \u2014 $cause.',
+          isError: true);
     }
   }
 
@@ -1907,7 +1958,10 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
   Future<ActionFeedback> _deleteCategory(Map<String, dynamic> course) async {
     if (course['is_default'] == true) {
       return const ActionFeedback(
-          message: 'The default category cannot be deleted.', isError: true);
+          message: 'Category not deleted: '
+              'Editor.Sync.Courses/delete \u2014 '
+              'the default (Inbox) category cannot be removed.',
+          isError: true);
     }
     final courseId = (course['id'] as num?)?.toInt();
     final isLocal = _isLocalCourse(course);
@@ -1953,7 +2007,10 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         final token = _token;
         if (token == null || token.isEmpty || courseId == null) {
           return const ActionFeedback(
-              message: 'Sign in to delete cloud categories.', isError: true);
+              message: 'Category not deleted: '
+                  'Editor.Sync.Courses/delete \u2014 '
+                  'sign in first; cloud categories require a session.',
+              isError: true);
         }
         await widget.client.deleteCourse(token, courseId);
         // Find the remote default category to land on after deletion.
@@ -1973,13 +2030,28 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         await _persistLocalCache();
         await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
       }
-      _appendUiLog("Deleted category '${course['title']}'.");
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Editor.Sync.Courses/delete',
+        message:
+            "Category deleted: Editor.Sync.Courses/delete \u2014 "
+            "'${course['title']}' removed; its notes moved to default.",
+      );
       return ActionFeedback(
-          message: "Deleted '${course['title']}'. Notes moved to default.");
+          message: "Category deleted: Editor.Sync.Courses/delete \u2014 "
+              "'${course['title']}' removed; notes moved to default.");
     } catch (error) {
-      final message = error.toString().replaceFirst('Exception: ', '');
-      _appendUiLog('Delete category failed: $message');
-      return ActionFeedback(message: message, isError: true);
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Editor.Sync.Courses/delete',
+        message: 'Category not deleted: '
+            'Editor.Sync.Courses/delete \u2014 $cause.',
+      );
+      return ActionFeedback(
+          message: 'Category not deleted: '
+              'Editor.Sync.Courses/delete \u2014 $cause.',
+          isError: true);
     }
   }
 
@@ -2037,7 +2109,14 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
 
     final token = _token;
     if (token == null || token.isEmpty || newRemote.isEmpty) {
-      _appendUiLog('Reordered categories locally.');
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Editor.Sync.Courses/reorder',
+        message:
+            'Categories reordered locally: '
+            'Editor.Sync.Courses/reorder \u2014 '
+            'no cloud session; new order kept in memory only.',
+      );
       return;
     }
 
@@ -2053,13 +2132,30 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         _courses = decorated;
       });
       await _persistLocalCache();
-      _appendUiLog('Reordered ${remoteIds.length} cloud categories.');
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Editor.Sync.Courses/reorder',
+        message:
+            'Categories reordered: Editor.Sync.Courses/reorder \u2014 '
+            '${remoteIds.length} cloud categories persisted.',
+      );
     } catch (error) {
-      final message = error.toString().replaceFirst('Exception: ', '');
-      _appendUiLog('Reorder categories failed: $message');
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Editor.Sync.Courses/reorder',
+        message:
+            'Categories not reordered: '
+            'Editor.Sync.Courses/reorder \u2014 $cause.',
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Reorder failed: $message')),
+          SnackBar(
+            content: Text(
+              'Categories not reordered: '
+              'Editor.Sync.Courses/reorder \u2014 $cause.',
+            ),
+          ),
         );
       }
     }
@@ -2234,7 +2330,11 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       Map<String, dynamic> course) async {
     final token = _token;
     if (token == null || token.isEmpty) {
-      throw Exception('Sign in to sync local courses.');
+      throw Exception(
+        'Local course not synced: '
+        'Editor.Sync.Courses/push \u2014 '
+        'no cloud session; sign in first.',
+      );
     }
     final created = await widget.client.createCourse(token, {
       'title': course['title'],
@@ -2272,7 +2372,14 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     await _persistLocalDrafts();
     await _persistLocalStats();
     await _persistLocalCache();
-    _appendUiLog("Synced local category '${course['title']}'.");
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Editor.Sync.Courses/push',
+      message:
+          "Local category synced: Editor.Sync.Courses/push \u2014 "
+          "'${course['title']}' created on server; local ID remapped to "
+          "remote ID.",
+    );
     return created;
   }
 

@@ -278,7 +278,9 @@ class _RegistrationWizardState extends State<RegistrationWizard> {
         setState(() {
           _submitting = false;
           _feedback = const ActionFeedback(
-            message: 'Invalid or expired invitation code.',
+            message: 'Registration blocked: '
+                'Shared.AuthDialog/register.validate_invitation \u2014 '
+                'invitation code is invalid or expired.',
             isError: true,
           );
         });
@@ -288,7 +290,9 @@ class _RegistrationWizardState extends State<RegistrationWizard> {
       setState(() {
         _submitting = false;
         _feedback = ActionFeedback(
-          message: e.toString().replaceFirst('Exception: ', ''),
+          message: 'Registration blocked: '
+              'Shared.AuthDialog/register.validate_invitation \u2014 '
+              '${e.toString().replaceFirst('Exception: ', '')}',
           isError: true,
         );
       });
@@ -297,23 +301,34 @@ class _RegistrationWizardState extends State<RegistrationWizard> {
 
   String? _validateEmailForm() {
     if (_usernameController.text.trim().isEmpty) {
-      return 'Username is required.';
+      return 'Registration rejected: '
+          'Shared.AuthDialog/register.validate_form \u2014 '
+          'username is required.';
     }
     if (_emailController.text.trim().isEmpty) {
-      return 'Email is required.';
+      return 'Registration rejected: '
+          'Shared.AuthDialog/register.validate_form \u2014 '
+          'email is required.';
     }
     final pw = _passwordController.text;
     if (pw.length < 8) {
-      return 'Password must be at least 8 characters.';
+      return 'Registration rejected: '
+          'Shared.AuthDialog/register.validate_form \u2014 '
+          'password must be at least 8 characters.';
     }
     final hasUpper = pw.contains(RegExp(r'[A-Z]'));
     final hasLower = pw.contains(RegExp(r'[a-z]'));
     final hasDigitOrSpecial = pw.contains(RegExp(r'[^a-zA-Z]'));
     if (!hasUpper || !hasLower || !hasDigitOrSpecial) {
-      return 'Password needs uppercase, lowercase, and a digit or special character.';
+      return 'Registration rejected: '
+          'Shared.AuthDialog/register.validate_form \u2014 '
+          'password must contain uppercase, lowercase, and a digit or '
+          'special character.';
     }
     if (pw != _confirmPasswordController.text) {
-      return 'Passwords do not match.';
+      return 'Registration rejected: '
+          'Shared.AuthDialog/register.validate_form \u2014 '
+          'passwords do not match.';
     }
     return null;
   }
@@ -796,7 +811,9 @@ class _EmailCodeDialogState extends State<EmailCodeDialog> {
     if (email.isEmpty) {
       setState(() {
         _feedback = const ActionFeedback(
-          message: 'Enter your email first.',
+          message: 'Verification code not resent: '
+              'Shared.AuthDialog/verify.resend \u2014 '
+              'email field is empty; enter an email to resend to.',
           isError: true,
         );
       });
@@ -1038,7 +1055,9 @@ class _PasswordResetDialogState extends State<PasswordResetDialog> {
                       _confirmPasswordController.text) {
                     setState(() {
                       _feedback = const ActionFeedback(
-                        message: 'Passwords do not match.',
+                        message: 'Password not updated: '
+                            'Shared.AuthDialog/password.reset.confirm \u2014 '
+                            'new password and confirmation do not match.',
                         isError: true,
                       );
                     });

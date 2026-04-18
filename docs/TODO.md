@@ -128,15 +128,26 @@ Decompose by module so each round produces a reviewable diff. Order:
   fetch, and `db_write`. Network errors on the Google/GitHub side
   return `502`; missing server OAuth config returns `503`. The public
   `bind` substring sentinel in `creators.tests` is unchanged.
-- [ ] `Editor.Sync.Settings`, `Editor.Sync.Courses`, `Editor.Sync.Notes`,
-  `Editor.LocalStore` rounds \u2014 split one per module; each is
-  ~10\u201320 sites.
+- [x] `Shared.AuthDialog` round (0.1.31): invitation-validate and
+  catch-all branches in `RegistrationWizard`; email-required validator
+  in `EmailCodeDialog._resend`; client-side form validators in
+  `_validateEmailForm`; password-match check in the reset-confirm
+  action of `PasswordResetDialog` all migrated.
+- [x] `Editor.Sync.Courses` round (0.1.31): `_createCategory`,
+  `_updateCategory`, `_deleteCategory`, `_reorderCategories`, and
+  `_syncLocalCourse` in `editor_app/lib/app_shell.dart` rewritten to
+  `Editor.Sync.Courses/{create,update,delete,reorder,push}` shape.
+- [ ] `Editor.Sync.Settings` round \u2014 `_updateSettings` +
+  `_applyLocalAppSettings` + profile-save/avatar-upload.
+- [ ] `Editor.Sync.Notes` round \u2014 `_syncLocalDraft`,
+  `_pullCloudNotesToLocal`, note save/load error paths.
+- [ ] `Editor.LocalStore` round \u2014 starter workspace seed,
+  `_clearLocalData`, `_restoreTemplateCourses`, draft persistence
+  logging.
 - [ ] `Editor.UI` round \u2014 cosmetic info logs like
   "Opened category X" (~30 sites).
 - [ ] `Planner.*` and `Portal.*` rounds \u2014 same module breakdown
   as editor.
-- [ ] `Shared.AuthDialog` round \u2014 auth dialog stack error surfaces
-  in `frontend/notechondria_shared/lib/src/components/auth_dialogs.dart`.
 - [x] `Backend.Creators.Auth` + `Backend.Creators.Settings` round
   (0.1.29): every non-bind `serializers.ValidationError(...)` and the
   `Response({"detail": ...})` branches in the
