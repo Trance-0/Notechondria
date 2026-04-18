@@ -164,8 +164,18 @@ Decompose by module so each round produces a reviewable diff. Order:
   `editor_app/lib/app_shell.dart`; the thin wrapper stays for
   callback signatures (`onLogEvent: _appendUiLog`) that some
   part-files still call.
-- [ ] `Planner.*` and `Portal.*` rounds \u2014 same module breakdown
-  as editor.
+- [x] `Planner.*` round (0.1.34): every direct `_appendUiLog(String)`
+  call site in `planner_app/lib/app_shell.dart` replaced with the
+  structured `_log(...)` form. Migrated surfaces cover
+  `Planner.LocalStore/{seed_starter,clear,clear_cache,copy_logs,restore_templates}`,
+  `Planner.Sync.Settings/{save,avatar.upload}`,
+  `Planner.Sync.Courses/{push,create_local,load,subscribe,unsubscribe}`,
+  `Planner.Sync.Notes/{pull,push,create,save,save_local,delete,delete_local,restore,empty_trash,push_all,list}`,
+  `Planner.Sync.Events/{create,create_local,toggle,toggle_local}`,
+  `Planner.Sync.Calendar/{refresh,import,subscribe,toggle,delete}`,
+  `Planner.Sync.Activity/load_week`, and
+  `Planner.UI/{open_course,open_note,open_note_viewer,note_session.start,note_session.finish}`.
+- [ ] `Portal.*` round \u2014 same module breakdown as editor/planner.
 - [x] `Backend.Creators.Auth` + `Backend.Creators.Settings` round
   (0.1.29): every non-bind `serializers.ValidationError(...)` and the
   `Response({"detail": ...})` branches in the

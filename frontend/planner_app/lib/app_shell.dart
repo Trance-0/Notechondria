@@ -659,7 +659,14 @@ Capture deadlines, sequencing, and blockers here.''',
     await _persistLocalDrafts();
     await _persistLocalStats();
     await _persistLocalCache();
-    _appendUiLog('Seeded starter planner workspace for first-run offline use.');
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Planner.LocalStore/seed_starter',
+      message:
+          'Starter workspace seeded: '
+          'Planner.LocalStore/seed_starter \u2014 '
+          'first-run offline course + 2 planning drafts + 2 events created.',
+    );
   }
 
   bool _isLocalCourse(Map<String, dynamic>? course) {
@@ -845,10 +852,14 @@ Capture deadlines, sequencing, and blockers here.''',
     if (updatedCache) {
       await _persistLocalCache();
     }
-    _appendUiLog(
-      errors.isEmpty
-          ? 'Initial data loaded.'
-          : 'Initial load used offline fallback: ${errors.first}',
+    _log(
+      source: 'Planner._loadInitialData',
+      level: errors.isEmpty ? DebugLogLevel.info : DebugLogLevel.warning,
+      message: errors.isEmpty
+          ? 'Initial Planner._loadInitialData data loaded '
+              '(${courses.length} cloud courses, ${learnerNotes.length} notes).'
+          : 'Initial Planner._loadInitialData load used offline fallback: '
+              'Planner.Sync.Planner/bootstrap \u2014 ${errors.first}.',
     );
   }
 
@@ -961,8 +972,14 @@ Capture deadlines, sequencing, and blockers here.''',
         _isLoadingMoreNotes = false;
         _errorMessage = error.toString().replaceFirst('Exception: ', '');
       });
-      _appendUiLog(
-          'Learner notes load failed: ${error.toString().replaceFirst('Exception: ', '')}');
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Planner.Sync.Notes/list',
+        message:
+            'Notes list load failed: '
+            'Planner.Sync.Notes/list \u2014 $cause.',
+      );
     }
   }
 
@@ -978,7 +995,13 @@ Capture deadlines, sequencing, and blockers here.''',
         _selectedIndex = 2;
         _isLoading = false;
       });
-      _appendUiLog('Opened local course ${course['title']}.');
+      _log(
+        level: DebugLogLevel.debug,
+        source: 'Planner.UI/open_course',
+        message:
+            "Opened local course: Planner.UI/open_course \u2014 "
+            "'${course['title']}' selected in planner view.",
+      );
       return;
     }
     try {
@@ -1006,16 +1029,27 @@ Capture deadlines, sequencing, and blockers here.''',
         _isLoading = false;
       });
       await _persistLocalCache();
-      _appendUiLog('Opened course ${refreshedSelected['title']}.');
+      _log(
+        level: DebugLogLevel.debug,
+        source: 'Planner.UI/open_course',
+        message:
+            "Opened course: Planner.UI/open_course \u2014 "
+            "'${refreshedSelected['title']}' loaded from cloud.",
+      );
     } catch (error) {
-      final message = error.toString().replaceFirst('Exception: ', '');
+      final cause = error.toString().replaceFirst('Exception: ', '');
       setState(() {
         _selectedCourse = course;
         _courseNotes = const [];
-        _errorMessage = message;
+        _errorMessage = cause;
         _isLoading = false;
       });
-      _appendUiLog('Course load failed: $message');
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Planner.Sync.Courses/load',
+        message: 'Course not loaded: '
+            'Planner.Sync.Courses/load \u2014 $cause.',
+      );
     }
   }
 
@@ -1031,12 +1065,17 @@ Capture deadlines, sequencing, and blockers here.''',
         _isLoading = false;
       });
     } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
       setState(() {
-        _errorMessage = error.toString().replaceFirst('Exception: ', '');
+        _errorMessage = cause;
         _isLoading = false;
       });
-      _appendUiLog(
-          'Note selection failed: ${error.toString().replaceFirst('Exception: ', '')}');
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Planner.UI/open_note',
+        message:
+            'Note not opened: Planner.UI/open_note \u2014 $cause.',
+      );
     }
   }
 
@@ -1045,9 +1084,16 @@ Capture deadlines, sequencing, and blockers here.''',
     try {
       detail = await _fetchNoteDetail(noteSummary['id'] as int);
     } catch (error) {
-      _showMessage(error.toString().replaceFirst('Exception: ', ''));
-      _appendUiLog(
-          'Note viewer failed: ${error.toString().replaceFirst('Exception: ', '')}');
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      _showMessage(
+        'Note not opened: Planner.UI/open_note_viewer \u2014 $cause.',
+      );
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Planner.UI/open_note_viewer',
+        message:
+            'Note not opened: Planner.UI/open_note_viewer \u2014 $cause.',
+      );
       return;
     }
     if (!mounted) {
@@ -1511,7 +1557,9 @@ Capture deadlines, sequencing, and blockers here.''',
     final token = _token;
     if (token == null || token.isEmpty) {
       return const ActionFeedback(
-        message: 'Sign in to pull cloud notes.',
+        message: 'Cloud notes not pulled: '
+            'Planner.Sync.Notes/pull \u2014 '
+            'no cloud session; sign in first.',
         isError: true,
       );
     }
@@ -1562,7 +1610,9 @@ Capture deadlines, sequencing, and blockers here.''',
             );
             if (!mounted) {
               return const ActionFeedback(
-                message: 'Cloud pull cancelled.',
+                message: 'Cloud notes pull cancelled: '
+                    'Planner.Sync.Notes/pull \u2014 '
+                    'widget unmounted during conflict dialog.',
                 isError: true,
               );
             }
@@ -1597,7 +1647,7 @@ Capture deadlines, sequencing, and blockers here.''',
       }
       final segments = <String>[];
       if (imported > 0) {
-        segments.add('pulled $imported');
+        segments.add('imported $imported');
       }
       if (updated > 0) {
         segments.add('updated $updated');
@@ -1605,14 +1655,30 @@ Capture deadlines, sequencing, and blockers here.''',
       if (skipped > 0) {
         segments.add('kept $skipped local');
       }
-      final message =
-          segments.isEmpty ? 'Cloud notes already match local copies.' : segments.join(', ');
-      _appendUiLog('Cloud pull completed: $message.');
-      return ActionFeedback(message: message);
+      final summary = segments.isEmpty
+          ? 'local copies already match the cloud'
+          : segments.join(', ');
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Planner.Sync.Notes/pull',
+        message:
+            'Cloud notes pulled: Planner.Sync.Notes/pull \u2014 $summary.',
+      );
+      return ActionFeedback(
+          message: 'Cloud notes pulled: '
+              'Planner.Sync.Notes/pull \u2014 $summary.');
     } catch (error) {
-      final message = error.toString().replaceFirst('Exception: ', '');
-      _appendUiLog('Cloud pull failed: $message');
-      return ActionFeedback(message: 'Pull failed.', isError: true);
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Planner.Sync.Notes/pull',
+        message: 'Cloud notes not pulled: '
+            'Planner.Sync.Notes/pull \u2014 $cause.',
+      );
+      return ActionFeedback(
+          message: 'Cloud notes not pulled: '
+              'Planner.Sync.Notes/pull \u2014 $cause.',
+          isError: true);
     }
   }
 
@@ -1721,11 +1787,17 @@ Capture deadlines, sequencing, and blockers here.''',
     };
     await _persistLocalStats();
     if (remotePayload.isEmpty && !localSettingsChanged) {
-      return const ActionFeedback(message: 'No changes.');
+      return const ActionFeedback(
+          message: 'No settings changes: '
+              'Planner.Sync.Settings/save \u2014 '
+              'nothing to save.');
     }
     final token = _token;
     if (token == null || token.isEmpty) {
-      return const ActionFeedback(message: 'Saved locally.');
+      return const ActionFeedback(
+          message: 'Settings saved locally: '
+              'Planner.Sync.Settings/save \u2014 '
+              'no cloud session; will push on next sign-in.');
     }
     try {
       if (localSettingsChanged) {
@@ -1763,9 +1835,19 @@ Capture deadlines, sequencing, and blockers here.''',
         };
       });
       final summary = _summarizeChangedFields(changedFields);
-      _showMessage('Saved $summary.');
-      _appendUiLog('Settings updated: $summary.');
-      return ActionFeedback(message: 'Saved $summary.');
+      _showMessage(
+        'Settings saved: Planner.Sync.Settings/save \u2014 $summary updated.',
+      );
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Planner.Sync.Settings/save',
+        message:
+            'Settings saved: Planner.Sync.Settings/save \u2014 '
+            '$summary pushed to cloud.',
+      );
+      return ActionFeedback(
+          message: 'Settings saved: Planner.Sync.Settings/save \u2014 '
+              '$summary updated.');
     } catch (error) {
       final detail = error.toString().replaceFirst('Exception: ', '');
       final fallbackUsername = _profile?['username'];
@@ -1800,9 +1882,18 @@ Capture deadlines, sequencing, and blockers here.''',
         };
       });
       final summary = _summarizeChangedFields(changedFields);
-      _appendUiLog('Cloud settings sync failed for $summary: $detail');
+      _log(
+        level: DebugLogLevel.warning,
+        source: 'Planner.Sync.Settings/save',
+        message:
+            'Settings saved locally, cloud push deferred: '
+            'Planner.Sync.Settings/save \u2014 '
+            'remote update for $summary failed ($detail).',
+      );
       return ActionFeedback(
-        message: 'Saved locally. Sync pending for $summary.',
+        message: 'Settings saved locally: '
+            'Planner.Sync.Settings/save \u2014 '
+            'sync pending for $summary (cloud: $detail).',
       );
     }
   }
@@ -1827,8 +1918,18 @@ Capture deadlines, sequencing, and blockers here.''',
         _activityWeek = _buildOfflineActivityWeek();
       });
       await _persistLocalCache();
-      _appendUiLog("Created local planner event '${event['title']}'.");
-      return const ActionFeedback(message: 'Saved local planner event.');
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Planner.Sync.Events/create_local',
+        message:
+            "Local planner event created: "
+            "Planner.Sync.Events/create_local \u2014 "
+            "'${event['title']}' queued for sync on next sign-in.",
+      );
+      return const ActionFeedback(
+          message: 'Planner event saved locally: '
+              'Planner.Sync.Events/create_local \u2014 '
+              'queued for sync on next sign-in.');
     }
     try {
       await widget.client.createPlannerEvent(token, {
@@ -1842,10 +1943,14 @@ Capture deadlines, sequencing, and blockers here.''',
       });
       await _loadActivityWeek(startDate: _activityWeekStart);
       return const ActionFeedback(
-          message: 'Future event added to the heatmap.');
+          message: 'Planner event created: '
+              'Planner.Sync.Events/create \u2014 '
+              'added to the activity heatmap.');
     } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
       return ActionFeedback(
-        message: error.toString().replaceFirst('Exception: ', ''),
+        message: 'Planner event not created: '
+            'Planner.Sync.Events/create \u2014 $cause.',
         isError: true,
       );
     }
@@ -1855,7 +1960,9 @@ Capture deadlines, sequencing, and blockers here.''',
     final token = _token;
     if (token == null || token.isEmpty) {
       return const ActionFeedback(
-        message: 'Sign in first to update your avatar.',
+        message: 'Avatar not updated: '
+            'Planner.Sync.Settings/avatar.upload \u2014 '
+            'no cloud session; sign in first.',
         isError: true,
       );
     }
@@ -1866,7 +1973,10 @@ Capture deadlines, sequencing, and blockers here.''',
         ],
       );
       if (file == null) {
-        return const ActionFeedback(message: 'Avatar update cancelled.');
+        return const ActionFeedback(
+            message: 'Avatar update cancelled: '
+                'Planner.Sync.Settings/avatar.upload \u2014 '
+                'user closed the file picker without selecting a file.');
       }
       final updated = await widget.client.uploadAvatar(token, file);
       _localStats = {
@@ -1887,12 +1997,29 @@ Capture deadlines, sequencing, and blockers here.''',
               updated['is_superuser'] ?? _profile?['is_superuser'],
         };
       });
-      _appendUiLog('Avatar updated.');
-      return const ActionFeedback(message: 'Avatar updated.');
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Planner.Sync.Settings/avatar.upload',
+        message:
+            'Avatar updated: Planner.Sync.Settings/avatar.upload \u2014 '
+            'server accepted new image.',
+      );
+      return const ActionFeedback(
+          message: 'Avatar updated: '
+              'Planner.Sync.Settings/avatar.upload \u2014 '
+              'server accepted new image.');
     } catch (error) {
-      final message = error.toString().replaceFirst('Exception: ', '');
-      _appendUiLog('Avatar update failed: $message');
-      return ActionFeedback(message: message, isError: true);
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Planner.Sync.Settings/avatar.upload',
+        message: 'Avatar not updated: '
+            'Planner.Sync.Settings/avatar.upload \u2014 $cause.',
+      );
+      return ActionFeedback(
+          message: 'Avatar not updated: '
+              'Planner.Sync.Settings/avatar.upload \u2014 $cause.',
+          isError: true);
     }
   }
 
@@ -1911,14 +2038,26 @@ Capture deadlines, sequencing, and blockers here.''',
         _activityWeekStart = effectiveStart;
         _activityWeek = week;
       });
-      _appendUiLog(
-          'Activity week loaded for ${effectiveStart.toIso8601String().split('T').first}.');
+      _log(
+        level: DebugLogLevel.debug,
+        source: 'Planner.Sync.Activity/load_week',
+        message:
+            'Activity week loaded: '
+            'Planner.Sync.Activity/load_week \u2014 '
+            'week starting ${effectiveStart.toIso8601String().split('T').first} '
+            'pulled from server.',
+      );
     } catch (error) {
-      final message = error.toString().replaceFirst('Exception: ', '');
+      final cause = error.toString().replaceFirst('Exception: ', '');
       setState(() {
-        _errorMessage = message;
+        _errorMessage = cause;
       });
-      _appendUiLog('Activity week load failed: $message');
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Planner.Sync.Activity/load_week',
+        message: 'Activity week not loaded: '
+            'Planner.Sync.Activity/load_week \u2014 $cause.',
+      );
     }
   }
 
@@ -1975,7 +2114,14 @@ Capture deadlines, sequencing, and blockers here.''',
       _selectedIndex = 2;
       _courseNotes = _localNotesForCourse(course);
     });
-    _appendUiLog("Created local course '${course['title']}'.");
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Planner.Sync.Courses/create_local',
+      message:
+          "Local course created: "
+          "Planner.Sync.Courses/create_local \u2014 "
+          "'${course['title']}' queued for sync on next sign-in.",
+    );
     return course;
   }
 
@@ -2007,7 +2153,11 @@ Capture deadlines, sequencing, and blockers here.''',
   Future<Map<String, dynamic>> _syncLocalCourse(Map<String, dynamic> course) async {
     final token = _token;
     if (token == null || token.isEmpty) {
-      throw Exception('Sign in to sync local courses.');
+      throw Exception(
+        'Local course not synced: '
+        'Planner.Sync.Courses/push \u2014 '
+        'no cloud session; sign in first.',
+      );
     }
     final created = await widget.client.createCourse(token, {
       'title': course['title'],
@@ -2045,7 +2195,14 @@ Capture deadlines, sequencing, and blockers here.''',
     await _persistLocalDrafts();
     await _persistLocalStats();
     await _persistLocalCache();
-    _appendUiLog("Synced local course '${course['title']}'.");
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Planner.Sync.Courses/push',
+      message:
+          "Local course synced: Planner.Sync.Courses/push \u2014 "
+          "'${course['title']}' created on server; local ID remapped to "
+          "remote ID.",
+    );
     return created;
   }
 
@@ -2094,7 +2251,11 @@ Capture deadlines, sequencing, and blockers here.''',
   Future<Map<String, dynamic>> _syncLocalDraft(Map<String, dynamic> draft) async {
     final token = _token;
     if (token == null || token.isEmpty) {
-      throw Exception('Sign in to sync local drafts.');
+      throw Exception(
+        'Local draft not synced: '
+        'Planner.Sync.Notes/push \u2014 '
+        'no cloud session; sign in first.',
+      );
     }
     var metadata =
         _decodeNoteMetadata(draft['metadata_json']?.toString() ?? '{}');
@@ -2165,7 +2326,14 @@ Capture deadlines, sequencing, and blockers here.''',
       if (mounted) {
         setState(() {});
       }
-      _appendUiLog("Synced local cloud copy '${draft['title']}'.");
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Planner.Sync.Notes/push',
+        message:
+            "Local cloud-copy draft synced: "
+            "Planner.Sync.Notes/push \u2014 "
+            "'${draft['title']}' upstream note updated in place.",
+      );
       return updated;
     }
     final created = await widget.client.createNote(token, {
@@ -2193,7 +2361,13 @@ Capture deadlines, sequencing, and blockers here.''',
     if (mounted) {
       setState(() {});
     }
-    _appendUiLog("Synced local draft '${draft['title']}'.");
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Planner.Sync.Notes/push',
+      message:
+          "Local draft synced: Planner.Sync.Notes/push \u2014 "
+          "'${draft['title']}' created on server; local draft removed.",
+    );
     return created;
   }
 
@@ -2255,13 +2429,22 @@ Capture deadlines, sequencing, and blockers here.''',
       );
       await _persistLocalDrafts();
       await _persistLocalStats();
-      final message = error.toString().replaceFirst('Exception: ', '');
+      final cause = error.toString().replaceFirst('Exception: ', '');
       setState(() {
         _selectedNote = draft;
         _selectedIndex = 1;
       });
-      _appendUiLog('Cloud create failed, saved local draft instead: $message');
-      _showMessage('Backend unavailable. Saved as a local draft.');
+      _log(
+        level: DebugLogLevel.warning,
+        source: 'Planner.Sync.Notes/create',
+        message:
+            'Note saved locally, cloud create deferred: '
+            'Planner.Sync.Notes/create \u2014 $cause.',
+      );
+      _showMessage(
+        'Note saved locally: Planner.Sync.Notes/create \u2014 '
+        'backend unavailable ($cause); kept as draft for next sync.',
+      );
       return draft;
     }
   }
@@ -2274,7 +2457,11 @@ Capture deadlines, sequencing, and blockers here.''',
         orElse: () => <String, dynamic>{},
       );
       if (existing.isEmpty) {
-        throw Exception('Local draft not found.');
+        throw Exception(
+          'Local draft not saved: '
+          'Planner.Sync.Notes/save_local \u2014 '
+          'no local draft found for id=$noteId.',
+        );
       }
       final updated = _buildLocalDraft(
         id: noteId,
@@ -2301,7 +2488,11 @@ Capture deadlines, sequencing, and blockers here.''',
     }
     final token = _token;
     if (token == null || token.isEmpty) {
-      throw Exception('Sign in to save cloud notes.');
+      throw Exception(
+        'Note not saved: '
+        'Planner.Sync.Notes/save \u2014 '
+        'no cloud session; sign in first.',
+      );
     }
     try {
       final updated = await widget.client.updateNote(token, noteId, payload);
@@ -2321,12 +2512,21 @@ Capture deadlines, sequencing, and blockers here.''',
         ),
       );
       await _persistLocalDrafts();
-      final message = error.toString().replaceFirst('Exception: ', '');
+      final cause = error.toString().replaceFirst('Exception: ', '');
       setState(() {
         _selectedNote = fallbackDraft;
       });
-      _appendUiLog('Cloud save failed, kept local draft instead: $message');
-      _showMessage('Backend unavailable. Changes were saved locally.');
+      _log(
+        level: DebugLogLevel.warning,
+        source: 'Planner.Sync.Notes/save',
+        message:
+            'Note save deferred to local draft: '
+            'Planner.Sync.Notes/save \u2014 $cause.',
+      );
+      _showMessage(
+        'Note saved locally: Planner.Sync.Notes/save \u2014 '
+        'backend unavailable ($cause); changes kept as a local draft.',
+      );
       return fallbackDraft;
     }
   }
@@ -2425,14 +2625,25 @@ Capture deadlines, sequencing, and blockers here.''',
       _calendarFeeds = feeds;
       _activityWeek = week;
     });
-    _appendUiLog('Calendar state refreshed.');
+    _log(
+      level: DebugLogLevel.debug,
+      source: 'Planner.Sync.Calendar/refresh',
+      message:
+          'Calendar state refreshed: '
+          'Planner.Sync.Calendar/refresh \u2014 '
+          'feeds and activity week re-pulled.',
+    );
   }
 
   Future<void> _importCalendarFeed(String rawIcal, String title,
       {int? courseId}) async {
     final token = _token;
     if (token == null || token.isEmpty) {
-      throw Exception('Sign in to import calendars.');
+      throw Exception(
+        'Calendar not imported: '
+        'Planner.Sync.Calendar/import \u2014 '
+        'no cloud session; sign in first.',
+      );
     }
     await widget.client.createCalendarFeed(token, {
       'title': title,
@@ -2441,14 +2652,24 @@ Capture deadlines, sequencing, and blockers here.''',
       'course_id': courseId,
     });
     await _refreshCalendarState();
-    _appendUiLog('Imported calendar $title.');
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Planner.Sync.Calendar/import',
+      message:
+          'Calendar imported: Planner.Sync.Calendar/import \u2014 '
+          '"$title" iCal feed added.',
+    );
   }
 
   Future<void> _subscribeCalendarFeed(String title, String url,
       {int? courseId}) async {
     final token = _token;
     if (token == null || token.isEmpty) {
-      throw Exception('Sign in to subscribe calendars.');
+      throw Exception(
+        'Calendar not subscribed: '
+        'Planner.Sync.Calendar/subscribe \u2014 '
+        'no cloud session; sign in first.',
+      );
     }
     await widget.client.createCalendarFeed(token, {
       'title': title,
@@ -2457,7 +2678,14 @@ Capture deadlines, sequencing, and blockers here.''',
       'course_id': courseId,
     });
     await _refreshCalendarState();
-    _appendUiLog('Subscribed calendar $title.');
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Planner.Sync.Calendar/subscribe',
+      message:
+          'Calendar subscribed: '
+          'Planner.Sync.Calendar/subscribe \u2014 '
+          '"$title" feed URL registered.',
+    );
   }
 
   Future<void> _toggleCalendarFeed(
@@ -2469,8 +2697,14 @@ Capture deadlines, sequencing, and blockers here.''',
     await widget.client
         .updateCalendarFeed(token, feed['id'] as int, {'is_enabled': enabled});
     await _refreshCalendarState();
-    _appendUiLog(
-        '${enabled ? 'Enabled' : 'Disabled'} calendar ${feed['title']}.');
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Planner.Sync.Calendar/toggle',
+      message:
+          'Calendar feed ${enabled ? "enabled" : "disabled"}: '
+          'Planner.Sync.Calendar/toggle \u2014 '
+          '"${feed['title']}" now ${enabled ? "visible" : "hidden"}.',
+    );
   }
 
   Future<void> _deleteCalendarFeed(Map<String, dynamic> feed) async {
@@ -2480,7 +2714,14 @@ Capture deadlines, sequencing, and blockers here.''',
     }
     await widget.client.deleteCalendarFeed(token, feed['id'] as int);
     await _refreshCalendarState();
-    _appendUiLog('Deleted calendar ${feed['title']}.');
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Planner.Sync.Calendar/delete',
+      message:
+          'Calendar feed deleted: '
+          'Planner.Sync.Calendar/delete \u2014 '
+          '"${feed['title']}" removed from the planner.',
+    );
   }
 
   Future<int?> _startNoteSession(
@@ -2496,11 +2737,24 @@ Capture deadlines, sequencing, and blockers here.''',
         'summary': summary,
         'started_at': DateTime.now().toIso8601String(),
       });
-      _appendUiLog('Started note session for $title.');
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Planner.UI/note_session.start',
+        message:
+            'Note session started: '
+            'Planner.UI/note_session.start \u2014 '
+            'tracking edits to "$title".',
+      );
       return session['id'] as int?;
     } catch (error) {
-      _appendUiLog(
-          'Note session start failed: ${error.toString().replaceFirst('Exception: ', '')}');
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Planner.UI/note_session.start',
+        message:
+            'Note session not started: '
+            'Planner.UI/note_session.start \u2014 $cause.',
+      );
       return null;
     }
   }
@@ -2518,10 +2772,23 @@ Capture deadlines, sequencing, and blockers here.''',
         'ended_at': DateTime.now().toIso8601String(),
       });
       await _loadActivityWeek(startDate: _activityWeekStart);
-      _appendUiLog('Finished note session ${sessionId.toString()}.');
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Planner.UI/note_session.finish',
+        message:
+            'Note session finished: '
+            'Planner.UI/note_session.finish \u2014 '
+            'session $sessionId closed on server.',
+      );
     } catch (error) {
-      _appendUiLog(
-          'Note session finish failed: ${error.toString().replaceFirst('Exception: ', '')}');
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      _log(
+        level: DebugLogLevel.warning,
+        source: 'Planner.UI/note_session.finish',
+        message:
+            'Note session not closed: '
+            'Planner.UI/note_session.finish \u2014 $cause.',
+      );
     }
   }
 
@@ -2536,24 +2803,46 @@ Capture deadlines, sequencing, and blockers here.''',
           .toList(growable: false);
       await _persistLocalDrafts();
       setState(() {});
-      _appendUiLog("Deleted local draft '${note['title']}'.");
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Planner.Sync.Notes/delete_local',
+        message:
+            "Local draft deleted: "
+            "Planner.Sync.Notes/delete_local \u2014 "
+            "'${note['title']}' removed from offline store.",
+      );
       return;
     }
     final token = _token;
     if (token == null || token.isEmpty) {
-      throw Exception('Sign in to delete notes.');
+      throw Exception(
+        'Note not deleted: '
+        'Planner.Sync.Notes/delete \u2014 '
+        'no cloud session; sign in first.',
+      );
     }
     await widget.client.deleteNote(token, noteId);
     _deletedNotes = await widget.client.getDeletedNotes(token);
     await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
     setState(() {});
-    _appendUiLog("Moved note '${note['title']}' to recycle bin.");
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Planner.Sync.Notes/delete',
+      message:
+          "Note moved to recycle bin: "
+          "Planner.Sync.Notes/delete \u2014 "
+          "'${note['title']}' soft-deleted on server.",
+    );
   }
 
   Future<void> _restoreDeletedNote(Map<String, dynamic> note) async {
     final token = _token;
     if (token == null || token.isEmpty) {
-      throw Exception('Sign in to restore notes.');
+      throw Exception(
+        'Note not restored: '
+        'Planner.Sync.Notes/restore \u2014 '
+        'no cloud session; sign in first.',
+      );
     }
     final noteId = (note['id'] as num?)?.toInt();
     if (noteId == null) {
@@ -2563,19 +2852,35 @@ Capture deadlines, sequencing, and blockers here.''',
     _deletedNotes = await widget.client.getDeletedNotes(token);
     await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
     setState(() {});
-    _appendUiLog("Restored note '${note['title']}'.");
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Planner.Sync.Notes/restore',
+      message:
+          "Note restored: Planner.Sync.Notes/restore \u2014 "
+          "'${note['title']}' removed from the recycle bin.",
+    );
   }
 
   Future<void> _emptyDeletedNotes() async {
     final token = _token;
     if (token == null || token.isEmpty) {
-      throw Exception('Sign in to empty the recycle bin.');
+      throw Exception(
+        'Recycle bin not emptied: '
+        'Planner.Sync.Notes/empty_trash \u2014 '
+        'no cloud session; sign in first.',
+      );
     }
     await widget.client.emptyDeletedNotes(token);
     setState(() {
       _deletedNotes = const [];
     });
-    _appendUiLog('Emptied recycle bin.');
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Planner.Sync.Notes/empty_trash',
+      message:
+          'Recycle bin emptied: Planner.Sync.Notes/empty_trash \u2014 '
+          'all soft-deleted notes purged on the server.',
+    );
   }
 
   Future<void> _syncAllLocalCourses() async {
@@ -2606,7 +2911,9 @@ Capture deadlines, sequencing, and blockers here.''',
     final token = _token;
     if (token == null || token.isEmpty) {
       return const ActionFeedback(
-        message: 'Sign in to sync local courses and drafts.',
+        message: 'Local data not synced: '
+            'Planner.Sync.Notes/push_all \u2014 '
+            'no cloud session; sign in first.',
         isError: true,
       );
     }
@@ -2614,7 +2921,10 @@ Capture deadlines, sequencing, and blockers here.''',
       await _syncAllLocalCourses();
       await _syncAllLocalDrafts();
       await _loadInitialData();
-      const feedback = ActionFeedback(message: 'Local data synced to the cloud.');
+      const feedback = ActionFeedback(
+          message: 'Local data synced: '
+              'Planner.Sync.Notes/push_all \u2014 '
+              'all local courses and drafts pushed to cloud.');
       if (showMessage) {
         _showMessage(feedback.message);
       }
@@ -2625,12 +2935,23 @@ Capture deadlines, sequencing, and blockers here.''',
         'sync_failures': ((_localStats['sync_failures'] as num?)?.toInt() ?? 0) + 1,
       };
       await _persistLocalStats();
-      final message = error.toString().replaceFirst('Exception: ', '');
-      _appendUiLog('Local data sync failed: $message');
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Planner.Sync.Notes/push_all',
+        message: 'Local data not synced: '
+            'Planner.Sync.Notes/push_all \u2014 $cause.',
+      );
       if (showMessage) {
-        _showMessage('Local data sync failed: $message');
+        _showMessage(
+          'Local data not synced: '
+          'Planner.Sync.Notes/push_all \u2014 $cause.',
+        );
       }
-      return ActionFeedback(message: message, isError: true);
+      return ActionFeedback(
+          message: 'Local data not synced: '
+              'Planner.Sync.Notes/push_all \u2014 $cause.',
+          isError: true);
     }
   }
 
@@ -2656,8 +2977,18 @@ Capture deadlines, sequencing, and blockers here.''',
     if (mounted) {
       setState(() {});
     }
-    _appendUiLog('Cleared cached remote data.');
-    return const ActionFeedback(message: 'Cached remote data cleared.');
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Planner.LocalStore/clear_cache',
+      message:
+          'Cached remote data cleared: '
+          'Planner.LocalStore/clear_cache \u2014 '
+          'courses/activity wiped; local drafts untouched.',
+    );
+    return const ActionFeedback(
+        message: 'Cached remote data cleared: '
+            'Planner.LocalStore/clear_cache \u2014 '
+            'cloud rows wiped; local drafts kept.');
   }
 
   Future<ActionFeedback> _clearLocalData() async {
@@ -2684,8 +3015,17 @@ Capture deadlines, sequencing, and blockers here.''',
     if (mounted) {
       setState(() {});
     }
-    _appendUiLog('Removed local drafts and local courses.');
-    return const ActionFeedback(message: 'Local drafts and local courses removed.');
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Planner.LocalStore/clear',
+      message:
+          'Local data cleared: Planner.LocalStore/clear \u2014 '
+          'local drafts and local courses wiped.',
+    );
+    return const ActionFeedback(
+        message: 'Local data cleared: '
+            'Planner.LocalStore/clear \u2014 '
+            'local drafts and local courses removed.');
   }
 
   Future<void> _togglePlannerEventCompletion(
@@ -2707,7 +3047,14 @@ Capture deadlines, sequencing, and blockers here.''',
         _activityWeek = _buildOfflineActivityWeek();
       });
       await _persistLocalCache();
-      _appendUiLog("${completed ? 'Completed' : 'Reopened'} local planner event ${event['title']}.");
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Planner.Sync.Events/toggle_local',
+        message:
+            'Local planner event ${completed ? "completed" : "reopened"}: '
+            'Planner.Sync.Events/toggle_local \u2014 '
+            '"${event['title']}" state persisted to local cache.',
+      );
       return;
     }
     await widget.client.updatePlannerEvent(token, event['id'] as int, {
@@ -2721,14 +3068,24 @@ Capture deadlines, sequencing, and blockers here.''',
     setState(() {
       _plannerEvents = refreshedEvents;
     });
-    _appendUiLog(
-        '${completed ? 'Completed' : 'Reopened'} planner event ${event['title']}.');
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Planner.Sync.Events/toggle',
+      message:
+          'Planner event ${completed ? "completed" : "reopened"}: '
+          'Planner.Sync.Events/toggle \u2014 '
+          '"${event['title']}" state updated on server.',
+    );
   }
 
   Future<void> _subscribeToCourse(Map<String, dynamic> course) async {
     final token = _token;
     if (token == null || token.isEmpty) {
-      throw Exception('Sign in to subscribe to courses.');
+      throw Exception(
+        'Course not subscribed: '
+        'Planner.Sync.Courses/subscribe \u2014 '
+        'no cloud session; sign in first.',
+      );
     }
     await widget.client.subscribeCourse(token, course['id'] as int);
     await _loadInitialData();
@@ -2737,7 +3094,11 @@ Capture deadlines, sequencing, and blockers here.''',
   Future<void> _unsubscribeFromCourse(Map<String, dynamic> course) async {
     final token = _token;
     if (token == null || token.isEmpty) {
-      throw Exception('Sign in to unsubscribe from courses.');
+      throw Exception(
+        'Course not unsubscribed: '
+        'Planner.Sync.Courses/unsubscribe \u2014 '
+        'no cloud session; sign in first.',
+      );
     }
     await widget.client.unsubscribeCourse(token, course['id'] as int);
     await _loadInitialData();
@@ -2753,29 +3114,51 @@ Capture deadlines, sequencing, and blockers here.''',
       };
     });
     await _persistLocalStats();
-    _showMessage('Frontend logs copied.');
+    _showMessage(
+      'Logs copied: Planner.LocalStore/copy_logs \u2014 '
+      'frontend debug log now on the clipboard.',
+    );
   }
 
   Future<ActionFeedback> _restoreTemplateCourses() async {
     final token = _token;
     if (token == null || token.isEmpty) {
       return const ActionFeedback(
-        message: 'Sign in with an admin account first.',
+        message: 'Template courses not restored: '
+            'Planner.LocalStore/restore_templates \u2014 '
+            'no cloud session; sign in with an admin account first.',
         isError: true,
       );
     }
     try {
       final result = await widget.client.restoreTemplateCourses(token);
       await _loadInitialData();
-      final message =
-          result['message']?.toString() ?? 'Template courses restored.';
-      _appendUiLog(message);
+      final serverMessage = result['message']?.toString();
+      final message = serverMessage != null && serverMessage.isNotEmpty
+          ? 'Template courses restored: '
+              'Planner.LocalStore/restore_templates \u2014 $serverMessage'
+          : 'Template courses restored: '
+              'Planner.LocalStore/restore_templates \u2014 '
+              'server seeded default planner template tree.';
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Planner.LocalStore/restore_templates',
+        message: message,
+      );
       _showMessage(message);
       return ActionFeedback(message: message);
     } catch (error) {
-      final message = error.toString().replaceFirst('Exception: ', '');
-      _appendUiLog('Template restore failed: $message');
-      return ActionFeedback(message: message, isError: true);
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Planner.LocalStore/restore_templates',
+        message: 'Template courses not restored: '
+            'Planner.LocalStore/restore_templates \u2014 $cause.',
+      );
+      return ActionFeedback(
+          message: 'Template courses not restored: '
+              'Planner.LocalStore/restore_templates \u2014 $cause.',
+          isError: true);
     }
   }
 
