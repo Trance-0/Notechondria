@@ -1649,11 +1649,17 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     };
     await _persistLocalStats();
     if (remotePayload.isEmpty && !localSettingsChanged) {
-      return const ActionFeedback(message: 'No changes.');
+      return const ActionFeedback(
+          message: 'No settings changes: '
+              'Editor.Sync.Settings/save \u2014 '
+              'nothing to save.');
     }
     final token = _token;
     if (token == null || token.isEmpty) {
-      return const ActionFeedback(message: 'Saved locally.');
+      return const ActionFeedback(
+          message: 'Settings saved locally: '
+              'Editor.Sync.Settings/save \u2014 '
+              'no cloud session; will push on next sign-in.');
     }
     try {
       if (localSettingsChanged) {
@@ -1687,9 +1693,19 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         };
       });
       final summary = _summarizeChangedFields(changedFields);
-      _showMessage('Saved $summary.');
-      _appendUiLog('Settings updated: $summary.');
-      return ActionFeedback(message: 'Saved $summary.');
+      _showMessage(
+        'Settings saved: Editor.Sync.Settings/save \u2014 $summary updated.',
+      );
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Editor.Sync.Settings/save',
+        message:
+            'Settings saved: Editor.Sync.Settings/save \u2014 '
+            '$summary pushed to cloud.',
+      );
+      return ActionFeedback(
+          message: 'Settings saved: Editor.Sync.Settings/save \u2014 '
+              '$summary updated.');
     } catch (error) {
       final detail = error.toString().replaceFirst('Exception: ', '');
       final fallbackUsername = _profile?['username'];
@@ -1726,9 +1742,18 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         };
       });
       final summary = _summarizeChangedFields(changedFields);
-      _appendUiLog('Cloud settings sync failed for $summary: $detail');
+      _log(
+        level: DebugLogLevel.warning,
+        source: 'Editor.Sync.Settings/save',
+        message:
+            'Settings saved locally, cloud push deferred: '
+            'Editor.Sync.Settings/save \u2014 '
+            'remote update for $summary failed ($detail).',
+      );
       return ActionFeedback(
-          message: 'Saved locally. Sync pending for $summary.');
+          message: 'Settings saved locally: '
+              'Editor.Sync.Settings/save \u2014 '
+              'sync pending for $summary (cloud: $detail).');
     }
   }
 
@@ -1736,7 +1761,10 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     final token = _token;
     if (token == null || token.isEmpty) {
       return const ActionFeedback(
-          message: 'Sign in first to update your avatar.', isError: true);
+          message: 'Avatar not updated: '
+              'Editor.Sync.Settings/avatar.upload \u2014 '
+              'no cloud session; sign in first.',
+          isError: true);
     }
     try {
       final file = await openFile(
@@ -1746,18 +1774,27 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         ],
       );
       if (file == null) {
-        return const ActionFeedback(message: 'Avatar update cancelled.');
+        return const ActionFeedback(
+            message: 'Avatar update cancelled: '
+                'Editor.Sync.Settings/avatar.upload \u2014 '
+                'user closed the file picker without selecting a file.');
       }
       final bytes = await file.readAsBytes();
       if (!mounted) {
-        return const ActionFeedback(message: 'Avatar update cancelled.');
+        return const ActionFeedback(
+            message: 'Avatar update cancelled: '
+                'Editor.Sync.Settings/avatar.upload \u2014 '
+                'widget unmounted before confirmation dialog opened.');
       }
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => _AvatarPreviewDialog(imageBytes: bytes),
       );
       if (confirmed != true) {
-        return const ActionFeedback(message: 'Avatar update cancelled.');
+        return const ActionFeedback(
+            message: 'Avatar update cancelled: '
+                'Editor.Sync.Settings/avatar.upload \u2014 '
+                'user rejected the avatar preview.');
       }
       final updated = await widget.client.uploadAvatar(token, file);
       _localStats = {
@@ -1785,12 +1822,29 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
               updated['is_superuser'] ?? _profile?['is_superuser'],
         };
       });
-      _appendUiLog('Avatar updated.');
-      return const ActionFeedback(message: 'Avatar updated.');
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Editor.Sync.Settings/avatar.upload',
+        message:
+            'Avatar updated: Editor.Sync.Settings/avatar.upload \u2014 '
+            'server accepted new image.',
+      );
+      return const ActionFeedback(
+          message: 'Avatar updated: '
+              'Editor.Sync.Settings/avatar.upload \u2014 '
+              'server accepted new image.');
     } catch (error) {
-      final message = error.toString().replaceFirst('Exception: ', '');
-      _appendUiLog('Avatar update failed: $message');
-      return ActionFeedback(message: message, isError: true);
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Editor.Sync.Settings/avatar.upload',
+        message: 'Avatar not updated: '
+            'Editor.Sync.Settings/avatar.upload \u2014 $cause.',
+      );
+      return ActionFeedback(
+          message: 'Avatar not updated: '
+              'Editor.Sync.Settings/avatar.upload \u2014 $cause.',
+          isError: true);
     }
   }
 
@@ -2532,7 +2586,10 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     final token = _token;
     if (token == null || token.isEmpty) {
       return const ActionFeedback(
-          message: 'Sign in to pull cloud notes.', isError: true);
+          message: 'Cloud notes not pulled: '
+              'Editor.Sync.Notes/pull \u2014 '
+              'no cloud session; sign in first.',
+          isError: true);
     }
     try {
       final pulledDrafts = List<Map<String, dynamic>>.from(_localDrafts);
@@ -2575,7 +2632,10 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
                 remoteNote: detail);
             if (!mounted) {
               return const ActionFeedback(
-                  message: 'Cloud pull cancelled.', isError: true);
+                  message: 'Cloud notes pull cancelled: '
+                      'Editor.Sync.Notes/pull \u2014 '
+                      'widget unmounted during conflict dialog.',
+                  isError: true);
             }
             if (decision != 'cloud') {
               skipped += 1;
@@ -2605,18 +2665,33 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       await _loadInitialData();
       if (mounted) setState(() {});
       final segments = <String>[];
-      if (imported > 0) segments.add('pulled $imported');
+      if (imported > 0) segments.add('imported $imported');
       if (updated > 0) segments.add('updated $updated');
       if (skipped > 0) segments.add('kept $skipped local');
-      final message = segments.isEmpty
-          ? 'Cloud notes already match local copies.'
+      final summary = segments.isEmpty
+          ? 'local copies already match the cloud'
           : segments.join(', ');
-      _appendUiLog('Cloud pull completed: $message.');
-      return ActionFeedback(message: message);
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Editor.Sync.Notes/pull',
+        message:
+            'Cloud notes pulled: Editor.Sync.Notes/pull \u2014 $summary.',
+      );
+      return ActionFeedback(
+          message: 'Cloud notes pulled: '
+              'Editor.Sync.Notes/pull \u2014 $summary.');
     } catch (error) {
-      final message = error.toString().replaceFirst('Exception: ', '');
-      _appendUiLog('Cloud pull failed: $message');
-      return ActionFeedback(message: 'Pull failed.', isError: true);
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Editor.Sync.Notes/pull',
+        message: 'Cloud notes not pulled: '
+            'Editor.Sync.Notes/pull \u2014 $cause.',
+      );
+      return ActionFeedback(
+          message: 'Cloud notes not pulled: '
+              'Editor.Sync.Notes/pull \u2014 $cause.',
+          isError: true);
     }
   }
 
@@ -2624,7 +2699,11 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       Map<String, dynamic> draft) async {
     final token = _token;
     if (token == null || token.isEmpty) {
-      throw Exception('Sign in to sync local drafts.');
+      throw Exception(
+        'Local draft not synced: '
+        'Editor.Sync.Notes/push \u2014 '
+        'no cloud session; sign in first.',
+      );
     }
     var metadata =
         _decodeNoteMetadata(draft['metadata_json']?.toString() ?? '{}');
@@ -2690,7 +2769,14 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       await _persistLocalStats();
       await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
       if (mounted) setState(() {});
-      _appendUiLog("Synced local cloud copy '${draft['title']}'.");
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Editor.Sync.Notes/push',
+        message:
+            "Local cloud-copy draft synced: "
+            "Editor.Sync.Notes/push \u2014 "
+            "'${draft['title']}' upstream note updated in place.",
+      );
       return updated;
     }
     final syncCourseId = (metadata['course_id'] as num?)?.toInt();
@@ -2719,7 +2805,13 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     await _persistLocalStats();
     await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
     if (mounted) setState(() {});
-    _appendUiLog("Synced local draft '${draft['title']}'.");
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Editor.Sync.Notes/push',
+      message:
+          "Local draft synced: Editor.Sync.Notes/push \u2014 "
+          "'${draft['title']}' created on server; local draft removed.",
+    );
     return created;
   }
 
@@ -3301,7 +3393,11 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
   Future<void> _restoreDeletedNote(Map<String, dynamic> note) async {
     final token = _token;
     if (token == null || token.isEmpty) {
-      throw Exception('Sign in to restore notes.');
+      throw Exception(
+        'Note not restored: '
+        'Editor.Sync.Notes/restore \u2014 '
+        'no cloud session; sign in first.',
+      );
     }
     final noteId = (note['id'] as num?)?.toInt();
     if (noteId == null) return;
@@ -3309,17 +3405,33 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     _deletedNotes = await widget.client.getDeletedNotes(token);
     await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
     setState(() {});
-    _appendUiLog("Restored note '${note['title']}'.");
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Editor.Sync.Notes/restore',
+      message:
+          "Note restored: Editor.Sync.Notes/restore \u2014 "
+          "'${note['title']}' removed from the recycle bin.",
+    );
   }
 
   Future<void> _emptyDeletedNotes() async {
     final token = _token;
     if (token == null || token.isEmpty) {
-      throw Exception('Sign in to empty the recycle bin.');
+      throw Exception(
+        'Recycle bin not emptied: '
+        'Editor.Sync.Notes/empty_trash \u2014 '
+        'no cloud session; sign in first.',
+      );
     }
     await widget.client.emptyDeletedNotes(token);
     setState(() => _deletedNotes = const []);
-    _appendUiLog('Emptied recycle bin.');
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Editor.Sync.Notes/empty_trash',
+      message:
+          'Recycle bin emptied: Editor.Sync.Notes/empty_trash \u2014 '
+          'all soft-deleted notes purged on the server.',
+    );
   }
 
   Future<void> _syncAllLocalCourses() async {
@@ -3343,15 +3455,19 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     final token = _token;
     if (token == null || token.isEmpty) {
       return const ActionFeedback(
-          message: 'Sign in to sync local courses and drafts.',
+          message: 'Local data not synced: '
+              'Editor.Sync.Notes/push_all \u2014 '
+              'no cloud session; sign in first.',
           isError: true);
     }
     try {
       await _syncAllLocalCourses();
       await _syncAllLocalDrafts();
       await _loadInitialData();
-      const feedback =
-          ActionFeedback(message: 'Local data synced to the cloud.');
+      const feedback = ActionFeedback(
+          message: 'Local data synced: '
+              'Editor.Sync.Notes/push_all \u2014 '
+              'all local courses and drafts pushed to cloud.');
       if (showMessage) _showMessage(feedback.message);
       return feedback;
     } catch (error) {
@@ -3361,10 +3477,23 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
             ((_localStats['sync_failures'] as num?)?.toInt() ?? 0) + 1,
       };
       await _persistLocalStats();
-      final message = error.toString().replaceFirst('Exception: ', '');
-      _appendUiLog('Local data sync failed: $message');
-      if (showMessage) _showMessage('Local data sync failed: $message');
-      return ActionFeedback(message: message, isError: true);
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Editor.Sync.Notes/push_all',
+        message: 'Local data not synced: '
+            'Editor.Sync.Notes/push_all \u2014 $cause.',
+      );
+      if (showMessage) {
+        _showMessage(
+          'Local data not synced: '
+          'Editor.Sync.Notes/push_all \u2014 $cause.',
+        );
+      }
+      return ActionFeedback(
+          message: 'Local data not synced: '
+              'Editor.Sync.Notes/push_all \u2014 $cause.',
+          isError: true);
     }
   }
 

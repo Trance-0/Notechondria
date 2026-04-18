@@ -137,10 +137,16 @@ Decompose by module so each round produces a reviewable diff. Order:
   `_updateCategory`, `_deleteCategory`, `_reorderCategories`, and
   `_syncLocalCourse` in `editor_app/lib/app_shell.dart` rewritten to
   `Editor.Sync.Courses/{create,update,delete,reorder,push}` shape.
-- [ ] `Editor.Sync.Settings` round \u2014 `_updateSettings` +
-  `_applyLocalAppSettings` + profile-save/avatar-upload.
-- [ ] `Editor.Sync.Notes` round \u2014 `_syncLocalDraft`,
-  `_pullCloudNotesToLocal`, note save/load error paths.
+- [x] `Editor.Sync.Settings` round (0.1.32): `_updateSettings`
+  save/no-change/save-locally/remote-fail paths + `_uploadAvatar`
+  success/cancel/error paths migrated to
+  `Editor.Sync.Settings/{save,avatar.upload}` sources.
+- [x] `Editor.Sync.Notes` round (0.1.32): `_pullCloudNotesToLocal`
+  (missing-session, cancel, success, error), `_syncLocalDraft`
+  (missing-session guard + cloud-copy and fresh-create success logs),
+  `_restoreDeletedNote`, `_emptyDeletedNotes`, and `_syncAllLocalData`
+  (all top-level sync entrypoint messages) migrated to
+  `Editor.Sync.Notes/{pull,push,push_all,restore,empty_trash}` sources.
 - [ ] `Editor.LocalStore` round \u2014 starter workspace seed,
   `_clearLocalData`, `_restoreTemplateCourses`, draft persistence
   logging.
