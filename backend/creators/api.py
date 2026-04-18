@@ -1230,22 +1230,19 @@ class SocialAccountUnlinkApiView(APIView):
 
 
 class _BindOAuthMixin:
-    """Shared logic for authenticated social-account binding views."""
+    """Shared logic for authenticated social-account binding views.
+
+    Every failure path returns a §1.7-shaped detail of the form
+    `"<consequence>: Backend.Creators.Auth/bind.<phase> — <cause>"` so the
+    Flutter frontend can surface the phase in an actionable SnackBar and
+    the ops logs contain the same phase string for grepability.
+    """
 
     def _bind_social_account(self, user, provider, provider_uid, email, extra_data):
         """Create or update a SocialAccount link for *user*."""
         logger.info(
             "Bind %s: user=%s uid=%s email=%s",
             provider, user.username, provider_uid, email,
-        )
-        social, created = SocialAccount.objects.update_or_create(
-            user=user,
-            provider=provider,
-            defaults={
-                "provider_uid": str(provider_uid),
-                "email": email,
-                "extra_data": extra_data,
-            },
         )
         # If this provider_uid was previously linked to a different user, reject.
         conflict = SocialAccount.objects.filter(
@@ -1257,8 +1254,35 @@ class _BindOAuthMixin:
                 provider, provider_uid, conflict.user_id,
             )
             return Response(
-                {"detail": "This account is already linked to another user."},
+                {"detail": (
+                    f"Account linking aborted: "
+                    f"Backend.Creators.Auth/bind.{provider}.db_write \u2014 "
+                    f"this {provider} account is already linked to another user."
+                )},
                 status=status.HTTP_409_CONFLICT,
+            )
+        try:
+            social, created = SocialAccount.objects.update_or_create(
+                user=user,
+                provider=provider,
+                defaults={
+                    "provider_uid": str(provider_uid),
+                    "email": email,
+                    "extra_data": extra_data,
+                },
+            )
+        except Exception as exc:  # noqa: BLE001 - bubble cause as-is
+            logger.exception(
+                "Bind %s db_write failed for user=%s uid=%s",
+                provider, user.username, provider_uid,
+            )
+            return Response(
+                {"detail": (
+                    f"Account linking failed: "
+                    f"Backend.Creators.Auth/bind.{provider}.db_write \u2014 "
+                    f"could not persist social account link ({exc.__class__.__name__})."
+                )},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
         logger.info("Bind %s %s: social_id=%s", provider, "created" if created else "updated", social.id)
         return Response({
@@ -1288,28 +1312,55 @@ class BindGoogleApiView(_BindOAuthMixin, APIView):
         redirect_uri = (data.get("redirect_uri") or "").strip() or settings.GOOGLE_AUTHORIZED_REDIRECT_URI
         logger.info("BindGoogle: redirect_uri=%s has_code=%s has_id_token=%s", redirect_uri, bool(code), bool(raw_id_token))
 
-        if code:
-            token_resp = http_requests.post(
-                "https://oauth2.googleapis.com/token",
-                data={
-                    "code": code,
-                    "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
-                    "client_secret": settings.GOOGLE_OAUTH_CLIENT_SECRET,
-                    "redirect_uri": redirect_uri,
-                    "grant_type": "authorization_code",
-                },
-                timeout=15,
+        if not settings.GOOGLE_OAUTH_CLIENT_ID or not settings.GOOGLE_OAUTH_CLIENT_SECRET:
+            logger.error("BindGoogle config_lookup: OAuth client credentials missing in settings")
+            return Response(
+                {"detail": (
+                    "Account linking aborted: "
+                    "Backend.Creators.Auth/bind.google.config_lookup \u2014 "
+                    "server is missing GOOGLE_OAUTH_CLIENT_ID/SECRET configuration."
+                )},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
+
+        if code:
+            try:
+                token_resp = http_requests.post(
+                    "https://oauth2.googleapis.com/token",
+                    data={
+                        "code": code,
+                        "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
+                        "client_secret": settings.GOOGLE_OAUTH_CLIENT_SECRET,
+                        "redirect_uri": redirect_uri,
+                        "grant_type": "authorization_code",
+                    },
+                    timeout=15,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.exception("BindGoogle token_exchange network error")
+                return Response(
+                    {"detail": (
+                        "Account linking failed: "
+                        "Backend.Creators.Auth/bind.google.token_exchange \u2014 "
+                        f"could not reach Google token endpoint ({exc.__class__.__name__})."
+                    )},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
             if token_resp.status_code != 200:
                 logger.warning("BindGoogle token exchange failed (%s): %s", token_resp.status_code, token_resp.text)
-                error_detail = "Failed to exchange Google authorization code."
+                google_reason = "unknown Google error"
                 try:
                     err = token_resp.json()
-                    error_detail = err.get("error_description", err.get("error", error_detail))
-                except Exception:
+                    google_reason = err.get("error_description", err.get("error", google_reason))
+                except Exception:  # noqa: BLE001
                     pass
                 return Response(
-                    {"detail": error_detail},
+                    {"detail": (
+                        "Account linking failed: "
+                        "Backend.Creators.Auth/bind.google.token_exchange \u2014 "
+                        f"Google rejected authorization code "
+                        f"(HTTP {token_resp.status_code}: {google_reason})."
+                    )},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             raw_id_token = token_resp.json().get("id_token", "")
@@ -1318,26 +1369,49 @@ class BindGoogleApiView(_BindOAuthMixin, APIView):
         if not raw_id_token:
             logger.warning("BindGoogle: no id_token after exchange")
             return Response(
-                {"detail": "No ID token received from Google."},
+                {"detail": (
+                    "Account linking failed: "
+                    "Backend.Creators.Auth/bind.google.token_exchange \u2014 "
+                    "no id_token returned by Google (authorization code may have been consumed already)."
+                )},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        verify_resp = http_requests.get(
-            "https://oauth2.googleapis.com/tokeninfo",
-            params={"id_token": raw_id_token},
-            timeout=10,
-        )
+        try:
+            verify_resp = http_requests.get(
+                "https://oauth2.googleapis.com/tokeninfo",
+                params={"id_token": raw_id_token},
+                timeout=10,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("BindGoogle token_verify network error")
+            return Response(
+                {"detail": (
+                    "Account linking failed: "
+                    "Backend.Creators.Auth/bind.google.token_verify \u2014 "
+                    f"could not reach Google tokeninfo endpoint ({exc.__class__.__name__})."
+                )},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
         if verify_resp.status_code != 200:
             logger.warning("BindGoogle: tokeninfo verify failed (%s): %s", verify_resp.status_code, verify_resp.text)
             return Response(
-                {"detail": "Google ID token verification failed."},
+                {"detail": (
+                    "Account linking failed: "
+                    "Backend.Creators.Auth/bind.google.token_verify \u2014 "
+                    f"Google tokeninfo rejected id_token (HTTP {verify_resp.status_code})."
+                )},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         info = verify_resp.json()
         if info.get("aud", "") != settings.GOOGLE_OAUTH_CLIENT_ID:
             logger.warning("BindGoogle: audience mismatch got=%s expected=%s", info.get("aud"), settings.GOOGLE_OAUTH_CLIENT_ID)
             return Response(
-                {"detail": "ID token audience mismatch."},
+                {"detail": (
+                    "Account linking aborted: "
+                    "Backend.Creators.Auth/bind.google.token_verify \u2014 "
+                    "id_token audience does not match this server's configured client_id."
+                )},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -1369,6 +1443,17 @@ class BindGithubApiView(_BindOAuthMixin, APIView):
         redirect_uri = (data.get("redirect_uri") or "").strip() or settings.GITHUB_AUTHORIZED_REDIRECT_URI
         logger.info("BindGitHub: redirect_uri=%s", redirect_uri)
 
+        if not settings.GITHUB_APP_CLIENT_ID or not settings.GITHUB_APP_CLIENT_SECRET:
+            logger.error("BindGitHub config_lookup: OAuth client credentials missing in settings")
+            return Response(
+                {"detail": (
+                    "Account linking aborted: "
+                    "Backend.Creators.Auth/bind.github.config_lookup \u2014 "
+                    "server is missing GITHUB_APP_CLIENT_ID/SECRET configuration."
+                )},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
         token_payload = {
             "client_id": settings.GITHUB_APP_CLIENT_ID,
             "client_secret": settings.GITHUB_APP_CLIENT_SECRET,
@@ -1376,22 +1461,38 @@ class BindGithubApiView(_BindOAuthMixin, APIView):
         }
         if redirect_uri:
             token_payload["redirect_uri"] = redirect_uri
-        token_resp = http_requests.post(
-            "https://github.com/login/oauth/access_token",
-            json=token_payload,
-            headers={"Accept": "application/json"},
-            timeout=15,
-        )
+        try:
+            token_resp = http_requests.post(
+                "https://github.com/login/oauth/access_token",
+                json=token_payload,
+                headers={"Accept": "application/json"},
+                timeout=15,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("BindGitHub token_exchange network error")
+            return Response(
+                {"detail": (
+                    "Account linking failed: "
+                    "Backend.Creators.Auth/bind.github.token_exchange \u2014 "
+                    f"could not reach GitHub access_token endpoint ({exc.__class__.__name__})."
+                )},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
         if token_resp.status_code != 200:
             logger.warning("BindGitHub token exchange failed (%s): %s", token_resp.status_code, token_resp.text)
-            error_detail = "Failed to exchange GitHub authorization code."
+            gh_reason = "unknown GitHub error"
             try:
                 err = token_resp.json()
-                error_detail = err.get("error_description", err.get("error", error_detail))
-            except Exception:
+                gh_reason = err.get("error_description", err.get("error", gh_reason))
+            except Exception:  # noqa: BLE001
                 pass
             return Response(
-                {"detail": error_detail},
+                {"detail": (
+                    "Account linking failed: "
+                    "Backend.Creators.Auth/bind.github.token_exchange \u2014 "
+                    f"GitHub rejected authorization code "
+                    f"(HTTP {token_resp.status_code}: {gh_reason})."
+                )},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         token_data = token_resp.json()
@@ -1400,23 +1501,42 @@ class BindGithubApiView(_BindOAuthMixin, APIView):
             error_desc = token_data.get("error_description", token_data.get("error", "unknown"))
             logger.warning("BindGitHub: no access_token, error=%s", error_desc)
             return Response(
-                {"detail": f"GitHub OAuth error: {error_desc}"},
+                {"detail": (
+                    "Account linking failed: "
+                    "Backend.Creators.Auth/bind.github.token_exchange \u2014 "
+                    f"GitHub returned no access_token (reason: {error_desc})."
+                )},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         logger.info("BindGitHub: token exchange OK")
 
-        user_resp = http_requests.get(
-            "https://api.github.com/user",
-            headers={
-                "Authorization": f"Bearer {access_token}",
-                "Accept": "application/vnd.github+json",
-            },
-            timeout=10,
-        )
+        try:
+            user_resp = http_requests.get(
+                "https://api.github.com/user",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Accept": "application/vnd.github+json",
+                },
+                timeout=10,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("BindGitHub profile_fetch network error")
+            return Response(
+                {"detail": (
+                    "Account linking failed: "
+                    "Backend.Creators.Auth/bind.github.profile_fetch \u2014 "
+                    f"could not reach GitHub /user endpoint ({exc.__class__.__name__})."
+                )},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
         if user_resp.status_code != 200:
             logger.warning("BindGitHub: user profile fetch failed (%s): %s", user_resp.status_code, user_resp.text)
             return Response(
-                {"detail": "Failed to fetch GitHub user profile."},
+                {"detail": (
+                    "Account linking failed: "
+                    "Backend.Creators.Auth/bind.github.profile_fetch \u2014 "
+                    f"GitHub /user returned HTTP {user_resp.status_code} for the issued access_token."
+                )},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         gh_user = user_resp.json()

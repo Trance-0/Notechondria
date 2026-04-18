@@ -65,26 +65,6 @@ Here is a list of task we need to do now after testing, finishing and solve thes
 
 ### Login and account info
 
-- [ ] OAuth callback loading screen message. While the editor/portal/
-  planner is handling `_handleOAuthCallback`, the splash currently reads
-  "Completing sign-in" for all intents and both providers. Spec: when a
-  `?state=google|github` is present, set `_splashStatus.value` to
-  `'Completing sign-in via Google'` / `'Completing sign-in via GitHub'`.
-  If `intent=bind`, read `'Linking Google account'` etc. The splash
-  widget itself already cross-fades between statuses; this is just a
-  host-side string change.
-
-- [ ] Account linking error detail. Today `bind` failures surface as
-  `Account linking failed: HTTP 500` or plain `Internal Server Error`
-  text. Backend must catch each phase of `/api/v1/auth/bind/<provider>/`
-  (config lookup, token exchange, profile fetch, email match, DB write)
-  and return
-  `{"detail": "<consequence>: Backend.Creators.Auth/bind.<phase> \u2014 <cause>"}`
-  with a meaningful HTTP status (4xx for user-actionable, 5xx for true
-  server bugs). Frontend then logs the detail verbatim and shows it in
-  the SnackBar. Tests in `backend/creators/tests.py` must continue to
-  match the literal substring `bind` for intent rejection.
-
 - [ ] Full feature parity with editor Settings: API key section (with rotate
   button and MCP endpoint helper), password-change dialog with identity code
   verification, email-change dialog, config file download. As of 0.1.18 the
@@ -131,10 +111,17 @@ Decompose by module so each round produces a reviewable diff. Order:
 - [x] OAuth launch + callback messages in editor_app (done in the 0.1.25
   pass, see `docs/versions/0.1.25.md`). Remaining OAuth sites in
   planner/portal still need the same treatment.
-- [ ] `Editor.Auth` round: editor_app `_register` / `_verify` /
+- [x] `Editor.Auth` round: editor_app `_register` / `_verify` /
   `_resendVerification` / `_login` / `_requestPasswordReset` /
-  `_confirmPasswordReset` / `_applyAuthPayload` / `_logout`
-  (~14 `_appendUiLog` and `ActionFeedback` sites).
+  `_confirmPasswordReset` / `_applyAuthPayload` / `_logout` migrated in
+  0.1.26. Legacy `_appendUiLog` wrapper kept for call-site compatibility
+  but primary error/info surfaces now use the full shape.
+- [x] `Backend.Creators.Auth/bind.*` phased details (0.1.26): bind
+  endpoints for Google and GitHub now emit per-phase `detail` strings
+  covering `config_lookup`, `token_exchange`, `token_verify` / profile
+  fetch, and `db_write`. Network errors on the Google/GitHub side
+  return `502`; missing server OAuth config returns `503`. The public
+  `bind` substring sentinel in `creators.tests` is unchanged.
 - [ ] `Editor.Sync.Settings`, `Editor.Sync.Courses`, `Editor.Sync.Notes`,
   `Editor.LocalStore` rounds \u2014 split one per module; each is
   ~10\u201320 sites.
@@ -169,12 +156,6 @@ Do not bundle unrelated changes.
   whether the planning-course semantics make a non-Inbox default the
   right default for planner. Decide before changing; changing planner's
   starter default is a UX break.
-- [ ] Extend the editor's cloud-category offline-hide behavior
-  (`editor_app/lib/app_shell.dart` `_allCategories` getter) to planner
-  and portal. The editor now hides cloud rows from the sidebar while
-  signed out so the app reads as local-only; planner and portal still
-  show cached cloud rows. Apply the same `_token == null || _token!.isEmpty`
-  gate in each app's sidebar source list.
 - [ ] Cloud category "subscribe but keep private" — a user can save a
   reference to a cloud course as one of their local categories without
   republishing it. Needs a new client method + backend endpoint

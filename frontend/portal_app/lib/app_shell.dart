@@ -2829,7 +2829,9 @@ class _AppShellState extends State<AppShell> {
         return _LearnerPage(
           notes: _learnerNotes,
           localDrafts: _localDrafts,
-          courses: [..._localCourses, ..._courses],
+          courses: (_token == null || _token!.isEmpty)
+              ? [..._localCourses]
+              : [..._localCourses, ..._courses],
           selectedNote: _selectedNote,
           editorMode: _settings?['editor_mode']?.toString() ?? 'P',
           hasMoreNotes: _hasMoreLearnerNotes,

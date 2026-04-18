@@ -1241,12 +1241,17 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         password,
         invitationCode: invitationCode,
       );
+      final serverMessage = result['message']?.toString();
+      return ActionFeedback(
+          message: serverMessage != null && serverMessage.isNotEmpty
+              ? 'Registration queued: Editor.Auth/register \u2014 $serverMessage'
+              : 'Registration queued: Editor.Auth/register \u2014 '
+                  'verification email sent to $email.');
+    } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
       return ActionFeedback(
           message:
-              result['message']?.toString() ?? 'Verification email sent.');
-    } catch (error) {
-      return ActionFeedback(
-          message: error.toString().replaceFirst('Exception: ', ''),
+              'Registration rejected: Editor.Auth/register \u2014 $cause',
           isError: true);
     }
   }
@@ -1256,10 +1261,13 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       final result = await widget.client.verifyEmail(email, code);
       await _applyAuthPayload(result);
       return const ActionFeedback(
-          message: 'Email verified. You are now signed in.');
+          message:
+              'Signed in: Editor.Auth/verify \u2014 email verified and '
+              'session issued.');
     } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
       return ActionFeedback(
-          message: error.toString().replaceFirst('Exception: ', ''),
+          message: 'Email verification failed: Editor.Auth/verify \u2014 $cause',
           isError: true);
     }
   }
@@ -1267,12 +1275,19 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
   Future<ActionFeedback> _resendVerification(String email) async {
     try {
       final result = await widget.client.resendVerification(email);
+      final serverMessage = result['message']?.toString();
       return ActionFeedback(
-          message: result['message']?.toString() ??
-              'Verification code resent.');
+          message: serverMessage != null && serverMessage.isNotEmpty
+              ? 'Verification code resent: '
+                  'Editor.Auth/resend_verification \u2014 $serverMessage'
+              : 'Verification code resent: '
+                  'Editor.Auth/resend_verification \u2014 delivery queued '
+                  'to $email.');
     } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
       return ActionFeedback(
-          message: error.toString().replaceFirst('Exception: ', ''),
+          message: 'Verification code not resent: '
+              'Editor.Auth/resend_verification \u2014 $cause',
           isError: true);
     }
   }
@@ -1281,10 +1296,13 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     try {
       final result = await widget.client.login(email, password);
       await _applyAuthPayload(result);
-      return const ActionFeedback(message: 'Login successful.');
+      return const ActionFeedback(
+          message: 'Signed in: Editor.Auth/login \u2014 '
+              'server accepted credentials.');
     } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
       return ActionFeedback(
-          message: error.toString().replaceFirst('Exception: ', ''),
+          message: 'Sign-in rejected: Editor.Auth/login \u2014 $cause',
           isError: true);
     }
   }
@@ -1292,12 +1310,18 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
   Future<ActionFeedback> _requestPasswordReset(String email) async {
     try {
       final result = await widget.client.requestPasswordReset(email);
+      final serverMessage = result['message']?.toString();
       return ActionFeedback(
-          message: result['message']?.toString() ??
-              'Password reset email sent.');
+          message: serverMessage != null && serverMessage.isNotEmpty
+              ? 'Password reset email queued: '
+                  'Editor.Auth/password.reset.request \u2014 $serverMessage'
+              : 'Password reset email queued: '
+                  'Editor.Auth/password.reset.request \u2014 sent to $email.');
     } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
       return ActionFeedback(
-          message: error.toString().replaceFirst('Exception: ', ''),
+          message: 'Password reset email not sent: '
+              'Editor.Auth/password.reset.request \u2014 $cause',
           isError: true);
     }
   }
@@ -1307,11 +1331,19 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     try {
       final result =
           await widget.client.confirmPasswordReset(email, code, password);
+      final serverMessage = result['message']?.toString();
       return ActionFeedback(
-          message: result['message']?.toString() ?? 'Password updated.');
+          message: serverMessage != null && serverMessage.isNotEmpty
+              ? 'Password updated: '
+                  'Editor.Auth/password.reset.confirm \u2014 $serverMessage'
+              : 'Password updated: '
+                  'Editor.Auth/password.reset.confirm \u2014 '
+                  'server accepted reset code.');
     } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
       return ActionFeedback(
-          message: error.toString().replaceFirst('Exception: ', ''),
+          message: 'Password not updated: '
+              'Editor.Auth/password.reset.confirm \u2014 $cause',
           isError: true);
     }
   }
@@ -1410,8 +1442,15 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         'app_settings_updated_at': _localSettings['updated_at'] ??
             DateTime.now().toUtc().toIso8601String(),
       };
-      _appendUiLog(
-          'Settings bootstrap after login fell back to local state: ${error.toString().replaceFirst('Exception: ', '')}');
+      _log(
+        level: DebugLogLevel.warning,
+        source: 'Editor.Sync.Settings/bootstrap',
+        message:
+            'Remote settings unavailable right after login: '
+            'Editor.Sync.Settings/bootstrap \u2014 '
+            '${error.toString().replaceFirst('Exception: ', '')}. '
+            'Using cached local settings.',
+      );
     }
     setState(() {
       _token = token;
@@ -1436,8 +1475,13 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     });
     await _loadInitialData();
     await _syncAllLocalData(showMessage: false);
-    _appendUiLog(
-        'Authenticated as ${user['username'] ?? user['email'] ?? 'user'}.');
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Editor.Auth/applyAuthPayload',
+      message:
+          'Session established: Editor.Auth/applyAuthPayload \u2014 '
+          'authenticated as ${user['username'] ?? user['email'] ?? 'user'}.',
+    );
   }
 
   Future<void> _logout() async {
@@ -1446,8 +1490,14 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     try {
       await widget.client.logout(token);
     } catch (error) {
-      _appendUiLog(
-          'Cloud logout failed, cleared local session anyway: ${error.toString().replaceFirst('Exception: ', '')}');
+      _log(
+        level: DebugLogLevel.warning,
+        source: 'Editor.Auth/logout',
+        message:
+            'Cloud logout call failed but local session cleared anyway: '
+            'Editor.Auth/logout \u2014 '
+            '${error.toString().replaceFirst('Exception: ', '')}.',
+      );
     }
     setState(() {
       _token = null;
@@ -1457,8 +1507,15 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     });
     await _LocalAppStore.clearSession();
     await _loadInitialData();
-    _showMessage('Signed out.');
-    _appendUiLog('Signed out.');
+    _showMessage(
+      'Signed out: Editor.Auth/logout \u2014 local session cleared.',
+    );
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Editor.Auth/logout',
+      message:
+          'Signed out: Editor.Auth/logout \u2014 local session cleared.',
+    );
   }
 
   // ---------------------------------------------------------------------------
