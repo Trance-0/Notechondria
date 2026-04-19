@@ -120832,7 +120832,7 @@ I(a){var s,r,q=this,p=A.i6(new A.aH7(q))
 if(q.f){s=q.a.f
 r=q.dy.h(0,"api_base_url")
 r=r==null?null:J.J(r)
-return A.ht(B.bQ,A.b([p,A.AO(0,new A.KS(s,"0.1.35",new A.aH8(q),q.k4,r,null))],t.p),B.w,B.bB,null)}return p},
+return A.ht(B.bQ,A.b([p,A.AO(0,new A.KS(s,"0.1.36",new A.aH8(q),q.k4,r,null))],t.p),B.w,B.bB,null)}return p},
 amc(){var s,r,q,p,o,n=this,m=null,l=n.d
 l=l!==2?A.al(B.rD[l],m,m,m,m,m,m,m,m):m
 s=n.Ym()
@@ -123684,7 +123684,7 @@ h.toString
 n=J.aa(o)
 m=n.h(o,"title")
 m=m==null?null:J.J(m)
-h.u7("Editor opened for '"+(m==null?"Untitled note":m)+"'.")
+h.u7("Note editor opened: Planner.UI/open_editor \u2014 '"+(m==null?"Untitled note":m)+"' loaded into dialog.")
 h=p.a
 h.toString
 m=A.cF(n.h(o,"id"))
@@ -123737,7 +123737,7 @@ case 3:n=b
 if(p.c==null){s=1
 break}o=p.a
 o.toString
-o.u7("Created note shell "+A.l(J.U(n,"id"))+".")
+o.u7("Note shell created: Planner.UI/create_note \u2014 server issued note id "+A.l(J.U(n,"id"))+"; editor about to open.")
 s=4
 return A.m(p.m0(n),$async$vg)
 case 4:case 1:return A.w(q,r)}})
@@ -124140,7 +124140,7 @@ l=n.a
 l.toString
 i=J.U(n.at,"title")
 i=i==null?null:J.J(i)
-l.u7("Editor saved '"+(i==null?"Untitled note":i)+"' via "+a+".")
+l.u7("Note saved from editor: Planner.UI/editor.save \u2014 '"+(i==null?"Untitled note":i)+"' persisted via "+a+".")
 s=a==="autosave"&&m!=null?8:9
 break
 case 8:l=n.a
@@ -124165,7 +124165,7 @@ case 2:return A.v(o.at(-1),r)}})
 return A.x($async$rT,r)},
 zP(){var s=0,r=A.y(t.H),q,p=this,o,n,m,l,k
 var $async$zP=A.z(function(a,b){if(a===1)return A.v(b,r)
-for(;;)switch(s){case 0:p.a.u7("Opened note metadata dialog.")
+for(;;)switch(s){case 0:p.a.u7("Note metadata dialog opened: Planner.UI/editor.metadata \u2014 user requested metadata edit from the editor toolbar.")
 o=p.c
 o.toString
 s=3
@@ -124254,7 +124254,7 @@ q=q.a.a
 s=r.e
 s===$&&A.a()
 r.a32(A.ae(["content",A.aY6(q,s.a.a),"blocks",B.A],t.N,t.z))}r.K(new A.aQr(r,a))
-r.a.u7("Editor mode switched to "+a+".")
+r.a.u7("Editor mode switched: Planner.UI/editor.mode \u2014 active mode set to "+a+".")
 r.zG()},
 M1(a){var s,r=this,q=$.am(),p=new A.cu(new A.c2("",B.aD,B.ac),q)
 q=new A.cu(new A.c2("",B.aD,B.ac),q)
@@ -124512,7 +124512,7 @@ p=o.at
 p===$&&A.a()
 s=5
 return A.m(n.abv(A.cF(J.U(p,"id")),"quit"),$async$$0)
-case 5:case 3:o.a.u7("Editor closed.")
+case 5:case 3:o.a.u7("Note editor closed: Planner.UI/editor.close \u2014 dialog dismissed and focus returned to the planner view.")
 if(o.c!=null)A.d7(q.b,!1).cK()
 return A.w(null,r)}})
 return A.x($async$$0,r)},

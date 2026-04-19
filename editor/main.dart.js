@@ -60585,7 +60585,7 @@ M(a){var s,r,q=this,p=null,o=A.nh(new A.aGV(q))
 if(q.f){s=q.a.f
 r=q.cy.h(0,"api_base_url")
 r=r==null?p:J.A(r)
-return new A.eI(B.c9,p,B.bT,B.K,A.b([o,A.Yx(0,new A.Kk(s,"0.1.35",new A.aGW(q),q.k1,r,p))],t.p),p)}return o},
+return new A.eI(B.c9,p,B.bT,B.K,A.b([o,A.Yx(0,new A.Kk(s,"0.1.36",new A.aGW(q),q.k1,r,p))],t.p),p)}return o},
 alm(a){var s,r,q,p,o,n=this,m=null,l="All Notes"
 if(n.d===1)if(n.ok!=null){s=n.CW
 if(s==null)r=m
@@ -63036,7 +63036,7 @@ h.toString
 n=J.ab(o)
 m=n.h(o,"title")
 m=m==null?null:J.A(m)
-h.qK("Editor opened for '"+(m==null?"Untitled note":m)+"'.")
+h.qK("Note editor opened: Editor.UI/open_editor \u2014 '"+(m==null?"Untitled note":m)+"' loaded into dialog.")
 h=p.a
 h.toString
 m=A.dx(n.h(o,"id"))
@@ -63100,7 +63100,7 @@ case 3:n=b
 if(p.c==null){s=1
 break}o=p.a
 o.toString
-o.qK("Created note shell "+A.l(J.P(n,"id"))+".")
+o.qK("Note shell created: Editor.UI/create_note \u2014 server issued note id "+A.l(J.P(n,"id"))+"; editor about to open.")
 s=4
 return A.m(p.o4(n),$async$v4)
 case 4:case 1:return A.x(q,r)}})
@@ -63483,7 +63483,7 @@ j=n.a
 j.toString
 i=J.P(n.as,"title")
 i=i==null?null:J.A(i)
-j.qK("Editor saved '"+(i==null?"Untitled note":i)+"' via "+a1+".")
+j.qK("Note saved from editor: Editor.UI/editor.save \u2014 '"+(i==null?"Untitled note":i)+"' persisted via "+a1+".")
 s=a1==="autosave"&&m!=null?8:9
 break
 case 8:j=n.a
@@ -63508,7 +63508,7 @@ case 2:return A.w(o.at(-1),r)}})
 return A.y($async$rP,r)},
 zt(){var s=0,r=A.z(t.H),q,p=this,o,n,m,l,k
 var $async$zt=A.u(function(a,b){if(a===1)return A.w(b,r)
-for(;;)switch(s){case 0:p.a.qK("Opened note metadata dialog.")
+for(;;)switch(s){case 0:p.a.qK("Note metadata dialog opened: Editor.UI/editor.metadata \u2014 user requested metadata edit from the editor toolbar.")
 o=p.c
 o.toString
 s=3
@@ -63541,7 +63541,7 @@ aC5(a){var s=this,r=s.ax
 r===$&&A.a()
 if(r===a)return
 s.K(new A.aOD(s,a))
-s.a.qK("Editor mode switched to "+a+".")
+s.a.qK("Editor mode switched: Editor.UI/editor.mode \u2014 active mode set to "+a+".")
 s.NR()},
 vv(){var s=0,r=A.z(t.H),q,p=2,o=[],n=this,m,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1
 var $async$vv=A.u(function(a2,a3){if(a2===1){o.push(a3)
@@ -63582,7 +63582,7 @@ a0.scm(0,a0.a.a+"\n\n"+A.l(f))
 n.NR()
 a0=n.a
 a0.toString
-a0.qK("Attachment uploaded: "+A.l(i))
+a0.qK('Attachment uploaded: Editor.UI/editor.attachment \u2014 "'+A.l(i)+'" attached to the open note.')
 p=2
 s=8
 break
@@ -63781,7 +63781,7 @@ p=n.as
 p===$&&A.a()
 s=5
 return A.m(m.aaT(A.dx(J.P(p,"id")),"quit"),$async$$0)
-case 5:case 3:n.a.qK("Editor closed.")
+case 5:case 3:n.a.qK("Note editor closed: Editor.UI/editor.close \u2014 dialog dismissed and focus returned to the learner view.")
 if(n.c!=null)o.bP()
 return A.x(null,r)}})
 return A.y($async$$0,r)},

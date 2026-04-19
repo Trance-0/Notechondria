@@ -119216,7 +119216,7 @@ I(a){var s,r,q=this,p=A.i3(new A.aGL(q))
 if(q.f){s=q.a.f
 r=q.fr.h(0,"api_base_url")
 r=r==null?null:J.I(r)
-return A.ho(B.bP,A.b([p,A.AH(0,new A.KC(s,"0.1.35",new A.aGM(q),q.k4,r,null))],t.p),B.y,B.bx,null)}return p},
+return A.ho(B.bP,A.b([p,A.AH(0,new A.KC(s,"0.1.36",new A.aGM(q),q.k4,r,null))],t.p),B.y,B.bx,null)}return p},
 alQ(){var s,r,q,p,o,n=this,m=null,l=n.d
 l=l!==3?A.ai(B.rs[l],m,m,m,m,m,m,m,m):m
 s=n.Yl()
@@ -122199,7 +122199,7 @@ h.toString
 n=J.aa(o)
 m=n.h(o,"title")
 m=m==null?null:J.I(m)
-h.u5("Editor opened for '"+(m==null?"Untitled note":m)+"'.")
+h.u5("Note editor opened: Portal.UI/open_editor \u2014 '"+(m==null?"Untitled note":m)+"' loaded into dialog.")
 h=p.a
 h.toString
 m=A.cM(n.h(o,"id"))
@@ -122252,7 +122252,7 @@ case 3:n=b
 if(p.c==null){s=1
 break}o=p.a
 o.toString
-o.u5("Created note shell "+A.l(J.W(n,"id"))+".")
+o.u5("Note shell created: Portal.UI/create_note \u2014 server issued note id "+A.l(J.W(n,"id"))+"; editor about to open.")
 s=4
 return A.m(p.lZ(n),$async$vc)
 case 4:case 1:return A.w(q,r)}})
@@ -122603,7 +122603,7 @@ l=n.a
 l.toString
 i=J.W(n.at,"title")
 i=i==null?null:J.I(i)
-l.u5("Editor saved '"+(i==null?"Untitled note":i)+"' via "+a+".")
+l.u5("Note saved from editor: Portal.UI/editor.save \u2014 '"+(i==null?"Untitled note":i)+"' persisted via "+a+".")
 s=a==="autosave"&&m!=null?8:9
 break
 case 8:l=n.a
@@ -122628,7 +122628,7 @@ case 2:return A.v(o.at(-1),r)}})
 return A.x($async$rU,r)},
 zU(){var s=0,r=A.y(t.H),q,p=this,o,n,m,l,k
 var $async$zU=A.u(function(a,b){if(a===1)return A.v(b,r)
-for(;;)switch(s){case 0:p.a.u5("Opened note metadata dialog.")
+for(;;)switch(s){case 0:p.a.u5("Note metadata dialog opened: Portal.UI/editor.metadata \u2014 user requested metadata edit from the editor toolbar.")
 o=p.c
 o.toString
 s=3
@@ -122717,7 +122717,7 @@ q=q.a.a
 s=r.e
 s===$&&A.a()
 r.a2P(A.ah(["content",A.aY_(q,s.a.a),"blocks",B.x],t.N,t.z))}r.K(new A.aQ7(r,a))
-r.a.u5("Editor mode switched to "+a+".")
+r.a.u5("Editor mode switched: Portal.UI/editor.mode \u2014 active mode set to "+a+".")
 r.zM()},
 Mc(a){var s,r=this,q=$.ao(),p=new A.cB(new A.cc("",B.aR,B.ai),q)
 q=new A.cB(new A.cc("",B.aR,B.ai),q)
@@ -122975,7 +122975,7 @@ p=o.at
 p===$&&A.a()
 s=5
 return A.m(n.aba(A.cM(J.W(p,"id")),"quit"),$async$$0)
-case 5:case 3:o.a.u5("Editor closed.")
+case 5:case 3:o.a.u5("Note editor closed: Portal.UI/editor.close \u2014 dialog dismissed and focus returned to the portal view.")
 if(o.c!=null)A.cU(q.b,!1).cE()
 return A.w(null,r)}})
 return A.x($async$$0,r)},

@@ -418,6 +418,17 @@ pointer and the <code>ResizedImageValidator.validate</code> /
 <code>validate_registration_code</code> raises in <code>backend/creators/forms.py</code>
 rewritten. These serve the legacy Django form-based registration UI;
 the DRF path is covered by the 0.1.29 round.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Module part-files round (0.1.36): every direct
+<code>widget.onLogEvent(...)</code> call in <code>modules/learner.dart</code> and
+<code>modules/note_editor.dart</code> across editor/planner/portal migrated to
+<code>&lt;Editor|Planner|Portal&gt;.UI/{open_editor,create_note,editor.save, editor.metadata,editor.mode,editor.attachment,editor.close}</code>. The
+three apps now share the same message shape at these call sites
+(only the <code>Editor|Planner|Portal</code> prefix differs). The underlying
+host-side <code>_appendUiLog</code> wrapper continues to route these into the
+debug log controller as Info-level entries with an empty structured
+source; the wording itself now satisfies \u00a71.7 when the operator
+reads it out of a log or pastes it into an issue.</li>
 </ul>
 <p>Each round: rewrite, run <code>python manage.py test</code> (backend) or
 <code>flutter analyze</code> + <code>flutter test test/smoke_test.dart</code> (frontend),
