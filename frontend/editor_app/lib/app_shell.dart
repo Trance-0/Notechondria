@@ -3272,11 +3272,28 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       if (options == null) return;
 
       final notesToExport = options.recursive ? siblings : [detail];
-      final baseName = options.recursive
-          ? _slugifyLocalText(categoryTitle, fallback: 'category')
-          : _slugifyLocalText(
-              detail['title']?.toString() ?? 'note',
-              fallback: 'note');
+      // Compact timestamp YYYYMMDD-HHMMSS so the filename sorts
+      // naturally in a file manager.
+      final now = DateTime.now();
+      String two(int n) => n.toString().padLeft(2, '0');
+      final stamp = '${now.year}${two(now.month)}${two(now.day)}'
+          '-${two(now.hour)}${two(now.minute)}${two(now.second)}';
+      // UUID-prefix + timestamp for single-note exports; category
+      // slug + timestamp for recursive exports so the user can tell
+      // them apart on disk even with identical titles.
+      String baseName;
+      if (options.recursive) {
+        final slug =
+            _slugifyLocalText(categoryTitle, fallback: 'category');
+        baseName = '$slug-$stamp';
+      } else {
+        final rawUuid = detail['uuid']?.toString() ?? '';
+        final uuidPrefix = rawUuid.isNotEmpty
+            ? rawUuid.replaceAll('-', '').substring(
+                0, rawUuid.replaceAll('-', '').length >= 6 ? 6 : rawUuid.replaceAll('-', '').length)
+            : 'local';
+        baseName = 'note-$uuidPrefix-$stamp';
+      }
 
       if (options.format == 'zip') {
         await _writeNotesAsZip(
