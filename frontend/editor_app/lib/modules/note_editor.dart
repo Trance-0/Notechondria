@@ -570,6 +570,186 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
     return client.isEmpty ? 'local-unknown' : 'local-$client';
   }
 
+  /// Opens a modal bottom sheet listing every attachment currently
+  /// embedded in the note:
+  ///   - **Local (queued)**: entries from
+  ///     `metadata_json['queued_attachments']` that carry a
+  ///     `local_url`. These have a small inline image preview
+  ///     (via FutureBuilder + LocalAttachmentStore.getBytes) for
+  ///     image/* content-types. Delete removes from the store,
+  ///     drops the queue entry, and strips the URL from the body.
+  ///   - **Cloud (CDN URLs)**: `http(s)://...` URLs scraped from
+  ///     the body. Shown read-only with a copy-link action; to
+  ///     delete a cloud attachment the user still goes through
+  ///     the server endpoint (not wired here).
+  ///
+  /// The sheet is populated from a snapshot of the current state;
+  /// it does not live-update while open. Closing and re-opening
+  /// refreshes the list.
+  Future<void> _openAttachmentsList() async {
+    final queued = _readQueuedAttachmentEntries();
+    final cloudUrls = _extractCloudAttachmentUrls(_bodyController.text);
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.7,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+                  child: Text(
+                    'Attachments',
+                    style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                  child: Text(
+                    '${queued.length} local, ${cloudUrls.length} uploaded',
+                    style: Theme.of(ctx).textTheme.bodySmall,
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: ListView(
+                    padding: EdgeInsets.zero,
+                    children: [
+                      if (queued.isEmpty && cloudUrls.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(32),
+                          child: Center(
+                            child: Text(
+                              'No attachments in this note yet.',
+                            ),
+                          ),
+                        ),
+                      for (final entry in queued)
+                        _AttachmentSheetRow(
+                          filename: (entry['filename'] ?? '').toString(),
+                          sizeBytes:
+                              (entry['size_bytes'] as num?)?.toInt() ?? 0,
+                          contentType:
+                              (entry['content_type'] ?? '').toString(),
+                          localUrl:
+                              (entry['local_url'] ?? '').toString(),
+                          cloudUrl: null,
+                          onDelete: () async {
+                            Navigator.of(ctx).pop();
+                            await _deleteLocalAttachment(entry);
+                            if (mounted) await _openAttachmentsList();
+                          },
+                        ),
+                      for (final url in cloudUrls)
+                        _AttachmentSheetRow(
+                          filename: _filenameFromUrl(url),
+                          sizeBytes: 0,
+                          contentType: _guessContentType(
+                              _filenameFromUrl(url), Uint8List(0)),
+                          localUrl: null,
+                          cloudUrl: url,
+                          onDelete: null,
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Reads the list of local queued-attachment entries from the
+  /// draft's metadata. Returns an empty list when the note has
+  /// never been pickered or when migration stripped the queue.
+  List<Map<String, dynamic>> _readQueuedAttachmentEntries() {
+    final metadata =
+        _decodeNoteMetadata(_note['metadata_json']?.toString() ?? '{}');
+    final raw = metadata['queued_attachments'];
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .where((entry) =>
+            (entry['local_url']?.toString().isNotEmpty ?? false) ||
+            (entry['filename']?.toString().isNotEmpty ?? false))
+        .toList(growable: false);
+  }
+
+  /// Extracts every `http(s)://...` image / link URL embedded in the
+  /// note body. Used by the attachments sheet to surface
+  /// already-uploaded CDN attachments.
+  List<String> _extractCloudAttachmentUrls(String body) {
+    final re = RegExp(r'(?:!\[[^\]]*\]|\[[^\]]*\])\((https?://[^)\s]+)\)');
+    final seen = <String>{};
+    final out = <String>[];
+    for (final match in re.allMatches(body)) {
+      final url = match.group(1);
+      if (url == null) continue;
+      if (seen.add(url)) out.add(url);
+    }
+    return out;
+  }
+
+  String _filenameFromUrl(String url) {
+    try {
+      final uri = Uri.parse(url);
+      if (uri.pathSegments.isEmpty) return url;
+      return uri.pathSegments.last;
+    } catch (_) {
+      return url;
+    }
+  }
+
+  /// Removes a local queued-attachment entry from the store, from
+  /// the draft's metadata, and strips its `local://` URL from the
+  /// note body. Silently no-ops when the store key doesn't exist.
+  Future<void> _deleteLocalAttachment(Map<String, dynamic> entry) async {
+    final localUrl = entry['local_url']?.toString() ?? '';
+    final filename = entry['filename']?.toString() ?? 'attachment';
+    if (localUrl.isEmpty) return;
+    try {
+      final store = await LocalAttachmentStore.open();
+      await store.delete(localUrl: localUrl);
+    } catch (_) {
+      // Silent: user cleanup of a missing blob still succeeds
+      // because the metadata strip below removes the queue entry.
+    }
+    final metadata =
+        _decodeNoteMetadata(_note['metadata_json']?.toString() ?? '{}');
+    final queued = List<Map<String, dynamic>>.from(
+      (metadata['queued_attachments'] as List?) ?? const [],
+    );
+    queued.removeWhere((e) => e['local_url']?.toString() == localUrl);
+    metadata['queued_attachments'] = queued;
+    _note = {
+      ..._note,
+      'metadata_json': jsonEncode(metadata),
+    };
+    // Remove any markdown line that references this localUrl so the
+    // body doesn't render a broken-attachment pill afterwards.
+    final lines = _bodyController.text.split('\n');
+    _bodyController.text = lines
+        .where((line) => !line.contains(localUrl))
+        .join('\n');
+    _handleChanged();
+    widget.onLogEvent(
+      'Attachment deleted locally: '
+      'Editor.UI/editor.attachment.delete \u2014 '
+      '"$filename" removed from note body and local store.',
+    );
+  }
+
   /// Best-effort content-type guess from filename extension, falling back
   /// to a short magic-bytes sniff for common image formats when the
   /// extension is missing.
@@ -881,10 +1061,24 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                       Positioned(
                         right: 12,
                         bottom: 12,
-                        child: FloatingActionButton.small(
-                          onPressed: _pickAndUploadAttachment,
-                          tooltip: 'Attach file',
-                          child: const Icon(Icons.attach_file),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            FloatingActionButton.small(
+                              heroTag: 'editor-attachments-list',
+                              onPressed: _openAttachmentsList,
+                              tooltip: 'Open attachments list',
+                              child: const Icon(Icons.attachment_outlined),
+                            ),
+                            const SizedBox(height: 8),
+                            FloatingActionButton.small(
+                              heroTag: 'editor-attach-file',
+                              onPressed: _pickAndUploadAttachment,
+                              tooltip: 'Attach file',
+                              child: const Icon(Icons.attach_file),
+                            ),
+                          ],
                         ),
                       ),
                     Positioned(
@@ -1125,6 +1319,132 @@ class _MarkdownHighlightingController extends TextEditingController {
       result.add(TextSpan(text: line.substring(cursor), style: base));
     }
     return result;
+  }
+}
+
+/// One row in the attachments bottom-sheet. Renders a leading preview
+/// (image thumbnail for image/* locals, icon otherwise), filename,
+/// formatted size + content-type, and either a delete or copy-link
+/// trailing action depending on whether the row is local or cloud.
+class _AttachmentSheetRow extends StatelessWidget {
+  const _AttachmentSheetRow({
+    required this.filename,
+    required this.sizeBytes,
+    required this.contentType,
+    required this.localUrl,
+    required this.cloudUrl,
+    required this.onDelete,
+  });
+
+  final String filename;
+  final int sizeBytes;
+  final String contentType;
+  final String? localUrl;
+  final String? cloudUrl;
+  final VoidCallback? onDelete;
+
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return '';
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
+  Widget _buildLeading(BuildContext context) {
+    final isImage = contentType.startsWith('image/');
+    if (isImage && localUrl != null && localUrl!.isNotEmpty) {
+      return SizedBox(
+        width: 40,
+        height: 40,
+        child: FutureBuilder<Uint8List?>(
+          future: LocalAttachmentStore.open()
+              .then((s) => s.getBytes(localUrl: localUrl!)),
+          builder: (ctx, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Center(
+                child: SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              );
+            }
+            final data = snap.data;
+            if (data == null || data.isEmpty) {
+              return const Icon(Icons.broken_image_outlined);
+            }
+            return ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: Image.memory(
+                data,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    const Icon(Icons.broken_image_outlined),
+              ),
+            );
+          },
+        ),
+      );
+    }
+    final icon = isImage
+        ? Icons.image_outlined
+        : contentType.startsWith('video/')
+            ? Icons.videocam_outlined
+            : contentType.startsWith('audio/')
+                ? Icons.audiotrack_outlined
+                : Icons.attachment_outlined;
+    return SizedBox(
+      width: 40,
+      height: 40,
+      child: Icon(icon),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sizeLabel = _formatBytes(sizeBytes);
+    final subtitleParts = <String>[
+      if (sizeLabel.isNotEmpty) sizeLabel,
+      if (contentType.isNotEmpty) contentType,
+      if (cloudUrl != null) 'uploaded',
+      if (localUrl != null && cloudUrl == null) 'local',
+    ];
+    return ListTile(
+      leading: _buildLeading(context),
+      title: Text(
+        filename,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: subtitleParts.isEmpty
+          ? null
+          : Text(
+              subtitleParts.join(' · '),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+      trailing: onDelete != null
+          ? IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: 'Remove attachment',
+              onPressed: onDelete,
+            )
+          : cloudUrl != null
+              ? IconButton(
+                  icon: const Icon(Icons.link),
+                  tooltip: 'Copy link',
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: cloudUrl!));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Link copied to clipboard'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                )
+              : null,
+    );
   }
 }
 

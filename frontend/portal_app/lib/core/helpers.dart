@@ -246,6 +246,96 @@ List<md.InlineSyntax> _markdownInlineSyntaxes() {
   return [_LatexInlineSyntax()];
 }
 
+/// Custom image builder for `MarkdownBody.sizedImageBuilder`.
+/// Resolves `local://<note_uuid>/<filename>` URIs through the
+/// shared `LocalAttachmentStore` and renders the bytes via
+/// `Image.memory`. Matches the editor's helper verbatim so portal
+/// drafts imported from a `.nchron` archive keep rendering their
+/// attachments; non-local URIs fall through to `Image.network`.
+Widget _localAttachmentImageBuilder(MarkdownImageConfig config) {
+  final uri = config.uri;
+  if (uri.scheme != 'local') {
+    return Image.network(
+      uri.toString(),
+      width: config.width,
+      height: config.height,
+      errorBuilder: (context, error, stack) {
+        final display = (config.alt?.isNotEmpty == true)
+            ? config.alt!
+            : (uri.pathSegments.isNotEmpty ? uri.pathSegments.last : 'image');
+        return Text(
+          '\u26a0 $display failed to load',
+          style: Theme.of(context).textTheme.bodySmall,
+        );
+      },
+    );
+  }
+  final key = 'local-attachment:$uri';
+  return FutureBuilder<Uint8List>(
+    key: ValueKey(key),
+    future: () async {
+      final store = await LocalAttachmentStore.open();
+      return store.getBytes(localUrl: uri.toString());
+    }(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState != ConnectionState.done) {
+        return const SizedBox(
+          width: 48,
+          height: 48,
+          child: Center(
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        );
+      }
+      if (snapshot.hasError || !snapshot.hasData) {
+        final display = (config.alt?.isNotEmpty == true)
+            ? config.alt!
+            : (uri.pathSegments.isNotEmpty
+                ? uri.pathSegments.last
+                : 'attachment');
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.errorContainer,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            '\u26a0 attachment not in local store: $display',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        );
+      }
+      return Image.memory(
+        snapshot.data!,
+        width: config.width,
+        height: config.height,
+        errorBuilder: (context, error, stack) {
+          final display = (config.alt?.isNotEmpty == true)
+              ? config.alt!
+              : (uri.pathSegments.isNotEmpty
+                  ? uri.pathSegments.last
+                  : 'attachment');
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.secondaryContainer,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              '\ud83d\udcce $display',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
 /// Animates a child with a staggered fade + optional slide entrance.
 ///
 /// Use [index] to stagger items in a list: each successive item starts its
