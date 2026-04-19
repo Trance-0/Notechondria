@@ -542,21 +542,21 @@ class _LearnerNoteCard extends StatelessWidget {
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 14),
-              Align(
-                alignment: Alignment.bottomRight,
-                child: Text(
-                  isLocalDraft
-                      ? 'Stored locally until you sync'
-                      : 'Course metadata stays editable from the editor details panel',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+              if (!isLocalDraft) ...[
+                const SizedBox(height: 14),
+                Align(
+                  alignment: Alignment.bottomRight,
+                  child: Text(
+                    'Course metadata stays editable from the editor details panel',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
@@ -1195,7 +1195,7 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                               textAlignVertical: TextAlignVertical.top,
                               decoration: const InputDecoration(
                                 hintText: 'Write your note...',
-                                border: OutlineInputBorder(),
+                                border: InputBorder.none,
                                 alignLabelWithHint: true,
                               ),
                             ),

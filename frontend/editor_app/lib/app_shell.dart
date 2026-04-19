@@ -2797,7 +2797,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
             "Editor.Sync.Notes/push \u2014 "
             "'${draft['title']}' upstream note updated in place.",
       );
-      return updated;
+      return _promoteQueuedAttachments(updated, metadata);
     }
     final syncCourseId = (metadata['course_id'] as num?)?.toInt();
     final syncClientDraftId = draft['client_draft_id']?.toString();
@@ -2832,7 +2832,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           "Local draft synced: Editor.Sync.Notes/push \u2014 "
           "'${draft['title']}' created on server; local draft removed.",
     );
-    return created;
+    return _promoteQueuedAttachments(created, metadata);
   }
 
   // ---------------------------------------------------------------------------
@@ -2993,9 +2993,100 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       int noteId, XFile file) async {
     final token = _token;
     if (token == null || token.isEmpty) {
-      throw Exception('Sign in to upload attachments.');
+      throw Exception(
+        'Attachment not uploaded: '
+        'Editor.Sync.Notes/attachment.upload \u2014 '
+        'no cloud session; sign in first.',
+      );
     }
     return widget.client.uploadNoteAttachment(token, noteId, file);
+  }
+
+  /// Promote any attachments the editor queued into the draft's
+  /// `metadata_json['queued_attachments']` list to real uploads against
+  /// the freshly-synced cloud note id. Replaces the inline
+  /// `data:<type>;base64,...` URIs in the note content with the server's
+  /// returned URLs so previews stay consistent. Best-effort: a failure
+  /// on any one attachment is logged at warning and the remaining queued
+  /// items are dropped from the list (they would otherwise retry on
+  /// every sync forever).
+  Future<Map<String, dynamic>> _promoteQueuedAttachments(
+    Map<String, dynamic> note,
+    Map<String, dynamic> metadata,
+  ) async {
+    final queued = List<Map<String, dynamic>>.from(
+      (metadata['queued_attachments'] as List?) ?? const [],
+    );
+    if (queued.isEmpty) return note;
+    final noteId = (note['id'] as num?)?.toInt();
+    final token = _token;
+    if (noteId == null || noteId < 0 || token == null || token.isEmpty) {
+      return note;
+    }
+    var content = note['content']?.toString() ?? '';
+    for (final entry in queued) {
+      final filename = entry['filename']?.toString() ?? 'attachment';
+      final contentType =
+          entry['content_type']?.toString() ?? 'application/octet-stream';
+      final base64Str = entry['bytes_base64']?.toString() ?? '';
+      if (base64Str.isEmpty) continue;
+      try {
+        final bytes = base64Decode(base64Str);
+        final xfile = XFile.fromData(bytes,
+            name: filename, mimeType: contentType);
+        final attachment =
+            await widget.client.uploadNoteAttachment(token, noteId, xfile);
+        final url = attachment['url']?.toString() ?? '';
+        if (url.isNotEmpty) {
+          final dataUri =
+              'data:$contentType;base64,$base64Str';
+          content = content.replaceAll(dataUri, url);
+        }
+      } catch (error) {
+        _log(
+          level: DebugLogLevel.warning,
+          source: 'Editor.Sync.Notes/attachment.promote',
+          message:
+              'Queued attachment not uploaded: '
+              'Editor.Sync.Notes/attachment.promote \u2014 '
+              '"$filename" dropped after upload failure '
+              '(${error.toString().replaceFirst('Exception: ', '')}).',
+        );
+      }
+    }
+    // Drop the queue regardless so the draft doesn't carry unbounded
+    // base64 payloads forever.
+    metadata.remove('queued_attachments');
+    if (content != note['content']) {
+      try {
+        final patched = await widget.client.updateNote(token, noteId, {
+          'content': content,
+          'metadata_json': jsonEncode(metadata),
+        });
+        _log(
+          level: DebugLogLevel.info,
+          source: 'Editor.Sync.Notes/attachment.promote',
+          message:
+              'Queued attachments promoted: '
+              'Editor.Sync.Notes/attachment.promote \u2014 '
+              '${queued.length} embedded data URI(s) replaced with '
+              'server URLs on note $noteId.',
+        );
+        return patched;
+      } catch (_) {
+        // Fall through: the note is already saved; the inline data URIs
+        // will stay in place and the user can retry later.
+      }
+    } else {
+      // No URL substitution needed but we still want to strip the queue.
+      try {
+        final patched = await widget.client.updateNote(token, noteId, {
+          'metadata_json': jsonEncode(metadata),
+        });
+        return patched;
+      } catch (_) {}
+    }
+    return note;
   }
 
   Future<List<Map<String, dynamic>>> _getNoteHistory(int noteId) async {

@@ -426,12 +426,8 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
 
   Future<void> _pickAndUploadAttachment() async {
     final noteId = _note['id'] as int?;
-    if (noteId == null || noteId < 0 || widget.onUploadAttachment == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Save the note before adding attachments.')),
-      );
-      return;
-    }
+    if (noteId == null) return;
+
     final xfile = await openFile(acceptedTypeGroups: const [
       XTypeGroup(label: 'All files'),
     ]);
@@ -441,30 +437,125 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
     if (bytes.length > maxSize) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('File exceeds 20 MB limit.')),
+          const SnackBar(
+            content: Text(
+              'Attachment not added: '
+              'Editor.UI/editor.attachment \u2014 '
+              'file exceeds 20 MB per-attachment limit.',
+            ),
+          ),
         );
       }
       return;
     }
-    try {
-      final attachment = await widget.onUploadAttachment!(noteId, xfile);
-      final url = attachment['url']?.toString() ?? '';
-      final filename = attachment['original_filename']?.toString() ?? xfile.name;
-      final contentType = attachment['content_type']?.toString() ?? '';
-      final isImage = contentType.startsWith('image/');
-      final embed = isImage ? '![$filename]($url)' : '[$filename]($url)';
-      _bodyController.text = '${_bodyController.text}\n\n$embed';
-      _handleChanged();
-      widget.onLogEvent(
+
+    final filename = xfile.name;
+    final contentType = _guessContentType(xfile.name, bytes);
+    final isImage = contentType.startsWith('image/');
+    final isLocalNote = noteId < 0;
+    final uploadFn = widget.onUploadAttachment;
+
+    // Cloud-ready path: we have a saved cloud note id AND an upload
+    // callback AND the host actually has a session. If the host rejects
+    // mid-upload (no token, network failure), fall through to the
+    // offline-queue path so the user never loses the file.
+    if (!isLocalNote && uploadFn != null) {
+      try {
+        final attachment = await uploadFn(noteId, xfile);
+        final url = attachment['url']?.toString() ?? '';
+        final serverName =
+            attachment['original_filename']?.toString() ?? filename;
+        final embed = isImage ? '![$serverName]($url)' : '[$serverName]($url)';
+        _bodyController.text = '${_bodyController.text}\n\n$embed';
+        _handleChanged();
+        widget.onLogEvent(
           'Attachment uploaded: Editor.UI/editor.attachment \u2014 '
-          '"$filename" attached to the open note.');
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e')),
+          '"$serverName" attached to the open note.',
         );
+        return;
+      } catch (_) {
+        // Fall through to the offline-queue path below.
       }
     }
+
+    // Offline / local-draft / upload-failed path: embed a base64 data URI
+    // into the markdown so the attachment renders in preview immediately,
+    // and queue the raw bytes in the draft's metadata_json so the next
+    // sync pass can promote it to a real upload once the note has a
+    // cloud id and the session is restored.
+    final base64 = base64Encode(bytes);
+    final dataUri = 'data:$contentType;base64,$base64';
+    final embed = isImage ? '![$filename]($dataUri)' : '[$filename]($dataUri)';
+    _bodyController.text = '${_bodyController.text}\n\n$embed';
+    _handleChanged();
+
+    // Append to the draft's queued-attachment list so the host-side
+    // sync can iterate and push them when the note reaches the cloud.
+    final metadata =
+        _decodeNoteMetadata(_note['metadata_json']?.toString() ?? '{}');
+    final queued = List<Map<String, dynamic>>.from(
+      (metadata['queued_attachments'] as List?) ?? const [],
+    );
+    queued.add({
+      'filename': filename,
+      'content_type': contentType,
+      'bytes_base64': base64,
+      'queued_at': DateTime.now().toUtc().toIso8601String(),
+    });
+    metadata['queued_attachments'] = queued;
+    _note = {
+      ..._note,
+      'metadata_json': jsonEncode(metadata),
+    };
+    _handleChanged();
+
+    widget.onLogEvent(
+      'Attachment queued for sync: '
+      'Editor.Sync.Notes/attachment.queue \u2014 '
+      '"$filename" embedded inline and stored in draft metadata; '
+      'will be uploaded on the next successful note sync.',
+    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Attachment queued: Editor.Sync.Notes/attachment.queue \u2014 '
+            '"$filename" kept offline; it will upload on the next sync.',
+          ),
+        ),
+      );
+    }
+  }
+
+  /// Best-effort content-type guess from filename extension, falling back
+  /// to a short magic-bytes sniff for common image formats when the
+  /// extension is missing.
+  String _guessContentType(String filename, Uint8List bytes) {
+    final lower = filename.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.svg')) return 'image/svg+xml';
+    if (lower.endsWith('.pdf')) return 'application/pdf';
+    if (lower.endsWith('.md') || lower.endsWith('.markdown')) {
+      return 'text/markdown';
+    }
+    if (lower.endsWith('.txt')) return 'text/plain';
+    if (bytes.length >= 8 &&
+        bytes[0] == 0x89 &&
+        bytes[1] == 0x50 &&
+        bytes[2] == 0x4E &&
+        bytes[3] == 0x47) {
+      return 'image/png';
+    }
+    if (bytes.length >= 3 &&
+        bytes[0] == 0xFF &&
+        bytes[1] == 0xD8 &&
+        bytes[2] == 0xFF) {
+      return 'image/jpeg';
+    }
+    return 'application/octet-stream';
   }
 
   /// Full-width live markdown editor. Emulates Typora-style inline rendering:
@@ -578,6 +669,13 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
   Widget build(BuildContext context) {
     final isLiveMarkdown = _editorMode == 'G';
     final specWarnings = _validateMarkdownSpec(_bodyController.text);
+    // Hoisted so it can be referenced both in the top bar LayoutBuilder
+    // and as the floating lower-left subtitle in the editor Stack below.
+    final saveStatus = _SaveStatus(
+      lastSavedAt: _lastSavedAt,
+      errorMessage: _saveError,
+      saving: _saving,
+    );
     return Dialog.fullscreen(
       child: SafeArea(
         child: Column(
@@ -608,11 +706,6 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                       ),
                     )
                   : null;
-              final saveStatus = _SaveStatus(
-                lastSavedAt: _lastSavedAt,
-                errorMessage: _saveError,
-                saving: _saving,
-              );
               final editorDropdown = DropdownButtonFormField<String>(
                 initialValue: _editorMode,
                 items: const [
@@ -691,8 +784,6 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                       Row(
                         children: [
                           Expanded(child: editorDropdown),
-                          const SizedBox(width: 8),
-                          saveStatus,
                         ],
                       ),
                     ],
@@ -706,7 +797,6 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                 child: Row(
                   children: [
                     Expanded(
-                      flex: 7,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
@@ -714,13 +804,6 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                           titleField,
                           if (warningWidget != null) warningWidget,
                         ],
-                      ),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: saveStatus,
                       ),
                     ),
                     SizedBox(width: 220, child: editorDropdown),
@@ -746,7 +829,7 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                                 textAlignVertical: TextAlignVertical.top,
                                 decoration: const InputDecoration(
                                   hintText: 'Write your note...',
-                                  border: OutlineInputBorder(),
+                                  border: InputBorder.none,
                                   alignLabelWithHint: true,
                                 ),
                               ),
@@ -760,6 +843,25 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                           child: const Icon(Icons.attach_file),
                         ),
                       ),
+                    Positioned(
+                      left: 8,
+                      bottom: 8,
+                      child: IgnorePointer(
+                        child: DefaultTextStyle(
+                          style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.55),
+                                  ) ??
+                              const TextStyle(),
+                          child: saveStatus,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),

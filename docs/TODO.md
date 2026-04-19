@@ -76,6 +76,30 @@ Here is a list of task we need to do now after testing, finishing and solve thes
 
 ### App preferences
 
+- [ ] **Offline-mode toggle** in the shared `AppPreferencesCard`
+  (`frontend/notechondria_shared/lib/src/settings/app_preferences_card.dart`)
+  so it shows up in all three apps. A single boolean
+  `offline_mode` persisted into `_LocalAppStore._settingsKey`
+  (`local_settings['offline_mode']`). When enabled:
+  - `_bootstrapApp` skips the remote front-page / courses / notes
+    fetches in `_loadInitialData` and immediately renders from
+    `_localCache`. Target: reduce first-paint time from whatever the
+    current worst-case server latency is to < 500 ms.
+  - Public-notes list fetching in `_LearnerPage` switches to
+    lazy: pulled only when the user explicitly taps a "Load public
+    notes" button (or similar). Signed-in personal notes are still
+    pulled on demand when the user selects them.
+  - Category auto-sync from cloud is gated: `_loadInitialData`
+    continues to hit `/courses/` only if `offline_mode` is false
+    or the user is currently authenticated. (When authenticated we
+    keep the normal pull so switching to auth immediately refreshes
+    cloud state.)
+  - The debug log emits `Editor.Sync.Settings/offline_mode` on
+    toggle with the consequence / cause shape.
+  - Touches: shared `AppPreferencesCard` (new toggle row),
+    `_LocalAppStore.defaultSettings()` to seed `false`, all three
+    `_bootstrapApp` / `_loadInitialData` to respect the flag.
+
 ### Debug log window
 
 - [ ] Extend per-request timing instrumentation beyond editor_app's
@@ -256,6 +280,19 @@ Do not bundle unrelated changes.
 
 ### Note editor
 
+- [ ] Move the editor-mode selector out of the top bar and into the
+  "..." (details) menu button. Current top bar carries a
+  `DropdownButtonFormField<String>` for editor mode; replace it with a
+  popup menu triggered from `_openDetails`-adjacent logic so clicking
+  "..." shows two options: **Edit note meta** (current details
+  behavior) and **Switch editor** (opens a small picker: `P` plain
+  text, `G` live markdown). Remove the top-bar dropdown completely
+  and widen the title field to fill the space. Touches
+  `editor_app/lib/modules/note_editor.dart`; if planner/portal still
+  surface the same top-bar dropdown in their inlined editor widgets
+  (`planner_app/lib/modules/learner.dart`,
+  `portal_app/lib/modules/learner.dart`), replicate there.
+
 #### Markdown Editor
 
 ##### Plaintext editor
@@ -263,6 +300,59 @@ Do not bundle unrelated changes.
 ##### Markdown editor
 
 ### Editor Settings
+
+- [ ] **Replace "Download config file" with "Download local user
+  data" / "Restore from local imports"** across editor / planner /
+  portal settings pages. Today only the editor settings page exposes a
+  config-file download that writes a minimal `.env`-style file with
+  `api_base_url` and the user's `api_key_prefix`. Spec:
+  - Export a single `.nchron` zip file containing every persisted
+    bucket the app uses:
+    - `VERSION` (string file with the package format version,
+      *not* the app VERSION; start at `1`).
+    - `manifest.json` with `{app: "editor|planner|portal",
+      exported_at, app_version, package_version, counts: {
+      drafts, courses, events?, feeds? }, profile: {username, email}
+      (only the read-only fields, never token)}`.
+    - `settings.json`, `local_settings.json`, `stats.json`,
+      `cache.json`, `courses.json`, `drafts.json`, `logs.json`
+      (one file per `_LocalAppStore` bucket, as-is from
+      `shared_preferences`).
+    - For planner: also `planner_events.json`, `calendar_feeds.json`,
+      `activity_week.json`.
+    - For portal: also whatever portal caches that the other two
+      don't (front_page carousel, etc.).
+    - An `attachments/` directory with binary blobs for every
+      `queued_attachments` entry currently in any draft's
+      `metadata_json` (promote from base64 to real files inside the
+      zip so the export stays human-inspectable).
+  - Import accepts a `.nchron` zip, reads the `VERSION` file, and:
+    - If `VERSION == 1` (current): apply buckets directly.
+    - If `VERSION < 1` or a legacy `.env` config file: run a
+      migration shim that reads the old fields and fills the new
+      buckets with defaults.
+    - If `VERSION > 1`: refuse with a canonical \u00a71.7 error
+      (`Editor.LocalStore/restore_from_import \u2014 package
+      format version $got ahead of this build's supported $max`).
+  - Confirmation UI: import shows a summary dialog with the manifest
+    counts before replacing local state; user must click through the
+    `ConfirmWithDelayDialog`.
+  - Cross-app portability: the editor's export should be importable
+    into the portal (which is the all-in-one shell). Planner \u2192
+    editor should drop the planner-specific buckets silently and
+    import the draft + course ones. Editor \u2192 planner should
+    fill the planner-specific buckets with their empty defaults.
+  - Module: `Editor.LocalStore/export_zip`,
+    `Editor.LocalStore/restore_from_import` (and
+    `Planner.LocalStore/*`, `Portal.LocalStore/*` equivalents).
+  - Implementation notes: `package:archive` is already imported
+    (`frontend/editor_app/lib/main.dart:9`). Use `ZipEncoder` /
+    `ZipDecoder`. Download via `package:file_selector`
+    `getSaveLocation`; import via `openFile`.
+  - Split this into at least three commits: (1) shared package-format
+    spec in `docs/export_format_v1.md` + helpers in
+    `notechondria_shared/lib/src/utils/local_archive.dart`;
+    (2) editor wiring end-to-end + tests; (3) planner + portal.
 
 #### Editor Preferences
 
