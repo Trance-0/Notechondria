@@ -7,7 +7,9 @@ from django.contrib.auth.models import User
 from django.test import TestCase, Client
 
 from creators.models import Creator
-from notes.models import Course, Note, PlannerEvent
+from courses.models import Course
+from notes.models import Note
+from planner.models import PlannerEvent
 
 
 def _make_api_key():

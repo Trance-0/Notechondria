@@ -20,15 +20,21 @@ from rest_framework.views import APIView
 from creators.utils import ensure_creator, ensure_creator_avatar
 from notechondria.utils import generate_unique_id
 
-from .mark_down_parser import clean_block_string
-from .models import (
-    CalendarFeed,
+from courses.models import (
     Course,
     CourseMedia,
     CourseOperationLog,
     CourseOperationTypeChoices,
     CourseSubscription,
+)
+from planner.models import (
+    CalendarFeed,
     HeatmapActivityTypeChoices,
+    PlannerEvent,
+)
+
+from .mark_down_parser import clean_block_string
+from .models import (
     Note,
     NoteActivitySession,
     NoteAttachment,
@@ -36,7 +42,6 @@ from .models import (
     NoteVersion,
     NoteBlockTypeChoices,
     NoteIndex,
-    PlannerEvent,
     RecycleBinEntry,
 )
 from .services import (

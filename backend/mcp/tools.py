@@ -10,13 +10,13 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.text import slugify
 
+from courses.models import Course
 from notes.models import (
-    Course,
     Note,
     NoteIndex,
     NoteAttachment,
-    PlannerEvent,
 )
+from planner.models import PlannerEvent
 from notes.services import (
     build_heatmap_payload,
     snapshot_note_version,

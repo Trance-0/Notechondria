@@ -9,8 +9,9 @@ from django.core.management.base import BaseCommand
 from django.utils.crypto import get_random_string
 
 from creators.utils import ensure_creator
+from courses.models import Course, CourseMedia
 from notes.api import split_markdown_sections
-from notes.models import Course, CourseMedia, Note, NoteBlock, NoteBlockTypeChoices, NoteIndex
+from notes.models import Note, NoteBlock, NoteBlockTypeChoices, NoteIndex
 from notechondria.utils import generate_unique_id
 
 

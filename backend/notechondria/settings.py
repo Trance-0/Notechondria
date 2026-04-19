@@ -80,6 +80,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # apps created
     'gptutils',
+    'courses',
+    'planner',
     'notes',
     'creators',
     'mcp',

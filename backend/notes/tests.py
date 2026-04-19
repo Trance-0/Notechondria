@@ -9,19 +9,24 @@ from rest_framework.authtoken.models import Token
 
 from creators.models import Creator
 from notechondria.utils import check_is_creator, generate_unique_id, get_object_or_None
-from .models import (
-    CalendarFeed,
+from courses.models import (
     Course,
     CourseOperationLog,
     CourseOperationTypeChoices,
     CourseSubscription,
+)
+from planner.models import (
+    CalendarFeed,
     HeatmapActivity,
+    PlannerEvent,
+)
+
+from .models import (
     Note,
     NoteActivitySession,
     NoteBlock,
     NoteBlockTypeChoices,
     NoteVersion,
-    PlannerEvent,
     RecycleBinEntry,
 )
 from .services import (

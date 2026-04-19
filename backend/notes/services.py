@@ -7,18 +7,21 @@ import urllib.request
 from django.db.models import Count, Max, Sum
 from django.utils import timezone
 
-from .models import (
+from courses.models import Course
+from planner.models import (
     CalendarFeed,
-    Course,
     HeatmapActivity,
     HeatmapActivityTypeChoices,
+    PlannerEvent,
+)
+
+from .models import (
     Note,
     NoteActivitySession,
     NoteBlock,
     NoteBlockTypeChoices,
     NoteVersion,
     NoteIndex,
-    PlannerEvent,
 )
 
 
