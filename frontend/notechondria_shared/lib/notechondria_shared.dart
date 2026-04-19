@@ -21,6 +21,12 @@ export 'src/utils/local_archive.dart'
         readLocalArchive,
         tryReadLegacyEnvConfig,
         writeLocalArchive;
+export 'src/utils/local_attachment_store.dart'
+    show
+        LocalAttachment,
+        LocalAttachmentBackend,
+        LocalAttachmentStore,
+        LocalAttachmentStoreException;
 
 export 'src/components/auth_dialogs.dart'
     show
