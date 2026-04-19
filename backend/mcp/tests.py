@@ -7,9 +7,14 @@ from django.contrib.auth.models import User
 from django.test import TestCase, Client
 
 from creators.models import Creator
-from courses.models import Course
-from notes.models import Note
-from planner.models import PlannerEvent
+from courses.models import Course, CourseSubscription
+from notes.models import (
+    Note,
+    NoteActivitySession,
+    NoteVersion,
+    RecycleBinEntry,
+)
+from planner.models import CalendarFeed, PlannerEvent
 
 
 def _make_api_key():
@@ -490,6 +495,293 @@ class McpToolTests(TestCase):
         data = resp.json()
         self.assertIn("error", data)
         self.assertEqual(data["error"]["code"], -32601)
+
+    # --- Recycle bin ---
+
+    def test_recycle_bin_lifecycle(self):
+        note = Note.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            sharing_id=_sid(),
+            title="Trash me",
+        )
+        # Soft-delete via existing tool
+        del_resp = self._call_tool("delete_note", {"note_id": note.id})
+        self.assertEqual(del_resp.status_code, 200)
+
+        list_resp = self._call_tool("list_deleted_notes")
+        listed = self._tool_result(list_resp)
+        self.assertEqual(len(listed["deleted_notes"]), 1)
+        self.assertEqual(listed["deleted_notes"][0]["id"], note.id)
+
+        restore_resp = self._call_tool(
+            "restore_deleted_note", {"note_id": note.id}
+        )
+        restored = self._tool_result(restore_resp)
+        self.assertEqual(restored["id"], note.id)
+        note.refresh_from_db()
+        self.assertIsNone(note.deleted_at)
+
+        # Re-delete so we can test empty_recycle_bin
+        self._call_tool("delete_note", {"note_id": note.id})
+        empty_resp = self._call_tool("empty_recycle_bin")
+        result = self._tool_result(empty_resp)
+        self.assertEqual(result["deleted_count"], 1)
+        self.assertFalse(Note.objects.filter(pk=note.id).exists())
+
+    # --- Note UUID lookup + version restore ---
+
+    def test_get_note_by_uuid_owner(self):
+        note = Note.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            sharing_id=_sid(),
+            title="UUID fetch",
+            content="body",
+        )
+        resp = self._call_tool("get_note_by_uuid", {"uuid": str(note.uuid)})
+        result = self._tool_result(resp)
+        self.assertEqual(result["id"], note.id)
+        self.assertEqual(result["title"], "UUID fetch")
+
+    def test_get_note_by_uuid_blocks_private_foreign(self):
+        other = User.objects.create_user(
+            username="foreign",
+            email="foreign@example.com",
+            password="Strong1pw",
+            is_active=True,
+        )
+        other_creator = Creator.objects.create(user_id=other)
+        foreign_course = Course.objects.create(
+            creator_id=other_creator,
+            slug="foreign-inbox",
+            title="Foreign Inbox",
+        )
+        foreign_note = Note.objects.create(
+            creator_id=other_creator,
+            course_id=foreign_course,
+            sharing_id=_sid(),
+            title="Secret",
+            is_public=False,
+        )
+        resp = self._call_tool(
+            "get_note_by_uuid", {"uuid": str(foreign_note.uuid)}
+        )
+        data = resp.json()
+        self.assertTrue(data["result"].get("isError", False))
+
+    def test_restore_note_version_round_trip(self):
+        note = Note.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            sharing_id=_sid(),
+            title="Original",
+            content="v1",
+        )
+        version = NoteVersion.objects.create(
+            note_id=note,
+            creator_id=self.creator,
+            title="Original",
+            content="v1",
+            reason="manual",
+        )
+        # Mutate the current state to prove restore overwrites it
+        note.content = "mutated"
+        note.save(update_fields=["content"])
+        resp = self._call_tool(
+            "restore_note_version",
+            {"note_id": note.id, "version_id": version.id},
+        )
+        restored = self._tool_result(resp)
+        self.assertEqual(restored["content"], "v1")
+
+    # --- Course subscriptions + reorder ---
+
+    def test_subscribe_unsubscribe_course(self):
+        other_creator = Creator.objects.create(
+            user_id=User.objects.create_user(
+                username="pub", email="pub@example.com", password="Strong1pw",
+                is_active=True,
+            )
+        )
+        shared_course = Course.objects.create(
+            creator_id=other_creator,
+            slug="public-course",
+            title="Public Course",
+        )
+        sub_resp = self._call_tool(
+            "subscribe_course", {"course_id": shared_course.id}
+        )
+        self.assertEqual(sub_resp.status_code, 200)
+        self.assertTrue(
+            CourseSubscription.objects.filter(
+                creator_id=self.creator,
+                course_id=shared_course,
+                is_active=True,
+            ).exists()
+        )
+        unsub_resp = self._call_tool(
+            "unsubscribe_course", {"course_id": shared_course.id}
+        )
+        result = self._tool_result(unsub_resp)
+        self.assertTrue(result["unsubscribed"])
+        self.assertFalse(
+            CourseSubscription.objects.filter(
+                creator_id=self.creator,
+                course_id=shared_course,
+                is_active=True,
+            ).exists()
+        )
+
+    def test_reorder_courses(self):
+        a = Course.objects.create(
+            creator_id=self.creator, slug="a-course", title="A"
+        )
+        b = Course.objects.create(
+            creator_id=self.creator, slug="b-course", title="B"
+        )
+        c = Course.objects.create(
+            creator_id=self.creator, slug="c-course", title="C"
+        )
+        # Reverse order: c, a, b
+        resp = self._call_tool(
+            "reorder_courses", {"course_ids": [c.id, a.id, b.id]}
+        )
+        result = self._tool_result(resp)
+        self.assertEqual(result["reordered"], [c.id, a.id, b.id])
+        c.refresh_from_db()
+        a.refresh_from_db()
+        b.refresh_from_db()
+        self.assertEqual(c.sort_order, 1)
+        self.assertEqual(a.sort_order, 2)
+        self.assertEqual(b.sort_order, 3)
+
+    def test_list_course_notes(self):
+        Note.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            sharing_id=_sid(),
+            title="own note",
+        )
+        resp = self._call_tool(
+            "list_course_notes", {"course_id": self.course.id}
+        )
+        result = self._tool_result(resp)
+        self.assertEqual(result["course_id"], self.course.id)
+        self.assertEqual(len(result["notes"]), 1)
+
+    # --- Planner event delete ---
+
+    def test_delete_event(self):
+        event = PlannerEvent.objects.create(
+            creator_id=self.creator, title="Drop me"
+        )
+        resp = self._call_tool("delete_event", {"event_id": event.id})
+        result = self._tool_result(resp)
+        self.assertTrue(result["deleted"])
+        self.assertFalse(PlannerEvent.objects.filter(pk=event.id).exists())
+
+    # --- Activity ---
+
+    def test_get_activity_and_week(self):
+        Note.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            sharing_id=_sid(),
+            title="Recent",
+        )
+        resp = self._call_tool("get_activity", {"limit": 5})
+        result = self._tool_result(resp)
+        self.assertGreaterEqual(len(result["notes"]), 1)
+
+        week_resp = self._call_tool("get_activity_week")
+        week = self._tool_result(week_resp)
+        # Week payload includes a `days` array of length 7.
+        self.assertIn("days", week)
+        self.assertEqual(len(week["days"]), 7)
+
+    # --- Note sessions ---
+
+    def test_note_session_lifecycle(self):
+        note = Note.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            sharing_id=_sid(),
+            title="Focus note",
+        )
+        start_resp = self._call_tool(
+            "create_note_session",
+            {"note_id": note.id, "title": "Study burst"},
+        )
+        session = self._tool_result(start_resp)
+        sid = session["id"]
+        db_session = NoteActivitySession.objects.get(pk=sid)
+        self.assertIsNone(db_session.ended_at)
+
+        list_resp = self._call_tool(
+            "list_note_sessions", {"note_id": note.id}
+        )
+        listed = self._tool_result(list_resp)
+        self.assertEqual(len(listed["sessions"]), 1)
+
+        end_resp = self._call_tool(
+            "end_note_session", {"session_id": sid, "summary": "Done"}
+        )
+        ended = self._tool_result(end_resp)
+        self.assertEqual(ended["summary"], "Done")
+        db_session.refresh_from_db()
+        self.assertIsNotNone(db_session.ended_at)
+
+    # --- Calendar feeds ---
+
+    def test_calendar_feed_crud(self):
+        create_resp = self._call_tool(
+            "create_calendar_feed",
+            {
+                "title": "My feed",
+                "source_kind": "I",
+                "raw_ical": "BEGIN:VCALENDAR\nEND:VCALENDAR",
+            },
+        )
+        feed = self._tool_result(create_resp)
+        self.assertEqual(feed["title"], "My feed")
+        feed_id = feed["id"]
+
+        list_resp = self._call_tool("list_calendar_feeds")
+        listed = self._tool_result(list_resp)
+        self.assertEqual(len(listed["feeds"]), 1)
+
+        update_resp = self._call_tool(
+            "update_calendar_feed",
+            {"feed_id": feed_id, "title": "Renamed feed", "is_enabled": False},
+        )
+        updated = self._tool_result(update_resp)
+        self.assertEqual(updated["title"], "Renamed feed")
+        self.assertFalse(updated["is_enabled"])
+
+        del_resp = self._call_tool(
+            "delete_calendar_feed", {"feed_id": feed_id}
+        )
+        result = self._tool_result(del_resp)
+        self.assertTrue(result["deleted"])
+        self.assertFalse(CalendarFeed.objects.filter(pk=feed_id).exists())
+
+    # --- Attachment delete ---
+
+    def test_delete_attachment_on_missing_attachment_errors(self):
+        # Real file uploads need multipart; exercise the not-found path only.
+        note = Note.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            sharing_id=_sid(),
+            title="Note with no attachment",
+        )
+        resp = self._call_tool(
+            "delete_attachment",
+            {"note_id": note.id, "attachment_id": 99999},
+        )
+        data = resp.json()
+        self.assertTrue(data["result"].get("isError", False))
 
     # --- Cross-user isolation ---
 

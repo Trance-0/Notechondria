@@ -10,15 +10,26 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.text import slugify
 
-from courses.models import Course
+from courses.models import (
+    Course,
+    CourseOperationTypeChoices,
+    CourseSubscription,
+)
 from notes.models import (
     Note,
+    NoteActivitySession,
     NoteIndex,
     NoteAttachment,
+    NoteVersion,
+    RecycleBinEntry,
 )
-from planner.models import PlannerEvent
+from planner.models import CalendarFeed, PlannerEvent
 from notes.services import (
     build_heatmap_payload,
+    calendar_week_payload,
+    normalize_calendar_url,
+    note_session_payload,
+    restore_note_version,
     snapshot_note_version,
 )
 from notechondria.utils import generate_unique_id
@@ -734,4 +745,652 @@ register_tool(
         "required": ["note_id"],
     },
     _list_attachments,
+)
+
+
+def _delete_attachment(user, creator, params):
+    note = _ensure_own_note(user, creator, params["note_id"])
+    attachment = get_object_or_404(
+        NoteAttachment, pk=params["attachment_id"], note_id=note
+    )
+    attachment.file.delete(save=False)
+    attachment.delete()
+    return {"deleted": True, "attachment_id": params["attachment_id"]}
+
+
+register_tool(
+    "delete_attachment",
+    "Delete an attachment from a note.",
+    {
+        "type": "object",
+        "properties": {
+            "note_id": {"type": "integer"},
+            "attachment_id": {"type": "integer"},
+        },
+        "required": ["note_id", "attachment_id"],
+    },
+    _delete_attachment,
+)
+
+
+# ===================================================================
+# Recycle bin tools
+# ===================================================================
+
+
+def _list_deleted_notes(user, creator, params):
+    entries = (
+        RecycleBinEntry.objects.filter(
+            creator_id=creator,
+            note_id__deleted_at__isnull=False,
+        )
+        .select_related("note_id__course_id")
+    )
+    return {
+        "deleted_notes": [
+            {
+                "id": entry.note_id.id,
+                "title": entry.note_id.title,
+                "description": entry.note_id.description or "",
+                "course_id": entry.note_id.course_id_id,
+                "deleted_at": entry.deleted_at.isoformat(),
+            }
+            for entry in entries
+        ]
+    }
+
+
+register_tool(
+    "list_deleted_notes",
+    "List notes currently in the recycle bin.",
+    {"type": "object", "properties": {}, "required": []},
+    _list_deleted_notes,
+)
+
+
+def _restore_deleted_note(user, creator, params):
+    note = get_object_or_404(
+        Note,
+        pk=params["note_id"],
+        creator_id=creator,
+        deleted_at__isnull=False,
+    )
+    note.deleted_at = None
+    note.save(update_fields=["deleted_at", "last_edit"])
+    RecycleBinEntry.objects.filter(creator_id=creator, note_id=note).delete()
+    return _note_detail_payload(note)
+
+
+register_tool(
+    "restore_deleted_note",
+    "Restore a note from the recycle bin.",
+    {
+        "type": "object",
+        "properties": {
+            "note_id": {"type": "integer"},
+        },
+        "required": ["note_id"],
+    },
+    _restore_deleted_note,
+)
+
+
+def _empty_recycle_bin(user, creator, params):
+    entries = RecycleBinEntry.objects.filter(
+        creator_id=creator,
+        note_id__deleted_at__isnull=False,
+    )
+    note_ids = list(entries.values_list("note_id_id", flat=True))
+    count = len(note_ids)
+    entries.delete()
+    Note.objects.filter(id__in=note_ids).delete()
+    return {"deleted_count": count}
+
+
+register_tool(
+    "empty_recycle_bin",
+    "Permanently delete every note currently in the recycle bin.",
+    {"type": "object", "properties": {}, "required": []},
+    _empty_recycle_bin,
+)
+
+
+# ===================================================================
+# Note UUID lookup + version restore
+# ===================================================================
+
+
+def _get_note_by_uuid(user, creator, params):
+    note = get_object_or_404(
+        Note.objects.select_related("course_id", "creator_id"),
+        uuid=params["uuid"],
+        deleted_at__isnull=True,
+    )
+    # Match REST `NoteByUuidApiView`: owner gets full detail; non-owner
+    # only if the note is public or belongs to a default course.
+    is_owner = note.creator_id_id == creator.id
+    if not is_owner:
+        is_public = bool(
+            note.is_public or (note.course_id and note.course_id.is_default)
+        )
+        if not is_public:
+            raise PermissionError(
+                "Note is not public and is owned by another creator."
+            )
+    return _note_detail_payload(note)
+
+
+register_tool(
+    "get_note_by_uuid",
+    "Fetch a note by its UUID. Used for deep-link / share-link resolution. "
+    "Returns full detail for the owner; for other users only if the note "
+    "is public or belongs to a default course.",
+    {
+        "type": "object",
+        "properties": {
+            "uuid": {"type": "string", "description": "Note UUID."},
+        },
+        "required": ["uuid"],
+    },
+    _get_note_by_uuid,
+)
+
+
+def _restore_note_version(user, creator, params):
+    note = _ensure_own_note(user, creator, params["note_id"])
+    version = get_object_or_404(
+        NoteVersion, pk=params["version_id"], note_id=note
+    )
+    snapshot_note_version(note, reason="before_restore_mcp")
+    restore_note_version(note, version)
+    note.refresh_from_db()
+    return _note_detail_payload(note)
+
+
+register_tool(
+    "restore_note_version",
+    "Restore a note to a previous version. Automatically snapshots the "
+    "current state first (reason=before_restore_mcp) so the restore is "
+    "itself undoable.",
+    {
+        "type": "object",
+        "properties": {
+            "note_id": {"type": "integer"},
+            "version_id": {"type": "integer"},
+        },
+        "required": ["note_id", "version_id"],
+    },
+    _restore_note_version,
+)
+
+
+# ===================================================================
+# Course subscription tools
+# ===================================================================
+
+
+def _append_course_operation(creator, course, operation_type):
+    """Mirrors `notes.api.append_course_operation` without pulling the
+    whole module graph; keeps the MCP layer decoupled."""
+    from courses.models import CourseOperationLog
+
+    CourseOperationLog.objects.create(
+        creator_id=creator,
+        course_id=course,
+        operation_type=operation_type,
+    )
+
+
+def _subscribe_course(user, creator, params):
+    course = get_object_or_404(Course, pk=params["course_id"])
+    subscription, created = CourseSubscription.objects.get_or_create(
+        creator_id=creator,
+        course_id=course,
+        defaults={"is_active": True, "subscribed_at": timezone.now()},
+    )
+    if not created:
+        subscription.is_active = True
+        subscription.subscribed_at = timezone.now()
+        subscription.save(
+            update_fields=["is_active", "subscribed_at", "last_edit"]
+        )
+    _append_course_operation(creator, course, CourseOperationTypeChoices.SUBSCRIBE)
+    return _course_payload(course)
+
+
+register_tool(
+    "subscribe_course",
+    "Subscribe the authenticated user to a course so it appears in their sidebar.",
+    {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "integer"},
+        },
+        "required": ["course_id"],
+    },
+    _subscribe_course,
+)
+
+
+def _unsubscribe_course(user, creator, params):
+    course = get_object_or_404(Course, pk=params["course_id"])
+    subscription = get_object_or_404(
+        CourseSubscription,
+        creator_id=creator,
+        course_id=course,
+        is_active=True,
+    )
+    subscription.is_active = False
+    subscription.save(update_fields=["is_active", "last_edit"])
+    _append_course_operation(
+        creator, course, CourseOperationTypeChoices.UNSUBSCRIBE
+    )
+    return {"unsubscribed": True, "course_id": course.id}
+
+
+register_tool(
+    "unsubscribe_course",
+    "Remove an active course subscription for the authenticated user.",
+    {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "integer"},
+        },
+        "required": ["course_id"],
+    },
+    _unsubscribe_course,
+)
+
+
+def _reorder_courses(user, creator, params):
+    ids = params.get("course_ids")
+    if not isinstance(ids, list):
+        raise ValueError("`course_ids` must be a list of integers.")
+    owned = {
+        c.id: c
+        for c in Course.objects.filter(creator_id=creator, is_default=False)
+    }
+    new_order = []
+    seen = set()
+    for raw in ids:
+        try:
+            cid = int(raw)
+        except (TypeError, ValueError):
+            continue
+        if cid in owned and cid not in seen:
+            new_order.append(cid)
+            seen.add(cid)
+    with transaction.atomic():
+        for index, cid in enumerate(new_order, start=1):
+            course = owned[cid]
+            course.sort_order = index
+            course.save(update_fields=["sort_order", "last_edit"])
+    return {"reordered": new_order}
+
+
+register_tool(
+    "reorder_courses",
+    "Rewrite the sidebar sort order for the authenticated user's "
+    "non-default courses. The default Inbox is always pinned first and "
+    "is excluded from the list.",
+    {
+        "type": "object",
+        "properties": {
+            "course_ids": {
+                "type": "array",
+                "items": {"type": "integer"},
+                "description": "Ordered list of course ids; any id not "
+                "owned by the user is silently skipped.",
+            },
+        },
+        "required": ["course_ids"],
+    },
+    _reorder_courses,
+)
+
+
+def _list_course_notes(user, creator, params):
+    course = get_object_or_404(Course, pk=params["course_id"])
+    notes_qs = (
+        course.notes.filter(deleted_at__isnull=True)
+        .select_related("course_id", "creator_id__user_id")
+        .order_by("-last_edit")
+    )
+    is_owner = course.creator_id_id == creator.id
+    if not is_owner:
+        notes_qs = notes_qs.filter(Q(is_public=True) | Q(course_id__is_default=True))
+    return {
+        "course_id": course.id,
+        "notes": [_note_payload(n) for n in notes_qs[:200]],
+    }
+
+
+register_tool(
+    "list_course_notes",
+    "List notes that live inside a course. For the owner, returns every "
+    "non-deleted note; for other users, only public notes and notes in "
+    "the default Inbox course.",
+    {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "integer"},
+        },
+        "required": ["course_id"],
+    },
+    _list_course_notes,
+)
+
+
+# ===================================================================
+# Planner event delete (paired with create/update already present)
+# ===================================================================
+
+
+def _delete_event(user, creator, params):
+    event = get_object_or_404(
+        PlannerEvent, pk=params["event_id"], creator_id=creator
+    )
+    event.delete()
+    return {"deleted": True, "event_id": params["event_id"]}
+
+
+register_tool(
+    "delete_event",
+    "Delete a planner event owned by the authenticated user.",
+    {
+        "type": "object",
+        "properties": {
+            "event_id": {"type": "integer"},
+        },
+        "required": ["event_id"],
+    },
+    _delete_event,
+)
+
+
+# ===================================================================
+# Activity tools (recent-notes list + weekly planner window)
+# ===================================================================
+
+
+def _get_activity(user, creator, params):
+    limit = min(int(params.get("limit", 10)), 50)
+    notes = (
+        Note.objects.filter(
+            creator_id=creator,
+            deleted_at__isnull=True,
+        )
+        .select_related("course_id")
+        .order_by("-last_edit")[:limit]
+    )
+    return {"notes": [_note_payload(n) for n in notes]}
+
+
+register_tool(
+    "get_activity",
+    "List the authenticated user's most recently edited notes.",
+    {
+        "type": "object",
+        "properties": {
+            "limit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 50,
+                "description": "Max notes to return (default 10, cap 50).",
+            },
+        },
+        "required": [],
+    },
+    _get_activity,
+)
+
+
+def _get_activity_week(user, creator, params):
+    start_date = params.get("start_date")
+    parsed_start = timezone.localdate()
+    if start_date:
+        from datetime import datetime as _dt
+
+        try:
+            parsed_start = _dt.fromisoformat(start_date).date()
+        except ValueError:
+            parsed_start = timezone.localdate()
+    return calendar_week_payload(creator, start_date=parsed_start)
+
+
+register_tool(
+    "get_activity_week",
+    "Week-view planner payload: sessions, events, deadlines, and calendar "
+    "feed entries for the 7-day window starting at `start_date` (ISO "
+    "date, defaults to today in the server's local timezone).",
+    {
+        "type": "object",
+        "properties": {
+            "start_date": {
+                "type": "string",
+                "description": "ISO date (YYYY-MM-DD). Defaults to today.",
+            },
+        },
+        "required": [],
+    },
+    _get_activity_week,
+)
+
+
+# ===================================================================
+# Note session tools (start/end work-session on a note)
+# ===================================================================
+
+
+def _list_note_sessions(user, creator, params):
+    qs = NoteActivitySession.objects.filter(creator_id=creator)
+    if params.get("note_id"):
+        qs = qs.filter(note_id_id=params["note_id"])
+    qs = qs.order_by("-started_at", "-id")[: min(int(params.get("limit", 50)), 200)]
+    return {"sessions": [note_session_payload(s) for s in qs]}
+
+
+register_tool(
+    "list_note_sessions",
+    "List the user's note activity sessions, optionally filtered by note.",
+    {
+        "type": "object",
+        "properties": {
+            "note_id": {"type": "integer"},
+            "limit": {"type": "integer", "minimum": 1, "maximum": 200},
+        },
+        "required": [],
+    },
+    _list_note_sessions,
+)
+
+
+def _create_note_session(user, creator, params):
+    note = _ensure_own_note(user, creator, params["note_id"])
+    session = NoteActivitySession.objects.create(
+        creator_id=creator,
+        note_id=note,
+        title=params.get("title") or note.title,
+        summary=(params.get("summary") or (note.description or ""))[:255],
+        started_at=timezone.now(),
+    )
+    return note_session_payload(session)
+
+
+register_tool(
+    "create_note_session",
+    "Start a new note activity session. `started_at` is always set to "
+    "the current server time.",
+    {
+        "type": "object",
+        "properties": {
+            "note_id": {"type": "integer"},
+            "title": {"type": "string"},
+            "summary": {"type": "string"},
+        },
+        "required": ["note_id"],
+    },
+    _create_note_session,
+)
+
+
+def _end_note_session(user, creator, params):
+    session = get_object_or_404(
+        NoteActivitySession,
+        pk=params["session_id"],
+        creator_id=creator,
+    )
+    if "title" in params:
+        session.title = params["title"]
+    if "summary" in params:
+        session.summary = params["summary"][:255]
+    session.ended_at = timezone.now()
+    session.save()
+    return note_session_payload(session)
+
+
+register_tool(
+    "end_note_session",
+    "Mark a note activity session finished by setting `ended_at` to now.",
+    {
+        "type": "object",
+        "properties": {
+            "session_id": {"type": "integer"},
+            "title": {"type": "string"},
+            "summary": {"type": "string"},
+        },
+        "required": ["session_id"],
+    },
+    _end_note_session,
+)
+
+
+# ===================================================================
+# Calendar feed tools (iCal imports + subscribed Google Calendar URLs)
+# ===================================================================
+
+
+def _calendar_feed_payload(feed):
+    return {
+        "id": feed.id,
+        "title": feed.title,
+        "source_kind": feed.source_kind,
+        "source_url": feed.source_url or "",
+        "is_enabled": feed.is_enabled,
+        "course_id": feed.course_id_id,
+        "last_sync": feed.last_sync.isoformat() if feed.last_sync else None,
+    }
+
+
+def _list_calendar_feeds(user, creator, params):
+    feeds = CalendarFeed.objects.filter(creator_id=creator).order_by("title", "id")
+    return {"feeds": [_calendar_feed_payload(f) for f in feeds]}
+
+
+register_tool(
+    "list_calendar_feeds",
+    "List the authenticated user's calendar feeds (imported iCal + "
+    "subscribed URLs).",
+    {"type": "object", "properties": {}, "required": []},
+    _list_calendar_feeds,
+)
+
+
+def _create_calendar_feed(user, creator, params):
+    course = None
+    if params.get("course_id") is not None:
+        course = get_object_or_404(Course, pk=params["course_id"])
+    source_url = params.get("source_url") or ""
+    if source_url:
+        source_url = normalize_calendar_url(source_url)
+    feed = CalendarFeed.objects.create(
+        creator_id=creator,
+        course_id=course,
+        title=params["title"],
+        source_kind=params.get("source_kind", "I"),
+        source_url=source_url,
+        raw_ical=params.get("raw_ical") or "",
+        is_enabled=bool(params.get("is_enabled", True)),
+    )
+    return _calendar_feed_payload(feed)
+
+
+register_tool(
+    "create_calendar_feed",
+    "Create a calendar feed. `source_kind`='I' for a one-shot iCal paste "
+    "(supply `raw_ical`); 'S' for a subscribed URL (supply `source_url`).",
+    {
+        "type": "object",
+        "properties": {
+            "title": {"type": "string"},
+            "source_kind": {"type": "string", "enum": ["I", "S"]},
+            "source_url": {"type": "string"},
+            "raw_ical": {"type": "string"},
+            "is_enabled": {"type": "boolean"},
+            "course_id": {"type": ["integer", "null"]},
+        },
+        "required": ["title"],
+    },
+    _create_calendar_feed,
+)
+
+
+def _update_calendar_feed(user, creator, params):
+    feed = get_object_or_404(CalendarFeed, pk=params["feed_id"], creator_id=creator)
+    for field in ("title", "source_kind", "raw_ical", "is_enabled"):
+        if field in params:
+            setattr(feed, field, params[field])
+    if "source_url" in params:
+        feed.source_url = (
+            normalize_calendar_url(params["source_url"])
+            if params["source_url"]
+            else ""
+        )
+    if "course_id" in params:
+        feed.course_id = (
+            get_object_or_404(Course, pk=params["course_id"])
+            if params["course_id"] is not None
+            else None
+        )
+    feed.save()
+    return _calendar_feed_payload(feed)
+
+
+register_tool(
+    "update_calendar_feed",
+    "Update a calendar feed's fields.",
+    {
+        "type": "object",
+        "properties": {
+            "feed_id": {"type": "integer"},
+            "title": {"type": "string"},
+            "source_kind": {"type": "string", "enum": ["I", "S"]},
+            "source_url": {"type": "string"},
+            "raw_ical": {"type": "string"},
+            "is_enabled": {"type": "boolean"},
+            "course_id": {"type": ["integer", "null"]},
+        },
+        "required": ["feed_id"],
+    },
+    _update_calendar_feed,
+)
+
+
+def _delete_calendar_feed(user, creator, params):
+    feed = get_object_or_404(CalendarFeed, pk=params["feed_id"], creator_id=creator)
+    feed.delete()
+    return {"deleted": True, "feed_id": params["feed_id"]}
+
+
+register_tool(
+    "delete_calendar_feed",
+    "Delete a calendar feed.",
+    {
+        "type": "object",
+        "properties": {
+            "feed_id": {"type": "integer"},
+        },
+        "required": ["feed_id"],
+    },
+    _delete_calendar_feed,
 )

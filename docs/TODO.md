@@ -151,44 +151,18 @@ file and add a round-log entry to the new version doc.
   and the inlined editors in planner/portal
   `modules/learner.dart`.
 
-- [ ] **Attachment CDN rework** (user-reported). Current behavior
-  writes base64 data URIs inline and queues raw bytes in
-  `metadata_json['queued_attachments']` as base64. Spec:
-  - **Local first.** On pick, write the file bytes to app-local
-    storage under `attachments/<note-uuid>/<safe-filename>` and
-    embed a `local://<note-uuid>/<safe-filename>` URL into the
-    markdown. Preview widget (flutter_markdown) renders
-    `local://` via a custom image builder that reads the bytes
-    from that storage.
-  - **No base64 in markdown body.** Keep only a compact pointer.
-  - **Storage backend:**
-    - Web: IndexedDB (via `idb_shim` or hand-rolled). 20 MB per
-      attachment stays, but add a total-budget check (~200 MB)
-      because browsers evict heavy origins.
-    - Native: `path_provider` `getApplicationSupportDirectory`.
-    - A shared `LocalAttachmentStore` helper in
-      `notechondria_shared/lib/src/utils/local_attachment_store.dart`
-      hides the platform split.
-  - **Upload on sync.** `_promoteQueuedAttachments` reads the
-    local file (no more base64 decode step) and streams it through
-    `client.uploadNoteAttachment`. On success, rewrite the markdown
-    from `local://...` to the CDN URL and delete the local blob.
-  - **Preview from attachments list.** Add an "Attachments" section
-    under the editor toolbar listing every embedded attachment
-    (local + remote) with filename, size, a preview thumbnail for
-    images, and a delete button. Today there's no such list at
-    all.
-  - **Filename sanitization** — the same rules as
-    `local_archive.dart::_sanitize`: slashes → `_`, control bytes
-    stripped, deterministic `-<index>` on collision.
-  - **Migration shim.** Existing drafts carry base64 in
-    `metadata_json['queued_attachments']`. On load, migrate each
-    such entry to the local file store one-time and rewrite the
-    body references.
-  - Split into at least three commits: (1) shared
-    `LocalAttachmentStore` + migration shim + tests;
-    (2) editor wiring (upload flow, preview list, sync promotion);
-    (3) planner + portal.
+- [ ] **Attachment CDN — remaining deferred items.** The frontend
+  three-commit plan (shared store + editor wiring + planner/portal
+  parity + attachments list) landed across 0.1.40 / 0.1.41 / 0.1.42.
+  Still open:
+  - IndexedDB web backend to replace the in-memory stub in
+    `notechondria_shared/lib/src/local_attachment_store.dart`
+    (`_WebLocalAttachmentBackend`) so attachments survive a tab
+    refresh. Detailed spec in `docs/versions/0.1.42.md`.
+  - Storage-budget UI surface: wire `LocalAttachmentStore.totalBytes()`
+    into the debug log card + a settings "Storage" row with a
+    "Clear unused local attachments" action. Detailed spec in
+    `docs/versions/0.1.42.md`.
 
 ### Editor Settings
 
@@ -220,10 +194,6 @@ file and add a round-log entry to the new version doc.
   break, so gather feedback before touching.
 
 ## Backend
-
-- [ ] I noticed that some data structure is not split cleanly by
-  their function, e.g. The course should have a independent app
-  folder for easy management.
 
 - [ ] **Attachment CDN server-side.** Currently uploads go to a
   single path. Consider keying by `note.uuid` at the URL level
