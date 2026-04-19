@@ -433,15 +433,16 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
     ]);
     if (xfile == null) return;
     final bytes = await xfile.readAsBytes();
-    const maxSize = 20 * 1024 * 1024;
-    if (bytes.length > maxSize) {
+    if (bytes.length > LocalAttachmentStore.maxBytesPerAttachment) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
               'Attachment not added: '
               'Editor.UI/editor.attachment \u2014 '
-              'file exceeds 20 MB per-attachment limit.',
+              'file exceeds '
+              '${LocalAttachmentStore.maxBytesPerAttachment ~/ (1024 * 1024)} '
+              'MB per-attachment limit.',
             ),
           ),
         );
@@ -474,57 +475,99 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
         );
         return;
       } catch (_) {
-        // Fall through to the offline-queue path below.
+        // Fall through to the local-store offline-queue path below.
       }
     }
 
-    // Offline / local-draft / upload-failed path: embed a base64 data URI
-    // into the markdown so the attachment renders in preview immediately,
-    // and queue the raw bytes in the draft's metadata_json so the next
-    // sync pass can promote it to a real upload once the note has a
-    // cloud id and the session is restored.
-    final base64 = base64Encode(bytes);
-    final dataUri = 'data:$contentType;base64,$base64';
-    final embed = isImage ? '![$filename]($dataUri)' : '[$filename]($dataUri)';
-    _bodyController.text = '${_bodyController.text}\n\n$embed';
-    _handleChanged();
-
-    // Append to the draft's queued-attachment list so the host-side
-    // sync can iterate and push them when the note reaches the cloud.
-    final metadata =
-        _decodeNoteMetadata(_note['metadata_json']?.toString() ?? '{}');
-    final queued = List<Map<String, dynamic>>.from(
-      (metadata['queued_attachments'] as List?) ?? const [],
-    );
-    queued.add({
-      'filename': filename,
-      'content_type': contentType,
-      'bytes_base64': base64,
-      'queued_at': DateTime.now().toUtc().toIso8601String(),
-    });
-    metadata['queued_attachments'] = queued;
-    _note = {
-      ..._note,
-      'metadata_json': jsonEncode(metadata),
-    };
-    _handleChanged();
-
-    widget.onLogEvent(
-      'Attachment queued for sync: '
-      'Editor.Sync.Notes/attachment.queue \u2014 '
-      '"$filename" embedded inline and stored in draft metadata; '
-      'will be uploaded on the next successful note sync.',
-    );
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Attachment queued: Editor.Sync.Notes/attachment.queue \u2014 '
-            '"$filename" kept offline; it will upload on the next sync.',
-          ),
-        ),
+    // Offline / local-draft / upload-failed path: save the bytes to
+    // LocalAttachmentStore under a note-uuid-scoped key, embed a
+    // compact `local://<uuid>/<filename>` URL into the markdown body,
+    // and record a pointer in `metadata_json['queued_attachments']`
+    // so the next sync pass can promote it to a real upload. Unlike
+    // the 0.1.37 path this never puts base64 into the note body.
+    final storeNoteUuid = _resolveStoreNoteUuid();
+    try {
+      final store = await LocalAttachmentStore.open();
+      final record = await store.put(
+        noteUuid: storeNoteUuid,
+        filename: filename,
+        contentType: contentType,
+        bytes: bytes,
       );
+      final embed = isImage
+          ? '![${record.filename}](${record.localUrl})'
+          : '[${record.filename}](${record.localUrl})';
+      _bodyController.text = '${_bodyController.text}\n\n$embed';
+      _handleChanged();
+
+      final metadata =
+          _decodeNoteMetadata(_note['metadata_json']?.toString() ?? '{}');
+      final queued = List<Map<String, dynamic>>.from(
+        (metadata['queued_attachments'] as List?) ?? const [],
+      );
+      queued.add({
+        'filename': record.filename,
+        'content_type': record.contentType,
+        'size_bytes': record.sizeBytes,
+        'local_url': record.localUrl,
+        'note_uuid': record.noteUuid,
+        'queued_at': record.createdAt.toIso8601String(),
+      });
+      metadata['queued_attachments'] = queued;
+      _note = {
+        ..._note,
+        'metadata_json': jsonEncode(metadata),
+      };
+      _handleChanged();
+
+      widget.onLogEvent(
+        'Attachment queued for sync: '
+        'Editor.Sync.Notes/attachment.queue \u2014 '
+        '"${record.filename}" stored at ${record.localUrl} '
+        '(${record.sizeBytes} bytes); will upload on next sync.',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Attachment saved locally: '
+              'Editor.Sync.Notes/attachment.queue \u2014 '
+              '"${record.filename}" kept offline under ${record.localUrl}; '
+              'it will upload on the next sync.',
+            ),
+          ),
+        );
+      }
+    } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      widget.onLogEvent(
+        'Attachment not saved locally: '
+        'Editor.Sync.Notes/attachment.queue \u2014 $cause.',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Attachment not saved: '
+              'Editor.Sync.Notes/attachment.queue \u2014 $cause.',
+            ),
+          ),
+        );
+      }
     }
+  }
+
+  /// Store-key rules:
+  ///   - server note with a uuid: use the uuid verbatim.
+  ///   - local draft without a server uuid: prefix with `local-`
+  ///     + client-draft-id so the namespace never collides.
+  String _resolveStoreNoteUuid() {
+    final serverUuid = _note['uuid']?.toString() ?? '';
+    if (serverUuid.isNotEmpty) return serverUuid;
+    final client = _note['client_draft_id']?.toString() ??
+        _note['id']?.toString() ??
+        '';
+    return client.isEmpty ? 'local-unknown' : 'local-$client';
   }
 
   /// Best-effort content-type guess from filename extension, falling back
@@ -626,6 +669,7 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                 data: source,
                 selectable: false,
                 builders: _markdownBuilders(),
+                sizedImageBuilder: _localAttachmentImageBuilder,
                 inlineSyntaxes: _markdownInlineSyntaxes(),
                 blockSyntaxes: _markdownBlockSyntaxes(),
                 styleSheet: _markdownStyleSheet(context),

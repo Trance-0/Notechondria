@@ -158,6 +158,7 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
                             data: content,
                             selectable: true,
                             builders: _markdownBuilders(),
+                            sizedImageBuilder: _localAttachmentImageBuilder,
                             inlineSyntaxes: _markdownInlineSyntaxes(),
                             blockSyntaxes: _markdownBlockSyntaxes(),
                             styleSheet: _markdownStyleSheet(context),

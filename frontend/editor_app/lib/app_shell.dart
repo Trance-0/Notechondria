@@ -647,6 +647,59 @@ class _AppShellState extends State<AppShell> {
     if (mounted) {
       setState(() {});
     }
+    // One-time migration of 0.1.37-era inline base64 queued
+    // attachments into LocalAttachmentStore. Run fire-and-forget so
+    // first paint isn't blocked on it; the shim itself is idempotent
+    // and short-circuits on subsequent boots via the
+    // `attachment_store_migrated_at` marker.
+    unawaited(_migrateAttachmentStoreIfNeeded());
+  }
+
+  /// One-time shim: walk _localDrafts, move any inline base64
+  /// queued-attachment payloads into LocalAttachmentStore, rewrite
+  /// the draft body to use `local://` URLs, and mark the migration
+  /// complete in local settings so subsequent boots skip this path.
+  Future<void> _migrateAttachmentStoreIfNeeded() async {
+    if ((_localSettings['attachment_store_migrated_at']?.toString() ?? '')
+        .isNotEmpty) {
+      return;
+    }
+    try {
+      final store = await LocalAttachmentStore.open();
+      final migrated = await store.migrateBase64Drafts(_localDrafts);
+      // migrateBase64Drafts returns a new list only when there is
+      // base64 to move; otherwise it hands back the same underlying
+      // objects and we skip the re-save.
+      if (!identical(migrated, _localDrafts)) {
+        _localDrafts = migrated;
+        await _LocalAppStore.saveDrafts(_localDrafts);
+        if (mounted) setState(() {});
+      }
+      _localSettings = {
+        ..._localSettings,
+        'attachment_store_migrated_at':
+            DateTime.now().toUtc().toIso8601String(),
+      };
+      await _LocalAppStore.saveSettings(_localSettings);
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Editor.LocalStore/attachment_store_migrate',
+        message:
+            'Attachment store migration complete: '
+            'Editor.LocalStore/attachment_store_migrate \u2014 '
+            'legacy base64 queued_attachments moved to '
+            'LocalAttachmentStore; drafts rewritten to local:// URLs.',
+      );
+    } catch (error) {
+      _log(
+        level: DebugLogLevel.warning,
+        source: 'Editor.LocalStore/attachment_store_migrate',
+        message:
+            'Attachment store migration deferred: '
+            'Editor.LocalStore/attachment_store_migrate \u2014 '
+            '${error.toString().replaceFirst('Exception: ', '')}.',
+      );
+    }
   }
 
   Future<void> _persistLocalSettings() async {
@@ -3003,13 +3056,20 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
   }
 
   /// Promote any attachments the editor queued into the draft's
-  /// `metadata_json['queued_attachments']` list to real uploads against
-  /// the freshly-synced cloud note id. Replaces the inline
-  /// `data:<type>;base64,...` URIs in the note content with the server's
-  /// returned URLs so previews stay consistent. Best-effort: a failure
-  /// on any one attachment is logged at warning and the remaining queued
-  /// items are dropped from the list (they would otherwise retry on
-  /// every sync forever).
+  /// `metadata_json['queued_attachments']` list to real CDN uploads
+  /// against the freshly-synced cloud note id.
+  ///
+  /// Reads bytes from `LocalAttachmentStore` (keyed by
+  /// `local://<note_uuid>/<filename>`), streams them through
+  /// `widget.client.uploadNoteAttachment`, rewrites every
+  /// `local://...` URL in the note body to the CDN-issued URL, and
+  /// deletes the local blob on success so the device storage
+  /// eventually frees.
+  ///
+  /// Legacy compatibility: drafts that still carry
+  /// `bytes_base64` payloads from the 0.1.37 era fall back to the old
+  /// decode-and-upload path so a user with pre-migration drafts
+  /// still sees their attachments promoted.
   Future<Map<String, dynamic>> _promoteQueuedAttachments(
     Map<String, dynamic> note,
     Map<String, dynamic> metadata,
@@ -3024,23 +3084,55 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       return note;
     }
     var content = note['content']?.toString() ?? '';
+    final store = await LocalAttachmentStore.open();
+    final promotedLocalUrls = <String>[];
     for (final entry in queued) {
       final filename = entry['filename']?.toString() ?? 'attachment';
       final contentType =
           entry['content_type']?.toString() ?? 'application/octet-stream';
+      final localUrl = entry['local_url']?.toString() ?? '';
       final base64Str = entry['bytes_base64']?.toString() ?? '';
-      if (base64Str.isEmpty) continue;
+
+      Uint8List? bytes;
+      if (localUrl.isNotEmpty) {
+        try {
+          bytes = await store.getBytes(localUrl: localUrl);
+        } catch (error) {
+          _log(
+            level: DebugLogLevel.warning,
+            source: 'Editor.Sync.Notes/attachment.promote',
+            message:
+                'Queued attachment not uploaded: '
+                'Editor.Sync.Notes/attachment.promote \u2014 '
+                '"$filename" missing from local store '
+                '(${error.toString().replaceFirst('Exception: ', '')}).',
+          );
+          continue;
+        }
+      } else if (base64Str.isNotEmpty) {
+        try {
+          bytes = base64Decode(base64Str);
+        } catch (_) {
+          continue;
+        }
+      } else {
+        continue;
+      }
+
       try {
-        final bytes = base64Decode(base64Str);
         final xfile = XFile.fromData(bytes,
             name: filename, mimeType: contentType);
         final attachment =
             await widget.client.uploadNoteAttachment(token, noteId, xfile);
         final url = attachment['url']?.toString() ?? '';
         if (url.isNotEmpty) {
-          final dataUri =
-              'data:$contentType;base64,$base64Str';
-          content = content.replaceAll(dataUri, url);
+          if (localUrl.isNotEmpty) {
+            content = content.replaceAll(localUrl, url);
+            promotedLocalUrls.add(localUrl);
+          } else if (base64Str.isNotEmpty) {
+            final dataUri = 'data:$contentType;base64,$base64Str';
+            content = content.replaceAll(dataUri, url);
+          }
         }
       } catch (error) {
         _log(
@@ -3054,12 +3146,23 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
         );
       }
     }
-    // Drop the queue regardless so the draft doesn't carry unbounded
-    // base64 payloads forever.
+    // Drop the queue regardless so the draft doesn't retry failed
+    // entries forever.
     metadata.remove('queued_attachments');
+
+    // Free successfully-promoted local blobs. A failure here is
+    // harmless (device storage just holds an unused file until the
+    // user clears local data).
+    for (final url in promotedLocalUrls) {
+      try {
+        await store.delete(localUrl: url);
+      } catch (_) {}
+    }
+
+    Map<String, dynamic> latest = note;
     if (content != note['content']) {
       try {
-        final patched = await widget.client.updateNote(token, noteId, {
+        latest = await widget.client.updateNote(token, noteId, {
           'content': content,
           'metadata_json': jsonEncode(metadata),
         });
@@ -3069,24 +3172,23 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           message:
               'Queued attachments promoted: '
               'Editor.Sync.Notes/attachment.promote \u2014 '
-              '${queued.length} embedded data URI(s) replaced with '
-              'server URLs on note $noteId.',
+              '${queued.length} queued item(s) replaced with server URLs '
+              'on note $noteId.',
         );
-        return patched;
       } catch (_) {
-        // Fall through: the note is already saved; the inline data URIs
-        // will stay in place and the user can retry later.
+        // Note content was not patched; body still carries
+        // `local://...` URLs that the editor's custom image builder
+        // can resolve from the store until the user retries.
       }
     } else {
-      // No URL substitution needed but we still want to strip the queue.
+      // No URL substitution happened but strip the queue anyway.
       try {
-        final patched = await widget.client.updateNote(token, noteId, {
+        latest = await widget.client.updateNote(token, noteId, {
           'metadata_json': jsonEncode(metadata),
         });
-        return patched;
       } catch (_) {}
     }
-    return note;
+    return latest;
   }
 
   Future<List<Map<String, dynamic>>> _getNoteHistory(int noteId) async {

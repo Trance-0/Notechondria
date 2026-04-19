@@ -261,6 +261,99 @@ Map<String, MarkdownElementBuilder> _markdownBuilders() {
   };
 }
 
+/// Custom image builder for `MarkdownBody.sizedImageBuilder`.
+/// Resolves `local://<note_uuid>/<filename>` URIs through
+/// `LocalAttachmentStore` and renders the bytes via `Image.memory`.
+/// For non-local URIs this falls through to an `Image.network` so
+/// existing cloud-hosted attachments keep rendering with the
+/// explicit width/height the markdown parser extracted.
+///
+/// Non-image bytes (e.g. a PDF attached to a local draft) render
+/// as a small pill with the filename so the note stays readable.
+Widget _localAttachmentImageBuilder(MarkdownImageConfig config) {
+  final uri = config.uri;
+  if (uri.scheme != 'local') {
+    return Image.network(
+      uri.toString(),
+      width: config.width,
+      height: config.height,
+      errorBuilder: (context, error, stack) {
+        final display = (config.alt?.isNotEmpty == true)
+            ? config.alt!
+            : (uri.pathSegments.isNotEmpty ? uri.pathSegments.last : 'image');
+        return Text(
+          '\u26a0 $display failed to load',
+          style: Theme.of(context).textTheme.bodySmall,
+        );
+      },
+    );
+  }
+  final key = 'local-attachment:$uri';
+  return FutureBuilder<Uint8List>(
+    key: ValueKey(key),
+    future: () async {
+      final store = await LocalAttachmentStore.open();
+      return store.getBytes(localUrl: uri.toString());
+    }(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState != ConnectionState.done) {
+        return const SizedBox(
+          width: 48,
+          height: 48,
+          child: Center(
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        );
+      }
+      if (snapshot.hasError || !snapshot.hasData) {
+        final display = (config.alt?.isNotEmpty == true)
+            ? config.alt!
+            : (uri.pathSegments.isNotEmpty
+                ? uri.pathSegments.last
+                : 'attachment');
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.errorContainer,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            '\u26a0 attachment not in local store: $display',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        );
+      }
+      return Image.memory(
+        snapshot.data!,
+        width: config.width,
+        height: config.height,
+        errorBuilder: (context, error, stack) {
+          final display = (config.alt?.isNotEmpty == true)
+              ? config.alt!
+              : (uri.pathSegments.isNotEmpty
+                  ? uri.pathSegments.last
+                  : 'attachment');
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.secondaryContainer,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              '\ud83d\udcce $display',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
 /// Block syntaxes used for viewer/editor previews — currently the GFM
 /// `<details>`/`<summary>` collapsible section.
 List<md.BlockSyntax> _markdownBlockSyntaxes() {
@@ -781,6 +874,7 @@ class _DetailsBuilder extends MarkdownElementBuilder {
                 data: body,
                 selectable: true,
                 builders: _markdownBuilders(),
+                sizedImageBuilder: _localAttachmentImageBuilder,
                 inlineSyntaxes: _markdownInlineSyntaxes(),
                 blockSyntaxes: _markdownBlockSyntaxes(),
                 styleSheet: _markdownStyleSheet(context),
