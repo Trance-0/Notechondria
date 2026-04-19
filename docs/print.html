@@ -534,6 +534,35 @@ requires syncing client methods, app_shell callback wiring, and the
 <code>_ApiKeySection</code> widget.</li>
 </ul>
 <h3 id="app-preferences"><a class="header" href="#app-preferences">App preferences</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"/>
+<strong>Offline-mode toggle</strong> in the shared <code>AppPreferencesCard</code>
+(<code>frontend/notechondria_shared/lib/src/settings/app_preferences_card.dart</code>)
+so it shows up in all three apps. A single boolean
+<code>offline_mode</code> persisted into <code>_LocalAppStore._settingsKey</code>
+(<code>local_settings['offline_mode']</code>). When enabled:
+<ul>
+<li><code>_bootstrapApp</code> skips the remote front-page / courses / notes
+fetches in <code>_loadInitialData</code> and immediately renders from
+<code>_localCache</code>. Target: reduce first-paint time from whatever the
+current worst-case server latency is to &lt; 500 ms.</li>
+<li>Public-notes list fetching in <code>_LearnerPage</code> switches to
+lazy: pulled only when the user explicitly taps a "Load public
+notes" button (or similar). Signed-in personal notes are still
+pulled on demand when the user selects them.</li>
+<li>Category auto-sync from cloud is gated: <code>_loadInitialData</code>
+continues to hit <code>/courses/</code> only if <code>offline_mode</code> is false
+or the user is currently authenticated. (When authenticated we
+keep the normal pull so switching to auth immediately refreshes
+cloud state.)</li>
+<li>The debug log emits <code>Editor.Sync.Settings/offline_mode</code> on
+toggle with the consequence / cause shape.</li>
+<li>Touches: shared <code>AppPreferencesCard</code> (new toggle row),
+<code>_LocalAppStore.defaultSettings()</code> to seed <code>false</code>, all three
+<code>_bootstrapApp</code> / <code>_loadInitialData</code> to respect the flag.</li>
+</ul>
+</li>
+</ul>
 <h3 id="debug-log-window"><a class="header" href="#debug-log-window">Debug log window</a></h3>
 <ul>
 <li><input disabled="" type="checkbox"/>
@@ -728,10 +757,85 @@ further before implementing: (a) design subscription data model,
 <h4 id="search"><a class="header" href="#search">Search</a></h4>
 <h3 id="note-preview"><a class="header" href="#note-preview">Note preview</a></h3>
 <h3 id="note-editor"><a class="header" href="#note-editor">Note editor</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"/>
+Move the editor-mode selector out of the top bar and into the
+"..." (details) menu button. Current top bar carries a
+<code>DropdownButtonFormField&lt;String&gt;</code> for editor mode; replace it with a
+popup menu triggered from <code>_openDetails</code>-adjacent logic so clicking
+"..." shows two options: <strong>Edit note meta</strong> (current details
+behavior) and <strong>Switch editor</strong> (opens a small picker: <code>P</code> plain
+text, <code>G</code> live markdown). Remove the top-bar dropdown completely
+and widen the title field to fill the space. Touches
+<code>editor_app/lib/modules/note_editor.dart</code>; if planner/portal still
+surface the same top-bar dropdown in their inlined editor widgets
+(<code>planner_app/lib/modules/learner.dart</code>,
+<code>portal_app/lib/modules/learner.dart</code>), replicate there.</li>
+</ul>
 <h4 id="markdown-editor"><a class="header" href="#markdown-editor">Markdown Editor</a></h4>
 <h5 id="plaintext-editor"><a class="header" href="#plaintext-editor">Plaintext editor</a></h5>
 <h5 id="markdown-editor-1"><a class="header" href="#markdown-editor-1">Markdown editor</a></h5>
 <h3 id="editor-settings"><a class="header" href="#editor-settings">Editor Settings</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"/>
+<strong>Replace "Download config file" with "Download local user
+data" / "Restore from local imports"</strong> across editor / planner /
+portal settings pages. Today only the editor settings page exposes a
+config-file download that writes a minimal <code>.env</code>-style file with
+<code>api_base_url</code> and the user's <code>api_key_prefix</code>. Spec:
+<ul>
+<li>Export a single <code>.nchron</code> zip file containing every persisted
+bucket the app uses:
+<ul>
+<li><code>VERSION</code> (string file with the package format version,
+<em>not</em> the app VERSION; start at <code>1</code>).</li>
+<li><code>manifest.json</code> with <code>{app: "editor|planner|portal", exported_at, app_version, package_version, counts: { drafts, courses, events?, feeds? }, profile: {username, email} (only the read-only fields, never token)}</code>.</li>
+<li><code>settings.json</code>, <code>local_settings.json</code>, <code>stats.json</code>,
+<code>cache.json</code>, <code>courses.json</code>, <code>drafts.json</code>, <code>logs.json</code>
+(one file per <code>_LocalAppStore</code> bucket, as-is from
+<code>shared_preferences</code>).</li>
+<li>For planner: also <code>planner_events.json</code>, <code>calendar_feeds.json</code>,
+<code>activity_week.json</code>.</li>
+<li>For portal: also whatever portal caches that the other two
+don't (front_page carousel, etc.).</li>
+<li>An <code>attachments/</code> directory with binary blobs for every
+<code>queued_attachments</code> entry currently in any draft's
+<code>metadata_json</code> (promote from base64 to real files inside the
+zip so the export stays human-inspectable).</li>
+</ul>
+</li>
+<li>Import accepts a <code>.nchron</code> zip, reads the <code>VERSION</code> file, and:
+<ul>
+<li>If <code>VERSION == 1</code> (current): apply buckets directly.</li>
+<li>If <code>VERSION &lt; 1</code> or a legacy <code>.env</code> config file: run a
+migration shim that reads the old fields and fills the new
+buckets with defaults.</li>
+<li>If <code>VERSION &gt; 1</code>: refuse with a canonical \u00a71.7 error
+(<code>Editor.LocalStore/restore_from_import \u2014 package format version $got ahead of this build's supported $max</code>).</li>
+</ul>
+</li>
+<li>Confirmation UI: import shows a summary dialog with the manifest
+counts before replacing local state; user must click through the
+<code>ConfirmWithDelayDialog</code>.</li>
+<li>Cross-app portability: the editor's export should be importable
+into the portal (which is the all-in-one shell). Planner \u2192
+editor should drop the planner-specific buckets silently and
+import the draft + course ones. Editor \u2192 planner should
+fill the planner-specific buckets with their empty defaults.</li>
+<li>Module: <code>Editor.LocalStore/export_zip</code>,
+<code>Editor.LocalStore/restore_from_import</code> (and
+<code>Planner.LocalStore/*</code>, <code>Portal.LocalStore/*</code> equivalents).</li>
+<li>Implementation notes: <code>package:archive</code> is already imported
+(<code>frontend/editor_app/lib/main.dart:9</code>). Use <code>ZipEncoder</code> /
+<code>ZipDecoder</code>. Download via <code>package:file_selector</code>
+<code>getSaveLocation</code>; import via <code>openFile</code>.</li>
+<li>Split this into at least three commits: (1) shared package-format
+spec in <code>docs/export_format_v1.md</code> + helpers in
+<code>notechondria_shared/lib/src/utils/local_archive.dart</code>;
+(2) editor wiring end-to-end + tests; (3) planner + portal.</li>
+</ul>
+</li>
+</ul>
 <h4 id="editor-preferences"><a class="header" href="#editor-preferences">Editor Preferences</a></h4>
 <h2 id="planner"><a class="header" href="#planner">Planner</a></h2>
 <h3 id="lerner-view"><a class="header" href="#lerner-view">Lerner view</a></h3>
