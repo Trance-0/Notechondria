@@ -3772,71 +3772,223 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     }
   }
 
-  /// Generates a downloadable config file content from local settings.
-  String _buildConfigFileContent() {
-    final username = _profile?['username']?.toString() ?? '';
-    final email = _settings?['email']?.toString() ??
-        _profile?['email']?.toString() ??
-        '';
-    final apiBase =
-        _localSettings['api_base_url']?.toString() ?? _defaultApiBaseUrl();
-    final themePreset = _localSettings['theme_preset']?.toString() ?? 'teal';
-    final themeMode = _localSettings['theme_mode']?.toString() ?? 'S';
-    final editorMode = _settings?['editor_mode']?.toString() ?? 'P';
-    return [
-      '# Notechondria Editor configuration',
-      '# Generated ${DateTime.now().toUtc().toIso8601String()}',
-      '',
-      'API_BASE_URL=$apiBase',
-      'THEME_PRESET=$themePreset',
-      'THEME_MODE=$themeMode',
-      'EDITOR_MODE=$editorMode',
-      if (username.isNotEmpty) 'USERNAME=$username',
-      if (email.isNotEmpty) 'EMAIL=$email',
-      '',
-      '# Add custom environment variables below',
-      '',
-    ].join('\n');
-  }
-
-  Future<void> _downloadConfigFile() async {
+  /// Exports every persisted local bucket into a `.nchron` v1 zip
+  /// package (see `docs/export_format_v1.md`). Profile fields sent
+  /// into the archive exclude tokens and API key prefixes by design;
+  /// only read-only identity fields are carried so an operator can
+  /// inspect who the archive came from.
+  Future<void> _exportLocalArchive() async {
     try {
       final username = _profile?['username']?.toString() ?? 'editor';
-      final content = _buildConfigFileContent();
+      final suggestedName = 'notechondria-editor-$username.nchron';
+      final archiveBytes = writeLocalArchive(
+        LocalArchiveInput(
+          app: LocalArchiveApp.editor,
+          appVersion: _kAppVersion,
+          profile: {
+            if (_profile?['username'] != null) 'username': _profile!['username'],
+            if (_profile?['email'] != null) 'email': _profile!['email'],
+            if (_profile?['first_name'] != null)
+              'first_name': _profile!['first_name'],
+            if (_profile?['last_name'] != null)
+              'last_name': _profile!['last_name'],
+            if (_settings?['motto'] != null) 'motto': _settings!['motto'],
+            if (_settings?['social_link'] != null)
+              'social_link': _settings!['social_link'],
+            if (_profile?['image_url'] != null)
+              'image_url': _profile!['image_url'],
+          },
+          settings: _settings ?? const {},
+          localSettings: _localSettings,
+          stats: _localStats,
+          cache: _localCache,
+          courses: _localCourses,
+          drafts: _localDrafts,
+          logs: _uiLogs,
+        ),
+      );
       final location = await getSaveLocation(
-        suggestedName: 'notechondria-$username.env',
+        suggestedName: suggestedName,
         acceptedTypeGroups: [
-          const XTypeGroup(label: 'Config', extensions: ['env', 'txt']),
+          const XTypeGroup(
+              label: 'Notechondria archive', extensions: ['nchron', 'zip']),
         ],
       );
       if (location == null) return;
-      final bytes = Uint8List.fromList(utf8.encode(content));
-      final file = XFile.fromData(bytes,
-          name: 'notechondria-$username.env', mimeType: 'text/plain');
+      final file = XFile.fromData(archiveBytes,
+          name: suggestedName, mimeType: 'application/zip');
       await file.saveTo(location.path);
       _showMessage(
-        'Configuration file saved: '
-        'Editor.LocalStore/download_config \u2014 $username.env written.',
+        'Local user data exported: '
+        'Editor.LocalStore/export_zip \u2014 $suggestedName written '
+        '(${archiveBytes.length} bytes).',
       );
       _log(
         level: DebugLogLevel.info,
-        source: 'Editor.LocalStore/download_config',
+        source: 'Editor.LocalStore/export_zip',
         message:
-            'Configuration file downloaded: '
-            'Editor.LocalStore/download_config \u2014 '
-            'wrote $username.env to disk.',
+            'Local user data exported: '
+            'Editor.LocalStore/export_zip \u2014 '
+            'wrote $suggestedName to disk '
+            '(${archiveBytes.length} bytes, '
+            '${_localCourses.length} course(s), '
+            '${_localDrafts.length} draft(s)).',
       );
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
       _showMessage(
-        'Configuration file not saved: '
-        'Editor.LocalStore/download_config \u2014 $cause.',
+        'Local user data not exported: '
+        'Editor.LocalStore/export_zip \u2014 $cause.',
       );
       _log(
         level: DebugLogLevel.error,
-        source: 'Editor.LocalStore/download_config',
-        message: 'Configuration file not saved: '
-            'Editor.LocalStore/download_config \u2014 $cause.',
+        source: 'Editor.LocalStore/export_zip',
+        message: 'Local user data not exported: '
+            'Editor.LocalStore/export_zip \u2014 $cause.',
+      );
+    }
+  }
+
+  /// Reads a `.nchron` archive the user picks from disk, shows a
+  /// confirmation dialog summarizing its contents, and on confirm
+  /// wipes local state and replays the archive's buckets into
+  /// `_LocalAppStore`.
+  Future<void> _restoreFromLocalImport() async {
+    try {
+      final picked = await openFile(acceptedTypeGroups: const [
+        XTypeGroup(
+            label: 'Notechondria archive',
+            extensions: ['nchron', 'zip', 'env']),
+      ]);
+      if (picked == null) return;
+      final bytes = await picked.readAsBytes();
+
+      // Sniff for legacy .env first so pre-0.1.38 downloads still work.
+      final legacy = tryReadLegacyEnvConfig(bytes);
+      if (legacy != null) {
+        final proceed = await _confirmWithDelay(
+          title: 'Restore from legacy config?',
+          message:
+              'Legacy .env config detected. Only API_BASE_URL / '
+              'API_KEY_PREFIX will be applied; local drafts, categories, '
+              'and cache stay as they are. Continue?',
+          confirmLabel: 'Import',
+        );
+        if (!proceed) return;
+        final apiBase = legacy['API_BASE_URL']?.trim();
+        if (apiBase != null && apiBase.isNotEmpty) {
+          await _applyLocalAppSettings({'api_base_url': apiBase});
+        }
+        _log(
+          level: DebugLogLevel.info,
+          source: 'Editor.LocalStore/restore_from_import',
+          message:
+              'Legacy .env imported: '
+              'Editor.LocalStore/restore_from_import \u2014 '
+              '${legacy.length} key(s) applied from config file.',
+        );
+        _showMessage(
+          'Legacy config imported: '
+          'Editor.LocalStore/restore_from_import \u2014 '
+          '${legacy.length} key(s) applied.',
+        );
+        return;
+      }
+
+      final parsed = readLocalArchive(bytes);
+      if (!parsed.ok) {
+        _showMessage(parsed.errorMessage!);
+        _log(
+          level: DebugLogLevel.error,
+          source: 'Editor.LocalStore/restore_from_import',
+          message: parsed.errorMessage!,
+        );
+        return;
+      }
+
+      final counts = parsed.counts;
+      final summary = [
+        '${counts['courses'] ?? parsed.courses.length} categor(ies)',
+        '${counts['drafts'] ?? parsed.drafts.length} draft(s)',
+        if ((counts['queued_attachments'] ?? 0) > 0)
+          '${counts['queued_attachments']} queued attachment(s)',
+        '${counts['logs'] ?? parsed.logs.length} log line(s)',
+      ].join(', ');
+      final exporterApp = parsed.manifestApp?.tag ?? 'unknown';
+      final exportedAt = parsed.exportedAt?.toLocal().toIso8601String() ?? '';
+      final proceed = await _confirmWithDelay(
+        title: 'Restore local data?',
+        message:
+            'Archive produced by $exporterApp app ($exportedAt) '
+            'contains: $summary. '
+            'Continuing will REPLACE your current local drafts, '
+            'categories, and cached data with the archive contents.',
+        confirmLabel: 'Replace',
+        delaySeconds: 5,
+      );
+      if (!proceed) return;
+
+      // Apply buckets. We go through _LocalAppStore save-helpers + our
+      // in-memory setters so the debug log controller, sidebar, and
+      // learner list all rebuild off the new state.
+      setState(() {
+        _localSettings = {
+          ..._LocalAppStore.defaultSettings(),
+          ...parsed.localSettings,
+        };
+        _localStats = {
+          ..._LocalAppStore.defaultStats(),
+          ...parsed.stats,
+        };
+        _localCache = {
+          ..._LocalAppStore.defaultCache(),
+          ...parsed.cache,
+        };
+        _localCourses = parsed.courses;
+        _localDrafts = parsed.drafts;
+        _uiLogs
+          ..clear()
+          ..addAll(parsed.logs);
+      });
+      _logController
+        ..replaceAll(parsed.logs.map(DebugLogEntry.fromPersistedString))
+        ..bindCacheProvider(_snapshotLocalStore);
+
+      await _LocalAppStore.saveSettings(_localSettings);
+      await _LocalAppStore.saveStats(_localStats);
+      await _LocalAppStore.saveCache(_localCache);
+      await _LocalAppStore.saveCourses(_localCourses);
+      await _LocalAppStore.saveDrafts(_localDrafts);
+      await _LocalAppStore.saveLogs(_uiLogs);
+
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Editor.LocalStore/restore_from_import',
+        message:
+            'Local user data restored: '
+            'Editor.LocalStore/restore_from_import \u2014 '
+            'archive from $exporterApp applied ($summary).',
+      );
+      _showMessage(
+        'Local user data restored: '
+        'Editor.LocalStore/restore_from_import \u2014 '
+        'archive from $exporterApp applied ($summary).',
+      );
+
+      // Refresh downstream UI (learner list, course panel, front page).
+      await _loadInitialData();
+    } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      _showMessage(
+        'Local user data not restored: '
+        'Editor.LocalStore/restore_from_import \u2014 $cause.',
+      );
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Editor.LocalStore/restore_from_import',
+        message:
+            'Local user data not restored: '
+            'Editor.LocalStore/restore_from_import \u2014 $cause.',
       );
     }
   }
@@ -4464,7 +4616,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           onPullCloudData: _pullCloudNotesToLocal,
           onClearLocalData: _clearLocalData,
           onRestoreTemplateCourses: _restoreTemplateCourses,
-          onDownloadConfig: _downloadConfigFile,
+          onExportLocalData: _exportLocalArchive,
+          onRestoreFromLocalImport: _restoreFromLocalImport,
           localDraftCount: _localDrafts.length,
           localCourseCount: _localCourses.length,
           apiBaseUrl: _httpClient?.baseUrl,

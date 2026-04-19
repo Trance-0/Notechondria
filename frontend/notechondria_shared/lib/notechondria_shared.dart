@@ -11,6 +11,16 @@ export 'src/models/api_debug_snapshot.dart' show ApiDebugSnapshot;
 
 export 'src/utils/blur_dialog.dart' show showBlurDialog;
 export 'src/utils/compact_timestamp.dart' show formatCompactTimestamp;
+export 'src/utils/local_archive.dart'
+    show
+        kLocalArchivePackageVersion,
+        LocalArchiveApp,
+        LocalArchiveAppTag,
+        LocalArchiveInput,
+        LocalArchiveOutput,
+        readLocalArchive,
+        tryReadLegacyEnvConfig,
+        writeLocalArchive;
 
 export 'src/components/auth_dialogs.dart'
     show

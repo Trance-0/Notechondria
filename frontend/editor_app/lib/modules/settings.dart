@@ -42,7 +42,8 @@ class _SettingsPage extends StatefulWidget {
     this.onChangePassword,
     this.onChangeEmailRequest,
     this.onChangeEmailConfirm,
-    this.onDownloadConfig,
+    this.onExportLocalData,
+    this.onRestoreFromLocalImport,
     this.apiBaseUrl,
     this.debugSnapshotListenable,
     this.debugHistoryListenable,
@@ -104,7 +105,16 @@ class _SettingsPage extends StatefulWidget {
   final Future<Map<String, dynamic>> Function(String currentPassword, String newPassword, String identityCode)? onChangePassword;
   final Future<Map<String, dynamic>> Function(String newEmail, String identityCode)? onChangeEmailRequest;
   final Future<Map<String, dynamic>> Function(String newEmail, String code)? onChangeEmailConfirm;
-  final Future<void> Function()? onDownloadConfig;
+  /// Exports every persisted local bucket as a versioned `.nchron`
+  /// zip package (v1, see `docs/export_format_v1.md`). Replaces the
+  /// minimal `.env` config download.
+  final Future<void> Function()? onExportLocalData;
+
+  /// Imports a `.nchron` package selected by the user via the
+  /// platform file picker. Shows a preview + delay-confirm dialog
+  /// before replacing local state.
+  final Future<void> Function()? onRestoreFromLocalImport;
+
   final int localDraftCount;
   final int localCourseCount;
   final List<String> uiLogs;
@@ -1259,11 +1269,17 @@ class _SettingsPageState extends State<_SettingsPage> {
               spacing: 10,
               runSpacing: 10,
               children: [
-                if (widget.onDownloadConfig != null)
+                if (widget.onExportLocalData != null)
                   OutlinedButton.icon(
-                    onPressed: widget.onDownloadConfig,
-                    icon: const Icon(Icons.download_outlined),
-                    label: const Text('Download config file'),
+                    onPressed: widget.onExportLocalData,
+                    icon: const Icon(Icons.file_download_outlined),
+                    label: const Text('Download local user data'),
+                  ),
+                if (widget.onRestoreFromLocalImport != null)
+                  OutlinedButton.icon(
+                    onPressed: widget.onRestoreFromLocalImport,
+                    icon: const Icon(Icons.file_upload_outlined),
+                    label: const Text('Restore from local imports'),
                   ),
                 OutlinedButton.icon(
                   onPressed: () =>

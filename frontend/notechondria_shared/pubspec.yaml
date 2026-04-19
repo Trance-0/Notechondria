@@ -9,6 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  archive: ^3.4.10
 
 dev_dependencies:
   flutter_test:

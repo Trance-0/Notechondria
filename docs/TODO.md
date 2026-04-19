@@ -301,9 +301,28 @@ Do not bundle unrelated changes.
 
 ### Editor Settings
 
-- [ ] **Replace "Download config file" with "Download local user
-  data" / "Restore from local imports"** across editor / planner /
-  portal settings pages. Today only the editor settings page exposes a
+- [x] **Editor export/import landed in 0.1.38** \u2014 editor Settings
+  now shows "Download local user data" and "Restore from local
+  imports" driven by the shared `.nchron` v1 archive format
+  (`docs/export_format_v1.md` + `notechondria_shared/.../utils/
+  local_archive.dart` + 6 passing unit tests in the shared package).
+  Editor wiring covers both the legacy `.env` migration shim and
+  the full-state replace-on-confirm flow.
+- [ ] **Planner + Portal export/import** \u2014 replicate the 0.1.38
+  editor wiring in `planner_app/lib/app_shell.dart` +
+  `planner_app/lib/modules/settings.dart` and the portal equivalents.
+  Planner must add `planner_events` / `calendar_feeds` /
+  `activity_week` buckets to its `LocalArchiveInput`; portal must
+  add `frontPage`. Both use the shared helpers so the format stays
+  aligned.
+- [ ] **Cross-app import UX polish** \u2014 when an editor-produced
+  archive is imported into planner, silently seed the
+  planner-specific buckets with empty defaults; when a planner or
+  portal archive is imported into editor, silently drop the
+  app-specific files. The parser already returns empty defaults
+  for missing optional files so this is primarily a test-coverage
+  task \u2014 add cross-app round-trip tests in
+  `notechondria_shared/test/local_archive_test.dart`. Today only the editor settings page exposes a
   config-file download that writes a minimal `.env`-style file with
   `api_base_url` and the user's `api_key_prefix`. Spec:
   - Export a single `.nchron` zip file containing every persisted
