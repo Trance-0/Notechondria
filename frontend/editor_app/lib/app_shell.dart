@@ -4659,7 +4659,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           searchScope: _learnerSearchScope,
           isAuthenticated: _token != null && _token!.isNotEmpty,
           currentUsername: _profile?['username']?.toString() ?? '',
-          apiBaseUrl: _httpClient?.baseUrl,
+          apiBaseUrl: _localSettings['api_base_url']?.toString() ??
+              _httpClient?.baseUrl,
           onSearchChanged: (value) =>
               _loadLearnerNotes(reset: true, query: value),
           onSearchScopeChanged: (value) =>
@@ -4739,7 +4740,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           onRestoreFromLocalImport: _restoreFromLocalImport,
           localDraftCount: _localDrafts.length,
           localCourseCount: _localCourses.length,
-          apiBaseUrl: _httpClient?.baseUrl,
+          apiBaseUrl: _localSettings['api_base_url']?.toString() ??
+              _httpClient?.baseUrl,
           debugSnapshotListenable: _httpClient?.debugSnapshot,
           debugHistoryListenable: _httpClient?.debugHistory,
           debugLogController: _logController,

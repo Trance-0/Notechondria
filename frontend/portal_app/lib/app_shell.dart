@@ -3329,7 +3329,8 @@ class _AppShellState extends State<AppShell> {
         return _FrontPage(
           frontPage: _frontPage ?? const {},
           profile: _profile,
-          apiBaseUrl: _httpClient?.baseUrl,
+          apiBaseUrl: _localSettings['api_base_url']?.toString() ??
+              _httpClient?.baseUrl,
           onOpenNote: _openNoteViewer,
           onOpenCourse: _selectCourse,
         );
@@ -3346,7 +3347,8 @@ class _AppShellState extends State<AppShell> {
           isLoadingMore: _isLoadingMoreNotes,
           searchQuery: _learnerSearchQuery,
           isAuthenticated: _token != null && _token!.isNotEmpty,
-          apiBaseUrl: _httpClient?.baseUrl,
+          apiBaseUrl: _localSettings['api_base_url']?.toString() ??
+              _httpClient?.baseUrl,
           onSearchChanged: (value) =>
               _loadLearnerNotes(reset: true, query: value),
           onLoadMore: () => _loadLearnerNotes(),
@@ -3375,7 +3377,8 @@ class _AppShellState extends State<AppShell> {
           localNotes: _localDrafts,
           isAuthenticated: _token != null && _token!.isNotEmpty,
           canCreateLocalCourses: true,
-          apiBaseUrl: _httpClient?.baseUrl,
+          apiBaseUrl: _localSettings['api_base_url']?.toString() ??
+              _httpClient?.baseUrl,
           onCourseChanged: _selectCourse,
           onCreateLocalCourse: _createLocalCourse,
           onSyncLocalData: _syncAllLocalData,
@@ -3434,7 +3437,8 @@ class _AppShellState extends State<AppShell> {
           onRestoreTemplateCourses: _restoreTemplateCourses,
           localDraftCount: _localDrafts.length,
           localCourseCount: _localCourses.length,
-          apiBaseUrl: _httpClient?.baseUrl,
+          apiBaseUrl: _localSettings['api_base_url']?.toString() ??
+              _httpClient?.baseUrl,
           debugSnapshotListenable: _httpClient?.debugSnapshot,
           debugHistoryListenable: _httpClient?.debugHistory,
           debugLogController: _logController,
