@@ -333,7 +333,8 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
       _dirty = false;
       _lastSavedAt = DateTime.now();
       widget.onLogEvent(
-          "Editor saved '${_note['title']?.toString() ?? 'Untitled note'}' via $reason.");
+          "Note saved from editor: Editor.UI/editor.save \u2014 "
+          "'${_note['title']?.toString() ?? 'Untitled note'}' persisted via $reason.");
       if (reason == 'autosave' && autosaveLabel != null) {
         await widget.onSnapshot(_note['id'] as int, reason: autosaveLabel);
         _lastVersionSnapshotAt = DateTime.now();
@@ -349,7 +350,9 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
   }
 
   Future<void> _openDetails() async {
-    widget.onLogEvent('Opened note metadata dialog.');
+    widget.onLogEvent(
+        'Note metadata dialog opened: Editor.UI/editor.metadata \u2014 '
+        'user requested metadata edit from the editor toolbar.');
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => _NoteMetadataDialog(
@@ -415,7 +418,9 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
     setState(() {
       _editorMode = mode;
     });
-    widget.onLogEvent('Editor mode switched to $mode.');
+    widget.onLogEvent(
+        'Editor mode switched: Editor.UI/editor.mode \u2014 '
+        'active mode set to $mode.');
     _handleChanged();
   }
 
@@ -450,7 +455,9 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
       final embed = isImage ? '![$filename]($url)' : '[$filename]($url)';
       _bodyController.text = '${_bodyController.text}\n\n$embed';
       _handleChanged();
-      widget.onLogEvent('Attachment uploaded: $filename');
+      widget.onLogEvent(
+          'Attachment uploaded: Editor.UI/editor.attachment \u2014 '
+          '"$filename" attached to the open note.');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -654,7 +661,9 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                     await widget.onSnapshot(_note['id'] as int,
                         reason: 'quit');
                   }
-                  widget.onLogEvent('Editor closed.');
+                  widget.onLogEvent(
+                      'Note editor closed: Editor.UI/editor.close \u2014 '
+                      'dialog dismissed and focus returned to the learner view.');
                   if (mounted) {
                     nav.pop();
                   }

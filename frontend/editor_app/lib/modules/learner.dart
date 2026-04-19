@@ -168,7 +168,8 @@ class _LearnerPageState extends State<_LearnerPage> {
       return;
     }
     widget.onLogEvent(
-        "Editor opened for '${detail['title']?.toString() ?? 'Untitled note'}'.");
+        "Note editor opened: Editor.UI/open_editor \u2014 "
+        "'${detail['title']?.toString() ?? 'Untitled note'}' loaded into dialog.");
     final sessionId = await widget.onStartNoteSession(
       detail['id'] as int,
       detail['title']?.toString() ?? 'Untitled note',
@@ -227,7 +228,9 @@ class _LearnerPageState extends State<_LearnerPage> {
     if (!mounted) {
       return;
     }
-    widget.onLogEvent('Created note shell ${created['id']}.');
+    widget.onLogEvent(
+        'Note shell created: Editor.UI/create_note \u2014 '
+        'server issued note id ${created['id']}; editor about to open.');
     await _openEditor(created);
   }
 

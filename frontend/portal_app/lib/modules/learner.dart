@@ -147,7 +147,8 @@ class _LearnerPageState extends State<_LearnerPage> {
       return;
     }
     widget.onLogEvent(
-        "Editor opened for '${detail['title']?.toString() ?? 'Untitled note'}'.");
+        "Note editor opened: Portal.UI/open_editor \u2014 "
+        "'${detail['title']?.toString() ?? 'Untitled note'}' loaded into dialog.");
     final sessionId = await widget.onStartNoteSession(
       detail['id'] as int,
       detail['title']?.toString() ?? 'Untitled note',
@@ -192,7 +193,9 @@ class _LearnerPageState extends State<_LearnerPage> {
     if (!mounted) {
       return;
     }
-    widget.onLogEvent('Created note shell ${created['id']}.');
+    widget.onLogEvent(
+        'Note shell created: Portal.UI/create_note \u2014 '
+        'server issued note id ${created['id']}; editor about to open.');
     await _openEditor(created);
   }
 
@@ -703,7 +706,8 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
       _dirty = false;
       _lastSavedAt = DateTime.now();
       widget.onLogEvent(
-          "Editor saved '${_note['title']?.toString() ?? 'Untitled note'}' via $reason.");
+          "Note saved from editor: Portal.UI/editor.save \u2014 "
+          "'${_note['title']?.toString() ?? 'Untitled note'}' persisted via $reason.");
       if (reason == 'autosave' && autosaveLabel != null) {
         await widget.onSnapshot(_note['id'] as int, reason: autosaveLabel);
         _lastVersionSnapshotAt = DateTime.now();
@@ -719,7 +723,9 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
   }
 
   Future<void> _openDetails() async {
-    widget.onLogEvent('Opened note metadata dialog.');
+    widget.onLogEvent(
+        'Note metadata dialog opened: Portal.UI/editor.metadata \u2014 '
+        'user requested metadata edit from the editor toolbar.');
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => _NoteMetadataDialog(
@@ -863,7 +869,9 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
     setState(() {
       _editorMode = mode;
     });
-    widget.onLogEvent('Editor mode switched to $mode.');
+    widget.onLogEvent(
+        'Editor mode switched: Portal.UI/editor.mode \u2014 '
+        'active mode set to $mode.');
     _handleChanged();
   }
 
@@ -1151,7 +1159,9 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                         await widget.onSnapshot(_note['id'] as int,
                             reason: 'quit');
                       }
-                      widget.onLogEvent('Editor closed.');
+                      widget.onLogEvent(
+                          'Note editor closed: Portal.UI/editor.close \u2014 '
+                          'dialog dismissed and focus returned to the portal view.');
                       if (mounted) {
                         Navigator.of(context).pop();
                       }

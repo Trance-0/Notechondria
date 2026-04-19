@@ -213,6 +213,17 @@ Decompose by module so each round produces a reviewable diff. Order:
   `validate_registration_code` raises in `backend/creators/forms.py`
   rewritten. These serve the legacy Django form-based registration UI;
   the DRF path is covered by the 0.1.29 round.
+- [x] Module part-files round (0.1.36): every direct
+  `widget.onLogEvent(...)` call in `modules/learner.dart` and
+  `modules/note_editor.dart` across editor/planner/portal migrated to
+  `<Editor|Planner|Portal>.UI/{open_editor,create_note,editor.save,
+  editor.metadata,editor.mode,editor.attachment,editor.close}`. The
+  three apps now share the same message shape at these call sites
+  (only the `Editor|Planner|Portal` prefix differs). The underlying
+  host-side `_appendUiLog` wrapper continues to route these into the
+  debug log controller as Info-level entries with an empty structured
+  source; the wording itself now satisfies \u00a71.7 when the operator
+  reads it out of a log or pastes it into an issue.
 
 Each round: rewrite, run `python manage.py test` (backend) or
 `flutter analyze` + `flutter test test/smoke_test.dart` (frontend),
