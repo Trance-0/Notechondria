@@ -620,48 +620,19 @@ and the inlined editors in planner/portal
 </li>
 <li>
 <p><input disabled="" type="checkbox"/>
-<strong>Attachment CDN rework</strong> (user-reported). Current behavior
-writes base64 data URIs inline and queues raw bytes in
-<code>metadata_json['queued_attachments']</code> as base64. Spec:</p>
+<strong>Attachment CDN — remaining deferred items.</strong> The frontend
+three-commit plan (shared store + editor wiring + planner/portal
+parity + attachments list) landed across 0.1.40 / 0.1.41 / 0.1.42.
+Still open:</p>
 <ul>
-<li><strong>Local first.</strong> On pick, write the file bytes to app-local
-storage under <code>attachments/&lt;note-uuid&gt;/&lt;safe-filename&gt;</code> and
-embed a <code>local://&lt;note-uuid&gt;/&lt;safe-filename&gt;</code> URL into the
-markdown. Preview widget (flutter_markdown) renders
-<code>local://</code> via a custom image builder that reads the bytes
-from that storage.</li>
-<li><strong>No base64 in markdown body.</strong> Keep only a compact pointer.</li>
-<li><strong>Storage backend:</strong>
-<ul>
-<li>Web: IndexedDB (via <code>idb_shim</code> or hand-rolled). 20 MB per
-attachment stays, but add a total-budget check (~200 MB)
-because browsers evict heavy origins.</li>
-<li>Native: <code>path_provider</code> <code>getApplicationSupportDirectory</code>.</li>
-<li>A shared <code>LocalAttachmentStore</code> helper in
-<code>notechondria_shared/lib/src/utils/local_attachment_store.dart</code>
-hides the platform split.</li>
-</ul>
-</li>
-<li><strong>Upload on sync.</strong> <code>_promoteQueuedAttachments</code> reads the
-local file (no more base64 decode step) and streams it through
-<code>client.uploadNoteAttachment</code>. On success, rewrite the markdown
-from <code>local://...</code> to the CDN URL and delete the local blob.</li>
-<li><strong>Preview from attachments list.</strong> Add an "Attachments" section
-under the editor toolbar listing every embedded attachment
-(local + remote) with filename, size, a preview thumbnail for
-images, and a delete button. Today there's no such list at
-all.</li>
-<li><strong>Filename sanitization</strong> — the same rules as
-<code>local_archive.dart::_sanitize</code>: slashes → <code>_</code>, control bytes
-stripped, deterministic <code>-&lt;index&gt;</code> on collision.</li>
-<li><strong>Migration shim.</strong> Existing drafts carry base64 in
-<code>metadata_json['queued_attachments']</code>. On load, migrate each
-such entry to the local file store one-time and rewrite the
-body references.</li>
-<li>Split into at least three commits: (1) shared
-<code>LocalAttachmentStore</code> + migration shim + tests;
-(2) editor wiring (upload flow, preview list, sync promotion);
-(3) planner + portal.</li>
+<li>IndexedDB web backend to replace the in-memory stub in
+<code>notechondria_shared/lib/src/local_attachment_store.dart</code>
+(<code>_WebLocalAttachmentBackend</code>) so attachments survive a tab
+refresh. Detailed spec in <code>docs/versions/0.1.42.md</code>.</li>
+<li>Storage-budget UI surface: wire <code>LocalAttachmentStore.totalBytes()</code>
+into the debug log card + a settings "Storage" row with a
+"Clear unused local attachments" action. Detailed spec in
+<code>docs/versions/0.1.42.md</code>.</li>
 </ul>
 </li>
 </ul>
@@ -702,21 +673,13 @@ break, so gather feedback before touching.</li>
 </ul>
 <h2 id="backend"><a class="header" href="#backend">Backend</a></h2>
 <ul>
-<li>
-<p><input disabled="" type="checkbox"/>
-I noticed that some data structure is not split cleanly by
-their function, e.g. The course should have a independent app
-folder for easy management.</p>
-</li>
-<li>
-<p><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox"/>
 <strong>Attachment CDN server-side.</strong> Currently uploads go to a
 single path. Consider keying by <code>note.uuid</code> at the URL level
 (<code>/notes/&lt;uuid&gt;/attachments/&lt;filename&gt;</code>) so the frontend can
 invalidate / sync without passing integer ids. Align with the
 frontend <code>local://&lt;note-uuid&gt;/&lt;safe-filename&gt;</code> scheme in the
-attachment-CDN rework above.</p>
-</li>
+attachment-CDN rework above.</li>
 </ul>
 <h3 id="mcp"><a class="header" href="#mcp">MCP</a></h3>
 <h2 id="documentation-pages"><a class="header" href="#documentation-pages">Documentation pages</a></h2>
