@@ -22,11 +22,6 @@ file and add a round-log entry to the new version doc.
 
 ## Bugs
 
-- [ ] Replicate the 0.1.20 editor_app bug fixes (invalid-token
-  session-clear + bind-without-token short-circuit) into planner_app
-  and portal_app. Their `app_shell.dart` files inline the same flow
-  as editor's but were not touched this round.
-
 - [ ] **Note share / deep-link redirect failure.** User-reported: the
   note-share URL doesn't resolve when opened in a fresh tab.
   Investigation path (`editor_app/lib/app_shell.dart`):
@@ -42,19 +37,6 @@ file and add a round-log entry to the new version doc.
   `_errorMessage` without a clear "sign in to view" prompt.
   Add a regression test that exercises
   `https://host/#/notes/<uuid>` cold-start with and without session.
-
-- [ ] **Category ownership UI mismatch.** Backend's
-  `DELETE /courses/<id>/` correctly returns 403 for non-owners
-  (`backend/notes/api.py:690`). The editor sidebar calls
-  `_deleteCategory` unconditionally and surfaces the 403 as a raw
-  error. Fix: when `course['is_owned'] == false`, the sidebar
-  long-press / right-click menu should show **Unsubscribe** (calls
-  `DELETE /courses/<id>/subscription/`) instead of **Delete**. The
-  existing `_promptEditCategory` → `_EditCategoryDialog` action list
-  needs a third branch. Backend already supports both paths:
-  `CourseSubscribeApiView` for subscribe/unsubscribe,
-  `CourseDetailApiView` for owner delete. Local courses (negative
-  id) keep the current delete semantics.
 
 ## Global reusable components
 
@@ -92,26 +74,13 @@ file and add a round-log entry to the new version doc.
 
 ### App preferences
 
-- [ ] **Offline-mode toggle** in the shared `AppPreferencesCard`
-  (`frontend/notechondria_shared/lib/src/settings/app_preferences_card.dart`)
-  so it shows up in all three apps. A single boolean `offline_mode`
-  persisted into `_LocalAppStore._settingsKey`
-  (`local_settings['offline_mode']`). When enabled:
-  - `_bootstrapApp` skips the remote front-page / courses / notes
-    fetches in `_loadInitialData` and immediately renders from
-    `_localCache`. Target: reduce first-paint time to < 500 ms.
-  - Public-notes list fetching in `_LearnerPage` switches to lazy:
-    pulled only when the user explicitly taps a "Load public notes"
-    button. Signed-in personal notes are still pulled on demand
-    when the user selects them.
-  - Category auto-sync from cloud is gated: `_loadInitialData`
-    continues to hit `/courses/` only if `offline_mode` is false or
-    the user is currently authenticated.
-  - The debug log emits `Editor.Sync.Settings/offline_mode` on
-    toggle with the consequence / cause shape.
-  - Touches: shared `AppPreferencesCard` (new toggle row),
-    `_LocalAppStore.defaultSettings()` to seed `false`, all three
-    `_bootstrapApp` / `_loadInitialData` to respect the flag.
+- [ ] **Offline-mode — secondary fetch gates.** The coarse
+  `_loadInitialData` gate landed in 0.1.46. The two finer-grained
+  items from the original spec are still open: public-notes list
+  in `_LearnerPage` should become an explicit "Load public notes"
+  button when offline_mode is true, and category auto-sync from
+  cloud needs an additional guard so the authenticated sync path
+  still runs even when offline_mode is on.
 
 ### Debug log window
 
@@ -142,14 +111,14 @@ file and add a round-log entry to the new version doc.
 
 ### Note editor
 
-- [ ] Move the editor-mode selector out of the top bar and into the
-  "..." (details) menu button. Clicking "..." should show a dropdown
-  with two options: **Edit note meta** (current details behavior)
-  and **Switch editor** (small picker: `P` plain text, `G` live
-  markdown). Remove the top-bar dropdown completely and widen the
-  title field. Touches `editor_app/lib/modules/note_editor.dart`
-  and the inlined editors in planner/portal
-  `modules/learner.dart`.
+- [ ] **Port editor overflow menu to planner/portal inline editors.**
+  The note_editor.dart top-bar overflow menu (Edit note meta /
+  Switch editor / View attachments) shipped in 0.1.46 for the
+  editor app only. The inlined note editors in
+  `planner_app/lib/modules/learner.dart` and
+  `portal_app/lib/modules/learner.dart` still use the old layout
+  and should adopt the same PopupMenuButton pattern for
+  consistency.
 
 - [ ] **Attachment CDN — remaining deferred items.** The frontend
   three-commit plan (shared store + editor wiring + planner/portal

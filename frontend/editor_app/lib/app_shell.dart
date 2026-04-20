@@ -2230,6 +2230,66 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     }
   }
 
+  /// Unsubscribes the current user from a cloud category they do not
+  /// own, removing it from their sidebar without touching the
+  /// course itself on the server. Mirrors planner/portal's existing
+  /// unsubscribe flow. Returns an `ActionFeedback` shaped per §1.7.
+  Future<ActionFeedback> _unsubscribeCategory(
+      Map<String, dynamic> course) async {
+    final courseId = (course['id'] as num?)?.toInt();
+    final token = _token;
+    if (token == null || token.isEmpty || courseId == null) {
+      return const ActionFeedback(
+          message: 'Category not unsubscribed: '
+              'Editor.Sync.Courses/unsubscribe \u2014 '
+              'sign in first; unsubscribing requires a cloud session.',
+          isError: true);
+    }
+    try {
+      await widget.client.unsubscribeCourse(token, courseId);
+      final defaultRemote = _courses.cast<Map<String, dynamic>?>().firstWhere(
+            (c) =>
+                c?['is_default'] == true &&
+                (c?['id'] as num?)?.toInt() != courseId,
+            orElse: () => null,
+          );
+      setState(() {
+        _courses = _courses
+            .where((item) => (item['id'] as num?)?.toInt() != courseId)
+            .toList(growable: false);
+        if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
+          _selectedCourse = defaultRemote;
+          _selectedCategoryId = (defaultRemote?['id'] as num?)?.toInt();
+        }
+      });
+      await _persistLocalCache();
+      await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
+      _log(
+        level: DebugLogLevel.info,
+        source: 'Editor.Sync.Courses/unsubscribe',
+        message:
+            'Category unsubscribed: Editor.Sync.Courses/unsubscribe \u2014 '
+            "'${course['title']}' removed from sidebar; course stays on server.",
+      );
+      return ActionFeedback(
+          message:
+              'Category unsubscribed: Editor.Sync.Courses/unsubscribe \u2014 '
+              "'${course['title']}' removed from your sidebar.");
+    } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      _log(
+        level: DebugLogLevel.error,
+        source: 'Editor.Sync.Courses/unsubscribe',
+        message: 'Category not unsubscribed: '
+            'Editor.Sync.Courses/unsubscribe \u2014 $cause.',
+      );
+      return ActionFeedback(
+          message: 'Category not unsubscribed: '
+              'Editor.Sync.Courses/unsubscribe \u2014 $cause.',
+          isError: true);
+    }
+  }
+
   /// Renders a single sidebar category row with the shared tooltip, long-press,
   /// and right-click handlers. Pulled out so the pinned Inbox row and the
   /// draggable rows inside the reorderable list share the exact same look.
@@ -2381,11 +2441,18 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     final controller =
         TextEditingController(text: course['title']?.toString() ?? '');
     final currentIcon = (course['icon'] as num?)?.toInt();
+    // Local (negative-id) categories are always owned by the current
+    // user. For cloud courses we trust the `is_owned` flag computed
+    // by `_decorateRemoteCourse`. When ownership is unclear (no
+    // authenticated username at decoration time) we default to
+    // read-only so the user can't produce a backend 403 from the UI.
+    final isOwned = _isLocalCourse(course) || course['is_owned'] == true;
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (ctx) => _EditCategoryDialog(
         controller: controller,
         initialIcon: currentIcon,
+        isOwned: isOwned,
       ),
     );
     controller.dispose();
@@ -2399,6 +2466,21 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       );
       if (confirmed) {
         final feedback = await _deleteCategory(course);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(feedback.message)),
+          );
+        }
+      }
+    } else if (action == 'unsubscribe') {
+      final confirmed = await _confirmWithDelay(
+        title: 'Unsubscribe from category?',
+        message:
+            "'${course['title']}' will be removed from your sidebar. "
+            'The category itself stays on the server and you can resubscribe later.',
+      );
+      if (confirmed) {
+        final feedback = await _unsubscribeCategory(course);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(feedback.message)),
@@ -4876,14 +4958,20 @@ class _CreateCategoryDialogState extends State<_CreateCategoryDialog> {
   }
 }
 
-/// Dialog for editing a category (rename + icon + delete).
+/// Dialog for editing a category. When [isOwned] is false, rename +
+/// icon + save are hidden (the backend rejects non-owner edits with
+/// 403) and the destructive action flips from **Delete** to
+/// **Unsubscribe** so a non-owner can still remove a subscribed cloud
+/// category from their sidebar without hitting a 403.
 class _EditCategoryDialog extends StatefulWidget {
   const _EditCategoryDialog({
     required this.controller,
+    required this.isOwned,
     this.initialIcon,
   });
   final TextEditingController controller;
   final int? initialIcon;
+  final bool isOwned;
 
   @override
   State<_EditCategoryDialog> createState() => _EditCategoryDialogState();
@@ -4900,49 +4988,66 @@ class _EditCategoryDialogState extends State<_EditCategoryDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isOwned = widget.isOwned;
     return AlertDialog(
-      title: const Text('Edit category'),
+      title: Text(isOwned ? 'Edit category' : 'Subscribed category'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextField(
-            controller: widget.controller,
-            autofocus: true,
-            decoration: const InputDecoration(
-              labelText: 'Category name',
-              border: OutlineInputBorder(),
-            ),
-            onSubmitted: (_) => _save(),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Text('Icon:', style: Theme.of(context).textTheme.bodyMedium),
-              const SizedBox(width: 12),
-              ActionChip(
-                avatar: Icon(
-                  _selectedIcon != null
-                      ? _iconFromCodePoint(_selectedIcon!)
-                      : Icons.school_outlined,
-                  size: 20,
-                ),
-                label: Text(_selectedIcon != null ? 'Change' : 'Choose'),
-                onPressed: () async {
-                  final picked = await _showIconPickerDialog(
-                    context,
-                    currentCodePoint: _selectedIcon,
-                  );
-                  if (picked != null) setState(() => _selectedIcon = picked);
-                },
+          if (isOwned) ...[
+            TextField(
+              controller: widget.controller,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Category name',
+                border: OutlineInputBorder(),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Deleting moves all notes to the default category.',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+              onSubmitted: (_) => _save(),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Text('Icon:', style: Theme.of(context).textTheme.bodyMedium),
+                const SizedBox(width: 12),
+                ActionChip(
+                  avatar: Icon(
+                    _selectedIcon != null
+                        ? _iconFromCodePoint(_selectedIcon!)
+                        : Icons.school_outlined,
+                    size: 20,
+                  ),
+                  label: Text(_selectedIcon != null ? 'Change' : 'Choose'),
+                  onPressed: () async {
+                    final picked = await _showIconPickerDialog(
+                      context,
+                      currentCodePoint: _selectedIcon,
+                    );
+                    if (picked != null) {
+                      setState(() => _selectedIcon = picked);
+                    }
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Deleting moves all notes to the default category.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ] else ...[
+            Text(
+              widget.controller.text,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'This category is published by another user. Renaming, '
+              'icon changes and deletion are only available to the owner. '
+              'You can still unsubscribe to remove it from your sidebar.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
         ],
       ),
       actions: [
@@ -4950,18 +5055,29 @@ class _EditCategoryDialogState extends State<_EditCategoryDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        TextButton(
-          onPressed: () =>
-              Navigator.of(context).pop({'action': 'delete'}),
-          style: TextButton.styleFrom(
-            foregroundColor: Theme.of(context).colorScheme.error,
+        if (isOwned)
+          TextButton(
+            onPressed: () =>
+                Navigator.of(context).pop({'action': 'delete'}),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Delete'),
+          )
+        else
+          TextButton(
+            onPressed: () =>
+                Navigator.of(context).pop({'action': 'unsubscribe'}),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Unsubscribe'),
           ),
-          child: const Text('Delete'),
-        ),
-        FilledButton(
-          onPressed: _save,
-          child: const Text('Save'),
-        ),
+        if (isOwned)
+          FilledButton(
+            onPressed: _save,
+            child: const Text('Save'),
+          ),
       ],
     );
   }
