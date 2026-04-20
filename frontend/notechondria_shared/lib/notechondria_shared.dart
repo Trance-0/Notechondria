@@ -46,6 +46,7 @@ export 'src/components/debug_log.dart'
 export 'src/components/debug_widgets.dart' show ApiDebugCard, ApiDebugSummary;
 export 'src/components/error_state.dart' show ErrorStateView;
 export 'src/components/navigation.dart' show ConfirmWithDelayDialog, SidebarItem;
+export 'src/components/phased_status.dart' show PhasedStatusIndicator;
 export 'src/components/splash_screen.dart' show SplashScreen;
 
 export 'src/settings/app_preferences_card.dart'

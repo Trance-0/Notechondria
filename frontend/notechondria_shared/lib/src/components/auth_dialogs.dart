@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../models/action_feedback.dart';
 import '../utils/blur_dialog.dart';
+import 'phased_status.dart';
 
 /// Formats the login dialog's API-host subtitle. Accepts the full
 /// `api_base_url` (may include `/api/v1`) and returns `Signing in to
@@ -651,11 +652,20 @@ class EmailPasswordDialog extends StatefulWidget {
 class _EmailPasswordDialogState extends State<EmailPasswordDialog> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  // Phased progress for the submit Future. We can't observe the backend
+  // directly (onSubmit is a single Future handed to us), so we advance
+  // the label on client-visible boundaries (before await, right after
+  // await returns) and on a soft 2-second fallback that names the wait
+  // as "Waiting for backend response" once the network call drags.
+  final ValueNotifier<String> _phase = ValueNotifier<String>('');
+  Timer? _phaseFallback;
   ActionFeedback? _feedback;
   bool _submitting = false;
 
   @override
   void dispose() {
+    _phaseFallback?.cancel();
+    _phase.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -666,15 +676,33 @@ class _EmailPasswordDialogState extends State<EmailPasswordDialog> {
       _submitting = true;
       _feedback = null;
     });
-    final feedback =
-        await widget.onSubmit(_emailController.text, _passwordController.text);
+    // Seed the first phase synchronously so the user sees a label the
+    // instant they tap the button. The second phase is scheduled for
+    // ~2s in — if the network call returns sooner, we cancel the bump.
+    _phase.value = 'Sending request to backend';
+    _phaseFallback?.cancel();
+    _phaseFallback = Timer(const Duration(seconds: 2), () {
+      if (mounted && _submitting) {
+        _phase.value = 'Waiting for backend response';
+      }
+    });
+    final ActionFeedback feedback;
+    try {
+      feedback =
+          await widget.onSubmit(_emailController.text, _passwordController.text);
+    } finally {
+      _phaseFallback?.cancel();
+      _phaseFallback = null;
+    }
     if (!mounted) {
       return;
     }
+    _phase.value = 'Applying response';
     setState(() {
       _submitting = false;
       _feedback = feedback;
     });
+    _phase.value = '';
     if (!feedback.isError && widget.title == 'Login') {
       // Signal the browser that this autofill context finished successfully.
       // Chrome needs a brief delay between finishAutofillContext and the DOM
@@ -732,7 +760,13 @@ class _EmailPasswordDialogState extends State<EmailPasswordDialog> {
             ),
             if (_submitting) ...[
               const SizedBox(height: 16),
-              const Center(child: CircularProgressIndicator()),
+              // Replaces the spinner with a phased status line that
+              // names the current async step and counts the seconds
+              // spent on it. The 2-second soft fallback above flips
+              // the label from "Sending request to backend" to
+              // "Waiting for backend response" so the user can tell
+              // which half of the wait they're in.
+              Center(child: PhasedStatusIndicator(phase: _phase)),
             ],
             if (_feedback != null) ...[
               const SizedBox(height: 12),
