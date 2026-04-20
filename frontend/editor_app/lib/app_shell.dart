@@ -207,6 +207,15 @@ class _AppShellState extends State<AppShell> {
     final clamped = widget.initialIndex.clamp(0, _titles.length - 1);
     _selectedIndex =
         _visibleIndices.contains(clamped) ? clamped : _visibleIndices.first;
+    // Route the HTTP client's per-request DEBUG logs into the shared
+    // DebugLogController so the user can see every request/response
+    // pair in the Debug log card. Level is picked per-status by the
+    // client (DEBUG for 2xx/3xx, INFO for 4xx, WARNING for 5xx or
+    // network failures).
+    _httpClient?.setLogger((level, source, message) {
+      if (!mounted) return;
+      _log(level: level, source: source, message: message);
+    });
     _bootstrapApp();
   }
 
@@ -1085,14 +1094,22 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     // different SECRET_KEY after a deploy) and clear the local session
     // so the user sees the auth UI instead of silently dropping into
     // offline mode with a stale identity.
+    //
+    // Threshold: require AT LEAST TWO authenticated endpoints to fail
+    // with a 401-shaped error before we nuke the session. A single
+    // flaky 401 (rate limit / server glitch / post-login race where
+    // one endpoint lags the token commit) used to wipe a freshly-issued
+    // session and kick the user back to the login dialog.
+    final authFailureCount = errors.where((message) {
+      final lower = message.toLowerCase();
+      return lower.contains('invalid token') ||
+          lower.contains('authentication credentials were not provided') ||
+          lower.contains('token_not_valid') ||
+          lower.contains('session rejected:');
+    }).length;
     final sessionRejected = _token != null &&
         _token!.isNotEmpty &&
-        errors.any((message) {
-          final lower = message.toLowerCase();
-          return lower.contains('invalid token') ||
-              lower.contains('authentication credentials were not provided') ||
-              lower.contains('token_not_valid');
-        });
+        authFailureCount >= 2;
     if (sessionRejected) {
       await _LocalAppStore.clearSession();
     }
@@ -1595,14 +1612,38 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       ),
     });
     await _loadInitialData();
-    await _syncAllLocalData(showMessage: false);
+    // Push any local courses + drafts created offline. Skip
+    // _syncAllLocalData's inner _loadInitialData call to avoid the
+    // double-bootstrap race where a single flaky 401 on the second
+    // bootstrap tripped sessionRejected and wiped the fresh token.
+    try {
+      await _syncAllLocalCourses();
+      await _syncAllLocalDrafts();
+    } catch (error) {
+      _log(
+        level: DebugLogLevel.warning,
+        source: 'Editor.Sync.Notes/push_all',
+        message:
+            'Local push after login failed: '
+            'Editor.Sync.Notes/push_all \u2014 '
+            '${error.toString().replaceFirst('Exception: ', '')}. '
+            'Will retry on next manual sync.',
+      );
+    }
+    final displayName =
+        user['username']?.toString() ??
+            user['email']?.toString() ??
+            'user';
     _log(
       level: DebugLogLevel.info,
       source: 'Editor.Auth/applyAuthPayload',
       message:
           'Session established: Editor.Auth/applyAuthPayload \u2014 '
-          'authenticated as ${user['username'] ?? user['email'] ?? 'user'}.',
+          'authenticated as $displayName.',
     );
+    if (mounted) {
+      _showMessage('Signed in as $displayName.');
+    }
   }
 
   Future<void> _logout() async {

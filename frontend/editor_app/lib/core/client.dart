@@ -205,6 +205,20 @@ class HttpNotechondriaClient implements NotechondriaClient {
   final ValueNotifier<List<ApiDebugSnapshot>> debugHistory =
       ValueNotifier(const []);
 
+  /// Optional debug-log sink for per-request tracing. When set, every
+  /// `_send` call emits two DEBUG lines \u2014 one for the outbound
+  /// request (method + path + body bytes) and one for the response
+  /// (status + elapsed + body bytes) \u2014 which the app_shell then
+  /// routes into the shared `DebugLogController`. `null` by default so
+  /// the client stays self-contained for unit tests.
+  void Function(DebugLogLevel level, String source, String message)? _logger;
+
+  void setLogger(
+    void Function(DebugLogLevel level, String source, String message) logger,
+  ) {
+    _logger = logger;
+  }
+
   String get baseUrl => _baseUrl;
 
   /// Updates the client base URL while preserving `/api/v1` normalization.
@@ -382,19 +396,80 @@ class HttpNotechondriaClient implements NotechondriaClient {
       looksLikeHtml: looksLikeHtml,
     ));
     if (response.statusCode >= 400) {
-      throw Exception(_stringifyErrors(data));
+      throw Exception(_shapedErrorMessage(
+        statusCode: response.statusCode,
+        uri: uri,
+        method: method,
+        data: data,
+      ));
     }
     return data;
+  }
+
+  /// Wraps a backend error response in the AGENTS.md \u00a71.7 shape so no
+  /// bare `"Invalid token."` / `"Authentication credentials were not
+  /// provided."` ever reaches the UI. Callers already catch the
+  /// `Exception` this produces; the reshape only affects the
+  /// stringified body.
+  ///
+  /// * 401 \u2192 `"Session rejected: Backend.Auth/<method> <path> \u2014 <cause>."`
+  /// * 403 \u2192 `"Request forbidden: Backend.Auth/<method> <path> \u2014 <cause>."`
+  /// * Other 4xx/5xx \u2192 legacy `_stringifyErrors` body, unchanged.
+  String _shapedErrorMessage({
+    required int statusCode,
+    required Uri uri,
+    required String method,
+    required dynamic data,
+  }) {
+    final raw = _stringifyErrors(data);
+    // Already shaped? Don't double-wrap; backend-side \u00a71.7 messages land
+    // verbatim and shouldn't be wrapped again.
+    if (raw.contains('\u2014')) {
+      return raw;
+    }
+    final path = uri.path;
+    if (statusCode == 401) {
+      return 'Session rejected: Backend.Auth/$method $path \u2014 $raw';
+    }
+    if (statusCode == 403) {
+      return 'Request forbidden: Backend.Auth/$method $path \u2014 $raw';
+    }
+    return raw;
   }
 
   Future<http.Response> _send(
     String method,
     Uri uri,
-    Future<http.Response> Function() operation,
-  ) async {
+    Future<http.Response> Function() operation, {
+    int requestBytes = 0,
+  }) async {
+    final started = DateTime.now();
+    _logger?.call(
+      DebugLogLevel.debug,
+      'Editor.HTTP/request',
+      'HTTP request sent: Editor.HTTP/request \u2014 '
+          '$method ${uri.path}'
+          '${requestBytes > 0 ? " (${requestBytes}B payload)" : ""}.',
+    );
     try {
-      return await operation();
+      final response = await operation();
+      final elapsedMs = DateTime.now().difference(started).inMilliseconds;
+      _logger?.call(
+        _levelForStatus(response.statusCode),
+        'Editor.HTTP/response',
+        'HTTP response received: Editor.HTTP/response \u2014 '
+            '$method ${uri.path} \u2192 ${response.statusCode} '
+            '(${elapsedMs}ms, ${response.bodyBytes.length}B).',
+      );
+      return response;
     } catch (error) {
+      final elapsedMs = DateTime.now().difference(started).inMilliseconds;
+      _logger?.call(
+        DebugLogLevel.warning,
+        'Editor.HTTP/request_failed',
+        'HTTP request failed: Editor.HTTP/request_failed \u2014 '
+            '$method ${uri.path} (${elapsedMs}ms, exc=${error.runtimeType}).',
+      );
       _recordDebugSnapshot(ApiDebugSnapshot(
         recordedAt: DateTime.now(),
         method: method,
@@ -407,6 +482,14 @@ class HttpNotechondriaClient implements NotechondriaClient {
       ));
       throw Exception('Client failed to fetch, uri=$uri');
     }
+  }
+
+  /// DEBUG for 2xx/3xx (happy path), INFO for 4xx (client error, still
+  /// expected traffic like a 401 before login), WARNING for 5xx.
+  static DebugLogLevel _levelForStatus(int status) {
+    if (status >= 500) return DebugLogLevel.warning;
+    if (status >= 400) return DebugLogLevel.info;
+    return DebugLogLevel.debug;
   }
 
   Map<String, String> _headers({
@@ -436,14 +519,16 @@ class HttpNotechondriaClient implements NotechondriaClient {
     String? token,
     Map<String, dynamic>? payload,
   }) {
+    final body = jsonEncode(payload ?? const {});
     return _send(
       'POST',
       uri,
       () => _httpClient.post(
         uri,
         headers: _headers(token: token, includeJsonContentType: true),
-        body: jsonEncode(payload ?? const {}),
+        body: body,
       ),
+      requestBytes: body.length,
     );
   }
 
@@ -452,14 +537,16 @@ class HttpNotechondriaClient implements NotechondriaClient {
     String? token,
     required Map<String, dynamic> payload,
   }) {
+    final body = jsonEncode(payload);
     return _send(
       'PATCH',
       uri,
       () => _httpClient.patch(
         uri,
         headers: _headers(token: token, includeJsonContentType: true),
-        body: jsonEncode(payload),
+        body: body,
       ),
+      requestBytes: body.length,
     );
   }
 

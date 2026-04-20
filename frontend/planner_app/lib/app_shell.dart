@@ -173,6 +173,13 @@ class _AppShellState extends State<AppShell> {
     super.initState();
     final clamped = widget.initialIndex.clamp(0, _titles.length - 1);
     _selectedIndex = _visibleIndices.contains(clamped) ? clamped : _visibleIndices.first;
+    // Route the HTTP client's per-request DEBUG logs into the shared
+    // DebugLogController so every request/response pair is visible in
+    // the Debug log card.
+    _httpClient?.setLogger((level, source, message) {
+      if (!mounted) return;
+      _log(level: level, source: source, message: message);
+    });
     _bootstrapApp();
   }
 
@@ -887,17 +894,25 @@ Capture deadlines, sequencing, and blockers here.''',
     // Detect a rejected DRF token (revoked server-side, or signed by a
     // different SECRET_KEY after a deploy) and clear the in-memory
     // session so the user sees the auth UI instead of silently
-    // dropping into offline mode with a stale identity. Mirrors
-    // editor_app 0.1.20. Planner doesn't persist the token to disk,
-    // so only in-memory state needs to be reset.
+    // dropping into offline mode with a stale identity.
+    //
+    // Threshold: require AT LEAST TWO authenticated endpoints to
+    // fail with a 401-shaped error before we nuke the session. A
+    // single flaky 401 (rate limit / server glitch / post-login
+    // race where one endpoint lags the token commit) used to wipe
+    // a freshly-issued session and kick the user back to the login
+    // dialog. Planner doesn't persist the token to disk, so only
+    // in-memory state needs to be reset.
+    final authFailureCount = errors.where((message) {
+      final lower = message.toLowerCase();
+      return lower.contains('invalid token') ||
+          lower.contains('authentication credentials were not provided') ||
+          lower.contains('token_not_valid') ||
+          lower.contains('session rejected:');
+    }).length;
     final sessionRejected = _token != null &&
         _token!.isNotEmpty &&
-        errors.any((message) {
-          final lower = message.toLowerCase();
-          return lower.contains('invalid token') ||
-              lower.contains('authentication credentials were not provided') ||
-              lower.contains('token_not_valid');
-        });
+        authFailureCount >= 2;
 
     setState(() {
       if (sessionRejected) {
@@ -1467,14 +1482,39 @@ Capture deadlines, sequencing, and blockers here.''',
       ),
     });
     await _loadInitialData();
-    await _syncAllLocalData(showMessage: false);
+    // Push any local courses + drafts created offline. We skip
+    // _syncAllLocalData's inner _loadInitialData call to avoid the
+    // double-bootstrap race that made first login fall over when a
+    // single flaky 401 tripped sessionRejected and nuked the fresh
+    // token.
+    try {
+      await _syncAllLocalCourses();
+      await _syncAllLocalDrafts();
+    } catch (error) {
+      _log(
+        level: DebugLogLevel.warning,
+        source: 'Planner.Sync.Notes/push_all',
+        message:
+            'Local push after login failed: '
+            'Planner.Sync.Notes/push_all \u2014 '
+            '${error.toString().replaceFirst('Exception: ', '')}. '
+            'Will retry on next manual sync.',
+      );
+    }
+    final displayName =
+        user['username']?.toString() ??
+            user['email']?.toString() ??
+            'user';
     _log(
       level: DebugLogLevel.info,
       source: 'Planner.Auth/applyAuthPayload',
       message:
           'Session established: Planner.Auth/applyAuthPayload \u2014 '
-          'authenticated as ${user['username'] ?? user['email'] ?? 'user'}.',
+          'authenticated as $displayName.',
     );
+    if (mounted) {
+      _showMessage('Signed in as $displayName.');
+    }
   }
 
   Future<void> _logout() async {
