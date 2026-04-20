@@ -947,6 +947,34 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     };
     var updatedCache = false;
 
+    // Offline-mode gate: skip every remote fetch and render from the
+    // local cache. Target < 500 ms first paint on signed-out boot.
+    // Sign-in and explicit sync still work because those paths call
+    // into `widget.client` directly, not through `_loadInitialData`.
+    final offlineMode = _localSettings['offline_mode'] == true;
+    if (offlineMode) {
+      setState(() {
+        _frontPage = frontPage;
+        _courses = courses;
+        _courseNotes = courseNotes;
+        _learnerNotes = learnerNotes;
+        _deletedNotes = deletedNotes;
+        _hasMoreLearnerNotes = notePage['has_more'] == true;
+        _learnerNotesOffset = learnerNotes.length;
+        _errorMessage = null;
+        _isLoading = false;
+        _showSplash = false;
+      });
+      _log(
+        source: 'Editor._loadInitialData',
+        level: DebugLogLevel.info,
+        message:
+            'Offline mode: Editor._loadInitialData \u2014 skipped remote '
+            'fetches, rendered from local cache.',
+      );
+      return;
+    }
+
     _splashStatus.value = 'Loading public notes data';
     try {
       frontPage = await _timed(
@@ -1463,6 +1491,26 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       _localSettings['theme_mode']?.toString() ?? 'S',
     );
     if (persist) await _persistLocalSettings();
+  }
+
+  /// Toggles the offline-mode flag. Persists via
+  /// `_applyLocalAppSettings` so SharedPreferences picks it up, then
+  /// re-runs `_loadInitialData` so the new mode takes effect without
+  /// forcing the user to restart the app. When offline_mode flips
+  /// from true to false AND the user is signed in, we also fire off
+  /// the normal post-login cloud sync so the app catches up.
+  Future<void> _setOfflineMode(bool offlineMode) async {
+    await _applyLocalAppSettings({'offline_mode': offlineMode});
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Editor.Sync.Settings/offline_mode',
+      message: offlineMode
+          ? 'Offline mode enabled: Editor.Sync.Settings/offline_mode \u2014 '
+              'remote fetches will be skipped at startup.'
+          : 'Offline mode disabled: Editor.Sync.Settings/offline_mode \u2014 '
+              'remote fetches re-enabled.',
+    );
+    await _loadInitialData();
   }
 
   DateTime _parseUpdatedAt(String? raw) {
@@ -4738,6 +4786,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           onRestoreTemplateCourses: _restoreTemplateCourses,
           onExportLocalData: _exportLocalArchive,
           onRestoreFromLocalImport: _restoreFromLocalImport,
+          onOfflineModeChanged: _setOfflineMode,
           localDraftCount: _localDrafts.length,
           localCourseCount: _localCourses.length,
           apiBaseUrl: _localSettings['api_base_url']?.toString() ??

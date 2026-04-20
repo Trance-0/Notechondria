@@ -270,7 +270,29 @@ class _AppShellState extends State<AppShell> {
         ? 'Linking $providerLabel account'
         : 'Completing sign-in via $providerLabel';
 
-    if (intent == 'bind' && _token != null) {
+    if (intent == 'bind') {
+      if (_token == null || _token!.isEmpty) {
+        _log(
+          level: DebugLogLevel.warning,
+          source: 'Planner.Auth/bind',
+          message:
+              'Account linking aborted: Planner.Auth/bind \u2014 session token '
+              'missing at OAuth callback (user signed out between click and '
+              'redirect).',
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Account linking aborted: Planner.Auth/bind \u2014 your session '
+                'expired before the provider redirected back. Sign in first, '
+                'then try linking the account again.',
+              ),
+            ),
+          );
+        }
+        return false;
+      }
       try {
         if (state == 'google') {
           await widget.client.bindGoogle(_token!, code, redirectUri: redirectUri);
@@ -750,6 +772,36 @@ Capture deadlines, sequencing, and blockers here.''',
     };
     var updatedCache = false;
 
+    // Offline-mode gate: skip every remote fetch and render from the
+    // local cache. Sign-in and explicit sync still work because those
+    // paths call into `widget.client` directly, not through here.
+    final offlineMode = _localSettings['offline_mode'] == true;
+    if (offlineMode) {
+      setState(() {
+        _courses = courses;
+        _activity = activity;
+        _courseNotes = courseNotes;
+        _plannerEvents = plannerEvents;
+        _calendarFeeds = calendarFeeds;
+        _learnerNotes = learnerNotes;
+        _deletedNotes = deletedNotes;
+        _activityWeek = activityWeek;
+        _hasMoreLearnerNotes = notePage['has_more'] == true;
+        _learnerNotesOffset = learnerNotes.length;
+        _errorMessage = null;
+        _isLoading = false;
+        _showSplash = false;
+      });
+      _log(
+        source: 'Planner._loadInitialData',
+        level: DebugLogLevel.info,
+        message:
+            'Offline mode: Planner._loadInitialData \u2014 skipped remote '
+            'fetches, rendered from local cache.',
+      );
+      return;
+    }
+
     try {
       courses = (await widget.client.getCourses(token: _token))
           .map(_decorateRemoteCourse)
@@ -832,7 +884,26 @@ Capture deadlines, sequencing, and blockers here.''',
       };
     }
 
+    // Detect a rejected DRF token (revoked server-side, or signed by a
+    // different SECRET_KEY after a deploy) and clear the in-memory
+    // session so the user sees the auth UI instead of silently
+    // dropping into offline mode with a stale identity. Mirrors
+    // editor_app 0.1.20. Planner doesn't persist the token to disk,
+    // so only in-memory state needs to be reset.
+    final sessionRejected = _token != null &&
+        _token!.isNotEmpty &&
+        errors.any((message) {
+          final lower = message.toLowerCase();
+          return lower.contains('invalid token') ||
+              lower.contains('authentication credentials were not provided') ||
+              lower.contains('token_not_valid');
+        });
+
     setState(() {
+      if (sessionRejected) {
+        _token = null;
+        _profile = null;
+      }
       _courses = courses;
       _activity = activity;
       _selectedCourse = selectedCourse;
@@ -854,12 +925,16 @@ Capture deadlines, sequencing, and blockers here.''',
     }
     _log(
       source: 'Planner._loadInitialData',
-      level: errors.isEmpty ? DebugLogLevel.info : DebugLogLevel.warning,
+      level: errors.isEmpty
+          ? DebugLogLevel.info
+          : DebugLogLevel.warning,
       message: errors.isEmpty
           ? 'Initial Planner._loadInitialData data loaded '
               '(${courses.length} cloud courses, ${learnerNotes.length} notes).'
-          : 'Initial Planner._loadInitialData load used offline fallback: '
-              'Planner.Sync.Planner/bootstrap \u2014 ${errors.first}.',
+          : sessionRejected
+              ? 'Session expired \u2014 signed out. Please sign in again.'
+              : 'Initial Planner._loadInitialData load used offline fallback: '
+                  'Planner.Sync.Planner/bootstrap \u2014 ${errors.first}.',
     );
   }
 
@@ -1291,6 +1366,24 @@ Capture deadlines, sequencing, and blockers here.''',
     if (persist) {
       await _persistLocalSettings();
     }
+  }
+
+  /// Toggles the offline-mode flag. Persists via
+  /// `_applyLocalAppSettings` so SharedPreferences picks it up, then
+  /// re-runs `_loadInitialData` so the new mode takes effect without
+  /// forcing the user to restart the app.
+  Future<void> _setOfflineMode(bool offlineMode) async {
+    await _applyLocalAppSettings({'offline_mode': offlineMode});
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Planner.Sync.Settings/offline_mode',
+      message: offlineMode
+          ? 'Offline mode enabled: Planner.Sync.Settings/offline_mode \u2014 '
+              'remote fetches will be skipped at startup.'
+          : 'Offline mode disabled: Planner.Sync.Settings/offline_mode \u2014 '
+              'remote fetches re-enabled.',
+    );
+    await _loadInitialData();
   }
 
   DateTime _parseUpdatedAt(String? raw) {
@@ -3535,6 +3628,7 @@ Capture deadlines, sequencing, and blockers here.''',
           onClearLocalCache: _clearLocalCache,
           onClearLocalData: _clearLocalData,
           onRestoreTemplateCourses: _restoreTemplateCourses,
+          onOfflineModeChanged: _setOfflineMode,
           localDraftCount: _localDrafts.length,
           localCourseCount: _localCourses.length,
           apiBaseUrl: _localSettings['api_base_url']?.toString() ??

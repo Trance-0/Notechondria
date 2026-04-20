@@ -31,6 +31,7 @@ class _LocalAppStore {
       'theme_preset': 'teal',
       'theme_mode': 'S',
       'api_base_url': _defaultApiBaseUrl(),
+      'offline_mode': false,
       'updated_at': DateTime.now().toUtc().toIso8601String(),
       'log_preferences': {
         'copy_include_timestamps': true,

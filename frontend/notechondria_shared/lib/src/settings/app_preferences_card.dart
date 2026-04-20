@@ -44,6 +44,8 @@ class AppPreferencesCard extends StatelessWidget {
     required this.onEditorModeChanged,
     required this.onThemePresetChanged,
     required this.onThemeModeChanged,
+    this.offlineMode,
+    this.onOfflineModeChanged,
     this.apiBaseHintText,
     this.apiBaseHelperText,
     this.extrasBuilder,
@@ -58,6 +60,13 @@ class AppPreferencesCard extends StatelessWidget {
   final ValueChanged<String> onEditorModeChanged;
   final ValueChanged<String> onThemePresetChanged;
   final ValueChanged<String> onThemeModeChanged;
+
+  /// When non-null, renders an offline-mode toggle row. The flag
+  /// controls whether the host app attempts remote fetches during
+  /// bootstrap; callers are expected to persist the value and
+  /// gate their own `_loadInitialData` on it.
+  final bool? offlineMode;
+  final ValueChanged<bool>? onOfflineModeChanged;
 
   final String? apiBaseHintText;
 
@@ -132,6 +141,20 @@ class AppPreferencesCard extends StatelessWidget {
             ),
           ],
         ),
+        if (offlineMode != null && onOfflineModeChanged != null) ...[
+          const SizedBox(height: 12),
+          SwitchListTile.adaptive(
+            value: offlineMode!,
+            onChanged: onOfflineModeChanged,
+            title: const Text('Offline mode'),
+            subtitle: const Text(
+              'Skip remote fetches at startup. The app renders from the '
+              'local cache only — sign-in and explicit cloud pulls still '
+              'work on demand.',
+            ),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ],
         if (extrasBuilder != null) ...[
           const SizedBox(height: 12),
           extrasBuilder!(context),

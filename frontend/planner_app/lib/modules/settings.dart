@@ -36,6 +36,7 @@ class _SettingsPage extends StatefulWidget {
     required this.localDraftCount,
     required this.localCourseCount,
     required this.uiLogs,
+    this.onOfflineModeChanged,
     this.apiBaseUrl,
     this.debugSnapshotListenable,
     this.debugHistoryListenable,
@@ -93,6 +94,13 @@ class _SettingsPage extends StatefulWidget {
   final Future<ActionFeedback> Function() onClearLocalCache;
   final Future<ActionFeedback> Function() onClearLocalData;
   final Future<ActionFeedback> Function() onRestoreTemplateCourses;
+
+  /// Called when the user flips the offline-mode switch. The host
+  /// app_shell is expected to persist the flag via
+  /// `_applyLocalAppSettings({'offline_mode': bool})` and re-run
+  /// `_loadInitialData` so the new mode takes effect immediately.
+  final Future<void> Function(bool offlineMode)? onOfflineModeChanged;
+
   final int localDraftCount;
   final int localCourseCount;
   final List<String> uiLogs;
@@ -457,6 +465,14 @@ class _SettingsPageState extends State<_SettingsPage> {
                   onEditorModeChanged: (v) => setState(() => _editorMode = v),
                   onThemePresetChanged: (v) => setState(() => _themePreset = v),
                   onThemeModeChanged: (v) => setState(() => _themeMode = v),
+                  offlineMode: widget.onOfflineModeChanged == null
+                      ? null
+                      : widget.localSettings['offline_mode'] == true,
+                  onOfflineModeChanged: widget.onOfflineModeChanged == null
+                      ? null
+                      : (value) {
+                          widget.onOfflineModeChanged!(value);
+                        },
                   extrasBuilder: (context) => Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

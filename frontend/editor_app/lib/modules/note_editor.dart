@@ -930,28 +930,65 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                       ),
                     )
                   : null;
-              final editorDropdown = DropdownButtonFormField<String>(
-                initialValue: _editorMode,
-                items: const [
-                  DropdownMenuItem(
-                      value: 'P', child: Text('Plain text')),
-                  DropdownMenuItem(
-                      value: 'G', child: Text('Live markdown')),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    _setEditorMode(value);
+              // Overflow menu: editor-mode picker, note-meta editor,
+              // and the attachments list. Replaces the standalone
+              // top-bar editor-mode dropdown and two-FAB column from
+              // 0.1.42; the title field now has the full top-bar
+              // width on desktop.
+              final hasAttachments = widget.onUploadAttachment != null;
+              final detailsButton = PopupMenuButton<String>(
+                tooltip: 'More actions',
+                icon: const Icon(Icons.more_horiz),
+                onSelected: (value) {
+                  switch (value) {
+                    case 'meta':
+                      _openDetails();
+                      break;
+                    case 'editor_plain':
+                      _setEditorMode('P');
+                      break;
+                    case 'editor_gfm':
+                      _setEditorMode('G');
+                      break;
+                    case 'attachments':
+                      _openAttachmentsList();
+                      break;
                   }
                 },
-                decoration: const InputDecoration(
-                  labelText: 'Editor mode',
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                ),
+                itemBuilder: (context) => <PopupMenuEntry<String>>[
+                  const PopupMenuItem<String>(
+                    value: 'meta',
+                    child: ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.tune),
+                      title: Text('Edit note meta'),
+                    ),
+                  ),
+                  const PopupMenuDivider(),
+                  CheckedPopupMenuItem<String>(
+                    value: 'editor_plain',
+                    checked: _editorMode == 'P',
+                    child: const Text('Switch editor: Plain text'),
+                  ),
+                  CheckedPopupMenuItem<String>(
+                    value: 'editor_gfm',
+                    checked: _editorMode == 'G',
+                    child: const Text('Switch editor: Live markdown'),
+                  ),
+                  if (hasAttachments) const PopupMenuDivider(),
+                  if (hasAttachments)
+                    const PopupMenuItem<String>(
+                      value: 'attachments',
+                      child: ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.attachment_outlined),
+                        title: Text('View attachments'),
+                      ),
+                    ),
+                ],
               );
-              final detailsButton = IconButton(
-                  onPressed: _openDetails,
-                  icon: const Icon(Icons.more_horiz));
               final shareButton = _note['uuid'] != null
                   ? IconButton(
                       onPressed: () async {
@@ -1004,18 +1041,14 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                         ],
                       ),
                       if (warningWidget != null) warningWidget,
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Expanded(child: editorDropdown),
-                        ],
-                      ),
                     ],
                   ),
                 );
               }
 
-              // Wide layout: single row.
+              // Wide layout: single row. Editor-mode picker moved
+              // into the detailsButton popup so the title field can
+              // stretch across the whole bar.
               return Padding(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
                 child: Row(
@@ -1030,8 +1063,6 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                         ],
                       ),
                     ),
-                    SizedBox(width: 220, child: editorDropdown),
-                    const SizedBox(width: 8),
                     shareButton,
                     detailsButton,
                     closeButton,
@@ -1061,24 +1092,15 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                       Positioned(
                         right: 12,
                         bottom: 12,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            FloatingActionButton.small(
-                              heroTag: 'editor-attachments-list',
-                              onPressed: _openAttachmentsList,
-                              tooltip: 'Open attachments list',
-                              child: const Icon(Icons.attachment_outlined),
-                            ),
-                            const SizedBox(height: 8),
-                            FloatingActionButton.small(
-                              heroTag: 'editor-attach-file',
-                              onPressed: _pickAndUploadAttachment,
-                              tooltip: 'Attach file',
-                              child: const Icon(Icons.attach_file),
-                            ),
-                          ],
+                        // Only the add-file FAB lives here now. The
+                        // companion "View attachments" sheet moved
+                        // into the top-bar "..." menu so the editor
+                        // canvas has just one floating control.
+                        child: FloatingActionButton.small(
+                          heroTag: 'editor-attach-file',
+                          onPressed: _pickAndUploadAttachment,
+                          tooltip: 'Attach file',
+                          child: const Icon(Icons.attach_file),
                         ),
                       ),
                     Positioned(
