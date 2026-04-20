@@ -1,5 +1,6 @@
 import json
 import io
+import logging
 import re
 from difflib import SequenceMatcher
 from datetime import datetime, timedelta, time
@@ -19,6 +20,14 @@ from rest_framework.views import APIView
 
 from creators.utils import ensure_creator, ensure_creator_avatar
 from notechondria.utils import generate_unique_id
+
+# Module-level logger for note CRUD + sync diagnostics. Every log line
+# emitted through this logger must follow AGENTS.md §1.7:
+# "<consequence>: <module>/<process> — <cause>". 401/403 already get a
+# shaped line from notechondria.drf_exception_handler; this logger is
+# for post-auth note-editor flow events (create / update / delete /
+# attachment / version) so operators can trace why a save fell over.
+logger = logging.getLogger("notechondria.notes")
 
 from courses.models import (
     Course,
@@ -934,6 +943,17 @@ class NoteListCreateApiView(APIView):
             HeatmapActivityTypeChoices.EDITED if existing is not None else HeatmapActivityTypeChoices.CREATED,
         )
         response_status = status.HTTP_200_OK if existing is not None else status.HTTP_201_CREATED
+        logger.info(
+            "Note %s: Backend.Notes.Notes/create_or_upsert \u2014 "
+            "creator=%s note_id=%s client_draft_id=%s course_id=%s "
+            "editor_mode=%s.",
+            "upserted" if existing is not None else "created",
+            creator.user_id.username,
+            note.id,
+            client_draft_id or "<none>",
+            note.course_id_id,
+            note.editor_mode,
+        )
         return Response(
             NoteDetailSerializer(note, context={"request": request}).data,
             status=response_status,
@@ -964,6 +984,14 @@ class NoteDetailApiView(APIView):
             )
         note = require_note_access(request, note_id)
         if note.creator_id.user_id_id != request.user.id:
+            logger.warning(
+                "Cannot update note: "
+                "Backend.Notes.Notes/update \u2014 "
+                "403 on note_id=%s (requesting_user=%s, owner_user_id=%s).",
+                note_id,
+                request.user.username,
+                note.creator_id.user_id_id,
+            )
             return Response(
                 {"detail": (
                     "Cannot update note: "
@@ -1000,6 +1028,13 @@ class NoteDetailApiView(APIView):
                 max(abs(after_words - before_words), after_words),
                 HeatmapActivityTypeChoices.EDITED,
             )
+        logger.info(
+            "Note updated: Backend.Notes.Notes/update \u2014 "
+            "creator=%s note_id=%s fields=%s.",
+            request.user.username,
+            note.id,
+            sorted(serializer.validated_data.keys()),
+        )
         return Response(NoteDetailSerializer(note, context={"request": request}).data)
 
     def delete(self, request, note_id):
@@ -1022,6 +1057,12 @@ class NoteDetailApiView(APIView):
                 )},
                 status=status.HTTP_403_FORBIDDEN,
             )
+        logger.info(
+            "Note soft-deleted: Backend.Notes.Notes/delete \u2014 "
+            "creator=%s note_id=%s (moved to recycle bin).",
+            request.user.username,
+            note.id,
+        )
         # When a source note is deleted, its comments become private but are NOT deleted.
         note.comments.filter(deleted_at__isnull=True).update(is_public=False)
         note.deleted_at = timezone.now()

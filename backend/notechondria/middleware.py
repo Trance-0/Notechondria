@@ -47,23 +47,51 @@ def _paint(text: str, color: str) -> str:
     return f"{color}{text}{_AnsiColor.RESET}"
 
 
-# Thresholds (ms). Tune per your comfort; defaults align with
-# typical p95/p99 targets for a DRF API on a small instance.
-_WARN_MS = 500.0
-_CRITICAL_MS = 2000.0
+# Duration thresholds (ms) for slow-response flagging. A slow response
+# is still INFO-level (the request succeeded), but duration >= _SLOW_MS
+# adds a colored duration field so operators skimming logs can spot it.
+# We no longer promote slow 2xx to WARNING/CRITICAL — a slow 200 is not
+# a failure, it's a perf signal, and mixing the two creates false alerts.
+_SLOW_MS = 500.0
+_VERY_SLOW_MS = 2000.0
+
+
+def _level_for(status: int) -> tuple[str, str]:
+    """Pick `(log_level, color)` from HTTP status.
+
+    The only signal here is "did the request fail?" — 5xx is a real
+    server problem, 4xx is a client-or-auth problem (noise-level, not
+    an alert), 3xx and 2xx are success. Duration colors the row
+    separately without changing the level.
+    """
+    if status >= 500:
+        return "error", _AnsiColor.RED
+    if status >= 400:
+        # 401/403/404/429 are routine on a public API and belong at
+        # INFO level — the frontend retries authenticated calls and
+        # produces its own shaped log for every permanent failure.
+        # Operators who want every 4xx highlighted can grep ` 4\d\d `.
+        return "info", _AnsiColor.YELLOW
+    return "info", _AnsiColor.CYAN
 
 
 class RequestTimingMiddleware:
-    """Time every HTTP request and log the result under `notechondria.access`.
+    """Time every HTTP request and log the result under
+    `notechondria.access`.
 
     Format (tab-separated for grep-friendliness, colored for humans):
 
         <status> <duration_ms>ms <METHOD> <path>
 
-    Color and log level are picked from status + duration:
-      * 5xx OR duration >= _CRITICAL_MS → logger.critical + red
-      * 4xx OR duration >= _WARN_MS     → logger.warning + yellow
-      * everything else                 → logger.info + cyan
+    Level picking:
+      * 5xx                 → logger.error    + red status
+      * 4xx                 → logger.info     + yellow status
+      * 2xx / 3xx           → logger.info     + cyan status
+
+    Duration is colored independently: >= _VERY_SLOW_MS in red,
+    >= _SLOW_MS in yellow, otherwise the status color. This keeps
+    level = failure-signal and color = perf-signal cleanly separated,
+    which is what the operator wants when skimming prod logs.
     """
 
     def __init__(self, get_response):
@@ -76,20 +104,23 @@ class RequestTimingMiddleware:
 
         status = getattr(response, "status_code", 0)
         method = request.method or "?"
-        path = request.get_full_path() if hasattr(request, "get_full_path") else request.path
+        path = (
+            request.get_full_path()
+            if hasattr(request, "get_full_path")
+            else request.path
+        )
 
-        if status >= 500 or duration_ms >= _CRITICAL_MS:
-            color = _AnsiColor.RED
-            log = _access_logger.critical
-        elif status >= 400 or duration_ms >= _WARN_MS:
-            color = _AnsiColor.YELLOW
-            log = _access_logger.warning
+        level, status_color = _level_for(status)
+        if duration_ms >= _VERY_SLOW_MS:
+            duration_color = _AnsiColor.RED
+        elif duration_ms >= _SLOW_MS:
+            duration_color = _AnsiColor.YELLOW
         else:
-            color = _AnsiColor.CYAN
-            log = _access_logger.info
+            duration_color = status_color
 
-        status_text = _paint(f"{status}", color + _AnsiColor.BOLD)
-        duration_text = _paint(f"{duration_ms:7.1f}ms", color)
+        log = getattr(_access_logger, level)
+        status_text = _paint(f"{status}", status_color + _AnsiColor.BOLD)
+        duration_text = _paint(f"{duration_ms:7.1f}ms", duration_color)
         method_text = _paint(f"{method:<6}", _AnsiColor.MAGENTA)
         log("%s  %s  %s %s", status_text, duration_text, method_text, path)
 

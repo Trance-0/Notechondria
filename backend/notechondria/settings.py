@@ -198,8 +198,36 @@ LOGGING = {
             'handlers': ['console'],
             'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
         },
+        # Django's default request handler emits a duplicate WARNING
+        # ("Unauthorized: /path") on top of our own access log for
+        # every 4xx. Silence it by raising the threshold to ERROR so
+        # 4xx/5xx don't double-log and we keep our structured access
+        # line as the single source of truth for request outcomes.
+        # 5xx crashes still surface here because Django logs the full
+        # traceback at ERROR level before our middleware runs its log.
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
         'notechondria.access': {
             'handlers': ['console_access'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Shaped auth/permission failure lines emitted by our DRF
+        # exception handler. Goes to the standard `console` (verbose)
+        # + `file` handlers so both operator streams pick it up.
+        'notechondria.auth': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Note CRUD + sync structured events (create / update / delete /
+        # attachment / version restore). All lines are §1.7-shaped
+        # ("<consequence>: Backend.Notes.<area>/<process> \u2014 <cause>").
+        'notechondria.notes': {
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
@@ -240,6 +268,10 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",
     ],
+    # Our handler emits one AGENTS.md §1.7-shaped log line per
+    # auth/permission failure, then delegates to DRF's default
+    # handler for the actual HTTP response.
+    "EXCEPTION_HANDLER": "notechondria.drf_exception_handler.handle",
 }
 
 
