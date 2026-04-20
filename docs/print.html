@@ -473,15 +473,7 @@ restate them here. When a task is landed, delete its entry from this
 file and add a round-log entry to the new version doc.</p>
 <h2 id="bugs"><a class="header" href="#bugs">Bugs</a></h2>
 <ul>
-<li>
-<p><input disabled="" type="checkbox"/>
-Replicate the 0.1.20 editor_app bug fixes (invalid-token
-session-clear + bind-without-token short-circuit) into planner_app
-and portal_app. Their <code>app_shell.dart</code> files inline the same flow
-as editor's but were not touched this round.</p>
-</li>
-<li>
-<p><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox"/>
 <strong>Note share / deep-link redirect failure.</strong> User-reported: the
 note-share URL doesn't resolve when opened in a fresh tab.
 Investigation path (<code>editor_app/lib/app_shell.dart</code>):
@@ -496,23 +488,7 @@ it's stripping the note fragment before the deep-link parser runs;
 returns 403 but the error message is just stuffed into
 <code>_errorMessage</code> without a clear "sign in to view" prompt.
 Add a regression test that exercises
-<code>https://host/#/notes/&lt;uuid&gt;</code> cold-start with and without session.</p>
-</li>
-<li>
-<p><input disabled="" type="checkbox"/>
-<strong>Category ownership UI mismatch.</strong> Backend's
-<code>DELETE /courses/&lt;id&gt;/</code> correctly returns 403 for non-owners
-(<code>backend/notes/api.py:690</code>). The editor sidebar calls
-<code>_deleteCategory</code> unconditionally and surfaces the 403 as a raw
-error. Fix: when <code>course['is_owned'] == false</code>, the sidebar
-long-press / right-click menu should show <strong>Unsubscribe</strong> (calls
-<code>DELETE /courses/&lt;id&gt;/subscription/</code>) instead of <strong>Delete</strong>. The
-existing <code>_promptEditCategory</code> → <code>_EditCategoryDialog</code> action list
-needs a third branch. Backend already supports both paths:
-<code>CourseSubscribeApiView</code> for subscribe/unsubscribe,
-<code>CourseDetailApiView</code> for owner delete. Local courses (negative
-id) keep the current delete semantics.</p>
-</li>
+<code>https://host/#/notes/&lt;uuid&gt;</code> cold-start with and without session.</li>
 </ul>
 <h2 id="global-reusable-components"><a class="header" href="#global-reusable-components">Global reusable components</a></h2>
 <h3 id="start-up-animations"><a class="header" href="#start-up-animations">Start up animations</a></h3>
@@ -553,29 +529,13 @@ client methods, app_shell callback wiring, and the
 <h3 id="app-preferences"><a class="header" href="#app-preferences">App preferences</a></h3>
 <ul>
 <li><input disabled="" type="checkbox"/>
-<strong>Offline-mode toggle</strong> in the shared <code>AppPreferencesCard</code>
-(<code>frontend/notechondria_shared/lib/src/settings/app_preferences_card.dart</code>)
-so it shows up in all three apps. A single boolean <code>offline_mode</code>
-persisted into <code>_LocalAppStore._settingsKey</code>
-(<code>local_settings['offline_mode']</code>). When enabled:
-<ul>
-<li><code>_bootstrapApp</code> skips the remote front-page / courses / notes
-fetches in <code>_loadInitialData</code> and immediately renders from
-<code>_localCache</code>. Target: reduce first-paint time to &lt; 500 ms.</li>
-<li>Public-notes list fetching in <code>_LearnerPage</code> switches to lazy:
-pulled only when the user explicitly taps a "Load public notes"
-button. Signed-in personal notes are still pulled on demand
-when the user selects them.</li>
-<li>Category auto-sync from cloud is gated: <code>_loadInitialData</code>
-continues to hit <code>/courses/</code> only if <code>offline_mode</code> is false or
-the user is currently authenticated.</li>
-<li>The debug log emits <code>Editor.Sync.Settings/offline_mode</code> on
-toggle with the consequence / cause shape.</li>
-<li>Touches: shared <code>AppPreferencesCard</code> (new toggle row),
-<code>_LocalAppStore.defaultSettings()</code> to seed <code>false</code>, all three
-<code>_bootstrapApp</code> / <code>_loadInitialData</code> to respect the flag.</li>
-</ul>
-</li>
+<strong>Offline-mode — secondary fetch gates.</strong> The coarse
+<code>_loadInitialData</code> gate landed in 0.1.46. The two finer-grained
+items from the original spec are still open: public-notes list
+in <code>_LearnerPage</code> should become an explicit "Load public notes"
+button when offline_mode is true, and category auto-sync from
+cloud needs an additional guard so the authenticated sync path
+still runs even when offline_mode is on.</li>
 </ul>
 <h3 id="debug-log-window"><a class="header" href="#debug-log-window">Debug log window</a></h3>
 <ul>
@@ -609,14 +569,14 @@ sidebar action. Decompose: (a) design subscription data model
 <ul>
 <li>
 <p><input disabled="" type="checkbox"/>
-Move the editor-mode selector out of the top bar and into the
-"..." (details) menu button. Clicking "..." should show a dropdown
-with two options: <strong>Edit note meta</strong> (current details behavior)
-and <strong>Switch editor</strong> (small picker: <code>P</code> plain text, <code>G</code> live
-markdown). Remove the top-bar dropdown completely and widen the
-title field. Touches <code>editor_app/lib/modules/note_editor.dart</code>
-and the inlined editors in planner/portal
-<code>modules/learner.dart</code>.</p>
+<strong>Port editor overflow menu to planner/portal inline editors.</strong>
+The note_editor.dart top-bar overflow menu (Edit note meta /
+Switch editor / View attachments) shipped in 0.1.46 for the
+editor app only. The inlined note editors in
+<code>planner_app/lib/modules/learner.dart</code> and
+<code>portal_app/lib/modules/learner.dart</code> still use the old layout
+and should adopt the same PopupMenuButton pattern for
+consistency.</p>
 </li>
 <li>
 <p><input disabled="" type="checkbox"/>
