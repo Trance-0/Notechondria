@@ -24,6 +24,7 @@ part 'app_shell.dart';
 part 'core/client.dart';
 part 'core/helpers.dart';
 part 'core/local_store.dart';
+part 'core/local_trash.dart';
 part 'components/avatar.dart';
 part 'components/note_viewer.dart';
 part 'modules/front.dart';

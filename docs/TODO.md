@@ -20,7 +20,43 @@ Completed rounds live in `./docs/versions/<semver>.md` — do **not**
 restate them here. When a task is landed, delete its entry from this
 file and add a round-log entry to the new version doc.
 
-- [ ] **Urgent**: I noticed that the app_shell.dart file is growing tremendously large compared with other scripts after few non-inspection. I introduced a new rule in AGENTS.md module, pull it and apply to all existing flutter files. NO CODE FILE SHOULD HAVE ANY REASON TO EXCEED 1000 LINES. For any existing code files that exceed 1000 lines, please split them into multiple files by functions or children classes, or reuse functions to optimized the code file size.
+- [ ] **File-size rule enforcement — remaining splits.** 0.1.52 codified
+  the 1000-LOC hard ceiling in AGENTS.md §1.5 and carved the recycle-bin
+  code out of each `app_shell.dart` into a `core/local_trash.dart`
+  partial (proof of pattern — extension on `_AppShellState` with a
+  `_trashRefresh` wrapper around `setState`). Remaining files still
+  above 1000 LOC that need splitting:
+  - `frontend/editor_app/lib/app_shell.dart` (~5211) — next cohesive
+    chunks: OAuth/auth flow (`_handleOAuthCallback`, `_applyAuthPayload`,
+    `_login`, `_register`, `_logout`, bind helpers), sync loops
+    (`_syncLocalDraft`, `_syncLocalCourse`, `_syncAllLocal*`, promote),
+    local-archive export/import (`_exportLocalArchive`,
+    `_restoreFromLocalImport`), sidebar category handlers
+    (`_promptEditCategory`, `_deleteCategory`, `_unsubscribeCategory`,
+    `_renameCategory`).
+  - `frontend/planner_app/lib/app_shell.dart` (~3861) and
+    `frontend/portal_app/lib/app_shell.dart` (~3760) — same cohorts
+    apply; most code mirrors editor's with the same names.
+  - `frontend/editor_app/lib/modules/settings.dart` (~1781) — section
+    builders cleanly split into per-section widgets (app preferences,
+    account / identity, API key section, sync + maintenance, debug
+    log). Several already exist as private StatelessWidgets; the rest
+    are inline build helpers.
+  - `frontend/editor_app/lib/modules/note_editor.dart` (~1472) — the
+    markdown inline-syntax parser + the image builder + the details
+    dialog can each become separate partials.
+  - `frontend/planner_app/lib/modules/learner.dart` (~1645),
+    `frontend/portal_app/lib/modules/learner.dart` (~1504) — the
+    inlined note editor is a good extraction candidate.
+  - `frontend/editor_app/lib/core/client.dart` (~1291),
+    `frontend/planner_app/lib/core/client.dart` (~1055),
+    `frontend/portal_app/lib/core/client.dart` (~1065) — Dart's
+    class-body split is constrained (extensions can't implement
+    interface methods) so these need a different approach: extract
+    `_decode`, `_stringifyErrors`, `_shapedErrorMessage`, `_send`,
+    `_headers`, `_previewBody`, `_recordDebugSnapshot` into a base
+    class / mixin. Worth ~200 LOC per file; won't get each file
+    under 1000 alone but is a good incremental step.
 
 ## Bugs
 
