@@ -102,6 +102,13 @@ class _AppShellState extends State<AppShell> {
   List<Map<String, dynamic>> _learnerNotes = const [];
   List<Map<String, dynamic>> _localDrafts = const [];
   List<Map<String, dynamic>> _deletedNotes = const [];
+  // Client-side recycle-bin buckets. After a local draft / course
+  // is successfully promoted to the cloud we MOVE it here instead of
+  // deleting outright, so the user can restore if the cloud copy
+  // later turns out to be wrong or corrupted. Entries auto-prune
+  // 30 days after `trashed_at` (see `_LocalAppStore._pruneTrashed`).
+  List<Map<String, dynamic>> _localTrashedDrafts = const [];
+  List<Map<String, dynamic>> _localTrashedCourses = const [];
   Map<String, dynamic>? _selectedCourse;
   Map<String, dynamic>? _selectedNote;
   Map<String, dynamic> _localSettings = _LocalAppStore.defaultSettings();
@@ -624,6 +631,8 @@ class _AppShellState extends State<AppShell> {
     }
     _localDrafts = snapshot.drafts;
     _localCourses = snapshot.courses;
+    _localTrashedDrafts = snapshot.trashedDrafts;
+    _localTrashedCourses = snapshot.trashedCourses;
     _localStats = snapshot.stats;
     _localCache = snapshot.cache;
     _uiLogs
@@ -721,6 +730,269 @@ class _AppShellState extends State<AppShell> {
 
   Future<void> _persistLocalCourses() async {
     await _LocalAppStore.saveCourses(_localCourses);
+  }
+
+  Future<void> _persistLocalTrashedDrafts() async {
+    await _LocalAppStore.saveTrashedDrafts(_localTrashedDrafts);
+  }
+
+  Future<void> _persistLocalTrashedCourses() async {
+    await _LocalAppStore.saveTrashedCourses(_localTrashedCourses);
+  }
+
+  /// Called after a local draft has been successfully promoted to the
+  /// cloud. Instead of dropping the draft, we MOVE it to the local
+  /// recycle bin carrying its `trashed_at` timestamp and the server
+  /// note id / uuid that replaced it \u2014 so the user can restore if
+  /// the cloud copy later turns out wrong or the sync response was
+  /// misleading. See `_LocalAppStore._pruneTrashed` for the TTL.
+  Future<void> _moveDraftToLocalTrash(
+    Map<String, dynamic> draft, {
+    int? serverNoteId,
+    String? serverNoteUuid,
+  }) async {
+    final entry = {
+      'draft': Map<String, dynamic>.from(draft),
+      'trashed_at': DateTime.now().toUtc().toIso8601String(),
+      if (serverNoteId != null) 'server_note_id': serverNoteId,
+      if (serverNoteUuid != null && serverNoteUuid.isNotEmpty)
+        'server_note_uuid': serverNoteUuid,
+    };
+    _localTrashedDrafts = [entry, ..._localTrashedDrafts];
+    await _persistLocalTrashedDrafts();
+  }
+
+  /// Same as `_moveDraftToLocalTrash` for local courses after they've
+  /// been promoted to the cloud.
+  Future<void> _moveCourseToLocalTrash(
+    Map<String, dynamic> course, {
+    int? serverCourseId,
+  }) async {
+    final entry = {
+      'course': Map<String, dynamic>.from(course),
+      'trashed_at': DateTime.now().toUtc().toIso8601String(),
+      if (serverCourseId != null) 'server_course_id': serverCourseId,
+    };
+    _localTrashedCourses = [entry, ..._localTrashedCourses];
+    await _persistLocalTrashedCourses();
+  }
+
+  /// Copies a recycle-bin entry back to `_localDrafts` and drops it
+  /// from the trash bucket. The restored draft gets a fresh local
+  /// `id` so it never collides with the still-existing cloud copy.
+  /// The user keeps both: the cloud note AND a local draft they can
+  /// compare / edit / re-sync.
+  Future<ActionFeedback> _restoreTrashedDraft(
+      Map<String, dynamic> entry) async {
+    final raw = entry['draft'];
+    if (raw is! Map) {
+      return const ActionFeedback(
+        message: 'Draft not restored: '
+            'Editor.LocalStore/restore_trashed_draft \u2014 '
+            'recycle-bin entry was missing its draft payload.',
+        isError: true,
+      );
+    }
+    final restored = {
+      ...Map<String, dynamic>.from(raw),
+      'id': _LocalAppStore.newDraftId(),
+      'last_edit': DateTime.now().toUtc().toIso8601String(),
+    };
+    _localDrafts = [..._localDrafts, restored];
+    _localTrashedDrafts = _localTrashedDrafts
+        .where((item) => item != entry)
+        .toList(growable: false);
+    await _persistLocalDrafts();
+    await _persistLocalTrashedDrafts();
+    if (mounted) setState(() {});
+    final title = restored['title']?.toString() ?? 'draft';
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Editor.LocalStore/restore_trashed_draft',
+      message:
+          'Draft restored from local recycle bin: '
+          'Editor.LocalStore/restore_trashed_draft \u2014 '
+          "'$title' re-added as a local draft; cloud copy left untouched.",
+    );
+    return ActionFeedback(
+      message:
+          'Draft restored: Editor.LocalStore/restore_trashed_draft \u2014 '
+          "'$title' is back under Drafts. The cloud copy was not touched.",
+    );
+  }
+
+  /// Shows a bottom-sheet listing every entry currently in the local
+  /// recycle bin (drafts + courses) with a Restore action per entry.
+  /// Opened from Settings. Re-opens itself after each restore so the
+  /// user can process multiple entries in one session.
+  Future<void> _openLocalRecycleBinDialog() async {
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return StatefulBuilder(builder: (ctx, rebuild) {
+          final drafts = List<Map<String, dynamic>>.from(_localTrashedDrafts);
+          final courses =
+              List<Map<String, dynamic>>.from(_localTrashedCourses);
+          return SafeArea(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.7,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+                    child: Text(
+                      'Local recycle bin',
+                      style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                    child: Text(
+                      'Drafts and categories kept here for 30 days after a '
+                      'successful cloud sync. Restore to bring one back as a '
+                      'local copy without touching the cloud version.',
+                      style: Theme.of(ctx).textTheme.bodySmall,
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: ListView(
+                      padding: EdgeInsets.zero,
+                      children: [
+                        if (drafts.isEmpty && courses.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.all(32),
+                            child: Center(
+                              child: Text(
+                                'Nothing in the local recycle bin yet.',
+                              ),
+                            ),
+                          ),
+                        for (final entry in drafts)
+                          ListTile(
+                            leading: const Icon(Icons.description_outlined),
+                            title: Text(
+                              (entry['draft']
+                                          as Map?)?['title']
+                                      ?.toString() ??
+                                  'Untitled draft',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              'Draft \u00b7 trashed ${_formatTrashedAt(entry['trashed_at'])}',
+                            ),
+                            trailing: TextButton.icon(
+                              icon: const Icon(Icons.restore),
+                              label: const Text('Restore'),
+                              onPressed: () async {
+                                final feedback =
+                                    await _restoreTrashedDraft(entry);
+                                if (mounted) {
+                                  _showMessage(feedback.message);
+                                }
+                                if (ctx.mounted) rebuild(() {});
+                              },
+                            ),
+                          ),
+                        for (final entry in courses)
+                          ListTile(
+                            leading: const Icon(Icons.folder_outlined),
+                            title: Text(
+                              (entry['course']
+                                          as Map?)?['title']
+                                      ?.toString() ??
+                                  'Untitled category',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              'Category \u00b7 trashed ${_formatTrashedAt(entry['trashed_at'])}',
+                            ),
+                            trailing: TextButton.icon(
+                              icon: const Icon(Icons.restore),
+                              label: const Text('Restore'),
+                              onPressed: () async {
+                                final feedback =
+                                    await _restoreTrashedCourse(entry);
+                                if (mounted) {
+                                  _showMessage(feedback.message);
+                                }
+                                if (ctx.mounted) rebuild(() {});
+                              },
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        });
+      },
+    );
+  }
+
+  String _formatTrashedAt(Object? raw) {
+    final text = raw?.toString();
+    if (text == null || text.isEmpty) return 'recently';
+    final when = DateTime.tryParse(text)?.toLocal();
+    if (when == null) return text;
+    final now = DateTime.now();
+    final delta = now.difference(when);
+    if (delta.inMinutes < 2) return 'just now';
+    if (delta.inHours < 1) return '${delta.inMinutes}m ago';
+    if (delta.inDays < 1) return '${delta.inHours}h ago';
+    if (delta.inDays < 30) return '${delta.inDays}d ago';
+    return text.substring(0, 10);
+  }
+
+  Future<ActionFeedback> _restoreTrashedCourse(
+      Map<String, dynamic> entry) async {
+    final raw = entry['course'];
+    if (raw is! Map) {
+      return const ActionFeedback(
+        message: 'Category not restored: '
+            'Editor.LocalStore/restore_trashed_course \u2014 '
+            'recycle-bin entry was missing its course payload.',
+        isError: true,
+      );
+    }
+    final restored = {
+      ...Map<String, dynamic>.from(raw),
+      'id': _LocalAppStore.newCourseId(),
+      'last_edit': DateTime.now().toUtc().toIso8601String(),
+    };
+    _localCourses = [..._localCourses, restored];
+    _localTrashedCourses = _localTrashedCourses
+        .where((item) => item != entry)
+        .toList(growable: false);
+    await _persistLocalCourses();
+    await _persistLocalTrashedCourses();
+    if (mounted) setState(() {});
+    final title = restored['title']?.toString() ?? 'category';
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Editor.LocalStore/restore_trashed_course',
+      message:
+          'Category restored from local recycle bin: '
+          'Editor.LocalStore/restore_trashed_course \u2014 '
+          "'$title' re-added as a local category; cloud copy left untouched.",
+    );
+    return ActionFeedback(
+      message:
+          'Category restored: Editor.LocalStore/restore_trashed_course \u2014 '
+          "'$title' is back. The cloud copy was not touched.",
+    );
   }
 
   Future<void> _persistLocalStats() async {
@@ -2652,6 +2924,10 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     _localCourses = _localCourses
         .where((item) => item['id'] != course['id'])
         .toList(growable: false);
+    // Move the just-synced local course to the client-side recycle
+    // bin so the user can restore it if the cloud promotion turns
+    // out wrong. Auto-pruned after 30 days.
+    await _moveCourseToLocalTrash(course, serverCourseId: remoteId);
     _courses = [
       _decorateRemoteCourse(created),
       ..._courses.where((item) => item['id'] != created['id']),
@@ -2675,8 +2951,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       source: 'Editor.Sync.Courses/push',
       message:
           "Local category synced: Editor.Sync.Courses/push \u2014 "
-          "'${course['title']}' created on server; local ID remapped to "
-          "remote ID.",
+          "'${course['title']}' created on server; local ID remapped; "
+          "local copy moved to client-side recycle bin (restore from Settings).",
     );
     return created;
   }
@@ -3039,6 +3315,15 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     _localDrafts = _localDrafts
         .where((item) => item['id'] != draft['id'])
         .toList(growable: false);
+    // Stash the just-synced draft in the local recycle bin so the
+    // user can restore if the cloud copy turns out wrong later.
+    // Auto-pruned after 30 days. See _moveDraftToLocalTrash /
+    // _LocalAppStore._pruneTrashed.
+    await _moveDraftToLocalTrash(
+      draft,
+      serverNoteId: (created['id'] as num?)?.toInt(),
+      serverNoteUuid: created['uuid']?.toString(),
+    );
     _localStats = {
       ..._localStats,
       'local_drafts_synced':
@@ -3054,7 +3339,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
       source: 'Editor.Sync.Notes/push',
       message:
           "Local draft synced: Editor.Sync.Notes/push \u2014 "
-          "'${draft['title']}' created on server; local draft removed.",
+          "'${draft['title']}' created on server; local draft moved to "
+          "client-side recycle bin (restore from Settings).",
     );
     return _promoteQueuedAttachments(created, metadata);
   }
@@ -3905,16 +4191,48 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
 
   Future<void> _syncAllLocalCourses() async {
     if (_localCourses.isEmpty) return;
+    // Per-item try/catch so one failing course sync doesn't bubble
+    // up and abort the loop halfway through \u2014 earlier iterations
+    // have already been persisted, so a cascade would silently
+    // orphan later local courses from their sync attempt.
     for (final course in List<Map<String, dynamic>>.from(_localCourses)) {
-      await _syncLocalCourse(course);
+      try {
+        await _syncLocalCourse(course);
+      } catch (error) {
+        _log(
+          level: DebugLogLevel.warning,
+          source: 'Editor.Sync.Courses/push',
+          message: 'Local category not synced: '
+              'Editor.Sync.Courses/push \u2014 '
+              "'${course['title']}' "
+              '(${error.toString().replaceFirst('Exception: ', '')}). '
+              'Kept locally; will retry on next sync.',
+        );
+      }
     }
     if (mounted) setState(() {});
   }
 
   Future<void> _syncAllLocalDrafts() async {
     if (_localDrafts.isEmpty) return;
+    // Per-item try/catch: the pre-0.1.51 loop would abort on the
+    // first failing draft, leaving later drafts un-attempted while
+    // earlier ones had already been persisted. Isolate each draft so
+    // a single failure can't cascade.
     for (final draft in List<Map<String, dynamic>>.from(_localDrafts)) {
-      await _syncLocalDraft(draft);
+      try {
+        await _syncLocalDraft(draft);
+      } catch (error) {
+        _log(
+          level: DebugLogLevel.warning,
+          source: 'Editor.Sync.Notes/push',
+          message: 'Local draft not synced: '
+              'Editor.Sync.Notes/push \u2014 '
+              "'${draft['title']}' "
+              '(${error.toString().replaceFirst('Exception: ', '')}). '
+              'Kept locally; will retry on next sync.',
+        );
+      }
     }
     if (mounted) setState(() {});
   }
@@ -3969,6 +4287,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
   Future<ActionFeedback> _clearLocalData() async {
     _localDrafts = const [];
     _localCourses = const [];
+    _localTrashedDrafts = const [];
+    _localTrashedCourses = const [];
     _deletedNotes = const [];
     _selectedNote = null;
     _selectedCourse = null;
@@ -3982,6 +4302,8 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     };
     await _persistLocalDrafts();
     await _persistLocalCourses();
+    await _persistLocalTrashedDrafts();
+    await _persistLocalTrashedCourses();
     await _persistLocalStats();
     await _persistLocalCache();
     // Re-seed with just an Inbox so the workspace is never truly empty.
@@ -4909,6 +5231,9 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           onRestoreTemplateCourses: _restoreTemplateCourses,
           onExportLocalData: _exportLocalArchive,
           onRestoreFromLocalImport: _restoreFromLocalImport,
+          onOpenLocalRecycleBin: _openLocalRecycleBinDialog,
+          localTrashedDraftCount: _localTrashedDrafts.length,
+          localTrashedCourseCount: _localTrashedCourses.length,
           onOfflineModeChanged: _setOfflineMode,
           localDraftCount: _localDrafts.length,
           localCourseCount: _localCourses.length,

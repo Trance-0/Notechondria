@@ -36,6 +36,9 @@ class _SettingsPage extends StatefulWidget {
     required this.localDraftCount,
     required this.localCourseCount,
     required this.uiLogs,
+    this.onOpenLocalRecycleBin,
+    this.localTrashedDraftCount = 0,
+    this.localTrashedCourseCount = 0,
     this.onOfflineModeChanged,
     this.apiBaseUrl,
     this.debugSnapshotListenable,
@@ -100,6 +103,17 @@ class _SettingsPage extends StatefulWidget {
   /// `_applyLocalAppSettings({'offline_mode': bool})` and re-run
   /// `_loadInitialData` so the new mode takes effect immediately.
   final Future<void> Function(bool offlineMode)? onOfflineModeChanged;
+
+  /// Opens the local recycle-bin browser. See editor_app/modules/
+  /// settings.dart for the contract; the bin holds drafts /
+  /// categories that were moved to client-side trash after a
+  /// successful cloud sync.
+  final Future<void> Function()? onOpenLocalRecycleBin;
+
+  /// Recycle-bin counts so the button badge renders without an
+  /// extra SharedPreferences hit.
+  final int localTrashedDraftCount;
+  final int localTrashedCourseCount;
 
   final int localDraftCount;
   final int localCourseCount;
@@ -423,6 +437,16 @@ class _SettingsPageState extends State<_SettingsPage> {
                         icon: const Icon(Icons.download_for_offline_outlined),
                         label: const Text('Pull cloud → local'),
                       ),
+                      if (widget.onOpenLocalRecycleBin != null)
+                        OutlinedButton.icon(
+                          onPressed: widget.onOpenLocalRecycleBin,
+                          icon: const Icon(
+                              Icons.restore_from_trash_outlined),
+                          label: Text(
+                            'Synced drafts (recoverable) '
+                            '(${widget.localTrashedDraftCount + widget.localTrashedCourseCount})',
+                          ),
+                        ),
                       OutlinedButton(
                         onPressed: widget.onLogout,
                         child: const Text('Logout'),

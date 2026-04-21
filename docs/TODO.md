@@ -20,6 +20,8 @@ Completed rounds live in `./docs/versions/<semver>.md` — do **not**
 restate them here. When a task is landed, delete its entry from this
 file and add a round-log entry to the new version doc.
 
+- [ ] **Urgent**: I noticed that the app_shell.dart file is growing tremendously large compared with other scripts after few non-inspection. I introduced a new rule in AGENTS.md module, pull it and apply to all existing flutter files. NO CODE FILE SHOULD HAVE ANY REASON TO EXCEED 1000 LINES. For any existing code files that exceed 1000 lines, please split them into multiple files by functions or children classes, or reuse functions to optimized the code file size.
+
 ## Bugs
 
 - [ ] **Note share / deep-link redirect failure.** User-reported: the

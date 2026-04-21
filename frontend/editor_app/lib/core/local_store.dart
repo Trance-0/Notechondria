@@ -8,6 +8,8 @@ class _LocalAppSnapshot {
     required this.stats,
     required this.cache,
     required this.logs,
+    required this.trashedDrafts,
+    required this.trashedCourses,
   });
 
   final Map<String, dynamic> settings;
@@ -16,6 +18,14 @@ class _LocalAppSnapshot {
   final Map<String, dynamic> stats;
   final Map<String, dynamic> cache;
   final List<String> logs;
+  /// Drafts that were successfully synced to the cloud and then moved
+  /// to a client-side recycle bin (not deleted). Each entry carries
+  /// `trashed_at` (ISO-8601 UTC), the original draft payload, and
+  /// `server_note_id` (int) linking to the cloud record that replaced
+  /// it. Auto-pruned after [_trashTtlDays] days on next load.
+  final List<Map<String, dynamic>> trashedDrafts;
+  /// Same idea for local courses after successful cloud promotion.
+  final List<Map<String, dynamic>> trashedCourses;
 }
 
 class _LocalAppStore {
@@ -26,6 +36,19 @@ class _LocalAppStore {
   static const String _cacheKey = 'notechondria.local_cache';
   static const String _logsKey = 'notechondria.local_logs';
   static const String _sessionKey = 'notechondria.session';
+  // Client-side recycle-bin buckets for just-synced drafts and
+  // courses. Populated AFTER a successful cloud create/update so the
+  // user can restore if the cloud copy later turns out to be wrong.
+  // Auto-pruned after [_trashTtlDays] days on each load.
+  static const String _trashedDraftsKey =
+      'notechondria.local_trashed_drafts';
+  static const String _trashedCoursesKey =
+      'notechondria.local_trashed_courses';
+
+  /// Days a just-synced draft/course stays in the local recycle bin
+  /// before load-time auto-prune. 30 days balances recoverability
+  /// against SharedPreferences footprint.
+  static const int _trashTtlDays = 30;
 
   static Map<String, dynamic> defaultSettings() {
     return {
@@ -67,6 +90,18 @@ class _LocalAppStore {
 
   static Future<_LocalAppSnapshot> load() async {
     final prefs = await SharedPreferences.getInstance();
+    // Prune recycle-bin entries older than [_trashTtlDays] days so
+    // the bucket doesn't grow unbounded across sessions.
+    final rawTrashedDrafts = _decodeList(prefs.getString(_trashedDraftsKey));
+    final rawTrashedCourses = _decodeList(prefs.getString(_trashedCoursesKey));
+    final trashedDrafts = _pruneTrashed(rawTrashedDrafts);
+    final trashedCourses = _pruneTrashed(rawTrashedCourses);
+    if (trashedDrafts.length != rawTrashedDrafts.length) {
+      await prefs.setString(_trashedDraftsKey, jsonEncode(trashedDrafts));
+    }
+    if (trashedCourses.length != rawTrashedCourses.length) {
+      await prefs.setString(_trashedCoursesKey, jsonEncode(trashedCourses));
+    }
     return _LocalAppSnapshot(
       settings: _decodeMap(prefs.getString(_settingsKey), defaultSettings()),
       drafts: _decodeList(prefs.getString(_draftsKey)),
@@ -74,7 +109,27 @@ class _LocalAppStore {
       stats: _decodeMap(prefs.getString(_statsKey), defaultStats()),
       cache: _decodeMap(prefs.getString(_cacheKey), defaultCache()),
       logs: _decodeStringList(prefs.getString(_logsKey)),
+      trashedDrafts: trashedDrafts,
+      trashedCourses: trashedCourses,
     );
+  }
+
+  /// Drops entries whose `trashed_at` is older than [_trashTtlDays]
+  /// days. Entries without a parseable `trashed_at` are kept (we
+  /// don't want to silently delete data we can't date).
+  static List<Map<String, dynamic>> _pruneTrashed(
+    List<Map<String, dynamic>> entries,
+  ) {
+    final threshold = DateTime.now()
+        .toUtc()
+        .subtract(const Duration(days: _trashTtlDays));
+    return entries.where((entry) {
+      final raw = entry['trashed_at']?.toString();
+      if (raw == null || raw.isEmpty) return true;
+      final when = DateTime.tryParse(raw)?.toUtc();
+      if (when == null) return true;
+      return when.isAfter(threshold);
+    }).toList(growable: false);
   }
 
   static Future<void> saveSettings(Map<String, dynamic> settings) async {
@@ -105,6 +160,20 @@ class _LocalAppStore {
   static Future<void> saveLogs(List<String> logs) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_logsKey, jsonEncode(logs));
+  }
+
+  static Future<void> saveTrashedDrafts(
+    List<Map<String, dynamic>> drafts,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_trashedDraftsKey, jsonEncode(drafts));
+  }
+
+  static Future<void> saveTrashedCourses(
+    List<Map<String, dynamic>> courses,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_trashedCoursesKey, jsonEncode(courses));
   }
 
   /// Persists the auth token and profile so the session survives page refresh.

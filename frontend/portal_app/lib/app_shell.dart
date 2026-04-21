@@ -99,6 +99,9 @@ class _AppShellState extends State<AppShell> {
   List<Map<String, dynamic>> _learnerNotes = const [];
   List<Map<String, dynamic>> _localDrafts = const [];
   List<Map<String, dynamic>> _deletedNotes = const [];
+  // Client-side recycle bin; see editor_app for the contract.
+  List<Map<String, dynamic>> _localTrashedDrafts = const [];
+  List<Map<String, dynamic>> _localTrashedCourses = const [];
   List<Map<String, dynamic>> _activity = const [];
   List<Map<String, dynamic>> _plannerEvents = const [];
   List<Map<String, dynamic>> _calendarFeeds = const [];
@@ -471,6 +474,8 @@ class _AppShellState extends State<AppShell> {
     }
     _localDrafts = snapshot.drafts;
     _localCourses = snapshot.courses;
+    _localTrashedDrafts = snapshot.trashedDrafts;
+    _localTrashedCourses = snapshot.trashedCourses;
     _localStats = snapshot.stats;
     _localCache = snapshot.cache;
     _uiLogs
@@ -519,6 +524,249 @@ class _AppShellState extends State<AppShell> {
 
   Future<void> _persistLocalCourses() async {
     await _LocalAppStore.saveCourses(_localCourses);
+  }
+
+  Future<void> _persistLocalTrashedDrafts() async {
+    await _LocalAppStore.saveTrashedDrafts(_localTrashedDrafts);
+  }
+
+  Future<void> _persistLocalTrashedCourses() async {
+    await _LocalAppStore.saveTrashedCourses(_localTrashedCourses);
+  }
+
+  /// Moves a just-cloud-synced local draft into the client-side
+  /// recycle bin. See editor_app for the full contract.
+  Future<void> _moveDraftToLocalTrash(
+    Map<String, dynamic> draft, {
+    int? serverNoteId,
+    String? serverNoteUuid,
+  }) async {
+    final entry = {
+      'draft': Map<String, dynamic>.from(draft),
+      'trashed_at': DateTime.now().toUtc().toIso8601String(),
+      if (serverNoteId != null) 'server_note_id': serverNoteId,
+      if (serverNoteUuid != null && serverNoteUuid.isNotEmpty)
+        'server_note_uuid': serverNoteUuid,
+    };
+    _localTrashedDrafts = [entry, ..._localTrashedDrafts];
+    await _persistLocalTrashedDrafts();
+  }
+
+  Future<void> _moveCourseToLocalTrash(
+    Map<String, dynamic> course, {
+    int? serverCourseId,
+  }) async {
+    final entry = {
+      'course': Map<String, dynamic>.from(course),
+      'trashed_at': DateTime.now().toUtc().toIso8601String(),
+      if (serverCourseId != null) 'server_course_id': serverCourseId,
+    };
+    _localTrashedCourses = [entry, ..._localTrashedCourses];
+    await _persistLocalTrashedCourses();
+  }
+
+  Future<ActionFeedback> _restoreTrashedDraft(
+      Map<String, dynamic> entry) async {
+    final raw = entry['draft'];
+    if (raw is! Map) {
+      return const ActionFeedback(
+        message: 'Draft not restored: '
+            'Portal.LocalStore/restore_trashed_draft \u2014 '
+            'recycle-bin entry was missing its draft payload.',
+        isError: true,
+      );
+    }
+    final restored = {
+      ...Map<String, dynamic>.from(raw),
+      'id': _LocalAppStore.newDraftId(),
+      'last_edit': DateTime.now().toUtc().toIso8601String(),
+    };
+    _localDrafts = [..._localDrafts, restored];
+    _localTrashedDrafts = _localTrashedDrafts
+        .where((item) => item != entry)
+        .toList(growable: false);
+    await _persistLocalDrafts();
+    await _persistLocalTrashedDrafts();
+    if (mounted) setState(() {});
+    final title = restored['title']?.toString() ?? 'draft';
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Portal.LocalStore/restore_trashed_draft',
+      message:
+          'Draft restored from local recycle bin: '
+          'Portal.LocalStore/restore_trashed_draft \u2014 '
+          "'$title' re-added as a local draft; cloud copy left untouched.",
+    );
+    return ActionFeedback(
+      message:
+          'Draft restored: Portal.LocalStore/restore_trashed_draft \u2014 '
+          "'$title' is back. The cloud copy was not touched.",
+    );
+  }
+
+  Future<ActionFeedback> _restoreTrashedCourse(
+      Map<String, dynamic> entry) async {
+    final raw = entry['course'];
+    if (raw is! Map) {
+      return const ActionFeedback(
+        message: 'Category not restored: '
+            'Portal.LocalStore/restore_trashed_course \u2014 '
+            'recycle-bin entry was missing its course payload.',
+        isError: true,
+      );
+    }
+    final restored = {
+      ...Map<String, dynamic>.from(raw),
+      'id': _LocalAppStore.newCourseId(),
+      'last_edit': DateTime.now().toUtc().toIso8601String(),
+    };
+    _localCourses = [..._localCourses, restored];
+    _localTrashedCourses = _localTrashedCourses
+        .where((item) => item != entry)
+        .toList(growable: false);
+    await _persistLocalCourses();
+    await _persistLocalTrashedCourses();
+    if (mounted) setState(() {});
+    final title = restored['title']?.toString() ?? 'category';
+    _log(
+      level: DebugLogLevel.info,
+      source: 'Portal.LocalStore/restore_trashed_course',
+      message:
+          'Category restored from local recycle bin: '
+          'Portal.LocalStore/restore_trashed_course \u2014 '
+          "'$title' re-added as a local category; cloud copy left untouched.",
+    );
+    return ActionFeedback(
+      message:
+          'Category restored: Portal.LocalStore/restore_trashed_course \u2014 '
+          "'$title' is back. The cloud copy was not touched.",
+    );
+  }
+
+  Future<void> _openLocalRecycleBinDialog() async {
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return StatefulBuilder(builder: (ctx, rebuild) {
+          final drafts = List<Map<String, dynamic>>.from(_localTrashedDrafts);
+          final courses =
+              List<Map<String, dynamic>>.from(_localTrashedCourses);
+          return SafeArea(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.7,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+                    child: Text(
+                      'Local recycle bin',
+                      style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                    child: Text(
+                      'Drafts and categories kept here for 30 days after a '
+                      'successful cloud sync.',
+                      style: Theme.of(ctx).textTheme.bodySmall,
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: ListView(
+                      padding: EdgeInsets.zero,
+                      children: [
+                        if (drafts.isEmpty && courses.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.all(32),
+                            child: Center(
+                              child: Text(
+                                'Nothing in the local recycle bin yet.',
+                              ),
+                            ),
+                          ),
+                        for (final entry in drafts)
+                          ListTile(
+                            leading: const Icon(Icons.description_outlined),
+                            title: Text(
+                              (entry['draft']
+                                          as Map?)?['title']
+                                      ?.toString() ??
+                                  'Untitled draft',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              'Draft \u00b7 trashed ${_formatTrashedAt(entry['trashed_at'])}',
+                            ),
+                            trailing: TextButton.icon(
+                              icon: const Icon(Icons.restore),
+                              label: const Text('Restore'),
+                              onPressed: () async {
+                                final feedback =
+                                    await _restoreTrashedDraft(entry);
+                                if (mounted) _showMessage(feedback.message);
+                                if (ctx.mounted) rebuild(() {});
+                              },
+                            ),
+                          ),
+                        for (final entry in courses)
+                          ListTile(
+                            leading: const Icon(Icons.folder_outlined),
+                            title: Text(
+                              (entry['course']
+                                          as Map?)?['title']
+                                      ?.toString() ??
+                                  'Untitled category',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              'Category \u00b7 trashed ${_formatTrashedAt(entry['trashed_at'])}',
+                            ),
+                            trailing: TextButton.icon(
+                              icon: const Icon(Icons.restore),
+                              label: const Text('Restore'),
+                              onPressed: () async {
+                                final feedback =
+                                    await _restoreTrashedCourse(entry);
+                                if (mounted) _showMessage(feedback.message);
+                                if (ctx.mounted) rebuild(() {});
+                              },
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        });
+      },
+    );
+  }
+
+  String _formatTrashedAt(Object? raw) {
+    final text = raw?.toString();
+    if (text == null || text.isEmpty) return 'recently';
+    final when = DateTime.tryParse(text)?.toLocal();
+    if (when == null) return text;
+    final now = DateTime.now();
+    final delta = now.difference(when);
+    if (delta.inMinutes < 2) return 'just now';
+    if (delta.inHours < 1) return '${delta.inMinutes}m ago';
+    if (delta.inDays < 1) return '${delta.inHours}h ago';
+    if (delta.inDays < 30) return '${delta.inDays}d ago';
+    return text.substring(0, 10);
   }
 
   Future<void> _persistLocalStats() async {
@@ -2217,6 +2465,7 @@ class _AppShellState extends State<AppShell> {
     _localCourses = _localCourses
         .where((item) => item['id'] != course['id'])
         .toList(growable: false);
+    await _moveCourseToLocalTrash(course, serverCourseId: remoteId);
     _courses = [
       _decorateRemoteCourse(created),
       ..._courses.where((item) => item['id'] != created['id']),
@@ -2240,8 +2489,8 @@ class _AppShellState extends State<AppShell> {
       source: 'Portal.Sync.Courses/push',
       message:
           "Local course synced: Portal.Sync.Courses/push \u2014 "
-          "'${course['title']}' created on server; local ID remapped to "
-          "remote ID.",
+          "'${course['title']}' created on server; local ID remapped; "
+          'local copy moved to client-side recycle bin.',
     );
     return created;
   }
@@ -2389,6 +2638,11 @@ class _AppShellState extends State<AppShell> {
     _localDrafts = _localDrafts
         .where((item) => item['id'] != draft['id'])
         .toList(growable: false);
+    await _moveDraftToLocalTrash(
+      draft,
+      serverNoteId: (created['id'] as num?)?.toInt(),
+      serverNoteUuid: created['uuid']?.toString(),
+    );
     _localStats = {
       ..._localStats,
       'local_drafts_synced':
@@ -2407,7 +2661,8 @@ class _AppShellState extends State<AppShell> {
       source: 'Portal.Sync.Notes/push',
       message:
           "Local draft synced: Portal.Sync.Notes/push \u2014 "
-          "'${draft['title']}' created on server; local draft removed.",
+          "'${draft['title']}' created on server; local draft moved to "
+          'client-side recycle bin.',
     );
     return created;
   }
@@ -2933,8 +3188,22 @@ class _AppShellState extends State<AppShell> {
     if (_localCourses.isEmpty) {
       return;
     }
+    // Per-item try/catch so one failing course doesn't abort the
+    // loop and orphan later items.
     for (final course in List<Map<String, dynamic>>.from(_localCourses)) {
-      await _syncLocalCourse(course);
+      try {
+        await _syncLocalCourse(course);
+      } catch (error) {
+        _log(
+          level: DebugLogLevel.warning,
+          source: 'Portal.Sync.Courses/push',
+          message: 'Local category not synced: '
+              'Portal.Sync.Courses/push \u2014 '
+              "'${course['title']}' "
+              '(${error.toString().replaceFirst('Exception: ', '')}). '
+              'Kept locally; will retry on next sync.',
+        );
+      }
     }
     if (mounted) {
       setState(() {});
@@ -2946,7 +3215,19 @@ class _AppShellState extends State<AppShell> {
       return;
     }
     for (final draft in List<Map<String, dynamic>>.from(_localDrafts)) {
-      await _syncLocalDraft(draft);
+      try {
+        await _syncLocalDraft(draft);
+      } catch (error) {
+        _log(
+          level: DebugLogLevel.warning,
+          source: 'Portal.Sync.Notes/push',
+          message: 'Local draft not synced: '
+              'Portal.Sync.Notes/push \u2014 '
+              "'${draft['title']}' "
+              '(${error.toString().replaceFirst('Exception: ', '')}). '
+              'Kept locally; will retry on next sync.',
+        );
+      }
     }
     if (mounted) {
       setState(() {});
@@ -3044,6 +3325,8 @@ class _AppShellState extends State<AppShell> {
   Future<ActionFeedback> _clearLocalData() async {
     _localDrafts = const [];
     _localCourses = const [];
+    _localTrashedDrafts = const [];
+    _localTrashedCourses = const [];
     _selectedNote = null;
     if (_selectedCourse != null && _isLocalCourse(_selectedCourse)) {
       _selectedCourse = _chooseDefaultCourse(
@@ -3062,6 +3345,8 @@ class _AppShellState extends State<AppShell> {
     };
     await _persistLocalDrafts();
     await _persistLocalCourses();
+    await _persistLocalTrashedDrafts();
+    await _persistLocalTrashedCourses();
     await _persistLocalStats();
     if (mounted) {
       setState(() {});
@@ -3572,6 +3857,9 @@ class _AppShellState extends State<AppShell> {
           onClearLocalCache: _clearLocalCache,
           onClearLocalData: _clearLocalData,
           onRestoreTemplateCourses: _restoreTemplateCourses,
+          onOpenLocalRecycleBin: _openLocalRecycleBinDialog,
+          localTrashedDraftCount: _localTrashedDrafts.length,
+          localTrashedCourseCount: _localTrashedCourses.length,
           onOfflineModeChanged: _setOfflineMode,
           localDraftCount: _localDrafts.length,
           localCourseCount: _localCourses.length,

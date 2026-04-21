@@ -8,6 +8,8 @@ class _LocalAppSnapshot {
     required this.stats,
     required this.cache,
     required this.logs,
+    required this.trashedDrafts,
+    required this.trashedCourses,
   });
 
   final Map<String, dynamic> settings;
@@ -16,6 +18,11 @@ class _LocalAppSnapshot {
   final Map<String, dynamic> stats;
   final Map<String, dynamic> cache;
   final List<String> logs;
+  /// Drafts / courses stashed after a successful cloud sync; see
+  /// editor_app/lib/core/local_store.dart for the contract. Shared
+  /// key namespace across apps via SharedPreferences.
+  final List<Map<String, dynamic>> trashedDrafts;
+  final List<Map<String, dynamic>> trashedCourses;
 }
 
 class _LocalAppStore {
@@ -25,6 +32,14 @@ class _LocalAppStore {
   static const String _statsKey = 'notechondria.local_stats';
   static const String _cacheKey = 'notechondria.local_cache';
   static const String _logsKey = 'notechondria.local_logs';
+  static const String _trashedDraftsKey =
+      'notechondria.local_trashed_drafts';
+  static const String _trashedCoursesKey =
+      'notechondria.local_trashed_courses';
+
+  /// Days a just-synced draft/course stays in the local recycle bin
+  /// before load-time auto-prune. See editor_app version for rationale.
+  static const int _trashTtlDays = 30;
 
   static Map<String, dynamic> defaultSettings() {
     return {
@@ -65,6 +80,16 @@ class _LocalAppStore {
 
   static Future<_LocalAppSnapshot> load() async {
     final prefs = await SharedPreferences.getInstance();
+    final rawTrashedDrafts = _decodeList(prefs.getString(_trashedDraftsKey));
+    final rawTrashedCourses = _decodeList(prefs.getString(_trashedCoursesKey));
+    final trashedDrafts = _pruneTrashed(rawTrashedDrafts);
+    final trashedCourses = _pruneTrashed(rawTrashedCourses);
+    if (trashedDrafts.length != rawTrashedDrafts.length) {
+      await prefs.setString(_trashedDraftsKey, jsonEncode(trashedDrafts));
+    }
+    if (trashedCourses.length != rawTrashedCourses.length) {
+      await prefs.setString(_trashedCoursesKey, jsonEncode(trashedCourses));
+    }
     return _LocalAppSnapshot(
       settings: _decodeMap(prefs.getString(_settingsKey), defaultSettings()),
       drafts: _decodeList(prefs.getString(_draftsKey)),
@@ -72,7 +97,26 @@ class _LocalAppStore {
       stats: _decodeMap(prefs.getString(_statsKey), defaultStats()),
       cache: _decodeMap(prefs.getString(_cacheKey), defaultCache()),
       logs: _decodeStringList(prefs.getString(_logsKey)),
+      trashedDrafts: trashedDrafts,
+      trashedCourses: trashedCourses,
     );
+  }
+
+  /// Drops entries whose `trashed_at` is older than [_trashTtlDays]
+  /// days. Entries without a parseable `trashed_at` are kept.
+  static List<Map<String, dynamic>> _pruneTrashed(
+    List<Map<String, dynamic>> entries,
+  ) {
+    final threshold = DateTime.now()
+        .toUtc()
+        .subtract(const Duration(days: _trashTtlDays));
+    return entries.where((entry) {
+      final raw = entry['trashed_at']?.toString();
+      if (raw == null || raw.isEmpty) return true;
+      final when = DateTime.tryParse(raw)?.toUtc();
+      if (when == null) return true;
+      return when.isAfter(threshold);
+    }).toList(growable: false);
   }
 
   static Future<void> saveSettings(Map<String, dynamic> settings) async {
@@ -103,6 +147,20 @@ class _LocalAppStore {
   static Future<void> saveLogs(List<String> logs) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_logsKey, jsonEncode(logs));
+  }
+
+  static Future<void> saveTrashedDrafts(
+    List<Map<String, dynamic>> drafts,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_trashedDraftsKey, jsonEncode(drafts));
+  }
+
+  static Future<void> saveTrashedCourses(
+    List<Map<String, dynamic>> courses,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_trashedCoursesKey, jsonEncode(courses));
   }
 
   static String newDraftId() {

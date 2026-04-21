@@ -44,6 +44,9 @@ class _SettingsPage extends StatefulWidget {
     this.onChangeEmailConfirm,
     this.onExportLocalData,
     this.onRestoreFromLocalImport,
+    this.onOpenLocalRecycleBin,
+    this.localTrashedDraftCount = 0,
+    this.localTrashedCourseCount = 0,
     this.onOfflineModeChanged,
     this.apiBaseUrl,
     this.debugSnapshotListenable,
@@ -115,6 +118,18 @@ class _SettingsPage extends StatefulWidget {
   /// platform file picker. Shows a preview + delay-confirm dialog
   /// before replacing local state.
   final Future<void> Function()? onRestoreFromLocalImport;
+
+  /// Opens the local recycle-bin browser where the user can restore
+  /// drafts / categories that were moved to the client-side trash
+  /// after a successful cloud sync. Populated by
+  /// `_moveDraftToLocalTrash` / `_moveCourseToLocalTrash` in
+  /// app_shell; entries auto-prune after 30 days.
+  final Future<void> Function()? onOpenLocalRecycleBin;
+
+  /// Recycle-bin counts so the Settings UI can render a badge
+  /// ("Local recycle bin (3)") without re-reading SharedPreferences.
+  final int localTrashedDraftCount;
+  final int localTrashedCourseCount;
 
   /// Called when the user flips the offline-mode switch. The host
   /// app_shell is expected to persist the flag via
@@ -1295,6 +1310,15 @@ class _SettingsPageState extends State<_SettingsPage> {
                     onPressed: widget.onRestoreFromLocalImport,
                     icon: const Icon(Icons.file_upload_outlined),
                     label: const Text('Restore from local imports'),
+                  ),
+                if (widget.onOpenLocalRecycleBin != null)
+                  OutlinedButton.icon(
+                    onPressed: widget.onOpenLocalRecycleBin,
+                    icon: const Icon(Icons.restore_from_trash_outlined),
+                    label: Text(
+                      'Synced drafts (recoverable) '
+                      '(${widget.localTrashedDraftCount + widget.localTrashedCourseCount})',
+                    ),
                   ),
                 OutlinedButton.icon(
                   onPressed: () =>

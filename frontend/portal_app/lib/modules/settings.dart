@@ -36,6 +36,9 @@ class _SettingsPage extends StatefulWidget {
     required this.localDraftCount,
     required this.localCourseCount,
     required this.uiLogs,
+    this.onOpenLocalRecycleBin,
+    this.localTrashedDraftCount = 0,
+    this.localTrashedCourseCount = 0,
     this.onOfflineModeChanged,
     this.apiBaseUrl,
     this.debugSnapshotListenable,
@@ -98,6 +101,12 @@ class _SettingsPage extends StatefulWidget {
   /// `_applyLocalAppSettings({'offline_mode': bool})` and re-run
   /// `_loadInitialData` so the new mode takes effect immediately.
   final Future<void> Function(bool offlineMode)? onOfflineModeChanged;
+
+  /// Opens the local recycle-bin browser.
+  final Future<void> Function()? onOpenLocalRecycleBin;
+  final int localTrashedDraftCount;
+  final int localTrashedCourseCount;
+
   final int localDraftCount;
   final int localCourseCount;
   final List<String> uiLogs;
@@ -553,6 +562,16 @@ class _SettingsPageState extends State<_SettingsPage> {
                       icon: const Icon(Icons.delete_sweep_outlined),
                       label: const Text('Remove local data'),
                     ),
+                    if (widget.onOpenLocalRecycleBin != null)
+                      OutlinedButton.icon(
+                        onPressed: widget.onOpenLocalRecycleBin,
+                        icon:
+                            const Icon(Icons.restore_from_trash_outlined),
+                        label: Text(
+                          'Synced drafts (recoverable) '
+                          '(${widget.localTrashedDraftCount + widget.localTrashedCourseCount})',
+                        ),
+                      ),
                   ],
                 ),
               ],
