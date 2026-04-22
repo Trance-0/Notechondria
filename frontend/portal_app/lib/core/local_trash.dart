@@ -65,9 +65,9 @@ extension _AppShellLocalTrashX on _AppShellState {
         .toList(growable: false);
     await _persistLocalDrafts();
     await _persistLocalTrashedDrafts();
-    _trashRefresh();
+    refreshState();
     final title = restored['title']?.toString() ?? 'draft';
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Portal.LocalStore/restore_trashed_draft',
       message:
@@ -104,9 +104,9 @@ extension _AppShellLocalTrashX on _AppShellState {
         .toList(growable: false);
     await _persistLocalCourses();
     await _persistLocalTrashedCourses();
-    _trashRefresh();
+    refreshState();
     final title = restored['title']?.toString() ?? 'category';
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Portal.LocalStore/restore_trashed_course',
       message:
@@ -191,7 +191,7 @@ extension _AppShellLocalTrashX on _AppShellState {
                               onPressed: () async {
                                 final feedback =
                                     await _restoreTrashedDraft(entry);
-                                if (mounted) _showMessage(feedback.message);
+                                if (mounted) showMessage(feedback.message);
                                 if (ctx.mounted) rebuild(() {});
                               },
                             ),
@@ -216,7 +216,7 @@ extension _AppShellLocalTrashX on _AppShellState {
                               onPressed: () async {
                                 final feedback =
                                     await _restoreTrashedCourse(entry);
-                                if (mounted) _showMessage(feedback.message);
+                                if (mounted) showMessage(feedback.message);
                                 if (ctx.mounted) rebuild(() {});
                               },
                             ),

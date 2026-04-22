@@ -90,7 +90,7 @@ class _SettingsPage extends StatefulWidget {
   final Future<void> Function() onEmptyDeletedNotes;
   final Future<void> Function() onCopyLogs;
   final Future<ActionFeedback> Function() onUploadAvatar;
-  final Future<ActionFeedback> Function({bool showMessage}) onSyncLocalData;
+  final Future<ActionFeedback> Function({bool announce}) onSyncLocalData;
   final Future<ActionFeedback> Function() onPullCloudData;
   final Future<ActionFeedback> Function() onClearLocalCache;
   final Future<ActionFeedback> Function() onClearLocalData;
@@ -539,7 +539,7 @@ class _SettingsPageState extends State<_SettingsPage> {
                     FilledButton.icon(
                       onPressed: _isAuthenticated
                           ? () => _runMaintenanceAction(
-                                () => widget.onSyncLocalData(showMessage: false),
+                                () => widget.onSyncLocalData(announce: false),
                               )
                           : null,
                       icon: const Icon(Icons.cloud_upload_outlined),

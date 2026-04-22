@@ -29,7 +29,7 @@ class _CoursePage extends StatefulWidget {
   final ValueChanged<Map<String, dynamic>> onCourseChanged;
   final Future<Map<String, dynamic>> Function(String title, String description)
       onCreateLocalCourse;
-  final Future<ActionFeedback> Function({bool showMessage}) onSyncLocalData;
+  final Future<ActionFeedback> Function({bool announce}) onSyncLocalData;
   final Future<void> Function(Map<String, dynamic> course) onSubscribe;
   final Future<void> Function(Map<String, dynamic> course) onUnsubscribe;
   final Future<Map<String, dynamic>> Function(int noteId) onFetchNoteDetail;
@@ -354,7 +354,7 @@ class _CoursePageState extends State<_CoursePage> {
           if (widget.isAuthenticated &&
               (widget.localCourses.isNotEmpty || widget.localNotes.isNotEmpty))
             OutlinedButton.icon(
-              onPressed: () => widget.onSyncLocalData(showMessage: true),
+              onPressed: () => widget.onSyncLocalData(announce: true),
               icon: const Icon(Icons.cloud_upload_outlined),
               label: const Text('Sync local data'),
             ),
