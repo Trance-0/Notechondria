@@ -4,7 +4,7 @@ part of notechondria_frontend;
 /// ~100-line Settings-page actions out of `app_shell.dart` so that
 /// file stays closer to the AGENTS.md §1.5 1000-line ceiling.
 ///
-/// State mutations go through the `_refresh` wrapper on
+/// State mutations go through the `refreshState` wrapper on
 /// `_AppShellState` because `setState` is `@protected` and unusable
 /// from extension methods. See `core/local_trash.dart` for the same
 /// pattern.
@@ -41,7 +41,7 @@ extension _AppShellLocalArchiveX on _AppShellState {
           cache: _localCache,
           courses: _localCourses,
           drafts: _localDrafts,
-          logs: _uiLogs,
+          logs: uiLogs,
         ),
       );
       final location = await getSaveLocation(
@@ -55,12 +55,12 @@ extension _AppShellLocalArchiveX on _AppShellState {
       final file = XFile.fromData(archiveBytes,
           name: suggestedName, mimeType: 'application/zip');
       await file.saveTo(location.path);
-      _showMessage(
+      showMessage(
         'Local user data exported: '
         'Editor.LocalStore/export_zip \u2014 $suggestedName written '
         '(${archiveBytes.length} bytes).',
       );
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Editor.LocalStore/export_zip',
         message:
@@ -73,11 +73,11 @@ extension _AppShellLocalArchiveX on _AppShellState {
       );
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
-      _showMessage(
+      showMessage(
         'Local user data not exported: '
         'Editor.LocalStore/export_zip \u2014 $cause.',
       );
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Editor.LocalStore/export_zip',
         message: 'Local user data not exported: '
@@ -116,7 +116,7 @@ extension _AppShellLocalArchiveX on _AppShellState {
         if (apiBase != null && apiBase.isNotEmpty) {
           await _applyLocalAppSettings({'api_base_url': apiBase});
         }
-        _log(
+        log(
           level: DebugLogLevel.info,
           source: 'Editor.LocalStore/restore_from_import',
           message:
@@ -124,7 +124,7 @@ extension _AppShellLocalArchiveX on _AppShellState {
               'Editor.LocalStore/restore_from_import \u2014 '
               '${legacy.length} key(s) applied from config file.',
         );
-        _showMessage(
+        showMessage(
           'Legacy config imported: '
           'Editor.LocalStore/restore_from_import \u2014 '
           '${legacy.length} key(s) applied.',
@@ -134,8 +134,8 @@ extension _AppShellLocalArchiveX on _AppShellState {
 
       final parsed = readLocalArchive(bytes);
       if (!parsed.ok) {
-        _showMessage(parsed.errorMessage!);
-        _log(
+        showMessage(parsed.errorMessage!);
+        log(
           level: DebugLogLevel.error,
           source: 'Editor.LocalStore/restore_from_import',
           message: parsed.errorMessage!,
@@ -168,7 +168,7 @@ extension _AppShellLocalArchiveX on _AppShellState {
       // Apply buckets. We mutate the in-memory state fields directly
       // (Dart extensions can't call `setState` because it's
       // `@protected`), then trigger a single rebuild via the
-      // `_refresh` wrapper left on `_AppShellState`.
+      // `refreshState` wrapper left on `_AppShellState`.
       _localSettings = {
         ..._LocalAppStore.defaultSettings(),
         ...parsed.localSettings,
@@ -183,11 +183,11 @@ extension _AppShellLocalArchiveX on _AppShellState {
       };
       _localCourses = parsed.courses;
       _localDrafts = parsed.drafts;
-      _uiLogs
+      uiLogs
         ..clear()
         ..addAll(parsed.logs);
-      _refresh();
-      _logController
+      refreshState();
+      logController
         ..replaceAll(parsed.logs.map(DebugLogEntry.fromPersistedString))
         ..bindCacheProvider(_snapshotLocalStore);
 
@@ -196,9 +196,9 @@ extension _AppShellLocalArchiveX on _AppShellState {
       await _LocalAppStore.saveCache(_localCache);
       await _LocalAppStore.saveCourses(_localCourses);
       await _LocalAppStore.saveDrafts(_localDrafts);
-      await _LocalAppStore.saveLogs(_uiLogs);
+      await _LocalAppStore.saveLogs(uiLogs);
 
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Editor.LocalStore/restore_from_import',
         message:
@@ -206,7 +206,7 @@ extension _AppShellLocalArchiveX on _AppShellState {
             'Editor.LocalStore/restore_from_import \u2014 '
             'archive from $exporterApp applied ($summary).',
       );
-      _showMessage(
+      showMessage(
         'Local user data restored: '
         'Editor.LocalStore/restore_from_import \u2014 '
         'archive from $exporterApp applied ($summary).',
@@ -216,11 +216,11 @@ extension _AppShellLocalArchiveX on _AppShellState {
       await _loadInitialData();
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
-      _showMessage(
+      showMessage(
         'Local user data not restored: '
         'Editor.LocalStore/restore_from_import \u2014 $cause.',
       );
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Editor.LocalStore/restore_from_import',
         message:

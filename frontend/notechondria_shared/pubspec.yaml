@@ -10,6 +10,8 @@ dependencies:
   flutter:
     sdk: flutter
   archive: ^3.4.10
+  file_selector: ^1.0.3
+  http: ^1.2.1
   path_provider: ^2.1.0
 
 dev_dependencies:

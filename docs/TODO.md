@@ -20,43 +20,58 @@ Completed rounds live in `./docs/versions/<semver>.md` — do **not**
 restate them here. When a task is landed, delete its entry from this
 file and add a round-log entry to the new version doc.
 
-- [ ] **File-size rule enforcement — remaining splits.** 0.1.52 codified
-  the 1000-LOC hard ceiling in AGENTS.md §1.5 and carved the recycle-bin
+- [ ] **File-size rule + cross-app sharing.** 0.1.52 codified the
+  1000-LOC hard ceiling in AGENTS.md §1.5 and carved the recycle-bin
   code out of each `app_shell.dart` into a `core/local_trash.dart`
-  partial (proof of pattern — extension on `_AppShellState` with a
-  `_trashRefresh` wrapper around `setState`). Remaining files still
-  above 1000 LOC that need splitting:
-  - `frontend/editor_app/lib/app_shell.dart` (~5211) — next cohesive
-    chunks: OAuth/auth flow (`_handleOAuthCallback`, `_applyAuthPayload`,
-    `_login`, `_register`, `_logout`, bind helpers), sync loops
-    (`_syncLocalDraft`, `_syncLocalCourse`, `_syncAllLocal*`, promote),
-    local-archive export/import (`_exportLocalArchive`,
-    `_restoreFromLocalImport`), sidebar category handlers
-    (`_promptEditCategory`, `_deleteCategory`, `_unsubscribeCategory`,
-    `_renameCategory`).
-  - `frontend/planner_app/lib/app_shell.dart` (~3861) and
-    `frontend/portal_app/lib/app_shell.dart` (~3760) — same cohorts
-    apply; most code mirrors editor's with the same names.
-  - `frontend/editor_app/lib/modules/settings.dart` (~1781) — section
-    builders cleanly split into per-section widgets (app preferences,
-    account / identity, API key section, sync + maintenance, debug
-    log). Several already exist as private StatelessWidgets; the rest
-    are inline build helpers.
-  - `frontend/editor_app/lib/modules/note_editor.dart` (~1472) — the
-    markdown inline-syntax parser + the image builder + the details
-    dialog can each become separate partials.
-  - `frontend/planner_app/lib/modules/learner.dart` (~1645),
-    `frontend/portal_app/lib/modules/learner.dart` (~1504) — the
-    inlined note editor is a good extraction candidate.
-  - `frontend/editor_app/lib/core/client.dart` (~1291),
-    `frontend/planner_app/lib/core/client.dart` (~1055),
-    `frontend/portal_app/lib/core/client.dart` (~1065) — Dart's
-    class-body split is constrained (extensions can't implement
-    interface methods) so these need a different approach: extract
-    `_decode`, `_stringifyErrors`, `_shapedErrorMessage`, `_send`,
-    `_headers`, `_previewBody`, `_recordDebugSnapshot` into a base
-    class / mixin. Worth ~200 LOC per file; won't get each file
-    under 1000 alone but is a good incremental step.
+  partial. 0.1.53 brought every file in `frontend/editor_app/lib/`
+  under the cap (app_shell.dart 5000 → 552) via 23 per-concern
+  extensions on `_AppShellState`. Remaining work below is **not just
+  another per-app repeat** — audit showed 63+ methods in
+  `{planner,portal}_app/lib/app_shell.dart` are byte-identical to
+  editor's, so the next pass promotes shared code up into
+  `notechondria_shared` rather than copy-pasting. Plan:
+
+  1. **Shared State mixins in `notechondria_shared/lib/src/app_shell/`.**
+     Mixin on `State<StatefulWidget>` with abstract getters for the
+     handful of fields each concern needs. Order of extraction
+     (from most-independent to most-coupled):
+     - `AppShellLogMixin` — `uiLogs`, `logController`, `log`,
+       `appendUiLog`, `timed<T>`, `refreshState`, `showMessage`.
+     - `AppShellAuthActionsMixin` — `register`, `verify`,
+       `resendVerification`, `login`, `requestPasswordReset`,
+       `confirmPasswordReset`. Abstract getter `logAppTag` provides
+       the `Editor./Planner./Portal.` log-source prefix.
+     - `AppShellOAuthMixin` — `launchOAuth`, `handleOAuthCallback`.
+     - `AppShellSessionMixin` — `applyAuthPayload`, `logout`.
+     - `AppShellLocalPersistMixin` — `_persistLocal*` helpers.
+     - `AppShellDraftHelpersMixin` — `storeLocalDraft`,
+       `buildOfflineFallbackDraft`.
+     - `AppShellCourseHelpersMixin` — `isLocalCourse`,
+       `decorateRemoteCourse`, `chooseDefaultCourse`.
+     - `HttpClientInternalsMixin` on `HttpNotechondriaClient` — the
+       `_send` / `_decode` / `_headers` / `_shapedErrorMessage` stack.
+
+  2. **Migrate editor_app to consume the shared mixins** (per mixin
+     as they land — keeps CI green throughout). Verify the smoke
+     test still passes after each mixin is absorbed. Delete the
+     now-redundant per-app extension files.
+
+  3. **Bring planner_app + portal_app online** by replacing their
+     inline methods with `with SharedMixinX<W>`. Each app then
+     provides only its app-specific `_loadInitialData` orchestration,
+     `_bootstrapApp`, and `build()`. Tests per app should still pass.
+
+  4. **Residual per-app work** (splits that can't share):
+     - `{planner,portal}_app/lib/modules/learner.dart` (~1645, ~1504)
+       — inlined note editor is the extraction candidate; shape is
+       app-specific so this stays per-app.
+     - `{planner,portal}_app/lib/modules/activity.dart` (~1438, ~1126)
+       — planner-only calendar UI, extract sub-widgets.
+
+  **Shared dependencies added to `notechondria_shared/pubspec.yaml`:**
+  `shared_preferences`, `http`, `file_selector` (previously only
+  `archive` + `path_provider`). These were already transitive deps
+  of every app anyway.
 
 ## Bugs
 

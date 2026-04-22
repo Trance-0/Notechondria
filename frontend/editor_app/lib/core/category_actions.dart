@@ -4,7 +4,7 @@ part of notechondria_frontend;
 /// reorder, and the prompt-with-delete-dialog helpers. Each method
 /// handles local-only and cloud-backed courses distinctly because
 /// offline-created categories get promoted to the cloud on first
-/// sync. State mutations route through `_refresh()` since extensions
+/// sync. State mutations route through `refreshState()` since extensions
 /// can't call `setState` directly. Extracted from `app_shell.dart`
 /// so that file stays closer to the AGENTS.md §1.5 1000-line ceiling.
 extension _AppShellCategoryX on _AppShellState {
@@ -28,9 +28,9 @@ extension _AppShellCategoryX on _AppShellState {
         });
         final decorated = _decorateRemoteCourse(created);
           _courses = [decorated, ..._courses];
-        _refresh();
+        refreshState();
         await _persistLocalCache();
-        _log(
+        log(
           level: DebugLogLevel.info,
           source: 'Editor.Sync.Courses/create',
           message:
@@ -41,9 +41,9 @@ extension _AppShellCategoryX on _AppShellState {
         final localCourse = _buildLocalCourse(title: trimmed);
         if (icon != null) localCourse['icon'] = icon;
           _localCourses = [..._localCourses, localCourse];
-        _refresh();
+        refreshState();
         await _persistLocalCourses();
-        _log(
+        log(
           level: DebugLogLevel.info,
           source: 'Editor.Sync.Courses/create',
           message:
@@ -57,7 +57,7 @@ extension _AppShellCategoryX on _AppShellState {
               "Editor.Sync.Courses/create \u2014 '$trimmed' added.");
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Editor.Sync.Courses/create',
         message: 'Category not created: '
@@ -107,7 +107,7 @@ extension _AppShellCategoryX on _AppShellState {
               'icon': icon,
             };
           }
-        _refresh();
+        refreshState();
         await _persistLocalCourses();
       } else {
         final token = _token;
@@ -132,10 +132,10 @@ extension _AppShellCategoryX on _AppShellState {
           if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
             _selectedCourse = decorated;
           }
-        _refresh();
+        refreshState();
         await _persistLocalCache();
       }
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Editor.Sync.Courses/update',
         message:
@@ -147,7 +147,7 @@ extension _AppShellCategoryX on _AppShellState {
               "'$trimmed' saved.");
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Editor.Sync.Courses/update',
         message: 'Category not updated: '
@@ -205,7 +205,7 @@ extension _AppShellCategoryX on _AppShellState {
             _selectedCourse = defaultLocal;
             _selectedCategoryId = defaultLocalId;
           }
-        _refresh();
+        refreshState();
         await _persistLocalCourses();
         await _persistLocalDrafts();
       } else {
@@ -230,11 +230,11 @@ extension _AppShellCategoryX on _AppShellState {
             _selectedCourse = defaultRemote;
             _selectedCategoryId = (defaultRemote?['id'] as num?)?.toInt();
           }
-        _refresh();
+        refreshState();
         await _persistLocalCache();
         await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
       }
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Editor.Sync.Courses/delete',
         message:
@@ -246,7 +246,7 @@ extension _AppShellCategoryX on _AppShellState {
               "'${course['title']}' removed; notes moved to default.");
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Editor.Sync.Courses/delete',
         message: 'Category not deleted: '
@@ -289,10 +289,10 @@ extension _AppShellCategoryX on _AppShellState {
           _selectedCourse = defaultRemote;
           _selectedCategoryId = (defaultRemote?['id'] as num?)?.toInt();
         }
-      _refresh();
+      refreshState();
       await _persistLocalCache();
       await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Editor.Sync.Courses/unsubscribe',
         message:
@@ -305,7 +305,7 @@ extension _AppShellCategoryX on _AppShellState {
               "'${course['title']}' removed from your sidebar.");
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Editor.Sync.Courses/unsubscribe',
         message: 'Category not unsubscribed: '
@@ -364,14 +364,14 @@ extension _AppShellCategoryX on _AppShellState {
 
       _localCourses = List<Map<String, dynamic>>.from(newLocal);
       _courses = List<Map<String, dynamic>>.from(newRemote);
-    _refresh();
+    refreshState();
 
     // Persist local ordering regardless of auth state.
     await _persistLocalCourses();
 
     final token = _token;
     if (token == null || token.isEmpty || newRemote.isEmpty) {
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Editor.Sync.Courses/reorder',
         message:
@@ -391,9 +391,9 @@ extension _AppShellCategoryX on _AppShellState {
       final decorated =
           refreshed.map(_decorateRemoteCourse).toList(growable: false);
         _courses = decorated;
-      _refresh();
+      refreshState();
       await _persistLocalCache();
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Editor.Sync.Courses/reorder',
         message:
@@ -402,7 +402,7 @@ extension _AppShellCategoryX on _AppShellState {
       );
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Editor.Sync.Courses/reorder',
         message:

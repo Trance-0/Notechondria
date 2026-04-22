@@ -1,7 +1,7 @@
 part of notechondria_frontend;
 
 /// Learner-list fetch, course selection, note selection, and note-detail
-/// fetch. Routes every state mutation through `_refresh()` since extensions
+/// fetch. Routes every state mutation through `refreshState()` since extensions
 /// cannot call `setState` directly. Extracted from `app_shell.dart` so that
 /// file stays closer to the AGENTS.md §1.5 1000-line ceiling.
 extension _AppShellNoteLoadingX on _AppShellState {
@@ -22,7 +22,7 @@ extension _AppShellNoteLoadingX on _AppShellState {
       _learnerSearchQuery = effectiveQuery;
       _learnerSearchScope = effectiveScope;
     }
-    _refresh();
+    refreshState();
     try {
       final activeCourseId = _selectedCategoryId;
       final page = await widget.client.listNotes(
@@ -41,13 +41,13 @@ extension _AppShellNoteLoadingX on _AppShellState {
       _hasMoreLearnerNotes = page['has_more'] == true;
       _learnerNotesOffset = (reset ? 0 : _learnerNotesOffset) + rows.length;
       _isLoadingMoreNotes = false;
-      _refresh();
+      refreshState();
     } catch (error) {
       _isLoadingMoreNotes = false;
       _errorMessage = error.toString().replaceFirst('Exception: ', '');
-      _refresh();
+      refreshState();
       final cause = error.toString().replaceFirst('Exception: ', '');
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Editor.Sync.Notes/list',
         message:
@@ -63,9 +63,9 @@ extension _AppShellNoteLoadingX on _AppShellState {
     _selectedCategoryId = courseId;
     _selectedIndex = 1;
     _selectedNote = null;
-    _refresh();
+    refreshState();
     _replaceNoteUrl(null);
-    _log(
+    log(
       level: DebugLogLevel.debug,
       source: 'Editor.UI/open_course',
       message:
@@ -78,21 +78,21 @@ extension _AppShellNoteLoadingX on _AppShellState {
 
   Future<void> _selectNote(Map<String, dynamic> noteSummary) async {
     _isLoading = true;
-    _refresh();
+    refreshState();
     try {
       final detail = await _fetchNoteDetail(noteSummary['id'] as int);
       _selectedNote = detail;
       _selectedIndex = 1;
       _isLoading = false;
-      _refresh();
+      refreshState();
       final uuid = detail['uuid']?.toString();
       if (uuid != null) _pushNoteUrl(uuid);
     } catch (error) {
       _errorMessage = error.toString().replaceFirst('Exception: ', '');
       _isLoading = false;
-      _refresh();
+      refreshState();
       final cause = error.toString().replaceFirst('Exception: ', '');
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Editor.UI/open_note',
         message:
@@ -109,12 +109,12 @@ extension _AppShellNoteLoadingX on _AppShellState {
       );
       if (draft.isEmpty) throw Exception('Local draft not found.');
       _selectedNote = draft;
-      _refresh();
+      refreshState();
       return draft;
     }
     final detail = await widget.client.getNoteDetail(noteId, token: _token);
     _selectedNote = detail;
-    _refresh();
+    refreshState();
     return detail;
   }
 }

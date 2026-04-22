@@ -6,7 +6,7 @@ part of notechondria_frontend;
 /// `updated_at` timestamps for `_applyAuthPayload`'s "who's newer"
 /// merge. `_applyLocalAppSettings` mutates `_localSettings` directly
 /// but reaches only non-UI subscribers (`_httpClient`,
-/// `widget.onThemeChanged`), so no `_refresh()` call is needed — the
+/// `widget.onThemeChanged`), so no `refreshState()` call is needed — the
 /// UI rebuilds when settings save happens through the Settings page.
 /// Extracted from `app_shell.dart` so that file stays closer to the
 /// AGENTS.md §1.5 1000-line ceiling.
@@ -63,7 +63,7 @@ extension _AppShellSettingsHelpersX on _AppShellState {
   /// the normal post-login cloud sync so the app catches up.
   Future<void> _setOfflineMode(bool offlineMode) async {
     await _applyLocalAppSettings({'offline_mode': offlineMode});
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Editor.Sync.Settings/offline_mode',
       message: offlineMode

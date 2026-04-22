@@ -79,7 +79,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     await _persistLocalDrafts();
     await _persistLocalStats();
     await _persistLocalCache();
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Editor.LocalStore/seed_starter',
       message:

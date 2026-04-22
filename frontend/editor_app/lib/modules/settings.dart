@@ -100,7 +100,7 @@ class _SettingsPage extends StatefulWidget {
   final Future<void> Function() onEmptyDeletedNotes;
   final Future<void> Function() onCopyLogs;
   final Future<ActionFeedback> Function() onUploadAvatar;
-  final Future<ActionFeedback> Function({bool showMessage}) onSyncLocalData;
+  final Future<ActionFeedback> Function({bool announce}) onSyncLocalData;
   final Future<ActionFeedback> Function() onPullCloudData;
   final Future<ActionFeedback> Function() onClearLocalData;
   final Future<ActionFeedback> Function() onRestoreTemplateCourses;
@@ -244,7 +244,7 @@ class _SettingsPageState extends State<_SettingsPage> {
   /// `@protected` and invisible to extensions, so build helpers
   /// mutate state fields directly and then call this to trigger a
   /// rebuild. Same pattern used on `_AppShellState`.
-  void _refresh() {
+  void refreshState() {
     if (mounted) setState(() {});
   }
 

@@ -3,7 +3,7 @@ part of notechondria_frontend;
 /// Settings-page actions: tiny compare helpers, the user-facing
 /// "save settings" orchestrator `_updateSettings`, and the avatar
 /// upload flow `_uploadAvatar`. Both top-level methods route
-/// post-API state updates through `_refresh()` since extensions
+/// post-API state updates through `refreshState()` since extensions
 /// can't call `setState` directly. Extracted from `app_shell.dart`
 /// so that file stays closer to the AGENTS.md §1.5 1000-line
 /// ceiling.
@@ -177,12 +177,12 @@ extension _AppShellSettingsActionsX on _AppShellState {
           'is_superuser':
               updated['is_superuser'] ?? _profile?['is_superuser'],
         };
-      _refresh();
+      refreshState();
       final summary = _summarizeChangedFields(changedFields);
-      _showMessage(
+      showMessage(
         'Settings saved: Editor.Sync.Settings/save \u2014 $summary updated.',
       );
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Editor.Sync.Settings/save',
         message:
@@ -225,9 +225,9 @@ extension _AppShellSettingsActionsX on _AppShellState {
               ? socialLink
               : _profile?['social_link'],
         };
-      _refresh();
+      refreshState();
       final summary = _summarizeChangedFields(changedFields);
-      _log(
+      log(
         level: DebugLogLevel.warning,
         source: 'Editor.Sync.Settings/save',
         message:
@@ -305,8 +305,8 @@ extension _AppShellSettingsActionsX on _AppShellState {
           'is_superuser':
               updated['is_superuser'] ?? _profile?['is_superuser'],
         };
-      _refresh();
-      _log(
+      refreshState();
+      log(
         level: DebugLogLevel.info,
         source: 'Editor.Sync.Settings/avatar.upload',
         message:
@@ -319,7 +319,7 @@ extension _AppShellSettingsActionsX on _AppShellState {
               'server accepted new image.');
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Editor.Sync.Settings/avatar.upload',
         message: 'Avatar not updated: '

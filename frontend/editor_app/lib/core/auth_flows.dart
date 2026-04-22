@@ -1,7 +1,7 @@
 part of notechondria_frontend;
 
 /// OAuth + session-restore + deep-link handlers. Every method routes
-/// state mutations through `_refresh()` since extensions can't call
+/// state mutations through `refreshState()` since extensions can't call
 /// `setState` directly. Bind-flow, login-flow, and deep-link dialog
 /// wiring all live here; `_applyAuthPayload` stays on `_AppShellState`
 /// because it orchestrates post-login state across every bucket (see
@@ -18,7 +18,7 @@ extension _AppShellAuthFlowsX on _AppShellState {
       final clientId = providerConfig['client_id']?.toString() ?? '';
       final redirectUri = providerConfig['redirect_uri']?.toString() ?? '';
       if (clientId.isEmpty) {
-        _log(
+        log(
           level: DebugLogLevel.error,
           source: 'Editor.Auth/oauth.launch',
           message:
@@ -53,7 +53,7 @@ extension _AppShellAuthFlowsX on _AppShellState {
       }
       url_strategy.browserRedirect(authUrl);
     } catch (error) {
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Editor.Auth/oauth.launch',
         message:
@@ -104,7 +104,7 @@ extension _AppShellAuthFlowsX on _AppShellState {
     //                          sign in again and retry.
     if (intent == 'bind') {
       if (_token == null || _token!.isEmpty) {
-        _log(
+        log(
           level: DebugLogLevel.warning,
           source: 'Editor.Auth/bind',
           message:
@@ -132,7 +132,7 @@ extension _AppShellAuthFlowsX on _AppShellState {
           await widget.client.bindGithub(_token!, code, redirectUri: redirectUri);
         }
         final provider = state == 'google' ? 'Google' : 'GitHub';
-        _log(
+        log(
           level: DebugLogLevel.info,
           source: 'Editor.Auth/bind',
           message:
@@ -152,7 +152,7 @@ extension _AppShellAuthFlowsX on _AppShellState {
         return true;
       } catch (error) {
         final msg = error.toString().replaceFirst('Exception: ', '');
-        _log(
+        log(
           level: DebugLogLevel.error,
           source: 'Editor.Auth/bind',
           message:
@@ -180,7 +180,7 @@ extension _AppShellAuthFlowsX on _AppShellState {
       }
       await _applyAuthPayload(result);
       final providerLabel = state == 'google' ? 'Google' : 'GitHub';
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Editor.Auth/oauth.callback',
         message:
@@ -193,7 +193,7 @@ extension _AppShellAuthFlowsX on _AppShellState {
       // Preserved sentinel substrings: "not_registered" and "No account found"
       // feed the registration-prompt branch below.
       if (msg.contains('not_registered') || msg.contains('No account found')) {
-        _log(
+        log(
           level: DebugLogLevel.warning,
           source: 'Editor.Auth/oauth.callback',
           message:
@@ -212,7 +212,7 @@ extension _AppShellAuthFlowsX on _AppShellState {
           );
         }
       } else {
-        _log(
+        log(
           level: DebugLogLevel.error,
           source: 'Editor.Auth/oauth.callback',
           message:
@@ -226,13 +226,13 @@ extension _AppShellAuthFlowsX on _AppShellState {
   /// Fetch a note by UUID and open it in the viewer/editor.
   Future<void> _openNoteByUuid(String uuid) async {
     _isLoading = true;
-    _refresh();
+    refreshState();
     try {
       final detail = await widget.client.getNoteByUuid(uuid, token: _token);
       _selectedNote = detail;
       _selectedIndex = 1;
       _isLoading = false;
-      _refresh();
+      refreshState();
       _replaceNoteUrl(uuid);
       // Open the note viewer/editor dialog after the frame renders.
       if (mounted) {
@@ -244,7 +244,7 @@ extension _AppShellAuthFlowsX on _AppShellState {
     } catch (error) {
       _errorMessage = 'Could not load note: ${error.toString().replaceFirst('Exception: ', '')}';
       _isLoading = false;
-      _refresh();
+      refreshState();
     }
   }
 
@@ -263,7 +263,7 @@ extension _AppShellAuthFlowsX on _AppShellState {
           onSnapshot: _snapshotNote,
           onGetHistory: _getNoteHistory,
           onRestoreVersion: _restoreNoteVersion,
-          onLogEvent: _appendUiLog,
+          onLogEvent: appendUiLog,
           onUploadAttachment: _uploadNoteAttachment,
         ),
       );

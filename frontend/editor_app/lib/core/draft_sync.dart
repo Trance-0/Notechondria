@@ -4,7 +4,7 @@ part of notechondria_frontend;
 /// the manual pull flow with the conflict-dialog UI; `_syncLocalDraft`
 /// is the push flow used after a draft is saved offline. `_sameNoteTitle`
 /// and `_buildPulledLocalDraft` are small helpers consumed by both.
-/// State mutations route through `_refresh()` since extensions can't
+/// State mutations route through `refreshState()` since extensions can't
 /// call `setState` directly. Extracted from `app_shell.dart` so that
 /// file stays closer to the AGENTS.md §1.5 1000-line ceiling.
 extension _AppShellDraftSyncX on _AppShellState {
@@ -189,7 +189,7 @@ extension _AppShellDraftSyncX on _AppShellState {
       await _persistLocalStats();
       // Refresh remote courses and notes so the full cloud state is visible.
       await _loadInitialData();
-      if (mounted) _refresh();
+      if (mounted) refreshState();
       final segments = <String>[];
       if (imported > 0) segments.add('imported $imported');
       if (updated > 0) segments.add('updated $updated');
@@ -197,7 +197,7 @@ extension _AppShellDraftSyncX on _AppShellState {
       final summary = segments.isEmpty
           ? 'local copies already match the cloud'
           : segments.join(', ');
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Editor.Sync.Notes/pull',
         message:
@@ -208,7 +208,7 @@ extension _AppShellDraftSyncX on _AppShellState {
               'Editor.Sync.Notes/pull \u2014 $summary.');
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Editor.Sync.Notes/pull',
         message: 'Cloud notes not pulled: '
@@ -294,8 +294,8 @@ extension _AppShellDraftSyncX on _AppShellState {
       await _persistLocalDrafts();
       await _persistLocalStats();
       await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
-      if (mounted) _refresh();
-      _log(
+      if (mounted) refreshState();
+      log(
         level: DebugLogLevel.info,
         source: 'Editor.Sync.Notes/push',
         message:
@@ -339,8 +339,8 @@ extension _AppShellDraftSyncX on _AppShellState {
     await _persistLocalDrafts();
     await _persistLocalStats();
     await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
-    if (mounted) _refresh();
-    _log(
+    if (mounted) refreshState();
+    log(
       level: DebugLogLevel.info,
       source: 'Editor.Sync.Notes/push',
       message:

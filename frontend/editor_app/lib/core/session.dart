@@ -5,7 +5,7 @@ part of notechondria_frontend;
 /// restore (it picks the newer of local-vs-server settings, saves the
 /// session, reloads data, and pushes any offline courses/drafts); and
 /// `_logout` flips everything back to the anonymous state. State
-/// mutations route through `_refresh()` since extensions can't call
+/// mutations route through `refreshState()` since extensions can't call
 /// `setState` directly. Extracted from `app_shell.dart` so that file
 /// stays closer to the AGENTS.md §1.5 1000-line ceiling.
 extension _AppShellSessionX on _AppShellState {
@@ -54,7 +54,7 @@ extension _AppShellSessionX on _AppShellState {
         'app_settings_updated_at': _localSettings['updated_at'] ??
             DateTime.now().toUtc().toIso8601String(),
       };
-      _log(
+      log(
         level: DebugLogLevel.warning,
         source: 'Editor.Sync.Settings/bootstrap',
         message:
@@ -67,7 +67,7 @@ extension _AppShellSessionX on _AppShellState {
       _token = token;
       _profile = user;
       _settings = settings;
-    _refresh();
+    refreshState();
     await _LocalAppStore.saveSession(token, user);
     await _applyLocalAppSettings({
       'theme_preset': settings['theme_preset']?.toString() ??
@@ -93,7 +93,7 @@ extension _AppShellSessionX on _AppShellState {
       await _syncAllLocalCourses();
       await _syncAllLocalDrafts();
     } catch (error) {
-      _log(
+      log(
         level: DebugLogLevel.warning,
         source: 'Editor.Sync.Notes/push_all',
         message:
@@ -107,7 +107,7 @@ extension _AppShellSessionX on _AppShellState {
         user['username']?.toString() ??
             user['email']?.toString() ??
             'user';
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Editor.Auth/applyAuthPayload',
       message:
@@ -115,7 +115,7 @@ extension _AppShellSessionX on _AppShellState {
           'authenticated as $displayName.',
     );
     if (mounted) {
-      _showMessage('Signed in as $displayName.');
+      showMessage('Signed in as $displayName.');
     }
   }
 
@@ -125,7 +125,7 @@ extension _AppShellSessionX on _AppShellState {
     try {
       await widget.client.logout(token);
     } catch (error) {
-      _log(
+      log(
         level: DebugLogLevel.warning,
         source: 'Editor.Auth/logout',
         message:
@@ -138,13 +138,13 @@ extension _AppShellSessionX on _AppShellState {
       _profile = null;
       _settings = null;
       _deletedNotes = const [];
-    _refresh();
+    refreshState();
     await _LocalAppStore.clearSession();
     await _loadInitialData();
-    _showMessage(
+    showMessage(
       'Signed out: Editor.Auth/logout \u2014 local session cleared.',
     );
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Editor.Auth/logout',
       message:

@@ -53,7 +53,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
                     Navigator.of(context).pop(); // close drawer
                       _selectedCategoryId = null;
                       _selectedIndex = 1;
-                    _refresh();
+                    refreshState();
                     _loadLearnerNotes(
                         reset: true, query: _learnerSearchQuery);
                   },
@@ -67,7 +67,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
                   child: InkWell(
                     onTap: () {
                       _coursePanelExpanded = !_coursePanelExpanded;
-                      _refresh();
+                      refreshState();
                     },
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
@@ -262,7 +262,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
                       onTap: () {
                           _selectedCategoryId = null;
                           _selectedIndex = 1;
-                        _refresh();
+                        refreshState();
                         _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
                       },
                     ),
@@ -275,7 +275,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
                       child: InkWell(
                         onTap: () {
                           _coursePanelExpanded = !_coursePanelExpanded;
-                          _refresh();
+                          refreshState();
                         },
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
@@ -468,7 +468,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
                             IconButton(
                               onPressed: () {
                                 _errorMessage = null;
-                                _refresh();
+                                refreshState();
                               },
                               icon: const Icon(Icons.close),
                               tooltip: 'Dismiss',
@@ -542,7 +542,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
           onDeleteNote: _deleteNoteToRecycleBin,
           onSyncLocalDraft: _syncLocalDraft,
           onSyncAllLocalDrafts: _syncAllLocalDrafts,
-          onLogEvent: _appendUiLog,
+          onLogEvent: appendUiLog,
           onUploadAttachment: _uploadNoteAttachment,
         );
       case 4:
@@ -581,7 +581,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
                         ..._settings ?? <String, dynamic>{},
                         'api_key_prefix': newPrefix,
                       };
-                    _refresh();
+                    refreshState();
                   }
                   return result;
                 }
@@ -609,8 +609,8 @@ extension _AppShellBuildHelpersX on _AppShellState {
               _httpClient?.baseUrl,
           debugSnapshotListenable: _httpClient?.debugSnapshot,
           debugHistoryListenable: _httpClient?.debugHistory,
-          debugLogController: _logController,
-          uiLogs: _uiLogs,
+          debugLogController: logController,
+          uiLogs: uiLogs,
         );
       default:
         return const SizedBox.shrink();

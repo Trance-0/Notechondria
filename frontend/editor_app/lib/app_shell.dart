@@ -84,7 +84,15 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell>
+    with AppShellLogMixin<AppShell> {
+  @override
+  final List<String> uiLogs = <String>[];
+  @override
+  final DebugLogController logController = DebugLogController();
+  @override
+  Future<void> persistUiLogs() => _persistUiLogs();
+
   // ---------------------------------------------------------------------------
   // State
   // ---------------------------------------------------------------------------
@@ -125,8 +133,6 @@ class _AppShellState extends State<AppShell> {
   /// Learner search scope: 'personal' (default) = only the user's own notes,
   /// 'all' = user's notes plus public notes from any other user.
   String _learnerSearchScope = 'personal';
-  final List<String> _uiLogs = <String>[];
-  final DebugLogController _logController = DebugLogController();
 
   /// Currently selected category (course) for note filtering. null = all notes.
   int? _selectedCategoryId;
@@ -221,7 +227,7 @@ class _AppShellState extends State<AppShell> {
     // network failures).
     _httpClient?.setLogger((level, source, message) {
       if (!mounted) return;
-      _log(level: level, source: source, message: message);
+      log(level: level, source: source, message: message);
     });
     _bootstrapApp();
   }
@@ -230,7 +236,7 @@ class _AppShellState extends State<AppShell> {
   void dispose() {
     _splashTimer?.cancel();
     _splashStatus.dispose();
-    _logController.dispose();
+    logController.dispose();
     super.dispose();
   }
 
@@ -263,7 +269,7 @@ class _AppShellState extends State<AppShell> {
   // extensions on `_AppShellState` under `lib/core/*.dart` so this
   // file stays closer to the AGENTS.md \u00a71.5 1000-line ceiling.
   // Each extension picks up the library-private fields on `this`
-  // and routes any UI rebuilds through the shared `_refresh()`
+  // and routes any UI rebuilds through the shared `refreshState()`
   // wrapper below, since `setState` is `@protected` and invisible
   // to extensions.
   //
@@ -280,7 +286,7 @@ class _AppShellState extends State<AppShell> {
   //   local_persist.dart          _persistLocal* + snapshot
   //   local_starter.dart          first-run Inbox seed
   //   local_trash.dart            client-side recycle bin
-  //   logging.dart                _log / _timed<T>
+  //   logging.dart                log / timed<T>
   //   maintenance_actions.dart    sync-now / clear / template reset
   //   note_crud.dart              create / save / import / export
   //   note_loading.dart           learner list + course/note select
@@ -288,20 +294,6 @@ class _AppShellState extends State<AppShell> {
   //   session.dart                _applyAuthPayload + _logout
   //   settings_actions.dart       settings panel + avatar upload
   //   settings_helpers.dart       app_settings payload helpers
-
-  /// Shared `setState` wrapper for extensions. `setState` itself is
-  /// `@protected` and invisible to extensions even when they live in
-  /// the same library, so extensions mutate the state fields
-  /// directly and then call this to trigger a rebuild.
-  void _refresh() {
-    if (mounted) setState(() {});
-  }
-
-  void _showMessage(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
-  }
 
   // ---------------------------------------------------------------------------
   // Build

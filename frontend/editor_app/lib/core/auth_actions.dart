@@ -4,7 +4,7 @@ part of notechondria_frontend;
 /// call and returns `ActionFeedback` for the settings/login panels.
 /// `_verify` and `_login` bounce through `_applyAuthPayload` (stays on
 /// `_AppShellState`) to swap the full session bucket. No direct state
-/// mutation here, so no `_refresh()` call is needed. Extracted from
+/// mutation here, so no `refreshState()` call is needed. Extracted from
 /// `app_shell.dart` so that file stays closer to the AGENTS.md §1.5
 /// 1000-line ceiling.
 extension _AppShellAuthActionsX on _AppShellState {

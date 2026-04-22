@@ -17,7 +17,7 @@ extension _AppShellNoteSessionsX on _AppShellState {
         'summary': summary,
         'started_at': DateTime.now().toIso8601String(),
       });
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Editor.UI/note_session.start',
         message:
@@ -28,7 +28,7 @@ extension _AppShellNoteSessionsX on _AppShellState {
       return session['id'] as int?;
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Editor.UI/note_session.start',
         message:
@@ -49,7 +49,7 @@ extension _AppShellNoteSessionsX on _AppShellState {
         if (summary != null) 'summary': summary,
         'ended_at': DateTime.now().toIso8601String(),
       });
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Editor.UI/note_session.finish',
         message:
@@ -59,7 +59,7 @@ extension _AppShellNoteSessionsX on _AppShellState {
       );
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
-      _log(
+      log(
         level: DebugLogLevel.warning,
         source: 'Editor.UI/note_session.finish',
         message:

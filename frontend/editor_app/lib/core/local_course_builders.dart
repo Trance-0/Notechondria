@@ -121,7 +121,7 @@ extension _AppShellLocalCourseBuildersX on _AppShellState {
     await _persistLocalDrafts();
     await _persistLocalStats();
     await _persistLocalCache();
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Editor.Sync.Courses/push',
       message:

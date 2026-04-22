@@ -3,7 +3,7 @@ part of notechondria_frontend;
 /// Build-helpers for `_SettingsPageState`: the big per-section Card
 /// widgets (online-account, profile fields, preferences, debug) plus
 /// the password/email change dialogs and the avatar preview. Routes
-/// state mutations through `_refresh()` since extensions can't call
+/// state mutations through `refreshState()` since extensions can't call
 /// `setState` directly (same pattern used on `_AppShellState`).
 /// Extracted from `modules/settings.dart` so that file stays closer
 /// to the AGENTS.md §1.5 1000-line ceiling.
@@ -102,7 +102,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
                     'Upload local drafts and categories to your cloud account.'),
                 dense: true,
                 onTap: () => _runMaintenanceAction(
-                  () => widget.onSyncLocalData(showMessage: false),
+                  () => widget.onSyncLocalData(announce: false),
                 ),
               ),
               ListTile(
@@ -573,7 +573,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
           onChanged: (_) {
             if (_socialLinkError != null) {
               _socialLinkError = null;
-              _refresh();
+              refreshState();
             }
           },
         ),
@@ -661,9 +661,9 @@ extension _SettingsPageBuildX on _SettingsPageState {
               themeMode: _themeMode,
               apiBaseController: _apiBaseController,
               isAuthenticated: _isAuthenticated,
-              onEditorModeChanged: (v) { _editorMode = v; _refresh(); },
-              onThemePresetChanged: (v) { _themePreset = v; _refresh(); },
-              onThemeModeChanged: (v) { _themeMode = v; _refresh(); },
+              onEditorModeChanged: (v) { _editorMode = v; refreshState(); },
+              onThemePresetChanged: (v) { _themePreset = v; refreshState(); },
+              onThemeModeChanged: (v) { _themeMode = v; refreshState(); },
               offlineMode: widget.onOfflineModeChanged == null
                   ? null
                   : widget.localSettings['offline_mode'] == true,

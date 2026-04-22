@@ -5,7 +5,7 @@ part of notechondria_frontend;
 /// is the public "sync now" button, `_clearLocalData` is the nuke
 /// option, `_restoreTemplateCourses` re-seeds the starter Inbox after
 /// a clear, and the rest manage soft-deleted cloud notes. State
-/// mutations route through `_refresh()` since extensions can't call
+/// mutations route through `refreshState()` since extensions can't call
 /// `setState` directly. Extracted from `app_shell.dart` so that file
 /// stays closer to the AGENTS.md §1.5 1000-line ceiling.
 extension _AppShellMaintenanceX on _AppShellState {
@@ -17,8 +17,8 @@ extension _AppShellMaintenanceX on _AppShellState {
           .where((item) => item['id'] != noteId)
           .toList(growable: false);
       await _persistLocalDrafts();
-      _refresh();
-      _log(
+      refreshState();
+      log(
         level: DebugLogLevel.info,
         source: 'Editor.Sync.Notes/delete_local',
         message:
@@ -39,8 +39,8 @@ extension _AppShellMaintenanceX on _AppShellState {
     await widget.client.deleteNote(token, noteId);
     _deletedNotes = await widget.client.getDeletedNotes(token);
     await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
-    _refresh();
-    _log(
+    refreshState();
+    log(
       level: DebugLogLevel.info,
       source: 'Editor.Sync.Notes/delete',
       message:
@@ -64,8 +64,8 @@ extension _AppShellMaintenanceX on _AppShellState {
     await widget.client.restoreDeletedNote(token, noteId);
     _deletedNotes = await widget.client.getDeletedNotes(token);
     await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
-    _refresh();
-    _log(
+    refreshState();
+    log(
       level: DebugLogLevel.info,
       source: 'Editor.Sync.Notes/restore',
       message:
@@ -86,8 +86,8 @@ extension _AppShellMaintenanceX on _AppShellState {
     await widget.client.emptyDeletedNotes(token);
     _deletedNotes = const [];
 
-    _refresh();
-    _log(
+    refreshState();
+    log(
       level: DebugLogLevel.info,
       source: 'Editor.Sync.Notes/empty_trash',
       message:
@@ -106,7 +106,7 @@ extension _AppShellMaintenanceX on _AppShellState {
       try {
         await _syncLocalCourse(course);
       } catch (error) {
-        _log(
+        log(
           level: DebugLogLevel.warning,
           source: 'Editor.Sync.Courses/push',
           message: 'Local category not synced: '
@@ -117,7 +117,7 @@ extension _AppShellMaintenanceX on _AppShellState {
         );
       }
     }
-    if (mounted) _refresh();
+    if (mounted) refreshState();
   }
 
   Future<void> _syncAllLocalDrafts() async {
@@ -130,7 +130,7 @@ extension _AppShellMaintenanceX on _AppShellState {
       try {
         await _syncLocalDraft(draft);
       } catch (error) {
-        _log(
+        log(
           level: DebugLogLevel.warning,
           source: 'Editor.Sync.Notes/push',
           message: 'Local draft not synced: '
@@ -141,11 +141,11 @@ extension _AppShellMaintenanceX on _AppShellState {
         );
       }
     }
-    if (mounted) _refresh();
+    if (mounted) refreshState();
   }
 
   Future<ActionFeedback> _syncAllLocalData(
-      {bool showMessage = true}) async {
+      {bool announce = true}) async {
     final token = _token;
     if (token == null || token.isEmpty) {
       return const ActionFeedback(
@@ -162,7 +162,7 @@ extension _AppShellMaintenanceX on _AppShellState {
           message: 'Local data synced: '
               'Editor.Sync.Notes/push_all \u2014 '
               'all local courses and drafts pushed to cloud.');
-      if (showMessage) _showMessage(feedback.message);
+      if (announce) showMessage(feedback.message);
       return feedback;
     } catch (error) {
       _localStats = {
@@ -172,14 +172,14 @@ extension _AppShellMaintenanceX on _AppShellState {
       };
       await _persistLocalStats();
       final cause = error.toString().replaceFirst('Exception: ', '');
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Editor.Sync.Notes/push_all',
         message: 'Local data not synced: '
             'Editor.Sync.Notes/push_all \u2014 $cause.',
       );
-      if (showMessage) {
-        _showMessage(
+      if (announce) {
+        showMessage(
           'Local data not synced: '
           'Editor.Sync.Notes/push_all \u2014 $cause.',
         );
@@ -220,8 +220,8 @@ extension _AppShellMaintenanceX on _AppShellState {
       localCourses: _localCourses,
       frontPage: _frontPage,
     );
-    if (mounted) _refresh();
-    _log(
+    if (mounted) refreshState();
+    log(
       level: DebugLogLevel.info,
       source: 'Editor.LocalStore/clear',
       message:
@@ -234,16 +234,16 @@ extension _AppShellMaintenanceX on _AppShellState {
   }
 
   Future<void> _copyFrontendLogs() async {
-    final content = _uiLogs.join('\n');
+    final content = uiLogs.join('\n');
     await Clipboard.setData(ClipboardData(text: content));
       _localStats = {
         ..._localStats,
         'logs_copied':
             ((_localStats['logs_copied'] as num?)?.toInt() ?? 0) + 1,
       };
-    _refresh();
+    refreshState();
     await _persistLocalStats();
-    _showMessage(
+    showMessage(
       'Logs copied: Editor.LocalStore/copy_logs \u2014 '
       'frontend debug log now on the clipboard.',
     );
@@ -268,16 +268,16 @@ extension _AppShellMaintenanceX on _AppShellState {
           : 'Template courses restored: '
               'Editor.LocalStore/restore_templates \u2014 '
               'server seeded default category tree.';
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Editor.LocalStore/restore_templates',
         message: message,
       );
-      _showMessage(message);
+      showMessage(message);
       return ActionFeedback(message: message);
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Editor.LocalStore/restore_templates',
         message: 'Template courses not restored: '

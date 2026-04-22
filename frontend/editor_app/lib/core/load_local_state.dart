@@ -3,7 +3,7 @@ part of notechondria_frontend;
 /// Cold-boot local-state loader. Runs once at `initState()` to hydrate
 /// every in-memory bucket (`_localSettings`, `_localDrafts`,
 /// `_localCourses`, `_localTrashedDrafts`, `_localTrashedCourses`,
-/// `_localStats`, `_localCache`, `_uiLogs`, `_frontPage`, `_courses`,
+/// `_localStats`, `_localCache`, `uiLogs`, `_frontPage`, `_courses`,
 /// `_selectedCourse`) from `_LocalAppStore`, then seeds the starter
 /// workspace if the user has nothing yet and kicks off the one-shot
 /// 0.1.37 attachment migration. Includes a small 0.1.38 shim that
@@ -32,13 +32,13 @@ extension _AppShellLoadLocalStateX on _AppShellState {
     _localTrashedCourses = snapshot.trashedCourses;
     _localStats = snapshot.stats;
     _localCache = snapshot.cache;
-    _uiLogs
+    uiLogs
       ..clear()
       ..addAll(snapshot.logs);
-    _logController.replaceAll(
+    logController.replaceAll(
       snapshot.logs.map(DebugLogEntry.fromPersistedString),
     );
-    _logController.bindCacheProvider(_snapshotLocalStore);
+    logController.bindCacheProvider(_snapshotLocalStore);
     _frontPage = Map<String, dynamic>.from(
       snapshot.cache['front_page'] as Map? ?? const {},
     );
@@ -60,7 +60,7 @@ extension _AppShellLoadLocalStateX on _AppShellState {
       _localSettings['theme_mode']?.toString() ?? 'S',
     );
     if (mounted) {
-      _refresh();
+      refreshState();
     }
     // One-time migration of 0.1.37-era inline base64 queued
     // attachments into LocalAttachmentStore. Run fire-and-forget so

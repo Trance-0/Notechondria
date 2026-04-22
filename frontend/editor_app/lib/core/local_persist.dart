@@ -34,7 +34,7 @@ extension _AppShellLocalPersistX on _AppShellState {
   }
 
   Future<void> _persistUiLogs() async {
-    await _LocalAppStore.saveLogs(_uiLogs);
+    await _LocalAppStore.saveLogs(uiLogs);
   }
 
   /// Snapshot of the in-memory "cache" the debug terminal can navigate with
@@ -46,7 +46,7 @@ extension _AppShellLocalPersistX on _AppShellState {
       'courses': _localCourses,
       'stats': _localStats,
       'cache': _localCache,
-      'logs': _uiLogs,
+      'logs': uiLogs,
       'session': _token == null
           ? null
           : {
@@ -74,7 +74,7 @@ extension _AppShellLocalPersistX on _AppShellState {
       if (!identical(migrated, _localDrafts)) {
         _localDrafts = migrated;
         await _LocalAppStore.saveDrafts(_localDrafts);
-        _refresh();
+        refreshState();
       }
       _localSettings = {
         ..._localSettings,
@@ -82,7 +82,7 @@ extension _AppShellLocalPersistX on _AppShellState {
             DateTime.now().toUtc().toIso8601String(),
       };
       await _LocalAppStore.saveSettings(_localSettings);
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Editor.LocalStore/attachment_store_migrate',
         message:
@@ -92,7 +92,7 @@ extension _AppShellLocalPersistX on _AppShellState {
             'LocalAttachmentStore; drafts rewritten to local:// URLs.',
       );
     } catch (error) {
-      _log(
+      log(
         level: DebugLogLevel.warning,
         source: 'Editor.LocalStore/attachment_store_migrate',
         message:

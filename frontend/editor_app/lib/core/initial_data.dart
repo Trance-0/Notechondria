@@ -4,7 +4,7 @@ part of notechondria_frontend;
 /// data-loading orchestrator. Fires every remote fetch needed to
 /// render the first paint (front page, courses, selected course
 /// notes, soft-deleted notes, learner list), then commits the
-/// result in one big field update routed through `_refresh()`.
+/// result in one big field update routed through `refreshState()`.
 /// Also detects a rejected DRF token across ≥2 authenticated
 /// endpoints and clears the local session so the user sees the
 /// auth UI instead of a stale identity. Extracted from
@@ -14,7 +14,7 @@ extension _AppShellInitialDataX on _AppShellState {
   Future<void> _loadInitialData() async {
       _isLoading = true;
       _errorMessage = null;
-    _refresh();
+    refreshState();
     final errors = <String>[];
     _httpClient?.updateBaseUrl(
       _localSettings['api_base_url']?.toString() ?? _defaultApiBaseUrl(),
@@ -51,8 +51,8 @@ extension _AppShellInitialDataX on _AppShellState {
         _errorMessage = null;
         _isLoading = false;
         _showSplash = false;
-      _refresh();
-      _log(
+      refreshState();
+      log(
         source: 'Editor._loadInitialData',
         level: DebugLogLevel.info,
         message:
@@ -64,7 +64,7 @@ extension _AppShellInitialDataX on _AppShellState {
 
     _splashStatus.value = 'Loading public notes data';
     try {
-      frontPage = await _timed(
+      frontPage = await timed(
         'Editor._loadInitialData.getFrontPage',
         () => widget.client.getFrontPage(token: _token),
       );
@@ -74,7 +74,7 @@ extension _AppShellInitialDataX on _AppShellState {
     }
     _splashStatus.value = 'Loading categories';
     try {
-      courses = (await _timed(
+      courses = (await timed(
         'Editor._loadInitialData.getCourses',
         () => widget.client.getCourses(token: _token),
       ))
@@ -125,7 +125,7 @@ extension _AppShellInitialDataX on _AppShellState {
         courseNotes = _localNotesForCourse(selectedCourse);
       } else {
         try {
-          courseNotes = await _timed(
+          courseNotes = await timed(
             'Editor._loadInitialData.getCourseNotes',
             () => widget.client.getCourseNotes(
               selectedCourse['id'] as int,
@@ -152,7 +152,7 @@ extension _AppShellInitialDataX on _AppShellState {
     }
     _splashStatus.value = 'Loading notes';
     try {
-      notePage = await _timed(
+      notePage = await timed(
         'Editor._loadInitialData.listNotes',
         () => widget.client.listNotes(
           token: (_token != null && _token!.isNotEmpty) ? _token : null,
@@ -208,11 +208,11 @@ extension _AppShellInitialDataX on _AppShellState {
       _errorMessage = errors.isEmpty ? null : errors.first;
       _isLoading = false;
       _showSplash = false;
-    _refresh();
+    refreshState();
     if (updatedCache) {
       await _persistLocalCache();
     }
-    _log(
+    log(
       source: 'Editor._loadInitialData',
       level: errors.isEmpty
           ? DebugLogLevel.info

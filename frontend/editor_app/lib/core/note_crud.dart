@@ -6,7 +6,7 @@ part of notechondria_frontend;
 /// cleanup that uploads pending images when connectivity returns.
 /// Yaml frontmatter helpers `_frontmatterForNote`, `_yamlEscape`, and
 /// `_noteMarkdownBody` feed the export path. State mutations route
-/// through `_refresh()` since extensions can't call `setState`
+/// through `refreshState()` since extensions can't call `setState`
 /// directly. Extracted from `app_shell.dart` so that file stays
 /// closer to the AGENTS.md §1.5 1000-line ceiling.
 extension _AppShellNoteCrudX on _AppShellState {
@@ -40,7 +40,7 @@ extension _AppShellNoteCrudX on _AppShellState {
       await _persistLocalStats();
         _selectedNote = draft;
         _selectedIndex = 1;
-      _refresh();
+      refreshState();
       return draft;
     }
     final payload = <String, dynamic>{
@@ -57,7 +57,7 @@ extension _AppShellNoteCrudX on _AppShellState {
       await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
         _selectedNote = created;
         _selectedIndex = 1;
-      _refresh();
+      refreshState();
       final uuid = created['uuid']?.toString();
       if (uuid != null) _pushNoteUrl(uuid);
       return created;
@@ -71,15 +71,15 @@ extension _AppShellNoteCrudX on _AppShellState {
       final cause = error.toString().replaceFirst('Exception: ', '');
         _selectedNote = draft;
         _selectedIndex = 1;
-      _refresh();
-      _log(
+      refreshState();
+      log(
         level: DebugLogLevel.warning,
         source: 'Editor.Sync.Notes/create',
         message:
             'Note saved locally, cloud create deferred: '
             'Editor.Sync.Notes/create \u2014 $cause.',
       );
-      _showMessage(
+      showMessage(
         'Note saved locally: Editor.Sync.Notes/create \u2014 '
         'backend unavailable ($cause); kept as draft for next sync.',
       );
@@ -121,7 +121,7 @@ extension _AppShellNoteCrudX on _AppShellState {
       await _persistLocalDrafts();
       _selectedNote = updated;
 
-      _refresh();
+      refreshState();
       return updated;
     }
     final token = _token;
@@ -133,7 +133,7 @@ extension _AppShellNoteCrudX on _AppShellState {
       await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
       _selectedNote = updated;
 
-      _refresh();
+      refreshState();
       final uuid = updated['uuid']?.toString();
       if (uuid != null) _replaceNoteUrl(uuid);
       return updated;
@@ -148,15 +148,15 @@ extension _AppShellNoteCrudX on _AppShellState {
       final cause = error.toString().replaceFirst('Exception: ', '');
       _selectedNote = fallbackDraft;
 
-      _refresh();
-      _log(
+      refreshState();
+      log(
         level: DebugLogLevel.warning,
         source: 'Editor.Sync.Notes/save',
         message:
             'Note save deferred to local draft: '
             'Editor.Sync.Notes/save \u2014 $cause.',
       );
-      _showMessage(
+      showMessage(
         'Note saved locally: Editor.Sync.Notes/save \u2014 '
         'backend unavailable ($cause); changes kept as a local draft.',
       );
@@ -220,7 +220,7 @@ extension _AppShellNoteCrudX on _AppShellState {
         try {
           bytes = await store.getBytes(localUrl: localUrl);
         } catch (error) {
-          _log(
+          log(
             level: DebugLogLevel.warning,
             source: 'Editor.Sync.Notes/attachment.promote',
             message:
@@ -257,7 +257,7 @@ extension _AppShellNoteCrudX on _AppShellState {
           }
         }
       } catch (error) {
-        _log(
+        log(
           level: DebugLogLevel.warning,
           source: 'Editor.Sync.Notes/attachment.promote',
           message:
@@ -288,7 +288,7 @@ extension _AppShellNoteCrudX on _AppShellState {
           'content': content,
           'metadata_json': jsonEncode(metadata),
         });
-        _log(
+        log(
           level: DebugLogLevel.info,
           source: 'Editor.Sync.Notes/attachment.promote',
           message:
@@ -339,7 +339,7 @@ extension _AppShellNoteCrudX on _AppShellState {
     await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
     _selectedNote = restored;
 
-    _refresh();
+    refreshState();
     return restored;
   }
 
@@ -369,10 +369,10 @@ extension _AppShellNoteCrudX on _AppShellState {
           title: parsed.title ?? _extractTitleFromMarkdown(parsed.body),
           description: parsed.description ?? '',
         );
-        _showMessage("Imported '${created['title']}'.");
+        showMessage("Imported '${created['title']}'.");
       }
     } catch (error) {
-      _showMessage(error.toString().replaceFirst('Exception: ', ''));
+      showMessage(error.toString().replaceFirst('Exception: ', ''));
     }
   }
 
@@ -413,7 +413,7 @@ extension _AppShellNoteCrudX on _AppShellState {
         );
         importedCount += 1;
       } catch (error) {
-        _log(
+        log(
           level: DebugLogLevel.warning,
           source: 'Editor.LocalStore/import_zip',
           message:
@@ -426,10 +426,10 @@ extension _AppShellNoteCrudX on _AppShellState {
       }
     }
     if (importedCount == 0) {
-      _showMessage('No markdown entries found in archive.');
+      showMessage('No markdown entries found in archive.');
     } else {
       final suffix = skippedCount > 0 ? ' ($skippedCount skipped)' : '';
-      _showMessage('Imported $importedCount note(s) from zip.$suffix');
+      showMessage('Imported $importedCount note(s) from zip.$suffix');
     }
   }
 
@@ -536,7 +536,7 @@ extension _AppShellNoteCrudX on _AppShellState {
         );
       }
     } catch (error) {
-      _showMessage(error.toString().replaceFirst('Exception: ', ''));
+      showMessage(error.toString().replaceFirst('Exception: ', ''));
     }
   }
 
@@ -654,7 +654,7 @@ extension _AppShellNoteCrudX on _AppShellState {
     final file = XFile.fromData(bytes,
         name: '$baseName.md', mimeType: 'text/markdown');
     await file.saveTo(location.path);
-    _showMessage('Exported ${notes.length} note(s) to ${location.path}.');
+    showMessage('Exported ${notes.length} note(s) to ${location.path}.');
   }
 
   /// Writes notes as a zip archive where each note becomes a separate .md.
@@ -693,12 +693,12 @@ extension _AppShellNoteCrudX on _AppShellState {
     }
     final zipData = ZipEncoder().encode(archive);
     if (zipData == null) {
-      _showMessage('Failed to encode zip archive.');
+      showMessage('Failed to encode zip archive.');
       return;
     }
     final file = XFile.fromData(Uint8List.fromList(zipData),
         name: '$baseName.zip', mimeType: 'application/zip');
     await file.saveTo(location.path);
-    _showMessage('Exported ${notes.length} note(s) to ${location.path}.');
+    showMessage('Exported ${notes.length} note(s) to ${location.path}.');
   }
 }

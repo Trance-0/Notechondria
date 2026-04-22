@@ -38,7 +38,6 @@ part 'core/initial_data.dart';
 part 'core/load_local_state.dart';
 part 'core/local_archive_io.dart';
 part 'core/local_course_builders.dart';
-part 'core/logging.dart';
 part 'core/maintenance_actions.dart';
 part 'core/note_crud.dart';
 part 'core/local_persist.dart';
