@@ -65,7 +65,7 @@ extension _AppShellLocalTrashX on _AppShellState {
         .toList(growable: false);
     await _persistLocalDrafts();
     await _persistLocalTrashedDrafts();
-    _trashRefresh();
+    refreshState();
     final title = restored['title']?.toString() ?? 'draft';
     log(
       level: DebugLogLevel.info,
@@ -104,7 +104,7 @@ extension _AppShellLocalTrashX on _AppShellState {
         .toList(growable: false);
     await _persistLocalCourses();
     await _persistLocalTrashedCourses();
-    _trashRefresh();
+    refreshState();
     final title = restored['title']?.toString() ?? 'category';
     log(
       level: DebugLogLevel.info,
