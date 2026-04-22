@@ -471,6 +471,49 @@ wins on conflicts.</p>
 <p>Completed rounds live in <code>./docs/versions/&lt;semver&gt;.md</code> — do <strong>not</strong>
 restate them here. When a task is landed, delete its entry from this
 file and add a round-log entry to the new version doc.</p>
+<ul>
+<li><input disabled="" type="checkbox"/>
+<strong>File-size rule enforcement — remaining splits.</strong> 0.1.52 codified
+the 1000-LOC hard ceiling in AGENTS.md §1.5 and carved the recycle-bin
+code out of each <code>app_shell.dart</code> into a <code>core/local_trash.dart</code>
+partial (proof of pattern — extension on <code>_AppShellState</code> with a
+<code>_trashRefresh</code> wrapper around <code>setState</code>). Remaining files still
+above 1000 LOC that need splitting:
+<ul>
+<li><code>frontend/editor_app/lib/app_shell.dart</code> (~5211) — next cohesive
+chunks: OAuth/auth flow (<code>_handleOAuthCallback</code>, <code>_applyAuthPayload</code>,
+<code>_login</code>, <code>_register</code>, <code>_logout</code>, bind helpers), sync loops
+(<code>_syncLocalDraft</code>, <code>_syncLocalCourse</code>, <code>_syncAllLocal*</code>, promote),
+local-archive export/import (<code>_exportLocalArchive</code>,
+<code>_restoreFromLocalImport</code>), sidebar category handlers
+(<code>_promptEditCategory</code>, <code>_deleteCategory</code>, <code>_unsubscribeCategory</code>,
+<code>_renameCategory</code>).</li>
+<li><code>frontend/planner_app/lib/app_shell.dart</code> (~3861) and
+<code>frontend/portal_app/lib/app_shell.dart</code> (~3760) — same cohorts
+apply; most code mirrors editor's with the same names.</li>
+<li><code>frontend/editor_app/lib/modules/settings.dart</code> (~1781) — section
+builders cleanly split into per-section widgets (app preferences,
+account / identity, API key section, sync + maintenance, debug
+log). Several already exist as private StatelessWidgets; the rest
+are inline build helpers.</li>
+<li><code>frontend/editor_app/lib/modules/note_editor.dart</code> (~1472) — the
+markdown inline-syntax parser + the image builder + the details
+dialog can each become separate partials.</li>
+<li><code>frontend/planner_app/lib/modules/learner.dart</code> (~1645),
+<code>frontend/portal_app/lib/modules/learner.dart</code> (~1504) — the
+inlined note editor is a good extraction candidate.</li>
+<li><code>frontend/editor_app/lib/core/client.dart</code> (~1291),
+<code>frontend/planner_app/lib/core/client.dart</code> (~1055),
+<code>frontend/portal_app/lib/core/client.dart</code> (~1065) — Dart's
+class-body split is constrained (extensions can't implement
+interface methods) so these need a different approach: extract
+<code>_decode</code>, <code>_stringifyErrors</code>, <code>_shapedErrorMessage</code>, <code>_send</code>,
+<code>_headers</code>, <code>_previewBody</code>, <code>_recordDebugSnapshot</code> into a base
+class / mixin. Worth ~200 LOC per file; won't get each file
+under 1000 alone but is a good incremental step.</li>
+</ul>
+</li>
+</ul>
 <h2 id="bugs"><a class="header" href="#bugs">Bugs</a></h2>
 <ul>
 <li><input disabled="" type="checkbox"/>
