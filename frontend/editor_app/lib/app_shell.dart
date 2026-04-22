@@ -85,13 +85,19 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell>
-    with AppShellLogMixin<AppShell> {
+    with
+        AppShellLogMixin<AppShell>,
+        AppShellAuthActionsMixin<AppShell> {
   @override
   final List<String> uiLogs = <String>[];
   @override
   final DebugLogController logController = DebugLogController();
   @override
   Future<void> persistUiLogs() => _persistUiLogs();
+  @override
+  AuthClient get authClient => widget.client;
+  @override
+  String get logAppTag => 'Editor';
 
   // ---------------------------------------------------------------------------
   // State
@@ -273,7 +279,7 @@ class _AppShellState extends State<AppShell>
   // wrapper below, since `setState` is `@protected` and invisible
   // to extensions.
   //
-  //   auth_actions.dart           _register / _login / _verify / etc.
+  //   auth_actions.dart           register / login / verify / etc.
   //   auth_flows.dart             OAuth + session-restore + deep-link
   //   category_actions.dart       create / edit / delete category
   //   course_helpers.dart         read-side course projections
@@ -291,9 +297,155 @@ class _AppShellState extends State<AppShell>
   //   note_crud.dart              create / save / import / export
   //   note_loading.dart           learner list + course/note select
   //   note_sessions.dart          cloud note-session tracking
-  //   session.dart                _applyAuthPayload + _logout
+  //   session.dart                applyAuthPayload + _logout
   //   settings_actions.dart       settings panel + avatar upload
   //   settings_helpers.dart       app_settings payload helpers
+
+  @override
+  Future<void> applyAuthPayload(Map<String, dynamic> payload) async {
+    final token = payload['token']?.toString() ?? '';
+    final user = Map<String, dynamic>.from(payload['user'] as Map? ?? {});
+    Map<String, dynamic> settings;
+    try {
+      settings = await widget.client.getSettings(token);
+      final localUpdated =
+          _parseUpdatedAt(_localSettings['updated_at']?.toString());
+      final serverUpdated =
+          _parseUpdatedAt(settings['app_settings_updated_at']?.toString());
+      if (localUpdated.isAfter(serverUpdated)) {
+        settings = await widget.client.updateSettings(token, {
+          'app_settings': _currentAppSettingsPayload(),
+          'app_settings_updated_at': _localSettings['updated_at'],
+          'theme_preset': _localSettings['theme_preset'],
+          'theme_mode': _localSettings['theme_mode'],
+          'api_base_url': _localSettings['api_base_url'],
+        });
+      } else {
+        final serverAppSettings = Map<String, dynamic>.from(
+          settings['app_settings'] as Map? ??
+              _currentAppSettingsPayload(
+                themePreset: settings['theme_preset']?.toString(),
+                themeMode: settings['theme_mode']?.toString(),
+                apiBaseUrl: settings['api_base_url']?.toString(),
+              ),
+        );
+        await _applyLocalAppSettings({
+          ...serverAppSettings,
+          'updated_at': settings['app_settings_updated_at']?.toString() ??
+              DateTime.now().toUtc().toIso8601String(),
+        });
+      }
+    } catch (error) {
+      settings = {
+        'username': user['username'],
+        'email': user['email'],
+        'editor_mode': _settings?['editor_mode'] ?? 'P',
+        'theme_preset': _localSettings['theme_preset'],
+        'theme_mode': _localSettings['theme_mode'],
+        'api_base_url': _localSettings['api_base_url'],
+        'app_settings': _currentAppSettingsPayload(),
+        'app_settings_updated_at': _localSettings['updated_at'] ??
+            DateTime.now().toUtc().toIso8601String(),
+      };
+      log(
+        level: DebugLogLevel.warning,
+        source: 'Editor.Sync.Settings/bootstrap',
+        message:
+            'Remote settings unavailable right after login: '
+            'Editor.Sync.Settings/bootstrap \u2014 '
+            '${error.toString().replaceFirst('Exception: ', '')}. '
+            'Using cached local settings.',
+      );
+    }
+      _token = token;
+      _profile = user;
+      _settings = settings;
+    refreshState();
+    await _LocalAppStore.saveSession(token, user);
+    await _applyLocalAppSettings({
+      'theme_preset': settings['theme_preset']?.toString() ??
+          _localSettings['theme_preset'],
+      'theme_mode':
+          settings['theme_mode']?.toString() ?? _localSettings['theme_mode'],
+      'api_base_url': settings['api_base_url']?.toString() ??
+          _localSettings['api_base_url'],
+      'updated_at': settings['app_settings_updated_at']?.toString() ??
+          _localSettings['updated_at'],
+      'log_preferences': Map<String, dynamic>.from(
+        (settings['app_settings'] as Map?)?['log_preferences'] as Map? ??
+            _localSettings['log_preferences'] as Map? ??
+            {},
+      ),
+    });
+    await _loadInitialData();
+    // Push any local courses + drafts created offline. Skip
+    // _syncAllLocalData's inner _loadInitialData call to avoid the
+    // double-bootstrap race where a single flaky 401 on the second
+    // bootstrap tripped sessionRejected and wiped the fresh token.
+    try {
+      await _syncAllLocalCourses();
+      await _syncAllLocalDrafts();
+    } catch (error) {
+      log(
+        level: DebugLogLevel.warning,
+        source: 'Editor.Sync.Notes/push_all',
+        message:
+            'Local push after login failed: '
+            'Editor.Sync.Notes/push_all \u2014 '
+            '${error.toString().replaceFirst('Exception: ', '')}. '
+            'Will retry on next manual sync.',
+      );
+    }
+    final displayName =
+        user['username']?.toString() ??
+            user['email']?.toString() ??
+            'user';
+    log(
+      level: DebugLogLevel.info,
+      source: 'Editor.Auth/applyAuthPayload',
+      message:
+          'Session established: Editor.Auth/applyAuthPayload \u2014 '
+          'authenticated as $displayName.',
+    );
+    if (mounted) {
+      showMessage('Signed in as $displayName.');
+    }
+  }
+
+  @override
+  Future<void> logout() async {
+    final token = _token;
+    if (token == null || token.isEmpty) return;
+    try {
+      await widget.client.logout(token);
+    } catch (error) {
+      log(
+        level: DebugLogLevel.warning,
+        source: 'Editor.Auth/logout',
+        message:
+            'Cloud logout call failed but local session cleared anyway: '
+            'Editor.Auth/logout \u2014 '
+            '${error.toString().replaceFirst('Exception: ', '')}.',
+      );
+    }
+      _token = null;
+      _profile = null;
+      _settings = null;
+      _deletedNotes = const [];
+    refreshState();
+    await _LocalAppStore.clearSession();
+    await _loadInitialData();
+    showMessage(
+      'Signed out: Editor.Auth/logout \u2014 local session cleared.',
+    );
+    log(
+      level: DebugLogLevel.info,
+      source: 'Editor.Auth/logout',
+      message:
+          'Signed out: Editor.Auth/logout \u2014 local session cleared.',
+    );
+  }
+
 
   // ---------------------------------------------------------------------------
   // Build

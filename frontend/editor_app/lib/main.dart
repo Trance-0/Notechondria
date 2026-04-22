@@ -23,7 +23,6 @@ import 'core/url_strategy.dart'
     if (dart.library.html) 'core/url_strategy_web.dart' as url_strategy;
 
 part 'app_shell.dart';
-part 'core/auth_actions.dart';
 part 'core/auth_flows.dart';
 part 'core/build_helpers.dart';
 part 'core/category_actions.dart';
@@ -46,7 +45,6 @@ part 'core/local_store.dart';
 part 'core/local_trash.dart';
 part 'core/note_loading.dart';
 part 'core/note_sessions.dart';
-part 'core/session.dart';
 part 'core/settings_actions.dart';
 part 'core/settings_helpers.dart';
 part 'components/avatar.dart';

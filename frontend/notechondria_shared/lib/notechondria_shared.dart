@@ -53,3 +53,6 @@ export 'src/settings/app_preferences_card.dart'
     show AppPreferencesCard, kEditorModes, kThemePresetEntries;
 
 export 'src/app_shell/app_shell_log_mixin.dart' show AppShellLogMixin;
+export 'src/app_shell/app_shell_auth_actions_mixin.dart'
+    show AppShellAuthActionsMixin;
+export 'src/app_shell/auth_client.dart' show AuthClient;

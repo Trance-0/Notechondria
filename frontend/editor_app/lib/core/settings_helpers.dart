@@ -3,7 +3,7 @@ part of notechondria_frontend;
 /// App-settings helpers: build the canonical `app_settings` payload the
 /// server expects, apply an incoming settings delta to local state (and
 /// optionally persist), flip offline-mode, and parse ISO-8601
-/// `updated_at` timestamps for `_applyAuthPayload`'s "who's newer"
+/// `updated_at` timestamps for `applyAuthPayload`'s "who's newer"
 /// merge. `_applyLocalAppSettings` mutates `_localSettings` directly
 /// but reaches only non-UI subscribers (`_httpClient`,
 /// `widget.onThemeChanged`), so no `refreshState()` call is needed — the

@@ -3,7 +3,7 @@ part of notechondria_frontend;
 /// OAuth + session-restore + deep-link handlers. Every method routes
 /// state mutations through `refreshState()` since extensions can't call
 /// `setState` directly. Bind-flow, login-flow, and deep-link dialog
-/// wiring all live here; `_applyAuthPayload` stays on `_AppShellState`
+/// wiring all live here; `applyAuthPayload` stays on `_AppShellState`
 /// because it orchestrates post-login state across every bucket (see
 /// the Authentication section of `app_shell.dart`). Extracted from
 /// `app_shell.dart` so that file stays closer to the AGENTS.md §1.5
@@ -178,7 +178,7 @@ extension _AppShellAuthFlowsX on _AppShellState {
       } else {
         result = await widget.client.loginWithGithub(code, redirectUri: redirectUri, invitationCode: invitationCode, intent: intent);
       }
-      await _applyAuthPayload(result);
+      await applyAuthPayload(result);
       final providerLabel = state == 'google' ? 'Google' : 'GitHub';
       log(
         level: DebugLogLevel.info,
@@ -292,7 +292,7 @@ extension _AppShellAuthFlowsX on _AppShellState {
     try {
       final check = await widget.client.checkSession(token);
       if (check['authenticated'] == true) {
-        await _applyAuthPayload(check);
+        await applyAuthPayload(check);
         return;
       }
     } catch (_) {

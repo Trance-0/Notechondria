@@ -1,7 +1,9 @@
 part of notechondria_frontend;
 
 /// Defines the frontend contract for all Notechondria REST operations.
-abstract class NotechondriaClient {
+/// Implements `AuthClient` so the shared `AppShellAuthActionsMixin`
+/// and `AppShellOAuthMixin` can drive the auth endpoints.
+abstract class NotechondriaClient implements AuthClient {
   Future<Map<String, dynamic>> getFrontPage({String? token});
   Future<List<Map<String, dynamic>>> getCourses({String? token});
   Future<Map<String, dynamic>> createCourse(
