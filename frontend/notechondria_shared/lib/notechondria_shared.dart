@@ -34,8 +34,8 @@ export 'src/components/auth_dialogs.dart'
         EmailCodeDialog,
         EmailPasswordDialog,
         FeedbackText,
-        PasswordResetDialog,
-        RegistrationWizard;
+        PasswordResetDialog;
+export 'src/components/auth_dialogs_wizard.dart' show RegistrationWizard;
 export 'src/components/debug_log.dart'
     show
         DebugLogCard,
