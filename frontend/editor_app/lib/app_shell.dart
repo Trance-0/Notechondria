@@ -87,7 +87,8 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell>
     with
         AppShellLogMixin<AppShell>,
-        AppShellAuthActionsMixin<AppShell> {
+        AppShellAuthActionsMixin<AppShell>,
+        AppShellOAuthMixin<AppShell> {
   @override
   final List<String> uiLogs = <String>[];
   @override
@@ -98,6 +99,10 @@ class _AppShellState extends State<AppShell>
   AuthClient get authClient => widget.client;
   @override
   String get logAppTag => 'Editor';
+  @override
+  String? get token => _token;
+  @override
+  ValueNotifier<String> get splashStatus => _splashStatus;
 
   // ---------------------------------------------------------------------------
   // State
@@ -261,7 +266,7 @@ class _AppShellState extends State<AppShell>
     _splashStatus.value = 'Restoring session';
     await _restoreSession();
     _splashStatus.value = 'Completing sign-in';
-    await _handleOAuthCallback();
+    await handleOAuthCallback();
     _splashStatus.value = 'Connecting to server';
     await _loadInitialData();
     // Deep-link: if the URL contains a note UUID, load it.
