@@ -553,7 +553,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
           localStats: _localStats,
           deletedNotes: _deletedNotes,
           onSave: _updateSettings,
-          onLogout: _logout,
+          onLogout: logout,
           onRegister: register,
           onValidateInvitation: (code) => widget.client.validateInvitation(code),
           onVerify: verify,

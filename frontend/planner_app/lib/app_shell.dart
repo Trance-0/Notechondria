@@ -84,7 +84,26 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell>
+    with
+        AppShellLogMixin<AppShell>,
+        AppShellAuthActionsMixin<AppShell>,
+        AppShellOAuthMixin<AppShell> {
+  @override
+  final List<String> uiLogs = <String>[];
+  @override
+  final DebugLogController logController = DebugLogController();
+  @override
+  Future<void> persistUiLogs() => _persistUiLogs();
+  @override
+  AuthClient get authClient => widget.client;
+  @override
+  String get logAppTag => 'Planner';
+  @override
+  String? get token => _token;
+  @override
+  ValueNotifier<String> get splashStatus => _splashStatus;
+
   int _selectedIndex = 0;
   bool _isLoading = true;
   bool _showSplash = true;
@@ -121,8 +140,6 @@ class _AppShellState extends State<AppShell> {
   final ValueNotifier<String> _splashStatus =
       ValueNotifier<String>('Starting planner');
   String _learnerSearchQuery = '';
-  final List<String> _uiLogs = <String>[];
-  final DebugLogController _logController = DebugLogController();
 
   HttpNotechondriaClient? get _httpClient =>
       widget.client is HttpNotechondriaClient
@@ -183,7 +200,7 @@ class _AppShellState extends State<AppShell> {
     // the Debug log card.
     _httpClient?.setLogger((level, source, message) {
       if (!mounted) return;
-      _log(level: level, source: source, message: message);
+      log(level: level, source: source, message: message);
     });
     _bootstrapApp();
   }
@@ -195,7 +212,7 @@ class _AppShellState extends State<AppShell> {
     _splashStatus.value = 'Loading local planner data';
     await _loadLocalState();
     _splashStatus.value = 'Completing sign-in';
-    await _handleOAuthCallback();
+    await handleOAuthCallback();
     _splashStatus.value = 'Connecting to server';
     await _loadInitialData();
   }
@@ -204,240 +221,14 @@ class _AppShellState extends State<AppShell> {
   // OAuth helpers
   // ---------------------------------------------------------------------------
 
-  Future<void> _launchOAuth(String provider, {String invitationCode = '', String intent = 'register'}) async {
-    try {
-      final config = await widget.client.getOAuthConfig();
-      final providerConfig = Map<String, dynamic>.from(
-        config[provider] as Map? ?? {},
-      );
-      final clientId = providerConfig['client_id']?.toString() ?? '';
-      final redirectUri = providerConfig['redirect_uri']?.toString() ?? '';
-      if (clientId.isEmpty) {
-        _log(
-          level: DebugLogLevel.error,
-          source: 'Planner.Auth/oauth.launch',
-          message:
-              'Cannot start $provider sign-in: Planner.Auth/oauth.launch \u2014 '
-              'client_id missing in OAuth config for $provider.',
-        );
-        return;
-      }
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('oauth_redirect_uri', redirectUri);
-      await prefs.setString('oauth_invitation_code', invitationCode);
-      await prefs.setString('oauth_intent', intent);
-
-      final String authUrl;
-      if (provider == 'google') {
-        authUrl = Uri.https('accounts.google.com', '/o/oauth2/v2/auth', {
-          'client_id': clientId,
-          'redirect_uri': redirectUri,
-          'response_type': 'code',
-          'scope': 'openid email profile',
-          'state': 'google',
-          'access_type': 'offline',
-          'prompt': 'select_account',
-        }).toString();
-      } else {
-        authUrl = Uri.https('github.com', '/login/oauth/authorize', {
-          'client_id': clientId,
-          'redirect_uri': redirectUri,
-          'scope': 'user:email',
-          'state': 'github',
-        }).toString();
-      }
-      url_strategy.browserRedirect(authUrl);
-    } catch (error) {
-      _log(
-        level: DebugLogLevel.error,
-        source: 'Planner.Auth/oauth.launch',
-        message:
-            'OAuth sign-in could not start: Planner.Auth/oauth.launch \u2014 '
-            '${error.toString().replaceFirst("Exception: ", "")}.',
-      );
-    }
-  }
-
-  Future<bool> _handleOAuthCallback() async {
-    if (!kIsWeb) return false;
-    final uri = Uri.base;
-    final code = uri.queryParameters['code'];
-    final state = uri.queryParameters['state'];
-    if (code == null || code.isEmpty) return false;
-    if (state != 'google' && state != 'github') return false;
-
-    final cleanUrl = uri.removeFragment().replace(queryParameters: {}).toString();
-    url_strategy.browserRedirect(cleanUrl);
-
-    final prefs = await SharedPreferences.getInstance();
-    final redirectUri = prefs.getString('oauth_redirect_uri') ?? '';
-    final invitationCode = prefs.getString('oauth_invitation_code') ?? '';
-    final intent = prefs.getString('oauth_intent') ?? 'register';
-    await prefs.remove('oauth_redirect_uri');
-    await prefs.remove('oauth_invitation_code');
-    await prefs.remove('oauth_intent');
-
-    final providerLabel = state == 'google' ? 'Google' : 'GitHub';
-    _splashStatus.value = intent == 'bind'
-        ? 'Linking $providerLabel account'
-        : 'Completing sign-in via $providerLabel';
-
-    if (intent == 'bind') {
-      if (_token == null || _token!.isEmpty) {
-        _log(
-          level: DebugLogLevel.warning,
-          source: 'Planner.Auth/bind',
-          message:
-              'Account linking aborted: Planner.Auth/bind \u2014 session token '
-              'missing at OAuth callback (user signed out between click and '
-              'redirect).',
-        );
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Account linking aborted: Planner.Auth/bind \u2014 your session '
-                'expired before the provider redirected back. Sign in first, '
-                'then try linking the account again.',
-              ),
-            ),
-          );
-        }
-        return false;
-      }
-      try {
-        if (state == 'google') {
-          await widget.client.bindGoogle(_token!, code, redirectUri: redirectUri);
-        } else {
-          await widget.client.bindGithub(_token!, code, redirectUri: redirectUri);
-        }
-        final provider = state == 'google' ? 'Google' : 'GitHub';
-        _log(
-          level: DebugLogLevel.info,
-          source: 'Planner.Auth/bind',
-          message:
-              'Linked $provider account: Planner.Auth/bind \u2014 '
-              'server accepted the bind token.',
-        );
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '$provider account linked: Planner.Auth/bind \u2014 '
-                'ready to sign in with $provider next time.',
-              ),
-            ),
-          );
-        }
-        return true;
-      } catch (error) {
-        final msg = error.toString().replaceFirst('Exception: ', '');
-        _log(
-          level: DebugLogLevel.error,
-          source: 'Planner.Auth/bind',
-          message:
-              'Account linking failed: Planner.Auth/bind \u2014 $msg.',
-        );
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Account linking failed: Planner.Auth/bind \u2014 $msg.',
-              ),
-            ),
-          );
-        }
-        return false;
-      }
-    }
-
-    try {
-      final Map<String, dynamic> result;
-      if (state == 'google') {
-        result = await widget.client.loginWithGoogle(code, redirectUri: redirectUri, invitationCode: invitationCode, intent: intent);
-      } else {
-        result = await widget.client.loginWithGithub(code, redirectUri: redirectUri, invitationCode: invitationCode, intent: intent);
-      }
-      await _applyAuthPayload(result);
-      final providerName = state == 'google' ? 'Google' : 'GitHub';
-      _log(
-        level: DebugLogLevel.info,
-        source: 'Planner.Auth/oauth.callback',
-        message:
-            'Signed in via $providerName: Planner.Auth/oauth.callback \u2014 '
-            'server accepted the authorization code.',
-      );
-      return true;
-    } catch (error) {
-      final msg = error.toString().replaceFirst('Exception: ', '');
-      // Preserved sentinels: "not_registered" and "No account found"
-      // drive the registration-prompt branch below.
-      if (msg.contains('not_registered') || msg.contains('No account found')) {
-        _log(
-          level: DebugLogLevel.warning,
-          source: 'Planner.Auth/oauth.callback',
-          message:
-              'OAuth sign-in rejected: Planner.Auth/oauth.callback \u2014 '
-              'No account found for this identity (server replied '
-              'not_registered). Register first.',
-        );
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'OAuth sign-in rejected: Planner.Auth/oauth.callback \u2014 '
-                'No account found for this identity. Please register first.',
-              ),
-            ),
-          );
-        }
-      } else {
-        _log(
-          level: DebugLogLevel.error,
-          source: 'Planner.Auth/oauth.callback',
-          message:
-              'OAuth sign-in failed: Planner.Auth/oauth.callback \u2014 $msg.',
-        );
-      }
-      return false;
-    }
-  }
-
   @override
   void dispose() {
     _splashTimer?.cancel();
     _splashStatus.dispose();
-    _logController.dispose();
+    logController.dispose();
     super.dispose();
   }
 
-
-  void _appendUiLog(String message) {
-    _log(message: message, level: DebugLogLevel.info, source: '');
-  }
-
-  void _log({
-    required String message,
-    DebugLogLevel level = DebugLogLevel.debug,
-    String source = '',
-    int? durationMs,
-  }) {
-    final entry = DebugLogEntry(
-      timestamp: DateTime.now().toUtc(),
-      level: level,
-      source: source,
-      message: message,
-      durationMs: durationMs,
-    );
-    _logController.append(entry);
-    setState(() {
-      _uiLogs.insert(0, entry.toPersistedString());
-      if (_uiLogs.length > 80) {
-        _uiLogs.removeRange(80, _uiLogs.length);
-      }
-    });
-    unawaited(_persistUiLogs());
-  }
 
   Map<String, Object?> _snapshotLocalStore() {
     return <String, Object?>{
@@ -446,7 +237,7 @@ class _AppShellState extends State<AppShell> {
       'courses': _localCourses,
       'stats': _localStats,
       'cache': _localCache,
-      'logs': _uiLogs,
+      'logs': uiLogs,
       'session': _token == null
           ? null
           : {
@@ -483,13 +274,13 @@ class _AppShellState extends State<AppShell> {
     _activityWeek = Map<String, dynamic>.from(
       snapshot.cache['activity_week'] as Map? ?? const {},
     );
-    _uiLogs
+    uiLogs
       ..clear()
       ..addAll(snapshot.logs);
-    _logController.replaceAll(
+    logController.replaceAll(
       snapshot.logs.map(DebugLogEntry.fromPersistedString),
     );
-    _logController.bindCacheProvider(_snapshotLocalStore);
+    logController.bindCacheProvider(_snapshotLocalStore);
     _courses = (snapshot.cache['courses'] as List<dynamic>? ?? const [])
         .map((item) => _decorateRemoteCourse(Map<String, dynamic>.from(item as Map)))
         .toList(growable: false);
@@ -555,7 +346,7 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<void> _persistUiLogs() async {
-    await _LocalAppStore.saveLogs(_uiLogs);
+    await _LocalAppStore.saveLogs(uiLogs);
   }
 
 
@@ -706,7 +497,7 @@ Capture deadlines, sequencing, and blockers here.''',
     await _persistLocalDrafts();
     await _persistLocalStats();
     await _persistLocalCache();
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Planner.LocalStore/seed_starter',
       message:
@@ -817,7 +608,7 @@ Capture deadlines, sequencing, and blockers here.''',
         _isLoading = false;
         _showSplash = false;
       });
-      _log(
+      log(
         source: 'Planner._loadInitialData',
         level: DebugLogLevel.info,
         message:
@@ -956,7 +747,7 @@ Capture deadlines, sequencing, and blockers here.''',
     if (updatedCache) {
       await _persistLocalCache();
     }
-    _log(
+    log(
       source: 'Planner._loadInitialData',
       level: errors.isEmpty
           ? DebugLogLevel.info
@@ -1081,7 +872,7 @@ Capture deadlines, sequencing, and blockers here.''',
         _errorMessage = error.toString().replaceFirst('Exception: ', '');
       });
       final cause = error.toString().replaceFirst('Exception: ', '');
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Planner.Sync.Notes/list',
         message:
@@ -1103,7 +894,7 @@ Capture deadlines, sequencing, and blockers here.''',
         _selectedIndex = 2;
         _isLoading = false;
       });
-      _log(
+      log(
         level: DebugLogLevel.debug,
         source: 'Planner.UI/open_course',
         message:
@@ -1137,7 +928,7 @@ Capture deadlines, sequencing, and blockers here.''',
         _isLoading = false;
       });
       await _persistLocalCache();
-      _log(
+      log(
         level: DebugLogLevel.debug,
         source: 'Planner.UI/open_course',
         message:
@@ -1152,7 +943,7 @@ Capture deadlines, sequencing, and blockers here.''',
         _errorMessage = cause;
         _isLoading = false;
       });
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Planner.Sync.Courses/load',
         message: 'Course not loaded: '
@@ -1178,7 +969,7 @@ Capture deadlines, sequencing, and blockers here.''',
         _errorMessage = cause;
         _isLoading = false;
       });
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Planner.UI/open_note',
         message:
@@ -1193,10 +984,10 @@ Capture deadlines, sequencing, and blockers here.''',
       detail = await _fetchNoteDetail(noteSummary['id'] as int);
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
-      _showMessage(
+      showMessage(
         'Note not opened: Planner.UI/open_note_viewer \u2014 $cause.',
       );
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Planner.UI/open_note_viewer',
         message:
@@ -1232,128 +1023,6 @@ Capture deadlines, sequencing, and blockers here.''',
       _selectedNote = detail;
     });
     return detail;
-  }
-
-  Future<ActionFeedback> _register(
-    String username,
-    String email,
-    String password, {
-    String invitationCode = '',
-  }) async {
-    try {
-      final result = await widget.client.register(
-        username, email, password, invitationCode: invitationCode,
-      );
-      final serverMessage = result['message']?.toString();
-      return ActionFeedback(
-          message: serverMessage != null && serverMessage.isNotEmpty
-              ? 'Registration queued: Planner.Auth/register \u2014 $serverMessage'
-              : 'Registration queued: Planner.Auth/register \u2014 '
-                  'verification email sent to $email.');
-    } catch (error) {
-      final cause = error.toString().replaceFirst('Exception: ', '');
-      return ActionFeedback(
-        message:
-            'Registration rejected: Planner.Auth/register \u2014 $cause',
-        isError: true,
-      );
-    }
-  }
-
-  Future<ActionFeedback> _verify(String email, String code) async {
-    try {
-      final result = await widget.client.verifyEmail(email, code);
-      await _applyAuthPayload(result);
-      return const ActionFeedback(
-          message:
-              'Signed in: Planner.Auth/verify \u2014 email verified and '
-              'session issued.');
-    } catch (error) {
-      final cause = error.toString().replaceFirst('Exception: ', '');
-      return ActionFeedback(
-        message: 'Email verification failed: Planner.Auth/verify \u2014 $cause',
-        isError: true,
-      );
-    }
-  }
-
-  Future<ActionFeedback> _resendVerification(String email) async {
-    try {
-      final result = await widget.client.resendVerification(email);
-      final serverMessage = result['message']?.toString();
-      return ActionFeedback(
-          message: serverMessage != null && serverMessage.isNotEmpty
-              ? 'Verification code resent: '
-                  'Planner.Auth/resend_verification \u2014 $serverMessage'
-              : 'Verification code resent: '
-                  'Planner.Auth/resend_verification \u2014 delivery queued '
-                  'to $email.');
-    } catch (error) {
-      final cause = error.toString().replaceFirst('Exception: ', '');
-      return ActionFeedback(
-          message: 'Verification code not resent: '
-              'Planner.Auth/resend_verification \u2014 $cause',
-          isError: true);
-    }
-  }
-
-  Future<ActionFeedback> _login(String email, String password) async {
-    try {
-      final result = await widget.client.login(email, password);
-      await _applyAuthPayload(result);
-      return const ActionFeedback(
-          message: 'Signed in: Planner.Auth/login \u2014 '
-              'server accepted credentials.');
-    } catch (error) {
-      final cause = error.toString().replaceFirst('Exception: ', '');
-      return ActionFeedback(
-        message: 'Sign-in rejected: Planner.Auth/login \u2014 $cause',
-        isError: true,
-      );
-    }
-  }
-
-  Future<ActionFeedback> _requestPasswordReset(String email) async {
-    try {
-      final result = await widget.client.requestPasswordReset(email);
-      final serverMessage = result['message']?.toString();
-      return ActionFeedback(
-          message: serverMessage != null && serverMessage.isNotEmpty
-              ? 'Password reset email queued: '
-                  'Planner.Auth/password.reset.request \u2014 $serverMessage'
-              : 'Password reset email queued: '
-                  'Planner.Auth/password.reset.request \u2014 sent to $email.');
-    } catch (error) {
-      final cause = error.toString().replaceFirst('Exception: ', '');
-      return ActionFeedback(
-        message: 'Password reset email not sent: '
-            'Planner.Auth/password.reset.request \u2014 $cause',
-        isError: true,
-      );
-    }
-  }
-
-  Future<ActionFeedback> _confirmPasswordReset(
-      String email, String code, String password) async {
-    try {
-      final result =
-          await widget.client.confirmPasswordReset(email, code, password);
-      final serverMessage = result['message']?.toString();
-      return ActionFeedback(
-          message: serverMessage != null && serverMessage.isNotEmpty
-              ? 'Password updated: '
-                  'Planner.Auth/password.reset.confirm \u2014 $serverMessage'
-              : 'Password updated: '
-                  'Planner.Auth/password.reset.confirm \u2014 '
-                  'server accepted reset code.');
-    } catch (error) {
-      final cause = error.toString().replaceFirst('Exception: ', '');
-      return ActionFeedback(
-        message: 'Password not updated: '
-            'Planner.Auth/password.reset.confirm \u2014 $cause',
-        isError: true,
-      );
-    }
   }
 
   Map<String, dynamic> _currentAppSettingsPayload({
@@ -1407,7 +1076,7 @@ Capture deadlines, sequencing, and blockers here.''',
   /// forcing the user to restart the app.
   Future<void> _setOfflineMode(bool offlineMode) async {
     await _applyLocalAppSettings({'offline_mode': offlineMode});
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Planner.Sync.Settings/offline_mode',
       message: offlineMode
@@ -1424,7 +1093,7 @@ Capture deadlines, sequencing, and blockers here.''',
         DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
   }
 
-  Future<void> _applyAuthPayload(Map<String, dynamic> payload) async {
+  Future<void> applyAuthPayload(Map<String, dynamic> payload) async {
     final token = payload['token']?.toString() ?? '';
     final user = Map<String, dynamic>.from(payload['user'] as Map? ?? {});
     Map<String, dynamic> settings;
@@ -1469,7 +1138,7 @@ Capture deadlines, sequencing, and blockers here.''',
         'app_settings_updated_at':
             _localSettings['updated_at'] ?? DateTime.now().toUtc().toIso8601String(),
       };
-      _log(
+      log(
         level: DebugLogLevel.warning,
         source: 'Planner.Sync.Settings/bootstrap',
         message:
@@ -1509,7 +1178,7 @@ Capture deadlines, sequencing, and blockers here.''',
       await _syncAllLocalCourses();
       await _syncAllLocalDrafts();
     } catch (error) {
-      _log(
+      log(
         level: DebugLogLevel.warning,
         source: 'Planner.Sync.Notes/push_all',
         message:
@@ -1523,7 +1192,7 @@ Capture deadlines, sequencing, and blockers here.''',
         user['username']?.toString() ??
             user['email']?.toString() ??
             'user';
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Planner.Auth/applyAuthPayload',
       message:
@@ -1531,7 +1200,7 @@ Capture deadlines, sequencing, and blockers here.''',
           'authenticated as $displayName.',
     );
     if (mounted) {
-      _showMessage('Signed in as $displayName.');
+      showMessage('Signed in as $displayName.');
     }
   }
 
@@ -1543,7 +1212,7 @@ Capture deadlines, sequencing, and blockers here.''',
     try {
       await widget.client.logout(token);
     } catch (error) {
-      _log(
+      log(
         level: DebugLogLevel.warning,
         source: 'Planner.Auth/logout',
         message:
@@ -1560,10 +1229,10 @@ Capture deadlines, sequencing, and blockers here.''',
       _deletedNotes = const [];
     });
     await _loadInitialData();
-    _showMessage(
+    showMessage(
       'Signed out: Planner.Auth/logout \u2014 local session cleared.',
     );
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Planner.Auth/logout',
       message:
@@ -1809,7 +1478,7 @@ Capture deadlines, sequencing, and blockers here.''',
       final summary = segments.isEmpty
           ? 'local copies already match the cloud'
           : segments.join(', ');
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Planner.Sync.Notes/pull',
         message:
@@ -1820,7 +1489,7 @@ Capture deadlines, sequencing, and blockers here.''',
               'Planner.Sync.Notes/pull \u2014 $summary.');
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Planner.Sync.Notes/pull',
         message: 'Cloud notes not pulled: '
@@ -1986,10 +1655,10 @@ Capture deadlines, sequencing, and blockers here.''',
         };
       });
       final summary = _summarizeChangedFields(changedFields);
-      _showMessage(
+      showMessage(
         'Settings saved: Planner.Sync.Settings/save \u2014 $summary updated.',
       );
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Planner.Sync.Settings/save',
         message:
@@ -2033,7 +1702,7 @@ Capture deadlines, sequencing, and blockers here.''',
         };
       });
       final summary = _summarizeChangedFields(changedFields);
-      _log(
+      log(
         level: DebugLogLevel.warning,
         source: 'Planner.Sync.Settings/save',
         message:
@@ -2069,7 +1738,7 @@ Capture deadlines, sequencing, and blockers here.''',
         _activityWeek = _buildOfflineActivityWeek();
       });
       await _persistLocalCache();
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Planner.Sync.Events/create_local',
         message:
@@ -2148,7 +1817,7 @@ Capture deadlines, sequencing, and blockers here.''',
               updated['is_superuser'] ?? _profile?['is_superuser'],
         };
       });
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Planner.Sync.Settings/avatar.upload',
         message:
@@ -2161,7 +1830,7 @@ Capture deadlines, sequencing, and blockers here.''',
               'server accepted new image.');
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Planner.Sync.Settings/avatar.upload',
         message: 'Avatar not updated: '
@@ -2189,7 +1858,7 @@ Capture deadlines, sequencing, and blockers here.''',
         _activityWeekStart = effectiveStart;
         _activityWeek = week;
       });
-      _log(
+      log(
         level: DebugLogLevel.debug,
         source: 'Planner.Sync.Activity/load_week',
         message:
@@ -2203,7 +1872,7 @@ Capture deadlines, sequencing, and blockers here.''',
       setState(() {
         _errorMessage = cause;
       });
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Planner.Sync.Activity/load_week',
         message: 'Activity week not loaded: '
@@ -2265,7 +1934,7 @@ Capture deadlines, sequencing, and blockers here.''',
       _selectedIndex = 2;
       _courseNotes = _localNotesForCourse(course);
     });
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Planner.Sync.Courses/create_local',
       message:
@@ -2347,7 +2016,7 @@ Capture deadlines, sequencing, and blockers here.''',
     await _persistLocalDrafts();
     await _persistLocalStats();
     await _persistLocalCache();
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Planner.Sync.Courses/push',
       message:
@@ -2478,7 +2147,7 @@ Capture deadlines, sequencing, and blockers here.''',
       if (mounted) {
         setState(() {});
       }
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Planner.Sync.Notes/push',
         message:
@@ -2521,7 +2190,7 @@ Capture deadlines, sequencing, and blockers here.''',
     if (mounted) {
       setState(() {});
     }
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Planner.Sync.Notes/push',
       message:
@@ -2595,14 +2264,14 @@ Capture deadlines, sequencing, and blockers here.''',
         _selectedNote = draft;
         _selectedIndex = 1;
       });
-      _log(
+      log(
         level: DebugLogLevel.warning,
         source: 'Planner.Sync.Notes/create',
         message:
             'Note saved locally, cloud create deferred: '
             'Planner.Sync.Notes/create \u2014 $cause.',
       );
-      _showMessage(
+      showMessage(
         'Note saved locally: Planner.Sync.Notes/create \u2014 '
         'backend unavailable ($cause); kept as draft for next sync.',
       );
@@ -2677,14 +2346,14 @@ Capture deadlines, sequencing, and blockers here.''',
       setState(() {
         _selectedNote = fallbackDraft;
       });
-      _log(
+      log(
         level: DebugLogLevel.warning,
         source: 'Planner.Sync.Notes/save',
         message:
             'Note save deferred to local draft: '
             'Planner.Sync.Notes/save \u2014 $cause.',
       );
-      _showMessage(
+      showMessage(
         'Note saved locally: Planner.Sync.Notes/save \u2014 '
         'backend unavailable ($cause); changes kept as a local draft.',
       );
@@ -2741,9 +2410,9 @@ Capture deadlines, sequencing, and blockers here.''',
         title: _extractTitleFromMarkdown(contents),
         description: '',
       );
-      _showMessage("Imported '${created['title']}'.");
+      showMessage("Imported '${created['title']}'.");
     } catch (error) {
-      _showMessage(error.toString().replaceFirst('Exception: ', ''));
+      showMessage(error.toString().replaceFirst('Exception: ', ''));
     }
   }
 
@@ -2766,9 +2435,9 @@ Capture deadlines, sequencing, and blockers here.''',
       final file = XFile.fromData(bytes,
           name: '${detail['title'] ?? 'note'}.md', mimeType: 'text/markdown');
       await file.saveTo(location.path);
-      _showMessage("Exported '${detail['title'] ?? 'note'}'.");
+      showMessage("Exported '${detail['title'] ?? 'note'}'.");
     } catch (error) {
-      _showMessage(error.toString().replaceFirst('Exception: ', ''));
+      showMessage(error.toString().replaceFirst('Exception: ', ''));
     }
   }
 
@@ -2786,7 +2455,7 @@ Capture deadlines, sequencing, and blockers here.''',
       _calendarFeeds = feeds;
       _activityWeek = week;
     });
-    _log(
+    log(
       level: DebugLogLevel.debug,
       source: 'Planner.Sync.Calendar/refresh',
       message:
@@ -2813,7 +2482,7 @@ Capture deadlines, sequencing, and blockers here.''',
       'course_id': courseId,
     });
     await _refreshCalendarState();
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Planner.Sync.Calendar/import',
       message:
@@ -2839,7 +2508,7 @@ Capture deadlines, sequencing, and blockers here.''',
       'course_id': courseId,
     });
     await _refreshCalendarState();
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Planner.Sync.Calendar/subscribe',
       message:
@@ -2858,7 +2527,7 @@ Capture deadlines, sequencing, and blockers here.''',
     await widget.client
         .updateCalendarFeed(token, feed['id'] as int, {'is_enabled': enabled});
     await _refreshCalendarState();
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Planner.Sync.Calendar/toggle',
       message:
@@ -2875,7 +2544,7 @@ Capture deadlines, sequencing, and blockers here.''',
     }
     await widget.client.deleteCalendarFeed(token, feed['id'] as int);
     await _refreshCalendarState();
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Planner.Sync.Calendar/delete',
       message:
@@ -2898,7 +2567,7 @@ Capture deadlines, sequencing, and blockers here.''',
         'summary': summary,
         'started_at': DateTime.now().toIso8601String(),
       });
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Planner.UI/note_session.start',
         message:
@@ -2909,7 +2578,7 @@ Capture deadlines, sequencing, and blockers here.''',
       return session['id'] as int?;
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Planner.UI/note_session.start',
         message:
@@ -2933,7 +2602,7 @@ Capture deadlines, sequencing, and blockers here.''',
         'ended_at': DateTime.now().toIso8601String(),
       });
       await _loadActivityWeek(startDate: _activityWeekStart);
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Planner.UI/note_session.finish',
         message:
@@ -2943,7 +2612,7 @@ Capture deadlines, sequencing, and blockers here.''',
       );
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
-      _log(
+      log(
         level: DebugLogLevel.warning,
         source: 'Planner.UI/note_session.finish',
         message:
@@ -2964,7 +2633,7 @@ Capture deadlines, sequencing, and blockers here.''',
           .toList(growable: false);
       await _persistLocalDrafts();
       setState(() {});
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Planner.Sync.Notes/delete_local',
         message:
@@ -2986,7 +2655,7 @@ Capture deadlines, sequencing, and blockers here.''',
     _deletedNotes = await widget.client.getDeletedNotes(token);
     await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
     setState(() {});
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Planner.Sync.Notes/delete',
       message:
@@ -3013,7 +2682,7 @@ Capture deadlines, sequencing, and blockers here.''',
     _deletedNotes = await widget.client.getDeletedNotes(token);
     await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
     setState(() {});
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Planner.Sync.Notes/restore',
       message:
@@ -3035,7 +2704,7 @@ Capture deadlines, sequencing, and blockers here.''',
     setState(() {
       _deletedNotes = const [];
     });
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Planner.Sync.Notes/empty_trash',
       message:
@@ -3054,7 +2723,7 @@ Capture deadlines, sequencing, and blockers here.''',
       try {
         await _syncLocalCourse(course);
       } catch (error) {
-        _log(
+        log(
           level: DebugLogLevel.warning,
           source: 'Planner.Sync.Courses/push',
           message: 'Local category not synced: '
@@ -3078,7 +2747,7 @@ Capture deadlines, sequencing, and blockers here.''',
       try {
         await _syncLocalDraft(draft);
       } catch (error) {
-        _log(
+        log(
           level: DebugLogLevel.warning,
           source: 'Planner.Sync.Notes/push',
           message: 'Local draft not synced: '
@@ -3094,7 +2763,7 @@ Capture deadlines, sequencing, and blockers here.''',
     }
   }
 
-  Future<ActionFeedback> _syncAllLocalData({bool showMessage = true}) async {
+  Future<ActionFeedback> _syncAllLocalData({bool announce = true}) async {
     final token = _token;
     if (token == null || token.isEmpty) {
       return const ActionFeedback(
@@ -3112,8 +2781,8 @@ Capture deadlines, sequencing, and blockers here.''',
           message: 'Local data synced: '
               'Planner.Sync.Notes/push_all \u2014 '
               'all local courses and drafts pushed to cloud.');
-      if (showMessage) {
-        _showMessage(feedback.message);
+      if (announce) {
+        showMessage(feedback.message);
       }
       return feedback;
     } catch (error) {
@@ -3123,14 +2792,14 @@ Capture deadlines, sequencing, and blockers here.''',
       };
       await _persistLocalStats();
       final cause = error.toString().replaceFirst('Exception: ', '');
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Planner.Sync.Notes/push_all',
         message: 'Local data not synced: '
             'Planner.Sync.Notes/push_all \u2014 $cause.',
       );
-      if (showMessage) {
-        _showMessage(
+      if (announce) {
+        showMessage(
           'Local data not synced: '
           'Planner.Sync.Notes/push_all \u2014 $cause.',
         );
@@ -3164,7 +2833,7 @@ Capture deadlines, sequencing, and blockers here.''',
     if (mounted) {
       setState(() {});
     }
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Planner.LocalStore/clear_cache',
       message:
@@ -3206,7 +2875,7 @@ Capture deadlines, sequencing, and blockers here.''',
     if (mounted) {
       setState(() {});
     }
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Planner.LocalStore/clear',
       message:
@@ -3238,7 +2907,7 @@ Capture deadlines, sequencing, and blockers here.''',
         _activityWeek = _buildOfflineActivityWeek();
       });
       await _persistLocalCache();
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Planner.Sync.Events/toggle_local',
         message:
@@ -3259,7 +2928,7 @@ Capture deadlines, sequencing, and blockers here.''',
     setState(() {
       _plannerEvents = refreshedEvents;
     });
-    _log(
+    log(
       level: DebugLogLevel.info,
       source: 'Planner.Sync.Events/toggle',
       message:
@@ -3296,7 +2965,7 @@ Capture deadlines, sequencing, and blockers here.''',
   }
 
   Future<void> _copyFrontendLogs() async {
-    final content = _uiLogs.join('\n');
+    final content = uiLogs.join('\n');
     await Clipboard.setData(ClipboardData(text: content));
     setState(() {
       _localStats = {
@@ -3305,7 +2974,7 @@ Capture deadlines, sequencing, and blockers here.''',
       };
     });
     await _persistLocalStats();
-    _showMessage(
+    showMessage(
       'Logs copied: Planner.LocalStore/copy_logs \u2014 '
       'frontend debug log now on the clipboard.',
     );
@@ -3331,16 +3000,16 @@ Capture deadlines, sequencing, and blockers here.''',
           : 'Template courses restored: '
               'Planner.LocalStore/restore_templates \u2014 '
               'server seeded default planner template tree.';
-      _log(
+      log(
         level: DebugLogLevel.info,
         source: 'Planner.LocalStore/restore_templates',
         message: message,
       );
-      _showMessage(message);
+      showMessage(message);
       return ActionFeedback(message: message);
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
-      _log(
+      log(
         level: DebugLogLevel.error,
         source: 'Planner.LocalStore/restore_templates',
         message: 'Template courses not restored: '
@@ -3351,14 +3020,6 @@ Capture deadlines, sequencing, and blockers here.''',
               'Planner.LocalStore/restore_templates \u2014 $cause.',
           isError: true);
     }
-  }
-
-  void _showMessage(String message) {
-    if (!mounted) {
-      return;
-    }
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -3657,7 +3318,7 @@ Capture deadlines, sequencing, and blockers here.''',
           onDeleteNote: _deleteNoteToRecycleBin,
           onSyncLocalDraft: _syncLocalDraft,
           onSyncAllLocalDrafts: _syncAllLocalDrafts,
-          onLogEvent: _appendUiLog,
+          onLogEvent: appendUiLog,
         );
       case 1:
         return _CoursePage(
@@ -3702,19 +3363,19 @@ Capture deadlines, sequencing, and blockers here.''',
           deletedNotes: _deletedNotes,
           onSave: _updateSettings,
           onLogout: _logout,
-          onRegister: _register,
+          onRegister: register,
           onValidateInvitation: (code) => widget.client.validateInvitation(code),
-          onVerify: _verify,
-          onResendVerification: _resendVerification,
-          onLogin: _login,
-          onRequestPasswordReset: _requestPasswordReset,
-          onConfirmPasswordReset: _confirmPasswordReset,
-          onGoogleLogin: (invitationCode) => _launchOAuth('google', invitationCode: invitationCode),
-          onGithubLogin: (invitationCode) => _launchOAuth('github', invitationCode: invitationCode),
-          onGoogleLoginOnly: () => _launchOAuth('google', intent: 'login'),
-          onGithubLoginOnly: () => _launchOAuth('github', intent: 'login'),
-          onBindGoogle: () => _launchOAuth('google', intent: 'bind'),
-          onBindGithub: () => _launchOAuth('github', intent: 'bind'),
+          onVerify: verify,
+          onResendVerification: resendVerification,
+          onLogin: login,
+          onRequestPasswordReset: requestPasswordReset,
+          onConfirmPasswordReset: confirmPasswordReset,
+          onGoogleLogin: (invitationCode) => launchOAuth('google', invitationCode: invitationCode),
+          onGithubLogin: (invitationCode) => launchOAuth('github', invitationCode: invitationCode),
+          onGoogleLoginOnly: () => launchOAuth('google', intent: 'login'),
+          onGithubLoginOnly: () => launchOAuth('github', intent: 'login'),
+          onBindGoogle: () => launchOAuth('google', intent: 'bind'),
+          onBindGithub: () => launchOAuth('github', intent: 'bind'),
           onListSocialAccounts: _token != null ? () => widget.client.listSocialAccounts(_token!) : null,
           onUnlinkSocialAccount: _token != null ? (provider) => widget.client.unlinkSocialAccount(_token!, provider) : null,
           onRestoreDeletedNote: _restoreDeletedNote,
@@ -3736,8 +3397,8 @@ Capture deadlines, sequencing, and blockers here.''',
               _httpClient?.baseUrl,
           debugSnapshotListenable: _httpClient?.debugSnapshot,
           debugHistoryListenable: _httpClient?.debugHistory,
-          debugLogController: _logController,
-          uiLogs: _uiLogs,
+          debugLogController: logController,
+          uiLogs: uiLogs,
         );
       default:
         return const SizedBox.shrink();

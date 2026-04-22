@@ -1,7 +1,7 @@
 part of notechondria_frontend;
 
 /// Defines the frontend contract for all Notechondria REST operations.
-abstract class NotechondriaClient {
+abstract class NotechondriaClient implements AuthClient {
   Future<List<Map<String, dynamic>>> getCourses({String? token});
   Future<Map<String, dynamic>> createCourse(
     String token,
@@ -92,6 +92,7 @@ abstract class NotechondriaClient {
     String code,
     String password,
   );
+  Future<Map<String, dynamic>> checkSession(String token);
   Future<void> logout(String token);
   Future<Map<String, dynamic>> getSettings(String token);
   Future<Map<String, dynamic>> updateSettings(
@@ -966,6 +967,15 @@ class HttpNotechondriaClient implements NotechondriaClient {
     );
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> checkSession(String token) async {
+    final uri = _uri('/auth/session/');
+    final response = await _get(uri, token: token);
+    return Map<String, dynamic>.from(
+      await _decode(response, uri: uri, method: 'GET'),
     );
   }
 
