@@ -472,46 +472,69 @@ wins on conflicts.</p>
 restate them here. When a task is landed, delete its entry from this
 file and add a round-log entry to the new version doc.</p>
 <ul>
-<li><input disabled="" type="checkbox"/>
-<strong>File-size rule enforcement — remaining splits.</strong> 0.1.52 codified
-the 1000-LOC hard ceiling in AGENTS.md §1.5 and carved the recycle-bin
+<li>
+<p><input disabled="" type="checkbox"/>
+<strong>File-size rule + cross-app sharing.</strong> 0.1.52 codified the
+1000-LOC hard ceiling in AGENTS.md §1.5 and carved the recycle-bin
 code out of each <code>app_shell.dart</code> into a <code>core/local_trash.dart</code>
-partial (proof of pattern — extension on <code>_AppShellState</code> with a
-<code>_trashRefresh</code> wrapper around <code>setState</code>). Remaining files still
-above 1000 LOC that need splitting:
+partial. 0.1.53 brought every file in <code>frontend/editor_app/lib/</code>
+under the cap (app_shell.dart 5000 → 552) via 23 per-concern
+extensions on <code>_AppShellState</code>. Remaining work below is <strong>not just
+another per-app repeat</strong> — audit showed 63+ methods in
+<code>{planner,portal}_app/lib/app_shell.dart</code> are byte-identical to
+editor's, so the next pass promotes shared code up into
+<code>notechondria_shared</code> rather than copy-pasting. Plan:</p>
+<ol>
+<li>
+<p><strong>Shared State mixins in <code>notechondria_shared/lib/src/app_shell/</code>.</strong>
+Mixin on <code>State&lt;StatefulWidget&gt;</code> with abstract getters for the
+handful of fields each concern needs. Order of extraction
+(from most-independent to most-coupled):</p>
 <ul>
-<li><code>frontend/editor_app/lib/app_shell.dart</code> (~5211) — next cohesive
-chunks: OAuth/auth flow (<code>_handleOAuthCallback</code>, <code>_applyAuthPayload</code>,
-<code>_login</code>, <code>_register</code>, <code>_logout</code>, bind helpers), sync loops
-(<code>_syncLocalDraft</code>, <code>_syncLocalCourse</code>, <code>_syncAllLocal*</code>, promote),
-local-archive export/import (<code>_exportLocalArchive</code>,
-<code>_restoreFromLocalImport</code>), sidebar category handlers
-(<code>_promptEditCategory</code>, <code>_deleteCategory</code>, <code>_unsubscribeCategory</code>,
-<code>_renameCategory</code>).</li>
-<li><code>frontend/planner_app/lib/app_shell.dart</code> (~3861) and
-<code>frontend/portal_app/lib/app_shell.dart</code> (~3760) — same cohorts
-apply; most code mirrors editor's with the same names.</li>
-<li><code>frontend/editor_app/lib/modules/settings.dart</code> (~1781) — section
-builders cleanly split into per-section widgets (app preferences,
-account / identity, API key section, sync + maintenance, debug
-log). Several already exist as private StatelessWidgets; the rest
-are inline build helpers.</li>
-<li><code>frontend/editor_app/lib/modules/note_editor.dart</code> (~1472) — the
-markdown inline-syntax parser + the image builder + the details
-dialog can each become separate partials.</li>
-<li><code>frontend/planner_app/lib/modules/learner.dart</code> (~1645),
-<code>frontend/portal_app/lib/modules/learner.dart</code> (~1504) — the
-inlined note editor is a good extraction candidate.</li>
-<li><code>frontend/editor_app/lib/core/client.dart</code> (~1291),
-<code>frontend/planner_app/lib/core/client.dart</code> (~1055),
-<code>frontend/portal_app/lib/core/client.dart</code> (~1065) — Dart's
-class-body split is constrained (extensions can't implement
-interface methods) so these need a different approach: extract
-<code>_decode</code>, <code>_stringifyErrors</code>, <code>_shapedErrorMessage</code>, <code>_send</code>,
-<code>_headers</code>, <code>_previewBody</code>, <code>_recordDebugSnapshot</code> into a base
-class / mixin. Worth ~200 LOC per file; won't get each file
-under 1000 alone but is a good incremental step.</li>
+<li><code>AppShellLogMixin</code> — <code>uiLogs</code>, <code>logController</code>, <code>log</code>,
+<code>appendUiLog</code>, <code>timed&lt;T&gt;</code>, <code>refreshState</code>, <code>showMessage</code>.</li>
+<li><code>AppShellAuthActionsMixin</code> — <code>register</code>, <code>verify</code>,
+<code>resendVerification</code>, <code>login</code>, <code>requestPasswordReset</code>,
+<code>confirmPasswordReset</code>. Abstract getter <code>logAppTag</code> provides
+the <code>Editor./Planner./Portal.</code> log-source prefix.</li>
+<li><code>AppShellOAuthMixin</code> — <code>launchOAuth</code>, <code>handleOAuthCallback</code>.</li>
+<li><code>AppShellSessionMixin</code> — <code>applyAuthPayload</code>, <code>logout</code>.</li>
+<li><code>AppShellLocalPersistMixin</code> — <code>_persistLocal*</code> helpers.</li>
+<li><code>AppShellDraftHelpersMixin</code> — <code>storeLocalDraft</code>,
+<code>buildOfflineFallbackDraft</code>.</li>
+<li><code>AppShellCourseHelpersMixin</code> — <code>isLocalCourse</code>,
+<code>decorateRemoteCourse</code>, <code>chooseDefaultCourse</code>.</li>
+<li><code>HttpClientInternalsMixin</code> on <code>HttpNotechondriaClient</code> — the
+<code>_send</code> / <code>_decode</code> / <code>_headers</code> / <code>_shapedErrorMessage</code> stack.</li>
 </ul>
+</li>
+<li>
+<p><strong>Migrate editor_app to consume the shared mixins</strong> (per mixin
+as they land — keeps CI green throughout). Verify the smoke
+test still passes after each mixin is absorbed. Delete the
+now-redundant per-app extension files.</p>
+</li>
+<li>
+<p><strong>Bring planner_app + portal_app online</strong> by replacing their
+inline methods with <code>with SharedMixinX&lt;W&gt;</code>. Each app then
+provides only its app-specific <code>_loadInitialData</code> orchestration,
+<code>_bootstrapApp</code>, and <code>build()</code>. Tests per app should still pass.</p>
+</li>
+<li>
+<p><strong>Residual per-app work</strong> (splits that can't share):</p>
+<ul>
+<li><code>{planner,portal}_app/lib/modules/learner.dart</code> (~1645, ~1504)
+— inlined note editor is the extraction candidate; shape is
+app-specific so this stays per-app.</li>
+<li><code>{planner,portal}_app/lib/modules/activity.dart</code> (~1438, ~1126)
+— planner-only calendar UI, extract sub-widgets.</li>
+</ul>
+</li>
+</ol>
+<p><strong>Shared dependencies added to <code>notechondria_shared/pubspec.yaml</code>:</strong>
+<code>shared_preferences</code>, <code>http</code>, <code>file_selector</code> (previously only
+<code>archive</code> + <code>path_provider</code>). These were already transitive deps
+of every app anyway.</p>
 </li>
 </ul>
 <h2 id="bugs"><a class="header" href="#bugs">Bugs</a></h2>
