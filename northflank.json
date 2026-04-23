@@ -1,0 +1,145 @@
+{
+  "apiVersion": "v1.2",
+  "arguments": {},
+  "spec": {
+    "kind": "Workflow",
+    "spec": {
+      "type": "sequential",
+      "steps": [
+        {
+          "kind": "Project",
+          "ref": "project",
+          "spec": {
+            "name": "notechondria",
+            "region": "us-central",
+            "networking": {
+              "allowedIngressProjects": []
+            }
+          }
+        },
+        {
+          "kind": "Workflow",
+          "spec": {
+            "type": "sequential",
+            "context": {
+              "projectId": "${refs.project.id}"
+            },
+            "steps": [
+              {
+                "kind": "Addon",
+                "ref": "database",
+                "spec": {
+                  "name": "notechondria-postgres",
+                  "type": "postgresql",
+                  "version": "latest",
+                  "externalAccessEnabled": false,
+                  "tlsEnabled": true,
+                  "billing": {
+                    "replicas": 1,
+                    "storage": 1024,
+                    "deploymentPlan": "notechondria-postgres-postgresql-0"
+                  }
+                }
+              },
+              {
+                "kind": "CombinedService",
+                "ref": "backend",
+                "spec": {
+                  "name": "notechondria-backend",
+                  "billing": {
+                    "deploymentPlan": "notechondria-backend"
+                  },
+                  "deployment": {
+                    "instances": 1,
+                    "storage": {
+                      "ephemeralStorage": {
+                        "storageSize": 1024
+                      },
+                      "shmSize": 64
+                    },
+                    "docker": {
+                      "configType": "default"
+                    }
+                  },
+                  "vcsData": {
+                    "projectType": "github",
+                    "projectUrl": "https://github.com/Trance-0/Notechondria",
+                    "projectBranch": "codex"
+                  },
+                  "buildSettings": {
+                    "dockerfile": {
+                      "buildEngine": "kaniko",
+                      "useCache": false,
+                      "dockerWorkDir": "/",
+                      "dockerFilePath": "/backend/Dockerfile",
+                      "buildkit": {
+                        "useInternalCache": false,
+                        "internalCacheStorage": 16384
+                      }
+                    }
+                  },
+                  "buildArguments": {},
+                  "buildFiles": {},
+                  "runtimeEnvironment": {
+                    "PORT": "8000",
+                    "WEB_CONCURRENCY": "2",
+                    "PYTHONUNBUFFERED": "1",
+                    "DJANGO_DEBUG": "False",
+                    "DJANGO_ALLOWED_HOSTS": "*",
+                    "DJANGO_CSRF_TRUSTED_ORIGINS": "https://*.code.run",
+                    "DJANGO_SECRET_KEY": "REPLACE_ME_FROM_SECRET_GROUP",
+                    "POSTGRE_HOST": "${refs.database.host}",
+                    "POSTGRE_PORT": "${refs.database.port}",
+                    "POSTGRE_DB": "${refs.database.credentials.defaultDatabase}",
+                    "POSTGRE_USERNAME": "${refs.database.credentials.username}",
+                    "POSTGRE_PASSWORD": "${refs.database.credentials.password}",
+                    "DATABASE_URL": "postgresql://${refs.database.credentials.username}:${refs.database.credentials.password}@${refs.database.host}:${refs.database.port}/${refs.database.credentials.defaultDatabase}"
+                  },
+                  "runtimeFiles": {},
+                  "ports": [
+                    {
+                      "name": "p01",
+                      "internalPort": 8000,
+                      "protocol": "HTTP",
+                      "public": true,
+                      "domains": [],
+                      "disableNfDomain": false,
+                      "security": {
+                        "policies": [],
+                        "credentials": []
+                      }
+                    }
+                  ],
+                  "disabledCI": false,
+                  "buildConfiguration": {
+                    "pathIgnoreRules": [
+                      "frontend/**",
+                      "docs/**",
+                      "deployment/jenkins/**",
+                      "deployment/render/**",
+                      "deployment/docker/**"
+                    ],
+                    "isAllowList": false,
+                    "ciIgnoreFlagsEnabled": false
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "options": {
+    "autorun": false,
+    "concurrencyPolicy": "allow"
+  },
+  "gitops": {
+    "repoUrl": "https://github.com/Trance-0/Notechondria",
+    "vcsService": "github",
+    "accountLogin": "Trance-0",
+    "branch": "codex",
+    "filePath": "/northflank.json"
+  },
+  "$schema": "https://api.northflank.com/v1/schemas/template"
+}

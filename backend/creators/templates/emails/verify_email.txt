@@ -1,0 +1,11 @@
+Notechondria account verification
+
+Email: {{ email }}
+Verification code: {{ code }}
+Expires in: {{ ttl_hours }} hour(s)
+
+{% if frontend_verify_url %}
+Open this page to finish verification: {{ frontend_verify_url }}
+{% endif %}
+
+If you did not request this account, you can ignore this email.

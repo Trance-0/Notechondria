@@ -1,0 +1,7 @@
+criteria:
+  - id: "clarity"
+    description: "Reflection is clear and specific."
+    max_points: 3
+  - id: "next-steps"
+    description: "Includes actionable next steps."
+    max_points: 2

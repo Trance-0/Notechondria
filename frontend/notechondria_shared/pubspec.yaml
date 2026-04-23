@@ -1,0 +1,24 @@
+name: notechondria_shared
+description: Shared UI building blocks for Notechondria's Flutter apps (editor, planner, portal).
+publish_to: "none"
+version: 0.1.0
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  archive: ^3.4.10
+  file_selector: ^1.0.3
+  http: ^1.2.1
+  path_provider: ^2.1.0
+  shared_preferences: ^2.5.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true

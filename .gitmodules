@@ -1,0 +1,3 @@
+[submodule "AGENTS.md"]
+	path = AGENTS.md
+	url = https://github.com/Trance-0/AGENTS.md.git

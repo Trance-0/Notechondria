@@ -1,0 +1,133 @@
+name: frontend-pages
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  push:
+    branches: [ codex ]
+    paths:
+      - 'frontend/editor_app/**'
+      - 'frontend/planner_app/**'
+      - 'frontend/portal_app/**'
+      - 'docs/**'
+      - '.github/workflows/frontend-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Enable Flutter web
+        run: flutter config --enable-web
+
+      - name: Read app version from ./VERSION
+        id: appversion
+        run: echo "value=$(tr -d '\n' < VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Test editor_app
+        working-directory: frontend/editor_app
+        run: |
+          flutter pub get
+          flutter test test/smoke_test.dart -r compact
+
+      - name: Build editor_app
+        working-directory: frontend/editor_app
+        run: flutter build web --release --base-href /Notechondria/editor/ --no-web-resources-cdn --dart-define=APP_VERSION=${{ steps.appversion.outputs.value }}
+
+      - name: Test planner_app
+        working-directory: frontend/planner_app
+        run: |
+          flutter pub get
+          flutter test test/smoke_test.dart -r compact
+
+      - name: Build planner_app
+        working-directory: frontend/planner_app
+        run: flutter build web --release --base-href /Notechondria/planner/ --no-web-resources-cdn --dart-define=APP_VERSION=${{ steps.appversion.outputs.value }}
+
+      - name: Test portal_app
+        working-directory: frontend/portal_app
+        run: |
+          flutter pub get
+          flutter test test/smoke_test.dart -r compact
+
+      - name: Build portal_app
+        working-directory: frontend/portal_app
+        run: flutter build web --release --base-href /Notechondria/portal/ --no-web-resources-cdn --dart-define=APP_VERSION=${{ steps.appversion.outputs.value }}
+
+      - name: Disable service worker bootstrap in Pages builds
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          for app in ('editor_app', 'planner_app', 'portal_app'):
+              p = Path(f'frontend/{app}/build/web/flutter_bootstrap.js')
+              text = p.read_text()
+              text = re.sub(r"_flutter\.loader\.load\(\{\s*serviceWorkerSettings:\s*\{.*?\}\s*\}\);", "_flutter.loader.load({});", text, flags=re.S)
+              p.write_text(text)
+              sw = Path(f'frontend/{app}/build/web/flutter_service_worker.js')
+              if sw.exists():
+                  sw.unlink()
+          PY
+
+      - name: Build docs (mdBook)
+        run: |
+          curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.4.40/mdbook-v0.4.40-x86_64-unknown-linux-gnu.tar.gz | tar xz -C /usr/local/bin
+          mdbook build docs
+
+      - name: Stage Pages tree
+        run: |
+          mkdir -p /tmp/pages/editor /tmp/pages/planner /tmp/pages/portal /tmp/pages/docs
+          cp -R frontend/editor_app/build/web/. /tmp/pages/editor/
+          cp -R frontend/planner_app/build/web/. /tmp/pages/planner/
+          cp -R frontend/portal_app/build/web/. /tmp/pages/portal/
+          cp -R docs/build/. /tmp/pages/docs/
+          touch /tmp/pages/.nojekyll
+          # Root URL now points at the portal app directly — it already carries
+          # its own navigation into Editor / Planner / Activity / Settings.
+          # See docs/TODO.md (Portal section) and docs/versions/0.1.18.md.
+          cat > /tmp/pages/index.html <<'EOF'
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <title>Notechondria</title>
+            <meta http-equiv="refresh" content="0; url=./portal/" />
+            <link rel="canonical" href="./portal/" />
+            <script>
+              // Preserve any query/hash the user arrived with so deep links work.
+              (function () {
+                var target = './portal/' + (window.location.search || '') + (window.location.hash || '');
+                window.location.replace(target);
+              })();
+            </script>
+            <style>
+              :root { color-scheme: dark; }
+              body { font-family: system-ui, sans-serif; margin: 0; padding: 32px; background: #0f172a; color: #e5e7eb; }
+              a { color: #93c5fd; }
+            </style>
+          </head>
+          <body>
+            <p>Redirecting to the <a href="./portal/">Notechondria portal</a>…</p>
+          </body>
+          </html>
+          EOF
+
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: /tmp/pages
+          keep_files: true

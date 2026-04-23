@@ -1,22 +1,54 @@
 # Notechondria
 
-This is the last app I developed in Django full-stack, this is the first, and the last complete project that I will commit to and maintain for the rest of my life.
+Notechondria is split into three standalone Flutter frontends plus one Django backend.
 
-[![wakatime](https://wakatime.com/badge/user/53e0bfc9-ae89-4cb3-99fe-c6cbc6359857/project/018d7a17-526b-478b-9482-104ce6cd377a.svg)](https://wakatime.com/badge/user/53e0bfc9-ae89-4cb3-99fe-c6cbc6359857/project/018d7a17-526b-478b-9482-104ce6cd377a)
+## Frontends
+- `frontend/editor_app/` — offline-first note editor
+- `frontend/planner_app/` — course/module planner and deadline tracker
+- `frontend/portal_app/` — orchestration shell
 
-May your note be your power for success.
+## Backend
+- `backend/` — Django + DRF + PostgreSQL
 
-This page is updated on 2023/12/4
+## Root files
+Only essential root files are kept here:
+- `README.md`
+- `Jenkinsfile`
+- `docker-compose.yml`
+- `render-deploy.sh`
 
-Notechondria names from the Note and Mitochondria, we wish the note could be the power that fosters personal accomplishments rather than text or drawing on iPad or other media. We wish to connect all the data to create an easily accessible database for each individual in the age of information.
+## Render runtime note
+Render should use the backend runtime files:
+- `backend/runtime.txt`
+- `backend/.python-version`
+- `backend/requirements-render.txt`
 
-Some of the key features of the app include:
+## Deployment methods
+- `deployment/jenkins/` — full-stack Jenkins deployment
+- `deployment/docker/` — local/self-hosted Docker full stack
+- `deployment/render/` — Render backend + GitHub Pages frontend
 
-* Use generative AI to connect notes with auto-tagging.
-* Use generative AI to parse the note to others.
-* Share the note seamlessly across devices and media, including images, datasets, latex, markdown, etc.
-* Card-like note truncation and auto-generate the note for the day based on user output
+## Useful docs
+- `docs/development/python_environments.md` — local backend env setup with conda, pip, and uv
+- `docs/operations/postgres_migration.md` — backup/restore workflow for arbitrary PostgreSQL hosts
+- `docs/deployment/deploy.md` — deployment flow overview
+- `docs/deployment/render_free_tier.md` — minimal Render backend deployment
 
-We will not share or sell any data with others because the developer is the app's main user.
+## Frontend default API behavior
+- On GitHub Pages: defaults to `https://notechondria.trance-0.com/api/v1`
+- On local browser full-stack deploy (`localhost` / `127.0.0.1`): defaults to same-origin `${origin}/api/v1`
+- In Docker full-stack deploy: root gateway nginx routes `/api/v1` to the Django backend
 
-We will not use your knowledge to feed the AI, we use open API and ensure that your original ideas and thoughts will not be used for training.
+## Local verification
+```bash
+for app in frontend/editor_app frontend/planner_app frontend/portal_app; do
+  (cd "$app" && flutter test test/smoke_test.dart -r compact)
+  (cd "$app" && flutter build web --release --base-href "/${app##*/_app}/" --no-web-resources-cdn)
+done
+```
+
+## Developer scripts
+
+```english
+Continue working on this project, with prompts in ./docs/TASK.md. 
+```

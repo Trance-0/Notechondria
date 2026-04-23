@@ -1,0 +1,14 @@
+[book]
+title = "Notechondria Documentation"
+authors = ["Notechondria Team"]
+language = "en"
+src = "."
+
+[build]
+build-dir = "build"
+
+[output.html]
+default-theme = "navy"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/Trance-0/Notechondria"
+edit-url-template = "https://github.com/Trance-0/Notechondria/edit/codex/docs/{path}"

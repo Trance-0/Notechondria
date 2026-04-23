@@ -1,0 +1,107 @@
+name: notechondria
+
+volumes:
+  postgres-data:
+  static_volume:
+  media_volume:
+networks:
+  notechondria-back:
+  notechondria-shared:
+    name: ${NOTECHONDRIA_SHARED_NETWORK:-notechondria-shared}
+
+services:
+  app:
+    image: ${APP_IMAGE:-trancezero/notechondria:latest}
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DEBUG: ${DJANGO_DEBUG}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS_COMPOSE:-localhost 127.0.0.1}
+      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS}
+      POSTGRE_USERNAME: ${POSTGRE_USERNAME}
+      POSTGRE_PASSWORD: ${POSTGRE_PASSWORD}
+      POSTGRE_HOST: db
+      POSTGRE_PORT: ${POSTGRE_PORT}
+      POSTGRE_DB: ${POSTGRE_DB}
+      DJANGO_PRODUCTION_STATIC_ROOT: ${DJANGO_PRODUCTION_STATIC_ROOT}
+      DJANGO_PRODUCTION_MEDIA_ROOT: ${DJANGO_PRODUCTION_MEDIA_ROOT}
+      DJANGO_LOG_LEVEL: ${DJANGO_LOG_LEVEL}
+      DJANGO_LOG_FILE_NAME: ${DJANGO_LOG_FILE_NAME}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      GITHUB_APP_ID: ${GITHUB_APP_ID}
+      GITHUB_APP_CLIENT_ID: ${GITHUB_APP_CLIENT_ID}
+      GITHUB_APP_CLIENT_SECRET: ${GITHUB_APP_CLIENT_SECRET}
+      GITHUB_APP_PRIVATE_KEY_PATH: ${GITHUB_APP_PRIVATE_KEY_PATH}
+      GITHUB_APP_WEBHOOK_SECRET: ${GITHUB_APP_WEBHOOK_SECRET}
+      GITHUB_AUTHORIZED_REDIRECT_URI: ${GITHUB_AUTHORIZED_REDIRECT_URI}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET}
+      GOOGLE_AUTHORIZED_REDIRECT_URI: ${GOOGLE_AUTHORIZED_REDIRECT_URI}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_USE_TLS: ${SMTP_USE_TLS}
+      SMTP_USE_SSL: ${SMTP_USE_SSL}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL}
+      SMTP_EMAIL_VERIFICATION_TTL_HOURS: ${SMTP_EMAIL_VERIFICATION_TTL_HOURS}
+      FRONTEND_VERIFY_URL: ${FRONTEND_VERIFY_URL}
+      DJANGO_SUPERUSER_USERNAME: ${DJANGO_SUPERUSER_USERNAME}
+      DJANGO_SUPERUSER_EMAIL: ${DJANGO_SUPERUSER_EMAIL}
+      DJANGO_SUPERUSER_PASSWORD: ${DJANGO_SUPERUSER_PASSWORD}
+    command: gunicorn notechondria.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - static_volume:/home/staticfiles
+      - media_volume:/home/mediafiles
+    ports:
+      - ${BACKEND_HOST_PORT:-9090}:8000
+    depends_on:
+      - db
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /home/staticfiles/admin/css/base.css && test -f /home/staticfiles/rest_framework/css/bootstrap.min.css && python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=5)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      - notechondria-back
+      - notechondria-shared
+  db:
+    image: postgres:15
+    volumes:
+      - postgres-data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=${POSTGRE_USERNAME}
+      - POSTGRES_PASSWORD=${POSTGRE_PASSWORD}
+      - POSTGRES_DB=${POSTGRE_DB}
+    ports:
+      # port 5432 for connection on local computer
+      - ${DB_HOST_PORT:-9032}:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRE_USERNAME} -d ${POSTGRE_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks:
+      - notechondria-back
+  nginx:
+    image: ${NGINX_IMAGE:-trancezero/nginx:latest}
+    build: ./nginx
+    volumes:
+      - static_volume:/home/staticfiles
+      - media_volume:/home/mediafiles
+    ports:
+      # host-facing web port
+      - ${APP_HOST_PORT:-9080}:80
+    depends_on:
+      - app
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /home/staticfiles/admin/css/base.css && test -f /home/staticfiles/rest_framework/css/bootstrap.min.css"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      notechondria-shared:
+        aliases:
+          - backend_nginx

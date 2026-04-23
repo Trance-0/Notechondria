@@ -1,0 +1,227 @@
+name: portal-release
+
+# Builds the Notechondria portal_app for every desktop + mobile target
+# Flutter supports, then attaches the archives to a GitHub Release.
+#
+# Trigger: pushing a tag that starts with `v` (e.g. `v0.1.44`) or a
+# manual `workflow_dispatch` run. Manual runs upload build artifacts
+# but skip the release publish step (no tag to attach to).
+#
+# Skipped targets (and why):
+#   * Linux x86 (32-bit): Flutter desktop does not ship 32-bit Linux.
+#     Only x64 and arm64 are supported.
+#   * Windows x86 (32-bit): Flutter Windows desktop is x64-only.
+#   * iOS signed: distribution-signed builds need an Apple Developer
+#     certificate + provisioning profile stored as secrets. This
+#     workflow produces an unsigned `.app` bundle suitable for dev
+#     install / sideload only.
+#
+# Platform folders (android/, ios/, macos/, linux/) are generated at
+# CI time via `flutter create --platforms=...`. The repo only ships
+# `windows/` and `web/` today, so we regenerate the others per run
+# rather than committing boilerplate. Customize bundle IDs / icons by
+# committing those folders later.
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  FLUTTER_CHANNEL: stable
+  APP_DIR: frontend/portal_app
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # --------------------------------------------------------------------
+  # Desktop + mobile build matrix
+  # --------------------------------------------------------------------
+  build:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-x64
+            runs-on: ubuntu-latest
+            flutter-platform: linux
+            archive-ext: tar.gz
+          - target: linux-arm64
+            runs-on: ubuntu-24.04-arm
+            flutter-platform: linux
+            archive-ext: tar.gz
+          - target: windows-x64
+            runs-on: windows-latest
+            flutter-platform: windows
+            archive-ext: zip
+          - target: macos
+            runs-on: macos-latest
+            flutter-platform: macos
+            archive-ext: zip
+          - target: android-apk
+            runs-on: ubuntu-latest
+            flutter-platform: android
+            archive-ext: apk
+          - target: ios-unsigned
+            runs-on: macos-latest
+            flutter-platform: ios
+            archive-ext: zip
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Read app version
+        id: appversion
+        shell: bash
+        run: echo "value=$(tr -d '\n' < VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+
+      - name: Linux build dependencies
+        if: matrix.flutter-platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev libstdc++-12-dev
+
+      - name: Setup Java (Android only)
+        if: matrix.flutter-platform == 'android'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Scaffold missing platform folder
+        working-directory: ${{ env.APP_DIR }}
+        shell: bash
+        run: |
+          # portal_app ships web/ + windows/ today. For everything else
+          # we regenerate the platform folder in-place. `flutter create`
+          # is idempotent: it no-ops on platforms that already exist.
+          flutter create --platforms=${{ matrix.flutter-platform }} .
+
+      - name: Pub get
+        working-directory: ${{ env.APP_DIR }}
+        run: flutter pub get
+
+      - name: Smoke test
+        working-directory: ${{ env.APP_DIR }}
+        # Only run tests once — the linux-x64 leg covers it. The other
+        # legs are redundant for pure-Dart smoke tests and cost minutes.
+        if: matrix.target == 'linux-x64'
+        run: flutter test test/smoke_test.dart -r compact
+
+      # ----- Builds per platform -----------------------------------------
+
+      - name: Build Linux
+        if: matrix.flutter-platform == 'linux'
+        working-directory: ${{ env.APP_DIR }}
+        run: flutter build linux --release --dart-define=APP_VERSION=${{ steps.appversion.outputs.value }}
+
+      - name: Build Windows
+        if: matrix.flutter-platform == 'windows'
+        working-directory: ${{ env.APP_DIR }}
+        run: flutter build windows --release --dart-define=APP_VERSION=${{ steps.appversion.outputs.value }}
+
+      - name: Build macOS
+        if: matrix.flutter-platform == 'macos'
+        working-directory: ${{ env.APP_DIR }}
+        run: flutter build macos --release --dart-define=APP_VERSION=${{ steps.appversion.outputs.value }}
+
+      - name: Build Android APK
+        if: matrix.flutter-platform == 'android'
+        working-directory: ${{ env.APP_DIR }}
+        # Produces universal APK. Split-per-abi would save user download
+        # size but complicates asset naming; fold that in later if needed.
+        run: flutter build apk --release --dart-define=APP_VERSION=${{ steps.appversion.outputs.value }}
+
+      - name: Build iOS (unsigned)
+        if: matrix.flutter-platform == 'ios'
+        working-directory: ${{ env.APP_DIR }}
+        run: flutter build ios --release --no-codesign --dart-define=APP_VERSION=${{ steps.appversion.outputs.value }}
+
+      # ----- Package per platform ----------------------------------------
+
+      - name: Package Linux
+        if: matrix.flutter-platform == 'linux'
+        shell: bash
+        run: |
+          cd ${{ env.APP_DIR }}/build/linux/*/release/bundle
+          tar -czf "$GITHUB_WORKSPACE/portal_app-${{ steps.appversion.outputs.value }}-${{ matrix.target }}.tar.gz" .
+
+      - name: Package Windows
+        if: matrix.flutter-platform == 'windows'
+        shell: pwsh
+        run: |
+          $src = "${{ env.APP_DIR }}/build/windows/x64/runner/Release"
+          $dst = "${{ github.workspace }}/portal_app-${{ steps.appversion.outputs.value }}-${{ matrix.target }}.zip"
+          Compress-Archive -Path "$src/*" -DestinationPath $dst
+
+      - name: Package macOS
+        if: matrix.flutter-platform == 'macos'
+        shell: bash
+        run: |
+          cd ${{ env.APP_DIR }}/build/macos/Build/Products/Release
+          # The .app bundle is the whole deliverable.
+          zip -ry "$GITHUB_WORKSPACE/portal_app-${{ steps.appversion.outputs.value }}-${{ matrix.target }}.zip" portal_app.app
+
+      - name: Package Android APK
+        if: matrix.flutter-platform == 'android'
+        shell: bash
+        run: |
+          cp ${{ env.APP_DIR }}/build/app/outputs/flutter-apk/app-release.apk \
+             "$GITHUB_WORKSPACE/portal_app-${{ steps.appversion.outputs.value }}-${{ matrix.target }}.apk"
+
+      - name: Package iOS (unsigned)
+        if: matrix.flutter-platform == 'ios'
+        shell: bash
+        run: |
+          # Unsigned Runner.app — install via Xcode / sideload tools for
+          # dev testing. App Store distribution needs a signed build.
+          cd ${{ env.APP_DIR }}/build/ios/iphoneos
+          zip -ry "$GITHUB_WORKSPACE/portal_app-${{ steps.appversion.outputs.value }}-${{ matrix.target }}.zip" Runner.app
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: portal_app-${{ matrix.target }}
+          path: portal_app-${{ steps.appversion.outputs.value }}-${{ matrix.target }}.*
+          if-no-files-found: error
+          retention-days: 14
+
+  # --------------------------------------------------------------------
+  # Publish GitHub Release (only when triggered by a tag push)
+  # --------------------------------------------------------------------
+  release:
+    name: Publish release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: List collected assets
+        run: ls -lah dist/
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false

@@ -1,1 +1,0 @@
-pip install -r ../notechondria/requirements.txt

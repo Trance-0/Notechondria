@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+  <title id="title">Self-identity and Expression in Modern Arts cover art</title>
+  <desc id="desc">A gallery-inspired composition with layered frames, abstract color fields, and portrait silhouettes suggesting performance and self-expression.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1f102a"/>
+      <stop offset="50%" stop-color="#7c2d12"/>
+      <stop offset="100%" stop-color="#fef3c7"/>
+    </linearGradient>
+    <linearGradient id="frame" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff7ed" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#fed7aa" stop-opacity="0.85"/>
+    </linearGradient>
+  </defs>
+  <rect width="1440" height="900" fill="url(#bg)"/>
+  <circle cx="250" cy="168" r="122" fill="#fde68a" opacity="0.3"/>
+  <circle cx="1184" cy="206" r="152" fill="#fca5a5" opacity="0.24"/>
+  <rect x="108" y="108" width="1224" height="584" rx="42" fill="#111827" opacity="0.28"/>
+  <rect x="92" y="92" width="1224" height="584" rx="42" fill="url(#frame)"/>
+  <rect x="158" y="154" width="334" height="426" rx="28" fill="#312e81"/>
+  <rect x="554" y="154" width="316" height="426" rx="28" fill="#9a3412"/>
+  <rect x="932" y="154" width="316" height="426" rx="28" fill="#065f46"/>
+  <rect x="212" y="210" width="226" height="126" rx="20" fill="#f9a8d4" opacity="0.9"/>
+  <rect x="606" y="210" width="212" height="150" rx="20" fill="#fcd34d" opacity="0.88"/>
+  <rect x="984" y="210" width="214" height="134" rx="20" fill="#93c5fd" opacity="0.88"/>
+  <path d="M270 514c0-72 46-130 104-130s104 58 104 130" fill="#1f2937" opacity="0.9"/>
+  <path d="M650 514c0-84 42-152 92-152s92 68 92 152" fill="#111827" opacity="0.9"/>
+  <path d="M1028 514c0-74 48-134 108-134s108 60 108 134" fill="#1f2937" opacity="0.9"/>
+  <g opacity="0.22" stroke="#fff7ed">
+    <path d="M0 734H1440"/>
+    <path d="M0 782H1440"/>
+    <path d="M0 830H1440"/>
+    <path d="M0 878H1440"/>
+  </g>
+  <text x="126" y="782" fill="#fff7ed" font-size="62" font-family="Georgia, 'Times New Roman', serif">Self-identity and Expression in Modern Arts</text>
+  <text x="126" y="840" fill="#ffedd5" font-size="27" font-family="'Trebuchet MS', sans-serif">Seeded sample course on performance, memory, medium, and the making of the modern self.</text>
+</svg>
