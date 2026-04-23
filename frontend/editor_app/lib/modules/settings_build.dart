@@ -757,6 +757,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
         title: 'Debug log',
         summary: summary,
         onCopyLogs: widget.onCopyLogs,
+        onPing: () => pingBackend(widget.apiBaseUrl),
       );
     }
     return Card(

@@ -11,6 +11,7 @@ export 'src/models/api_debug_snapshot.dart' show ApiDebugSnapshot;
 
 export 'src/utils/blur_dialog.dart' show showBlurDialog;
 export 'src/utils/compact_timestamp.dart' show formatCompactTimestamp;
+export 'src/utils/ping_backend.dart' show pingBackend;
 export 'src/utils/local_archive.dart'
     show
         kLocalArchivePackageVersion,
@@ -42,7 +43,8 @@ export 'src/components/debug_log.dart'
         DebugLogController,
         DebugLogEntry,
         DebugLogLevel,
-        DebugLogLevelLabel;
+        DebugLogLevelLabel,
+        PingResult;
 export 'src/components/debug_widgets.dart' show ApiDebugCard, ApiDebugSummary;
 export 'src/components/error_state.dart' show ErrorStateView;
 export 'src/components/navigation.dart' show ConfirmWithDelayDialog, SidebarItem;

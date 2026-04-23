@@ -6,6 +6,7 @@ from urllib.parse import urlencode
 
 import requests as http_requests
 from django.conf import settings
+from django.utils import timezone
 from django.http import (
     Http404,
     HttpResponse,
@@ -51,6 +52,26 @@ def _read_backend_version() -> str:
 
 def health_check(request):
     return JsonResponse({"status": "ok", "service": HANDSHAKE_SERVICE_ID})
+
+
+@require_GET
+def ping(request):
+    """Minimal liveness check used by the frontend debug-log `ping` command.
+
+    Returns a compact JSON payload with a server-side UTC timestamp so the
+    client can measure round-trip latency without paying for the full
+    handshake payload. Matches the §1.7 shape on failure via the usual
+    DRF exception handler; on success the payload is small by design:
+    the frontend only needs `pong` and `timestamp` to prove the path
+    from the device to the backend is live.
+    """
+    return JsonResponse(
+        {
+            "pong": True,
+            "service": HANDSHAKE_SERVICE_ID,
+            "timestamp": timezone.now().isoformat(),
+        }
+    )
 
 
 @require_GET

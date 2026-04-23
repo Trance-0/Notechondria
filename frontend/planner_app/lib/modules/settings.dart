@@ -553,6 +553,7 @@ class _SettingsPageState extends State<_SettingsPage> {
             summary:
                 '${widget.localDraftCount} local note(s), ${widget.localCourseCount} local course(s).',
             onCopyLogs: widget.onCopyLogs,
+            onPing: () => pingBackend(widget.apiBaseUrl),
           )
         else
           Card(

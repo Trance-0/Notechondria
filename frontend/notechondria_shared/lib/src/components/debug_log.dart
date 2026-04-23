@@ -196,6 +196,24 @@ class DebugLogController extends ChangeNotifier {
 
 /// Compact debug log card: filter chips per level, scrollable log list, and
 /// a terminal input below supporting `ls`, `cd`, and `clear`.
+/// Outcome of a backend ping issued from the debug-log terminal.
+/// Returned by `DebugLogCard.onPing` so the card can render a latency
+/// line. On success, `latencyMs` is the client-measured round trip in
+/// milliseconds and `detail` is a short human-readable summary
+/// (typically `'pong'` or the backend's `service` field). On failure,
+/// `ok` is false and `detail` carries the cause string.
+class PingResult {
+  const PingResult({
+    required this.ok,
+    required this.latencyMs,
+    required this.detail,
+  });
+
+  final bool ok;
+  final int latencyMs;
+  final String detail;
+}
+
 class DebugLogCard extends StatefulWidget {
   const DebugLogCard({
     super.key,
@@ -203,6 +221,7 @@ class DebugLogCard extends StatefulWidget {
     required this.title,
     required this.summary,
     this.onCopyLogs,
+    this.onPing,
     this.initialLevelFilter = DebugLogLevel.debug,
   });
 
@@ -210,6 +229,12 @@ class DebugLogCard extends StatefulWidget {
   final String title;
   final String summary;
   final Future<void> Function()? onCopyLogs;
+
+  /// Hook for the terminal's `ping` command. Each app wires this to
+  /// a lightweight HTTP GET against the backend's `/api/v1/ping/`
+  /// endpoint. Returning `null` means "ping is unsupported in this
+  /// host"; returning a `PingResult` drives the terminal output.
+  final Future<PingResult> Function()? onPing;
 
   /// Minimum severity shown initially. `debug` means "show everything".
   final DebugLogLevel initialLevelFilter;
@@ -224,7 +249,7 @@ class _DebugLogCardState extends State<DebugLogCard> {
   final ScrollController _terminalOutputController = ScrollController();
   final FocusNode _terminalFocus = FocusNode();
   final List<String> _terminalOutput = [
-    'nchron-shell: type `ls`, `cd <key>`, `cd ..`, or `clear`.',
+    'nchron-shell: type `ls`, `cd <key>`, `cd ..`, `ping`, or `clear`.',
   ];
   List<String> _terminalPath = const [];
 
@@ -289,9 +314,12 @@ class _DebugLogCardState extends State<DebugLogCard> {
     } else if (cmd.startsWith('cd')) {
       final arg = cmd.substring(2).trim();
       _handleCd(arg);
+    } else if (cmd == 'ping') {
+      _handlePing();
     } else if (cmd == 'help' || cmd == '?') {
       setState(() {
-        _terminalOutput.add('commands: ls, cd <key>, cd .., pwd, clear, help');
+        _terminalOutput
+            .add('commands: ls, cd <key>, cd .., pwd, ping, clear, help');
       });
     } else {
       setState(() {
@@ -351,6 +379,37 @@ class _DebugLogCardState extends State<DebugLogCard> {
     setState(() {
       _terminalOutput.addAll(lines);
     });
+  }
+
+  Future<void> _handlePing() async {
+    if (widget.onPing == null) {
+      setState(() {
+        _terminalOutput
+            .add('ping: no backend ping handler wired on this host.');
+      });
+      return;
+    }
+    setState(() {
+      _terminalOutput.add('pinging backend...');
+    });
+    try {
+      final result = await widget.onPing!();
+      if (!mounted) return;
+      setState(() {
+        if (result.ok) {
+          _terminalOutput.add('pong: ${result.latencyMs}ms — ${result.detail}');
+        } else {
+          _terminalOutput
+              .add('ping failed: ${result.latencyMs}ms — ${result.detail}');
+        }
+      });
+    } catch (error) {
+      if (!mounted) return;
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      setState(() {
+        _terminalOutput.add('ping failed: $cause');
+      });
+    }
   }
 
   void _handleCd(String arg) {
