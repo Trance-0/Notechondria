@@ -23,6 +23,15 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
   String _themePreset = 'teal';
   ThemeMode _themeMode = ThemeMode.system;
 
+  /// See editor_app/lib/app_shell.dart for the full write-up. Short
+  /// version: constructing `HttpNotechondriaClient()` inline in
+  /// `build()` made every `setState` (e.g. theme change) replace the
+  /// client with a fresh one at the compile-time default URL, wiping
+  /// the `_loadLocalState.updateBaseUrl(...)` that had pointed it at
+  /// the user's saved API URL. Cache once here instead.
+  late final NotechondriaClient _client =
+      widget.client ?? HttpNotechondriaClient();
+
   void _handleThemeChanged(String preset, String mode) {
     setState(() {
       _themePreset = preset;
@@ -53,7 +62,7 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
         ),
       ),
       home: AppShell(
-        client: widget.client ?? HttpNotechondriaClient(),
+        client: _client,
         onThemeChanged: _handleThemeChanged,
         initialIndex: widget.initialIndex,
         appTitle: widget.title,

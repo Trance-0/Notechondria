@@ -23,6 +23,22 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
   String _themePreset = 'teal';
   ThemeMode _themeMode = ThemeMode.system;
 
+  /// The single NotechondriaClient for this app instance. Must be
+  /// constructed in `initState` — NOT re-created on every `build()`.
+  ///
+  /// Earlier code wrote `client: widget.client ?? HttpNotechondriaClient()`
+  /// inline in `build()`. Every `setState` on this state (e.g. a theme
+  /// change) rebuilt `AppShell` with a fresh `HttpNotechondriaClient`
+  /// whose `_baseUrl` had reverted to the compile-time default, wiping
+  /// the `_loadLocalState.updateBaseUrl(...)` call that had pointed it
+  /// at the user's saved API URL. That's why users who saved
+  /// `note.zheyuanwu.com` in Settings saw requests still go to the
+  /// default `notechondria.trance-0.com` host after any theme tweak.
+  /// Caching the client here pins `_baseUrl` for the lifetime of the
+  /// app instance; `AppShell.updateBaseUrl` now survives rebuilds.
+  late final NotechondriaClient _client =
+      widget.client ?? HttpNotechondriaClient();
+
   void _handleThemeChanged(String preset, String mode) {
     setState(() {
       _themePreset = preset;
@@ -53,7 +69,7 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
         ),
       ),
       home: AppShell(
-        client: widget.client ?? HttpNotechondriaClient(),
+        client: _client,
         onThemeChanged: _handleThemeChanged,
         initialIndex: widget.initialIndex,
         appTitle: widget.title,

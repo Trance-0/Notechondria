@@ -67,6 +67,17 @@ if _custom_domain:
     _default_hosts += f" {_custom_domain}"
 
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", _default_hosts)
+# Union: BACKEND_CUSTOM_DOMAIN and RENDER_EXTERNAL_HOSTNAME must be
+# accepted even when DJANGO_ALLOWED_HOSTS is explicitly set. Previously
+# an explicit DJANGO_ALLOWED_HOSTS silently superseded _default_hosts,
+# so setting BACKEND_CUSTOM_DOMAIN in Northflank env had no effect —
+# the backend returned 400 DisallowedHost for the user's own domain
+# (`notechondria.trance-0.com` / `note.zheyuanwu.com`). The union runs
+# after env_list so operators can still whitelist extra hosts
+# centrally, but the platform-provided hostnames are always trusted.
+for _auto_host in (_custom_domain, _render_host):
+    if _auto_host and _auto_host not in ALLOWED_HOSTS and "*" not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS = [*ALLOWED_HOSTS, _auto_host]
 
 
 # Application definition
@@ -116,6 +127,18 @@ _frontend_origin = os.getenv("FRONTEND_ORIGIN", "")
 if _frontend_origin:
     _default_csrf += f",{_frontend_origin}"
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", _default_csrf)
+# Same rationale as the ALLOWED_HOSTS union above: an explicit
+# DJANGO_CSRF_TRUSTED_ORIGINS shouldn't silently drop the
+# platform-provided hostnames, or cross-origin POSTs from the
+# frontend to the user's own domain 403 with a CSRF rejection.
+for _auto_host in (_custom_domain, _render_host):
+    if not _auto_host:
+        continue
+    _origin = f"https://{_auto_host}"
+    if _origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS = [*CSRF_TRUSTED_ORIGINS, _origin]
+if _frontend_origin and _frontend_origin not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS = [*CSRF_TRUSTED_ORIGINS, _frontend_origin]
 
 ROOT_URLCONF = 'notechondria.urls'
 
