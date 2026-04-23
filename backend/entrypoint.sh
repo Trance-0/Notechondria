@@ -91,6 +91,25 @@ else
     python manage.py migrate --noinput
 fi
 python manage.py bootstrap_platform
+
+# 0.1.65: wipe all creators.Session rows on deploy. The owner opted into
+# this on the Northflank-only setup so every redeploy forces a clean
+# re-login across devices — simpler reasoning than trying to keep
+# sessions consistent across a rolling restart. Skipped silently if the
+# table doesn't exist yet (fresh DB, migrations still applying).
+python - <<'PY'
+import os
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "notechondria.settings")
+import django
+django.setup()
+try:
+    from creators.models import Session
+    deleted, _ = Session.objects.all().delete()
+    print(f"Wiped {deleted} creators.Session row(s) on deploy.")
+except Exception as exc:  # pragma: no cover - best effort on first boot
+    print(f"Skipped session wipe: {exc}")
+PY
+
 echo "Collecting static files into ${DJANGO_PRODUCTION_STATIC_ROOT}"
 python manage.py collectstatic --noinput --clear
 python - <<'PY'

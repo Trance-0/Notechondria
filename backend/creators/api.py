@@ -1,7 +1,9 @@
+import hashlib
 import json
 from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
+from django.utils import timezone
 from django.utils.timezone import now
 from urllib.parse import urlparse
 
@@ -14,7 +16,15 @@ from rest_framework.views import APIView
 import logging
 import requests as http_requests
 
-from .models import InvitationCode, SocialAccount, VerificationChoices, VerificationCode
+from .models import (
+    InvitationCode,
+    Session,
+    SESSION_ABSOLUTE_TIMEOUT,
+    SESSION_IDLE_TIMEOUT,
+    SocialAccount,
+    VerificationChoices,
+    VerificationCode,
+)
 from .utils import (
     _send_code_email,
     ensure_creator,
@@ -62,10 +72,58 @@ def creator_app_settings_payload(creator):
 
 
 def auth_payload(user: User, request=None):
-    token, _ = Token.objects.get_or_create(user=user)
+    """Mint a fresh session for *user* and return the response body the
+    frontend expects after a successful login / register / OAuth call.
+
+    ``token`` is the new ``Session.key`` — same wire shape
+    (``Authorization: Token <hex>``) as the old DRF-authtoken flow, but
+    backed by ``creators.Session`` so the user can be signed in on
+    multiple devices simultaneously. The response also includes:
+
+    - ``session.id`` — so the frontend can highlight the current row
+      in the Active Sessions list.
+    - ``session.device_label`` — derived from User-Agent at create-time.
+    - ``multi_device`` — ``true`` when the user already had another
+      active (non-revoked, non-expired) session at the time this one
+      was minted. The frontend uses this to show a "you've signed in
+      on another device" warning.
+    - ``other_sessions_count`` — count of other active sessions.
+    """
+    # Use the request User-Agent + X-Forwarded-For to seed the session
+    # metadata. Everything here is best-effort — missing headers just
+    # collapse to empty strings / "Unknown device".
+    user_agent = ""
+    ip_hash = ""
+    if request is not None:
+        user_agent = request.META.get("HTTP_USER_AGENT", "") or ""
+        raw_ip = request.META.get("HTTP_X_FORWARDED_FOR", "") or request.META.get("REMOTE_ADDR", "") or ""
+        # Take only the first hop of X-Forwarded-For (the original client).
+        raw_ip = raw_ip.split(",")[0].strip()
+        if raw_ip:
+            ip_hash = hashlib.sha256(raw_ip.encode()).hexdigest()
+    session = Session.create_for_user(
+        user,
+        user_agent=user_agent,
+        ip_hash=ip_hash,
+    )
+    now_ts = timezone.now()
+    other_active = Session.objects.filter(
+        user=user,
+        revoked_at__isnull=True,
+        last_seen_at__gt=now_ts - SESSION_IDLE_TIMEOUT,
+        created_at__gt=now_ts - SESSION_ABSOLUTE_TIMEOUT,
+    ).exclude(pk=session.pk).count()
     creator = ensure_creator_avatar(ensure_creator(user))
     return {
-        "token": token.key,
+        "token": session.key,
+        "session": {
+            "id": session.id,
+            "device_label": session.device_label,
+            "created_at": session.created_at.isoformat(),
+            "last_seen_at": session.last_seen_at.isoformat(),
+        },
+        "multi_device": other_active > 0,
+        "other_sessions_count": other_active,
         "user": {
             "id": user.id,
             "email": user.email,
@@ -710,16 +768,38 @@ class ChangePasswordApiView(APIView):
             )
         user.set_password(serializer.validated_data["new_password"])
         user.save(update_fields=["password"])
-        # Rotate auth token so old sessions are invalidated.
+        # Revoke every existing session so the old password can't hold
+        # any device online. Then mint a brand-new session for THIS
+        # request and return its key so the caller doesn't get logged
+        # out of the device they're changing the password on.
+        Session.objects.filter(user=user, revoked_at__isnull=True).update(
+            revoked_at=timezone.now(),
+        )
+        # Legacy DRF Token cleanup; harmless no-op once the table is empty.
         Token.objects.filter(user=user).delete()
-        token, _ = Token.objects.get_or_create(user=user)
+        user_agent = request.META.get("HTTP_USER_AGENT", "") or ""
+        ip_raw = (
+            request.META.get("HTTP_X_FORWARDED_FOR", "")
+            or request.META.get("REMOTE_ADDR", "")
+            or ""
+        ).split(",")[0].strip()
+        ip_hash = hashlib.sha256(ip_raw.encode()).hexdigest() if ip_raw else ""
+        fresh = Session.create_for_user(
+            user, user_agent=user_agent, ip_hash=ip_hash,
+        )
         return Response({
             "message": (
                 "Password changed: "
                 "Backend.Creators.Auth/password.change \u2014 "
                 "session token rotated; previous sessions invalidated."
             ),
-            "token": token.key,
+            "token": fresh.key,
+            "session": {
+                "id": fresh.id,
+                "device_label": fresh.device_label,
+                "created_at": fresh.created_at.isoformat(),
+                "last_seen_at": fresh.last_seen_at.isoformat(),
+            },
         })
 
 
@@ -833,21 +913,99 @@ class LogoutApiView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
+        # Revoke ONLY the session behind the current request, not
+        # every session the user owns. `MultiSessionAuthentication`
+        # attaches `request.auth_session` on successful auth.
+        # Sign-out on device A should not sign out device B — that's
+        # what SessionRevokeApiView is for.
+        current = getattr(request, "auth_session", None)
+        if current is not None:
+            current.revoke()
+        # Fallback for legacy DRF-Token callers: clean those up too.
+        # Harmless when the table is empty (post-0.1.65 flow).
         Token.objects.filter(user=request.user).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+def _serialize_session(session, *, current_id=None):
+    """Wire-format for Active Sessions list. Never includes the raw
+    `key` — that's the bearer token. The client only needs the id to
+    revoke, and metadata to display."""
+    return {
+        "id": session.id,
+        "device_label": session.device_label,
+        "user_agent": session.user_agent,
+        "ip_hash_prefix": session.ip_hash[:8] if session.ip_hash else "",
+        "created_at": session.created_at.isoformat(),
+        "last_seen_at": session.last_seen_at.isoformat(),
+        "is_current": current_id is not None and session.id == current_id,
+    }
+
+
+class SessionListApiView(APIView):
+    """GET /api/v1/auth/sessions/ — list the caller's active sessions.
+
+    Returns every non-revoked, non-expired row belonging to the
+    authenticated user, ordered by most-recently-active first. The
+    entry whose id matches the caller's own session is flagged
+    ``is_current: true`` so the UI can label it "This device" and
+    hide / style the revoke button appropriately.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        now_ts = timezone.now()
+        qs = Session.objects.filter(
+            user=request.user,
+            revoked_at__isnull=True,
+            last_seen_at__gt=now_ts - SESSION_IDLE_TIMEOUT,
+            created_at__gt=now_ts - SESSION_ABSOLUTE_TIMEOUT,
+        ).order_by("-last_seen_at")
+        current = getattr(request, "auth_session", None)
+        current_id = current.id if current is not None else None
+        return Response({
+            "sessions": [_serialize_session(s, current_id=current_id) for s in qs],
+            "current_session_id": current_id,
+        })
+
+
+class SessionRevokeApiView(APIView):
+    """DELETE /api/v1/auth/sessions/<int:session_id>/ — revoke a
+    specific session.
+
+    Only the OWNER can revoke; trying to revoke someone else's session
+    returns 404 (not 403 — we don't leak whether the id exists).
+    Revoking your CURRENT session is permitted: the caller is
+    effectively signing themselves out from this device, same as
+    /auth/logout/.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, session_id: int):
+        try:
+            session = Session.objects.get(pk=session_id, user=request.user)
+        except Session.DoesNotExist:
+            return Response(
+                {"detail": "Session not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        session.revoke()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class SessionApiView(APIView):
-    # Critical: use an EMPTY authentication_classes here, NOT the project
-    # default. DRF's TokenAuthentication raises AuthenticationFailed on
-    # any unknown token (even against AllowAny views) — meaning a stale
-    # token in Authorization would 401 this endpoint before the view ever
-    # ran, defeating the whole point of a session-probe endpoint. By
-    # disabling auth_classes we get to inspect the header ourselves and
-    # return a clean 200 with {"authenticated": false} whether the token
-    # is absent, malformed, or unrecognised. The frontend then clears the
-    # saved token quietly instead of surfacing a "Fresh token rejected"
-    # alarm.
+    # Same rationale as the 0.1.64 fix: empty authentication_classes so
+    # DRF's default chain doesn't 401 this endpoint on a stale token
+    # before the view can answer. The view inspects the Authorization
+    # header itself and returns 200 with ``{"authenticated": false}``
+    # for any missing / malformed / unrecognised / expired / revoked
+    # token. As of 0.1.65 the lookup is against ``creators.Session``
+    # (multi-device) instead of ``rest_framework.authtoken.Token``.
+    #
+    # Important: this probe does NOT mint a new session and does NOT
+    # roll the idle window forward — we only return the token the
+    # frontend gave us if it's still valid, so the caller knows
+    # whether their saved credential is still good.
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
 
@@ -858,15 +1016,59 @@ class SessionApiView(APIView):
             return Response({"authenticated": False})
         key = parts[1].strip()
         try:
-            token = Token.objects.select_related("user").get(key=key)
-        except Token.DoesNotExist:
+            session = Session.objects.select_related("user").get(key=key)
+        except Session.DoesNotExist:
             return Response({"authenticated": False})
-        user = token.user
+        if not session.is_active():
+            return Response({"authenticated": False})
+        user = session.user
         if not user.is_active:
             return Response({"authenticated": False})
-        payload = auth_payload(user, request=request)
-        payload["authenticated"] = True
-        return Response(payload)
+        # Echo back the user payload plus the existing session key, so
+        # the frontend's `_restoreSession` can reuse it without a fresh
+        # mint. We piggy-back on auth_payload's user-side shape but
+        # override token/session fields with the ALREADY-active row.
+        creator = ensure_creator_avatar(ensure_creator(user))
+        now_ts = timezone.now()
+        other_active = Session.objects.filter(
+            user=user,
+            revoked_at__isnull=True,
+            last_seen_at__gt=now_ts - SESSION_IDLE_TIMEOUT,
+            created_at__gt=now_ts - SESSION_ABSOLUTE_TIMEOUT,
+        ).exclude(pk=session.pk).count()
+        return Response({
+            "authenticated": True,
+            "token": session.key,
+            "session": {
+                "id": session.id,
+                "device_label": session.device_label,
+                "created_at": session.created_at.isoformat(),
+                "last_seen_at": session.last_seen_at.isoformat(),
+            },
+            "multi_device": other_active > 0,
+            "other_sessions_count": other_active,
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "username": user.username,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "display_name": f"{user.first_name} {user.last_name}".strip() or user.username,
+                "is_staff": user.is_staff,
+                "is_superuser": user.is_superuser,
+                "motto": creator.motto or "",
+                "social_link": creator.social_link or "",
+                "image_url": absolute_media_url(request, creator.image.url if creator.image else ""),
+                "editor_mode": creator.editor_mode,
+                "theme_preset": creator.theme_preset,
+                "theme_mode": creator.theme_mode,
+                "api_base_url": creator.api_base_url,
+                "app_settings": creator_app_settings_payload(creator),
+                "app_settings_updated_at": creator.app_settings_updated_at.isoformat()
+                if creator.app_settings_updated_at
+                else None,
+            },
+        })
 
 
 class SettingsApiView(APIView):

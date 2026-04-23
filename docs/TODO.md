@@ -125,6 +125,49 @@ file and add a round-log entry to the new version doc.
   client methods, app_shell callback wiring, and the
   `_ApiKeySection` widget.
 
+- [ ] **Multi-device session manager — frontend (3 apps).** 0.1.65
+  shipped the backend: `creators.Session` (multi-row per user,
+  1-day idle + 3-day absolute timeout), `MultiSessionAuthentication`
+  DRF class, `auth_payload` now mints a Session and returns
+  `{multi_device, other_sessions_count, session:{id,device_label,…}}`,
+  and two new endpoints `GET /api/v1/auth/sessions/` and
+  `DELETE /api/v1/auth/sessions/<id>/`. Still to do on the frontend:
+  - `HttpNotechondriaClient.listSessions(token)` and
+    `revokeSession(token, sessionId)` methods in
+    `notechondria_shared` HTTP client.
+  - Active Sessions card in the Settings surface (device label,
+    "last seen …", created-at, revoke button, "This device" badge
+    on the current session).
+  - Multi-device warning banner in all three apps whenever
+    `auth_payload` or `session` responses include
+    `multi_device: true` — link the banner to the new sessions
+    card so the user can audit and revoke.
+  - Wire all three apps to call `listSessions` on Settings-open
+    and refresh after revoke.
+
+- [ ] **Two-factor auth for password login.** Tracked separately
+  because it needs a new backend flow plus UI. Scope:
+  - Backend: on password login (NOT OAuth — skip 2FA there by
+    design), challenge the user with one of two second-factor
+    paths:
+    1. **Trusted-device approval.** Send a push-style prompt to
+       the user's first-registered session (the one created during
+       the original email-verify flow). Requires the user to have
+       completed email verification during that first sign-up so
+       we know the device is genuine.
+    2. **Email code.** Same 6-digit flow as the existing
+       `/api/v1/auth/resend-verification/` / `VerificationCode`
+       helpers — just re-purposed for login confirmation.
+  - New endpoints: `POST /api/v1/auth/2fa/challenge/` and
+    `POST /api/v1/auth/2fa/verify/`.
+  - `LoginApiView` needs a two-step variant: first call returns
+    `{pending_2fa: true, challenge_id, channels: [...]}` instead
+    of a token. Second call submits the code / approval id and
+    returns the full `auth_payload`.
+  - Settings UI for choosing / revoking trusted devices (can share
+    the sessions card if trusted-device is modelled as a flag on
+    Session).
+
 ### App preferences
 
 - [ ] **Offline-mode — secondary fetch gates.** The coarse

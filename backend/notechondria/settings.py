@@ -262,7 +262,13 @@ else:
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.TokenAuthentication",
+        # 0.1.65: replaced rest_framework.authentication.TokenAuthentication
+        # with MultiSessionAuthentication so a user can be signed in on
+        # multiple devices at once. Wire shape unchanged
+        # (Authorization: Token <40-hex>), but the backing table is now
+        # creators.Session (multi-row per user, with idle + absolute
+        # timeouts).
+        "creators.authentication.MultiSessionAuthentication",
         "creators.authentication.ApiKeyAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [

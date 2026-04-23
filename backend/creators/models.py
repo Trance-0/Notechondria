@@ -219,3 +219,145 @@ class InvitationCode(models.Model):
         if self.code_hash and len(self.code_hash) != 64:
             self.code_hash = self.hash_code(self.code_hash)
         super().save(*args, **kwargs)
+
+
+# Inactivity window: if a session hasn't made a request in this long,
+# MultiSessionAuthentication will refuse it and the user has to re-login.
+SESSION_IDLE_TIMEOUT = timedelta(days=1)
+# Absolute window: a session is dead this long after `created_at`
+# regardless of activity. Prevents an always-online attacker from
+# holding a stolen token forever.
+SESSION_ABSOLUTE_TIMEOUT = timedelta(days=3)
+
+
+class Session(models.Model):
+    """A per-device authenticated session. Multiple rows per user means
+    a user can be signed in on several devices at once and manage them
+    from the Settings surface (like Telegram's "Active sessions" list).
+
+    `key` is the opaque bearer token; the frontend sends it back via
+    ``Authorization: Token <key>``. The key is 40 hex chars so the
+    header shape stays identical to what the old DRF-authtoken-based
+    flow used — no frontend change needed.
+
+    Two timeouts:
+      * SESSION_IDLE_TIMEOUT (1d): evicts the session if `last_seen_at`
+        drifts more than 1 day behind `now()`. Rolls forward on every
+        authenticated request.
+      * SESSION_ABSOLUTE_TIMEOUT (3d): evicts regardless of activity,
+        counted from `created_at`. Forces a fresh auth ~every 3 days.
+
+    Expired sessions are rejected with the same "Invalid token"
+    error DRF's TokenAuthentication raised, so the frontend's
+    existing stale-token handling (boot-time probe → clearSession)
+    continues to work unchanged.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="sessions",
+    )
+    key = models.CharField(
+        max_length=40,
+        unique=True,
+        db_index=True,
+        help_text="Opaque bearer token (40 hex chars). Transmitted over "
+                  "the wire as ``Authorization: Token <key>``.",
+    )
+    device_label = models.CharField(
+        max_length=120,
+        blank=True,
+        default="",
+        help_text="Human-friendly device name for the sessions list. "
+                  "Derived from the User-Agent at create-time if the "
+                  "client doesn't supply one.",
+    )
+    user_agent = models.CharField(
+        max_length=512,
+        blank=True,
+        default="",
+        help_text="Raw User-Agent header at create-time.",
+    )
+    ip_hash = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        help_text="SHA-256 of the creating IP. Stored hashed so we can "
+                  "tell 'new IP since last login' without holding the "
+                  "raw address.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField(default=now)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ("-last_seen_at",)
+
+    def __str__(self):
+        return f"Session({self.user_id}, {self.key[:8]}…, {self.device_label or '?'})"
+
+    @classmethod
+    def generate_key(cls) -> str:
+        """Generate a new 40-hex-char session key."""
+        return secrets.token_hex(20)
+
+    @classmethod
+    def create_for_user(cls, user, *, user_agent: str = "",
+                        device_label: str = "", ip_hash: str = "") -> "Session":
+        """Create and persist a brand-new Session for `user`."""
+        session = cls.objects.create(
+            user=user,
+            key=cls.generate_key(),
+            user_agent=user_agent[:512],
+            device_label=(device_label or cls._label_from_user_agent(user_agent))[:120],
+            ip_hash=ip_hash,
+        )
+        return session
+
+    @staticmethod
+    def _label_from_user_agent(user_agent: str) -> str:
+        """Crude User-Agent → device label extraction. Good enough for
+        the sessions list; the user can rename later via PATCH."""
+        ua = (user_agent or "").lower()
+        if not ua:
+            return "Unknown device"
+        if "iphone" in ua:
+            return "iPhone"
+        if "ipad" in ua:
+            return "iPad"
+        if "android" in ua:
+            return "Android device"
+        if "macintosh" in ua or "mac os x" in ua:
+            return "Mac"
+        if "windows" in ua:
+            return "Windows PC"
+        if "linux" in ua:
+            return "Linux"
+        return "Web browser"
+
+    def is_active(self, *, at=None) -> bool:
+        """True iff this session is non-revoked and not past either
+        timeout at the given reference time (defaults to now())."""
+        t = at or now()
+        if self.revoked_at is not None:
+            return False
+        if (t - self.last_seen_at) > SESSION_IDLE_TIMEOUT:
+            return False
+        if (t - self.created_at) > SESSION_ABSOLUTE_TIMEOUT:
+            return False
+        return True
+
+    def touch(self) -> None:
+        """Update `last_seen_at` to now. Called by
+        MultiSessionAuthentication on every valid authenticated
+        request so the idle-timeout rolls forward."""
+        self.last_seen_at = now()
+        self.save(update_fields=["last_seen_at"])
+
+    def revoke(self) -> None:
+        """Mark the session revoked. Future auth attempts using this
+        key will be rejected."""
+        if self.revoked_at is None:
+            self.revoked_at = now()
+            self.save(update_fields=["revoked_at"])
