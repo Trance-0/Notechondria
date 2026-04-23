@@ -118,6 +118,7 @@ abstract class NotechondriaClient implements AuthClient {
   Future<Map<String, dynamic>> changeEmailRequest(String token, String newEmail, String identityCode);
   Future<Map<String, dynamic>> changeEmailConfirm(String token, String newEmail, String code);
   Future<Map<String, dynamic>> checkSession(String token);
+  // listSessions + revokeSession are inherited from shared AuthClient.
   Future<void> logout(String token);
   Future<Map<String, dynamic>> getSettings(String token);
   Future<Map<String, dynamic>> updateSettings(

@@ -75,33 +75,15 @@ file and add a round-log entry to the new version doc.
 
 ## Bugs
 
-- [ ] **Note share / deep-link redirect failure.** User-reported: the
-  note-share URL doesn't resolve when opened in a fresh tab.
-  Investigation path (`editor_app/lib/app_shell.dart`):
-  `_parseNoteUuidFromUrl` reads the fragment after `#`; `_bootstrapApp`
-  calls `_openNoteByUuid` AFTER `_loadInitialData`. Possible causes:
-  (a) the URL fragment regex is case-insensitive but may not match
-  when the shared link carries a trailing slash or query string;
-  (b) `_handleOAuthCallback` already does `browserReplaceState` and
-  strips the fragment when handling `?code=` / `?state=` — check if
-  it's stripping the note fragment before the deep-link parser runs;
-  (c) for a private note opened without a session, the UUID endpoint
-  returns 403 but the error message is just stuffed into
-  `_errorMessage` without a clear "sign in to view" prompt.
-  Add a regression test that exercises
-  `https://host/#/notes/<uuid>` cold-start with and without session.
+- [ ] Add a regression test for the note-share deep-link path
+  (`https://host/#/notes/<uuid>` cold-start with and without
+  session, and the OAuth-callback-preserves-fragment case). The
+  code fix landed in 0.1.67; the test was deferred because the
+  editor smoke-test harness doesn't have a web navigator shim yet.
 
 ## Global reusable components
 
 ### Start up animations
-
-- [ ] Completing: mobile view cross-fade gap. On narrow layouts the
-  incoming metabolite skeletal formula currently fades in only after
-  the previous one has already faded out, producing a perceptible
-  blank moment. Spec: neither formula should fully fade away between
-  steps — the new one must start emerging before the old one has
-  fully receded. Tune cross-fade overlap in `_drawSkeletalFormula`
-  step-boundary logic (`_KrebsCyclePainter.paint`).
 
 ### Sidebar/Navigation
 
@@ -125,16 +107,11 @@ file and add a round-log entry to the new version doc.
   client methods, app_shell callback wiring, and the
   `_ApiKeySection` widget.
 
-- [ ] **Multi-device session manager — frontend (3 apps).** 0.1.65
-  shipped the backend: `creators.Session` (multi-row per user,
-  1-day idle + 3-day absolute timeout), `MultiSessionAuthentication`
-  DRF class, `auth_payload` now mints a Session and returns
-  `{multi_device, other_sessions_count, session:{id,device_label,…}}`,
-  and two new endpoints `GET /api/v1/auth/sessions/` and
-  `DELETE /api/v1/auth/sessions/<id>/`. Still to do on the frontend:
-  - `HttpNotechondriaClient.listSessions(token)` and
-    `revokeSession(token, sessionId)` methods in
-    `notechondria_shared` HTTP client.
+- [ ] **Multi-device session manager — frontend UI (3 apps).**
+  Backend shipped in 0.1.65; `listSessions` and `revokeSession`
+  HTTP client methods shipped in 0.1.67 (shared `AuthClient`
+  interface plus per-app `HttpNotechondriaClient` implementations).
+  Still to do:
   - Active Sessions card in the Settings surface (device label,
     "last seen …", created-at, revoke button, "This device" badge
     on the current session).

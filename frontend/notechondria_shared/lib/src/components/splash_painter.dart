@@ -211,10 +211,6 @@ class KrebsCyclePainter extends CustomPainter {
       canvas.restore();
     }
 
-    final activeAngle = 2 * math.pi * activeStep / n + rotationAngle;
-    final activePos =
-        center + Offset(math.cos(activeAngle), math.sin(activeAngle)) * radius;
-
     // Continuous morph between adjacent metabolites: the outgoing formula
     // fades only in the last third of its step, the incoming one starts
     // fading in at the same moment, and the previous formula lingers for
@@ -249,21 +245,20 @@ class KrebsCyclePainter extends CustomPainter {
       );
     }
 
-    if (activePos.dx > -30) {
-      // Previous formula still partially visible at the very start of a
-      // new step. Skip this on the wrap-around when stepIndex would map
-      // to an off-screen node.
-      final previousIndex = (activeStep - 1 + n) % n;
-      paintFormulaAt(previousIndex, inheritAlpha(stepFraction));
-
-      // Active formula: full alpha through most of the step, fading out
-      // only in the final crossfade window.
-      paintFormulaAt(activeStep, fadeOut(stepFraction));
-
-      // Incoming next metabolite.
-      final incomingIndex = (activeStep + 1) % n;
-      paintFormulaAt(incomingIndex, fadeIn(stepFraction));
-    }
+    // No outer `activePos.dx > -30` gate here anymore. That outer
+    // check used to skip the whole prev/active/next trio whenever
+    // the active node was off-screen — which on narrow (mobile)
+    // layouts happens briefly every full rotation and produced a
+    // perceptible blank gap. `paintFormulaAt` already does a
+    // per-formula off-screen test internally, so letting each one
+    // render independently closes the gap: when the active node
+    // just slipped off the left edge, the next formula is already
+    // fading in elsewhere on screen.
+    final previousIndex = (activeStep - 1 + n) % n;
+    paintFormulaAt(previousIndex, inheritAlpha(stepFraction));
+    paintFormulaAt(activeStep, fadeOut(stepFraction));
+    final incomingIndex = (activeStep + 1) % n;
+    paintFormulaAt(incomingIndex, fadeIn(stepFraction));
   }
 
   void _drawParticles(

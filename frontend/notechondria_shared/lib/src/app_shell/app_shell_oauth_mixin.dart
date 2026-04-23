@@ -115,8 +115,14 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
     if (state != 'google' && state != 'github') return false;
 
     // Clean the URL so a page refresh doesn't re-process the code.
-    final cleanUrl =
-        uri.removeFragment().replace(queryParameters: {}).toString();
+    // Preserve the fragment — it may carry a note deep-link
+    // (`#/notes/<uuid>`) that the editor's `_parseNoteUuidFromUrl`
+    // reads right after `handleOAuthCallback` returns. Dropping the
+    // fragment here used to send the user to the home view after a
+    // share-link → OAuth → open-note round trip.
+    final cleanUrl = uri
+        .replace(queryParameters: {})
+        .toString();
     url_strategy.browserReplaceState(cleanUrl);
 
     final prefs = await SharedPreferences.getInstance();

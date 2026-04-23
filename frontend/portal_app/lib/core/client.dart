@@ -748,6 +748,22 @@ class HttpNotechondriaClient implements NotechondriaClient {
   }
 
   @override
+  Future<Map<String, dynamic>> listSessions(String token) async {
+    final uri = _uri('/auth/sessions/');
+    final response = await _get(uri, token: token);
+    return Map<String, dynamic>.from(
+      await _decode(response, uri: uri, method: 'GET'),
+    );
+  }
+
+  @override
+  Future<void> revokeSession(String token, int sessionId) async {
+    final uri = _uri('/auth/sessions/$sessionId/');
+    final response = await _delete(uri, token: token);
+    await _decode(response, uri: uri, method: 'DELETE');
+  }
+
+  @override
   Future<void> logout(String token) async {
     final uri = _uri('/auth/logout/');
     final response = await _send(

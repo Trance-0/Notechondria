@@ -43,6 +43,18 @@ abstract class AuthClient {
   });
   Future<Map<String, dynamic>> getOAuthConfig();
   Future<Map<String, dynamic>> checkSession(String token);
+
+  /// GET /api/v1/auth/sessions/ — multi-device manager listing
+  /// (0.1.65 backend). Response: `{sessions: [{id, device_label,
+  /// user_agent, ip_hash_prefix, created_at, last_seen_at,
+  /// is_current}, ...], current_session_id}`.
+  Future<Map<String, dynamic>> listSessions(String token);
+
+  /// DELETE /api/v1/auth/sessions/<id>/ — revoke a specific session.
+  /// Owner-scoped (404 on cross-user attempts). Revoking the
+  /// current session effectively signs THIS device out.
+  Future<void> revokeSession(String token, int sessionId);
+
   Future<void> logout(String token);
   Future<Map<String, dynamic>> getSettings(String token);
   Future<Map<String, dynamic>> updateSettings(

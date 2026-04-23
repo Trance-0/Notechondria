@@ -28,8 +28,25 @@ extension _AppShellAuthFlowsX on _AppShellState {
         });
       }
     } catch (error) {
-      _errorMessage =
-          'Could not load note: ${error.toString().replaceFirst('Exception: ', '')}';
+      final raw = error.toString().replaceFirst('Exception: ', '');
+      final lower = raw.toLowerCase();
+      // If the note exists but is private to another user, the backend
+      // returns 403. Surface a sign-in prompt instead of the raw
+      // "Permission denied" string — a cold open of a shared link
+      // should tell the user "you need to sign in to view this",
+      // not look like a crash.
+      final needsAuth = lower.contains('permission') ||
+          lower.contains('forbidden') ||
+          lower.contains('not authenticated') ||
+          raw.contains(' 403 ') ||
+          raw.contains('403:');
+      if (needsAuth && (_token == null || _token!.isEmpty)) {
+        _errorMessage =
+            'This note is private. Sign in to view it — open Settings → '
+            'Account to log in, then the link will load.';
+      } else {
+        _errorMessage = 'Could not load note: $raw';
+      }
       _isLoading = false;
       refreshState();
     }

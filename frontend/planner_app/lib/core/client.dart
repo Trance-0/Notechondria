@@ -93,6 +93,8 @@ abstract class NotechondriaClient implements AuthClient {
     String password,
   );
   Future<Map<String, dynamic>> checkSession(String token);
+  // listSessions + revokeSession are inherited from shared AuthClient;
+  // don't re-declare here.
   Future<void> logout(String token);
   Future<Map<String, dynamic>> getSettings(String token);
   Future<Map<String, dynamic>> updateSettings(
@@ -741,6 +743,22 @@ class HttpNotechondriaClient implements NotechondriaClient {
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'GET'),
     );
+  }
+
+  @override
+  Future<Map<String, dynamic>> listSessions(String token) async {
+    final uri = _uri('/auth/sessions/');
+    final response = await _get(uri, token: token);
+    return Map<String, dynamic>.from(
+      await _decode(response, uri: uri, method: 'GET'),
+    );
+  }
+
+  @override
+  Future<void> revokeSession(String token, int sessionId) async {
+    final uri = _uri('/auth/sessions/$sessionId/');
+    final response = await _delete(uri, token: token);
+    await _decode(response, uri: uri, method: 'DELETE');
   }
 
   @override

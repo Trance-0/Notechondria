@@ -194,9 +194,18 @@ class _AppShellState extends State<AppShell>
   // ---------------------------------------------------------------------------
 
   /// Parse the URL hash fragment for a note UUID.
-  /// Expected format: `#/notes/<uuid>`
+  ///
+  /// Accepts any of:
+  ///   - `#/notes/<uuid>`
+  ///   - `#/notes/<uuid>/`
+  ///   - `#/notes/<uuid>?ref=share`
+  ///   - `#notes/<uuid>` (leading slash optional)
+  /// The earlier regex used `^/?notes/<uuid>$` which blocked trailing
+  /// slashes, query strings, and any other fragment suffix the share
+  /// link might carry — that's why a shared link opened cold from a
+  /// chat app sometimes landed on the home view instead of the note.
   static final _noteUuidPattern = RegExp(
-    r'^/?notes/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$',
+    r'/?notes/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})',
     caseSensitive: false,
   );
 
