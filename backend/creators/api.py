@@ -838,12 +838,33 @@ class LogoutApiView(APIView):
 
 
 class SessionApiView(APIView):
+    # Critical: use an EMPTY authentication_classes here, NOT the project
+    # default. DRF's TokenAuthentication raises AuthenticationFailed on
+    # any unknown token (even against AllowAny views) — meaning a stale
+    # token in Authorization would 401 this endpoint before the view ever
+    # ran, defeating the whole point of a session-probe endpoint. By
+    # disabling auth_classes we get to inspect the header ourselves and
+    # return a clean 200 with {"authenticated": false} whether the token
+    # is absent, malformed, or unrecognised. The frontend then clears the
+    # saved token quietly instead of surfacing a "Fresh token rejected"
+    # alarm.
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        if not request.user or not request.user.is_authenticated:
+        header = request.META.get("HTTP_AUTHORIZATION", "") or ""
+        parts = header.split(None, 1)
+        if len(parts) != 2 or parts[0].lower() != "token" or not parts[1].strip():
             return Response({"authenticated": False})
-        payload = auth_payload(request.user, request=request)
+        key = parts[1].strip()
+        try:
+            token = Token.objects.select_related("user").get(key=key)
+        except Token.DoesNotExist:
+            return Response({"authenticated": False})
+        user = token.user
+        if not user.is_active:
+            return Response({"authenticated": False})
+        payload = auth_payload(user, request=request)
         payload["authenticated"] = True
         return Response(payload)
 

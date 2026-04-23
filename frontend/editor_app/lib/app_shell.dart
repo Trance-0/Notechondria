@@ -366,60 +366,6 @@ class _AppShellState extends State<AppShell>
       _profile = user;
       _settings = settings;
     refreshState();
-    // Verify the fresh token BEFORE we persist it or trigger
-    // _loadInitialData. If the backend's authtoken table doesn't
-    // actually have this Token row (which we've seen happen right
-    // after OAuth — "Session established" followed immediately by
-    // "Invalid token" on the first authenticated request), surface
-    // a clear error instead of silently dropping into the
-    // offline-fallback branch further down.
-    try {
-      await widget.client.checkSession(token);
-    } catch (error) {
-      final raw = error.toString().replaceFirst('Exception: ', '');
-      final lower = raw.toLowerCase();
-      final rejected = lower.contains('invalid token') ||
-          lower.contains('authentication credentials were not provided') ||
-          lower.contains('token_not_valid') ||
-          lower.contains('session rejected:');
-      if (rejected) {
-        _token = null;
-        _profile = null;
-        _settings = null;
-        refreshState();
-        log(
-          level: DebugLogLevel.error,
-          source: 'Editor.Auth/applyAuthPayload',
-          message:
-              'Fresh sign-in token rejected by backend: '
-              'Editor.Auth/applyAuthPayload — '
-              '$raw. '
-              'The backend issued a token that its own authtoken table '
-              'does not recognize. Usual cause: authtoken table was '
-              'wiped between token mint and first use (e.g. DB reset, '
-              'migration rollback, or mismatched backend behind a '
-              'load balancer). Please sign in again.',
-        );
-        if (mounted) {
-          showMessage(
-            'Fresh token rejected by backend. Please sign in again — '
-            'if this persists, the backend authtoken table is out of '
-            'sync with the user table.',
-          );
-        }
-        return;
-      }
-      // Non-401 errors (network glitch, 500, etc.): log and continue.
-      // _loadInitialData will surface the same error with more context.
-      log(
-        level: DebugLogLevel.warning,
-        source: 'Editor.Auth/applyAuthPayload',
-        message:
-            'checkSession after sign-in did not return 200: '
-            'Editor.Auth/applyAuthPayload — $raw. '
-            'Continuing; _loadInitialData will retry.',
-      );
-    }
     await _LocalAppStore.saveSession(token, user);
     await _applyLocalAppSettings({
       'theme_preset': settings['theme_preset']?.toString() ??
