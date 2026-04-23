@@ -326,14 +326,20 @@ class _AppShellState extends State<AppShell>
           'api_base_url': _localSettings['api_base_url'],
         });
       } else {
+        // api_base_url is CLIENT-side state — never overwrite the
+        // local value with whatever the server sent. The server's
+        // creator.api_base_url defaults to "http://localhost:9080/api/v1"
+        // on Django, and we don't want that to clobber the user's
+        // actual API URL on every login. See 0.1.66.md for the
+        // full root cause.
         final serverAppSettings = Map<String, dynamic>.from(
           settings['app_settings'] as Map? ??
               _currentAppSettingsPayload(
                 themePreset: settings['theme_preset']?.toString(),
                 themeMode: settings['theme_mode']?.toString(),
-                apiBaseUrl: settings['api_base_url']?.toString(),
+                apiBaseUrl: _localSettings['api_base_url']?.toString(),
               ),
-        );
+        )..['api_base_url'] = _localSettings['api_base_url'];
         await _applyLocalAppSettings({
           ...serverAppSettings,
           'updated_at': settings['app_settings_updated_at']?.toString() ??
@@ -372,8 +378,11 @@ class _AppShellState extends State<AppShell>
           _localSettings['theme_preset'],
       'theme_mode':
           settings['theme_mode']?.toString() ?? _localSettings['theme_mode'],
-      'api_base_url': settings['api_base_url']?.toString() ??
-          _localSettings['api_base_url'],
+      // api_base_url is client-side state only. The server's value is
+      // just an echo of whatever the frontend pushed up last, and its
+      // Django default (http://localhost:9080/api/v1) would otherwise
+      // overwrite the user's real URL on every login.
+      'api_base_url': _localSettings['api_base_url'],
       'updated_at': settings['app_settings_updated_at']?.toString() ??
           _localSettings['updated_at'],
       'log_preferences': Map<String, dynamic>.from(

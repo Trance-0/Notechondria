@@ -148,12 +148,25 @@ class KrebsCyclePainter extends CustomPainter {
           final fd = radius + 75 + 35 * stepFraction;
           final fp = center + Offset(math.cos(fa), math.sin(fa)) * fd;
           final flyAlpha = (1.0 - stepFraction).clamp(0.0, 1.0);
+          // Byproduct formulas (CO2, NADH, FADH2, GTP) are authored at
+          // ~2x the scale of background particles. Wrap the draw in a
+          // canvas.scale so they render at the SAME visual size as the
+          // drifting background molecules — per the owner's spec
+          // "all particles displayed on the splash screen are of the
+          // same size". The translate-then-scale dance keeps the
+          // byproduct centred at `fp` without the scale origin
+          // shifting the anchor.
+          const particleScale = 0.5;
+          canvas.save();
+          canvas.translate(fp.dx, fp.dy);
+          canvas.scale(particleScale);
           _drawByproductFormula(
             canvas,
             products[j],
-            fp,
+            Offset.zero,
             flyAlpha,
           );
+          canvas.restore();
         }
       }
     }
@@ -185,7 +198,17 @@ class KrebsCyclePainter extends CustomPainter {
           ..color = nodeColor.withValues(alpha: 0.5)
           ..style = PaintingStyle.fill,
       );
-      _drawAcetylCoA(canvas, aStart, dir);
+      // Acetyl-CoA is a "cycle-attached particle" per the owner's
+      // vocabulary. Draw it at the same half-scale as the byproducts
+      // and the background particles so the splash stays visually
+      // uniform. `aStart` becomes the anchor we translate to before
+      // scaling; the original dir vector still supplies orientation.
+      const particleScale = 0.5;
+      canvas.save();
+      canvas.translate(aStart.dx, aStart.dy);
+      canvas.scale(particleScale);
+      _drawAcetylCoA(canvas, Offset.zero, dir);
+      canvas.restore();
     }
 
     final activeAngle = 2 * math.pi * activeStep / n + rotationAngle;

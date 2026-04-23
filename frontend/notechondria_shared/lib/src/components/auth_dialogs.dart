@@ -87,9 +87,9 @@ class AuthHub extends StatelessWidget {
           children: [
             Text('Account', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
-            const Text(
-              'Sign up, verify your email, log in, or reset your password.',
-            ),
+            const Text('Sign up or log in. '
+                'Email verification happens inside the signup wizard; '
+                'password reset is inside the login dialog.'),
             const SizedBox(height: 16),
             Wrap(
               spacing: 10,
@@ -108,42 +108,43 @@ class AuthHub extends StatelessWidget {
                   ),
                   child: const Text('Sign up'),
                 ),
+                // Standalone "Verify email" entry point was removed in
+                // 0.1.66 — verification belongs inside the signup wizard
+                // flow, not as a top-level account action. `onVerify`
+                // stays on the widget so the registration wizard can
+                // still hand a code to the backend.
                 OutlinedButton(
-                  onPressed: () => _openDialog(
-                    context,
-                    EmailCodeDialog(
-                      title: 'Verify email',
-                      description:
-                          'Enter the 6-digit verification code sent to your email.',
-                      submitLabel: 'Verify',
-                      onSubmit: onVerify,
-                      onResend: onResendVerification,
-                    ),
-                  ),
-                  child: const Text('Verify email'),
-                ),
-                OutlinedButton(
-                  onPressed: () => _openDialog(
-                    context,
-                    EmailPasswordDialog(
-                      title: 'Login',
-                      description: _apiHostSubtitle(apiBaseUrl),
-                      submitLabel: 'Login',
-                      emailLabel: 'Email or username',
-                      onSubmit: onLogin,
-                    ),
-                  ),
+                  onPressed: () {
+                    // `showBlurDialog` returns Future<void>; we use the
+                    // navigator the button is attached to so the
+                    // forgot-password branch can pop THIS login dialog
+                    // and open the reset one without a stale context.
+                    final rootNavigator = Navigator.of(context);
+                    _openDialog(
+                      context,
+                      EmailPasswordDialog(
+                        title: 'Login',
+                        description: _apiHostSubtitle(apiBaseUrl),
+                        submitLabel: 'Login',
+                        emailLabel: 'Email or username',
+                        onSubmit: onLogin,
+                        onForgotPassword: () {
+                          // Pop the login dialog, then open the reset
+                          // one. The reset dialog is a separate route
+                          // so the user can still cancel and come back.
+                          rootNavigator.pop();
+                          _openDialog(
+                            rootNavigator.context,
+                            PasswordResetDialog(
+                              onRequestPasswordReset: onRequestPasswordReset,
+                              onConfirmPasswordReset: onConfirmPasswordReset,
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
                   child: const Text('Login'),
-                ),
-                TextButton(
-                  onPressed: () => _openDialog(
-                    context,
-                    PasswordResetDialog(
-                      onRequestPasswordReset: onRequestPasswordReset,
-                      onConfirmPasswordReset: onConfirmPasswordReset,
-                    ),
-                  ),
-                  child: const Text('Forgot password'),
                 ),
               ],
             ),
@@ -187,6 +188,7 @@ class EmailPasswordDialog extends StatefulWidget {
     required this.submitLabel,
     required this.onSubmit,
     this.emailLabel = 'Email',
+    this.onForgotPassword,
   });
 
   final String title;
@@ -194,6 +196,13 @@ class EmailPasswordDialog extends StatefulWidget {
   final String submitLabel;
   final Future<ActionFeedback> Function(String email, String password) onSubmit;
   final String emailLabel;
+
+  /// Optional callback to open the password-reset flow. When provided,
+  /// the dialog renders a "Forgot password" TextButton in the same
+  /// action row as the submit button (leftmost). The callback is
+  /// responsible for closing THIS dialog and opening the reset one —
+  /// the Login flow in AuthHub passes a closure that does exactly that.
+  final VoidCallback? onForgotPassword;
 
   @override
   State<EmailPasswordDialog> createState() => _EmailPasswordDialogState();
@@ -339,6 +348,16 @@ class _EmailPasswordDialogState extends State<EmailPasswordDialog> {
           },
           child: Text(_submitting ? 'Cancel' : 'Close'),
         ),
+        // "Forgot password" sits in the same row as the submit button
+        // (per the owner's spec: "left, same row as login button").
+        // Disabled while a submit is in flight — clicking it pops this
+        // dialog and opens the reset flow, so interrupting an in-flight
+        // login isn't the user's intent here.
+        if (widget.onForgotPassword != null)
+          TextButton(
+            onPressed: _submitting ? null : widget.onForgotPassword,
+            child: const Text('Forgot password'),
+          ),
         FilledButton(
           onPressed: _submitting ? null : _submit,
           child: Text(_submitting ? 'Working...' : widget.submitLabel),

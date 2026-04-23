@@ -332,8 +332,10 @@ class _AppShellState extends State<AppShell>
           _localSettings['theme_preset'],
       'theme_mode':
           settings['theme_mode']?.toString() ?? _localSettings['theme_mode'],
-      'api_base_url': settings['api_base_url']?.toString() ??
-          _localSettings['api_base_url'],
+      // api_base_url is client-side state. The Django default
+      // (http://localhost:9080/api/v1) would otherwise clobber the
+      // user's real URL every login. See 0.1.66.md.
+      'api_base_url': _localSettings['api_base_url'],
       'updated_at': settings['app_settings_updated_at']?.toString() ??
           _localSettings['updated_at'],
       'log_preferences': Map<String, dynamic>.from(
