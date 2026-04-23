@@ -26,6 +26,7 @@
 # Deployment
 
 - [Overview](deployment/overview.md)
+- [Release process (tag → GitHub Release)](deployment/release.md)
 - [Docker-compose / Jenkins Full-stack Guide](deployment/deploy.md)
 - [Render Free Tier (Backend)](deployment/render_free_tier.md)
 - [Northflank Free Tier (Backend)](deployment/northflank.md)

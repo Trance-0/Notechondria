@@ -51,7 +51,18 @@ Image tags follow `v<VERSION>.<BUILD_NUMBER>` from
 [`./VERSION`](../../VERSION) (read by
 `deployment/jenkins/scripts/prepare_env.sh`).
 
-## 2. GitHub Pages [Frontend]
+## 2. GitHub Release [Desktop + mobile archives]
+
+Tag-triggered workflow that publishes `portal_app` builds (Linux
+x64/arm64, Windows x64, macOS, Android APK, iOS unsigned) to a
+GitHub Release. Trigger: push a `v*` tag.
+
+- **Workflow:** [`.github/workflows/portal-release.yml`](../../.github/workflows/portal-release.yml).
+- **Detailed runbook:** [release.md](release.md).
+- **Editor + planner:** not yet wired; tracked in
+  [`docs/TODO.md`](../TODO.md).
+
+## 3. GitHub Pages [Frontend]
 
 Builds and publishes all three Flutter web apps to `gh-pages` under
 `/Notechondria/<editor|planner|portal>/`. Root `/Notechondria/`
@@ -72,7 +83,7 @@ To override the backend a frontend points at (for staging or a fork
 deployment), pass an extra `--dart-define=DEFAULT_API_URL=https://your-backend/api/v1`
 in each `flutter build web` step.
 
-## 3. Cloudflare R2 [CDN]
+## 4. Cloudflare R2 [CDN]
 
 S3-compatible bucket holding static assets and user-uploaded media.
 Required for Render and Northflank because both have ephemeral
@@ -99,7 +110,7 @@ container filesystems.
   the backend serves static via WhiteNoise/nginx and stores media
   on a local volume.
 
-## 4. Render free-tier [Backend]
+## 5. Render free-tier [Backend]
 
 Backend-only PaaS deploy. Render provides PostgreSQL via
 `DATABASE_URL`, no persistent disk for media → R2 is required.
@@ -117,7 +128,7 @@ Backend-only PaaS deploy. Render provides PostgreSQL via
 - **Cold start gotcha:** free instances cold-start slowly; first
   request after idle can take ~30 s.
 
-## 5. Northflank free-tier [Backend]
+## 6. Northflank free-tier [Backend]
 
 Backend-only deploy with a managed Postgres addon. Northflank
 service filesystems are ephemeral across redeploys → R2 is required.
@@ -138,7 +149,7 @@ service filesystems are ephemeral across redeploys → R2 is required.
   [`backend/entrypoint.sh`](../../backend/entrypoint.sh)'s built-in
   gunicorn fallback (added 0.1.18).
 
-## 6. Railway [Backend] — untested
+## 7. Railway [Backend] — untested
 
 Railway is a credit-based PaaS similar to Render and Northflank.
 The maintainer is out of free-tier credits and has not validated

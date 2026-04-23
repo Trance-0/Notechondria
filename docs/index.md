@@ -27,8 +27,14 @@ Rules in this section **override** the shared ruleset in
 Keep this section short; deeper explanations belong in the per-component
 docs.
 
-- **Upstream target branch is `codex`, not `main`.** Any PR to upstream
-  targets `Trance-0/Notechondria:codex`.
+- **Upstream target branch is `main`.** As of 0.1.68 the active
+  development branch flipped from `codex` back to `main`:
+  `codex` (188 commits) was merged into `main`, and the pre-merge
+  `main` was archived locally as `human-efforts` for provenance.
+  Future PRs target `main`. The GitHub Release workflow triggers
+  on `v*` tag push (see
+  [`deployment/release.md`](deployment/release.md)), not branch,
+  so the flip doesn't affect release mechanics.
 - **Frontend is three standalone Flutter apps** under
   `frontend/editor_app/`, `frontend/planner_app/`, `frontend/portal_app/`.
   Do not merge them back into a monolith. Per-app docs:

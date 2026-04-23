@@ -246,4 +246,22 @@ file and add a round-log entry to the new version doc.
 
 ### MCP
 
+## Release / CI
+
+- [ ] **Editor + planner GitHub Release workflows.** 0.1.68
+  documented the existing `portal-release.yml` workflow in
+  [`docs/deployment/release.md`](deployment/release.md). The
+  same shape is needed for `editor_app` and `planner_app`.
+  Decide tag namespacing before duplicating: a plain `v0.1.68`
+  push would fire all three workflows and they'd race to
+  publish/update the same GitHub Release. Proposals:
+  - `ve0.1.68` → editor, `vp0.1.68` → planner, `v0.1.68` →
+    portal. Each workflow filters on its own tag prefix.
+  - OR fold all three into a single `frontend-release.yml`
+    with a per-app matrix leg and a single publish job at the
+    end (attaches all 18 archives to one release). Cleaner
+    artefact discovery, harder matrix.
+  - Windows code signing is still open — see
+    [release.md #not yet automated](deployment/release.md#not-yet-automated).
+
 ## Documentation pages
