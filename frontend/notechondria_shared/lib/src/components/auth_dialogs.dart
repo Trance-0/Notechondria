@@ -326,9 +326,18 @@ class _EmailPasswordDialogState extends State<EmailPasswordDialog> {
         ),
       ),
       actions: [
+        // Always enabled so the user can abort an in-flight login
+        // (network hang, slow cold-start backend, typo realised
+        // mid-submit). Popping the dialog makes the in-flight
+        // onSubmit's result a no-op because _submit guards on
+        // `mounted` after the await returns.
         TextButton(
-          onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Close'),
+          onPressed: () {
+            _phaseFallback?.cancel();
+            _phaseFallback = null;
+            Navigator.of(context).pop();
+          },
+          child: Text(_submitting ? 'Cancel' : 'Close'),
         ),
         FilledButton(
           onPressed: _submitting ? null : _submit,

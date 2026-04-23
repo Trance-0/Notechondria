@@ -92,7 +92,12 @@ class _SplashScreenState extends State<SplashScreen>
         seedY: rng.nextDouble(),
         velocityX: (rng.nextDouble() - 0.5) * 0.6,
         velocityY: (rng.nextDouble() - 0.5) * 0.45,
-        size: 0.75 + rng.nextDouble() * 0.75,
+        // Uniform size across all particles — the owner wanted every
+        // particle (background + cycle-attached) to look the same
+        // size, only the alpha should differ. A fixed scale of ~1.0x
+        // reads about the same as the old 0.75–1.5 mid-range once
+        // the alpha pulse takes effect in the painter.
+        size: 1.0,
         rotation: rng.nextDouble() * 2 * math.pi,
         rotationSpeed: (rng.nextDouble() - 0.5) * 0.9,
         moleculeType: rng.nextInt(8),

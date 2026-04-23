@@ -170,10 +170,18 @@ class AppPreferencesCard extends StatelessWidget {
             enabled: !isAuthenticated,
             decoration: InputDecoration(
               labelText: 'API base URL',
-              hintText: apiBaseHintText,
+              // Default hint shows a full example so users know both
+              // the scheme and the required `/api/v1` suffix. Callers
+              // can override via `apiBaseHintText` if they ship a
+              // host-specific default.
+              hintText: apiBaseHintText ??
+                  'https://your-backend.example.com/api/v1',
               helperText: isAuthenticated
                   ? 'Locked while signed in. Log out to change.'
-                  : apiBaseHelperText,
+                  : (apiBaseHelperText ??
+                      'Include the `/api/v1` suffix. The app will '
+                          'auto-append it if missing, but pasting the '
+                          'full URL is safer.'),
               border: const OutlineInputBorder(),
             ),
           ),
