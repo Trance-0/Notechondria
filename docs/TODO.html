@@ -310,7 +310,8 @@ that))</li>
 </ul>
 <h3 id="login-and-account-info"><a class="header" href="#login-and-account-info">Login and account info</a></h3>
 <ul>
-<li><input disabled="" type="checkbox"/>
+<li>
+<p><input disabled="" type="checkbox"/>
 Full feature parity with editor Settings in portal: API key
 section (with rotate button and MCP endpoint helper),
 password-change dialog with identity code verification,
@@ -320,7 +321,62 @@ basic account/preferences/sync surfaces, but the v0.1.17
 editor-only additions still need to be ported into
 <code>portal_app/lib/modules/settings.dart</code> — this requires syncing
 client methods, app_shell callback wiring, and the
-<code>_ApiKeySection</code> widget.</li>
+<code>_ApiKeySection</code> widget.</p>
+</li>
+<li>
+<p><input disabled="" type="checkbox"/>
+<strong>Multi-device session manager — frontend (3 apps).</strong> 0.1.65
+shipped the backend: <code>creators.Session</code> (multi-row per user,
+1-day idle + 3-day absolute timeout), <code>MultiSessionAuthentication</code>
+DRF class, <code>auth_payload</code> now mints a Session and returns
+<code>{multi_device, other_sessions_count, session:{id,device_label,…}}</code>,
+and two new endpoints <code>GET /api/v1/auth/sessions/</code> and
+<code>DELETE /api/v1/auth/sessions/&lt;id&gt;/</code>. Still to do on the frontend:</p>
+<ul>
+<li><code>HttpNotechondriaClient.listSessions(token)</code> and
+<code>revokeSession(token, sessionId)</code> methods in
+<code>notechondria_shared</code> HTTP client.</li>
+<li>Active Sessions card in the Settings surface (device label,
+"last seen …", created-at, revoke button, "This device" badge
+on the current session).</li>
+<li>Multi-device warning banner in all three apps whenever
+<code>auth_payload</code> or <code>session</code> responses include
+<code>multi_device: true</code> — link the banner to the new sessions
+card so the user can audit and revoke.</li>
+<li>Wire all three apps to call <code>listSessions</code> on Settings-open
+and refresh after revoke.</li>
+</ul>
+</li>
+<li>
+<p><input disabled="" type="checkbox"/>
+<strong>Two-factor auth for password login.</strong> Tracked separately
+because it needs a new backend flow plus UI. Scope:</p>
+<ul>
+<li>Backend: on password login (NOT OAuth — skip 2FA there by
+design), challenge the user with one of two second-factor
+paths:
+<ol>
+<li><strong>Trusted-device approval.</strong> Send a push-style prompt to
+the user's first-registered session (the one created during
+the original email-verify flow). Requires the user to have
+completed email verification during that first sign-up so
+we know the device is genuine.</li>
+<li><strong>Email code.</strong> Same 6-digit flow as the existing
+<code>/api/v1/auth/resend-verification/</code> / <code>VerificationCode</code>
+helpers — just re-purposed for login confirmation.</li>
+</ol>
+</li>
+<li>New endpoints: <code>POST /api/v1/auth/2fa/challenge/</code> and
+<code>POST /api/v1/auth/2fa/verify/</code>.</li>
+<li><code>LoginApiView</code> needs a two-step variant: first call returns
+<code>{pending_2fa: true, challenge_id, channels: [...]}</code> instead
+of a token. Second call submits the code / approval id and
+returns the full <code>auth_payload</code>.</li>
+<li>Settings UI for choosing / revoking trusted devices (can share
+the sessions card if trusted-device is modelled as a flag on
+Session).</li>
+</ul>
+</li>
 </ul>
 <h3 id="app-preferences"><a class="header" href="#app-preferences">App preferences</a></h3>
 <ul>
