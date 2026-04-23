@@ -28,11 +28,29 @@ Render should use the backend runtime files:
 - `deployment/docker/` — local/self-hosted Docker full stack
 - `deployment/render/` — Render backend + GitHub Pages frontend
 
-## Useful docs
-- `docs/development/python_environments.md` — local backend env setup with conda, pip, and uv
-- `docs/operations/postgres_migration.md` — backup/restore workflow for arbitrary PostgreSQL hosts
-- `docs/deployment/deploy.md` — deployment flow overview
-- `docs/deployment/render_free_tier.md` — minimal Render backend deployment
+## Docs
+
+Full documentation site (rebuilt on every push to `main`, per
+`.github/workflows/frontend-pages.yml`):
+**<https://trance-0.github.io/Notechondria/docs/>**.
+
+Entry points:
+
+- [`docs/readme.md`](docs/readme.md) — human-facing project
+  overview (slightly longer version of this file).
+- [`docs/index.md`](docs/index.md) — agent-facing long-form
+  architecture + open-work list + project-specific overrides.
+- [`docs/client/`](docs/client/) — per-app frontend docs
+  (editor, planner, portal) + the shared `notechondria_shared`
+  package.
+- [`docs/server/`](docs/server/) — backend deep dives (overview,
+  `creators`, `notes`, `mcp`).
+- [`docs/deployment/`](docs/deployment/) — deploy runbooks
+  (Docker-compose / Render / Northflank / GitHub Pages / Release
+  process).
+- [`docs/versions/`](docs/versions/) — per-release changelog
+  (`0.1.x` series).
+- [`docs/TODO.md`](docs/TODO.md) — active work list.
 
 ## Frontend default API behavior
 - On GitHub Pages: defaults to `https://notechondria.trance-0.com/api/v1`
@@ -50,5 +68,5 @@ done
 ## Developer scripts
 
 ```english
-Continue working on this project, with prompts in ./docs/TASK.md. 
+Continue working on this project, with prompts in ./docs/TODO.md.
 ```

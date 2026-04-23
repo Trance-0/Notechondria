@@ -42,7 +42,12 @@ payloads:
 | `mcp` | `backend/mcp/` | Model-Context-Protocol server: 21 tools, API-key auth, 39 tests. | [mcp.md](mcp.md) |
 | `gptutils` | `backend/gptutils/` | Parked — AI chat models stay, call sites stubbed. | [`development/ai_integration.md`](../development/ai_integration.md) |
 
-Plus DRF (`rest_framework`, `rest_framework.authtoken`).
+Plus DRF itself (`rest_framework`). `rest_framework.authtoken`
+stays in `INSTALLED_APPS` for migration compatibility but is no
+longer the active auth source — 0.1.65 swapped the default to
+`creators.authentication.MultiSessionAuthentication` backed by the
+new `creators.Session` model. Legacy `authtoken_token` rows are
+ignored at auth time and cleared on each deploy.
 
 ## URL topology
 
@@ -54,7 +59,7 @@ site-wide endpoints, API v1 under
 | --- | --- | --- |
 | `/` | `urls.py` → `api_views.health_check` | Liveness probe. |
 | `/handshake/` | `urls.py` → `api_views.handshake` | [Handshake](#handshake) (also at `/api/v1/handshake/`). |
-| `/api/v1/` | `api_urls.py` | All application endpoints. |
+| `/api/v1/` | `api_urls.py` | All application endpoints, including `/auth/sessions/` (multi-device manager, see [creators.md](creators.md#active-sessions-multi-device--new-in-0165)). |
 | `/mcp/` | `mcp/urls.py` | Model-Context-Protocol server. |
 | `/auth/google/callback` | `urls.py` → `api_views.oauth_callback` | Google OAuth redirect. |
 | `/auth/github/callback` | `urls.py` → `api_views.oauth_callback` | GitHub OAuth redirect. |
@@ -155,9 +160,13 @@ Runs before gunicorn on every container start:
 4. `manage.py migrate --check` — if non-zero, run `migrate --noinput`.
 5. `manage.py bootstrap_platform` (see
    [`resolve_codex_path` in notes.md](notes.md#management-commands)).
-6. `manage.py collectstatic --noinput --clear` + a verification
+6. **Wipe all `creators.Session` rows** *(0.1.65)* — owner opted
+   into refreshing tokens on deploy after moving to Northflank-only
+   hosting. First-boot-safe: the inline Python block swallows the
+   "table does not exist" error if migrations are still applying.
+7. `manage.py collectstatic --noinput --clear` + a verification
    block that re-copies admin/DRF static assets if missing.
-7. If `$# -eq 0`, exec a default gunicorn (added 0.1.18 so
+8. If `$# -eq 0`, exec a default gunicorn (added 0.1.18 so
    Northflank's `configType: "default"` works even without a CMD).
    Otherwise `exec "$@"`.
 

@@ -12,27 +12,44 @@ Related: [`notes`](notes.md), [`mcp`](mcp.md),
 
 | Model | Key fields | Purpose |
 | --- | --- | --- |
-| `Creator` | `user` (FK to `auth.User`), `display_name`, `avatar`, `motto`, `social_link`, `api_key_hash`, `identity_code`, `email_verified_at`, `is_default` | Profile + API key binding. One row per `auth.User`. Use `ensure_creator(user)` from [`backend/notechondria/utils.py`](../../backend/notechondria/utils.py) anywhere a view needs the creator context. |
-| `CreatorApiKey` | `creator` (FK), `key_hash`, `created_at`, `revoked_at` | Tracks issued API keys. The plaintext key is shown to the user only once at creation/rotation; only the hash is stored. |
-| `CreatorInvitation` | `creator` (FK), `code`, `expires_at`, `consumed_at` | Invitation codes for closed-beta signup. |
-| `CreatorOauthIdentity` | `creator` (FK), `provider` (`google` / `github`), `provider_user_id`, `email`, `display_name`, `avatar_url`, `raw_payload` | Per-provider identity binding. Lookup key is `(provider, provider_user_id)`. |
+| `Creator` | `user_id` (FK to `auth.User`), `image`, `motto`, `social_link`, `api_key_hash`, `api_key_prefix`, `api_base_url`, `editor_mode`, `theme_preset`, `theme_mode`, `app_settings_json`, `app_settings_updated_at` | Profile + API key binding + user's persisted preference payload. One row per `auth.User`. Access via `ensure_creator(user)` from [`backend/notechondria/utils.py`](../../backend/notechondria/utils.py). |
+| `SocialAccount` | `user` (FK), `provider` (`google` / `github`), `provider_uid`, `email`, `extra_data` | OAuth identity binding. Unique on `(provider, provider_uid)`. |
+| `VerificationCode` | `code` (SHA-256 hex), `expire_date`, `usage` (`R`egister / `A`uthenticate / `F`unction), `max_use` | Email-code flow. Plaintext is emailed; only the hash is stored. |
+| `InvitationCode` | `code_hash`, `label`, `max_uses`, `times_used`, `expire_date` | Admin-issued invitation codes. Plaintext entered once; stored hashed. |
+| `Session` *(0.1.65)* | `user` (FK — **not OneToOne**, so many-per-user), `key` (40-hex unique), `device_label`, `user_agent`, `ip_hash`, `created_at`, `last_seen_at`, `revoked_at` | Per-device authenticated session row. Backs the multi-device login manager (Telegram-style). Two timeout constants: `SESSION_IDLE_TIMEOUT = 1 day` (rolls forward on every auth'd request via `session.touch()`) and `SESSION_ABSOLUTE_TIMEOUT = 3 days` (hard cap from `created_at`). Methods: `generate_key`, `create_for_user`, `is_active`, `touch`, `revoke`. |
 
 ## Authentication
 
 DRF `DEFAULT_AUTHENTICATION_CLASSES` (in
 [`settings.py`](../../backend/notechondria/settings.py)) registers
-two:
+two classes, tried in order:
 
-1. `rest_framework.authentication.TokenAuthentication` — DRF tokens
-   minted by `LoginApiView` and friends. Header:
-   `Authorization: Token <hex>`.
+1. `creators.authentication.MultiSessionAuthentication` *(0.1.65,
+   replaces `rest_framework.authentication.TokenAuthentication`)*.
+   Header: `Authorization: Token <40-hex>`. Looks up
+   `Session.objects.get(key=…)`, enforces idle + absolute timeouts
+   via `Session.is_active()`, rejects revoked rows, and calls
+   `session.touch()` on every valid request so the idle window
+   rolls forward. Attaches `request.auth_session` for downstream
+   views (e.g. `LogoutApiView` revokes only that session).
 2. `creators.authentication.ApiKeyAuthentication` — long-lived
-   per-creator API keys. Header: `Authorization: ApiKey <plaintext>`
-   (matched against `CreatorApiKey.key_hash`). Used by the MCP
+   per-creator MCP keys. Header: `Authorization: Bearer ntc_<hex>`.
+   Matches `Creator.api_key_hash` after SHA-256. Used by the MCP
    server for tool calls.
 
 `DEFAULT_PERMISSION_CLASSES = [AllowAny]`, so each view sets its
 own `permission_classes` explicitly.
+
+### `SessionApiView` special case
+
+`SessionApiView` (`GET /api/v1/auth/session/`) declares
+**`authentication_classes = []`** so DRF's auth chain doesn't
+short-circuit it with a 401. The view inspects the Authorization
+header manually, does `Session.objects.get(key=…)`, and always
+returns a clean 200 with `{"authenticated": true | false, …}`.
+Rationale in [versions/0.1.64.md](../versions/0.1.64.md) — if
+the probe endpoint itself 401'd on stale tokens, the frontend
+couldn't distinguish "stale credential" from "backend broken".
 
 ## API surface (`creators/api.py`)
 
@@ -66,27 +83,98 @@ Content-Type: application/json
 
 | Method | Path | View | Auth | Notes |
 | --- | --- | --- | --- | --- |
-| POST | `/api/v1/auth/login/` | `LoginApiView` | AllowAny | Body: `{username_or_email, password}`. Returns `{token, user}`. |
-| GET  | `/api/v1/auth/session/` | `SessionApiView` | TokenAuth | Returns the current session's user payload. The frontend checks this on boot to decide between online vs offline mode. |
-| POST | `/api/v1/auth/logout/` | `LogoutApiView` | TokenAuth | Revokes the current DRF token. |
+| POST | `/api/v1/auth/login/` | `LoginApiView` | AllowAny | Body: `{username_or_email, password}`. Returns the full `auth_payload` (token, session, multi_device, user). |
+| GET | `/api/v1/auth/session/` | `SessionApiView` | `authentication_classes = []` (manual lookup) | Probe: echoes the existing session + user if the saved token is still valid, else 200 with `{"authenticated": false}`. |
+| POST | `/api/v1/auth/logout/` | `LogoutApiView` | MultiSession | Revokes ONLY the current session (`request.auth_session`). Other devices stay signed in. |
 
-Example login response:
+Example login response *(shape shared across login / register /
+verify-email / OAuth — see `auth_payload` helper at
+[`backend/creators/api.py:64`](../../backend/creators/api.py#L64))*:
 
 ```json
 {
-  "token": "9bd0a4...3f12",
+  "token": "9bd0a47a3b12…",
+  "session": {
+    "id": 412,
+    "device_label": "Mac",
+    "created_at": "2026-04-14T22:10:31Z",
+    "last_seen_at": "2026-04-14T22:10:31Z"
+  },
+  "multi_device": true,
+  "other_sessions_count": 2,
   "user": {
     "id": 17,
     "username": "alice",
     "email": "alice@example.com",
-    "creator_id": 17,
     "display_name": "Alice",
-    "avatar": "/media/avatars/alice.png",
-    "is_default": false,
-    "email_verified_at": "2026-04-12T17:21:09Z"
+    "image_url": "https://cdn.trance-0.com/user_upload/user_17/profile_pic/profile_latest.png",
+    "is_staff": false,
+    "is_superuser": false,
+    "motto": "",
+    "social_link": "",
+    "editor_mode": "P",
+    "theme_preset": "teal",
+    "theme_mode": "S",
+    "api_base_url": "https://notechondria.trance-0.com/api/v1",
+    "app_settings": {"log_preferences": {"level": "Info"}},
+    "app_settings_updated_at": "2026-04-14T18:02:00Z"
   }
 }
 ```
+
+`multi_device` flips true whenever the user already had at least
+one other active (non-revoked, non-expired) `Session` at the time
+this one was minted, so the frontend can surface a "you're signed
+in elsewhere" banner immediately after login.
+
+### Active sessions (multi-device) — new in 0.1.65
+
+| Method | Path | View | Auth | Notes |
+| --- | --- | --- | --- | --- |
+| GET | `/api/v1/auth/sessions/` | `SessionListApiView` | MultiSession | Lists every non-revoked, non-expired `Session` the caller owns, sorted by `-last_seen_at`. |
+| DELETE | `/api/v1/auth/sessions/<int:session_id>/` | `SessionRevokeApiView` | MultiSession | Revokes a specific session. Owner-scoped (404 on cross-user attempts). Revoking the caller's current session effectively signs this device out. |
+
+Example `GET /api/v1/auth/sessions/` response:
+
+```json
+{
+  "sessions": [
+    {
+      "id": 412,
+      "device_label": "Mac",
+      "user_agent": "Mozilla/5.0 … Chrome/147",
+      "ip_hash_prefix": "5f3a7c91",
+      "created_at": "2026-04-14T22:10:31Z",
+      "last_seen_at": "2026-04-23T03:32:23Z",
+      "is_current": true
+    },
+    {
+      "id": 403,
+      "device_label": "iPhone",
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) …",
+      "ip_hash_prefix": "9b04e1d0",
+      "created_at": "2026-04-12T11:05:44Z",
+      "last_seen_at": "2026-04-22T20:47:18Z",
+      "is_current": false
+    }
+  ],
+  "current_session_id": 412
+}
+```
+
+The response **never** includes the raw `key`; the client only
+needs the id to revoke, and metadata to display. The
+`ip_hash_prefix` is the first 8 hex chars of SHA-256(first
+X-Forwarded-For hop) — enough to flag "different network than
+usual" without storing the raw IP.
+
+Frontend client methods for these endpoints were added in 0.1.67:
+`HttpNotechondriaClient.listSessions(token)` and
+`revokeSession(token, sessionId)`, declared on the shared
+`AuthClient` interface at
+[`frontend/notechondria_shared/lib/src/app_shell/auth_client.dart`](../../frontend/notechondria_shared/lib/src/app_shell/auth_client.dart).
+The Active Sessions card + multi-device warning banner are
+tracked in [`docs/TODO.md`](../TODO.md) (Login and account info).
 
 ### Password / email / identity
 

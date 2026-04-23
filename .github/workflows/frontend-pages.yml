@@ -5,12 +5,18 @@ env:
 
 on:
   push:
-    branches: [ codex ]
+    # 0.1.68 flipped the upstream-target branch from `codex` back to
+    # `main` (see docs/index.md §0). The pages build used to fire only
+    # on `codex` pushes, which is why `docs/server/*.html` stopped
+    # updating once day-to-day commits started landing on `main`.
+    branches: [ main ]
     paths:
       - 'frontend/editor_app/**'
       - 'frontend/planner_app/**'
       - 'frontend/portal_app/**'
+      - 'frontend/notechondria_shared/**'
       - 'docs/**'
+      - 'README.md'
       - '.github/workflows/frontend-pages.yml'
   workflow_dispatch:
 

@@ -9,7 +9,14 @@ name: portal-release
 #
 # Skipped targets (and why):
 #   * Linux x86 (32-bit): Flutter desktop does not ship 32-bit Linux.
-#     Only x64 and arm64 are supported.
+#   * Linux arm64: Flutter does not publish official arm64 Linux
+#     release archives — `releases_linux.json` only lists x64 URLs —
+#     so `subosito/flutter-action@v2` on an arm64 runner fails with
+#     "Unable to determine Flutter version for channel: stable
+#     version: any architecture: arm64". Re-enable when Flutter
+#     ships arm64 Linux binaries (or we add a self-hosted arm64
+#     runner with a manually built Flutter checkout). Tracked in
+#     docs/TODO.md under Release / CI.
 #   * Windows x86 (32-bit): Flutter Windows desktop is x64-only.
 #   * iOS signed: distribution-signed builds need an Apple Developer
 #     certificate + provisioning profile stored as secrets. This
@@ -51,10 +58,9 @@ jobs:
             runs-on: ubuntu-latest
             flutter-platform: linux
             archive-ext: tar.gz
-          - target: linux-arm64
-            runs-on: ubuntu-24.04-arm
-            flutter-platform: linux
-            archive-ext: tar.gz
+          # linux-arm64 removed — see the header comment. Flutter has
+          # no arm64 Linux release archives at the moment, so
+          # subosito/flutter-action@v2 bails at setup.
           - target: windows-x64
             runs-on: windows-latest
             flutter-platform: windows

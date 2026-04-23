@@ -11,6 +11,7 @@
 - [Editor app](client/editor_app.md)
 - [Planner app](client/planner_app.md)
 - [Portal app](client/portal_app.md)
+- [`notechondria_shared` package](client/notechondria_shared.md)
 
 # Server (backend)
 

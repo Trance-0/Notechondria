@@ -1,10 +1,15 @@
 # Notechondria — Project Overview
 
-Human-facing summary of what Notechondria is and how it runs. For deep
-agent-facing architecture, project-specific overrides, and the
-open-work list, see [`docs/index.md`](index.md). For the shared
-cross-project agent rules, see the `AGENTS.md/` submodule (pinned to
-[`Trance-0/AGENTS.md`](https://github.com/Trance-0/AGENTS.md)).
+Human-facing summary of what Notechondria is and how it runs.
+
+- Arriving from GitHub? The repo-root [`README.md`](../README.md) has
+  the elevator pitch and quick-start block; this page is the
+  slightly-longer tour.
+- For deep agent-facing architecture, project-specific overrides,
+  and the open-work list, see [`docs/index.md`](index.md).
+- For shared cross-project agent rules, see the `AGENTS.md/`
+  submodule (pinned to
+  [`Trance-0/AGENTS.md`](https://github.com/Trance-0/AGENTS.md)).
 
 ## What it is
 
