@@ -1,0 +1,381 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>notechondria_shared package - Notechondria Documentation</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "navy";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../index.html">Project Overview</a></li><li class="chapter-item expanded affix "><a href="../index.html">Long-Form Agent Handoff</a></li><li class="chapter-item expanded affix "><a href="../TODO.html">TODO</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">Client (frontend apps)</li><li class="chapter-item expanded "><a href="../client/editor_app.html"><strong aria-hidden="true">1.</strong> Editor app</a></li><li class="chapter-item expanded "><a href="../client/planner_app.html"><strong aria-hidden="true">2.</strong> Planner app</a></li><li class="chapter-item expanded "><a href="../client/portal_app.html"><strong aria-hidden="true">3.</strong> Portal app</a></li><li class="chapter-item expanded "><a href="../client/notechondria_shared.html" class="active"><strong aria-hidden="true">4.</strong> notechondria_shared package</a></li><li class="chapter-item expanded affix "><li class="part-title">Server (backend)</li><li class="chapter-item expanded "><a href="../server/backend.html"><strong aria-hidden="true">5.</strong> Backend overview</a></li><li class="chapter-item expanded "><a href="../server/creators.html"><strong aria-hidden="true">6.</strong> creators app</a></li><li class="chapter-item expanded "><a href="../server/notes.html"><strong aria-hidden="true">7.</strong> notes app</a></li><li class="chapter-item expanded "><a href="../server/mcp.html"><strong aria-hidden="true">8.</strong> mcp app</a></li><li class="chapter-item expanded affix "><li class="part-title">API</li><li class="chapter-item expanded "><a href="../api/backend_api_spec.html"><strong aria-hidden="true">9.</strong> Backend API Specification</a></li><li class="chapter-item expanded affix "><li class="part-title">Deployment</li><li class="chapter-item expanded "><a href="../deployment/overview.html"><strong aria-hidden="true">10.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../deployment/release.html"><strong aria-hidden="true">11.</strong> Release process (tag → GitHub Release)</a></li><li class="chapter-item expanded "><a href="../deployment/deploy.html"><strong aria-hidden="true">12.</strong> Docker-compose / Jenkins Full-stack Guide</a></li><li class="chapter-item expanded "><a href="../deployment/render_free_tier.html"><strong aria-hidden="true">13.</strong> Render Free Tier (Backend)</a></li><li class="chapter-item expanded "><a href="../deployment/northflank.html"><strong aria-hidden="true">14.</strong> Northflank Free Tier (Backend)</a></li><li class="chapter-item expanded affix "><li class="part-title">Development</li><li class="chapter-item expanded "><a href="../development/local_dev.html"><strong aria-hidden="true">15.</strong> Local Development Guide</a></li><li class="chapter-item expanded "><a href="../development/python_environments.html"><strong aria-hidden="true">16.</strong> Python Environments</a></li><li class="chapter-item expanded "><a href="../development/ai_integration.html"><strong aria-hidden="true">17.</strong> AI Integration (stub status and forward plan)</a></li><li class="chapter-item expanded "><a href="../development/storage_model.html"><strong aria-hidden="true">18.</strong> Storage model (Django + frontend offline)</a></li><li class="chapter-item expanded "><a href="../development/canvas_like_calendar_mvp.html"><strong aria-hidden="true">19.</strong> Canvas-like Calendar Product Concept</a></li><li class="chapter-item expanded affix "><li class="part-title">Integrations</li><li class="chapter-item expanded "><a href="../integrations/github_app_integration.html"><strong aria-hidden="true">20.</strong> GitHub App Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">Operations</li><li class="chapter-item expanded "><a href="../operations/postgres_migration.html"><strong aria-hidden="true">21.</strong> PostgreSQL Migration</a></li><li class="chapter-item expanded affix "><li class="part-title">Testing</li><li class="chapter-item expanded "><a href="../testing/backend_test_plan.html"><strong aria-hidden="true">22.</strong> Backend Test Plan</a></li><li class="chapter-item expanded affix "><li class="part-title">Versions</li><li class="chapter-item expanded "><a href="../versions/0.1.21.html"><strong aria-hidden="true">23.</strong> 0.1.21 — Shared UI extracted into notechondria_shared package</a></li><li class="chapter-item expanded "><a href="../versions/0.1.20.html"><strong aria-hidden="true">24.</strong> 0.1.20 — Per-app server docs, storage model, login subtitle, lock API URL, bug fixes</a></li><li class="chapter-item expanded "><a href="../versions/0.1.19.html"><strong aria-hidden="true">25.</strong> 0.1.19 — Splash version display, deploy overview, settings handshake docs</a></li><li class="chapter-item expanded "><a href="../versions/0.1.18.html"><strong aria-hidden="true">26.</strong> 0.1.18 — Ics import dialog, calendar subscribe fix, welcome note, portal root</a></li><li class="chapter-item expanded "><a href="../versions/0.1.17.html"><strong aria-hidden="true">27.</strong> 0.1.17 — Splash polish, OAuth bind guard, API key visibility</a></li><li class="chapter-item expanded "><a href="../versions/0.1.16.html"><strong aria-hidden="true">28.</strong> 0.1.16 — MCP server, API key auth, front-page + media fixes</a></li><li class="chapter-item expanded "><a href="../versions/0.1.15.html"><strong aria-hidden="true">29.</strong> 0.1.15</a></li><li class="chapter-item expanded "><a href="../versions/0.1.14.html"><strong aria-hidden="true">30.</strong> 0.1.14</a></li><li class="chapter-item expanded "><a href="../versions/0.1.13.html"><strong aria-hidden="true">31.</strong> 0.1.13</a></li><li class="chapter-item expanded "><a href="../versions/0.1.12.html"><strong aria-hidden="true">32.</strong> 0.1.12</a></li><li class="chapter-item expanded "><a href="../versions/0.1.11.html"><strong aria-hidden="true">33.</strong> 0.1.11</a></li><li class="chapter-item expanded "><a href="../versions/0.1.10.html"><strong aria-hidden="true">34.</strong> 0.1.10</a></li><li class="chapter-item expanded "><a href="../versions/0.1.9.html"><strong aria-hidden="true">35.</strong> 0.1.9</a></li><li class="chapter-item expanded "><a href="../versions/0.1.8.html"><strong aria-hidden="true">36.</strong> 0.1.8</a></li><li class="chapter-item expanded "><a href="../versions/0.1.7.html"><strong aria-hidden="true">37.</strong> 0.1.7</a></li><li class="chapter-item expanded "><a href="../versions/0.1.6.html"><strong aria-hidden="true">38.</strong> 0.1.6</a></li><li class="chapter-item expanded "><a href="../versions/0.1.5.html"><strong aria-hidden="true">39.</strong> 0.1.5</a></li><li class="chapter-item expanded "><a href="../versions/0.1.4.html"><strong aria-hidden="true">40.</strong> 0.1.4</a></li><li class="chapter-item expanded "><a href="../versions/0.1.3.html"><strong aria-hidden="true">41.</strong> 0.1.3</a></li><li class="chapter-item expanded "><a href="../versions/0.1.2.html"><strong aria-hidden="true">42.</strong> 0.1.2</a></li><li class="chapter-item expanded "><a href="../versions/0.1.1.html"><strong aria-hidden="true">43.</strong> 0.1.1</a></li><li class="chapter-item expanded "><a href="../versions/0.1.0.html"><strong aria-hidden="true">44.</strong> 0.1.0</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Notechondria Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria/edit/codex/docs/./client/notechondria_shared.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="notechondria_shared-package"><a class="header" href="#notechondria_shared-package"><code>notechondria_shared</code> package</a></h1>
+<p>Path: <a href="../../frontend/notechondria_shared/"><code>frontend/notechondria_shared/</code></a>.
+Purpose: shared Dart/Flutter code consumed by all three frontend apps
+(editor / planner / portal). Ships as a path-dependency package so
+the three <code>pubspec.yaml</code> files import it directly from the repo
+without publishing to pub.dev.</p>
+<p>Related: <a href="editor_app.html">editor_app</a>, <a href="planner_app.html">planner_app</a>,
+<a href="portal_app.html">portal_app</a>, <a href="../server/backend.html">server/backend.md</a>.</p>
+<h2 id="why-this-exists"><a class="header" href="#why-this-exists">Why this exists</a></h2>
+<p>The three Flutter apps used to carry 63+ byte-identical methods each
+across their <code>app_shell.dart</code> files. 0.1.52/0.1.53 codified the
+1000-LOC hard ceiling per file and started peeling those duplicates
+up into a shared library; 0.1.65+ added the multi-device session
+client surface here so the UI can be built once, not three times.
+Remaining de-dup work is tracked in the "File-size rule + cross-app
+sharing" entry in <a href="../TODO.html"><code>docs/TODO.md</code></a>.</p>
+<h2 id="layout"><a class="header" href="#layout">Layout</a></h2>
+<pre><code class="language-text">frontend/notechondria_shared/
+├── pubspec.yaml                     ← path-dep'd by each app
+└── lib/
+    ├── notechondria_shared.dart     ← public export barrel
+    └── src/
+        ├── app_shell/               ← State mixins used by
+        │   │                          _AppShellState in all 3 apps
+        │   ├── app_shell_log_mixin.dart
+        │   ├── app_shell_auth_actions_mixin.dart
+        │   ├── app_shell_oauth_mixin.dart
+        │   ├── auth_client.dart           ← abstract AuthClient
+        │   ├── url_strategy.dart          ← non-web no-op stub
+        │   └── url_strategy_web.dart      ← dart:html impl
+        ├── components/               ← Widget-layer UI primitives
+        │   ├── auth_dialogs.dart
+        │   ├── auth_dialogs_wizard.dart
+        │   ├── debug_log.dart
+        │   ├── debug_widgets.dart
+        │   ├── error_state.dart
+        │   ├── navigation.dart
+        │   ├── phased_status.dart
+        │   ├── splash_painter.dart
+        │   └── splash_screen.dart
+        ├── models/
+        │   ├── action_feedback.dart
+        │   └── api_debug_snapshot.dart
+        ├── settings/
+        │   └── app_preferences_card.dart
+        └── utils/
+            ├── blur_dialog.dart
+            ├── compact_timestamp.dart
+            ├── local_archive.dart
+            ├── local_attachment_store.dart
+            ├── local_attachment_store_io.dart
+            ├── local_attachment_store_web.dart
+            └── ping_backend.dart
+</code></pre>
+<h2 id="srcapp_shell--state-mixins"><a class="header" href="#srcapp_shell--state-mixins"><code>src/app_shell/</code> — state mixins</a></h2>
+<p>Mixins on <code>State&lt;StatefulWidget&gt;</code> with abstract getters for the
+handful of fields each concern needs. The apps compose them onto
+their <code>_AppShellState</code> to keep per-app <code>app_shell.dart</code> under the
+1000-LOC cap.</p>
+<div class="table-wrapper"><table><thead><tr><th>Mixin / file</th><th>Role</th></tr></thead><tbody>
+<tr><td><code>AppShellLogMixin</code> (<code>app_shell_log_mixin.dart</code>)</td><td>UI log ring (<code>uiLogs</code>, <code>logController</code>), <code>log</code>, <code>appendUiLog</code>, <code>timed&lt;T&gt;</code>, <code>refreshState</code>, <code>showMessage</code>.</td></tr>
+<tr><td><code>AppShellAuthActionsMixin</code> (<code>app_shell_auth_actions_mixin.dart</code>)</td><td>Password-based auth callbacks: <code>register</code>, <code>verify</code>, <code>resendVerification</code>, <code>login</code>, <code>requestPasswordReset</code>, <code>confirmPasswordReset</code>. Abstract getter <code>logAppTag</code> supplies the <code>Editor.</code> / <code>Planner.</code> / <code>Portal.</code> prefix.</td></tr>
+<tr><td><code>AppShellOAuthMixin</code> (<code>app_shell_oauth_mixin.dart</code>)</td><td>Web-only <code>launchOAuth</code> + <code>handleOAuthCallback</code>. 0.1.67 change: <code>handleOAuthCallback</code> preserves the URL fragment when cleaning the query (so note deep-links survive an OAuth round-trip).</td></tr>
+</tbody></table>
+</div>
+<p><code>auth_client.dart</code> declares the abstract <code>AuthClient</code> interface
+every per-app <code>HttpNotechondriaClient</code> implements: <code>register</code>,
+<code>login</code>, <code>checkSession</code>, <code>listSessions</code>, <code>revokeSession</code>, <code>logout</code>,
+<code>getSettings</code>, <code>updateSettings</code>, OAuth flows, etc. Session
+management methods (<code>listSessions</code> / <code>revokeSession</code>) were added
+in 0.1.67 to consume the 0.1.65 backend endpoints — see
+<a href="../server/creators.html#active-sessions-multi-device--new-in-0165">server/creators.md</a>.</p>
+<p><code>url_strategy.dart</code> + <code>url_strategy_web.dart</code> provide
+<code>browserPushState</code> / <code>browserReplaceState</code> via a conditional
+import so non-web builds compile. The fragment-preservation fix
+in 0.1.67 relies on this pair.</p>
+<h2 id="srccomponents--ui-primitives"><a class="header" href="#srccomponents--ui-primitives"><code>src/components/</code> — UI primitives</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>File</th><th>Public widget(s)</th><th>Notes</th></tr></thead><tbody>
+<tr><td><code>auth_dialogs.dart</code></td><td><code>AuthHub</code>, <code>EmailPasswordDialog</code>, <code>EmailCodeDialog</code>, <code>PasswordResetDialog</code></td><td>0.1.66 dropped the "Verify email" button from <code>AuthHub</code> (verification lives inside the signup wizard now) and moved "Forgot password" into <code>EmailPasswordDialog</code>'s action row. 0.1.66 also added a <code>Cancel</code> affordance that stays enabled during a slow submit. <code>EmailPasswordDialog</code> shows <code>Signing in to &lt;host&gt;</code> as the subtitle when given an <code>apiBaseUrl</code>.</td></tr>
+<tr><td><code>auth_dialogs_wizard.dart</code></td><td><code>RegistrationWizard</code></td><td>Multi-step signup flow (invitation-code → email+password → verify).</td></tr>
+<tr><td><code>debug_log.dart</code>, <code>debug_widgets.dart</code></td><td><code>DebugLogCard</code>, <code>ApiDebugCard</code></td><td>Debug drawer surfaces on the Settings surface.</td></tr>
+<tr><td><code>error_state.dart</code></td><td><code>ErrorStatePanel</code></td><td>"Something went wrong" screen with API base URL context.</td></tr>
+<tr><td><code>navigation.dart</code></td><td>Navigation rail / bottom-bar helpers.</td><td></td></tr>
+<tr><td><code>phased_status.dart</code></td><td><code>PhasedStatusIndicator</code> — replaces a bare spinner with a labelled "Sending request to backend → Waiting for backend response → Applying response" line. Used by <code>EmailPasswordDialog._submit</code>.</td><td></td></tr>
+<tr><td><code>splash_painter.dart</code>, <code>splash_screen.dart</code></td><td><code>_SplashScreen</code>, <code>_KrebsCyclePainter</code>, <code>SplashParticle</code></td><td>Krebs-cycle animated splash. 0.1.66 unified particle sizes (byproducts + Acetyl-CoA wrapped in <code>canvas.scale(0.5)</code> so every splash particle shares a final pixel size); 0.1.67 removed the outer <code>activePos.dx &gt; -30</code> gate so narrow (mobile) layouts no longer show a blank moment when the active node slips off the left edge.</td></tr>
+</tbody></table>
+</div>
+<h2 id="srcmodels"><a class="header" href="#srcmodels"><code>src/models/</code></a></h2>
+<ul>
+<li><strong><code>ActionFeedback</code></strong> — <code>{bool isError, String message, String? source}</code>, returned by every user-triggered action (login, save, revoke, etc.) so the app shell can surface a typed result without a string-typing protocol.</li>
+<li><strong><code>ApiDebugSnapshot</code></strong> — captured per HTTP round-trip: <code>method</code>, <code>path</code>, <code>status</code>, <code>durationMs</code>, <code>bodyPreview</code>, <code>source</code>. Fed into <code>DebugLogCard</code> for per-request visibility.</li>
+</ul>
+<h2 id="srcsettings"><a class="header" href="#srcsettings"><code>src/settings/</code></a></h2>
+<ul>
+<li><strong><code>AppPreferencesCard</code></strong> — shared Settings card showing editor-mode / theme-preset / theme-mode dropdowns, an <code>extrasBuilder</code> slot for per-app fields (planner uses it for deadline-weight sliders), and the API base URL <code>TextField</code> with the "locked while signed in" tooltip from 0.1.66 and the "Include the <code>/api/v1</code> suffix" default hint from 0.1.66. Host apps pass in their <code>localSettings</code> mutation callbacks; the card doesn't persist anything itself.</li>
+</ul>
+<h2 id="srcutils"><a class="header" href="#srcutils"><code>src/utils/</code></a></h2>
+<div class="table-wrapper"><table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><code>blur_dialog.dart</code></td><td><code>showBlurDialog&lt;T&gt;()</code> — drop-in replacement for <code>showDialog</code> that blurs the underlying scaffold. Consumers: auth dialogs, identity-code prompts.</td></tr>
+<tr><td><code>compact_timestamp.dart</code></td><td>"2 min ago" / "yesterday" / "Jan 14" formatting for the sessions list, note cards, etc.</td></tr>
+<tr><td><code>local_archive.dart</code></td><td>Zip-based export / import of a workspace snapshot. Shared across apps so planner and portal can import what editor exported.</td></tr>
+<tr><td><code>local_attachment_store.dart</code> + <code>_io.dart</code> + <code>_web.dart</code></td><td>Conditional-import attachment blob store. IO backend writes to <code>path_provider</code> app-docs; web backend is in-memory today (IndexedDB persistence tracked in TODO). Used by the 0.1.40+ attachment-CDN work so notes can carry image/file references without sending them to the backend.</td></tr>
+<tr><td><code>ping_backend.dart</code></td><td><code>HttpNotechondriaClient.verifyHandshake</code> helper — probes <code>GET /handshake/</code> on a candidate base URL before Settings commits a new one (0.1.17 design).</td></tr>
+</tbody></table>
+</div>
+<h2 id="srcnotechondria_shareddart--export-barrel"><a class="header" href="#srcnotechondria_shareddart--export-barrel"><code>src/notechondria_shared.dart</code> — export barrel</a></h2>
+<p>The single public entry point each app imports:</p>
+<pre><code class="language-dart">// frontend/editor_app/lib/main.dart
+import 'package:notechondria_shared/notechondria_shared.dart';
+</code></pre>
+<p>Everything in <code>src/</code> that should be consumable from outside the
+package is re-exported from this barrel. Adding a new shared
+symbol: add the file under <code>src/&lt;category&gt;/</code> and append an
+<code>export 'src/&lt;category&gt;/&lt;file&gt;.dart' show &lt;Symbol&gt;;</code> line in the
+barrel. Keep the <code>show</code> list tight to avoid accidental public
+surface creep.</p>
+<h2 id="dependencies"><a class="header" href="#dependencies">Dependencies</a></h2>
+<p><code>frontend/notechondria_shared/pubspec.yaml</code>:</p>
+<ul>
+<li><code>flutter</code> SDK (Material + Cupertino).</li>
+<li><code>http</code> — HTTP client surface for the <code>AuthClient</code> + per-app
+implementations to consume.</li>
+<li><code>shared_preferences</code> — the local settings / session blobs.</li>
+<li><code>file_selector</code> — <code>local_archive</code> import/export file picking.</li>
+<li><code>path_provider</code> — attachment store filesystem roots.</li>
+<li><code>archive</code> — zip read/write for <code>local_archive</code>.</li>
+</ul>
+<p>These are the union of what all three apps needed. No per-app
+dependency leaks upward into this package, and no third-party
+UI kit — everything is plain Flutter so the three apps can style
+consistently from their own <code>ThemeData</code>.</p>
+<h2 id="consuming-the-package"><a class="header" href="#consuming-the-package">Consuming the package</a></h2>
+<p>Each app's <code>pubspec.yaml</code>:</p>
+<pre><code class="language-yaml">dependencies:
+  notechondria_shared:
+    path: ../notechondria_shared
+</code></pre>
+<p>Because it's a path-dep, edits to shared code take effect on the
+next <code>flutter pub get</code> + hot-restart in the consuming app. The
+smoke tests per app cover enough of the shared surface that
+regressions surface quickly.</p>
+<h2 id="when-to-add-new-shared-code"><a class="header" href="#when-to-add-new-shared-code">When to add new shared code</a></h2>
+<p>Follow the migration TODO heuristic: <strong>if three apps have a
+byte-identical method, extract it.</strong> If two apps share it and the
+third has a small divergence, keep it per-app and note the
+divergence in the owning file's header comment. Do not over-
+generalize — a mixin with 6 abstract getters for 3 concrete call
+sites is worse than copying three methods.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../client/portal_app.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../server/backend.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../client/portal_app.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../server/backend.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
