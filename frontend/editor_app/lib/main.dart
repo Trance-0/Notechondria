@@ -56,6 +56,7 @@ part 'modules/note_editor_widgets.dart';
 part 'modules/note_metadata.dart';
 part 'modules/settings.dart';
 part 'modules/settings_build.dart';
+part 'modules/settings_pages.dart';
 part 'modules/settings_sections.dart';
 
 void main() {

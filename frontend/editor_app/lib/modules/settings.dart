@@ -262,19 +262,6 @@ class _SettingsPageState extends State<_SettingsPage> {
         _socialController.text.trim() != serverSocial;
   }
 
-  /// Whether any editor-preference field has been edited.
-  bool get _hasPreferenceChanges {
-    final serverEditorMode = widget.settings?['editor_mode']?.toString() ?? 'P';
-    final localThemePreset = widget.localSettings['theme_preset']?.toString() ?? 'teal';
-    final localThemeMode = widget.localSettings['theme_mode']?.toString() ?? 'S';
-    final localApiBase = widget.localSettings['api_base_url']?.toString() ??
-        widget.apiBaseUrl ?? _defaultApiBaseUrl();
-    return _editorMode != serverEditorMode ||
-        _themePreset != localThemePreset ||
-        _themeMode != localThemeMode ||
-        _apiBaseController.text.trim() != localApiBase;
-  }
-
   /// Restores profile fields to server values.
   void _cancelProfileChanges() {
     final s = widget.settings ?? const {};
@@ -284,18 +271,6 @@ class _SettingsPageState extends State<_SettingsPage> {
       _lastNameController.text = s['last_name']?.toString() ?? p['last_name']?.toString() ?? '';
       _mottoController.text = s['motto']?.toString() ?? '';
       _socialController.text = s['social_link']?.toString() ?? '';
-    });
-  }
-
-  /// Restores editor preference fields to server/local values.
-  void _cancelPreferenceChanges() {
-    setState(() {
-      _editorMode = widget.settings?['editor_mode']?.toString() ?? 'P';
-      if (_editorMode == 'B') _editorMode = 'G';
-      _themePreset = widget.localSettings['theme_preset']?.toString() ?? 'teal';
-      _themeMode = widget.localSettings['theme_mode']?.toString() ?? 'S';
-      _apiBaseController.text = widget.localSettings['api_base_url']?.toString() ??
-          widget.apiBaseUrl ?? _defaultApiBaseUrl();
     });
   }
 
@@ -598,7 +573,7 @@ class _SettingsPageState extends State<_SettingsPage> {
       padding: const EdgeInsets.all(20),
       children: [
         Text(
-          'Editor settings',
+          'Settings',
           style: Theme.of(context)
               .textTheme
               .headlineSmall
@@ -606,7 +581,9 @@ class _SettingsPageState extends State<_SettingsPage> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Edit your settings below and press Save to apply. Online account settings require an active login; local preferences work offline.',
+          'Manage your account, preferences, and local data. Online '
+          'account settings require an active login; local '
+          'preferences work offline.',
         ),
         if (_saveFeedback != null) ...[
           const SizedBox(height: 12),
@@ -615,10 +592,113 @@ class _SettingsPageState extends State<_SettingsPage> {
         const SizedBox(height: 20),
         _buildOnlineAccountSection(context),
         const SizedBox(height: 16),
-        _buildOfflinePreferencesSection(context),
+        _buildSettingsMenu(context),
         const SizedBox(height: 16),
         _buildDebugSection(context),
       ],
+    );
+  }
+
+  /// Apple-style two-level settings menu. The five rows below each
+  /// open a dedicated sub-page (`_EditorSettingsPage`,
+  /// `_BackendSettingsPage`, `_LocalDataPage`, `_RecycleBinPage`)
+  /// except for the last red row, which triggers
+  /// `_confirmClearAllLocalData` directly because the action is
+  /// destructive and shouldn't sit one extra tap away.
+  Widget _buildSettingsMenu(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final recoverableCount =
+        widget.localTrashedDraftCount + widget.localTrashedCourseCount;
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.edit_outlined),
+            title: const Text('Editor settings'),
+            subtitle: const Text(
+              'Default editor mode, theme preset, theme mode.',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => _EditorSettingsPage(parent: this),
+                ),
+              );
+            },
+          ),
+          const Divider(height: 0, indent: 16, endIndent: 16),
+          ListTile(
+            leading: const Icon(Icons.cloud_outlined),
+            title: const Text('Backend settings'),
+            subtitle: Text(
+              widget.localSettings['offline_mode'] == true
+                  ? 'Offline mode is on. API URL: '
+                      '${widget.apiBaseUrl ?? "—"}'
+                  : 'Online. API URL: ${widget.apiBaseUrl ?? "—"}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => _BackendSettingsPage(parent: this),
+                ),
+              );
+            },
+          ),
+          const Divider(height: 0, indent: 16, endIndent: 16),
+          ListTile(
+            leading: const Icon(Icons.folder_outlined),
+            title: const Text('Local data'),
+            subtitle: const Text(
+              'Download or restore the local archive, reset the '
+              'starter categories.',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => _LocalDataPage(parent: this),
+                ),
+              );
+            },
+          ),
+          const Divider(height: 0, indent: 16, endIndent: 16),
+          ListTile(
+            leading: const Icon(Icons.delete_outline),
+            title: const Text('Recycle bin'),
+            subtitle: Text(
+              '$recoverableCount synced draft(s) recoverable, '
+              '${widget.deletedNotes.length} cloud note(s) trashed.',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => _RecycleBinPage(parent: this),
+                ),
+              );
+            },
+          ),
+          const Divider(height: 0, indent: 16, endIndent: 16),
+          ListTile(
+            leading: Icon(Icons.warning_amber_outlined, color: scheme.error),
+            title: Text(
+              'Clear all local data',
+              style: TextStyle(color: scheme.error),
+            ),
+            subtitle: Text(
+              'Wipes drafts, categories, settings, and logs from this '
+              'device. Cloud copies are not touched.',
+              style: TextStyle(color: scheme.error.withValues(alpha: 0.8)),
+            ),
+            onTap: _confirmClearAllLocalData,
+          ),
+        ],
+      ),
     );
   }
 
