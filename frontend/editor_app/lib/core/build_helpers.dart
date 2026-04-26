@@ -509,9 +509,16 @@ extension _AppShellBuildHelpersX on _AppShellState {
   Widget _buildPage() {
     switch (_selectedIndex) {
       case 1:
+        // When a category is selected, scope local drafts to that
+        // course so the learner view doesn't mix unrelated drafts
+        // from other categories. When no category is selected we
+        // show every local draft (the "All Notes" pseudo-category).
+        final scopedLocalDrafts = _selectedCourse == null
+            ? _localDrafts
+            : _localNotesForCourse(_selectedCourse!);
         return _LearnerPage(
           notes: _learnerNotes,
-          localDrafts: _localDrafts,
+          localDrafts: scopedLocalDrafts,
           courses: [..._localCourses, ..._courses],
           selectedNote: _selectedNote,
           editorMode: _settings?['editor_mode']?.toString() ?? 'P',
@@ -520,6 +527,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
           searchQuery: _learnerSearchQuery,
           searchScope: _learnerSearchScope,
           isAuthenticated: _token != null && _token!.isNotEmpty,
+          isLocalCourseSelected: _isLocalCourse(_selectedCourse),
           currentUsername: _profile?['username']?.toString() ?? '',
           apiBaseUrl: _localSettings['api_base_url']?.toString() ??
               _httpClient?.baseUrl,

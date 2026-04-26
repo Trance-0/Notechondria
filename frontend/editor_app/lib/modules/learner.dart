@@ -13,6 +13,7 @@ class _LearnerPage extends StatefulWidget {
     required this.searchQuery,
     required this.searchScope,
     required this.isAuthenticated,
+    required this.isLocalCourseSelected,
     required this.currentUsername,
     required this.apiBaseUrl,
     required this.onSearchChanged,
@@ -44,9 +45,18 @@ class _LearnerPage extends StatefulWidget {
   final bool hasMoreNotes;
   final bool isLoadingMore;
   final String searchQuery;
-  /// 'personal' = only own notes, 'all' = own notes + public notes from any user.
+  /// One of: `local`, `personal`, `private`, `public`.
+  ///   local    — show only local drafts (no cloud call).
+  ///   personal — own cloud notes (private + public).
+  ///   private  — own cloud notes, private only.
+  ///   public   — own cloud notes, public only.
   final String searchScope;
   final bool isAuthenticated;
+  /// `true` when the user has a locally-created (offline) category open.
+  /// In that case the page forces `searchScope = 'local'` because public
+  /// or cloud-personal notes have no relationship to a category that
+  /// only exists on this device.
+  final bool isLocalCourseSelected;
   final String currentUsername;
   final String? apiBaseUrl;
   final ValueChanged<String> onSearchChanged;
@@ -234,6 +244,63 @@ class _LearnerPageState extends State<_LearnerPage> {
     await _openEditor(created);
   }
 
+  String _searchHint(String scope) {
+    if (!widget.isAuthenticated) {
+      return 'Search local drafts';
+    }
+    switch (scope) {
+      case 'local':
+        return 'Search local drafts';
+      case 'private':
+        return 'Search your private notes';
+      case 'public':
+        return 'Search your public notes';
+      case 'personal':
+      default:
+        return 'Search your notes';
+    }
+  }
+
+  String _cloudSectionLabel(String scope) {
+    switch (scope) {
+      case 'private':
+        return 'Your private notes';
+      case 'public':
+        return 'Your public notes';
+      case 'personal':
+      default:
+        return widget.isAuthenticated ? 'Recent notes' : 'Public notes';
+    }
+  }
+
+  String _emptyCloudCopy(String scope) {
+    if (!widget.isAuthenticated) {
+      return 'No notes yet. Use the add button to create a local draft.';
+    }
+    switch (scope) {
+      case 'private':
+        return 'No private notes yet.';
+      case 'public':
+        return 'No public notes yet.';
+      case 'personal':
+      default:
+        return 'No cloud notes yet. Use the add button to create one.';
+    }
+  }
+
+  /// Builds the four-option dropdown the user picks from to filter the
+  /// learner view. Order is intentional — the most-used "personal"
+  /// scope sits at the top so the keyboard arrow keys land on it
+  /// after a fresh open.
+  List<DropdownMenuItem<String>> _buildScopeItems() {
+    return const [
+      DropdownMenuItem(value: 'personal', child: Text('Personal notes')),
+      DropdownMenuItem(value: 'private', child: Text('Private notes')),
+      DropdownMenuItem(value: 'public', child: Text('Public notes')),
+      DropdownMenuItem(value: 'local', child: Text('Local drafts only')),
+    ];
+  }
+
   Future<void> _showComposerMenu(TapDownDetails? details) async {
     final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final selected = await showMenu<String>(
@@ -260,6 +327,13 @@ class _LearnerPageState extends State<_LearnerPage> {
   @override
   Widget build(BuildContext context) {
     final localDrafts = _visibleLocalDrafts();
+    // When the user opens a locally-created category, public/personal
+    // cloud notes are unrelated to it, so we force the filter to
+    // `local` regardless of what they last picked from the dropdown.
+    final effectiveScope =
+        widget.isLocalCourseSelected ? 'local' : widget.searchScope;
+    final showCloudNotes =
+        widget.isAuthenticated && effectiveScope != 'local';
     return Stack(
       children: [
         ListView(
@@ -271,31 +345,54 @@ class _LearnerPageState extends State<_LearnerPage> {
               onChanged: widget.onSearchChanged,
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.search),
-                hintText: widget.isAuthenticated
-                    ? (widget.searchScope == 'all'
-                        ? 'Search all notes (yours + public)'
-                        : 'Search your notes')
-                    : 'Search local drafts',
+                hintText: _searchHint(effectiveScope),
                 border:
                     OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
               ),
             ),
             if (widget.isAuthenticated)
               Padding(
-                padding: const EdgeInsets.only(top: 8, left: 4),
+                padding: const EdgeInsets.only(top: 8, left: 4, right: 4),
                 child: Row(
                   children: [
-                    // Checkbox mirrors the task spec: checked = "All" scope
-                    // (your notes + every other user's public notes),
-                    // unchecked = "Personal" (only your own private + public).
-                    Checkbox(
-                      value: widget.searchScope == 'all',
-                      onChanged: (value) {
-                        widget.onSearchScopeChanged(
-                            value == true ? 'all' : 'personal');
-                      },
+                    Text(
+                      'Show:',
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
-                    const Text('Include public notes from other users'),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: effectiveScope,
+                        isDense: true,
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                          contentPadding:
+                              EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        items: _buildScopeItems(),
+                        onChanged: widget.isLocalCourseSelected
+                            ? null
+                            : (value) {
+                                if (value != null) {
+                                  widget.onSearchScopeChanged(value);
+                                }
+                              },
+                      ),
+                    ),
+                    if (widget.isLocalCourseSelected) ...[
+                      const SizedBox(width: 8),
+                      Tooltip(
+                        message:
+                            'Local categories only contain local drafts. '
+                            'Switch to a synced category to filter cloud notes.',
+                        child: Icon(
+                          Icons.info_outline,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -359,44 +456,59 @@ class _LearnerPageState extends State<_LearnerPage> {
                 ),
               const SizedBox(height: 20),
             ],
-            Text(
-              widget.isAuthenticated ? 'Recent notes' : 'Public notes',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            if (widget.notes.isEmpty && localDrafts.isEmpty)
+            if (showCloudNotes) ...[
+              Text(
+                _cloudSectionLabel(effectiveScope),
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              if (widget.notes.isEmpty && localDrafts.isEmpty)
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      _emptyCloudCopy(effectiveScope),
+                    ),
+                  ),
+                ),
+              if (widget.notes.isEmpty &&
+                  localDrafts.isNotEmpty &&
+                  widget.isAuthenticated)
+                const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text(
+                      'No matching cloud notes yet. Sync a local draft or '
+                      'create a new note.',
+                    ),
+                  ),
+                ),
+              for (var i = 0; i < widget.notes.length; i++)
+                _StaggeredFadeIn(
+                  index: i,
+                  child: _LearnerNoteCard(
+                    note: widget.notes[i],
+                    apiBaseUrl: widget.apiBaseUrl,
+                    onOpen: () => _openViewer(widget.notes[i]),
+                  ),
+                ),
+              if (widget.isLoadingMore) ...[
+                const SizedBox(height: 16),
+                const Center(child: CircularProgressIndicator()),
+              ],
+            ] else if (effectiveScope == 'local' && localDrafts.isEmpty)
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Text(
-                    widget.isAuthenticated
-                        ? 'No cloud notes yet. Use the add button to create one.'
-                        : 'No notes yet. Use the add button to create a local draft.',
+                    widget.isLocalCourseSelected
+                        ? 'No local drafts in this offline category yet. '
+                            'Use the add button to create one.'
+                        : 'No local drafts yet. Use the add button to '
+                            'create one.',
                   ),
                 ),
               ),
-            if (widget.notes.isEmpty && localDrafts.isNotEmpty && widget.isAuthenticated)
-              const Card(
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text(
-                    'No synced cloud notes yet. Sync a local draft or create a new note.',
-                  ),
-                ),
-              ),
-            for (var i = 0; i < widget.notes.length; i++)
-              _StaggeredFadeIn(
-                index: i,
-                child: _LearnerNoteCard(
-                  note: widget.notes[i],
-                  apiBaseUrl: widget.apiBaseUrl,
-                  onOpen: () => _openViewer(widget.notes[i]),
-                ),
-              ),
-            if (widget.isLoadingMore) ...[
-              const SizedBox(height: 16),
-              const Center(child: CircularProgressIndicator()),
-            ],
           ],
         ),
         Positioned(
@@ -532,26 +644,45 @@ class _LearnerNoteCard extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          [
-                            if (isLocalDraft)
-                              'Local draft'
-                            else if (isPublic)
-                              'Public'
-                            else
-                              'Private',
-                            if ((course['title']?.toString() ?? '').isNotEmpty)
-                              course['title'].toString(),
-                            formatCompactTimestamp(
-                              note['last_edit']?.toString() ?? '',
+                        // Visual badge distinguishing the four note
+                        // states — Local draft, Public, Private — at
+                        // a glance. The text row below it carries the
+                        // category and last-edit metadata.
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            _NoteStateBadge(
+                              isLocalDraft: isLocalDraft,
+                              isPublic: isPublic,
                             ),
-                          ].join(' | '),
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                            if ((course['title']?.toString() ?? '').isNotEmpty)
+                              Text(
+                                course['title'].toString(),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                    ),
+                              ),
+                            Text(
+                              formatCompactTimestamp(
+                                note['last_edit']?.toString() ?? '',
+                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
                                     color: Theme.of(context)
                                         .colorScheme
                                         .onSurfaceVariant,
                                   ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -589,6 +720,69 @@ class _LearnerNoteCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Compact pill-style badge showing a note's persistence state.
+/// Three variants:
+///   * Local draft — only on this device, not synced (yellow / tertiary).
+///   * Private — synced, not visible to other users (neutral surface).
+///   * Public — synced, visible to other users (primary).
+/// Shape and color give the user an at-a-glance signal next to the
+/// note title so they don't have to read the metadata text.
+class _NoteStateBadge extends StatelessWidget {
+  const _NoteStateBadge({
+    required this.isLocalDraft,
+    required this.isPublic,
+  });
+
+  final bool isLocalDraft;
+  final bool isPublic;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    late final Color background;
+    late final Color foreground;
+    late final IconData icon;
+    late final String label;
+    if (isLocalDraft) {
+      background = scheme.tertiaryContainer;
+      foreground = scheme.onTertiaryContainer;
+      icon = Icons.cloud_off_outlined;
+      label = 'Local draft';
+    } else if (isPublic) {
+      background = scheme.primaryContainer;
+      foreground = scheme.onPrimaryContainer;
+      icon = Icons.public;
+      label = 'Public';
+    } else {
+      background = scheme.surfaceContainerHighest;
+      foreground = scheme.onSurfaceVariant;
+      icon = Icons.lock_outline;
+      label = 'Private';
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: foreground),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: foreground,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ],
       ),
     );
   }

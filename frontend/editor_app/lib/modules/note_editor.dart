@@ -438,18 +438,12 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
   /// TextField for editing. Focus loss commits the change and swaps the
   /// paragraph back to rendered form. Thin "+" buttons between paragraphs
   /// insert empty blocks at the exact cursor position.
+  ///
+  /// Renders directly without an outer Card so horizontal padding is
+  /// limited to the inner scroll view's gutter — the dialog's own
+  /// 20px padding already provides enough breathing room.
   Widget _buildLiveMarkdownEditor() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          child: Card(
-            clipBehavior: Clip.antiAlias,
-            child: _buildInlineLiveMarkdownBody(),
-          ),
-        ),
-      ],
-    );
+    return _buildInlineLiveMarkdownBody();
   }
 
   /// Builds the Typora-style stacked paragraph editor. Each paragraph is
@@ -462,7 +456,7 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
       thumbVisibility: true,
       child: SingleChildScrollView(
         controller: _previewScrollController,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

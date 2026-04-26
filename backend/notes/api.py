@@ -826,11 +826,15 @@ class NoteListCreateApiView(APIView):
         creator = ensure_creator(request.user) if request.user.is_authenticated else None
         course_id = request.query_params.get("course_id")
         query = request.query_params.get("q", "").strip()
-        # scope=personal (default): only notes owned by the current user
-        # (includes their private + public notes).
-        # scope=all: personal notes PLUS public notes owned by other users, so
-        # the sidebar search checkbox can broaden the result set.
-        # Anonymous users always see public notes only.
+        # scope filter, applied before pagination:
+        #   personal (default) — own notes, both private and public.
+        #   private            — own notes, private only.
+        #   public             — own notes, public only.
+        #   all                — own notes plus public notes from any other
+        #                        user; widens the result set for cross-user
+        #                        discovery.
+        # Anonymous users always see public notes only, regardless of the
+        # requested scope.
         scope = request.query_params.get("scope", "personal").strip().lower()
         limit = request.query_params.get("limit")
         offset = int(request.query_params.get("offset", "0") or 0)
@@ -843,7 +847,14 @@ class NoteListCreateApiView(APIView):
             notes = notes.filter(
                 Q(creator_id=creator) | Q(is_public=True),
             )
+        elif scope == "private":
+            notes = notes.filter(creator_id=creator, is_public=False)
+        elif scope == "public":
+            notes = notes.filter(creator_id=creator, is_public=True)
         else:
+            # personal — default fallthrough; also handles unknown scope
+            # values defensively (treat anything we don't recognize as
+            # personal so a stale frontend doesn't break with a 400).
             notes = notes.filter(creator_id=creator)
         if course_id:
             notes = notes.filter(course_id_id=course_id)

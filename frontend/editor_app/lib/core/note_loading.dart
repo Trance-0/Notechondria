@@ -17,14 +17,31 @@ extension _AppShellNoteLoadingX on _AppShellState {
     final effectiveScope =
         isAuthenticated ? (scope ?? _learnerSearchScope) : 'all';
     final nextOffset = reset ? 0 : _learnerNotesOffset;
-    _isLoadingMoreNotes = true;
     if (reset) {
       _learnerSearchQuery = effectiveQuery;
       _learnerSearchScope = effectiveScope;
     }
+
+    final activeCourseId = _selectedCategoryId;
+    // Local-course view: a category whose backend id is negative was
+    // created offline and only contains local drafts. Showing public
+    // notes here is misleading because the cloud has no record of the
+    // category. Same goes for `scope == 'local'` — the user explicitly
+    // asked to see only local drafts. Either way, clear the cloud
+    // result list and skip the listNotes call.
+    final isLocalCourseSelected =
+        activeCourseId != null && activeCourseId < 0;
+    if (isLocalCourseSelected || effectiveScope == 'local') {
+      _learnerNotes = const [];
+      _hasMoreLearnerNotes = false;
+      _learnerNotesOffset = 0;
+      refreshState();
+      return;
+    }
+
+    _isLoadingMoreNotes = true;
     refreshState();
     try {
-      final activeCourseId = _selectedCategoryId;
       final page = await widget.client.listNotes(
         token: isAuthenticated ? _token : null,
         query: effectiveQuery,
