@@ -249,6 +249,54 @@ extension _AppShellMaintenanceX on _AppShellState {
     );
   }
 
+  /// Re-seeds the local starter Inbox + welcome note. Works regardless
+  /// of online/offline state — the Inbox lives entirely client-side and
+  /// is what new users land on the first time they open the editor. If
+  /// the user has wiped their local data and wants to start over, this
+  /// is the entry point that reproduces that initial workspace.
+  ///
+  /// Distinct from `_restoreTemplateCourses`, which calls the backend
+  /// admin endpoint to re-seed the cloud template catalog (3 courses).
+  /// That stays in the Developer section because it's destructive and
+  /// requires admin credentials.
+  Future<ActionFeedback> _restoreLocalStarterTemplate() async {
+    try {
+      // Drop the seeded marker so `_ensureStarterWorkspace`'s short-
+      // circuit doesn't bail out, then re-seed. We do NOT clear
+      // existing categories/drafts — re-seeding only fires when the
+      // local workspace is empty. If the user wants a true reset
+      // they should use "Clear all local data" first.
+      _localSettings = {
+        ..._localSettings,
+        'starter_workspace_seeded_at': '',
+      };
+      await _persistLocalSettings();
+      await _ensureStarterWorkspace();
+      const message = 'Starter inbox restored: '
+          'Editor.LocalStore/restore_local_starter — '
+          'local Inbox + welcome note re-seeded if missing.';
+      log(
+        level: DebugLogLevel.info,
+        source: 'Editor.LocalStore/restore_local_starter',
+        message: message,
+      );
+      showMessage(message);
+      return const ActionFeedback(message: message);
+    } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      log(
+        level: DebugLogLevel.error,
+        source: 'Editor.LocalStore/restore_local_starter',
+        message: 'Starter inbox not restored: '
+            'Editor.LocalStore/restore_local_starter — $cause.',
+      );
+      return ActionFeedback(
+          message: 'Starter inbox not restored: '
+              'Editor.LocalStore/restore_local_starter — $cause.',
+          isError: true);
+    }
+  }
+
   Future<ActionFeedback> _restoreTemplateCourses() async {
     final token = _token;
     if (token == null || token.isEmpty) {

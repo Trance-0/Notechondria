@@ -26,6 +26,7 @@ class _SettingsPage extends StatefulWidget {
     required this.onPullCloudData,
     required this.onClearLocalData,
     required this.onRestoreTemplateCourses,
+    required this.onRestoreLocalStarterTemplate,
     required this.localDraftCount,
     required this.localCourseCount,
     required this.uiLogs,
@@ -104,6 +105,12 @@ class _SettingsPage extends StatefulWidget {
   final Future<ActionFeedback> Function() onPullCloudData;
   final Future<ActionFeedback> Function() onClearLocalData;
   final Future<ActionFeedback> Function() onRestoreTemplateCourses;
+
+  /// Re-seeds the local-only starter Inbox + welcome note. Always
+  /// available regardless of online state — distinct from the admin-
+  /// only `onRestoreTemplateCourses` which seeds the remote 3-course
+  /// template catalog.
+  final Future<ActionFeedback> Function() onRestoreLocalStarterTemplate;
   final Future<Map<String, dynamic>> Function()? onSendIdentityCode;
   final Future<Map<String, dynamic>> Function()? onRotateApiKey;
   final Future<Map<String, dynamic>> Function(String currentPassword, String newPassword, String identityCode)? onChangePassword;
@@ -163,7 +170,14 @@ class _SettingsPageState extends State<_SettingsPage> {
   String _editorMode = 'P';
   String _themePreset = 'teal';
   String _themeMode = 'S';
-  ActionFeedback? _saveFeedback;
+  /// Feedback bus shared across the top-level Settings page and every
+  /// pushed sub-page. Each long-running action (`_runMaintenanceAction`,
+  /// `_submitSettings`, `_handleAvatarUpload`, ...) writes the
+  /// `ActionFeedback` here, and every page that wants to surface it
+  /// listens via `ValueListenableBuilder`. Replaces the old `setState`
+  /// field that only re-rendered the top page — sub-pages couldn't see
+  /// errors from controls they hosted.
+  final ValueNotifier<ActionFeedback?> _feedback = ValueNotifier(null);
   bool _saving = false;
   String? _socialLinkError;
   bool _uploadingAvatar = false;
@@ -237,6 +251,7 @@ class _SettingsPageState extends State<_SettingsPage> {
     _mottoController.dispose();
     _socialController.dispose();
     _apiBaseController.dispose();
+    _feedback.dispose();
     super.dispose();
   }
 
@@ -365,9 +380,7 @@ class _SettingsPageState extends State<_SettingsPage> {
   Future<void> _confirmAndSave() async {
     final changes = _pendingChanges();
     if (changes.isEmpty) {
-      setState(() {
-        _saveFeedback = const ActionFeedback(message: 'No changes to save.');
-      });
+      _feedback.value = const ActionFeedback(message: 'No changes to save.');
       return;
     }
     final confirmed = await showDialog<bool>(
@@ -412,6 +425,17 @@ class _SettingsPageState extends State<_SettingsPage> {
     return uri != null && uri.hasScheme && (uri.scheme == 'http' || uri.scheme == 'https');
   }
 
+  /// Auto-save hook used by the Apple-style sub-pages — every theme /
+  /// editor-mode pick on a sub-page calls this so the change persists
+  /// across restarts without forcing the user back to a Save button.
+  /// Delegates to `_submitSettings` which already pushes every field
+  /// (profile + preferences + apiBase) to the host. The host figures
+  /// out which buckets actually changed; sending unchanged values is
+  /// idempotent and cheap.
+  Future<void> _autoSavePreferences() async {
+    await _submitSettings();
+  }
+
   Future<void> _submitSettings() async {
     if (_saving) return;
     final social = _socialController.text.trim();
@@ -421,9 +445,9 @@ class _SettingsPageState extends State<_SettingsPage> {
     }
     setState(() {
       _saving = true;
-      _saveFeedback = null;
       _socialLinkError = null;
     });
+    _feedback.value = null;
     final feedback = await widget.onSave(
       _usernameController.text.trim(),
       widget.profile?['email']?.toString() ?? '',
@@ -441,23 +465,23 @@ class _SettingsPageState extends State<_SettingsPage> {
     }
     setState(() {
       _saving = false;
-      _saveFeedback = feedback;
     });
+    _feedback.value = feedback;
   }
 
   Future<void> _handleAvatarUpload() async {
     setState(() {
       _uploadingAvatar = true;
-      _saveFeedback = null;
     });
+    _feedback.value = null;
     final feedback = await widget.onUploadAvatar();
     if (!mounted) {
       return;
     }
     setState(() {
       _uploadingAvatar = false;
-      _saveFeedback = feedback;
     });
+    _feedback.value = feedback;
   }
 
   /// Destructive confirmation for "Clear all local data" — blocks the confirm
@@ -482,16 +506,12 @@ class _SettingsPageState extends State<_SettingsPage> {
   Future<void> _runMaintenanceAction(
     Future<ActionFeedback> Function() action,
   ) async {
-    setState(() {
-      _saveFeedback = null;
-    });
+    _feedback.value = null;
     final feedback = await action();
     if (!mounted) {
       return;
     }
-    setState(() {
-      _saveFeedback = feedback;
-    });
+    _feedback.value = feedback;
   }
 
   Future<void> _openRecycleBinDialog() async {
@@ -585,10 +605,16 @@ class _SettingsPageState extends State<_SettingsPage> {
           'account settings require an active login; local '
           'preferences work offline.',
         ),
-        if (_saveFeedback != null) ...[
-          const SizedBox(height: 12),
-          FeedbackText(feedback: _saveFeedback!),
-        ],
+        ValueListenableBuilder<ActionFeedback?>(
+          valueListenable: _feedback,
+          builder: (context, feedback, _) {
+            if (feedback == null) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: FeedbackText(feedback: feedback),
+            );
+          },
+        ),
         const SizedBox(height: 20),
         _buildOnlineAccountSection(context),
         const SizedBox(height: 16),
@@ -679,6 +705,26 @@ class _SettingsPageState extends State<_SettingsPage> {
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => _RecycleBinPage(parent: this),
+                ),
+              );
+            },
+          ),
+          const Divider(height: 0, indent: 16, endIndent: 16),
+          ListTile(
+            leading: Icon(
+              Icons.science_outlined,
+              color: Theme.of(context).colorScheme.tertiary,
+            ),
+            title: const Text('Developer'),
+            subtitle: const Text(
+              'Admin-only actions: restore the remote three-course '
+              'template catalog.',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => _DeveloperSettingsPage(parent: this),
                 ),
               );
             },

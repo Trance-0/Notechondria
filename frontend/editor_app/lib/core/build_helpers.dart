@@ -605,6 +605,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
           onPullCloudData: _pullCloudNotesToLocal,
           onClearLocalData: _clearLocalData,
           onRestoreTemplateCourses: _restoreTemplateCourses,
+          onRestoreLocalStarterTemplate: _restoreLocalStarterTemplate,
           onExportLocalData: _exportLocalArchive,
           onRestoreFromLocalImport: _restoreFromLocalImport,
           onOpenLocalRecycleBin: _openLocalRecycleBinDialog,

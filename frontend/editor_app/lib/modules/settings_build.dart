@@ -12,11 +12,129 @@ extension _SettingsPageBuildX on _SettingsPageState {
   /// sync buttons, and logout when signed in. Hosts every control that only
   /// makes sense with an active cloud session.
   Widget _buildOnlineAccountSection(BuildContext context) {
+    if (!_isAuthenticated) {
+      return _buildSignedOutAccount(context);
+    }
+    return _buildSignedInAccount(context);
+  }
+
+  /// Signed-out variant: Sign-up + Login on the same row (equal-width
+  /// FilledButtons), then two full-width pill buttons for the
+  /// third-party providers ("Continue with Google" / "Continue with
+  /// GitHub"). Each OAuth button spans the full row so it's easy to
+  /// hit on mobile and reads as a primary CTA.
+  Widget _buildSignedInAccount(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final username = widget.profile?['username']?.toString() ?? 'User';
+    final displayName =
+        widget.profile?['display_name']?.toString() ?? username;
+    final email = widget.profile?['email']?.toString() ?? '';
+    final avatarUrl = widget.profile?['image_url']?.toString() ??
+        widget.settings?['image_url']?.toString();
+    final resolvedAvatar = avatarUrl != null && avatarUrl.isNotEmpty
+        ? _resolveRemoteUrl(avatarUrl, apiBaseUrl: widget.apiBaseUrl)
+        : '';
+    return Column(
+      children: [
+        Card(
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              ListTile(
+                leading: _RemoteAvatar(
+                  radius: 20,
+                  imageUrl: resolvedAvatar,
+                  fallbackLabel: username,
+                ),
+                title: Text(
+                  displayName,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: email.isEmpty ? null : Text(email),
+              ),
+              const Divider(height: 0, indent: 16, endIndent: 16),
+              ListTile(
+                leading: const Icon(Icons.person_outline),
+                title: const Text('Personal information'),
+                subtitle: const Text('Avatar, name, motto, social link.'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => _PersonalInfoPage(parent: this),
+                    ),
+                  );
+                },
+              ),
+              const Divider(height: 0, indent: 16, endIndent: 16),
+              ListTile(
+                leading: const Icon(Icons.shield_outlined),
+                title: const Text('Sign in & security'),
+                subtitle: const Text(
+                  'Third-party accounts, email, password.',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => _SignInSecurityPage(parent: this),
+                    ),
+                  );
+                },
+              ),
+              const Divider(height: 0, indent: 16, endIndent: 16),
+              ListTile(
+                leading: const Icon(Icons.key_outlined),
+                title: const Text('API settings'),
+                subtitle: const Text('MCP API key + endpoint.'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => _ApiSettingsPage(parent: this),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Logout sits in its own card, full-width, red text. Matches
+        // the iOS Settings convention of a destructive bottom action
+        // separated from the menu rows above.
+        Card(
+          clipBehavior: Clip.antiAlias,
+          child: ListTile(
+            leading: Icon(Icons.logout, color: scheme.error),
+            title: Text(
+              'Logout',
+              style: TextStyle(
+                color: scheme.error,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            onTap: widget.onLogout,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Signed-out account block. Sign-up and Login live on the same
+  /// row as equal-width FilledButtons (per spec: "always as button
+  /// in the same row"); the two third-party providers stack as
+  /// full-width pill buttons below ("show in round button, span
+  /// horizontal line").
+  Widget _buildSignedOutAccount(BuildContext context) {
+    final hasGoogle = widget.onGoogleLoginOnly != null;
+    final hasGithub = widget.onGithubLoginOnly != null;
     return Card(
+      clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
@@ -24,122 +142,142 @@ extension _SettingsPageBuildX on _SettingsPageState {
                     color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 8),
                 Text(
-                  'Online account',
+                  'Account',
                   style: Theme.of(context)
                       .textTheme
                       .titleMedium
                       ?.copyWith(fontWeight: FontWeight.w700),
                 ),
-                const Spacer(),
-                if (_saving)
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
               ],
             ),
             const SizedBox(height: 8),
-            if (!_isAuthenticated) ...[
-              const Text(
-                'Sign in to sync notes with the cloud. Local notes stay editable even while signed out.',
-              ),
-              const SizedBox(height: 12),
-              AuthHub(
-                onRegister: widget.onRegister,
-                onValidateInvitation: widget.onValidateInvitation,
-                onVerify: widget.onVerify,
-                onResendVerification: widget.onResendVerification,
-                onLogin: widget.onLogin,
-                onRequestPasswordReset: widget.onRequestPasswordReset,
-                onConfirmPasswordReset: widget.onConfirmPasswordReset,
-                onGoogleLogin: widget.onGoogleLogin,
-                onGithubLogin: widget.onGithubLogin,
-                onGoogleLoginOnly: widget.onGoogleLoginOnly,
-                onGithubLoginOnly: widget.onGithubLoginOnly,
-                apiBaseUrl: widget.apiBaseUrl,
-              ),
-            ] else ...[
-              _buildProfileFields(context),
-              const SizedBox(height: 16),
-              _buildSectionButtons(
-                hasChanges: _hasProfileChanges,
-                onCancel: _cancelProfileChanges,
-              ),
-              const SizedBox(height: 20),
-              // ---- API key + MCP endpoint subsection ----
-              // Placed directly above Connected accounts per the 0.1.17
-              // settings-layout task: the key must be visible to the user
-              // and paired with the MCP endpoint helper text.
-              _ApiKeySection(
-                apiKeyPrefix:
-                    widget.settings?['api_key_prefix']?.toString() ?? '',
-                apiBaseUrl: widget.apiBaseUrl ?? '',
-                onRotate: widget.onRotateApiKey,
-              ),
-              const SizedBox(height: 20),
-              // ---- Connected accounts subsection ----
-              _ConnectedAccountsSection(
-                onListSocialAccounts: widget.onListSocialAccounts,
-                onUnlinkSocialAccount: widget.onUnlinkSocialAccount,
-                onBindGoogle: widget.onBindGoogle,
-                onBindGithub: widget.onBindGithub,
-              ),
-              const SizedBox(height: 20),
-              // ---- Sync subsection ----
-              Text(
-                'Sync',
-                style: Theme.of(context)
-                    .textTheme
-                    .labelLarge
-                    ?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              ListTile(
-                leading: const Icon(Icons.cloud_upload_outlined),
-                title: const Text('Push local \u2192 cloud'),
-                subtitle: const Text(
-                    'Upload local drafts and categories to your cloud account.'),
-                dense: true,
-                onTap: () => _runMaintenanceAction(
-                  () => widget.onSyncLocalData(announce: false),
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.download_for_offline_outlined),
-                title: const Text('Pull cloud \u2192 local'),
-                subtitle: const Text(
-                    'Download notes and categories from the cloud to this device.'),
-                dense: true,
-                onTap: () => _runMaintenanceAction(widget.onPullCloudData),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                alignment: WrapAlignment.start,
-                children: [
-                  if (widget.onChangeEmailRequest != null)
-                    OutlinedButton(
-                      onPressed: () => _openChangeEmailDialog(context),
-                      child: const Text('Change email'),
+            const Text(
+              'Sign in to sync notes with the cloud. Local notes '
+              'stay editable while signed out.',
+            ),
+            const SizedBox(height: 16),
+            // Sign-up + Login on the same row, equal width.
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => _openSignUpDialog(context),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 4),
+                      child: Text('Sign up'),
                     ),
-                  if (widget.onChangePassword != null)
-                    OutlinedButton(
-                      onPressed: () => _openChangePasswordDialog(context),
-                      child: const Text('Change password'),
-                    ),
-                  OutlinedButton(
-                    onPressed: widget.onLogout,
-                    child: const Text('Logout'),
                   ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.tonal(
+                    onPressed: () => _openLoginDialog(context),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 4),
+                      child: Text('Login'),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (hasGoogle || hasGithub) ...[
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Expanded(child: Divider()),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      'or',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
+                    ),
+                  ),
+                  const Expanded(child: Divider()),
                 ],
               ),
+              const SizedBox(height: 16),
+              if (hasGithub) ...[
+                _OAuthPillButton(
+                  icon: Icons.code,
+                  label: 'Continue with GitHub',
+                  onPressed: widget.onGithubLoginOnly!,
+                ),
+                if (hasGoogle) const SizedBox(height: 10),
+              ],
+              if (hasGoogle)
+                _OAuthPillButton(
+                  icon: Icons.g_mobiledata,
+                  label: 'Continue with Google',
+                  onPressed: widget.onGoogleLoginOnly!,
+                ),
             ],
           ],
         ),
       ),
     );
+  }
+
+  /// Opens the existing `RegistrationWizard` (multi-step signup +
+  /// email verification) shared from `notechondria_shared`.
+  void _openSignUpDialog(BuildContext context) {
+    showBlurDialog<void>(
+      context: context,
+      child: RegistrationWizard(
+        onValidateInvitation: widget.onValidateInvitation,
+        onRegister: widget.onRegister,
+        onResendVerification: widget.onResendVerification,
+        onGoogleLogin: widget.onGoogleLogin,
+        onGithubLogin: widget.onGithubLogin,
+      ),
+    );
+  }
+
+  /// Opens the shared email-password login dialog. Mirrors the
+  /// previous `AuthHub` behavior \u2014 the forgot-password branch pops
+  /// THIS dialog and opens `PasswordResetDialog` so the user can
+  /// cancel and come back without a stale context.
+  void _openLoginDialog(BuildContext context) {
+    final rootNavigator = Navigator.of(context);
+    showBlurDialog<void>(
+      context: context,
+      child: EmailPasswordDialog(
+        title: 'Login',
+        description: _apiBaseHostSubtitle(),
+        submitLabel: 'Login',
+        emailLabel: 'Email or username',
+        onSubmit: widget.onLogin,
+        onForgotPassword: () {
+          rootNavigator.pop();
+          showBlurDialog<void>(
+            context: rootNavigator.context,
+            child: PasswordResetDialog(
+              onRequestPasswordReset: widget.onRequestPasswordReset,
+              onConfirmPasswordReset: widget.onConfirmPasswordReset,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Format the API host as a friendly subtitle for the login
+  /// dialog. Mirrors the helper that used to live inside `AuthHub`.
+  String _apiBaseHostSubtitle() {
+    final raw = widget.apiBaseUrl ?? '';
+    if (raw.isEmpty) return 'Sign in to your Notechondria backend.';
+    final uri = Uri.tryParse(raw);
+    final host = uri?.host;
+    if (host == null || host.isEmpty) {
+      return 'Sign in to your Notechondria backend.';
+    }
+    return 'Signing in to $host.';
   }
 
   /// Profile fields shown when authenticated: avatar, name, motto, social link.
@@ -684,6 +822,40 @@ extension _SettingsPageBuildX on _SettingsPageState {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Full-width pill button used for the third-party OAuth providers
+/// in the signed-out account block. Apple-style: rounded, single
+/// line, span horizontal with a leading icon. Uses `OutlinedButton`
+/// (not FilledButton) so the providers don't compete visually with
+/// the primary Sign-up CTA above.
+class _OAuthPillButton extends StatelessWidget {
+  const _OAuthPillButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+          shape: const StadiumBorder(),
+          minimumSize: const Size.fromHeight(48),
+        ),
+        onPressed: onPressed,
+        icon: Icon(icon, size: 20),
+        label: Text(label),
       ),
     );
   }

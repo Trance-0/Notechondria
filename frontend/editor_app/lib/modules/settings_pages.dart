@@ -35,6 +35,7 @@ class _EditorSettingsPageState extends State<_EditorSettingsPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          _FeedbackBanner(parent: p),
           _SettingsGroupCard(
             children: [
               ListTile(
@@ -47,6 +48,7 @@ class _EditorSettingsPageState extends State<_EditorSettingsPage> {
                   if (picked != null) {
                     setState(() => p._editorMode = picked);
                     p.refreshState();
+                    await p._autoSavePreferences();
                   }
                 },
               ),
@@ -61,6 +63,7 @@ class _EditorSettingsPageState extends State<_EditorSettingsPage> {
                   if (picked != null) {
                     setState(() => p._themePreset = picked);
                     p.refreshState();
+                    await p._autoSavePreferences();
                   }
                 },
               ),
@@ -75,15 +78,16 @@ class _EditorSettingsPageState extends State<_EditorSettingsPage> {
                   if (picked != null) {
                     setState(() => p._themeMode = picked);
                     p.refreshState();
+                    await p._autoSavePreferences();
                   }
                 },
               ),
             ],
           ),
           const SizedBox(height: 12),
-          _SettingsCaption(
-            text: 'Theme changes apply immediately. Press Save back on '
-                'the Settings page to persist them across restarts.',
+          const _SettingsCaption(
+            text: 'Each change is saved and persisted immediately — '
+                'no Save button needed in this menu.',
           ),
         ],
       ),
@@ -188,6 +192,7 @@ class _BackendSettingsPageState extends State<_BackendSettingsPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          _FeedbackBanner(parent: p),
           _SettingsGroupCard(
             children: [
               SwitchListTile(
@@ -252,15 +257,23 @@ class _BackendSettingsPageState extends State<_BackendSettingsPage> {
                     hintText: 'https://example.com/api/v1',
                   ),
                   onChanged: (_) => p.refreshState(),
+                  // Pressing Enter (or hitting Save in software
+                  // keyboard) commits the URL change immediately so
+                  // the user doesn't have to back out to the parent
+                  // page to find a Save button.
+                  onSubmitted: (_) {
+                    p._autoSavePreferences();
+                  },
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
           const _SettingsCaption(
-            text: 'API URL changes apply on Save. You will be asked '
-                'to confirm the handshake response before the URL '
-                'replaces the active backend.',
+            text: 'Press Enter in the API field to apply the URL '
+                'change. You will be asked to confirm the handshake '
+                'response before the URL replaces the active '
+                'backend. Offline-mode toggle saves immediately.',
           ),
         ],
       ),
@@ -284,6 +297,7 @@ class _LocalDataPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          _FeedbackBanner(parent: p),
           _SettingsGroupCard(
             children: [
               if (p.widget.onExportLocalData != null)
@@ -318,16 +332,102 @@ class _LocalDataPage extends StatelessWidget {
           _SettingsGroupCard(
             children: [
               ListTile(
-                leading: const Icon(Icons.restore_outlined),
-                title: const Text('Restore template categories'),
+                leading: const Icon(Icons.cloud_upload_outlined),
+                title: const Text('Push local → cloud'),
                 subtitle: const Text(
-                  'Re-creates the starter Inbox + welcome drafts.',
+                  'Upload local drafts and categories to your cloud '
+                  'account. Requires sign-in.',
                 ),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () =>
-                    p._runMaintenanceAction(p.widget.onRestoreTemplateCourses),
+                onTap: () => p._runMaintenanceAction(
+                  () => p.widget.onSyncLocalData(announce: false),
+                ),
+              ),
+              const Divider(height: 0, indent: 16, endIndent: 16),
+              ListTile(
+                leading: const Icon(Icons.download_for_offline_outlined),
+                title: const Text('Pull cloud → local'),
+                subtitle: const Text(
+                  'Download notes and categories from the cloud to '
+                  'this device.',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => p._runMaintenanceAction(p.widget.onPullCloudData),
               ),
             ],
+          ),
+          const SizedBox(height: 16),
+          _SettingsGroupCard(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.restore_outlined),
+                title: const Text('Restore starter inbox'),
+                subtitle: const Text(
+                  'Re-seeds the local Inbox category and welcome '
+                  'note. Safe to run any time — only fires when the '
+                  'workspace is empty.',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => p._runMaintenanceAction(
+                    p.widget.onRestoreLocalStarterTemplate),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const _SettingsCaption(
+            text: 'The legacy three-course template restore (admin-'
+                'only, requires a cloud session) is now in the '
+                'Developer section of the main Settings page.',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Subpage 5 — Developer. Houses controls that aren't appropriate for
+/// regular users — currently the admin-only `restoreTemplateCourses`
+/// remote endpoint that re-seeds three template courses on the
+/// backend. Tucked under its own page so the user-facing Local data
+/// page stays uncluttered.
+class _DeveloperSettingsPage extends StatelessWidget {
+  const _DeveloperSettingsPage({required this.parent});
+
+  final _SettingsPageState parent;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = parent;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Developer')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _FeedbackBanner(parent: p),
+          _SettingsGroupCard(
+            children: [
+              ListTile(
+                leading: Icon(
+                  Icons.science_outlined,
+                  color: Theme.of(context).colorScheme.tertiary,
+                ),
+                title: const Text('Restore remote template courses'),
+                subtitle: const Text(
+                  'Admin-only. Calls the backend to re-seed the '
+                  'three-course template catalog (Inbox / Examples / '
+                  'Templates) with a welcome note in each.',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => p._runMaintenanceAction(
+                    p.widget.onRestoreTemplateCourses),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const _SettingsCaption(
+            text: 'Requires a signed-in admin account. Non-admin '
+                'sessions will see a server-side error in the banner '
+                'above without changing any data.',
           ),
         ],
       ),
@@ -354,6 +454,7 @@ class _RecycleBinPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          _FeedbackBanner(parent: p),
           _SettingsGroupCard(
             children: [
               if (p.widget.onOpenLocalRecycleBin != null)
@@ -386,6 +487,153 @@ class _RecycleBinPage extends StatelessWidget {
   }
 }
 
+/// Subpage 6 — Personal information. Avatar + name + motto + social
+/// link. Delegates to the existing `_buildProfileFields` builder on
+/// `_SettingsPageBuildX` so the form layout stays in one place;
+/// adds the explicit Save / Cancel row that the sub-page needs.
+class _PersonalInfoPage extends StatefulWidget {
+  const _PersonalInfoPage({required this.parent});
+
+  final _SettingsPageState parent;
+
+  @override
+  State<_PersonalInfoPage> createState() => _PersonalInfoPageState();
+}
+
+class _PersonalInfoPageState extends State<_PersonalInfoPage> {
+  @override
+  Widget build(BuildContext context) {
+    final p = widget.parent;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Personal information')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _FeedbackBanner(parent: p),
+          Card(
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: p._buildProfileFields(context),
+            ),
+          ),
+          const SizedBox(height: 12),
+          p._buildSectionButtons(
+            hasChanges: p._hasProfileChanges,
+            onCancel: () {
+              p._cancelProfileChanges();
+              setState(() {});
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Subpage 7 — Sign-in & security. Hosts the third-party-account
+/// linking widget plus change-email and change-password actions.
+class _SignInSecurityPage extends StatelessWidget {
+  const _SignInSecurityPage({required this.parent});
+
+  final _SettingsPageState parent;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = parent;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Sign in & security')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _FeedbackBanner(parent: p),
+          Card(
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: _ConnectedAccountsSection(
+                onListSocialAccounts: p.widget.onListSocialAccounts,
+                onUnlinkSocialAccount: p.widget.onUnlinkSocialAccount,
+                onBindGoogle: p.widget.onBindGoogle,
+                onBindGithub: p.widget.onBindGithub,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _SettingsGroupCard(
+            children: [
+              if (p.widget.onChangeEmailRequest != null)
+                ListTile(
+                  leading: const Icon(Icons.alternate_email_outlined),
+                  title: const Text('Change email'),
+                  subtitle: Text(
+                    p.widget.profile?['email']?.toString() ?? '',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => p._openChangeEmailDialog(context),
+                ),
+              if (p.widget.onChangeEmailRequest != null &&
+                  p.widget.onChangePassword != null)
+                const Divider(height: 0, indent: 16, endIndent: 16),
+              if (p.widget.onChangePassword != null)
+                ListTile(
+                  leading: const Icon(Icons.lock_outline),
+                  title: const Text('Change password'),
+                  subtitle: const Text(
+                    'Identity-code verified two-step flow.',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => p._openChangePasswordDialog(context),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Subpage 8 — API settings. Currently surfaces the MCP API key
+/// section. Future per-app integration keys (Linear, Slack, ...)
+/// can stack into the same page.
+class _ApiSettingsPage extends StatelessWidget {
+  const _ApiSettingsPage({required this.parent});
+
+  final _SettingsPageState parent;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = parent;
+    return Scaffold(
+      appBar: AppBar(title: const Text('API settings')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _FeedbackBanner(parent: p),
+          Card(
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: _ApiKeySection(
+                apiKeyPrefix:
+                    p.widget.settings?['api_key_prefix']?.toString() ?? '',
+                apiBaseUrl: p.widget.apiBaseUrl ?? '',
+                onRotate: p.widget.onRotateApiKey,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          const _SettingsCaption(
+            text: 'The MCP key authenticates the backend Model '
+                'Context Protocol bridge. Rotate it if you suspect '
+                'leakage.',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Apple-style grouped settings card. Wraps a column of `ListTile`s
 /// (or any widget) in a rounded surface with no padding so the rows
 /// can render edge-to-edge inside the card.
@@ -400,6 +648,32 @@ class _SettingsGroupCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       margin: EdgeInsets.zero,
       child: Column(children: children),
+    );
+  }
+}
+
+/// Top-of-body banner that mirrors `_SettingsPageState._feedback` —
+/// every long-running action (`_runMaintenanceAction`, the avatar
+/// upload, settings save, ...) writes the result here. The top page
+/// AND every pushed sub-page wrap their content with this widget so
+/// errors / success messages surface wherever the user actually
+/// triggered the action.
+class _FeedbackBanner extends StatelessWidget {
+  const _FeedbackBanner({required this.parent});
+
+  final _SettingsPageState parent;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<ActionFeedback?>(
+      valueListenable: parent._feedback,
+      builder: (context, feedback, _) {
+        if (feedback == null) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: FeedbackText(feedback: feedback),
+        );
+      },
     );
   }
 }
