@@ -20,58 +20,34 @@ Completed rounds live in `./docs/versions/<semver>.md` — do **not**
 restate them here. When a task is landed, delete its entry from this
 file and add a round-log entry to the new version doc.
 
-- [ ] **File-size rule + cross-app sharing.** 0.1.52 codified the
-  1000-LOC hard ceiling in AGENTS.md §1.5 and carved the recycle-bin
-  code out of each `app_shell.dart` into a `core/local_trash.dart`
-  partial. 0.1.53 brought every file in `frontend/editor_app/lib/`
-  under the cap (app_shell.dart 5000 → 552) via 23 per-concern
-  extensions on `_AppShellState`. Remaining work below is **not just
-  another per-app repeat** — audit showed 63+ methods in
-  `{planner,portal}_app/lib/app_shell.dart` are byte-identical to
-  editor's, so the next pass promotes shared code up into
-  `notechondria_shared` rather than copy-pasting. Plan:
+- [ ] **Cross-app shared mixins — remaining 5 of 8.** 0.1.52 codified
+  the 1000-LOC ceiling in AGENTS.md §1.5; 0.1.53–0.1.61 brought every
+  file in the three apps under the cap and shipped the first three
+  shared mixins out of `notechondria_shared/lib/src/app_shell/`:
+  `AppShellLogMixin`, `AppShellAuthActionsMixin`, `AppShellOAuthMixin`
+  (plus the shared `AuthClient` interface and `url_strategy` shim).
+  Five mixins still pending so per-app `_AppShellState` files can
+  shed the byte-identical chunks they currently host:
 
-  1. **Shared State mixins in `notechondria_shared/lib/src/app_shell/`.**
-     Mixin on `State<StatefulWidget>` with abstract getters for the
-     handful of fields each concern needs. Order of extraction
-     (from most-independent to most-coupled):
-     - `AppShellLogMixin` — `uiLogs`, `logController`, `log`,
-       `appendUiLog`, `timed<T>`, `refreshState`, `showMessage`.
-     - `AppShellAuthActionsMixin` — `register`, `verify`,
-       `resendVerification`, `login`, `requestPasswordReset`,
-       `confirmPasswordReset`. Abstract getter `logAppTag` provides
-       the `Editor./Planner./Portal.` log-source prefix.
-     - `AppShellOAuthMixin` — `launchOAuth`, `handleOAuthCallback`.
-     - `AppShellSessionMixin` — `applyAuthPayload`, `logout`.
-     - `AppShellLocalPersistMixin` — `_persistLocal*` helpers.
-     - `AppShellDraftHelpersMixin` — `storeLocalDraft`,
-       `buildOfflineFallbackDraft`.
-     - `AppShellCourseHelpersMixin` — `isLocalCourse`,
-       `decorateRemoteCourse`, `chooseDefaultCourse`.
-     - `HttpClientInternalsMixin` on `HttpNotechondriaClient` — the
-       `_send` / `_decode` / `_headers` / `_shapedErrorMessage` stack.
-
-  2. **Migrate editor_app to consume the shared mixins** (per mixin
-     as they land — keeps CI green throughout). Verify the smoke
-     test still passes after each mixin is absorbed. Delete the
-     now-redundant per-app extension files.
-
-  3. **Bring planner_app + portal_app online** by replacing their
-     inline methods with `with SharedMixinX<W>`. Each app then
-     provides only its app-specific `_loadInitialData` orchestration,
-     `_bootstrapApp`, and `build()`. Tests per app should still pass.
-
-  4. **Residual per-app work** (splits that can't share):
-     - `{planner,portal}_app/lib/modules/learner.dart` (~1645, ~1504)
-       — inlined note editor is the extraction candidate; shape is
-       app-specific so this stays per-app.
-     - `{planner,portal}_app/lib/modules/activity.dart` (~1438, ~1126)
-       — planner-only calendar UI, extract sub-widgets.
-
-  **Shared dependencies added to `notechondria_shared/pubspec.yaml`:**
-  `shared_preferences`, `http`, `file_selector` (previously only
-  `archive` + `path_provider`). These were already transitive deps
-  of every app anyway.
+  - `AppShellSessionMixin` — `applyAuthPayload`, `logout`. The
+    biggest remaining win (~140 lines per app). Needs abstract
+    getters for `_token`, `_profile`, `_settings`, `_localSettings`,
+    `_deletedNotes`, plus pass-through hooks for
+    `_currentAppSettingsPayload`, `_applyLocalAppSettings`,
+    `_loadInitialData`, `_syncAllLocalCourses`, `_syncAllLocalDrafts`.
+  - `AppShellLocalPersistMixin` — the `_persistLocal*` helpers.
+    Tiny but heavily duplicated.
+  - `AppShellDraftHelpersMixin` — `storeLocalDraft`,
+    `buildOfflineFallbackDraft`.
+  - `AppShellCourseHelpersMixin` — `isLocalCourse`,
+    `decorateRemoteCourse`, `chooseDefaultCourse`,
+    `frontPageFallbackPayload` (portal only — provide a default
+    for editor/planner).
+  - `HttpClientInternalsMixin` on `HttpNotechondriaClient` — the
+    `_send` / `_decode` / `_headers` / `_shapedErrorMessage` stack.
+    Each app already extracted this into `core/http_client_internals.dart`
+    in 0.1.59/0.1.60 but the three copies are still parallel rather
+    than shared.
 
 ## Bugs
 
