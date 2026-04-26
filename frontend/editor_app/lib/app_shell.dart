@@ -128,6 +128,17 @@ class _AppShellState extends State<AppShell>
   bool _showSplash = true;
   String? _errorMessage;
   String? _token;
+  // Multi-device session metadata captured from the most recent
+  // /auth/login/ / /auth/register/ / /auth/verify/ / /auth/oauth/
+  // / /auth/session/ response. Drives the Active Sessions card in
+  // Settings → Sign in & security and the multi-device warning
+  // banner shown above the Settings menu when `_multiDevice` is
+  // true. None of these fields are persisted across cold boots —
+  // the next session-restore call refreshes them.
+  // ignore: unused_field
+  int? _currentSessionId;
+  bool _multiDevice = false;
+  int _otherSessionsCount = 0;
   Map<String, dynamic>? _profile;
   Map<String, dynamic>? _settings;
   Map<String, dynamic>? _frontPage;
@@ -396,6 +407,15 @@ class _AppShellState extends State<AppShell>
       _token = token;
       _profile = user;
       _settings = settings;
+      // Capture multi-device flags + current session id from the
+      // 0.1.65 backend payload shape. Older backends omit these
+      // fields; the conditional reads keep the app working against
+      // both shapes.
+      final sessionMap = payload['session'] as Map?;
+      _currentSessionId = (sessionMap?['id'] as num?)?.toInt();
+      _multiDevice = payload['multi_device'] == true;
+      _otherSessionsCount =
+          (payload['other_sessions_count'] as num?)?.toInt() ?? 0;
     refreshState();
     await _LocalAppStore.saveSession(token, user);
     await _applyLocalAppSettings({
@@ -471,6 +491,12 @@ class _AppShellState extends State<AppShell>
       _profile = null;
       _settings = null;
       _deletedNotes = const [];
+      // Reset multi-device session metadata too — without this the
+      // Settings page would still display stale "1 other session"
+      // banner copy after a logout-from-this-device flow.
+      _currentSessionId = null;
+      _multiDevice = false;
+      _otherSessionsCount = 0;
     refreshState();
     await _LocalAppStore.clearSession();
     await _loadInitialData();

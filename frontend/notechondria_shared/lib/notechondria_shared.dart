@@ -29,6 +29,8 @@ export 'src/utils/local_attachment_store.dart'
         LocalAttachmentStore,
         LocalAttachmentStoreException;
 
+export 'src/components/active_sessions_card.dart'
+    show ActiveSessionsCard;
 export 'src/components/auth_dialogs.dart'
     show
         AuthHub,

@@ -83,20 +83,22 @@ file and add a round-log entry to the new version doc.
   client methods, app_shell callback wiring, and the
   `_ApiKeySection` widget.
 
-- [ ] **Multi-device session manager — frontend UI (3 apps).**
-  Backend shipped in 0.1.65; `listSessions` and `revokeSession`
-  HTTP client methods shipped in 0.1.67 (shared `AuthClient`
-  interface plus per-app `HttpNotechondriaClient` implementations).
-  Still to do:
-  - Active Sessions card in the Settings surface (device label,
-    "last seen …", created-at, revoke button, "This device" badge
-    on the current session).
-  - Multi-device warning banner in all three apps whenever
-    `auth_payload` or `session` responses include
-    `multi_device: true` — link the banner to the new sessions
-    card so the user can audit and revoke.
-  - Wire all three apps to call `listSessions` on Settings-open
-    and refresh after revoke.
+- [ ] **Multi-device session manager — planner / portal frontend.**
+  0.1.65 shipped the backend; 0.1.75 wired the editor frontend
+  (HTTP client methods on all three apps' `NotechondriaClient`,
+  shared `ActiveSessionsCard` widget in `notechondria_shared`,
+  `_PersonalInfoPage` / `_SignInSecurityPage` consumption,
+  multi-device warning banner above the editor's Settings menu).
+  Still to do on planner_app / portal_app: their Settings pages
+  haven't been redesigned into the Apple-style sub-page layout
+  yet (editor's 0.1.72 / 0.1.73 work hasn't been ported), so
+  the `ActiveSessionsCard` doesn't have a natural home there.
+  When the planner / portal Settings get sub-pages, drop the
+  card into a "Sign in & security" sub-page and thread
+  `onListSessions` / `onRevokeSession` / `onCurrentSessionRevoked`
+  through `_AppShellState` exactly the way editor's
+  `core/build_helpers.dart` already does. The HTTP client
+  methods are already in place — only the UI plumbing remains.
 
 - [ ] **Two-factor auth for password login.** Tracked separately
   because it needs a new backend flow plus UI. Scope:

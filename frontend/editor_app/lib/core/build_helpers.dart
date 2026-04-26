@@ -577,6 +577,29 @@ extension _AppShellBuildHelpersX on _AppShellState {
           onBindGithub: () => launchOAuth('github', intent: 'bind'),
           onListSocialAccounts: _token != null ? () => widget.client.listSocialAccounts(_token!) : null,
           onUnlinkSocialAccount: _token != null ? (provider) => widget.client.unlinkSocialAccount(_token!, provider) : null,
+          onListSessions: _token != null
+              ? () => widget.client.listSessions(_token!)
+              : null,
+          onRevokeSession: _token != null
+              ? (sessionId) =>
+                  widget.client.revokeSession(_token!, sessionId)
+              : null,
+          // When the user revokes their CURRENT session through the
+          // Active Sessions card, run the same local sign-out the
+          // top-bar Logout button uses so the app drops back to the
+          // anonymous view immediately.
+          onCurrentSessionRevoked: () {
+            _token = null;
+            _profile = null;
+            _settings = null;
+            _deletedNotes = const [];
+            _currentSessionId = null;
+            _multiDevice = false;
+            _otherSessionsCount = 0;
+            refreshState();
+            unawaited(_LocalAppStore.clearSession());
+            unawaited(_loadInitialData());
+          },
           onSendIdentityCode: _token != null ? () => widget.client.sendIdentityCode(_token!) : null,
           onRotateApiKey: _token != null
               ? () async {
@@ -611,6 +634,8 @@ extension _AppShellBuildHelpersX on _AppShellState {
           onOpenLocalRecycleBin: _openLocalRecycleBinDialog,
           localTrashedDraftCount: _localTrashedDrafts.length,
           localTrashedCourseCount: _localTrashedCourses.length,
+          multiDevice: _multiDevice,
+          otherSessionsCount: _otherSessionsCount,
           onOfflineModeChanged: _setOfflineMode,
           localDraftCount: _localDrafts.length,
           localCourseCount: _localCourses.length,

@@ -650,22 +650,6 @@ class HttpNotechondriaClient implements NotechondriaClient {
   }
 
   @override
-  Future<Map<String, dynamic>> listSessions(String token) async {
-    final uri = _uri('/auth/sessions/');
-    final response = await _get(uri, token: token);
-    return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'GET'),
-    );
-  }
-
-  @override
-  Future<void> revokeSession(String token, int sessionId) async {
-    final uri = _uri('/auth/sessions/$sessionId/');
-    final response = await _delete(uri, token: token);
-    await _decode(response, uri: uri, method: 'DELETE');
-  }
-
-  @override
   Future<Map<String, dynamic>> sendIdentityCode(String token) async {
     final uri = _uri('/auth/send-identity-code/');
     final response = await _send(
@@ -760,6 +744,25 @@ class HttpNotechondriaClient implements NotechondriaClient {
     return Map<String, dynamic>.from(
       await _decode(response, uri: uri, method: 'PATCH'),
     );
+  }
+
+  @override
+  Future<Map<String, dynamic>> listSessions(String token) async {
+    final uri = _uri('/auth/sessions/');
+    final response = await _get(uri, token: token);
+    return Map<String, dynamic>.from(
+      await _decode(response, uri: uri, method: 'GET'),
+    );
+  }
+
+  @override
+  Future<void> revokeSession(String token, int sessionId) async {
+    final uri = _uri('/auth/sessions/$sessionId/');
+    final response = await _delete(uri, token: token);
+    // 204 No Content has an empty body; _decode short-circuits on
+    // 2xx status with empty body so this is just a "did it succeed"
+    // probe — exceptions surface 404 / 401 to the caller.
+    await _decode(response, uri: uri, method: 'DELETE');
   }
 
   @override

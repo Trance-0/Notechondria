@@ -547,6 +547,21 @@ class _SignInSecurityPage extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           _FeedbackBanner(parent: p),
+          // Active Sessions card — multi-device session manager
+          // shipped in 0.1.65 (backend) / this round (frontend).
+          // Lists every device currently signed in to the user's
+          // account; the trash button revokes by id. The card
+          // hides itself when signed out (its `onListSessions`
+          // callback is null then).
+          if (p.widget.onListSessions != null &&
+              p.widget.onRevokeSession != null) ...[
+            ActiveSessionsCard(
+              onListSessions: p.widget.onListSessions!,
+              onRevokeSession: p.widget.onRevokeSession!,
+              onCurrentRevoked: p.widget.onCurrentSessionRevoked,
+            ),
+            const SizedBox(height: 16),
+          ],
           Card(
             clipBehavior: Clip.antiAlias,
             child: Padding(

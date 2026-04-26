@@ -38,6 +38,9 @@ class _SettingsPage extends StatefulWidget {
     this.onBindGithub,
     this.onListSocialAccounts,
     this.onUnlinkSocialAccount,
+    this.onListSessions,
+    this.onRevokeSession,
+    this.onCurrentSessionRevoked,
     this.onSendIdentityCode,
     this.onRotateApiKey,
     this.onChangePassword,
@@ -48,6 +51,8 @@ class _SettingsPage extends StatefulWidget {
     this.onOpenLocalRecycleBin,
     this.localTrashedDraftCount = 0,
     this.localTrashedCourseCount = 0,
+    this.multiDevice = false,
+    this.otherSessionsCount = 0,
     this.onOfflineModeChanged,
     this.apiBaseUrl,
     this.debugSnapshotListenable,
@@ -97,6 +102,20 @@ class _SettingsPage extends StatefulWidget {
   final VoidCallback? onBindGithub;
   final Future<List<Map<String, dynamic>>> Function()? onListSocialAccounts;
   final Future<void> Function(String provider)? onUnlinkSocialAccount;
+
+  /// Hits `GET /api/v1/auth/sessions/`. Returns the raw payload
+  /// `{sessions, current_session_id}`. Null when signed out so
+  /// the Settings UI can hide the Active Sessions card.
+  final Future<Map<String, dynamic>> Function()? onListSessions;
+
+  /// Hits `DELETE /api/v1/auth/sessions/<id>/`.
+  final Future<void> Function(int sessionId)? onRevokeSession;
+
+  /// Fired when the user revoked their CURRENT session through the
+  /// Active Sessions card. `_AppShellState` should clear `_token`,
+  /// reset session metadata, and re-run `_loadInitialData` so the
+  /// app drops back to the anonymous view immediately.
+  final VoidCallback? onCurrentSessionRevoked;
   final Future<void> Function(Map<String, dynamic> note) onRestoreDeletedNote;
   final Future<void> Function() onEmptyDeletedNotes;
   final Future<void> Function() onCopyLogs;
@@ -137,6 +156,14 @@ class _SettingsPage extends StatefulWidget {
   /// ("Local recycle bin (3)") without re-reading SharedPreferences.
   final int localTrashedDraftCount;
   final int localTrashedCourseCount;
+
+  /// Multi-device session metadata captured from the most recent
+  /// `auth_payload` response (0.1.65 backend shape). Drives the
+  /// banner shown above the Settings menu when the user is
+  /// signed in on more than one device. Always false when signed
+  /// out.
+  final bool multiDevice;
+  final int otherSessionsCount;
 
   /// Called when the user flips the offline-mode switch. The host
   /// app_shell is expected to persist the flag via
@@ -615,6 +642,10 @@ class _SettingsPageState extends State<_SettingsPage> {
             );
           },
         ),
+        if (widget.multiDevice && widget.otherSessionsCount > 0) ...[
+          const SizedBox(height: 12),
+          _buildMultiDeviceBanner(context),
+        ],
         const SizedBox(height: 20),
         _buildOnlineAccountSection(context),
         const SizedBox(height: 16),
@@ -622,6 +653,47 @@ class _SettingsPageState extends State<_SettingsPage> {
         const SizedBox(height: 16),
         _buildDebugSection(context),
       ],
+    );
+  }
+
+  /// Multi-device warning banner. Renders above the Settings menu
+  /// when the most recent `auth_payload` reported the user is
+  /// signed in on more than one device. Tap dives into the
+  /// "Sign in & security" sub-page, which hosts the Active
+  /// Sessions card. Mirrors iOS' "You're signed in on N other
+  /// devices" pattern — the user can audit and revoke without
+  /// hunting through the menu.
+  Widget _buildMultiDeviceBanner(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final count = widget.otherSessionsCount;
+    final plural = count == 1 ? 'device' : 'devices';
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      color: scheme.tertiaryContainer,
+      child: ListTile(
+        leading: Icon(Icons.devices_outlined, color: scheme.onTertiaryContainer),
+        title: Text(
+          'Signed in on $count other $plural',
+          style: TextStyle(
+            color: scheme.onTertiaryContainer,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: Text(
+          'Tap to review active sessions and sign out devices you '
+          "don't recognize.",
+          style: TextStyle(color: scheme.onTertiaryContainer),
+        ),
+        trailing:
+            Icon(Icons.chevron_right, color: scheme.onTertiaryContainer),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => _SignInSecurityPage(parent: this),
+            ),
+          );
+        },
+      ),
     );
   }
 
