@@ -62,8 +62,8 @@ extension _AppShellNoteCrudX on _AppShellState {
       if (uuid != null) _pushNoteUrl(uuid);
       return created;
     } catch (error) {
-      final draft = _storeLocalDraft(
-        _buildOfflineFallbackDraft(payload: payload),
+      final draft = storeLocalDraft(
+        buildOfflineFallbackDraft(payload: payload),
         incrementCreated: true,
       );
       await persistLocalDrafts();
@@ -141,8 +141,8 @@ extension _AppShellNoteCrudX on _AppShellState {
       final sourceNote = _selectedNote?['id'] == noteId
           ? Map<String, dynamic>.from(_selectedNote!)
           : null;
-      final fallbackDraft = _storeLocalDraft(
-        _buildOfflineFallbackDraft(sourceNote: sourceNote, payload: payload),
+      final fallbackDraft = storeLocalDraft(
+        buildOfflineFallbackDraft(sourceNote: sourceNote, payload: payload),
       );
       await persistLocalDrafts();
       final cause = error.toString().replaceFirst('Exception: ', '');

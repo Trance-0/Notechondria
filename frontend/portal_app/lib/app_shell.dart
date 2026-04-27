@@ -98,6 +98,7 @@ class _AppShellState extends State<AppShell>
         AppShellLogMixin<AppShell>,
         AppShellLocalPersistMixin<AppShell>,
         AppShellCourseHelpersMixin<AppShell>,
+        AppShellDraftHelpersMixin<AppShell>,
         AppShellAuthActionsMixin<AppShell>,
         AppShellOAuthMixin<AppShell> {
   @override
@@ -141,6 +142,35 @@ class _AppShellState extends State<AppShell>
   // above for AppShellLocalPersistMixin).
   @override
   String? get currentUsername => _profile?['username']?.toString();
+  // AppShellDraftHelpersMixin wiring.
+  @override
+  set localDrafts(List<Map<String, dynamic>> value) => _localDrafts = value;
+  @override
+  set localStats(Map<String, dynamic> value) => _localStats = value;
+  @override
+  Map<String, dynamic> decodeNoteMetadata(String raw) =>
+      _decodeNoteMetadata(raw);
+  @override
+  Map<String, dynamic> buildLocalDraft({
+    required String title,
+    required String content,
+    String description = '',
+    String editorMode = 'P',
+    String? clientDraftId,
+    String? createdAt,
+    int? id,
+    String metadataJson = '{}',
+  }) =>
+      _buildLocalDraft(
+        title: title,
+        content: content,
+        description: description,
+        editorMode: editorMode,
+        clientDraftId: clientDraftId,
+        createdAt: createdAt,
+        id: id,
+        metadataJson: metadataJson,
+      );
 
   int _selectedIndex = 0;
   bool _isLoading = true;

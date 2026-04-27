@@ -59,6 +59,8 @@ export 'src/settings/app_preferences_card.dart'
 
 export 'src/app_shell/app_shell_course_helpers_mixin.dart'
     show AppShellCourseHelpersMixin;
+export 'src/app_shell/app_shell_draft_helpers_mixin.dart'
+    show AppShellDraftHelpersMixin;
 export 'src/app_shell/app_shell_local_persist_mixin.dart'
     show AppShellLocalPersistMixin;
 export 'src/app_shell/app_shell_log_mixin.dart' show AppShellLogMixin;
