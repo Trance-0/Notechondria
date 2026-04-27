@@ -197,8 +197,8 @@ extension _AppShellDraftSyncX on _AppShellState {
                 updated,
         'last_pull_at': DateTime.now().toUtc().toIso8601String(),
       };
-      await _persistLocalDrafts();
-      await _persistLocalStats();
+      await persistLocalDrafts();
+      await persistLocalStats();
       if (mounted) {
         refreshState();
       }

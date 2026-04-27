@@ -75,7 +75,7 @@ extension _AppShellCategoryX on _AppShellState {
         if (icon != null) localCourse['icon'] = icon;
           _localCourses = [..._localCourses, localCourse];
         refreshState();
-        await _persistLocalCourses();
+        await persistLocalCourses();
         log(
           level: DebugLogLevel.info,
           source: 'Editor.Sync.Courses/create',
@@ -149,7 +149,7 @@ extension _AppShellCategoryX on _AppShellState {
             };
           }
         refreshState();
-        await _persistLocalCourses();
+        await persistLocalCourses();
       } else {
         final token = _token;
         if (token == null || token.isEmpty || courseId == null) {
@@ -250,8 +250,8 @@ extension _AppShellCategoryX on _AppShellState {
             _selectedCategoryId = defaultLocalId;
           }
         refreshState();
-        await _persistLocalCourses();
-        await _persistLocalDrafts();
+        await persistLocalCourses();
+        await persistLocalDrafts();
       } else {
         final token = _token;
         if (token == null || token.isEmpty || courseId == null) {
@@ -417,7 +417,7 @@ extension _AppShellCategoryX on _AppShellState {
     refreshState();
 
     // Persist local ordering regardless of auth state.
-    await _persistLocalCourses();
+    await persistLocalCourses();
 
     final token = _token;
     if (token == null || token.isEmpty || newRemote.isEmpty) {

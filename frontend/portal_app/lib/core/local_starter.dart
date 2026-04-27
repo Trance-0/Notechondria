@@ -18,7 +18,7 @@ extension _AppShellStarterX on _AppShellState {
       ..._localStats,
       'starter_workspace_seeded_at': DateTime.now().toUtc().toIso8601String(),
     };
-    await _persistLocalStats();
+    await persistLocalStats();
     await _persistLocalCache();
     log(
       level: DebugLogLevel.info,

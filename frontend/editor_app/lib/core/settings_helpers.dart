@@ -52,7 +52,7 @@ extension _AppShellSettingsHelpersX on _AppShellState {
       _localSettings['theme_preset']?.toString() ?? 'teal',
       _localSettings['theme_mode']?.toString() ?? 'S',
     );
-    if (persist) await _persistLocalSettings();
+    if (persist) await persistLocalSettings();
   }
 
   /// Toggles the offline-mode flag. Persists via

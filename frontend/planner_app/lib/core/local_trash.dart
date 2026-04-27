@@ -63,7 +63,7 @@ extension _AppShellLocalTrashX on _AppShellState {
     _localTrashedDrafts = _localTrashedDrafts
         .where((item) => item != entry)
         .toList(growable: false);
-    await _persistLocalDrafts();
+    await persistLocalDrafts();
     await _persistLocalTrashedDrafts();
     refreshState();
     final title = restored['title']?.toString() ?? 'draft';
@@ -102,7 +102,7 @@ extension _AppShellLocalTrashX on _AppShellState {
     _localTrashedCourses = _localTrashedCourses
         .where((item) => item != entry)
         .toList(growable: false);
-    await _persistLocalCourses();
+    await persistLocalCourses();
     await _persistLocalTrashedCourses();
     refreshState();
     final title = restored['title']?.toString() ?? 'category';

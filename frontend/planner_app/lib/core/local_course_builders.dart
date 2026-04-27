@@ -48,8 +48,8 @@ extension _AppShellLocalCourseBuildersX on _AppShellState {
       'local_courses_created':
           ((_localStats['local_courses_created'] as num?)?.toInt() ?? 0) + 1,
     };
-    await _persistLocalCourses();
-    await _persistLocalStats();
+    await persistLocalCourses();
+    await persistLocalStats();
       _selectedCourse = course;
       _selectedIndex = 2;
       _courseNotes = _localNotesForCourse(course);
@@ -132,9 +132,9 @@ extension _AppShellLocalCourseBuildersX on _AppShellState {
           ((_localStats['local_courses_synced'] as num?)?.toInt() ?? 0) + 1,
       'last_sync_at': DateTime.now().toUtc().toIso8601String(),
     };
-    await _persistLocalCourses();
-    await _persistLocalDrafts();
-    await _persistLocalStats();
+    await persistLocalCourses();
+    await persistLocalDrafts();
+    await persistLocalStats();
     await _persistLocalCache();
     log(
       level: DebugLogLevel.info,
@@ -261,8 +261,8 @@ extension _AppShellLocalCourseBuildersX on _AppShellState {
             ((_localStats['local_drafts_synced'] as num?)?.toInt() ?? 0) + 1,
         'last_sync_at': DateTime.now().toUtc().toIso8601String(),
       };
-      await _persistLocalDrafts();
-      await _persistLocalStats();
+      await persistLocalDrafts();
+      await persistLocalStats();
       await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
       if (mounted) {
         refreshState();
@@ -304,8 +304,8 @@ extension _AppShellLocalCourseBuildersX on _AppShellState {
           ((_localStats['local_drafts_synced'] as num?)?.toInt() ?? 0) + 1,
       'last_sync_at': DateTime.now().toUtc().toIso8601String(),
     };
-    await _persistLocalDrafts();
-    await _persistLocalStats();
+    await persistLocalDrafts();
+    await persistLocalStats();
     await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
     if (mounted) {
       refreshState();

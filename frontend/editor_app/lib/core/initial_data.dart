@@ -109,9 +109,9 @@ extension _AppShellInitialDataX on _AppShellState {
             if (_draftCourseId(draft) != localDefaultId) return draft;
             return _remapDraftCourseId(draft, localDefaultId, remoteDefaultId);
           }).toList(growable: false);
-          await _persistLocalDrafts();
+          await persistLocalDrafts();
         }
-        await _persistLocalCourses();
+        await persistLocalCourses();
       }
     }
 

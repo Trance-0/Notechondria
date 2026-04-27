@@ -96,14 +96,13 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell>
     with
         AppShellLogMixin<AppShell>,
+        AppShellLocalPersistMixin<AppShell>,
         AppShellAuthActionsMixin<AppShell>,
         AppShellOAuthMixin<AppShell> {
   @override
   final List<String> uiLogs = <String>[];
   @override
   final DebugLogController logController = DebugLogController();
-  @override
-  Future<void> persistUiLogs() => _persistUiLogs();
   @override
   AuthClient get authClient => widget.client;
   @override
@@ -112,6 +111,31 @@ class _AppShellState extends State<AppShell>
   String? get token => _token;
   @override
   ValueNotifier<String> get splashStatus => _splashStatus;
+  // AppShellLocalPersistMixin wiring.
+  @override
+  Map<String, dynamic> get localSettings => _localSettings;
+  @override
+  List<Map<String, dynamic>> get localDrafts => _localDrafts;
+  @override
+  List<Map<String, dynamic>> get localCourses => _localCourses;
+  @override
+  Map<String, dynamic> get localStats => _localStats;
+  @override
+  List<String> get persistedUiLogs => uiLogs;
+  @override
+  Future<void> saveLocalSettings(Map<String, dynamic> v) =>
+      _LocalAppStore.saveSettings(v);
+  @override
+  Future<void> saveLocalDrafts(List<Map<String, dynamic>> v) =>
+      _LocalAppStore.saveDrafts(v);
+  @override
+  Future<void> saveLocalCourses(List<Map<String, dynamic>> v) =>
+      _LocalAppStore.saveCourses(v);
+  @override
+  Future<void> saveLocalStats(Map<String, dynamic> v) =>
+      _LocalAppStore.saveStats(v);
+  @override
+  Future<void> saveLocalLogs(List<String> v) => _LocalAppStore.saveLogs(v);
 
   int _selectedIndex = 0;
   bool _isLoading = true;

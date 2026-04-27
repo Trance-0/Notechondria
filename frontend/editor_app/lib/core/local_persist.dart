@@ -7,22 +7,14 @@ part of notechondria_frontend;
 /// `core/local_store.dart`. Extracted from `app_shell.dart` so that file
 /// stays closer to the AGENTS.md §1.5 1000-line ceiling.
 extension _AppShellLocalPersistX on _AppShellState {
-  Future<void> _persistLocalSettings() async {
-    await _LocalAppStore.saveSettings(_localSettings);
-  }
+  // _persistLocalSettings / _persistLocalDrafts / _persistLocalCourses /
+  // _persistLocalStats / _persistUiLogs all moved into the shared
+  // `AppShellLocalPersistMixin` (notechondria_shared 0.1.78). Call
+  // sites use the public `persistLocalSettings()` / etc. names now.
 
-  Future<void> _persistLocalDrafts() async {
-    await _LocalAppStore.saveDrafts(_localDrafts);
-  }
-
-  Future<void> _persistLocalCourses() async {
-    await _LocalAppStore.saveCourses(_localCourses);
-  }
-
-  Future<void> _persistLocalStats() async {
-    await _LocalAppStore.saveStats(_localStats);
-  }
-
+  /// App-specific cache snapshot — editor includes `front_page` +
+  /// `courses` in its cache bucket. Stays in this file because the
+  /// shape diverges from planner / portal.
   Future<void> _persistLocalCache() async {
     _localCache = {
       ..._localCache,
@@ -31,10 +23,6 @@ extension _AppShellLocalPersistX on _AppShellState {
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     };
     await _LocalAppStore.saveCache(_localCache);
-  }
-
-  Future<void> _persistUiLogs() async {
-    await _LocalAppStore.saveLogs(uiLogs);
   }
 
   /// Snapshot of the in-memory "cache" the debug terminal can navigate with

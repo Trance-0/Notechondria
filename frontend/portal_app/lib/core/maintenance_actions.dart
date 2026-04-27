@@ -11,7 +11,7 @@ extension _AppShellMaintenanceX on _AppShellState {
       _localDrafts = _localDrafts
           .where((item) => item['id'] != noteId)
           .toList(growable: false);
-      await _persistLocalDrafts();
+      await persistLocalDrafts();
       refreshState();
       log(
         level: DebugLogLevel.info,
@@ -170,7 +170,7 @@ extension _AppShellMaintenanceX on _AppShellState {
         ..._localStats,
         'sync_failures': ((_localStats['sync_failures'] as num?)?.toInt() ?? 0) + 1,
       };
-      await _persistLocalStats();
+      await persistLocalStats();
       final cause = error.toString().replaceFirst('Exception: ', '');
       log(
         level: DebugLogLevel.error,
@@ -213,7 +213,7 @@ extension _AppShellMaintenanceX on _AppShellState {
       'cache_clears': ((_localStats['cache_clears'] as num?)?.toInt() ?? 0) + 1,
     };
     await _LocalAppStore.saveCache(_localCache);
-    await _persistLocalStats();
+    await persistLocalStats();
     if (mounted) {
       refreshState();
     }
@@ -252,11 +252,11 @@ extension _AppShellMaintenanceX on _AppShellState {
       'local_data_clears':
           ((_localStats['local_data_clears'] as num?)?.toInt() ?? 0) + 1,
     };
-    await _persistLocalDrafts();
-    await _persistLocalCourses();
+    await persistLocalDrafts();
+    await persistLocalCourses();
     await _persistLocalTrashedDrafts();
     await _persistLocalTrashedCourses();
-    await _persistLocalStats();
+    await persistLocalStats();
     if (mounted) {
       refreshState();
     }
@@ -337,7 +337,7 @@ extension _AppShellMaintenanceX on _AppShellState {
         'logs_copied': ((_localStats['logs_copied'] as num?)?.toInt() ?? 0) + 1,
       };
     refreshState();
-    await _persistLocalStats();
+    await persistLocalStats();
     showMessage(
       'Logs copied: Portal.LocalStore/copy_logs \u2014 '
       'frontend debug log now on the clipboard.',

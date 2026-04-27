@@ -134,7 +134,7 @@ extension _AppShellSettingsActionsX on _AppShellState {
       'settings_saves':
           ((_localStats['settings_saves'] as num?)?.toInt() ?? 0) + 1,
     };
-    await _persistLocalStats();
+    await persistLocalStats();
     if (remotePayload.isEmpty && !localSettingsChanged) {
       return const ActionFeedback(
           message: 'No settings changes: '
@@ -287,7 +287,7 @@ extension _AppShellSettingsActionsX on _AppShellState {
         'avatar_updates':
             ((_localStats['avatar_updates'] as num?)?.toInt() ?? 0) + 1,
       };
-      await _persistLocalStats();
+      await persistLocalStats();
       // Bust the image cache so the new avatar displays immediately.
       final rawUrl = updated['image_url']?.toString() ?? '';
       final bustUrl = rawUrl.isNotEmpty

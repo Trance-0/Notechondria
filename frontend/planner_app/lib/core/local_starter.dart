@@ -74,9 +74,9 @@ Capture deadlines, sequencing, and blockers here.''',
       ..._localStats,
       'starter_workspace_seeded_at': DateTime.now().toUtc().toIso8601String(),
     };
-    await _persistLocalCourses();
-    await _persistLocalDrafts();
-    await _persistLocalStats();
+    await persistLocalCourses();
+    await persistLocalDrafts();
+    await persistLocalStats();
     await _persistLocalCache();
     log(
       level: DebugLogLevel.info,

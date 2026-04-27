@@ -185,8 +185,8 @@ extension _AppShellDraftSyncX on _AppShellState {
                 updated,
         'last_pull_at': DateTime.now().toUtc().toIso8601String(),
       };
-      await _persistLocalDrafts();
-      await _persistLocalStats();
+      await persistLocalDrafts();
+      await persistLocalStats();
       // Refresh remote courses and notes so the full cloud state is visible.
       await _loadInitialData();
       if (mounted) refreshState();
@@ -291,8 +291,8 @@ extension _AppShellDraftSyncX on _AppShellState {
             ((_localStats['local_drafts_synced'] as num?)?.toInt() ?? 0) + 1,
         'last_sync_at': DateTime.now().toUtc().toIso8601String(),
       };
-      await _persistLocalDrafts();
-      await _persistLocalStats();
+      await persistLocalDrafts();
+      await persistLocalStats();
       await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
       if (mounted) refreshState();
       log(
@@ -336,8 +336,8 @@ extension _AppShellDraftSyncX on _AppShellState {
           ((_localStats['local_drafts_synced'] as num?)?.toInt() ?? 0) + 1,
       'last_sync_at': DateTime.now().toUtc().toIso8601String(),
     };
-    await _persistLocalDrafts();
-    await _persistLocalStats();
+    await persistLocalDrafts();
+    await persistLocalStats();
     await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
     if (mounted) refreshState();
     log(

@@ -28,8 +28,8 @@ extension _AppShellNoteCrudX on _AppShellState {
         'local_drafts_created':
             ((_localStats['local_drafts_created'] as num?)?.toInt() ?? 0) + 1,
       };
-      await _persistLocalDrafts();
-      await _persistLocalStats();
+      await persistLocalDrafts();
+      await persistLocalStats();
         _selectedNote = draft;
         _selectedIndex = 1;
       refreshState();
@@ -56,8 +56,8 @@ extension _AppShellNoteCrudX on _AppShellState {
         _buildOfflineFallbackDraft(payload: payload),
         incrementCreated: true,
       );
-      await _persistLocalDrafts();
-      await _persistLocalStats();
+      await persistLocalDrafts();
+      await persistLocalStats();
       final cause = error.toString().replaceFirst('Exception: ', '');
         _selectedNote = draft;
         _selectedIndex = 1;
@@ -108,7 +108,7 @@ extension _AppShellNoteCrudX on _AppShellState {
       _localDrafts = _localDrafts
           .map((item) => item['id'] == noteId ? updated : item)
           .toList(growable: false);
-      await _persistLocalDrafts();
+      await persistLocalDrafts();
         _selectedNote = updated;
       refreshState();
       return updated;
@@ -137,7 +137,7 @@ extension _AppShellNoteCrudX on _AppShellState {
           payload: payload,
         ),
       );
-      await _persistLocalDrafts();
+      await persistLocalDrafts();
       final cause = error.toString().replaceFirst('Exception: ', '');
         _selectedNote = fallbackDraft;
       refreshState();

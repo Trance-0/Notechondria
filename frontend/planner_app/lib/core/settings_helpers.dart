@@ -43,7 +43,7 @@ extension _AppShellSettingsHelpersX on _AppShellState {
       _localSettings['theme_mode']?.toString() ?? 'S',
     );
     if (persist) {
-      await _persistLocalSettings();
+      await persistLocalSettings();
     }
   }
 
