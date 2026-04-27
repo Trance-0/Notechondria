@@ -41,7 +41,7 @@ root/
 ```
 
 Use this draft as a starting point and sync later when you sign in.''',
-      editorMode: 'M',
+      editorMode: 'G',
       metadataJson: jsonEncode({
         'course_id': starterCourse['id'],
         'module_title': 'Inbox',
@@ -60,7 +60,7 @@ Use this draft as a starting point and sync later when you sign in.''',
 - Structured mode
 
 Add syntax highlighting for plain text and keep notes searchable by title or body.''',
-      editorMode: 'T',
+      editorMode: 'P',
       metadataJson: jsonEncode({
         'course_id': starterCourse['id'],
         'module_title': 'Editor setup',
@@ -96,6 +96,39 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
   /// drafts pointing at it, so tapping "Restore" twice doesn't
   /// duplicate either the category or its starter notes.
   Future<void> _seedStarterInboxAlongsideExisting() async {
+    // Inbox is GLOBALLY unique per user — at most one row total
+    // across local + cloud lists. Check both before creating a
+    // fresh local one. If a cloud Inbox already exists (signed-in
+    // user), select it and stop; the user already has their
+    // Inbox.
+    Map<String, dynamic>? existingCloudInbox;
+    for (final course in _courses) {
+      final title = course['title']?.toString().trim().toLowerCase() ?? '';
+      if (title == 'inbox') {
+        existingCloudInbox = course;
+        break;
+      }
+    }
+    if (existingCloudInbox != null) {
+      _selectedCourse = existingCloudInbox;
+      _frontPage ??= frontPageFallbackPayload(_courses);
+      _localStats = {
+        ..._localStats,
+        'starter_workspace_seeded_at':
+            DateTime.now().toUtc().toIso8601String(),
+      };
+      await persistLocalStats();
+      log(
+        level: DebugLogLevel.info,
+        source: 'Editor.LocalStore/restore_local_starter',
+        message:
+            'Starter Inbox already on cloud: '
+            'Editor.LocalStore/restore_local_starter — '
+            "selected existing remote Inbox '${existingCloudInbox['title']}'; "
+            'no local copy created.',
+      );
+      return;
+    }
     Map<String, dynamic>? existingInbox;
     for (final course in _localCourses) {
       final title = course['title']?.toString().trim().toLowerCase() ?? '';
@@ -143,7 +176,7 @@ root/
 ```
 
 Use this draft as a starting point and sync later when you sign in.''',
-        editorMode: 'M',
+        editorMode: 'G',
         metadataJson: jsonEncode({
           'course_id': inboxId,
           'module_title': 'Inbox',
@@ -161,7 +194,7 @@ Use this draft as a starting point and sync later when you sign in.''',
 - Structured mode
 
 Add syntax highlighting for plain text and keep notes searchable by title or body.''',
-        editorMode: 'T',
+        editorMode: 'P',
         metadataJson: jsonEncode({
           'course_id': inboxId,
           'module_title': 'Editor setup',

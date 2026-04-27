@@ -39,12 +39,6 @@ file and add a round-log entry to the new version doc.
 
 ## Bugs
 
-- [ ] Add a regression test for the note-share deep-link path
-  (`https://host/#/notes/<uuid>` cold-start with and without
-  session, and the OAuth-callback-preserves-fragment case). The
-  code fix landed in 0.1.67; the test was deferred because the
-  editor smoke-test harness doesn't have a web navigator shim yet.
-
 - [ ] **Audit login-form autocomplete attributes.** User reported
   Bitwarden failing to autofill on the editor's web login form
   (`autofill.service.ts:528 Did not autofill`). Stack trace is

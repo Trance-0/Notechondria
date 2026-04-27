@@ -268,7 +268,7 @@ extension _AppShellDraftSyncX on _AppShellState {
         'title': draft['title'],
         'description': draft['description'] ?? '',
         'content': draft['content'] ?? '',
-        'editor_mode': draft['editor_mode'] ?? 'P',
+        'editor_mode': _normalizeEditorMode(draft['editor_mode']),
         'course_id': metadata['course_id'],
         'metadata_json': jsonEncode(metadata),
         'is_public': false,
@@ -311,7 +311,7 @@ extension _AppShellDraftSyncX on _AppShellState {
       'title': draft['title'] ?? 'Untitled note',
       'description': draft['description'] ?? '',
       'content': draft['content'] ?? '',
-      'editor_mode': draft['editor_mode'] ?? 'P',
+      'editor_mode': _normalizeEditorMode(draft['editor_mode']),
       if (syncCourseId != null && syncCourseId > 0) 'course_id': syncCourseId,
       'metadata_json': jsonEncode(metadata),
       if (syncClientDraftId != null && syncClientDraftId.isNotEmpty)

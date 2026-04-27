@@ -21,7 +21,7 @@ extension _AppShellStarterX on _AppShellState {
 Use this as the root discussion note for the first module.
 
 Add leaf notes as comments or follow-ups.''',
-      editorMode: 'M',
+      editorMode: 'G',
       metadataJson: jsonEncode({
         'course_id': starterCourse['id'],
         'module_id': 'module-1',
@@ -37,7 +37,7 @@ Add leaf notes as comments or follow-ups.''',
       content: '''# Module 2: Scheduling notes
 
 Capture deadlines, sequencing, and blockers here.''',
-      editorMode: 'M',
+      editorMode: 'G',
       metadataJson: jsonEncode({
         'course_id': starterCourse['id'],
         'module_id': 'module-2',

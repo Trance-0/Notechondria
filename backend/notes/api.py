@@ -71,7 +71,12 @@ from .services import (
 
 
 def note_is_public(note: Note) -> bool:
-    return bool(note.is_public or (note.course_id and note.course_id.is_default))
+    # Inbox is the user's private scratch category — even though it
+    # has `is_default=True`, notes living in it are NOT promoted to
+    # the public feed. Public visibility now requires the explicit
+    # `is_public=True` flag set per-note. (0.1.83 reversed the
+    # earlier "default course = public surface" promotion.)
+    return bool(note.is_public)
 
 
 def absolute_media_url(request, raw_url: str) -> str:
@@ -382,7 +387,11 @@ class CourseSerializer(serializers.ModelSerializer):
             or obj.creator_id is None
             or obj.creator_id.user_id_id != request.user.id
         ):
-            recent_notes = recent_notes.filter(Q(is_public=True) | Q(course_id__is_default=True))
+            # Inbox is private per-user scratch — unlike pre-0.1.83,
+            # notes in `is_default=True` (Inbox) categories are NOT
+            # promoted to the public feed. Non-owners only see notes
+            # explicitly flagged `is_public=True`.
+            recent_notes = recent_notes.filter(is_public=True)
         return NoteSummarySerializer(
             recent_notes[:5],
             many=True,
@@ -602,17 +611,42 @@ class CourseListApiView(APIView):
                 client_course_id=client_course_id,
             ).first()
         icon = serializer.validated_data.get("icon")
-        # Name-uniqueness guard. Categories are user-scoped; the same
-        # creator may not have two courses with the same title (case-
-        # insensitive). The upsert path must skip this check against
-        # itself when only renaming, so we exclude `existing.id`.
+        # Name-uniqueness guard. Categories are user-scoped; the
+        # same creator may not have two courses with the same
+        # title (case-insensitive). The upsert path skips the
+        # check against itself when only renaming, so we exclude
+        # `existing.id`.
+        #
+        # Special case: the Inbox category is GLOBALLY unique per
+        # user (every user gets exactly one). When a frontend pushes
+        # a local Inbox to a server that already has one, return
+        # the existing Inbox row with 200 OK so the client can
+        # remap its local id to the server id \u2014 same outcome the
+        # client wanted, no duplicate.
         duplicate_qs = Course.objects.filter(
             creator_id=creator,
             title__iexact=title,
         )
         if existing is not None:
             duplicate_qs = duplicate_qs.exclude(pk=existing.pk)
-        if duplicate_qs.exists():
+        duplicate = duplicate_qs.first()
+        if duplicate is not None:
+            if title.casefold() == "inbox":
+                # Idempotent get-or-create: hand back the existing
+                # Inbox row. Don't touch description / icon \u2014 the
+                # canonical Inbox is whatever's already on the
+                # server.
+                subscription_map = active_subscription_map(creator)
+                return Response(
+                    CourseSerializer(
+                        duplicate,
+                        context={
+                            "request": request,
+                            "subscription_map": subscription_map,
+                        },
+                    ).data,
+                    status=status.HTTP_200_OK,
+                )
             return Response(
                 {"detail": (
                     "Cannot create category: "
@@ -861,7 +895,11 @@ class CourseNotesApiView(APIView):
             or course.creator_id is None
             or course.creator_id.user_id_id != request.user.id
         ):
-            notes = notes.filter(Q(is_public=True) | Q(course_id__is_default=True))
+            # Inbox is private per-user (0.1.83) — even though it
+            # carries `is_default=True`, its notes are NOT visible
+            # to non-owners. Public visibility requires the
+            # explicit per-note `is_public=True` flag.
+            notes = notes.filter(is_public=True)
         return Response(
             NoteSummarySerializer(notes, many=True, context={"request": request}).data
         )

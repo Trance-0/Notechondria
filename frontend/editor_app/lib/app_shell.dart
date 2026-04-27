@@ -344,27 +344,8 @@ class _AppShellState extends State<AppShell>
   // URL routing helpers (web only)
   // ---------------------------------------------------------------------------
 
-  /// Parse the URL hash fragment for a note UUID.
-  ///
-  /// Accepts any of:
-  ///   - `#/notes/<uuid>`
-  ///   - `#/notes/<uuid>/`
-  ///   - `#/notes/<uuid>?ref=share`
-  ///   - `#notes/<uuid>` (leading slash optional)
-  /// The earlier regex used `^/?notes/<uuid>$` which blocked trailing
-  /// slashes, query strings, and any other fragment suffix the share
-  /// link might carry — that's why a shared link opened cold from a
-  /// chat app sometimes landed on the home view instead of the note.
-  static final _noteUuidPattern = RegExp(
-    r'/?notes/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})',
-    caseSensitive: false,
-  );
-
-  String? _parseNoteUuidFromUrl() {
-    final fragment = Uri.base.fragment; // everything after #
-    final match = _noteUuidPattern.firstMatch(fragment);
-    return match?.group(1);
-  }
+  String? _parseNoteUuidFromUrl() =>
+      parseNoteUuidFromFragment(Uri.base.fragment);
 
   void _pushNoteUrl(String? noteUuid) {
     final base = Uri.base.removeFragment();

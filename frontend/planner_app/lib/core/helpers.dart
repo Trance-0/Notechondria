@@ -69,6 +69,26 @@ String _excerptFromMarkdown(String markdown) {
   return body.length <= 180 ? body : '${body.substring(0, 180)}...';
 }
 
+/// Coerces a draft's `editor_mode` to a backend-valid choice
+/// (`'G'` / `'B'` / `'P'`). Pre-0.1.83 starter drafts used `'M'`
+/// / `'T'` — both alias to the new codes so a one-time sync
+/// doesn't fail with `400 editor_mode is not a valid choice`.
+String _normalizeEditorMode(dynamic raw) {
+  final value = raw?.toString();
+  switch (value) {
+    case 'G':
+    case 'B':
+    case 'P':
+      return value!;
+    case 'M':
+      return 'G';
+    case 'T':
+      return 'P';
+    default:
+      return 'P';
+  }
+}
+
 /// Safely decodes JSON note metadata into a mutable map.
 Map<String, dynamic> _decodeNoteMetadata(String raw) {
   if (raw.trim().isEmpty) {

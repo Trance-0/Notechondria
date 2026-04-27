@@ -650,42 +650,13 @@ class _LearnerNoteCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                note['title']?.toString() ?? 'Untitled note',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.w700),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Tooltip(
-                              message: isLocalDraft
-                                  ? (canSync
-                                      ? 'Not synced — tap sync to upload'
-                                      : 'Offline')
-                                  : 'Synced to cloud',
-                              child: Icon(
-                                isLocalDraft
-                                    ? (canSync
-                                        ? Icons.cloud_upload_outlined
-                                        : Icons.cloud_off_outlined)
-                                    : Icons.cloud_done_outlined,
-                                size: 16,
-                                color: isLocalDraft
-                                    ? (canSync
-                                        ? Theme.of(context).colorScheme.tertiary
-                                        : Theme.of(context)
-                                            .colorScheme
-                                            .onSurfaceVariant)
-                                    : Theme.of(context).colorScheme.primary,
-                              ),
-                            ),
-                          ],
+                        Text(
+                          note['title']?.toString() ?? 'Untitled note',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         // Visual badge distinguishing the four note
@@ -731,14 +702,59 @@ class _LearnerNoteCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (canSync && onSync != null)
-                    IconButton(
-                      tooltip: 'Sync to cloud',
-                      icon: const Icon(Icons.cloud_upload_outlined),
-                      onPressed: () async {
-                        await onSync!();
-                      },
-                    ),
+                  // Single status / action icon. Three states for
+                  // local drafts (offline-only / unsynced / failed)
+                  // plus a static cloud-done indicator for cloud
+                  // notes. Replaces the prior split where both an
+                  // inline status icon AND an action button rendered
+                  // simultaneously.
+                  Builder(builder: (ctx) {
+                    if (!isLocalDraft) {
+                      return Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Tooltip(
+                          message: 'Synced to cloud',
+                          child: Icon(
+                            Icons.cloud_done_outlined,
+                            size: 18,
+                            color: Theme.of(ctx).colorScheme.primary,
+                          ),
+                        ),
+                      );
+                    }
+                    final lastSyncError =
+                        note['last_sync_error']?.toString() ?? '';
+                    final hasFailure = lastSyncError.isNotEmpty;
+                    if (canSync && onSync != null) {
+                      return IconButton(
+                        tooltip: hasFailure
+                            ? 'Sync failed: $lastSyncError\nTap to retry.'
+                            : 'Sync to cloud',
+                        icon: Icon(
+                          hasFailure
+                              ? Icons.sync_problem_outlined
+                              : Icons.cloud_upload_outlined,
+                          color: hasFailure
+                              ? Theme.of(ctx).colorScheme.error
+                              : null,
+                        ),
+                        onPressed: () async {
+                          await onSync!();
+                        },
+                      );
+                    }
+                    return Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Tooltip(
+                        message: 'Offline draft — sign in to sync.',
+                        child: Icon(
+                          Icons.cloud_off_outlined,
+                          size: 18,
+                          color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    );
+                  }),
                 ],
               ),
               if ((note['description']?.toString() ?? '').isNotEmpty) ...[

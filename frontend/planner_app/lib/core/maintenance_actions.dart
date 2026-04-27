@@ -126,17 +126,29 @@ extension _AppShellMaintenanceX on _AppShellState {
       try {
         await _syncLocalDraft(draft);
       } catch (error) {
+        final cause = error.toString().replaceFirst('Exception: ', '');
         log(
           level: DebugLogLevel.warning,
           source: 'Planner.Sync.Notes/push',
           message: 'Local draft not synced: '
               'Planner.Sync.Notes/push \u2014 '
               "'${draft['title']}' "
-              '(${error.toString().replaceFirst('Exception: ', '')}). '
+              '($cause). '
               'Kept locally; will retry on next sync.',
         );
+        _localDrafts = _localDrafts
+            .map((item) => item['id'] == draft['id']
+                ? {
+                    ...item,
+                    'last_sync_error': cause,
+                    'last_sync_attempt_at':
+                        DateTime.now().toUtc().toIso8601String(),
+                  }
+                : item)
+            .toList(growable: false);
       }
     }
+    await persistLocalDrafts();
     if (mounted) {
       refreshState();
     }
