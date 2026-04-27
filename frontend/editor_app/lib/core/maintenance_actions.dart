@@ -261,20 +261,22 @@ extension _AppShellMaintenanceX on _AppShellState {
   /// requires admin credentials.
   Future<ActionFeedback> _restoreLocalStarterTemplate() async {
     try {
-      // Drop the seeded marker so `_ensureStarterWorkspace`'s short-
-      // circuit doesn't bail out, then re-seed. We do NOT clear
-      // existing categories/drafts — re-seeding only fires when the
-      // local workspace is empty. If the user wants a true reset
-      // they should use "Clear all local data" first.
+      // Force a re-seed even when the user already has local categories
+      // or drafts: `_ensureStarterWorkspace` short-circuits when ANY
+      // local state exists, but the user explicitly tapped "Restore
+      // default inbox" because they want the Inbox back regardless of
+      // whatever else they've created. We rebuild a fresh Inbox course
+      // (idempotent on uuid clash via _buildLocalCourse) and append the
+      // welcome drafts only when no draft references the new Inbox id.
       _localSettings = {
         ..._localSettings,
         'starter_workspace_seeded_at': '',
       };
       await _persistLocalSettings();
-      await _ensureStarterWorkspace();
+      await _seedStarterInboxAlongsideExisting();
       const message = 'Starter inbox restored: '
           'Editor.LocalStore/restore_local_starter — '
-          'local Inbox + welcome note re-seeded if missing.';
+          'local Inbox + welcome note re-seeded.';
       log(
         level: DebugLogLevel.info,
         source: 'Editor.LocalStore/restore_local_starter',

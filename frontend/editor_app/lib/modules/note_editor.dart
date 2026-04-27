@@ -12,6 +12,8 @@ class _NoteEditorDialog extends StatefulWidget {
     required this.onRestoreVersion,
     required this.onLogEvent,
     this.onUploadAttachment,
+    this.onUploadCover,
+    this.onDeleteCover,
   });
 
   final Map<String, dynamic> note;
@@ -29,6 +31,13 @@ class _NoteEditorDialog extends StatefulWidget {
   final ValueChanged<String> onLogEvent;
   final Future<Map<String, dynamic>> Function(int noteId, XFile file)?
       onUploadAttachment;
+  /// Multipart upload of a cover image; returns the updated note
+  /// summary so the editor can swap its local `cover_image_url`
+  /// without an extra round-trip. Null when offline / signed out.
+  final Future<Map<String, dynamic>> Function(int noteId, XFile file)?
+      onUploadCover;
+  /// Clear the cover image. Returns the updated note summary.
+  final Future<Map<String, dynamic>> Function(int noteId)? onDeleteCover;
 
   @override
   State<_NoteEditorDialog> createState() => _NoteEditorDialogState();
@@ -353,15 +362,25 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
     widget.onLogEvent(
         'Note metadata dialog opened: Editor.UI/editor.metadata \u2014 '
         'user requested metadata edit from the editor toolbar.');
+    final noteId = _note['id'] as int? ?? -1;
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => _NoteMetadataDialog(
         note: _note,
         courses: widget.courses,
         metadata: _metadata,
-        allowPublicToggle: (_note['id'] as int? ?? -1) > 0,
+        allowPublicToggle: noteId > 0,
         onGetHistory: widget.onGetHistory,
         onRestoreVersion: widget.onRestoreVersion,
+        // Cover-image callbacks are only valid for synced notes (id > 0).
+        // Local drafts get null callbacks so the dialog hides the
+        // upload row and shows the read-only barcode preview.
+        onUploadCover: (noteId > 0 && widget.onUploadCover != null)
+            ? (file) => widget.onUploadCover!(noteId, file)
+            : null,
+        onDeleteCover: (noteId > 0 && widget.onDeleteCover != null)
+            ? () => widget.onDeleteCover!(noteId)
+            : null,
       ),
     );
     if (result == null) {

@@ -69,6 +69,14 @@ extension _AppShellAuthFlowsX on _AppShellState {
           onRestoreVersion: _restoreNoteVersion,
           onLogEvent: appendUiLog,
           onUploadAttachment: _uploadNoteAttachment,
+          onUploadCover: _token != null
+              ? (noteId, file) =>
+                  widget.client.uploadNoteCoverImage(_token!, noteId, file)
+              : null,
+          onDeleteCover: _token != null
+              ? (noteId) =>
+                  widget.client.deleteNoteCoverImage(_token!, noteId)
+              : null,
         ),
       );
     } else {

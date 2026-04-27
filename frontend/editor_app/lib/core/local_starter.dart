@@ -88,4 +88,85 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
           'first-run offline Inbox + 2 welcome drafts created.',
     );
   }
+
+  /// Re-seed a starter Inbox alongside whatever the user already has
+  /// in their local workspace. Unlike `_ensureStarterWorkspace`, this
+  /// does NOT short-circuit when local state exists \u2014 it always
+  /// produces a fresh Inbox category + welcome drafts and appends
+  /// them. Used by the "Restore default inbox" maintenance action so
+  /// the user can recover the starter content after deleting it,
+  /// even when they have other local categories/drafts.
+  Future<void> _seedStarterInboxAlongsideExisting() async {
+    final starterCourse = {
+      ..._buildLocalCourse(
+        title: 'Inbox',
+        description: 'Offline-first local note bucket for the editor app.',
+      ),
+      'is_default': true,
+    };
+    final starterDraft = _buildLocalDraft(
+      title: 'Welcome to the editor workspace',
+      description: 'Starter note describing the offline storage layout.',
+      content: '''# Welcome to the editor workspace
+
+This app is the offline-first markdown editor.
+
+## Suggested local structure
+
+```
+root/
+- category/
+- <note>/
+- media/
+- .metadata
+- note-<created_timestamp>.md
+```
+
+Use this draft as a starting point and sync later when you sign in.''',
+      editorMode: 'M',
+      metadataJson: jsonEncode({
+        'course_id': starterCourse['id'],
+        'module_title': 'Inbox',
+        'module_description': 'Local starter notes for the editor app.',
+        'storage_layout': 'root/category/<note>/media/.metadata',
+      }),
+    );
+    final starterReference = _buildLocalDraft(
+      title: 'Plain-text editor checklist',
+      description: 'Starter checklist for the editor modes.',
+      content: '''# Plain-text editor checklist
+
+- Markdown mode
+- Plain text mode
+- Structured mode
+
+Add syntax highlighting for plain text and keep notes searchable by title or body.''',
+      editorMode: 'T',
+      metadataJson: jsonEncode({
+        'course_id': starterCourse['id'],
+        'module_title': 'Editor setup',
+      }),
+    );
+    _localCourses = [..._localCourses, starterCourse];
+    _localDrafts = [..._localDrafts, starterDraft, starterReference];
+    _selectedCourse = starterCourse;
+    _courseNotes = _localNotesForCourse(starterCourse);
+    _frontPage ??= _frontPageFallbackPayload(const []);
+    _localStats = {
+      ..._localStats,
+      'starter_workspace_seeded_at': DateTime.now().toUtc().toIso8601String(),
+    };
+    await _persistLocalCourses();
+    await _persistLocalDrafts();
+    await _persistLocalStats();
+    await _persistLocalCache();
+    log(
+      level: DebugLogLevel.info,
+      source: 'Editor.LocalStore/restore_local_starter',
+      message:
+          'Starter Inbox re-seeded alongside existing local workspace: '
+          'Editor.LocalStore/restore_local_starter \u2014 '
+          'fresh Inbox course + 2 welcome drafts appended.',
+    );
+  }
 }

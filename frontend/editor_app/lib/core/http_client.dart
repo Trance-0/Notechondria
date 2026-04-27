@@ -834,6 +834,45 @@ class HttpNotechondriaClient implements NotechondriaClient {
   }
 
   @override
+  Future<Map<String, dynamic>> uploadNoteCoverImage(
+    String token,
+    int noteId,
+    XFile file,
+  ) async {
+    final uri = _uri('/notes/$noteId/cover/');
+    final request = http.MultipartRequest('POST', uri)
+      ..headers.addAll(_headers(token: token))
+      ..files.add(
+        http.MultipartFile.fromBytes(
+          'cover',
+          await file.readAsBytes(),
+          filename: file.name,
+        ),
+      );
+    final streamed = await _send(
+        'POST', uri, () => request.send().then(http.Response.fromStream));
+    return Map<String, dynamic>.from(
+      await _decode(streamed, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> deleteNoteCoverImage(
+    String token,
+    int noteId,
+  ) async {
+    final uri = _uri('/notes/$noteId/cover/');
+    final response = await _send(
+      'DELETE',
+      uri,
+      () => _httpClient.delete(uri, headers: _headers(token: token)),
+    );
+    return Map<String, dynamic>.from(
+      await _decode(response, uri: uri, method: 'DELETE'),
+    );
+  }
+
+  @override
   Future<List<Map<String, dynamic>>> getPlannerEvents(String token) async {
     final uri = _uri('/planner-events/');
     final response = await _get(uri, token: token);

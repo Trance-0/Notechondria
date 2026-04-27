@@ -552,6 +552,14 @@ extension _AppShellBuildHelpersX on _AppShellState {
           onSyncAllLocalDrafts: _syncAllLocalDrafts,
           onLogEvent: appendUiLog,
           onUploadAttachment: _uploadNoteAttachment,
+          onUploadCover: _token != null
+              ? (noteId, file) =>
+                  widget.client.uploadNoteCoverImage(_token!, noteId, file)
+              : null,
+          onDeleteCover: _token != null
+              ? (noteId) =>
+                  widget.client.deleteNoteCoverImage(_token!, noteId)
+              : null,
         );
       case 4:
         return _SettingsPage(

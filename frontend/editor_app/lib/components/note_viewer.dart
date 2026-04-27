@@ -148,20 +148,40 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
                     padding: const EdgeInsets.all(20),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
+                        final uuid = note['uuid']?.toString() ?? '';
+                        final title = note['title']?.toString() ?? '';
+                        final coverUrl =
+                            note['cover_image_url']?.toString() ?? '';
                         return ConstrainedBox(
                           constraints: BoxConstraints(
                             minWidth: constraints.maxWidth > 40
                                 ? constraints.maxWidth - 40
                                 : constraints.maxWidth,
                           ),
-                          child: MarkdownBody(
-                            data: content,
-                            selectable: true,
-                            builders: _markdownBuilders(),
-                            sizedImageBuilder: _localAttachmentImageBuilder,
-                            inlineSyntaxes: _markdownInlineSyntaxes(),
-                            blockSyntaxes: _markdownBlockSyntaxes(),
-                            styleSheet: _markdownStyleSheet(context),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              NoteCoverImage(
+                                seed: uuid.isNotEmpty
+                                    ? uuid
+                                    : 'note-$title',
+                                imageUrl:
+                                    coverUrl.isNotEmpty ? coverUrl : null,
+                                caption: title,
+                                showCaption: coverUrl.isEmpty,
+                              ),
+                              const SizedBox(height: 20),
+                              MarkdownBody(
+                                data: content,
+                                selectable: true,
+                                builders: _markdownBuilders(),
+                                sizedImageBuilder:
+                                    _localAttachmentImageBuilder,
+                                inlineSyntaxes: _markdownInlineSyntaxes(),
+                                blockSyntaxes: _markdownBlockSyntaxes(),
+                                styleSheet: _markdownStyleSheet(context),
+                              ),
+                            ],
                           ),
                         );
                       },

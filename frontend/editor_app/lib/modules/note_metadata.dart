@@ -9,6 +9,8 @@ class _NoteMetadataDialog extends StatefulWidget {
     required this.allowPublicToggle,
     required this.onGetHistory,
     required this.onRestoreVersion,
+    this.onUploadCover,
+    this.onDeleteCover,
   });
 
   final Map<String, dynamic> note;
@@ -18,6 +20,13 @@ class _NoteMetadataDialog extends StatefulWidget {
   final Future<List<Map<String, dynamic>>> Function(int noteId) onGetHistory;
   final Future<Map<String, dynamic>> Function(int noteId, int versionId)
       onRestoreVersion;
+  /// Multipart upload, returns updated note summary including the
+  /// new `cover_image_url`. Null when offline / signed-out / local
+  /// draft (id <= 0); the dialog then hides the upload buttons and
+  /// shows the read-only barcode placeholder.
+  final Future<Map<String, dynamic>> Function(XFile file)? onUploadCover;
+  /// Clear the cover; returns updated note summary.
+  final Future<Map<String, dynamic>> Function()? onDeleteCover;
 
   @override
   State<_NoteMetadataDialog> createState() => _NoteMetadataDialogState();
@@ -29,6 +38,9 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
   int? _courseId;
   bool _isPublic = false;
   late Future<List<Map<String, dynamic>>> _historyFuture;
+  String? _coverUrl;
+  bool _coverBusy = false;
+  String? _coverError;
 
   @override
   void initState() {
@@ -45,6 +57,7 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
         (widget.note['course']?['id'] as num?)?.toInt();
     _isPublic = widget.metadata['is_public'] == true ||
         widget.note['is_public'] == true;
+    _coverUrl = widget.note['cover_image_url']?.toString();
     _historyFuture = widget.onGetHistory(widget.note['id'] as int);
   }
 
@@ -53,6 +66,143 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
     _descriptionController.dispose();
     _sectionController.dispose();
     super.dispose();
+  }
+
+  String get _coverSeed {
+    final uuid = widget.note['uuid']?.toString() ?? '';
+    final title = widget.note['title']?.toString() ?? '';
+    return uuid.isNotEmpty ? uuid : 'note-$title';
+  }
+
+  Future<void> _pickAndUploadCover() async {
+    final upload = widget.onUploadCover;
+    if (upload == null) return;
+    final XFile? picked;
+    try {
+      picked = await openFile(
+        acceptedTypeGroups: const [
+          XTypeGroup(
+            label: 'Cover image',
+            extensions: ['png', 'jpg', 'jpeg', 'webp'],
+          ),
+        ],
+      );
+    } catch (error) {
+      setState(() {
+        _coverError = error.toString().replaceFirst('Exception: ', '');
+      });
+      return;
+    }
+    if (picked == null) return;
+    setState(() {
+      _coverBusy = true;
+      _coverError = null;
+    });
+    try {
+      final updated = await upload(picked);
+      if (!mounted) return;
+      setState(() {
+        _coverUrl = updated['cover_image_url']?.toString() ?? _coverUrl;
+        _coverBusy = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _coverBusy = false;
+        _coverError = error.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  Future<void> _clearCover() async {
+    final clear = widget.onDeleteCover;
+    if (clear == null) return;
+    setState(() {
+      _coverBusy = true;
+      _coverError = null;
+    });
+    try {
+      final updated = await clear();
+      if (!mounted) return;
+      setState(() {
+        _coverUrl = updated['cover_image_url']?.toString() ?? '';
+        _coverBusy = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _coverBusy = false;
+        _coverError = error.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  Widget _buildCoverSection(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final hasCover = _coverUrl != null && _coverUrl!.isNotEmpty;
+    final canUpload = widget.onUploadCover != null;
+    final canDelete = widget.onDeleteCover != null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Cover image',
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          hasCover
+              ? 'Shown above the note in view mode.'
+              : canUpload
+                  ? 'No cover yet — readers see a barcode generated from the note URL.'
+                  : 'Sync this note to the cloud before uploading a cover image.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+        ),
+        const SizedBox(height: 10),
+        NoteCoverImage(
+          seed: _coverSeed,
+          imageUrl: _coverUrl,
+          caption: widget.note['title']?.toString(),
+          showCaption: !hasCover,
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            FilledButton.tonalIcon(
+              onPressed: (canUpload && !_coverBusy) ? _pickAndUploadCover : null,
+              icon: const Icon(Icons.image_outlined, size: 18),
+              label: Text(hasCover ? 'Replace' : 'Upload'),
+            ),
+            const SizedBox(width: 8),
+            if (hasCover)
+              TextButton.icon(
+                onPressed: (canDelete && !_coverBusy) ? _clearCover : null,
+                icon: const Icon(Icons.delete_outline, size: 18),
+                label: const Text('Remove'),
+              ),
+            if (_coverBusy) ...[
+              const SizedBox(width: 12),
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ],
+          ],
+        ),
+        if (_coverError != null && _coverError!.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            _coverError!,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: scheme.error,
+                ),
+          ),
+        ],
+      ],
+    );
   }
 
   @override
@@ -66,6 +216,8 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _buildCoverSection(context),
+              const SizedBox(height: 16),
               DropdownButtonFormField<int?>(
                 value: _courseId,
                 items: [

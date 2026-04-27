@@ -257,6 +257,7 @@ class NoteSummarySerializer(serializers.ModelSerializer):
     author = serializers.SerializerMethodField()
     course = serializers.SerializerMethodField()
     source_note_uuid = serializers.SerializerMethodField()
+    cover_image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Note
@@ -276,6 +277,7 @@ class NoteSummarySerializer(serializers.ModelSerializer):
             "course",
             "author",
             "source_note_uuid",
+            "cover_image_url",
         ]
 
     def get_excerpt(self, obj):
@@ -310,6 +312,12 @@ class NoteSummarySerializer(serializers.ModelSerializer):
         if obj.source_note is None:
             return None
         return str(obj.source_note.uuid)
+
+    def get_cover_image_url(self, obj):
+        request = self.context.get("request") if self.context else None
+        return absolute_media_url(
+            request, obj.cover_image.url if obj.cover_image else ""
+        )
 
 
 class NoteDetailSerializer(NoteSummarySerializer):
@@ -1911,3 +1919,77 @@ class NoteAttachmentDetailApiView(APIView):
         attachment.file.delete(save=False)
         attachment.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+_MAX_COVER_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB — covers shouldn't be huge
+
+
+class NoteCoverImageApiView(APIView):
+    """Upload (POST) / clear (DELETE) the per-note cover image. Same
+    multipart pattern as NoteAttachmentApiView; the field name on POST
+    is `cover`. Returns the updated NoteSummarySerializer payload so the
+    frontend can replace its cached note row in one round-trip."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, note_id):
+        note = require_note_access(request, note_id)
+        if note.creator_id.user_id_id != request.user.id:
+            return Response(
+                {"detail": (
+                    "Cannot set cover image: "
+                    "Backend.Notes.Notes/cover_upload — "
+                    "note is owned by a different user."
+                )},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        uploaded = request.FILES.get("cover")
+        if not uploaded:
+            return Response(
+                {"detail": (
+                    "Cannot set cover image: "
+                    "Backend.Notes.Notes/cover_upload — "
+                    "no `cover` file part in the request."
+                )},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if uploaded.size > _MAX_COVER_IMAGE_SIZE:
+            return Response(
+                {"detail": (
+                    "Cannot set cover image: "
+                    "Backend.Notes.Notes/cover_upload — "
+                    f"file exceeds maximum size of "
+                    f"{_MAX_COVER_IMAGE_SIZE // (1024 * 1024)} MB."
+                )},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Delete the old file before saving the new one so we don't
+        # accumulate orphans in object storage.
+        if note.cover_image:
+            note.cover_image.delete(save=False)
+        note.cover_image = uploaded
+        note.save(update_fields=["cover_image", "last_edit"])
+        return Response(
+            NoteSummarySerializer(note, context={"request": request}).data,
+            status=status.HTTP_200_OK,
+        )
+
+    def delete(self, request, note_id):
+        note = require_note_access(request, note_id)
+        if note.creator_id.user_id_id != request.user.id:
+            return Response(
+                {"detail": (
+                    "Cannot clear cover image: "
+                    "Backend.Notes.Notes/cover_delete — "
+                    "note is owned by a different user."
+                )},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if note.cover_image:
+            note.cover_image.delete(save=False)
+            note.cover_image = None
+            note.save(update_fields=["cover_image", "last_edit"])
+        return Response(
+            NoteSummarySerializer(note, context={"request": request}).data,
+            status=status.HTTP_200_OK,
+        )

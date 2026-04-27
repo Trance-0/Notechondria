@@ -35,6 +35,8 @@ class _LearnerPage extends StatefulWidget {
     required this.onSyncAllLocalDrafts,
     required this.onLogEvent,
     this.onUploadAttachment,
+    this.onUploadCover,
+    this.onDeleteCover,
   });
 
   final List<Map<String, dynamic>> notes;
@@ -89,6 +91,9 @@ class _LearnerPage extends StatefulWidget {
   final ValueChanged<String> onLogEvent;
   final Future<Map<String, dynamic>> Function(int noteId, XFile file)?
       onUploadAttachment;
+  final Future<Map<String, dynamic>> Function(int noteId, XFile file)?
+      onUploadCover;
+  final Future<Map<String, dynamic>> Function(int noteId)? onDeleteCover;
 
   @override
   State<_LearnerPage> createState() => _LearnerPageState();
@@ -198,6 +203,8 @@ class _LearnerPageState extends State<_LearnerPage> {
         onRestoreVersion: widget.onRestoreNoteVersion,
         onLogEvent: widget.onLogEvent,
         onUploadAttachment: widget.onUploadAttachment,
+        onUploadCover: widget.onUploadCover,
+        onDeleteCover: widget.onDeleteCover,
       ),
     );
     final refreshed = await widget.onFetchNoteDetail(detail['id'] as int);
@@ -288,15 +295,22 @@ class _LearnerPageState extends State<_LearnerPage> {
     }
   }
 
-  /// Builds the four-option dropdown the user picks from to filter the
-  /// learner view. Order is intentional — the most-used "personal"
-  /// scope sits at the top so the keyboard arrow keys land on it
-  /// after a fresh open.
+  /// Builds the dropdown items the user picks from to filter the
+  /// learner view. Authenticated users get the full four-option list
+  /// (personal / private / public / local); anonymous users only
+  /// see "Public notes" + "Local drafts only" because personal /
+  /// private require a signed-in identity.
   List<DropdownMenuItem<String>> _buildScopeItems() {
+    if (widget.isAuthenticated) {
+      return const [
+        DropdownMenuItem(value: 'personal', child: Text('Personal notes')),
+        DropdownMenuItem(value: 'private', child: Text('Private notes')),
+        DropdownMenuItem(value: 'public', child: Text('Public notes')),
+        DropdownMenuItem(value: 'local', child: Text('Local drafts only')),
+      ];
+    }
     return const [
-      DropdownMenuItem(value: 'personal', child: Text('Personal notes')),
-      DropdownMenuItem(value: 'private', child: Text('Private notes')),
-      DropdownMenuItem(value: 'public', child: Text('Public notes')),
+      DropdownMenuItem(value: 'all', child: Text('Public notes')),
       DropdownMenuItem(value: 'local', child: Text('Local drafts only')),
     ];
   }
@@ -330,10 +344,16 @@ class _LearnerPageState extends State<_LearnerPage> {
     // When the user opens a locally-created category, public/personal
     // cloud notes are unrelated to it, so we force the filter to
     // `local` regardless of what they last picked from the dropdown.
-    final effectiveScope =
+    // For anonymous users, the only valid cloud scope is `all`
+    // (public-only on the backend) — coerce stale auth-time scopes
+    // like `personal` / `private` to `all` so the dropdown widget
+    // value matches one of its items.
+    final rawScope =
         widget.isLocalCourseSelected ? 'local' : widget.searchScope;
-    final showCloudNotes =
-        widget.isAuthenticated && effectiveScope != 'local';
+    final effectiveScope = widget.isAuthenticated
+        ? rawScope
+        : (rawScope == 'local' ? 'local' : 'all');
+    final showCloudNotes = effectiveScope != 'local';
     return Stack(
       children: [
         ListView(
@@ -350,52 +370,51 @@ class _LearnerPageState extends State<_LearnerPage> {
                     OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
               ),
             ),
-            if (widget.isAuthenticated)
-              Padding(
-                padding: const EdgeInsets.only(top: 8, left: 4, right: 4),
-                child: Row(
-                  children: [
-                    Text(
-                      'Show:',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: effectiveScope,
+            Padding(
+              padding: const EdgeInsets.only(top: 8, left: 4, right: 4),
+              child: Row(
+                children: [
+                  Text(
+                    'Show:',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: effectiveScope,
+                      isDense: true,
+                      decoration: const InputDecoration(
                         isDense: true,
-                        decoration: const InputDecoration(
-                          isDense: true,
-                          border: OutlineInputBorder(),
-                          contentPadding:
-                              EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                        items: _buildScopeItems(),
-                        onChanged: widget.isLocalCourseSelected
-                            ? null
-                            : (value) {
-                                if (value != null) {
-                                  widget.onSearchScopeChanged(value);
-                                }
-                              },
+                        border: OutlineInputBorder(),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      items: _buildScopeItems(),
+                      onChanged: widget.isLocalCourseSelected
+                          ? null
+                          : (value) {
+                              if (value != null) {
+                                widget.onSearchScopeChanged(value);
+                              }
+                            },
+                    ),
+                  ),
+                  if (widget.isLocalCourseSelected) ...[
+                    const SizedBox(width: 8),
+                    Tooltip(
+                      message:
+                          'Local categories only contain local drafts. '
+                          'Switch to a synced category to filter cloud notes.',
+                      child: Icon(
+                        Icons.info_outline,
+                        size: 18,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    if (widget.isLocalCourseSelected) ...[
-                      const SizedBox(width: 8),
-                      Tooltip(
-                        message:
-                            'Local categories only contain local drafts. '
-                            'Switch to a synced category to filter cloud notes.',
-                        child: Icon(
-                          Icons.info_outline,
-                          size: 18,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
                   ],
-                ),
+                ],
               ),
+            ),
             const SizedBox(height: 16),
             if (widget.isAuthenticated && localDrafts.isNotEmpty) ...[
               Card(

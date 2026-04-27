@@ -68,6 +68,16 @@ class Note(models.Model):
         default="P",
         null=False,
     )
+    cover_image = models.ImageField(
+        upload_to="user_upload/note_covers/",
+        blank=True,
+        null=True,
+        help_text=(
+            "Optional user-uploaded cover image. Shown in note view but "
+            "not in the editor; the frontend renders a UUID-derived "
+            "barcode placeholder when this is empty."
+        ),
+    )
     date_created = models.DateTimeField(auto_now_add=True, null=False)
     last_edit = models.DateTimeField(auto_now=True, null=False)
 
@@ -201,6 +211,16 @@ def note_file_path(instance, filename):
     file will be uploaded to MEDIA_ROOT/user_<id>/<filename>
     """
     return "user_upload/user_{0}/notes/noteblock_{1}/{2}".format(instance.creator_id.user_id.id, instance.id, filename)
+
+
+def note_cover_path(instance, filename):
+    """Note cover image upload path. Mirrors note_attachment_path so all
+    per-note media land under the same `notes/note_<id>/` folder; the
+    `cover_` filename prefix keeps it distinguishable from attachments
+    in storage browsers."""
+    return "user_upload/user_{0}/notes/note_{1}/cover_{2}".format(
+        instance.creator_id.user_id.id, instance.id, filename
+    )
 
 
 class NoteBlock(models.Model):

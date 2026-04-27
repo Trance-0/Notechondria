@@ -57,18 +57,21 @@ file and add a round-log entry to the new version doc.
   code fix landed in 0.1.67; the test was deferred because the
   editor smoke-test harness doesn't have a web navigator shim yet.
 
+- [ ] **Audit login-form autocomplete attributes.** User reported
+  Bitwarden failing to autofill on the editor's web login form
+  (`autofill.service.ts:528 Did not autofill`). Stack trace is
+  Bitwarden-internal so not a code-side bug, but it suggests our
+  login fields may not be signalling autocomplete intent properly.
+  Verify `autocomplete="username"` /
+  `autocomplete="current-password"` on the relevant `<input>`s in
+  `auth_dialogs.dart` and `auth_dialogs_wizard.dart`; if missing,
+  add them so password managers have a clear hint.
+
 ## Global reusable components
 
 ### Start up animations
 
 ### Sidebar/Navigation
-
-- [ ] Sync the editor sidebar for the portal sidebar. (Removing
-  title, `wide layout` texts. You may create a list of items/widgets
-  that feed into the `sidebar` class, the `sidebar` should have some
-  properties/functions like `header text` (used in vertical layout),
-  `lower left item` (the `new category` trigger should lives in
-  that))
 
 ### Login and account info
 
@@ -82,6 +85,22 @@ file and add a round-log entry to the new version doc.
   `portal_app/lib/modules/settings.dart` — this requires syncing
   client methods, app_shell callback wiring, and the
   `_ApiKeySection` widget.
+
+- [ ] **Note cover images — planner / portal frontend.** 0.1.76
+  shipped per-note cover images for editor_app: backend model +
+  migration + `/notes/<id>/cover/` POST/DELETE endpoint, shared
+  `NoteCoverImage` widget in `notechondria_shared` (with theme-
+  colored barcode fallback), and the editor's metadata dialog +
+  note viewer wired up. planner_app and portal_app don't yet
+  expose note metadata editing or a read-only viewer in the same
+  shape, so the cover-image upload UI hasn't been ported. When
+  those apps grow note edit/view surfaces, mirror the editor
+  pattern: add `uploadNoteCoverImage` / `deleteNoteCoverImage` to
+  their `NotechondriaClient` interface + http_client (~10 lines
+  each, copy from editor), and pass the callbacks into wherever
+  they construct the metadata dialog. The viewer side just needs
+  `NoteCoverImage(seed: uuid, imageUrl: note['cover_image_url'])`
+  above the body — already exported from `notechondria_shared`.
 
 - [ ] **Multi-device session manager — planner / portal frontend.**
   0.1.65 shipped the backend; 0.1.75 wired the editor frontend

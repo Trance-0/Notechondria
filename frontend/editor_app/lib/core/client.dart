@@ -140,6 +140,20 @@ abstract class NotechondriaClient implements AuthClient {
     int noteId,
     int attachmentId,
   );
+  /// Upload a cover image for the given note. Backend returns the
+  /// updated note summary including the new `cover_image_url`. Owner-
+  /// only on the backend (403 from non-owners).
+  Future<Map<String, dynamic>> uploadNoteCoverImage(
+    String token,
+    int noteId,
+    XFile file,
+  );
+  /// Clear the cover image for the given note. Returns the updated
+  /// note summary (now with `cover_image_url == ''`).
+  Future<Map<String, dynamic>> deleteNoteCoverImage(
+    String token,
+    int noteId,
+  );
   Future<List<Map<String, dynamic>>> getPlannerEvents(String token);
   Future<Map<String, dynamic>> createPlannerEvent(
     String token,
