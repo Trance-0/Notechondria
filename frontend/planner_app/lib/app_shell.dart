@@ -100,7 +100,8 @@ class _AppShellState extends State<AppShell>
         AppShellCourseHelpersMixin<AppShell>,
         AppShellDraftHelpersMixin<AppShell>,
         AppShellAuthActionsMixin<AppShell>,
-        AppShellOAuthMixin<AppShell> {
+        AppShellOAuthMixin<AppShell>,
+        AppShellSessionMixin<AppShell> {
   @override
   final List<String> uiLogs = <String>[];
   @override
@@ -171,6 +172,52 @@ class _AppShellState extends State<AppShell>
         id: id,
         metadataJson: metadataJson,
       );
+  // AppShellSessionMixin wiring. Planner has no multi-device UI
+  // and doesn't persist the session client-side, so the metadata
+  // and persistSession hooks fall through to the mixin defaults.
+  // The one per-app override is `clearAppSpecificSessionFields`,
+  // which resets `_plannerEvents` on logout.
+  @override
+  set token(String? value) => _token = value;
+  @override
+  Map<String, dynamic>? get profile => _profile;
+  @override
+  set profile(Map<String, dynamic>? value) => _profile = value;
+  @override
+  Map<String, dynamic>? get settings => _settings;
+  @override
+  set settings(Map<String, dynamic>? value) => _settings = value;
+  @override
+  List<Map<String, dynamic>> get deletedNotes => _deletedNotes;
+  @override
+  set deletedNotes(List<Map<String, dynamic>> value) => _deletedNotes = value;
+  @override
+  Map<String, dynamic> currentAppSettingsPayload({
+    String? themePreset,
+    String? themeMode,
+    String? apiBaseUrl,
+  }) =>
+      _currentAppSettingsPayload(
+        themePreset: themePreset,
+        themeMode: themeMode,
+        apiBaseUrl: apiBaseUrl,
+      );
+  @override
+  Future<void> applyLocalAppSettings(
+    Map<String, dynamic> settings, {
+    bool persist = true,
+  }) =>
+      _applyLocalAppSettings(settings, persist: persist);
+  @override
+  Future<void> loadInitialData() => _loadInitialData();
+  @override
+  Future<void> syncAllLocalCourses() => _syncAllLocalCourses();
+  @override
+  Future<void> syncAllLocalDrafts() => _syncAllLocalDrafts();
+  @override
+  void clearAppSpecificSessionFields() {
+    _plannerEvents = const [];
+  }
 
   int _selectedIndex = 0;
   bool _isLoading = true;
@@ -333,125 +380,11 @@ class _AppShellState extends State<AppShell>
 
   // Settings helpers live in `core/settings_helpers.dart`.
 
-  DateTime _parseUpdatedAt(String? raw) {
-    return DateTime.tryParse(raw ?? '')?.toUtc() ??
-        DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
-  }
-
-  Future<void> applyAuthPayload(Map<String, dynamic> payload) async {
-    final token = payload['token']?.toString() ?? '';
-    final user = Map<String, dynamic>.from(payload['user'] as Map? ?? {});
-    Map<String, dynamic> settings;
-    try {
-      settings = await widget.client.getSettings(token);
-      final localUpdated =
-          _parseUpdatedAt(_localSettings['updated_at']?.toString());
-      final serverUpdated =
-          _parseUpdatedAt(settings['app_settings_updated_at']?.toString());
-      if (localUpdated.isAfter(serverUpdated)) {
-        settings = await widget.client.updateSettings(token, {
-          'app_settings': _currentAppSettingsPayload(),
-          'app_settings_updated_at': _localSettings['updated_at'],
-          'theme_preset': _localSettings['theme_preset'],
-          'theme_mode': _localSettings['theme_mode'],
-          'api_base_url': _localSettings['api_base_url'],
-        });
-      } else {
-      final serverAppSettings = Map<String, dynamic>.from(
-          settings['app_settings'] as Map? ??
-              _currentAppSettingsPayload(
-                themePreset: settings['theme_preset']?.toString(),
-                themeMode: settings['theme_mode']?.toString(),
-                apiBaseUrl: settings['api_base_url']?.toString(),
-              ),
-        );
-        await _applyLocalAppSettings({
-          ...serverAppSettings,
-          'updated_at': settings['app_settings_updated_at']?.toString() ??
-              DateTime.now().toUtc().toIso8601String(),
-        });
-      }
-    } catch (error) {
-      settings = {
-        'username': user['username'],
-        'email': user['email'],
-        'editor_mode': _settings?['editor_mode'] ?? 'P',
-        'theme_preset': _localSettings['theme_preset'],
-        'theme_mode': _localSettings['theme_mode'],
-        'api_base_url': _localSettings['api_base_url'],
-        'app_settings': _currentAppSettingsPayload(),
-        'app_settings_updated_at':
-            _localSettings['updated_at'] ?? DateTime.now().toUtc().toIso8601String(),
-      };
-      log(
-        level: DebugLogLevel.warning,
-        source: 'Planner.Sync.Settings/bootstrap',
-        message:
-            'Remote settings unavailable right after login: '
-            'Planner.Sync.Settings/bootstrap \u2014 '
-            '${error.toString().replaceFirst('Exception: ', '')}. '
-            'Using cached local settings.',
-      );
-    }
-    setState(() {
-      _token = token;
-      _profile = user;
-      _settings = settings;
-    });
-    await _applyLocalAppSettings({
-      'theme_preset': settings['theme_preset']?.toString() ??
-          _localSettings['theme_preset'],
-      'theme_mode':
-          settings['theme_mode']?.toString() ?? _localSettings['theme_mode'],
-      // api_base_url is client-side state. The Django default
-      // (http://localhost:9080/api/v1) would otherwise clobber the
-      // user's real URL every login. See 0.1.66.md.
-      'api_base_url': _localSettings['api_base_url'],
-      'updated_at': settings['app_settings_updated_at']?.toString() ??
-          _localSettings['updated_at'],
-      'log_preferences': Map<String, dynamic>.from(
-        (settings['app_settings'] as Map?)?['log_preferences'] as Map? ??
-            _localSettings['log_preferences'] as Map? ??
-            {},
-      ),
-    });
-    await _loadInitialData();
-    // Push any local courses + drafts created offline. We skip
-    // _syncAllLocalData's inner _loadInitialData call to avoid the
-    // double-bootstrap race that made first login fall over when a
-    // single flaky 401 tripped sessionRejected and nuked the fresh
-    // token.
-    try {
-      await _syncAllLocalCourses();
-      await _syncAllLocalDrafts();
-    } catch (error) {
-      log(
-        level: DebugLogLevel.warning,
-        source: 'Planner.Sync.Notes/push_all',
-        message:
-            'Local push after login failed: '
-            'Planner.Sync.Notes/push_all \u2014 '
-            '${error.toString().replaceFirst('Exception: ', '')}. '
-            'Will retry on next manual sync.',
-      );
-    }
-    final displayName =
-        user['username']?.toString() ??
-            user['email']?.toString() ??
-            'user';
-    log(
-      level: DebugLogLevel.info,
-      source: 'Planner.Auth/applyAuthPayload',
-      message:
-          'Session established: Planner.Auth/applyAuthPayload \u2014 '
-          'authenticated as $displayName.',
-    );
-    if (mounted) {
-      showMessage('Signed in as $displayName.');
-    }
-  }
-
-  // `_logout` lives in `core/logout.dart`.
+  // applyAuthPayload + logout moved into the shared
+  // AppShellSessionMixin (notechondria_shared 0.1.82). Per-app
+  // wiring (clearAppSpecificSessionFields resets _plannerEvents)
+  // is at the top of this class. _parseUpdatedAt was inlined into
+  // the mixin too — same body in all three apps.
 
   // Settings comparers live in `core/settings_comparers.dart`.
 
@@ -809,7 +742,7 @@ class _AppShellState extends State<AppShell>
           localStats: _localStats,
           deletedNotes: _deletedNotes,
           onSave: _updateSettings,
-          onLogout: _logout,
+          onLogout: logout,
           onRegister: register,
           onValidateInvitation: (code) => widget.client.validateInvitation(code),
           onVerify: verify,

@@ -107,7 +107,8 @@ class _AppShellState extends State<AppShell>
         AppShellCourseHelpersMixin<AppShell>,
         AppShellDraftHelpersMixin<AppShell>,
         AppShellAuthActionsMixin<AppShell>,
-        AppShellOAuthMixin<AppShell> {
+        AppShellOAuthMixin<AppShell>,
+        AppShellSessionMixin<AppShell> {
   @override
   final List<String> uiLogs = <String>[];
   @override
@@ -182,6 +183,66 @@ class _AppShellState extends State<AppShell>
         id: id,
         metadataJson: metadataJson,
       );
+  // AppShellSessionMixin wiring — setters write back to the
+  // private fields; hooks forward to editor-specific helpers.
+  // Editor is the only app that persists the session client-side
+  // and reads multi-device metadata from the auth payload.
+  @override
+  set token(String? value) => _token = value;
+  @override
+  Map<String, dynamic>? get profile => _profile;
+  @override
+  set profile(Map<String, dynamic>? value) => _profile = value;
+  @override
+  Map<String, dynamic>? get settings => _settings;
+  @override
+  set settings(Map<String, dynamic>? value) => _settings = value;
+  @override
+  List<Map<String, dynamic>> get deletedNotes => _deletedNotes;
+  @override
+  set deletedNotes(List<Map<String, dynamic>> value) => _deletedNotes = value;
+  @override
+  Map<String, dynamic> currentAppSettingsPayload({
+    String? themePreset,
+    String? themeMode,
+    String? apiBaseUrl,
+  }) =>
+      _currentAppSettingsPayload(
+        themePreset: themePreset,
+        themeMode: themeMode,
+        apiBaseUrl: apiBaseUrl,
+      );
+  @override
+  Future<void> applyLocalAppSettings(
+    Map<String, dynamic> settings, {
+    bool persist = true,
+  }) =>
+      _applyLocalAppSettings(settings, persist: persist);
+  @override
+  Future<void> loadInitialData() => _loadInitialData();
+  @override
+  Future<void> syncAllLocalCourses() => _syncAllLocalCourses();
+  @override
+  Future<void> syncAllLocalDrafts() => _syncAllLocalDrafts();
+  @override
+  void applySessionMetadata(Map<String, dynamic> payload) {
+    final sessionMap = payload['session'] as Map?;
+    _currentSessionId = (sessionMap?['id'] as num?)?.toInt();
+    _multiDevice = payload['multi_device'] == true;
+    _otherSessionsCount =
+        (payload['other_sessions_count'] as num?)?.toInt() ?? 0;
+  }
+  @override
+  void clearSessionMetadata() {
+    _currentSessionId = null;
+    _multiDevice = false;
+    _otherSessionsCount = 0;
+  }
+  @override
+  Future<void> persistSession(String token, Map<String, dynamic> user) =>
+      _LocalAppStore.saveSession(token, user);
+  @override
+  Future<void> clearPersistedSession() => _LocalAppStore.clearSession();
 
   // ---------------------------------------------------------------------------
   // State
@@ -401,179 +462,15 @@ class _AppShellState extends State<AppShell>
   //   note_crud.dart              create / save / import / export
   //   note_loading.dart           learner list + course/note select
   //   note_sessions.dart          cloud note-session tracking
-  //   session.dart                applyAuthPayload + _logout
   //   settings_actions.dart       settings panel + avatar upload
   //   settings_helpers.dart       app_settings payload helpers
-
-  @override
-  Future<void> applyAuthPayload(Map<String, dynamic> payload) async {
-    final token = payload['token']?.toString() ?? '';
-    final user = Map<String, dynamic>.from(payload['user'] as Map? ?? {});
-    Map<String, dynamic> settings;
-    try {
-      settings = await widget.client.getSettings(token);
-      final localUpdated =
-          _parseUpdatedAt(_localSettings['updated_at']?.toString());
-      final serverUpdated =
-          _parseUpdatedAt(settings['app_settings_updated_at']?.toString());
-      if (localUpdated.isAfter(serverUpdated)) {
-        settings = await widget.client.updateSettings(token, {
-          'app_settings': _currentAppSettingsPayload(),
-          'app_settings_updated_at': _localSettings['updated_at'],
-          'theme_preset': _localSettings['theme_preset'],
-          'theme_mode': _localSettings['theme_mode'],
-          'api_base_url': _localSettings['api_base_url'],
-        });
-      } else {
-        // api_base_url is CLIENT-side state — never overwrite the
-        // local value with whatever the server sent. The server's
-        // creator.api_base_url defaults to "http://localhost:9080/api/v1"
-        // on Django, and we don't want that to clobber the user's
-        // actual API URL on every login. See 0.1.66.md for the
-        // full root cause.
-        final serverAppSettings = Map<String, dynamic>.from(
-          settings['app_settings'] as Map? ??
-              _currentAppSettingsPayload(
-                themePreset: settings['theme_preset']?.toString(),
-                themeMode: settings['theme_mode']?.toString(),
-                apiBaseUrl: _localSettings['api_base_url']?.toString(),
-              ),
-        )..['api_base_url'] = _localSettings['api_base_url'];
-        await _applyLocalAppSettings({
-          ...serverAppSettings,
-          'updated_at': settings['app_settings_updated_at']?.toString() ??
-              DateTime.now().toUtc().toIso8601String(),
-        });
-      }
-    } catch (error) {
-      settings = {
-        'username': user['username'],
-        'email': user['email'],
-        'editor_mode': _settings?['editor_mode'] ?? 'P',
-        'theme_preset': _localSettings['theme_preset'],
-        'theme_mode': _localSettings['theme_mode'],
-        'api_base_url': _localSettings['api_base_url'],
-        'app_settings': _currentAppSettingsPayload(),
-        'app_settings_updated_at': _localSettings['updated_at'] ??
-            DateTime.now().toUtc().toIso8601String(),
-      };
-      log(
-        level: DebugLogLevel.warning,
-        source: 'Editor.Sync.Settings/bootstrap',
-        message:
-            'Remote settings unavailable right after login: '
-            'Editor.Sync.Settings/bootstrap \u2014 '
-            '${error.toString().replaceFirst('Exception: ', '')}. '
-            'Using cached local settings.',
-      );
-    }
-      _token = token;
-      _profile = user;
-      _settings = settings;
-      // Capture multi-device flags + current session id from the
-      // 0.1.65 backend payload shape. Older backends omit these
-      // fields; the conditional reads keep the app working against
-      // both shapes.
-      final sessionMap = payload['session'] as Map?;
-      _currentSessionId = (sessionMap?['id'] as num?)?.toInt();
-      _multiDevice = payload['multi_device'] == true;
-      _otherSessionsCount =
-          (payload['other_sessions_count'] as num?)?.toInt() ?? 0;
-    refreshState();
-    await _LocalAppStore.saveSession(token, user);
-    await _applyLocalAppSettings({
-      'theme_preset': settings['theme_preset']?.toString() ??
-          _localSettings['theme_preset'],
-      'theme_mode':
-          settings['theme_mode']?.toString() ?? _localSettings['theme_mode'],
-      // api_base_url is client-side state only. The server's value is
-      // just an echo of whatever the frontend pushed up last, and its
-      // Django default (http://localhost:9080/api/v1) would otherwise
-      // overwrite the user's real URL on every login.
-      'api_base_url': _localSettings['api_base_url'],
-      'updated_at': settings['app_settings_updated_at']?.toString() ??
-          _localSettings['updated_at'],
-      'log_preferences': Map<String, dynamic>.from(
-        (settings['app_settings'] as Map?)?['log_preferences'] as Map? ??
-            _localSettings['log_preferences'] as Map? ??
-            {},
-      ),
-    });
-    await _loadInitialData();
-    // Push any local courses + drafts created offline. Skip
-    // _syncAllLocalData's inner _loadInitialData call to avoid the
-    // double-bootstrap race where a single flaky 401 on the second
-    // bootstrap tripped sessionRejected and wiped the fresh token.
-    try {
-      await _syncAllLocalCourses();
-      await _syncAllLocalDrafts();
-    } catch (error) {
-      log(
-        level: DebugLogLevel.warning,
-        source: 'Editor.Sync.Notes/push_all',
-        message:
-            'Local push after login failed: '
-            'Editor.Sync.Notes/push_all \u2014 '
-            '${error.toString().replaceFirst('Exception: ', '')}. '
-            'Will retry on next manual sync.',
-      );
-    }
-    final displayName =
-        user['username']?.toString() ??
-            user['email']?.toString() ??
-            'user';
-    log(
-      level: DebugLogLevel.info,
-      source: 'Editor.Auth/applyAuthPayload',
-      message:
-          'Session established: Editor.Auth/applyAuthPayload \u2014 '
-          'authenticated as $displayName.',
-    );
-    if (mounted) {
-      showMessage('Signed in as $displayName.');
-    }
-  }
-
-  @override
-  Future<void> logout() async {
-    final token = _token;
-    if (token == null || token.isEmpty) return;
-    try {
-      await widget.client.logout(token);
-    } catch (error) {
-      log(
-        level: DebugLogLevel.warning,
-        source: 'Editor.Auth/logout',
-        message:
-            'Cloud logout call failed but local session cleared anyway: '
-            'Editor.Auth/logout \u2014 '
-            '${error.toString().replaceFirst('Exception: ', '')}.',
-      );
-    }
-      _token = null;
-      _profile = null;
-      _settings = null;
-      _deletedNotes = const [];
-      // Reset multi-device session metadata too — without this the
-      // Settings page would still display stale "1 other session"
-      // banner copy after a logout-from-this-device flow.
-      _currentSessionId = null;
-      _multiDevice = false;
-      _otherSessionsCount = 0;
-    refreshState();
-    await _LocalAppStore.clearSession();
-    await _loadInitialData();
-    showMessage(
-      'Signed out: Editor.Auth/logout \u2014 local session cleared.',
-    );
-    log(
-      level: DebugLogLevel.info,
-      source: 'Editor.Auth/logout',
-      message:
-          'Signed out: Editor.Auth/logout \u2014 local session cleared.',
-    );
-  }
-
+  //
+  // applyAuthPayload + logout moved into the shared
+  // AppShellSessionMixin (notechondria_shared 0.1.82). Editor's
+  // multi-device fields (`_currentSessionId` / `_multiDevice` /
+  // `_otherSessionsCount`) and `_LocalAppStore` session
+  // persistence are wired through the mixin's hook overrides at
+  // the top of this class.
 
   // ---------------------------------------------------------------------------
   // Build

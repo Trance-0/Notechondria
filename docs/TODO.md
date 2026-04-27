@@ -20,24 +20,22 @@ Completed rounds live in `./docs/versions/<semver>.md` — do **not**
 restate them here. When a task is landed, delete its entry from this
 file and add a round-log entry to the new version doc.
 
-- [ ] **Cross-app shared mixins — remaining 1 of 8.** 0.1.52 codified
-  the 1000-LOC ceiling in AGENTS.md §1.5; 0.1.53–0.1.61 brought every
-  file in the three apps under the cap and shipped the first three
-  shared mixins out of `notechondria_shared/lib/src/app_shell/`:
-  `AppShellLogMixin`, `AppShellAuthActionsMixin`, `AppShellOAuthMixin`
-  (plus the shared `AuthClient` interface and `url_strategy` shim).
+- [x] **Cross-app shared mixins — 8 of 8 COMPLETE.** 0.1.52
+  codified the 1000-LOC ceiling in AGENTS.md §1.5; 0.1.53–0.1.61
+  brought every file in the three apps under the cap and shipped
+  the first three shared mixins out of
+  `notechondria_shared/lib/src/app_shell/`: `AppShellLogMixin`,
+  `AppShellAuthActionsMixin`, `AppShellOAuthMixin` (plus the
+  shared `AuthClient` interface and `url_strategy` shim).
   0.1.78 added `AppShellLocalPersistMixin`; 0.1.79 added
   `AppShellCourseHelpersMixin`; 0.1.80 added
   `AppShellDraftHelpersMixin`; 0.1.81 added
-  `HttpClientInternalsMixin` (a mixin on `HttpNotechondriaClient`,
-  not on `_AppShellState`). One mixin still pending:
-
-  - `AppShellSessionMixin` — `applyAuthPayload`, `logout`. The
-    biggest remaining win (~140 lines per app). Needs abstract
-    getters for `_token`, `_profile`, `_settings`, `_localSettings`,
-    `_deletedNotes`, plus pass-through hooks for
-    `_currentAppSettingsPayload`, `_applyLocalAppSettings`,
-    `_loadInitialData`, `_syncAllLocalCourses`, `_syncAllLocalDrafts`.
+  `HttpClientInternalsMixin`; 0.1.82 added
+  `AppShellSessionMixin`. All eight mixins shipped — the
+  byte-identical chunks that used to live three times in
+  per-app `_AppShellState` files now live once in
+  `notechondria_shared`. See round-logs 0.1.78–0.1.82 for
+  per-mixin details.
 
 ## Bugs
 
