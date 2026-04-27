@@ -519,25 +519,30 @@ than shared.</li>
 </ul>
 <h2 id="bugs"><a class="header" href="#bugs">Bugs</a></h2>
 <ul>
-<li><input disabled="" type="checkbox"/>
+<li>
+<p><input disabled="" type="checkbox"/>
 Add a regression test for the note-share deep-link path
 (<code>https://host/#/notes/&lt;uuid&gt;</code> cold-start with and without
 session, and the OAuth-callback-preserves-fragment case). The
 code fix landed in 0.1.67; the test was deferred because the
-editor smoke-test harness doesn't have a web navigator shim yet.</li>
+editor smoke-test harness doesn't have a web navigator shim yet.</p>
+</li>
+<li>
+<p><input disabled="" type="checkbox"/>
+<strong>Audit login-form autocomplete attributes.</strong> User reported
+Bitwarden failing to autofill on the editor's web login form
+(<code>autofill.service.ts:528 Did not autofill</code>). Stack trace is
+Bitwarden-internal so not a code-side bug, but it suggests our
+login fields may not be signalling autocomplete intent properly.
+Verify <code>autocomplete="username"</code> /
+<code>autocomplete="current-password"</code> on the relevant <code>&lt;input&gt;</code>s in
+<code>auth_dialogs.dart</code> and <code>auth_dialogs_wizard.dart</code>; if missing,
+add them so password managers have a clear hint.</p>
+</li>
 </ul>
 <h2 id="global-reusable-components"><a class="header" href="#global-reusable-components">Global reusable components</a></h2>
 <h3 id="start-up-animations"><a class="header" href="#start-up-animations">Start up animations</a></h3>
 <h3 id="sidebarnavigation"><a class="header" href="#sidebarnavigation">Sidebar/Navigation</a></h3>
-<ul>
-<li><input disabled="" type="checkbox"/>
-Sync the editor sidebar for the portal sidebar. (Removing
-title, <code>wide layout</code> texts. You may create a list of items/widgets
-that feed into the <code>sidebar</code> class, the <code>sidebar</code> should have some
-properties/functions like <code>header text</code> (used in vertical layout),
-<code>lower left item</code> (the <code>new category</code> trigger should lives in
-that))</li>
-</ul>
 <h3 id="login-and-account-info"><a class="header" href="#login-and-account-info">Login and account info</a></h3>
 <ul>
 <li>
@@ -552,6 +557,24 @@ editor-only additions still need to be ported into
 <code>portal_app/lib/modules/settings.dart</code> — this requires syncing
 client methods, app_shell callback wiring, and the
 <code>_ApiKeySection</code> widget.</p>
+</li>
+<li>
+<p><input disabled="" type="checkbox"/>
+<strong>Note cover images — planner / portal frontend.</strong> 0.1.76
+shipped per-note cover images for editor_app: backend model +
+migration + <code>/notes/&lt;id&gt;/cover/</code> POST/DELETE endpoint, shared
+<code>NoteCoverImage</code> widget in <code>notechondria_shared</code> (with theme-
+colored barcode fallback), and the editor's metadata dialog +
+note viewer wired up. planner_app and portal_app don't yet
+expose note metadata editing or a read-only viewer in the same
+shape, so the cover-image upload UI hasn't been ported. When
+those apps grow note edit/view surfaces, mirror the editor
+pattern: add <code>uploadNoteCoverImage</code> / <code>deleteNoteCoverImage</code> to
+their <code>NotechondriaClient</code> interface + http_client (~10 lines
+each, copy from editor), and pass the callbacks into wherever
+they construct the metadata dialog. The viewer side just needs
+<code>NoteCoverImage(seed: uuid, imageUrl: note['cover_image_url'])</code>
+above the body — already exported from <code>notechondria_shared</code>.</p>
 </li>
 <li>
 <p><input disabled="" type="checkbox"/>
