@@ -51,6 +51,9 @@ export 'src/components/debug_widgets.dart' show ApiDebugCard, ApiDebugSummary;
 export 'src/components/error_state.dart' show ErrorStateView;
 export 'src/components/navigation.dart' show ConfirmWithDelayDialog, SidebarItem;
 export 'src/components/note_cover_image.dart' show NoteCoverImage;
+
+export 'src/http/http_client_internals_mixin.dart'
+    show HttpClientInternalsMixin;
 export 'src/components/phased_status.dart' show PhasedStatusIndicator;
 export 'src/components/splash_screen.dart' show SplashScreen;
 

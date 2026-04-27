@@ -20,7 +20,7 @@ Completed rounds live in `./docs/versions/<semver>.md` — do **not**
 restate them here. When a task is landed, delete its entry from this
 file and add a round-log entry to the new version doc.
 
-- [ ] **Cross-app shared mixins — remaining 2 of 8.** 0.1.52 codified
+- [ ] **Cross-app shared mixins — remaining 1 of 8.** 0.1.52 codified
   the 1000-LOC ceiling in AGENTS.md §1.5; 0.1.53–0.1.61 brought every
   file in the three apps under the cap and shipped the first three
   shared mixins out of `notechondria_shared/lib/src/app_shell/`:
@@ -28,8 +28,9 @@ file and add a round-log entry to the new version doc.
   (plus the shared `AuthClient` interface and `url_strategy` shim).
   0.1.78 added `AppShellLocalPersistMixin`; 0.1.79 added
   `AppShellCourseHelpersMixin`; 0.1.80 added
-  `AppShellDraftHelpersMixin`. Two mixins still pending so per-app
-  `_AppShellState` files can shed the remaining duplication:
+  `AppShellDraftHelpersMixin`; 0.1.81 added
+  `HttpClientInternalsMixin` (a mixin on `HttpNotechondriaClient`,
+  not on `_AppShellState`). One mixin still pending:
 
   - `AppShellSessionMixin` — `applyAuthPayload`, `logout`. The
     biggest remaining win (~140 lines per app). Needs abstract
@@ -37,11 +38,6 @@ file and add a round-log entry to the new version doc.
     `_deletedNotes`, plus pass-through hooks for
     `_currentAppSettingsPayload`, `_applyLocalAppSettings`,
     `_loadInitialData`, `_syncAllLocalCourses`, `_syncAllLocalDrafts`.
-  - `HttpClientInternalsMixin` on `HttpNotechondriaClient` — the
-    `_send` / `_decode` / `_headers` / `_shapedErrorMessage` stack.
-    Each app already extracted this into `core/http_client_internals.dart`
-    in 0.1.59/0.1.60 but the three copies are still parallel rather
-    than shared.
 
 ## Bugs
 

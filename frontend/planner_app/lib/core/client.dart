@@ -159,20 +159,33 @@ class HandshakeResult {
 }
 
 /// Default HTTP implementation of the Notechondria REST client.
-class HttpNotechondriaClient implements NotechondriaClient {
+class HttpNotechondriaClient
+    with HttpClientInternalsMixin
+    implements NotechondriaClient {
   HttpNotechondriaClient({http.Client? httpClient, String? initialBaseUrl})
       : _httpClient = httpClient ?? http.Client(),
         _baseUrl = _normalizeBaseUrl(initialBaseUrl ?? _resolveBaseUrl());
 
   final http.Client _httpClient;
   String _baseUrl;
+  @override
   final ValueNotifier<ApiDebugSnapshot?> debugSnapshot = ValueNotifier(null);
+  @override
   final ValueNotifier<List<ApiDebugSnapshot>> debugHistory =
       ValueNotifier(const []);
 
   /// Optional debug-log sink for per-request tracing. See editor_app
   /// `HttpNotechondriaClient` for the full contract.
   void Function(DebugLogLevel level, String source, String message)? _logger;
+
+  // HttpClientInternalsMixin wiring.
+  @override
+  http.Client get httpClient => _httpClient;
+  @override
+  void Function(DebugLogLevel level, String source, String message)?
+      get logger => _logger;
+  @override
+  String get httpLogTagPrefix => 'Planner';
 
   void setLogger(
     void Function(DebugLogLevel level, String source, String message) logger,
@@ -262,9 +275,9 @@ class HttpNotechondriaClient implements NotechondriaClient {
     return '$value/api/v1';
   }
 
-  // Internal HTTP plumbing (`_uri`, `_decode`, `_send`, `_get`,
-  // `_post`, `_patch`, `_delete`, `_headers`,
-  // `_shapedErrorMessage`, `_stringifyErrors`, `_previewBody`,
+  // Internal HTTP plumbing (`_uri`, `decode`, `send`, `_get`,
+  // `_post`, `_patch`, `_delete`, `headers`,
+  // `shapedErrorMessage`, `_stringifyErrors`, `_previewBody`,
   // `_formatDecodeError`, `_recordDebugSnapshot`) lives in
   // `core/http_client_internals.dart` as an extension on
   // `HttpNotechondriaClient` so this file stays closer to the
@@ -276,7 +289,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/courses/');
     final response = await _get(uri, token: token);
     final data =
-        await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
+        await decode(response, uri: uri, method: 'GET') as List<dynamic>;
     return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
@@ -288,7 +301,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/courses/');
     final response = await _post(uri, token: token, payload: payload);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'POST'),
+      await decode(response, uri: uri, method: 'POST'),
     );
   }
 
@@ -298,7 +311,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/courses/$courseId/');
     final response = await _get(uri, token: token);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'GET'),
+      await decode(response, uri: uri, method: 'GET'),
     );
   }
 
@@ -308,7 +321,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/courses/$courseId/notes/');
     final response = await _get(uri, token: token);
     final data =
-        await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
+        await decode(response, uri: uri, method: 'GET') as List<dynamic>;
     return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
@@ -317,7 +330,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/notes/$noteId/');
     final response = await _get(uri, token: token);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'GET'),
+      await decode(response, uri: uri, method: 'GET'),
     );
   }
 
@@ -337,7 +350,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     );
     final response = await _get(uri, token: token);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'GET'),
+      await decode(response, uri: uri, method: 'GET'),
     );
   }
 
@@ -349,7 +362,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/notes/');
     final response = await _post(uri, token: token, payload: payload);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'POST'),
+      await decode(response, uri: uri, method: 'POST'),
     );
   }
 
@@ -357,7 +370,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
   Future<void> deleteNote(String token, int noteId) async {
     final uri = _uri('/notes/$noteId/');
     final response = await _delete(uri, token: token);
-    await _decode(response, uri: uri, method: 'DELETE');
+    await decode(response, uri: uri, method: 'DELETE');
   }
 
   @override
@@ -365,7 +378,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/notes/deleted/');
     final response = await _get(uri, token: token);
     final data =
-        await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
+        await decode(response, uri: uri, method: 'GET') as List<dynamic>;
     return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
@@ -374,7 +387,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/notes/$noteId/restore/');
     final response = await _post(uri, token: token);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'POST'),
+      await decode(response, uri: uri, method: 'POST'),
     );
   }
 
@@ -383,7 +396,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/notes/deleted/empty/');
     final response = await _delete(uri, token: token);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'DELETE'),
+      await decode(response, uri: uri, method: 'DELETE'),
     );
   }
 
@@ -396,7 +409,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/notes/$noteId/');
     final response = await _patch(uri, token: token, payload: payload);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'PATCH'),
+      await decode(response, uri: uri, method: 'PATCH'),
     );
   }
 
@@ -408,7 +421,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/notes/$noteId/history/');
     final response = await _get(uri, token: token);
     final data =
-        await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
+        await decode(response, uri: uri, method: 'GET') as List<dynamic>;
     return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
@@ -425,7 +438,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
       payload: {'reason': reason},
     );
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'POST'),
+      await decode(response, uri: uri, method: 'POST'),
     );
   }
 
@@ -438,7 +451,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/notes/$noteId/restore/$versionId/');
     final response = await _post(uri, token: token);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'POST'),
+      await decode(response, uri: uri, method: 'POST'),
     );
   }
 
@@ -447,7 +460,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/activity/');
     final response = await _get(uri, token: token);
     final data =
-        await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
+        await decode(response, uri: uri, method: 'GET') as List<dynamic>;
     return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
@@ -463,7 +476,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     );
     final response = await _get(uri, token: token);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'GET'),
+      await decode(response, uri: uri, method: 'GET'),
     );
   }
 
@@ -472,7 +485,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/calendar-feeds/');
     final response = await _get(uri, token: token);
     final data =
-        await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
+        await decode(response, uri: uri, method: 'GET') as List<dynamic>;
     return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
@@ -484,7 +497,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/calendar-feeds/');
     final response = await _post(uri, token: token, payload: payload);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'POST'),
+      await decode(response, uri: uri, method: 'POST'),
     );
   }
 
@@ -497,7 +510,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/calendar-feeds/$feedId/');
     final response = await _patch(uri, token: token, payload: payload);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'PATCH'),
+      await decode(response, uri: uri, method: 'PATCH'),
     );
   }
 
@@ -505,7 +518,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
   Future<void> deleteCalendarFeed(String token, int feedId) async {
     final uri = _uri('/calendar-feeds/$feedId/');
     final response = await _delete(uri, token: token);
-    await _decode(response, uri: uri, method: 'DELETE');
+    await decode(response, uri: uri, method: 'DELETE');
   }
 
   @override
@@ -516,7 +529,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/note-sessions/');
     final response = await _post(uri, token: token, payload: payload);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'POST'),
+      await decode(response, uri: uri, method: 'POST'),
     );
   }
 
@@ -529,7 +542,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/note-sessions/$sessionId/');
     final response = await _patch(uri, token: token, payload: payload);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'PATCH'),
+      await decode(response, uri: uri, method: 'PATCH'),
     );
   }
 
@@ -538,7 +551,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/courses/$courseId/subscribe/');
     final response = await _post(uri, token: token);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'POST'),
+      await decode(response, uri: uri, method: 'POST'),
     );
   }
 
@@ -548,7 +561,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/courses/$courseId/subscribe/');
     final response = await _delete(uri, token: token);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'DELETE'),
+      await decode(response, uri: uri, method: 'DELETE'),
     );
   }
 
@@ -557,7 +570,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/courses/$courseId/open/');
     final response = await _post(uri, token: token);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'POST'),
+      await decode(response, uri: uri, method: 'POST'),
     );
   }
 
@@ -566,7 +579,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/admin/template-courses/restore/');
     final response = await _post(uri, token: token);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'POST'),
+      await decode(response, uri: uri, method: 'POST'),
     );
   }
 
@@ -588,7 +601,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     }
     final response = await _post(uri, payload: payload);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'POST'),
+      await decode(response, uri: uri, method: 'POST'),
     );
   }
 
@@ -600,7 +613,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
       payload: {'invitation_code': invitationCode},
     );
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'POST'),
+      await decode(response, uri: uri, method: 'POST'),
     );
   }
 
@@ -612,7 +625,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
       payload: {'email': email, 'code': code},
     );
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'POST'),
+      await decode(response, uri: uri, method: 'POST'),
     );
   }
 
@@ -621,7 +634,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/auth/resend-verification/');
     final response = await _post(uri, payload: {'email': email});
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'POST'),
+      await decode(response, uri: uri, method: 'POST'),
     );
   }
 
@@ -633,7 +646,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
       payload: {'email': email, 'password': password},
     );
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'POST'),
+      await decode(response, uri: uri, method: 'POST'),
     );
   }
 
@@ -645,7 +658,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     if (invitationCode.isNotEmpty) payload['invitation_code'] = invitationCode;
     final response = await _post(uri, payload: payload);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'POST'),
+      await decode(response, uri: uri, method: 'POST'),
     );
   }
 
@@ -657,7 +670,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     if (invitationCode.isNotEmpty) payload['invitation_code'] = invitationCode;
     final response = await _post(uri, payload: payload);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'POST'),
+      await decode(response, uri: uri, method: 'POST'),
     );
   }
 
@@ -666,7 +679,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/auth/oauth-config/');
     final response = await _get(uri);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'GET'),
+      await decode(response, uri: uri, method: 'GET'),
     );
   }
 
@@ -674,7 +687,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
   Future<List<Map<String, dynamic>>> listSocialAccounts(String token) async {
     final uri = _uri('/auth/social-accounts/');
     final response = await _get(uri, token: token);
-    final decoded = await _decode(response, uri: uri, method: 'GET');
+    final decoded = await decode(response, uri: uri, method: 'GET');
     return List<Map<String, dynamic>>.from(
       (decoded as List).map((e) => Map<String, dynamic>.from(e)),
     );
@@ -685,7 +698,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/auth/social-accounts/$provider/');
     final response = await _httpClient.delete(uri, headers: {'Authorization': 'Token $token'});
     if (response.statusCode != 204) {
-      await _decode(response, uri: uri, method: 'DELETE');
+      await decode(response, uri: uri, method: 'DELETE');
     }
   }
 
@@ -696,7 +709,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     if (redirectUri.isNotEmpty) payload['redirect_uri'] = redirectUri;
     final response = await _post(uri, token: token, payload: payload);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'POST'),
+      await decode(response, uri: uri, method: 'POST'),
     );
   }
 
@@ -707,7 +720,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     if (redirectUri.isNotEmpty) payload['redirect_uri'] = redirectUri;
     final response = await _post(uri, token: token, payload: payload);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'POST'),
+      await decode(response, uri: uri, method: 'POST'),
     );
   }
 
@@ -716,7 +729,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/auth/password-reset/');
     final response = await _post(uri, payload: {'email': email});
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'POST'),
+      await decode(response, uri: uri, method: 'POST'),
     );
   }
 
@@ -732,7 +745,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
       payload: {'email': email, 'code': code, 'password': password},
     );
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'POST'),
+      await decode(response, uri: uri, method: 'POST'),
     );
   }
 
@@ -741,7 +754,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/auth/session/');
     final response = await _get(uri, token: token);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'GET'),
+      await decode(response, uri: uri, method: 'GET'),
     );
   }
 
@@ -750,7 +763,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/auth/sessions/');
     final response = await _get(uri, token: token);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'GET'),
+      await decode(response, uri: uri, method: 'GET'),
     );
   }
 
@@ -758,18 +771,18 @@ class HttpNotechondriaClient implements NotechondriaClient {
   Future<void> revokeSession(String token, int sessionId) async {
     final uri = _uri('/auth/sessions/$sessionId/');
     final response = await _delete(uri, token: token);
-    await _decode(response, uri: uri, method: 'DELETE');
+    await decode(response, uri: uri, method: 'DELETE');
   }
 
   @override
   Future<void> logout(String token) async {
     final uri = _uri('/auth/logout/');
-    final response = await _send(
+    final response = await send(
       'POST',
       uri,
-      () => _httpClient.post(uri, headers: _headers(token: token)),
+      () => _httpClient.post(uri, headers: headers(token: token)),
     );
-    await _decode(response, uri: uri, method: 'POST');
+    await decode(response, uri: uri, method: 'POST');
   }
 
   @override
@@ -777,7 +790,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/settings/');
     final response = await _get(uri, token: token);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'GET'),
+      await decode(response, uri: uri, method: 'GET'),
     );
   }
 
@@ -789,7 +802,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/settings/');
     final response = await _patch(uri, token: token, payload: payload);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'PATCH'),
+      await decode(response, uri: uri, method: 'PATCH'),
     );
   }
 
@@ -797,7 +810,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
   Future<Map<String, dynamic>> uploadAvatar(String token, XFile file) async {
     final uri = _uri('/settings/');
     final request = http.MultipartRequest('PATCH', uri)
-      ..headers.addAll(_headers(token: token))
+      ..headers.addAll(headers(token: token))
       ..files.add(
         http.MultipartFile.fromBytes(
           'avatar',
@@ -805,9 +818,9 @@ class HttpNotechondriaClient implements NotechondriaClient {
           filename: file.name,
         ),
       );
-    final streamed = await _send('PATCH', uri, () => request.send().then(http.Response.fromStream));
+    final streamed = await send('PATCH', uri, () => request.send().then(http.Response.fromStream));
     return Map<String, dynamic>.from(
-      await _decode(streamed, uri: uri, method: 'PATCH'),
+      await decode(streamed, uri: uri, method: 'PATCH'),
     );
   }
 
@@ -816,7 +829,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/planner-events/');
     final response = await _get(uri, token: token);
     final data =
-        await _decode(response, uri: uri, method: 'GET') as List<dynamic>;
+        await decode(response, uri: uri, method: 'GET') as List<dynamic>;
     return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
@@ -828,7 +841,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/planner-events/');
     final response = await _post(uri, token: token, payload: payload);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'POST'),
+      await decode(response, uri: uri, method: 'POST'),
     );
   }
 
@@ -841,7 +854,7 @@ class HttpNotechondriaClient implements NotechondriaClient {
     final uri = _uri('/planner-events/$eventId/');
     final response = await _patch(uri, token: token, payload: payload);
     return Map<String, dynamic>.from(
-      await _decode(response, uri: uri, method: 'PATCH'),
+      await decode(response, uri: uri, method: 'PATCH'),
     );
   }
 }
