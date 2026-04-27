@@ -509,11 +509,20 @@ extension _AppShellBuildHelpersX on _AppShellState {
   Widget _buildPage() {
     switch (_selectedIndex) {
       case 1:
-        // When a category is selected, scope local drafts to that
-        // course so the learner view doesn't mix unrelated drafts
-        // from other categories. When no category is selected we
-        // show every local draft (the "All Notes" pseudo-category).
-        final scopedLocalDrafts = _selectedCourse == null
+        // Local-draft visibility rules:
+        //
+        //   1. No category selected → show every local draft
+        //      (the "All Notes" pseudo-category).
+        //   2. Scope dropdown explicitly set to "Local drafts only"
+        //      → drop the category filter and show every local draft
+        //      so the user can see ALL of them (the whole point of
+        //      that filter — they want to triage local drafts across
+        //      categories without switching the sidebar selection).
+        //   3. Otherwise → scope to the active course so we don't
+        //      mix unrelated drafts from other categories.
+        final showAllLocalDrafts = _selectedCourse == null ||
+            _learnerSearchScope == 'local';
+        final scopedLocalDrafts = showAllLocalDrafts
             ? _localDrafts
             : _localNotesForCourse(_selectedCourse!);
         return _LearnerPage(

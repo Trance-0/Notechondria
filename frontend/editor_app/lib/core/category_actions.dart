@@ -8,6 +8,32 @@ part of notechondria_frontend;
 /// can't call `setState` directly. Extracted from `app_shell.dart`
 /// so that file stays closer to the AGENTS.md §1.5 1000-line ceiling.
 extension _AppShellCategoryX on _AppShellState {
+  /// True iff the category is the protected Inbox row. The check is
+  /// purely name-based (case-insensitive) \u2014 we deliberately do NOT
+  /// rely on `is_default`, which is server-controlled and can lag the
+  /// UI while a sync is in flight. Single source of truth so all
+  /// rename / delete guards agree.
+  bool _isInboxCategory(Map<String, dynamic> course) {
+    final title = course['title']?.toString().trim() ?? '';
+    return title.toLowerCase() == 'inbox';
+  }
+
+  /// True iff a category with [title] (case-insensitive) already
+  /// exists in the user's combined local + cloud category list,
+  /// optionally excluding [excludeId] so a rename can land on its
+  /// own current title without false positives.
+  bool _categoryNameExists(String title, {int? excludeId}) {
+    final normalized = title.trim().toLowerCase();
+    if (normalized.isEmpty) return false;
+    bool match(Map<String, dynamic> course) {
+      final id = (course['id'] as num?)?.toInt();
+      if (excludeId != null && id == excludeId) return false;
+      final other = course['title']?.toString().trim().toLowerCase() ?? '';
+      return other == normalized;
+    }
+    return _localCourses.any(match) || _courses.any(match);
+  }
+
   /// Creates a new category. Cloud if signed in, otherwise local.
   Future<ActionFeedback> _createCategory(String title, {int? icon}) async {
     final trimmed = title.trim();
@@ -16,6 +42,13 @@ extension _AppShellCategoryX on _AppShellState {
           message: 'Category not created: '
               'Editor.Sync.Courses/create \u2014 '
               'title field is empty.',
+          isError: true);
+    }
+    if (_categoryNameExists(trimmed)) {
+      return ActionFeedback(
+          message: "Category not created: "
+              "Editor.Sync.Courses/create \u2014 "
+              "a category named '$trimmed' already exists.",
           isError: true);
     }
     final token = _token;
@@ -84,14 +117,22 @@ extension _AppShellCategoryX on _AppShellState {
               'title field is empty.',
           isError: true);
     }
-    if (course['is_default'] == true) {
+    if (_isInboxCategory(course) &&
+        trimmed.toLowerCase() != 'inbox') {
       return const ActionFeedback(
           message: 'Category not updated: '
               'Editor.Sync.Courses/update \u2014 '
-              'the default (Inbox) category is protected from edits.',
+              'the Inbox category cannot be renamed.',
           isError: true);
     }
     final courseId = (course['id'] as num?)?.toInt();
+    if (_categoryNameExists(trimmed, excludeId: courseId)) {
+      return ActionFeedback(
+          message: 'Category not updated: '
+              "Editor.Sync.Courses/update \u2014 "
+              "a category named '$trimmed' already exists.",
+          isError: true);
+    }
     final isLocal = _isLocalCourse(course);
     try {
       if (isLocal) {
@@ -162,20 +203,23 @@ extension _AppShellCategoryX on _AppShellState {
 
   /// Deletes a category. Notes in it are moved to the user's default category.
   Future<ActionFeedback> _deleteCategory(Map<String, dynamic> course) async {
-    if (course['is_default'] == true) {
+    if (_isInboxCategory(course)) {
       return const ActionFeedback(
           message: 'Category not deleted: '
               'Editor.Sync.Courses/delete \u2014 '
-              'the default (Inbox) category cannot be removed.',
+              'the Inbox category cannot be removed.',
           isError: true);
     }
     final courseId = (course['id'] as num?)?.toInt();
     final isLocal = _isLocalCourse(course);
     try {
       if (isLocal) {
-        // Find the local default (Inbox) category to reassign notes.
+        // Find the local Inbox category (by name, not is_default) to
+        // reassign notes orphaned by this delete.
         final defaultLocal = _localCourses.cast<Map<String, dynamic>?>().firstWhere(
-          (c) => c?['is_default'] == true && c?['id'] != course['id'],
+          (c) => c != null &&
+              c['id'] != course['id'] &&
+              _isInboxCategory(c),
           orElse: () => null,
         );
         final defaultLocalId = (defaultLocal?['id'] as num?)?.toInt();
@@ -218,9 +262,12 @@ extension _AppShellCategoryX on _AppShellState {
               isError: true);
         }
         await widget.client.deleteCourse(token, courseId);
-        // Find the remote default category to land on after deletion.
+        // Find the remote Inbox category to land on after deletion
+        // (by name, not is_default).
         final defaultRemote = _courses.cast<Map<String, dynamic>?>().firstWhere(
-          (c) => c?['is_default'] == true && (c?['id'] as num?)?.toInt() != courseId,
+          (c) => c != null &&
+              (c['id'] as num?)?.toInt() != courseId &&
+              _isInboxCategory(c),
           orElse: () => null,
         );
           _courses = _courses
@@ -276,10 +323,12 @@ extension _AppShellCategoryX on _AppShellState {
     }
     try {
       await widget.client.unsubscribeCourse(token, courseId);
+      // Land back on the remote Inbox after unsubscribing (by name).
       final defaultRemote = _courses.cast<Map<String, dynamic>?>().firstWhere(
             (c) =>
-                c?['is_default'] == true &&
-                (c?['id'] as num?)?.toInt() != courseId,
+                c != null &&
+                (c['id'] as num?)?.toInt() != courseId &&
+                _isInboxCategory(c),
             orElse: () => null,
           );
         _courses = _courses
@@ -322,8 +371,9 @@ extension _AppShellCategoryX on _AppShellState {
   /// and right-click handlers. Pulled out so the pinned Inbox row and the
   /// draggable rows inside the reorderable list share the exact same look.
   Widget _buildCategoryRow(Map<String, dynamic> cat) {
+    final isInbox = _isInboxCategory(cat);
     return Tooltip(
-      message: cat['is_default'] == true
+      message: isInbox
           ? cat['title']?.toString() ?? 'Category'
           : 'Long-press or right-click to rename or delete. Drag to reorder.',
       waitDuration: const Duration(milliseconds: 600),
@@ -333,7 +383,7 @@ extension _AppShellCategoryX on _AppShellState {
         child: SidebarItem(
           icon: cat['is_local_course'] == true
               ? Icons.folder_outlined
-              : (cat['is_default'] == true
+              : (isInbox
                   ? Icons.inbox_outlined
                   : Icons.school_outlined),
           label: cat['title']?.toString() ?? 'Category',
@@ -434,12 +484,17 @@ extension _AppShellCategoryX on _AppShellState {
     final title = result['title'] as String? ?? '';
     if (title.trim().isEmpty) return;
     final icon = result['icon'] as int?;
-    await _createCategory(title, icon: icon);
+    final feedback = await _createCategory(title, icon: icon);
+    if (mounted && feedback.isError) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(feedback.message)),
+      );
+    }
   }
 
   /// Shows an edit dialog for a category (rename + icon + delete).
   Future<void> _promptEditCategory(Map<String, dynamic> course) async {
-    if (course['is_default'] == true) {
+    if (_isInboxCategory(course)) {
       showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -451,7 +506,7 @@ extension _AppShellCategoryX on _AppShellState {
             ],
           ),
           content: const Text(
-            'This is the default category. It cannot be renamed or deleted.\n\n'
+            'Inbox is the default category. It cannot be renamed or deleted.\n\n'
             'Notes that lose their category are automatically moved here.',
           ),
           actions: [

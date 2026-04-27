@@ -602,6 +602,25 @@ class CourseListApiView(APIView):
                 client_course_id=client_course_id,
             ).first()
         icon = serializer.validated_data.get("icon")
+        # Name-uniqueness guard. Categories are user-scoped; the same
+        # creator may not have two courses with the same title (case-
+        # insensitive). The upsert path must skip this check against
+        # itself when only renaming, so we exclude `existing.id`.
+        duplicate_qs = Course.objects.filter(
+            creator_id=creator,
+            title__iexact=title,
+        )
+        if existing is not None:
+            duplicate_qs = duplicate_qs.exclude(pk=existing.pk)
+        if duplicate_qs.exists():
+            return Response(
+                {"detail": (
+                    "Cannot create category: "
+                    "Backend.Notes.Courses/create \u2014 "
+                    f"a category named '{title}' already exists for this user."
+                )},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         if existing is not None:
             existing.title = title
             existing.description = description
@@ -620,7 +639,7 @@ class CourseListApiView(APIView):
                 title=title,
                 description=description,
                 icon=icon,
-                is_default=False,
+                is_default=(title.casefold() == "inbox"),
             )
             response_status = status.HTTP_201_CREATED
         subscription_map = active_subscription_map(creator)
@@ -671,19 +690,43 @@ class CourseDetailApiView(APIView):
                 )},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        if course.is_default:
-            return Response(
-                {"detail": (
-                    "Cannot update category: "
-                    "Backend.Notes.Courses/update \u2014 "
-                    "the default (Inbox) category is protected from edits."
-                )},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        # Inbox is protected by name, not by `is_default`. Renaming
+        # away from "Inbox" or any rename that lands on "Inbox"
+        # (collision with another user's row of the same name) is
+        # rejected. Editing description / icon on the Inbox row is
+        # allowed \u2014 only the name and delete are locked.
         serializer = CourseWriteSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        if "title" in serializer.validated_data:
-            course.title = serializer.validated_data["title"].strip()
+        new_title = (
+            serializer.validated_data["title"].strip()
+            if "title" in serializer.validated_data
+            else None
+        )
+        if new_title is not None and new_title != course.title:
+            if course.title.casefold() == "inbox":
+                return Response(
+                    {"detail": (
+                        "Cannot update category: "
+                        "Backend.Notes.Courses/update \u2014 "
+                        "the Inbox category cannot be renamed."
+                    )},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            duplicate = (
+                Course.objects.filter(creator_id=creator, title__iexact=new_title)
+                .exclude(pk=course.pk)
+                .exists()
+            )
+            if duplicate:
+                return Response(
+                    {"detail": (
+                        "Cannot update category: "
+                        "Backend.Notes.Courses/update \u2014 "
+                        f"a category named '{new_title}' already exists."
+                    )},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            course.title = new_title
         if "description" in serializer.validated_data:
             course.description = serializer.validated_data.get("description") or ""
         if "icon" in serializer.validated_data:
@@ -718,12 +761,12 @@ class CourseDetailApiView(APIView):
                 )},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        if course.is_default:
+        if course.title.casefold() == "inbox":
             return Response(
                 {"detail": (
                     "Cannot delete category: "
                     "Backend.Notes.Courses/delete \u2014 "
-                    "the default (Inbox) category cannot be removed."
+                    "the Inbox category cannot be removed."
                 )},
                 status=status.HTTP_400_BAD_REQUEST,
             )

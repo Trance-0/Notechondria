@@ -590,7 +590,20 @@ class _LearnerNoteCard extends StatelessWidget {
       author['image_url']?.toString() ?? '',
       apiBaseUrl: apiBaseUrl,
     );
+    final uuid = note['uuid']?.toString() ?? '';
+    final title = note['title']?.toString() ?? '';
+    final coverUrl = _resolveRemoteUrl(
+      note['cover_image_url']?.toString() ?? '',
+      apiBaseUrl: apiBaseUrl,
+    );
+    // Show a Bootstrap-card-style cover banner on PUBLIC cloud notes
+    // (the only ones whose cover image is meaningful to other
+    // readers). Private cloud notes and unsynced local drafts skip
+    // the banner so the card reads as a compact list row instead of
+    // a feature card.
+    final showCoverBanner = isPublic && !isLocalDraft;
     return Card(
+      clipBehavior: Clip.antiAlias,
       color: isLocalDraft
           ? Theme.of(context).colorScheme.surfaceVariant
           : (isPublic
@@ -607,14 +620,26 @@ class _LearnerNoteCard extends StatelessWidget {
       child: InkWell(
         onTap: onOpen,
         borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (showCoverBanner)
+              NoteCoverImage(
+                seed: uuid.isNotEmpty ? uuid : 'note-$title',
+                imageUrl: coverUrl.isNotEmpty ? coverUrl : null,
+                caption: title,
+                showCaption: coverUrl.isEmpty,
+                aspectRatio: 21 / 9,
+                borderRadius: 0,
+              ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                   _RemoteAvatar(
                     radius: 18,
                     imageUrl: avatarUrl,
@@ -736,8 +761,10 @@ class _LearnerNoteCard extends StatelessWidget {
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
-            ],
-          ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
