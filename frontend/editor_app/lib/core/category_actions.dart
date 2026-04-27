@@ -59,7 +59,7 @@ extension _AppShellCategoryX on _AppShellState {
           'description': '',
           if (icon != null) 'icon': icon,
         });
-        final decorated = _decorateRemoteCourse(created);
+        final decorated = decorateRemoteCourse(created);
           _courses = [decorated, ..._courses];
         refreshState();
         await _persistLocalCache();
@@ -133,7 +133,7 @@ extension _AppShellCategoryX on _AppShellState {
               "a category named '$trimmed' already exists.",
           isError: true);
     }
-    final isLocal = _isLocalCourse(course);
+    final isLocal = isLocalCourse(course);
     try {
       if (isLocal) {
           _localCourses = _localCourses
@@ -164,7 +164,7 @@ extension _AppShellCategoryX on _AppShellState {
           courseId,
           {'title': trimmed, 'icon': icon},
         );
-        final decorated = _decorateRemoteCourse(updated);
+        final decorated = decorateRemoteCourse(updated);
           _courses = _courses
               .map((item) => (item['id'] as num?)?.toInt() == courseId
                   ? decorated
@@ -211,7 +211,7 @@ extension _AppShellCategoryX on _AppShellState {
           isError: true);
     }
     final courseId = (course['id'] as num?)?.toInt();
-    final isLocal = _isLocalCourse(course);
+    final isLocal = isLocalCourse(course);
     try {
       if (isLocal) {
         // Find the local Inbox category (by name, not is_default) to
@@ -405,7 +405,7 @@ extension _AppShellCategoryX on _AppShellState {
     final newLocal = <Map<String, dynamic>>[];
     final newRemote = <Map<String, dynamic>>[];
     for (final course in newOrder) {
-      if (_isLocalCourse(course)) {
+      if (isLocalCourse(course)) {
         newLocal.add(course);
       } else {
         newRemote.add(course);
@@ -439,7 +439,7 @@ extension _AppShellCategoryX on _AppShellState {
     try {
       final refreshed = await widget.client.reorderCourses(token, remoteIds);
       final decorated =
-          refreshed.map(_decorateRemoteCourse).toList(growable: false);
+          refreshed.map(decorateRemoteCourse).toList(growable: false);
         _courses = decorated;
       refreshState();
       await _persistLocalCache();
@@ -524,10 +524,10 @@ extension _AppShellCategoryX on _AppShellState {
     final currentIcon = (course['icon'] as num?)?.toInt();
     // Local (negative-id) categories are always owned by the current
     // user. For cloud courses we trust the `is_owned` flag computed
-    // by `_decorateRemoteCourse`. When ownership is unclear (no
+    // by `decorateRemoteCourse`. When ownership is unclear (no
     // authenticated username at decoration time) we default to
     // read-only so the user can't produce a backend 403 from the UI.
-    final isOwned = _isLocalCourse(course) || course['is_owned'] == true;
+    final isOwned = isLocalCourse(course) || course['is_owned'] == true;
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (ctx) => _EditCategoryDialog(

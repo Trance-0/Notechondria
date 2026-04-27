@@ -104,6 +104,7 @@ class _AppShellState extends State<AppShell>
     with
         AppShellLogMixin<AppShell>,
         AppShellLocalPersistMixin<AppShell>,
+        AppShellCourseHelpersMixin<AppShell>,
         AppShellAuthActionsMixin<AppShell>,
         AppShellOAuthMixin<AppShell> {
   @override
@@ -145,6 +146,10 @@ class _AppShellState extends State<AppShell>
       _LocalAppStore.saveStats(v);
   @override
   Future<void> saveLocalLogs(List<String> v) => _LocalAppStore.saveLogs(v);
+  // AppShellCourseHelpersMixin wiring (localCourses already provided
+  // above for AppShellLocalPersistMixin — same getter satisfies both).
+  @override
+  String? get currentUsername => _profile?['username']?.toString();
 
   // ---------------------------------------------------------------------------
   // State

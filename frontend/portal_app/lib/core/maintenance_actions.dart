@@ -194,14 +194,14 @@ extension _AppShellMaintenanceX on _AppShellState {
   Future<ActionFeedback> _clearLocalCache() async {
     _localCache = _LocalAppStore.defaultCache();
     _frontPage = _localCourses.isNotEmpty
-        ? _frontPageFallbackPayload(const [])
+        ? frontPageFallbackPayload(const [])
         : const <String, dynamic>{};
     _courses = const [];
     _activity = const [];
-    _courseNotes = _isLocalCourse(_selectedCourse)
+    _courseNotes = isLocalCourse(_selectedCourse)
         ? _localNotesForCourse(_selectedCourse!)
         : const [];
-    _selectedCourse = _isLocalCourse(_selectedCourse)
+    _selectedCourse = isLocalCourse(_selectedCourse)
         ? _selectedCourse
         : _chooseDefaultCourse(
             remoteCourses: const [],
@@ -237,13 +237,13 @@ extension _AppShellMaintenanceX on _AppShellState {
     _localTrashedDrafts = const [];
     _localTrashedCourses = const [];
     _selectedNote = null;
-    if (_selectedCourse != null && _isLocalCourse(_selectedCourse)) {
+    if (_selectedCourse != null && isLocalCourse(_selectedCourse)) {
       _selectedCourse = _chooseDefaultCourse(
         remoteCourses: _courses,
         localCourses: const [],
         frontPage: _frontPage,
       );
-      _courseNotes = _selectedCourse == null || _isLocalCourse(_selectedCourse)
+      _courseNotes = _selectedCourse == null || isLocalCourse(_selectedCourse)
           ? const []
           : _courseNotes;
     }

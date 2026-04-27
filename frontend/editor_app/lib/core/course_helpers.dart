@@ -1,46 +1,20 @@
 part of notechondria_frontend;
 
-/// Course/category read-side helpers. All five methods are pure
-/// projections over `_AppShellState`'s in-memory course + draft lists
-/// — none call `setState` or mutate fields, so they move cleanly
-/// into an extension. Extracted from `app_shell.dart` so that file
-/// stays closer to the AGENTS.md §1.5 1000-line ceiling.
+/// App-specific course/category helpers. The byte-identical
+/// `_isLocalCourse` / `_decorateRemoteCourse` / `_frontPageFallbackPayload`
+/// methods moved into the shared `AppShellCourseHelpersMixin`
+/// (notechondria_shared 0.1.79). Call sites use the public
+/// `isLocalCourse()` / `decorateRemoteCourse()` /
+/// `frontPageFallbackPayload()` names.
+///
+/// Two helpers stay here because they're either editor-only or
+/// have a different signature on planner:
+///   - `_chooseDefaultCourse` — editor + portal take a `frontPage`
+///     param; planner doesn't. Lives per-app rather than diverging
+///     the shared signature.
+///   - `_localNotesForCourse` — editor-only; uses `_decodeNoteMetadata`
+///     which is private to editor.
 extension _AppShellCourseHelpersX on _AppShellState {
-  bool _isLocalCourse(Map<String, dynamic>? course) {
-    if (course == null) return false;
-    return course['is_local_course'] == true ||
-        ((course['id'] as num?)?.toInt() ?? 0) < 0;
-  }
-
-  Map<String, dynamic> _decorateRemoteCourse(Map<String, dynamic> course) {
-    final owner =
-        Map<String, dynamic>.from(course['owner'] as Map? ?? const {});
-    final username = _profile?['username']?.toString() ?? '';
-    final isOwned = username.isNotEmpty &&
-        owner['username']?.toString().toLowerCase() == username.toLowerCase();
-    return {
-      ...course,
-      'is_local_course': false,
-      'is_owned': course['is_owned'] == true || isOwned,
-    };
-  }
-
-  Map<String, dynamic> _frontPageFallbackPayload(
-    List<Map<String, dynamic>> remoteCourses,
-  ) {
-    final fallbackCourses = remoteCourses.isNotEmpty
-        ? remoteCourses.take(3).toList()
-        : _localCourses.take(3).toList();
-    return {
-      'default_course':
-          fallbackCourses.isNotEmpty ? fallbackCourses.first : null,
-      'carousel_courses': fallbackCourses,
-      'collections': fallbackCourses,
-      'recent_notes': const <Map<String, dynamic>>[],
-      'recommended_notes': const <Map<String, dynamic>>[],
-    };
-  }
-
   Map<String, dynamic>? _chooseDefaultCourse({
     required List<Map<String, dynamic>> remoteCourses,
     required List<Map<String, dynamic>> localCourses,

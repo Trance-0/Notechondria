@@ -70,7 +70,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     _localDrafts = [starterDraft, starterReference];
     _selectedCourse = starterCourse;
     _courseNotes = _localNotesForCourse(starterCourse);
-    _frontPage = _frontPageFallbackPayload(const []);
+    _frontPage = frontPageFallbackPayload(const []);
     _localStats = {
       ..._localStats,
       'starter_workspace_seeded_at': DateTime.now().toUtc().toIso8601String(),
@@ -171,7 +171,7 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     }
     _selectedCourse = inboxCourse;
     _courseNotes = _localNotesForCourse(inboxCourse);
-    _frontPage ??= _frontPageFallbackPayload(const []);
+    _frontPage ??= frontPageFallbackPayload(const []);
     _localStats = {
       ..._localStats,
       'starter_workspace_seeded_at': DateTime.now().toUtc().toIso8601String(),

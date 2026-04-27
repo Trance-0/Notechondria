@@ -44,7 +44,7 @@ extension _AppShellLoadLocalStateX on _AppShellState {
     );
     _courses = (snapshot.cache['courses'] as List<dynamic>? ?? const [])
         .map((item) =>
-            _decorateRemoteCourse(Map<String, dynamic>.from(item as Map)))
+            decorateRemoteCourse(Map<String, dynamic>.from(item as Map)))
         .toList(growable: false);
     await _ensureStarterWorkspace();
     _selectedCourse ??= _chooseDefaultCourse(

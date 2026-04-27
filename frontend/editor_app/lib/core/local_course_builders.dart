@@ -104,11 +104,11 @@ extension _AppShellLocalCourseBuildersX on _AppShellState {
     // out wrong. Auto-pruned after 30 days.
     await _moveCourseToLocalTrash(course, serverCourseId: remoteId);
     _courses = [
-      _decorateRemoteCourse(created),
+      decorateRemoteCourse(created),
       ..._courses.where((item) => item['id'] != created['id']),
     ];
     if (selectedCourseId != null && selectedCourseId == localId) {
-      _selectedCourse = _decorateRemoteCourse(created);
+      _selectedCourse = decorateRemoteCourse(created);
       _courseNotes = const [];
     }
     _localStats = {

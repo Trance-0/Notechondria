@@ -536,7 +536,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
           searchQuery: _learnerSearchQuery,
           searchScope: _learnerSearchScope,
           isAuthenticated: _token != null && _token!.isNotEmpty,
-          isLocalCourseSelected: _isLocalCourse(_selectedCourse),
+          isLocalCourseSelected: isLocalCourse(_selectedCourse),
           currentUsername: _profile?['username']?.toString() ?? '',
           apiBaseUrl: _localSettings['api_base_url']?.toString() ??
               _httpClient?.baseUrl,

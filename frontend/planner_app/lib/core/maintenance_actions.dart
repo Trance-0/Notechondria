@@ -194,10 +194,10 @@ extension _AppShellMaintenanceX on _AppShellState {
     _localCache = _LocalAppStore.defaultCache();
     _courses = const [];
     _activity = const [];
-    _courseNotes = _isLocalCourse(_selectedCourse)
+    _courseNotes = isLocalCourse(_selectedCourse)
         ? _localNotesForCourse(_selectedCourse!)
         : const [];
-    _selectedCourse = _isLocalCourse(_selectedCourse)
+    _selectedCourse = isLocalCourse(_selectedCourse)
         ? _selectedCourse
         : _chooseDefaultCourse(
             remoteCourses: const [],
@@ -232,12 +232,12 @@ extension _AppShellMaintenanceX on _AppShellState {
     _localTrashedDrafts = const [];
     _localTrashedCourses = const [];
     _selectedNote = null;
-    if (_selectedCourse != null && _isLocalCourse(_selectedCourse)) {
+    if (_selectedCourse != null && isLocalCourse(_selectedCourse)) {
       _selectedCourse = _chooseDefaultCourse(
         remoteCourses: _courses,
         localCourses: const [],
       );
-      _courseNotes = _selectedCourse == null || _isLocalCourse(_selectedCourse)
+      _courseNotes = _selectedCourse == null || isLocalCourse(_selectedCourse)
           ? const []
           : _courseNotes;
     }

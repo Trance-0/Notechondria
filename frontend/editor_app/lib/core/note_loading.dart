@@ -87,7 +87,7 @@ extension _AppShellNoteLoadingX on _AppShellState {
       source: 'Editor.UI/open_course',
       message:
           'Opened category: Editor.UI/open_course \u2014 '
-          '${_isLocalCourse(course) ? 'local ' : ''}'
+          '${isLocalCourse(course) ? 'local ' : ''}'
           "'${course['title']}' selected in learner view.",
     );
     await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);

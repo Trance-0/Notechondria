@@ -52,7 +52,7 @@ extension _AppShellNoteLoadingX on _AppShellState {
       _selectedCourse = course;
       _isLoading = true;
     refreshState();
-    if (_isLocalCourse(course)) {
+    if (isLocalCourse(course)) {
         _courseNotes = _localNotesForCourse(course);
         _selectedNote = null;
         _selectedIndex = 2;
@@ -74,7 +74,7 @@ extension _AppShellNoteLoadingX on _AppShellState {
             await widget.client.openCourse(_token!, course['id'] as int);
       }
       final refreshedCourses =
-          (await widget.client.getCourses(token: _token)).map(_decorateRemoteCourse).toList();
+          (await widget.client.getCourses(token: _token)).map(decorateRemoteCourse).toList();
       final refreshedSelected = refreshedCourses.firstWhere(
         (item) => item['id'] == effectiveCourse['id'],
         orElse: () => effectiveCourse,

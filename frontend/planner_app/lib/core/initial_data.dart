@@ -60,7 +60,7 @@ extension _AppShellInitialDataX on _AppShellState {
 
     try {
       courses = (await widget.client.getCourses(token: _token))
-          .map(_decorateRemoteCourse)
+          .map(decorateRemoteCourse)
           .toList(growable: false);
       updatedCache = true;
     } catch (error) {
@@ -78,7 +78,7 @@ extension _AppShellInitialDataX on _AppShellState {
       localCourses: _localCourses,
     );
     if (selectedCourse != null) {
-      if (_isLocalCourse(selectedCourse)) {
+      if (isLocalCourse(selectedCourse)) {
         courseNotes = _localNotesForCourse(selectedCourse);
       } else {
         try {

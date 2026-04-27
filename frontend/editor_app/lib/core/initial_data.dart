@@ -24,7 +24,7 @@ extension _AppShellInitialDataX on _AppShellState {
       _localSettings['theme_mode']?.toString() ?? 'S',
     );
 
-    var frontPage = _frontPage ?? _frontPageFallbackPayload(_courses);
+    var frontPage = _frontPage ?? frontPageFallbackPayload(_courses);
     var courses = List<Map<String, dynamic>>.from(_courses);
     var courseNotes = List<Map<String, dynamic>>.from(_courseNotes);
     var learnerNotes = List<Map<String, dynamic>>.from(_learnerNotes);
@@ -78,7 +78,7 @@ extension _AppShellInitialDataX on _AppShellState {
         'Editor._loadInitialData.getCourses',
         () => widget.client.getCourses(token: _token),
       ))
-          .map(_decorateRemoteCourse)
+          .map(decorateRemoteCourse)
           .toList(growable: false);
       updatedCache = true;
     } catch (error) {
@@ -121,7 +121,7 @@ extension _AppShellInitialDataX on _AppShellState {
       frontPage: frontPage,
     );
     if (selectedCourse != null) {
-      if (_isLocalCourse(selectedCourse)) {
+      if (isLocalCourse(selectedCourse)) {
         courseNotes = _localNotesForCourse(selectedCourse);
       } else {
         try {

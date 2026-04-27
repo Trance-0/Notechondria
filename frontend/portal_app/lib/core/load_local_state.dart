@@ -34,7 +34,7 @@ extension _AppShellLoadLocalStateX on _AppShellState {
       snapshot.cache['front_page'] as Map? ?? const {},
     );
     _courses = (snapshot.cache['courses'] as List<dynamic>? ?? const [])
-        .map((item) => _decorateRemoteCourse(Map<String, dynamic>.from(item as Map)))
+        .map((item) => decorateRemoteCourse(Map<String, dynamic>.from(item as Map)))
         .toList(growable: false);
     _activity = (snapshot.cache['activity'] as List<dynamic>? ?? const [])
         .map((item) => Map<String, dynamic>.from(item as Map))
