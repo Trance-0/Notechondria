@@ -484,37 +484,23 @@ wins on conflicts.</p>
 restate them here. When a task is landed, delete its entry from this
 file and add a round-log entry to the new version doc.</p>
 <ul>
-<li>
-<p><input disabled="" type="checkbox"/>
-<strong>Cross-app shared mixins — remaining 4 of 8.</strong> 0.1.52 codified
-the 1000-LOC ceiling in AGENTS.md §1.5; 0.1.53–0.1.61 brought every
-file in the three apps under the cap and shipped the first three
-shared mixins out of <code>notechondria_shared/lib/src/app_shell/</code>:
-<code>AppShellLogMixin</code>, <code>AppShellAuthActionsMixin</code>, <code>AppShellOAuthMixin</code>
-(plus the shared <code>AuthClient</code> interface and <code>url_strategy</code> shim).
-0.1.78 added <code>AppShellLocalPersistMixin</code>. Four mixins still pending
-so per-app <code>_AppShellState</code> files can shed the byte-identical
-chunks they currently host:</p>
-<ul>
-<li><code>AppShellSessionMixin</code> — <code>applyAuthPayload</code>, <code>logout</code>. The
-biggest remaining win (~140 lines per app). Needs abstract
-getters for <code>_token</code>, <code>_profile</code>, <code>_settings</code>, <code>_localSettings</code>,
-<code>_deletedNotes</code>, plus pass-through hooks for
-<code>_currentAppSettingsPayload</code>, <code>_applyLocalAppSettings</code>,
-<code>_loadInitialData</code>, <code>_syncAllLocalCourses</code>, <code>_syncAllLocalDrafts</code>.</li>
-<li><code>AppShellDraftHelpersMixin</code> — <code>storeLocalDraft</code>,
-<code>buildOfflineFallbackDraft</code>.</li>
-<li><code>AppShellCourseHelpersMixin</code> — <code>isLocalCourse</code>,
-<code>decorateRemoteCourse</code>, <code>chooseDefaultCourse</code>,
-<code>frontPageFallbackPayload</code> (portal only — provide a default
-for editor/planner).</li>
-<li><code>HttpClientInternalsMixin</code> on <code>HttpNotechondriaClient</code> — the
-<code>_send</code> / <code>_decode</code> / <code>_headers</code> / <code>_shapedErrorMessage</code> stack.
-Each app already extracted this into <code>core/http_client_internals.dart</code>
-in 0.1.59/0.1.60 but the three copies are still parallel rather
-than shared.</li>
-</ul>
-</li>
+<li><input disabled="" type="checkbox" checked=""/>
+<strong>Cross-app shared mixins — 8 of 8 COMPLETE.</strong> 0.1.52
+codified the 1000-LOC ceiling in AGENTS.md §1.5; 0.1.53–0.1.61
+brought every file in the three apps under the cap and shipped
+the first three shared mixins out of
+<code>notechondria_shared/lib/src/app_shell/</code>: <code>AppShellLogMixin</code>,
+<code>AppShellAuthActionsMixin</code>, <code>AppShellOAuthMixin</code> (plus the
+shared <code>AuthClient</code> interface and <code>url_strategy</code> shim).
+0.1.78 added <code>AppShellLocalPersistMixin</code>; 0.1.79 added
+<code>AppShellCourseHelpersMixin</code>; 0.1.80 added
+<code>AppShellDraftHelpersMixin</code>; 0.1.81 added
+<code>HttpClientInternalsMixin</code>; 0.1.82 added
+<code>AppShellSessionMixin</code>. All eight mixins shipped — the
+byte-identical chunks that used to live three times in
+per-app <code>_AppShellState</code> files now live once in
+<code>notechondria_shared</code>. See round-logs 0.1.78–0.1.82 for
+per-mixin details.</li>
 </ul>
 <h2 id="bugs"><a class="header" href="#bugs">Bugs</a></h2>
 <ul>
