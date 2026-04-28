@@ -504,16 +504,7 @@ per-mixin details.</li>
 </ul>
 <h2 id="bugs"><a class="header" href="#bugs">Bugs</a></h2>
 <ul>
-<li>
-<p><input disabled="" type="checkbox"/>
-Add a regression test for the note-share deep-link path
-(<code>https://host/#/notes/&lt;uuid&gt;</code> cold-start with and without
-session, and the OAuth-callback-preserves-fragment case). The
-code fix landed in 0.1.67; the test was deferred because the
-editor smoke-test harness doesn't have a web navigator shim yet.</p>
-</li>
-<li>
-<p><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox"/>
 <strong>Audit login-form autocomplete attributes.</strong> User reported
 Bitwarden failing to autofill on the editor's web login form
 (<code>autofill.service.ts:528 Did not autofill</code>). Stack trace is
@@ -522,8 +513,7 @@ login fields may not be signalling autocomplete intent properly.
 Verify <code>autocomplete="username"</code> /
 <code>autocomplete="current-password"</code> on the relevant <code>&lt;input&gt;</code>s in
 <code>auth_dialogs.dart</code> and <code>auth_dialogs_wizard.dart</code>; if missing,
-add them so password managers have a clear hint.</p>
-</li>
+add them so password managers have a clear hint.</li>
 </ul>
 <h2 id="global-reusable-components"><a class="header" href="#global-reusable-components">Global reusable components</a></h2>
 <h3 id="start-up-animations"><a class="header" href="#start-up-animations">Start up animations</a></h3>
