@@ -115,11 +115,18 @@ extension _AppShellInitialDataX on _AppShellState {
       }
     }
 
-    final selectedCourse = _chooseDefaultCourse(
-      remoteCourses: courses,
-      localCourses: _localCourses,
-      frontPage: frontPage,
-    );
+    // 0.1.84: only auto-pick a default course if the user already
+    // had one selected pre-bootstrap (e.g. they tapped a category
+    // and then refreshed). Otherwise leave `_selectedCourse` null
+    // so the cold-boot lands on "All Notes" (public-feed view).
+    final hadExplicitSelection = _selectedCourse != null;
+    final selectedCourse = hadExplicitSelection
+        ? _chooseDefaultCourse(
+            remoteCourses: courses,
+            localCourses: _localCourses,
+            frontPage: frontPage,
+          )
+        : null;
     if (selectedCourse != null) {
       if (isLocalCourse(selectedCourse)) {
         courseNotes = _localNotesForCourse(selectedCourse);

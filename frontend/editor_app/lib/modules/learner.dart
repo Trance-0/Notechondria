@@ -620,21 +620,99 @@ class _LearnerNoteCard extends StatelessWidget {
       child: InkWell(
         onTap: onOpen,
         borderRadius: BorderRadius.circular(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (showCoverBanner)
-              NoteCoverImage(
-                seed: uuid.isNotEmpty ? uuid : 'note-$title',
-                imageUrl: coverUrl.isNotEmpty ? coverUrl : null,
-                caption: title,
-                showCaption: coverUrl.isEmpty,
-                aspectRatio: 21 / 9,
-                borderRadius: 0,
+        child: LayoutBuilder(builder: (ctx, constraints) {
+          // Wide enough for a side-by-side cover + body layout.
+          // Below this threshold the card stays vertical (cover
+          // banner on top, content below) — that reads better on
+          // phone-width and narrow drawer-list contexts. The
+          // threshold matches the editor's compact / wide
+          // scaffold breakpoint roughly so a card transitions at
+          // the same visual moment the rest of the app does.
+          final horizontal = showCoverBanner && constraints.maxWidth >= 600;
+          final cover = NoteCoverImage(
+            seed: uuid.isNotEmpty ? uuid : 'note-$title',
+            imageUrl: coverUrl.isNotEmpty ? coverUrl : null,
+            caption: title,
+            showCaption: coverUrl.isEmpty,
+            aspectRatio: horizontal ? 4 / 6 : 21 / 9,
+            borderRadius: 0,
+          );
+          final body = Padding(
+            padding: const EdgeInsets.all(16),
+            child: _LearnerNoteCardBody(
+              note: note,
+              previewLines: previewLines,
+              isPublic: isPublic,
+              author: author,
+              course: course,
+              authorName: authorName,
+              avatarFallback: avatarFallback,
+              avatarUrl: avatarUrl,
+              isLocalDraft: isLocalDraft,
+              canSync: canSync,
+              onSync: onSync,
+            ),
+          );
+          if (horizontal) {
+            return IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Flexible(flex: 4, child: cover),
+                  Flexible(flex: 6, child: body),
+                ],
               ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
+            );
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (showCoverBanner) cover,
+              body,
+            ],
+          );
+        }),
+      ),
+    );
+  }
+}
+
+/// Right-side body of `_LearnerNoteCard` — avatar + title + state
+/// badge + preview lines + the single sync/status icon. Extracted
+/// so the parent card can render it both inside a vertical Column
+/// (under a cover banner) and inside a horizontal Row (next to a
+/// 4:6 cover thumbnail) without duplicating the layout. Pulled out
+/// in 0.1.84 with the horizontal-cover layout addition.
+class _LearnerNoteCardBody extends StatelessWidget {
+  const _LearnerNoteCardBody({
+    required this.note,
+    required this.previewLines,
+    required this.isPublic,
+    required this.author,
+    required this.course,
+    required this.authorName,
+    required this.avatarFallback,
+    required this.avatarUrl,
+    required this.isLocalDraft,
+    required this.canSync,
+    required this.onSync,
+  });
+
+  final Map<String, dynamic> note;
+  final List<String> previewLines;
+  final bool isPublic;
+  final Map<String, dynamic> author;
+  final Map<String, dynamic> course;
+  final String authorName;
+  final String avatarFallback;
+  final String avatarUrl;
+  final bool isLocalDraft;
+  final bool canSync;
+  final Future<void> Function()? onSync;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
@@ -777,13 +855,8 @@ class _LearnerNoteCard extends StatelessWidget {
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+            ],
+          );
   }
 }
 

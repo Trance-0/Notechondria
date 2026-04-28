@@ -47,11 +47,14 @@ extension _AppShellLoadLocalStateX on _AppShellState {
             decorateRemoteCourse(Map<String, dynamic>.from(item as Map)))
         .toList(growable: false);
     await _ensureStarterWorkspace();
-    _selectedCourse ??= _chooseDefaultCourse(
-      remoteCourses: _courses,
-      localCourses: _localCourses,
-      frontPage: _frontPage,
-    );
+    // 0.1.84: cold-boot lands on "All Notes" (no category
+    // selected) regardless of cached state. The previous
+    // `_chooseDefaultCourse` auto-pick would land previously-
+    // signed-in users on their cloud Inbox even when signed-out
+    // — and after 0.1.83 made Inbox private, that view returned
+    // zero notes for non-owners, looking broken. Leaving
+    // `_selectedCourse` null so the user lands on the public-
+    // notes feed and can navigate into a category by tap.
     _httpClient?.updateBaseUrl(
       _localSettings['api_base_url']?.toString() ?? _defaultApiBaseUrl(),
     );
