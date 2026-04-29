@@ -10171,11 +10171,12 @@ case 19:case 18:s=20
 return A.l(A.kI(b9.CW),$async$fT)
 case 20:case 16:case 14:if(b9.fx!=null){a2=l
 a9=b9.CW
-b0=A.bd3(b9,m,a9,a2)}else b0=null
-d=b0
-s=d!=null?21:23
+b0=A.bd3(b9,m,a9,a2)
+if(b0==null)b0=b9.fx}else b0=null
+s=b0!=null?21:23
 break
-case 21:s=b9.tz(d)?24:26
+case 21:d=b0
+s=b9.tz(d)?24:26
 break
 case 24:k=A.b4W(b9,d)
 s=25
@@ -10253,7 +10254,7 @@ return A.l(A.yj(),$async$fT)
 case 47:case 46:if(b2)b9.at=b9.y=null
 b9.ay=m
 b9.ch=l
-b9.fx=d
+b9.fx=b0
 b9.cx=k
 b9.cy=j
 b9.dx=i
@@ -10362,7 +10363,7 @@ J.bg(l,"social_link",J.E(f,"social_link"))}f=a.at
 if((f==null?null:f.h(0,"image_url"))!=null)J.bg(l,"image_url",a.at.h(0,"image_url"))
 f=a.ax
 if(f==null)f=B.b_
-k=A.bCB(new A.arY(B.Cb,"0.1.84",l,f,a.go,a.id,a.k1,a.CW,a.db,a.d))
+k=A.bCB(new A.arY(B.Cb,"0.1.86",l,f,a.go,a.id,a.k1,a.CW,a.db,a.d))
 s=7
 return A.l(A.agq(A.b([B.b1J],t.es),m),$async$a46)
 case 7:j=a0
@@ -62210,7 +62211,7 @@ K(a){var s,r,q=this,p=null,o=A.mv(new A.aK_(q))
 if(q.w){s=q.a.f
 r=q.go.h(0,"api_base_url")
 r=r==null?p:J.p(r)
-return new A.eD(B.ci,p,B.bS,B.K,A.b([o,A.a_9(0,new A.LC(s,"0.1.84",new A.aK0(q),q.p3,r,p))],t.p),p)}return o}}
+return new A.eD(B.ci,p,B.bS,B.K,A.b([o,A.a_9(0,new A.LC(s,"0.1.86",new A.aK0(q),q.p3,r,p))],t.p),p)}return o}}
 A.aJY.prototype={
 $1(a){return a>=0&&a<5},
 $S:56}
@@ -64177,7 +64178,7 @@ return A.aIW(s,a,r,this.c)},
 $S:35}
 A.aIM.prototype={
 $0(){var s=this.a
-return s.a.c.u7(A.dB(this.b.h(0,"id")),s.y)},
+return s.a.c.u7(A.dB(J.E(this.b,"id")),s.y)},
 $S:137}
 A.aIN.prototype={
 $0(){var s,r,q=this.a,p=q.a.c
@@ -64665,42 +64666,45 @@ case 7:s=9
 return A.l(q.uU(),$async$vp)
 case 9:case 8:case 4:return A.v(null,r)}})
 return A.w($async$vp,r)},
-K(a){var s,r,q,p,o,n,m,l,k,j=this,i=null,h=j.aCR(),g=j.a,f=g.as?"local":g.z
-if(g.Q)s=f
-else s=f==="local"?"local":"all"
-r=j.e
-r===$&&A.a()
-q=j.d
+K(a){var s,r,q,p,o,n,m,l,k,j,i=this,h=null,g=i.aCR(),f=i.a,e=f.as?"local":f.z
+if(f.Q)s=e
+else s=e==="local"?"local":"all"
+r=s!=="local"
+q=i.e
 q===$&&A.a()
-g=g.ay
-p=j.azS(s)
-g=A.dX(B.ac,!1,q,A.aqv(i,new A.kt(4,A.e4(18),B.pb),i,i,i,i,i,i,!0,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,p,i,i,i,i,i,i,i,i,i,!0,!0,!1,i,B.avI,i,i,i,i,i,i,i,i,i,i,i,i),i,!1,i,i,1,!1,g,i,i,i,i)
-p=A.aa("Show:",i,i,i,i,A.F(a).ok.z,i,i)
-q=j.akW()
-o=j.a.as?i:new A.aQJ(j)
-n=t.p
-o=A.b([p,B.dt,A.dn(A.b97(B.awD,!0,q,o,s,t.N),1)],n)
-if(j.a.as){q=A.F(a).ax
-p=q.rx
-B.b.D(o,A.b([B.iR,A.mW(A.e0(B.rh,p==null?q.k3:p,i,18),"Local categories only contain local drafts. Switch to a synced category to filter cloud notes.",i)],n))}g=A.b([g,new A.aJ(B.asv,A.cF(o,B.M,B.n,B.H,0,i),i),B.aR],n)
-if(j.a.Q&&h.length!==0){q=A.F(a).ok.w
-B.b.D(g,A.b([A.iE(new A.aJ(B.bG,A.bU(A.b([A.cF(A.b([A.dn(A.aa("Unsynced local drafts",i,i,i,i,q==null?i:q.eO(B.a5),i,i),1),A.b3q(B.Bc,B.b05,new A.aQK(j))],n),B.M,B.n,B.H,0,i),B.bj,B.b_H],n),B.a4,B.n,B.H),i),i,i,i),B.aR],n))}if(h.length!==0){q=A.b([A.aa("Local drafts",i,i,i,i,A.F(a).ok.r,i,i),B.an],n)
-for(m=0;m<h.length;++m){p=h[m]
-o=j.a
-l=o.ax
-o=o.Q
-k=o?new A.aQL(j,h,m):i
-q.push(new A.qD(m,new A.P4(p,l,new A.aQM(j,h,m),k,!0,o,i),B.I0,i))}q.push(B.kN)
-B.b.D(g,q)}if(s!=="local"){q=A.b([A.aa(j.alU(s),i,i,i,i,A.F(a).ok.r,i,i),B.an],n)
-if(j.a.c.length===0&&h.length===0)q.push(A.iE(new A.aJ(B.bG,A.aa(j.aol(s),i,i,i,i,i,i,i),i),i,i,i))
-p=j.a
-if(p.c.length===0&&h.length!==0&&p.Q)q.push(B.a7n)
-for(m=0;p=j.a,o=p.c,m<o.length;++m)q.push(new A.qD(m,new A.P4(o[m],p.ax,new A.aQN(j,m),i,!1,!1,i),B.I0,i))
-if(p.x)B.b.D(q,A.b([B.aR,B.a7s],n))
-B.b.D(g,q)}else{q=h.length
-if(q===0)g.push(A.iE(new A.aJ(B.bG,A.aa(j.a.as?"No local drafts in this offline category yet. Use the add button to create one.":"No local drafts yet. Use the add button to create one.",i,i,i,i,i,i,i),i),i,i,i))}g=A.jq(g,r,B.asl,i,!1)
-r=j.a.Q?"Create note. Long press to import markdown.":"Create a local draft. Long press to import markdown."
-return new A.eD(B.ci,i,B.bS,B.K,A.b([g,A.mH(24,A.mW(A.hb(i,new A.Hl(B.avR,i,B.a79,j.gamx(),B.jF,B.b2l,B.b1q),B.ap,!1,i,i,i,i,i,i,i,new A.aQO(j),i,i,i,i,j.gaAw(),i,i,i,i,i,i,i,i),r,i),i,i,i,24,i,i)],n),i)}}
+p=i.d
+p===$&&A.a()
+f=f.ay
+o=i.azS(s)
+f=A.dX(B.ac,!1,p,A.aqv(h,new A.kt(4,A.e4(18),B.pb),h,h,h,h,h,h,!0,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,o,h,h,h,h,h,h,h,h,h,!0,!0,!1,h,B.avI,h,h,h,h,h,h,h,h,h,h,h,h),h,!1,h,h,1,!1,f,h,h,h,h)
+o=A.aa("Show:",h,h,h,h,A.F(a).ok.z,h,h)
+p=i.akW()
+n=i.a.as?h:new A.aQJ(i)
+m=t.p
+n=A.b([o,B.dt,A.dn(A.b97(B.awD,!0,p,n,s,t.N),1)],m)
+if(i.a.as){p=A.F(a).ax
+o=p.rx
+B.b.D(n,A.b([B.iR,A.mW(A.e0(B.rh,o==null?p.k3:o,h,18),"Local categories only contain local drafts. Switch to a synced category to filter cloud notes.",h)],m))}f=A.b([f,new A.aJ(B.asv,A.cF(n,B.M,B.n,B.H,0,h),h),B.aR],m)
+if(i.a.Q&&g.length!==0&&s==="personal"){p=A.F(a).ok.w
+B.b.D(f,A.b([A.iE(new A.aJ(B.bG,A.bU(A.b([A.cF(A.b([A.dn(A.aa("Unsynced local drafts",h,h,h,h,p==null?h:p.eO(B.a5),h,h),1),A.b3q(B.Bc,B.b05,new A.aQK(i))],m),B.M,B.n,B.H,0,h),B.bj,B.b_H],m),B.a4,B.n,B.H),h),h,h,h),B.aR],m))}if(g.length!==0)p=!r||s==="personal"
+else p=!1
+if(p){p=A.b([A.aa("Local drafts",h,h,h,h,A.F(a).ok.r,h,h),B.an],m)
+for(l=0;l<g.length;++l){o=g[l]
+n=i.a
+k=n.ax
+n=n.Q
+j=n?new A.aQL(i,g,l):h
+p.push(new A.qD(l,new A.P4(o,k,new A.aQM(i,g,l),j,!0,n,h),B.I0,h))}p.push(B.kN)
+B.b.D(f,p)}if(r){p=A.b([A.aa(i.alU(s),h,h,h,h,A.F(a).ok.r,h,h),B.an],m)
+if(i.a.c.length===0&&g.length===0)p.push(A.iE(new A.aJ(B.bG,A.aa(i.aol(s),h,h,h,h,h,h,h),h),h,h,h))
+o=i.a
+if(o.c.length===0&&g.length!==0&&o.Q)p.push(B.a7n)
+for(l=0;o=i.a,n=o.c,l<n.length;++l)p.push(new A.qD(l,new A.P4(n[l],o.ax,new A.aQN(i,l),h,!1,!1,h),B.I0,h))
+if(o.x)B.b.D(p,A.b([B.aR,B.a7s],m))
+B.b.D(f,p)}else{p=g.length
+if(p===0)f.push(A.iE(new A.aJ(B.bG,A.aa(i.a.as?"No local drafts in this offline category yet. Use the add button to create one.":"No local drafts yet. Use the add button to create one.",h,h,h,h,h,h,h),h),h,h,h))}f=A.jq(f,q,B.asl,h,!1)
+q=i.a.Q?"Create note. Long press to import markdown.":"Create a local draft. Long press to import markdown."
+return new A.eD(B.ci,h,B.bS,B.K,A.b([f,A.mH(24,A.mW(A.hb(h,new A.Hl(B.avR,h,B.a79,i.gamx(),B.jF,B.b2l,B.b1q),B.ap,!1,h,h,h,h,h,h,h,new A.aQO(i),h,h,h,h,i.gaAw(),h,h,h,h,h,h,h,h),q,h),h,h,h,24,h,h)],m),h)}}
 A.aQB.prototype={
 $1(a){return a.length!==0&&B.c.p(this.a,a)},
 $S:18}
@@ -64799,7 +64803,7 @@ j=j.length!==0?j:"note-"+n.d
 s=n.e
 r=s.length===0
 s=!r?s:m
-q=k?0.6666666666666666:2.3333333333333335
+q=k?1.3333333333333333:2.3333333333333335
 p=A.b48(q,0,n.d,s,j,r)
 r=n.a
 o=new A.aJ(B.bG,new A.a7Z(r.c,n.f,n.r,n.x,n.z,n.Q,r.r,r.w,r.f,m),m)

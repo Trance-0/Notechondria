@@ -502,19 +502,6 @@ per-app <code>_AppShellState</code> files now live once in
 <code>notechondria_shared</code>. See round-logs 0.1.78–0.1.82 for
 per-mixin details.</li>
 </ul>
-<h2 id="bugs"><a class="header" href="#bugs">Bugs</a></h2>
-<ul>
-<li><input disabled="" type="checkbox"/>
-<strong>Audit login-form autocomplete attributes.</strong> User reported
-Bitwarden failing to autofill on the editor's web login form
-(<code>autofill.service.ts:528 Did not autofill</code>). Stack trace is
-Bitwarden-internal so not a code-side bug, but it suggests our
-login fields may not be signalling autocomplete intent properly.
-Verify <code>autocomplete="username"</code> /
-<code>autocomplete="current-password"</code> on the relevant <code>&lt;input&gt;</code>s in
-<code>auth_dialogs.dart</code> and <code>auth_dialogs_wizard.dart</code>; if missing,
-add them so password managers have a clear hint.</li>
-</ul>
 <h2 id="global-reusable-components"><a class="header" href="#global-reusable-components">Global reusable components</a></h2>
 <h3 id="start-up-animations"><a class="header" href="#start-up-animations">Start up animations</a></h3>
 <h3 id="sidebarnavigation"><a class="header" href="#sidebarnavigation">Sidebar/Navigation</a></h3>
@@ -534,41 +521,13 @@ client methods, app_shell callback wiring, and the
 <code>_ApiKeySection</code> widget.</p>
 </li>
 <li>
-<p><input disabled="" type="checkbox"/>
-<strong>Note cover images — planner / portal frontend.</strong> 0.1.76
-shipped per-note cover images for editor_app: backend model +
-migration + <code>/notes/&lt;id&gt;/cover/</code> POST/DELETE endpoint, shared
-<code>NoteCoverImage</code> widget in <code>notechondria_shared</code> (with theme-
-colored barcode fallback), and the editor's metadata dialog +
-note viewer wired up. planner_app and portal_app don't yet
-expose note metadata editing or a read-only viewer in the same
-shape, so the cover-image upload UI hasn't been ported. When
-those apps grow note edit/view surfaces, mirror the editor
-pattern: add <code>uploadNoteCoverImage</code> / <code>deleteNoteCoverImage</code> to
-their <code>NotechondriaClient</code> interface + http_client (~10 lines
-each, copy from editor), and pass the callbacks into wherever
-they construct the metadata dialog. The viewer side just needs
-<code>NoteCoverImage(seed: uuid, imageUrl: note['cover_image_url'])</code>
-above the body — already exported from <code>notechondria_shared</code>.</p>
+<p><input disabled="" type="checkbox" checked=""/>
+<strong>Note cover images — planner / portal frontend.</strong> 0.1.86.</p>
 </li>
 <li>
-<p><input disabled="" type="checkbox"/>
+<p><input disabled="" type="checkbox" checked=""/>
 <strong>Multi-device session manager — planner / portal frontend.</strong>
-0.1.65 shipped the backend; 0.1.75 wired the editor frontend
-(HTTP client methods on all three apps' <code>NotechondriaClient</code>,
-shared <code>ActiveSessionsCard</code> widget in <code>notechondria_shared</code>,
-<code>_PersonalInfoPage</code> / <code>_SignInSecurityPage</code> consumption,
-multi-device warning banner above the editor's Settings menu).
-Still to do on planner_app / portal_app: their Settings pages
-haven't been redesigned into the Apple-style sub-page layout
-yet (editor's 0.1.72 / 0.1.73 work hasn't been ported), so
-the <code>ActiveSessionsCard</code> doesn't have a natural home there.
-When the planner / portal Settings get sub-pages, drop the
-card into a "Sign in &amp; security" sub-page and thread
-<code>onListSessions</code> / <code>onRevokeSession</code> / <code>onCurrentSessionRevoked</code>
-through <code>_AppShellState</code> exactly the way editor's
-<code>core/build_helpers.dart</code> already does. The HTTP client
-methods are already in place — only the UI plumbing remains.</p>
+0.1.86.</p>
 </li>
 <li>
 <p><input disabled="" type="checkbox"/>
