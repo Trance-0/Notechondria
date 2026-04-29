@@ -101,6 +101,20 @@ abstract class NotechondriaClient implements AuthClient {
     Map<String, dynamic> payload,
   );
   Future<Map<String, dynamic>> uploadAvatar(String token, XFile file);
+  /// Upload a cover image for the given note. Backend returns the
+  /// updated note summary including the new `cover_image_url`. Owner-
+  /// only on the backend (403 from non-owners).
+  Future<Map<String, dynamic>> uploadNoteCoverImage(
+    String token,
+    int noteId,
+    XFile file,
+  );
+  /// Clear the cover image for the given note. Returns the updated
+  /// note summary (now with `cover_image_url == ''`).
+  Future<Map<String, dynamic>> deleteNoteCoverImage(
+    String token,
+    int noteId,
+  );
   Future<List<Map<String, dynamic>>> getPlannerEvents(String token);
   Future<Map<String, dynamic>> createPlannerEvent(
     String token,
@@ -844,6 +858,45 @@ class HttpNotechondriaClient
     final response = await _post(uri, token: token, payload: payload);
     return Map<String, dynamic>.from(
       await decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> uploadNoteCoverImage(
+    String token,
+    int noteId,
+    XFile file,
+  ) async {
+    final uri = _uri('/notes/$noteId/cover/');
+    final request = http.MultipartRequest('POST', uri)
+      ..headers.addAll(headers(token: token))
+      ..files.add(
+        http.MultipartFile.fromBytes(
+          'cover',
+          await file.readAsBytes(),
+          filename: file.name,
+        ),
+      );
+    final streamed = await send(
+        'POST', uri, () => request.send().then(http.Response.fromStream));
+    return Map<String, dynamic>.from(
+      await decode(streamed, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> deleteNoteCoverImage(
+    String token,
+    int noteId,
+  ) async {
+    final uri = _uri('/notes/$noteId/cover/');
+    final response = await send(
+      'DELETE',
+      uri,
+      () => _httpClient.delete(uri, headers: headers(token: token)),
+    );
+    return Map<String, dynamic>.from(
+      await decode(response, uri: uri, method: 'DELETE'),
     );
   }
 

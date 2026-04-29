@@ -108,6 +108,8 @@ class LoginForm(forms.Form):
         super(LoginForm, self).__init__(*args, **kwargs)
         for visible in self.visible_fields():
             visible.field.widget.attrs["class"] = "form-control"
+        self.fields['username'].widget.attrs['autocomplete'] = 'username'
+        self.fields['password'].widget.attrs['autocomplete'] = 'current-password'
 
 
 def validate_user_name(new_user_name, user=None) -> None:

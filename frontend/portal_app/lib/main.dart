@@ -52,6 +52,7 @@ part 'modules/course.dart';
 part 'modules/activity.dart';
 part 'modules/activity_week.dart';
 part 'modules/learner_note_editor.dart';
+part 'modules/note_metadata_dialog.dart';
 part 'modules/settings.dart';
 
 void main() {

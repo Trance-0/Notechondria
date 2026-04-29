@@ -120,22 +120,30 @@ extension _AppShellInitialDataX on _AppShellState {
     // and then refreshed). Otherwise leave `_selectedCourse` null
     // so the cold-boot lands on "All Notes" (public-feed view).
     final hadExplicitSelection = _selectedCourse != null;
-    final selectedCourse = hadExplicitSelection
-        ? _chooseDefaultCourse(
-            remoteCourses: courses,
-            localCourses: _localCourses,
-            frontPage: frontPage,
-          )
-        : null;
+    Map<String, dynamic>? selectedCourse;
+    if (hadExplicitSelection) {
+      selectedCourse = _chooseDefaultCourse(
+        remoteCourses: courses,
+        localCourses: _localCourses,
+        frontPage: frontPage,
+      );
+      // If the default-course lookup returned null (e.g. offline
+      // first login — cloud courses weren't fetched, local Inbox
+      // was seeded by `_ensureStarterWorkspace` but its id scheme
+      // didn't match the lookup), fall back to the existing
+      // selection so the sidebar doesn't lose the Inbox.
+      selectedCourse ??= _selectedCourse;
+    }
     if (selectedCourse != null) {
-      if (isLocalCourse(selectedCourse)) {
-        courseNotes = _localNotesForCourse(selectedCourse);
+      final course = selectedCourse;
+      if (isLocalCourse(course)) {
+        courseNotes = _localNotesForCourse(course);
       } else {
         try {
           courseNotes = await timed(
             'Editor._loadInitialData.getCourseNotes',
             () => widget.client.getCourseNotes(
-              selectedCourse['id'] as int,
+              course['id'] as int,
               token: _token,
             ),
           );

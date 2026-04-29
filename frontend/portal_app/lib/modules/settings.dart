@@ -44,6 +44,9 @@ class _SettingsPage extends StatefulWidget {
     this.debugSnapshotListenable,
     this.debugHistoryListenable,
     this.debugLogController,
+    this.onListSessions,
+    this.onRevokeSession,
+    this.onCurrentSessionRevoked,
   });
 
   final Map<String, dynamic>? profile;
@@ -114,6 +117,9 @@ class _SettingsPage extends StatefulWidget {
   final ValueListenable<ApiDebugSnapshot?>? debugSnapshotListenable;
   final ValueListenable<List<ApiDebugSnapshot>>? debugHistoryListenable;
   final DebugLogController? debugLogController;
+  final Future<Map<String, dynamic>> Function()? onListSessions;
+  final Future<void> Function(int sessionId)? onRevokeSession;
+  final VoidCallback? onCurrentSessionRevoked;
 
   @override
   State<_SettingsPage> createState() => _SettingsPageState();
@@ -501,6 +507,14 @@ class _SettingsPageState extends State<_SettingsPage> {
             onBindGoogle: widget.onBindGoogle,
             onBindGithub: widget.onBindGithub,
           ),
+          if (widget.onListSessions != null && widget.onRevokeSession != null) ...[
+            const SizedBox(height: 16),
+            ActiveSessionsCard(
+              onListSessions: widget.onListSessions!,
+              onRevokeSession: widget.onRevokeSession!,
+              onCurrentRevoked: widget.onCurrentSessionRevoked,
+            ),
+          ],
           const SizedBox(height: 12),
           OutlinedButton(
             onPressed: () {

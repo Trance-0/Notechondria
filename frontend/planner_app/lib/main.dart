@@ -50,6 +50,7 @@ part 'components/avatar.dart';
 part 'components/note_viewer.dart';
 part 'modules/learner.dart';
 part 'modules/learner_note_editor.dart';
+part 'modules/note_metadata_dialog.dart';
 part 'modules/course.dart';
 part 'modules/activity.dart';
 part 'modules/activity_calendar.dart';

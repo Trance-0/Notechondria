@@ -219,6 +219,22 @@ class _AppShellState extends State<AppShell>
     _plannerEvents = const [];
   }
 
+  @override
+  void applySessionMetadata(Map<String, dynamic> payload) {
+    final sessionMap = payload['session'] as Map?;
+    _currentSessionId = (sessionMap?['id'] as num?)?.toInt();
+    _multiDevice = payload['multi_device'] == true;
+    _otherSessionsCount =
+        (payload['other_sessions_count'] as num?)?.toInt() ?? 0;
+  }
+
+  @override
+  void clearSessionMetadata() {
+    _currentSessionId = null;
+    _multiDevice = false;
+    _otherSessionsCount = 0;
+  }
+
   int _selectedIndex = 0;
   bool _isLoading = true;
   bool _showSplash = true;
@@ -242,6 +258,10 @@ class _AppShellState extends State<AppShell>
   Map<String, dynamic>? _activityWeek;
   Map<String, dynamic>? _selectedCourse;
   Map<String, dynamic>? _selectedNote;
+  // Session metadata from /auth/session/.
+  int? _currentSessionId;
+  bool _multiDevice = false;
+  int _otherSessionsCount = 0;
   Map<String, dynamic> _localSettings = _LocalAppStore.defaultSettings();
   Map<String, dynamic> _localStats = _LocalAppStore.defaultStats();
   Map<String, dynamic> _localCache = _LocalAppStore.defaultCache();
@@ -701,6 +721,14 @@ class _AppShellState extends State<AppShell>
           onSyncLocalDraft: _syncLocalDraft,
           onSyncAllLocalDrafts: _syncAllLocalDrafts,
           onLogEvent: appendUiLog,
+          onUploadCover: _token != null
+              ? (noteId, file) =>
+                  widget.client.uploadNoteCoverImage(_token!, noteId, file)
+              : null,
+          onDeleteCover: _token != null
+              ? (noteId) =>
+                  widget.client.deleteNoteCoverImage(_token!, noteId)
+              : null,
         );
       case 2:
         return _CoursePage(
@@ -781,6 +809,23 @@ class _AppShellState extends State<AppShell>
           debugHistoryListenable: _httpClient?.debugHistory,
           debugLogController: logController,
           uiLogs: uiLogs,
+          onListSessions: _token != null
+              ? () => widget.client.listSessions(_token!)
+              : null,
+          onRevokeSession: _token != null
+              ? (sessionId) => widget.client.revokeSession(_token!, sessionId)
+              : null,
+          onCurrentSessionRevoked: () {
+            _token = null;
+            _profile = null;
+            _settings = null;
+            _deletedNotes = const [];
+            _currentSessionId = null;
+            _multiDevice = false;
+            _otherSessionsCount = 0;
+            refreshState();
+            unawaited(_loadInitialData());
+          },
         );
       default:
         return const SizedBox.shrink();

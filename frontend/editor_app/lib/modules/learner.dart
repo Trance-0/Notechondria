@@ -416,7 +416,9 @@ class _LearnerPageState extends State<_LearnerPage> {
               ),
             ),
             const SizedBox(height: 16),
-            if (widget.isAuthenticated && localDrafts.isNotEmpty) ...[
+            if (widget.isAuthenticated &&
+                localDrafts.isNotEmpty &&
+                effectiveScope == 'personal') ...[
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -453,7 +455,9 @@ class _LearnerPageState extends State<_LearnerPage> {
               ),
               const SizedBox(height: 16),
             ],
-            if (localDrafts.isNotEmpty) ...[
+            if (localDrafts.isNotEmpty &&
+                (effectiveScope == 'local' ||
+                    effectiveScope == 'personal')) ...[
               Text(
                 'Local drafts',
                 style: Theme.of(context).textTheme.titleLarge,
@@ -634,7 +638,7 @@ class _LearnerNoteCard extends StatelessWidget {
             imageUrl: coverUrl.isNotEmpty ? coverUrl : null,
             caption: title,
             showCaption: coverUrl.isEmpty,
-            aspectRatio: horizontal ? 4 / 6 : 21 / 9,
+            aspectRatio: horizontal ? 4 / 3 : 21 / 9,
             borderRadius: 0,
           );
           final body = Padding(

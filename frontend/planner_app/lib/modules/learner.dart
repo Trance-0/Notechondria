@@ -46,6 +46,8 @@ class _LearnerPage extends StatefulWidget {
     required this.onSyncLocalDraft,
     required this.onSyncAllLocalDrafts,
     required this.onLogEvent,
+    this.onUploadCover,
+    this.onDeleteCover,
   });
 
   final List<Map<String, dynamic>> notes;
@@ -85,6 +87,8 @@ class _LearnerPage extends StatefulWidget {
       onSyncLocalDraft;
   final Future<void> Function() onSyncAllLocalDrafts;
   final ValueChanged<String> onLogEvent;
+  final Future<Map<String, dynamic>> Function(int noteId, XFile file)? onUploadCover;
+  final Future<Map<String, dynamic>> Function(int noteId)? onDeleteCover;
 
   @override
   State<_LearnerPage> createState() => _LearnerPageState();
@@ -220,6 +224,7 @@ class _LearnerPageState extends State<_LearnerPage> {
       detail['title']?.toString() ?? 'Untitled note',
       detail['description']?.toString() ?? '',
     );
+    final noteId = detail['id'] as int;
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -232,6 +237,12 @@ class _LearnerPageState extends State<_LearnerPage> {
         onGetHistory: widget.onGetNoteHistory,
         onRestoreVersion: widget.onRestoreNoteVersion,
         onLogEvent: widget.onLogEvent,
+        onUploadCover: widget.onUploadCover != null
+            ? (file) => widget.onUploadCover!(noteId, file)
+            : null,
+        onDeleteCover: widget.onDeleteCover != null
+            ? () => widget.onDeleteCover!(noteId)
+            : null,
       ),
     );
     final refreshed = await widget.onFetchNoteDetail(detail['id'] as int);
@@ -562,6 +573,9 @@ class _LearnerNoteCard extends StatelessWidget {
         .map((item) => item.toString())
         .take(3)
         .toList();
+    final coverUrl = note['cover_image_url']?.toString() ?? '';
+    final uuid = note['uuid']?.toString() ?? '';
+    final noteTitle = note['title']?.toString() ?? '';
     final isPublic = note['is_public'] == true;
     final author = Map<String, dynamic>.from(note['author'] as Map? ?? const {});
     final course = Map<String, dynamic>.from(note['course'] as Map? ?? const {});
@@ -572,6 +586,7 @@ class _LearnerNoteCard extends StatelessWidget {
       apiBaseUrl: apiBaseUrl,
     );
     return Card(
+      clipBehavior: coverUrl.isNotEmpty ? Clip.antiAlias : Clip.none,
       color: isLocalDraft
           ? Theme.of(context).colorScheme.surfaceVariant
           : (isPublic
@@ -588,118 +603,131 @@ class _LearnerNoteCard extends StatelessWidget {
       child: InkWell(
         onTap: onOpen,
         borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (coverUrl.isNotEmpty)
+              NoteCoverImage(
+                seed: uuid.isNotEmpty ? uuid : 'note-$noteTitle',
+                imageUrl: coverUrl,
+                caption: noteTitle,
+                aspectRatio: 21 / 9,
+                borderRadius: 0,
+              ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _RemoteAvatar(
-                    radius: 18,
-                    imageUrl: avatarUrl,
-                    fallbackLabel: avatarFallback,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          note['title']?.toString() ?? 'Untitled note',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          [
-                            if (isLocalDraft)
-                              'Local draft'
-                            else if (isPublic)
-                              'Public'
-                            else
-                              'Private',
-                            if ((course['title']?.toString() ?? '').isNotEmpty)
-                              course['title'].toString(),
-                            formatCompactTimestamp(
-                              note['last_edit']?.toString() ?? '',
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _RemoteAvatar(
+                        radius: 18,
+                        imageUrl: avatarUrl,
+                        fallbackLabel: avatarFallback,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              note['title']?.toString() ?? 'Untitled note',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w700),
                             ),
-                          ].join(' | '),
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant,
-                                  ),
+                            const SizedBox(height: 4),
+                            Text(
+                              [
+                                if (isLocalDraft)
+                                  'Local draft'
+                                else if (isPublic)
+                                  'Public'
+                                else
+                                  'Private',
+                                if ((course['title']?.toString() ?? '').isNotEmpty)
+                                  course['title'].toString(),
+                                formatCompactTimestamp(
+                                  note['last_edit']?.toString() ?? '',
+                                ),
+                              ].join(' | '),
+                              style:
+                                  Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
+                                      ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                  PopupMenuButton<String>(
-                    onSelected: (value) async {
-                      if (value == 'edit') {
-                        onEdit();
-                      } else if (value == 'delete') {
-                        await onDelete();
-                      } else if (value == 'sync' && onSync != null) {
-                        await onSync!();
-                      } else if (value == 'export') {
-                        await onExport();
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      if (canEdit)
-                        const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                      if (canSync)
-                        const PopupMenuItem(value: 'sync', child: Text('Sync to cloud')),
-                      const PopupMenuItem(
-                          value: 'export', child: Text('Export markdown')),
-                      const PopupMenuItem(
-                          value: 'delete', child: Text('Delete')),
+                      ),
+                      PopupMenuButton<String>(
+                        onSelected: (value) async {
+                          if (value == 'edit') {
+                            onEdit();
+                          } else if (value == 'delete') {
+                            await onDelete();
+                          } else if (value == 'sync' && onSync != null) {
+                            await onSync!();
+                          } else if (value == 'export') {
+                            await onExport();
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          if (canEdit)
+                            const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                          if (canSync)
+                            const PopupMenuItem(value: 'sync', child: Text('Sync to cloud')),
+                          const PopupMenuItem(
+                              value: 'export', child: Text('Export markdown')),
+                          const PopupMenuItem(
+                              value: 'delete', child: Text('Delete')),
+                        ],
+                      ),
                     ],
                   ),
+                  if ((note['description']?.toString() ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      note['description'].toString(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontStyle: FontStyle.italic,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                  Text(
+                    previewLines.isEmpty
+                        ? (note['excerpt']?.toString() ?? '')
+                        : previewLines.join('\n'),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (!isLocalDraft) ...[
+                    const SizedBox(height: 14),
+                    Align(
+                      alignment: Alignment.bottomRight,
+                      child: Text(
+                        'Course metadata stays editable from the editor details panel',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
-              if ((note['description']?.toString() ?? '').isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Text(
-                  note['description'].toString(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontStyle: FontStyle.italic,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                ),
-              ],
-              const SizedBox(height: 8),
-              Text(
-                previewLines.isEmpty
-                    ? (note['excerpt']?.toString() ?? '')
-                    : previewLines.join('\n'),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (!isLocalDraft) ...[
-                const SizedBox(height: 14),
-                Align(
-                  alignment: Alignment.bottomRight,
-                  child: Text(
-                    'Course metadata stays editable from the editor details panel',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                ),
-              ],
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

@@ -37,18 +37,6 @@ file and add a round-log entry to the new version doc.
   `notechondria_shared`. See round-logs 0.1.78–0.1.82 for
   per-mixin details.
 
-## Bugs
-
-- [ ] **Audit login-form autocomplete attributes.** User reported
-  Bitwarden failing to autofill on the editor's web login form
-  (`autofill.service.ts:528 Did not autofill`). Stack trace is
-  Bitwarden-internal so not a code-side bug, but it suggests our
-  login fields may not be signalling autocomplete intent properly.
-  Verify `autocomplete="username"` /
-  `autocomplete="current-password"` on the relevant `<input>`s in
-  `auth_dialogs.dart` and `auth_dialogs_wizard.dart`; if missing,
-  add them so password managers have a clear hint.
-
 ## Global reusable components
 
 ### Start up animations
@@ -68,38 +56,10 @@ file and add a round-log entry to the new version doc.
   client methods, app_shell callback wiring, and the
   `_ApiKeySection` widget.
 
-- [ ] **Note cover images — planner / portal frontend.** 0.1.76
-  shipped per-note cover images for editor_app: backend model +
-  migration + `/notes/<id>/cover/` POST/DELETE endpoint, shared
-  `NoteCoverImage` widget in `notechondria_shared` (with theme-
-  colored barcode fallback), and the editor's metadata dialog +
-  note viewer wired up. planner_app and portal_app don't yet
-  expose note metadata editing or a read-only viewer in the same
-  shape, so the cover-image upload UI hasn't been ported. When
-  those apps grow note edit/view surfaces, mirror the editor
-  pattern: add `uploadNoteCoverImage` / `deleteNoteCoverImage` to
-  their `NotechondriaClient` interface + http_client (~10 lines
-  each, copy from editor), and pass the callbacks into wherever
-  they construct the metadata dialog. The viewer side just needs
-  `NoteCoverImage(seed: uuid, imageUrl: note['cover_image_url'])`
-  above the body — already exported from `notechondria_shared`.
+- [x] **Note cover images — planner / portal frontend.** 0.1.86.
 
-- [ ] **Multi-device session manager — planner / portal frontend.**
-  0.1.65 shipped the backend; 0.1.75 wired the editor frontend
-  (HTTP client methods on all three apps' `NotechondriaClient`,
-  shared `ActiveSessionsCard` widget in `notechondria_shared`,
-  `_PersonalInfoPage` / `_SignInSecurityPage` consumption,
-  multi-device warning banner above the editor's Settings menu).
-  Still to do on planner_app / portal_app: their Settings pages
-  haven't been redesigned into the Apple-style sub-page layout
-  yet (editor's 0.1.72 / 0.1.73 work hasn't been ported), so
-  the `ActiveSessionsCard` doesn't have a natural home there.
-  When the planner / portal Settings get sub-pages, drop the
-  card into a "Sign in & security" sub-page and thread
-  `onListSessions` / `onRevokeSession` / `onCurrentSessionRevoked`
-  through `_AppShellState` exactly the way editor's
-  `core/build_helpers.dart` already does. The HTTP client
-  methods are already in place — only the UI plumbing remains.
+- [x] **Multi-device session manager — planner / portal frontend.**
+  0.1.86.
 
 - [ ] **Two-factor auth for password login.** Tracked separately
   because it needs a new backend flow plus UI. Scope:

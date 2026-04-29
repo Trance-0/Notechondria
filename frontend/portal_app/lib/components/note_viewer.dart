@@ -23,6 +23,8 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
   Widget build(BuildContext context) {
     final note = widget.note;
     final content = note['content']?.toString() ?? _noteToMarkdown(note);
+    final coverUrl = note['cover_image_url']?.toString() ?? '';
+    final uuid = note['uuid']?.toString() ?? '';
     final author = Map<String, dynamic>.from(note['author'] as Map? ?? const {});
     final course = Map<String, dynamic>.from(note['course'] as Map? ?? const {});
     final subtitleParts = <String>[
@@ -78,32 +80,50 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
                 ),
               ),
               Expanded(
-                child: Card(
-                  margin: const EdgeInsets.all(20),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      return Scrollbar(
-                        controller: _scrollController,
-                        thumbVisibility: true,
-                        child: SingleChildScrollView(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.all(16),
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              minWidth: constraints.maxWidth > 32
-                                  ? constraints.maxWidth - 32
-                                  : constraints.maxWidth,
+                child: Scrollbar(
+                  controller: _scrollController,
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (coverUrl.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                            child: NoteCoverImage(
+                              seed: uuid.isNotEmpty
+                                  ? uuid
+                                  : 'note-${note['title']?.toString() ?? ''}',
+                              imageUrl: coverUrl,
+                              caption: note['title']?.toString(),
                             ),
-                            child: MarkdownBody(
-                              data: content,
-                              selectable: true,
-                              builders: _markdownBuilders(),
-                              inlineSyntaxes: _markdownInlineSyntaxes(),
+                          ),
+                        Card(
+                          margin: const EdgeInsets.all(20),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                return ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    minWidth: constraints.maxWidth > 32
+                                        ? constraints.maxWidth - 32
+                                        : constraints.maxWidth,
+                                  ),
+                                  child: MarkdownBody(
+                                    data: content,
+                                    selectable: true,
+                                    builders: _markdownBuilders(),
+                                    inlineSyntaxes: _markdownInlineSyntaxes(),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         ),
-                      );
-                    },
+                      ],
+                    ),
                   ),
                 ),
               ),
