@@ -658,14 +658,12 @@ class _LearnerNoteCard extends StatelessWidget {
             ),
           );
           if (horizontal) {
-            return IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Flexible(flex: 4, child: cover),
-                  Flexible(flex: 6, child: body),
-                ],
-              ),
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 4, child: SizedBox(height: 200, child: cover)),
+                Expanded(flex: 6, child: body),
+              ],
             );
           }
           return Column(

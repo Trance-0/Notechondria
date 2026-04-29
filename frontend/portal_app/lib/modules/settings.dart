@@ -47,6 +47,13 @@ class _SettingsPage extends StatefulWidget {
     this.onListSessions,
     this.onRevokeSession,
     this.onCurrentSessionRevoked,
+    this.onSendIdentityCode,
+    this.onRotateApiKey,
+    this.onChangePassword,
+    this.onChangeEmailRequest,
+    this.onChangeEmailConfirm,
+    this.onExportLocalData,
+    this.onRestoreFromLocalImport,
   });
 
   final Map<String, dynamic>? profile;
@@ -120,6 +127,23 @@ class _SettingsPage extends StatefulWidget {
   final Future<Map<String, dynamic>> Function()? onListSessions;
   final Future<void> Function(int sessionId)? onRevokeSession;
   final VoidCallback? onCurrentSessionRevoked;
+  final Future<Map<String, dynamic>> Function()? onSendIdentityCode;
+  final Future<Map<String, dynamic>> Function()? onRotateApiKey;
+  final Future<Map<String, dynamic>> Function(
+    String currentPassword,
+    String newPassword,
+    String identityCode,
+  )? onChangePassword;
+  final Future<Map<String, dynamic>> Function(
+    String newEmail,
+    String identityCode,
+  )? onChangeEmailRequest;
+  final Future<Map<String, dynamic>> Function(
+    String newEmail,
+    String code,
+  )? onChangeEmailConfirm;
+  final Future<void> Function()? onExportLocalData;
+  final Future<void> Function()? onRestoreFromLocalImport;
 
   @override
   State<_SettingsPage> createState() => _SettingsPageState();
@@ -515,6 +539,23 @@ class _SettingsPageState extends State<_SettingsPage> {
               onCurrentRevoked: widget.onCurrentSessionRevoked,
             ),
           ],
+          if (widget.onRotateApiKey != null ||
+              widget.onSendIdentityCode != null) ...[
+            const SizedBox(height: 16),
+            _SecuritySection(
+              apiKeyPrefix:
+                  widget.settings?['api_key_prefix']?.toString() ?? '',
+              apiBaseUrl: widget.apiBaseUrl ?? '',
+              onRotateApiKey: widget.onRotateApiKey,
+              onSendIdentityCode: widget.onSendIdentityCode,
+              onChangePassword: widget.onChangePassword,
+              onChangeEmailRequest: widget.onChangeEmailRequest,
+              onChangeEmailConfirm: widget.onChangeEmailConfirm,
+              onOpenChangePassword: () =>
+                  _openChangePasswordDialog(context),
+              onOpenChangeEmail: () => _openChangeEmailDialog(context),
+            ),
+          ],
           const SizedBox(height: 12),
           OutlinedButton(
             onPressed: () {
@@ -585,6 +626,18 @@ class _SettingsPageState extends State<_SettingsPage> {
                           'Synced drafts (recoverable) '
                           '(${widget.localTrashedDraftCount + widget.localTrashedCourseCount})',
                         ),
+                      ),
+                    if (widget.onExportLocalData != null)
+                      OutlinedButton.icon(
+                        onPressed: () => widget.onExportLocalData!(),
+                        icon: const Icon(Icons.file_download_outlined),
+                        label: const Text('Download local data'),
+                      ),
+                    if (widget.onRestoreFromLocalImport != null)
+                      OutlinedButton.icon(
+                        onPressed: () => widget.onRestoreFromLocalImport!(),
+                        icon: const Icon(Icons.file_upload_outlined),
+                        label: const Text('Restore from local archive'),
                       ),
                   ],
                 ),

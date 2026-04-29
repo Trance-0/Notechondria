@@ -93,7 +93,7 @@ extension _AppShellInitialDataX on _AppShellState {
       (c) => c?['is_default'] == true,
       orElse: () => null,
     );
-    if (remoteDefault != null) {
+    if (remoteDefault != null && _token != null && _token!.isNotEmpty) {
       final localDefault = _localCourses.cast<Map<String, dynamic>?>().firstWhere(
         (c) => c?['is_default'] == true,
         orElse: () => null,
@@ -166,21 +166,28 @@ extension _AppShellInitialDataX on _AppShellState {
       deletedNotes = const [];
     }
     _splashStatus.value = 'Loading notes';
-    try {
-      notePage = await timed(
-        'Editor._loadInitialData.listNotes',
-        () => widget.client.listNotes(
-          token: (_token != null && _token!.isNotEmpty) ? _token : null,
-          limit: 20,
-          offset: 0,
-          scope: (_token != null && _token!.isNotEmpty) ? 'personal' : 'all',
-        ),
-      );
-      learnerNotes = (notePage['results'] as List<dynamic>? ?? const [])
-          .map((item) => Map<String, dynamic>.from(item as Map))
-          .toList(growable: false);
-    } catch (error) {
-      errors.add(error.toString().replaceFirst('Exception: ', ''));
+    final isAuthd = _token != null && _token!.isNotEmpty;
+    final scope = isAuthd ? _learnerSearchScope : 'all';
+    // 'local' is a frontend-only scope — skip the backend fetch
+    // so _loadInitialData doesn't repopulate _learnerNotes with
+    // cloud data while the user is filtering to local drafts only.
+    if (scope != 'local') {
+      try {
+        notePage = await timed(
+          'Editor._loadInitialData.listNotes',
+          () => widget.client.listNotes(
+            token: isAuthd ? _token : null,
+            limit: 20,
+            offset: 0,
+            scope: scope,
+          ),
+        );
+        learnerNotes = (notePage['results'] as List<dynamic>? ?? const [])
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList(growable: false);
+      } catch (error) {
+        errors.add(error.toString().replaceFirst('Exception: ', ''));
+      }
     }
 
     // Detect a rejected DRF token (revoked server-side, or signed by a

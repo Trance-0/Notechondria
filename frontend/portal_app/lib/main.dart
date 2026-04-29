@@ -23,6 +23,7 @@ import 'core/url_strategy.dart'
 part 'app_shell.dart';
 part 'core/calendar.dart';
 part 'core/client.dart';
+part 'core/client_base.dart';
 part 'core/course_helpers.dart';
 part 'core/draft_helpers.dart';
 part 'core/draft_sync.dart';
@@ -30,6 +31,7 @@ part 'core/helpers.dart';
 part 'core/http_client_internals.dart';
 part 'core/initial_data.dart';
 part 'core/load_local_state.dart';
+part 'core/local_archive_io.dart';
 part 'core/local_course_builders.dart';
 part 'core/local_persist.dart';
 part 'core/local_starter.dart';
@@ -54,6 +56,8 @@ part 'modules/activity_week.dart';
 part 'modules/learner_note_editor.dart';
 part 'modules/note_metadata_dialog.dart';
 part 'modules/settings.dart';
+part 'modules/settings_sections.dart';
+part 'modules/settings_dialogs.dart';
 
 void main() {
   runApp(

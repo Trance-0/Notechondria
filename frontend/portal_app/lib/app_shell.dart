@@ -826,6 +826,42 @@ class _AppShellState extends State<AppShell>
             refreshState();
             unawaited(_loadInitialData());
           },
+          onSendIdentityCode: _token != null
+              ? () => widget.client.sendIdentityCode(_token!)
+              : null,
+          onRotateApiKey: _token != null
+              ? () async {
+                  final result =
+                      await widget.client.rotateApiKey(_token!);
+                  final newPrefix =
+                      result['api_key_prefix']?.toString() ?? '';
+                  if (newPrefix.isNotEmpty && mounted) {
+                    _settings = {
+                      ..._settings ?? <String, dynamic>{},
+                      'api_key_prefix': newPrefix,
+                    };
+                    refreshState();
+                  }
+                  return result;
+                }
+              : null,
+          onChangePassword: _token != null
+              ? (current, newPw, identityCode) =>
+                  widget.client.changePassword(
+                      _token!, current, newPw, identityCode)
+              : null,
+          onChangeEmailRequest: _token != null
+              ? (email, identityCode) =>
+                  widget.client.changeEmailRequest(
+                      _token!, email, identityCode)
+              : null,
+          onChangeEmailConfirm: _token != null
+              ? (email, code) =>
+                  widget.client.changeEmailConfirm(
+                      _token!, email, code)
+              : null,
+          onExportLocalData: _exportLocalArchive,
+          onRestoreFromLocalImport: _restoreFromLocalImport,
         );
       default:
         return const SizedBox.shrink();

@@ -32,6 +32,18 @@ extension _AppShellLocalStarterX on _AppShellState {
       return false;
     }
     if (hasInbox(_courses) || hasInbox(_localCourses)) {
+      if (_token == null || _token!.isEmpty) {
+        // Local-only user: ensure the Inbox is selected even
+        // when found from a prior session, so the sidebar shows
+        // a usable default category on cold boot.
+        for (final course in _localCourses) {
+          if (course['title']?.toString().trim().toLowerCase() == 'inbox') {
+            _selectedCourse ??= course;
+            _courseNotes = _localNotesForCourse(course);
+            break;
+          }
+        }
+      }
       return;
     }
     await _seedStarterInboxAlongsideExisting();

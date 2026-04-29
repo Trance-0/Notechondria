@@ -45,16 +45,9 @@ file and add a round-log entry to the new version doc.
 
 ### Login and account info
 
-- [ ] Full feature parity with editor Settings in portal: API key
-  section (with rotate button and MCP endpoint helper),
-  password-change dialog with identity code verification,
-  email-change dialog, config file download. As of 0.1.18 the
-  Settings module is visible in portal's sidebar and covers the
-  basic account/preferences/sync surfaces, but the v0.1.17
-  editor-only additions still need to be ported into
-  `portal_app/lib/modules/settings.dart` — this requires syncing
-  client methods, app_shell callback wiring, and the
-  `_ApiKeySection` widget.
+- [x] **Full feature parity with editor Settings in portal.** 0.1.87.
+  API key section, password-change dialog, email-change dialog,
+  config file export/import.
 
 - [x] **Note cover images — planner / portal frontend.** 0.1.86.
 
