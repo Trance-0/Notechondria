@@ -2002,6 +2002,86 @@ class NoteAttachmentDetailApiView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+def _get_note_by_uuid(request, note_uuid):
+    """Look up a non-deleted note by UUID with access check.
+    Shared helper for UUID-keyed endpoints."""
+    note = get_object_or_404(
+        Note.objects.select_related("course_id", "creator_id__user_id")
+        .filter(deleted_at__isnull=True),
+        uuid=note_uuid,
+    )
+    if not can_access_note(request, note):
+        raise serializers.ValidationError(
+            "Note access denied: "
+            "Backend.Notes.Notes/access_check_by_uuid — "
+            "note is private and the requester is not its owner."
+        )
+    return note
+
+
+class NoteAttachmentByUuidApiView(APIView):
+    """List / create attachments for a note looked up by UUID.
+    Mirrors NoteAttachmentApiView but accepts note_uuid (UUID)
+    in the URL instead of note_id (integer PK)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, note_uuid):
+        note = _get_note_by_uuid(request, note_uuid)
+        attachments = NoteAttachment.objects.filter(note_id=note)
+        return Response([attachment_payload(a, request) for a in attachments])
+
+    def post(self, request, note_uuid):
+        note = _get_note_by_uuid(request, note_uuid)
+        if note.creator_id.user_id_id != request.user.id:
+            return Response(
+                {"detail": "Only the owner can upload attachments."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        uploaded = request.FILES.get("file")
+        if not uploaded:
+            return Response(
+                {"detail": "No file provided."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if uploaded.size > _MAX_ATTACHMENT_SIZE:
+            return Response(
+                {"detail": f"File exceeds maximum size of {_MAX_ATTACHMENT_SIZE // (1024 * 1024)} MB."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        attachment = NoteAttachment.objects.create(
+            note_id=note,
+            file=uploaded,
+            original_filename=uploaded.name or "untitled",
+            file_size=uploaded.size,
+            content_type=uploaded.content_type or "",
+        )
+        return Response(
+            attachment_payload(attachment, request),
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class NoteAttachmentByUuidDetailApiView(APIView):
+    """Delete an attachment by note UUID + attachment ID.
+    Mirrors NoteAttachmentDetailApiView but looks up the note
+    by UUID in the URL."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, note_uuid, attachment_id):
+        note = _get_note_by_uuid(request, note_uuid)
+        if note.creator_id.user_id_id != request.user.id:
+            return Response(
+                {"detail": "Only the owner can delete attachments."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        attachment = get_object_or_404(NoteAttachment, pk=attachment_id, note_id=note)
+        attachment.file.delete(save=False)
+        attachment.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 _MAX_COVER_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB — covers shouldn't be huge
 
 

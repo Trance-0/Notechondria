@@ -140,6 +140,23 @@ abstract class NotechondriaClient implements AuthClient {
     int noteId,
     int attachmentId,
   );
+  /// UUID-based variants. Look up the note by its server UUID instead of
+  /// integer PK, aligning with the frontend's `local://<note-uuid>/<filename>`
+  /// scheme so sync code can operate without passing integer ids.
+  Future<List<Map<String, dynamic>>> listNoteAttachmentsByUuid(
+    String token,
+    String noteUuid,
+  );
+  Future<Map<String, dynamic>> uploadNoteAttachmentByUuid(
+    String token,
+    String noteUuid,
+    XFile file,
+  );
+  Future<void> deleteNoteAttachmentByUuid(
+    String token,
+    String noteUuid,
+    int attachmentId,
+  );
   /// Upload a cover image for the given note. Backend returns the
   /// updated note summary including the new `cover_image_url`. Owner-
   /// only on the backend (403 from non-owners).

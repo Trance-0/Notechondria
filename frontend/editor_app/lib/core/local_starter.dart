@@ -71,7 +71,9 @@ extension _AppShellLocalStarterX on _AppShellState {
     }
     if (existingCloudInbox != null) {
       _selectedCourse = existingCloudInbox;
-      _frontPage ??= frontPageFallbackPayload(_courses);
+      if (_frontPage == null || _frontPage!.isEmpty) {
+        _frontPage = frontPageFallbackPayload(_courses);
+      }
       _localStats = {
         ..._localStats,
         'starter_workspace_seeded_at':
@@ -164,7 +166,9 @@ Add syntax highlighting for plain text and keep notes searchable by title or bod
     }
     _selectedCourse = inboxCourse;
     _courseNotes = _localNotesForCourse(inboxCourse);
-    _frontPage ??= frontPageFallbackPayload(const []);
+    if (_frontPage == null || _frontPage!.isEmpty) {
+      _frontPage = frontPageFallbackPayload(const []);
+    }
     _localStats = {
       ..._localStats,
       'starter_workspace_seeded_at': DateTime.now().toUtc().toIso8601String(),

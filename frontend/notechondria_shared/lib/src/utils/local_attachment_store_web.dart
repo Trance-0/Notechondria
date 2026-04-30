@@ -1,80 +1,149 @@
+import 'dart:async';
 import 'dart:typed_data';
+
+import 'package:idb_shim/idb_shim.dart' as idb;
 
 import 'local_attachment_store.dart';
 
-/// Web backend for [LocalAttachmentStore]. This commit ships an
-/// in-memory Map keyed by `(noteUuid, filename)` that survives for
-/// the tab's lifetime but not across page reloads. A later round
-/// swaps the implementation for an `idb_shim`-backed IndexedDB
-/// store; the public contract stays unchanged.
+const _dbName = 'notechondria_attachments';
+const _dbVersion = 1;
+const _storeName = 'entries';
+
+/// Web backend for [LocalAttachmentStore] backed by IndexedDB via
+/// `idb_shim`. Replaces the earlier in-memory stub so attachments
+/// survive page reloads within the same browser origin.
 ///
-/// The in-memory backend is a deliberate placeholder — it lets the
-/// editor wiring round land without blocking on IndexedDB plumbing.
-/// When a user reloads the page, the draft body still carries
-/// `local://` URLs but the bytes are gone; the editor surfaces that
-/// as a broken image tile with a `Shared.LocalAttachmentStore/get`
-/// error the debug log + SnackBar pick up.
+/// Database: `notechondria_attachments` (version 1)
+///   Object store: `entries` keyed by `key` (String).
+///     Value shape: `{key, bytes, metadataJson}`
+///
+/// The `metadataJson` field holds the JSON-serialized record written
+/// by `LocalAttachmentStore.put` / `writeMetadata` (content type,
+/// size, creation time — see [LocalAttachment.toMetadata]).
 Future<LocalAttachmentBackend> openLocalAttachmentBackend() async {
-  return _WebLocalAttachmentBackend();
+  final factory = idb.idbFactoryNative;
+  final db = await factory.open(_dbName, version: _dbVersion,
+      onUpgradeNeeded: (ev) {
+    final database = ev.database;
+    if (!database.objectStoreNames.contains(_storeName)) {
+      database.createObjectStore(_storeName, keyPath: 'key');
+    }
+  });
+  return _WebLocalAttachmentBackend(db);
 }
 
 class _WebLocalAttachmentBackend implements LocalAttachmentBackend {
-  final Map<String, Uint8List> _blobs = {};
-  final Map<String, String> _metas = {};
+  final idb.Database _db;
 
-  String _key(String noteUuid, String filename) => '$noteUuid/$filename';
+  _WebLocalAttachmentBackend(this._db);
+
+  String _key(String noteUuid, String filename) => 'local://$noteUuid/$filename';
 
   @override
   Future<void> write(String noteUuid, String filename, Uint8List bytes) async {
-    _blobs[_key(noteUuid, filename)] = bytes;
+    final tx = _db.transaction(_storeName, idb.idbModeReadWrite);
+    final store = tx.objectStore(_storeName);
+    await store.put(<String, dynamic>{
+      'key': _key(noteUuid, filename),
+      'bytes': bytes,
+    });
+    await tx.completed;
   }
 
   @override
   Future<Uint8List?> read(String noteUuid, String filename) async {
-    return _blobs[_key(noteUuid, filename)];
+    final tx = _db.transaction(_storeName, idb.idbModeReadOnly);
+    final store = tx.objectStore(_storeName);
+    final result = await store.getObject(_key(noteUuid, filename));
+    if (result == null) return null;
+    return (result as Map<String, dynamic>)['bytes'] as Uint8List?;
   }
 
   @override
   Future<void> writeMetadata(
       String noteUuid, String filename, String metadataJson) async {
-    _metas[_key(noteUuid, filename)] = metadataJson;
+    final key = _key(noteUuid, filename);
+    final tx = _db.transaction(_storeName, idb.idbModeReadWrite);
+    final store = tx.objectStore(_storeName);
+    final existing = await store.getObject(key);
+    if (existing != null) {
+      final record = existing as Map<String, dynamic>;
+      record['metadataJson'] = metadataJson;
+      await store.put(record);
+    } else {
+      await store.put(<String, dynamic>{
+        'key': key,
+        'metadataJson': metadataJson,
+      });
+    }
+    await tx.completed;
   }
 
   @override
   Future<String?> readMetadata(String noteUuid, String filename) async {
-    return _metas[_key(noteUuid, filename)];
+    final tx = _db.transaction(_storeName, idb.idbModeReadOnly);
+    final store = tx.objectStore(_storeName);
+    final result = await store.getObject(_key(noteUuid, filename));
+    if (result == null) return null;
+    return (result as Map<String, dynamic>)['metadataJson']?.toString();
   }
 
   @override
   Future<List<String>> listForNote(String noteUuid) async {
-    final prefix = '$noteUuid/';
-    final names = _blobs.keys
-        .where((k) => k.startsWith(prefix))
-        .map((k) => k.substring(prefix.length))
-        .toList();
+    final prefix = 'local://$noteUuid/';
+    final names = <String>[];
+    final tx = _db.transaction(_storeName, idb.idbModeReadOnly);
+    final store = tx.objectStore(_storeName);
+    await for (final cursor in store.openCursor()) {
+      final key = cursor.key as String;
+      if (key.startsWith(prefix)) {
+        names.add(key.substring(prefix.length));
+      }
+    }
+    await tx.completed;
     names.sort();
     return names;
   }
 
   @override
   Future<void> delete(String noteUuid, String filename) async {
-    _blobs.remove(_key(noteUuid, filename));
-    _metas.remove(_key(noteUuid, filename));
+    final tx = _db.transaction(_storeName, idb.idbModeReadWrite);
+    final store = tx.objectStore(_storeName);
+    await store.delete(_key(noteUuid, filename));
+    await tx.completed;
   }
 
   @override
   Future<void> deleteAllForNote(String noteUuid) async {
-    final prefix = '$noteUuid/';
-    _blobs.removeWhere((k, _) => k.startsWith(prefix));
-    _metas.removeWhere((k, _) => k.startsWith(prefix));
+    final prefix = 'local://$noteUuid/';
+    final tx = _db.transaction(_storeName, idb.idbModeReadWrite);
+    final store = tx.objectStore(_storeName);
+    final keysToDelete = <String>[];
+    await for (final cursor in store.openCursor()) {
+      final key = cursor.key as String;
+      if (key.startsWith(prefix)) {
+        keysToDelete.add(key);
+      }
+    }
+    for (final key in keysToDelete) {
+      await store.delete(key);
+    }
+    await tx.completed;
   }
 
   @override
   Future<int> totalBytes() async {
     var total = 0;
-    for (final bytes in _blobs.values) {
-      total += bytes.lengthInBytes;
+    final tx = _db.transaction(_storeName, idb.idbModeReadOnly);
+    final store = tx.objectStore(_storeName);
+    await for (final cursor in store.openCursor()) {
+      final record = cursor.value as Map<String, dynamic>;
+      final bytes = record['bytes'] as Uint8List?;
+      if (bytes != null) {
+        total += bytes.lengthInBytes;
+      }
     }
+    await tx.completed;
     return total;
   }
 }

@@ -2,6 +2,7 @@ import json
 from datetime import datetime, time, timedelta, timezone as dt_timezone
 
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 from django.test import Client, RequestFactory, TestCase
 from django.contrib.messages.storage.fallback import FallbackStorage
@@ -24,6 +25,7 @@ from planner.models import (
 from .models import (
     Note,
     NoteActivitySession,
+    NoteAttachment,
     NoteBlock,
     NoteBlockTypeChoices,
     NoteVersion,
@@ -1083,3 +1085,174 @@ class WelcomeNoteSeedingTests(TestCase):
             Course.objects.filter(creator_id=self.creator, is_default=True).count(),
             1,
         )
+
+
+class NoteAttachmentByUuidApiTests(TestCase):
+    """Tests for the UUID-keyed attachment endpoints at
+    GET/POST /notes/uuid/<uuid>/attachments/ and
+    DELETE /notes/uuid/<uuid>/attachments/<int:attachment_id>/"""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="alice", password="pw")
+        self.creator = Creator.objects.create(user_id=self.user)
+        self.course = Course.objects.create(
+            creator_id=self.creator, slug="alice-course", title="Alice Course"
+        )
+        self.note = Note.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            sharing_id="uuid-attach-test",
+            title="Attachment Test Note",
+        )
+        self.note_uuid = str(self.note.uuid)
+        self.other_user = User.objects.create_user(username="bob", password="pw")
+        self.other_creator = Creator.objects.create(user_id=self.other_user)
+        self.other_note = Note.objects.create(
+            creator_id=self.other_creator,
+            sharing_id="other-note",
+            title="Other Note",
+        )
+        self.other_note_uuid = str(self.other_note.uuid)
+        self.client.login(username="alice", password="pw")
+
+    def _list_url(self, note_uuid=None):
+        return f"/api/v1/notes/uuid/{(note_uuid or self.note_uuid)}/attachments/"
+
+    def _detail_url(self, attachment_id, note_uuid=None):
+        return (
+            f"/api/v1/notes/uuid/{(note_uuid or self.note_uuid)}"
+            f"/attachments/{attachment_id}/"
+        )
+
+    def _make_file(self, name="test.txt", content=b"hello world", content_type="text/plain"):
+        return SimpleUploadedFile(name, content, content_type=content_type)
+
+    # ------------------------------------------------------------------
+    # GET — list
+    # ------------------------------------------------------------------
+
+    def test_list_empty(self):
+        resp = self.client.get(self._list_url())
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), [])
+
+    def test_list_with_attachment(self):
+        uploaded = self._make_file()
+        resp = self.client.post(self._list_url(), {"file": uploaded})
+        self.assertEqual(resp.status_code, 201)
+        attachment_id = resp.json()["id"]
+
+        resp2 = self.client.get(self._list_url())
+        self.assertEqual(resp2.status_code, 200)
+        data = resp2.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["id"], attachment_id)
+        self.assertEqual(data[0]["original_filename"], "test.txt")
+
+    def test_list_requires_auth(self):
+        self.client.logout()
+        resp = self.client.get(self._list_url())
+        self.assertEqual(resp.status_code, 403)
+
+    # ------------------------------------------------------------------
+    # POST — upload
+    # ------------------------------------------------------------------
+
+    def test_upload_success(self):
+        uploaded = self._make_file()
+        resp = self.client.post(self._list_url(), {"file": uploaded})
+        self.assertEqual(resp.status_code, 201)
+        data = resp.json()
+        self.assertEqual(data["original_filename"], "test.txt")
+        self.assertEqual(data["file_size"], 11)
+        self.assertEqual(data["content_type"], "text/plain")
+        self.assertIn("url", data)
+        self.assertIn("id", data)
+
+    def test_upload_no_file_returns_400(self):
+        resp = self.client.post(self._list_url(), {})
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("No file provided", resp.json()["detail"])
+
+    def test_upload_too_large_returns_400(self):
+        big_content = b"x" * (20 * 1024 * 1024 + 1)
+        uploaded = self._make_file(content=big_content)
+        resp = self.client.post(self._list_url(), {"file": uploaded})
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("exceeds maximum size", resp.json()["detail"])
+
+    def test_upload_non_owner_returns_403(self):
+        self.client.login(username="bob", password="pw")
+        uploaded = self._make_file()
+        resp = self.client.post(self._list_url(note_uuid=self.note_uuid), {"file": uploaded})
+        self.assertEqual(resp.status_code, 403)
+
+    def test_upload_requires_auth(self):
+        self.client.logout()
+        uploaded = self._make_file()
+        resp = self.client.post(self._list_url(), {"file": uploaded})
+        self.assertEqual(resp.status_code, 403)
+
+    def test_upload_to_own_note_allowed(self):
+        """User can upload to their own note via UUID endpoint."""
+        self.client.login(username="bob", password="pw")
+        uploaded = self._make_file()
+        resp = self.client.post(
+            self._list_url(note_uuid=self.other_note_uuid),
+            {"file": uploaded},
+        )
+        self.assertEqual(resp.status_code, 201)
+        data = resp.json()
+        self.assertEqual(data["original_filename"], "test.txt")
+
+    # ------------------------------------------------------------------
+    # DELETE — delete attachment
+    # ------------------------------------------------------------------
+
+    def test_delete_success(self):
+        uploaded = self._make_file()
+        resp = self.client.post(self._list_url(), {"file": uploaded})
+        attachment_id = resp.json()["id"]
+
+        resp2 = self.client.delete(self._detail_url(attachment_id))
+        self.assertEqual(resp2.status_code, 204)
+
+        # Verify it's gone
+        resp3 = self.client.get(self._list_url())
+        self.assertEqual(resp3.json(), [])
+
+    def test_delete_non_owner_returns_403(self):
+        uploaded = self._make_file()
+        resp = self.client.post(self._list_url(), {"file": uploaded})
+        attachment_id = resp.json()["id"]
+
+        self.client.login(username="bob", password="pw")
+        resp2 = self.client.delete(self._detail_url(attachment_id))
+        self.assertEqual(resp2.status_code, 403)
+
+    def test_delete_requires_auth(self):
+        uploaded = self._make_file()
+        resp = self.client.post(self._list_url(), {"file": uploaded})
+        attachment_id = resp.json()["id"]
+
+        self.client.logout()
+        resp2 = self.client.delete(self._detail_url(attachment_id))
+        self.assertEqual(resp2.status_code, 403)
+
+    def test_delete_nonexistent_returns_404(self):
+        resp = self.client.delete(self._detail_url(99999))
+        self.assertEqual(resp.status_code, 404)
+
+    # ------------------------------------------------------------------
+    # Storage path uses UUID (not integer note_id)
+    # ------------------------------------------------------------------
+
+    def test_upload_path_contains_uuid(self):
+        uploaded = self._make_file()
+        resp = self.client.post(self._list_url(), {"file": uploaded})
+        self.assertEqual(resp.status_code, 201)
+        data = resp.json()
+        # The file URL should contain the note UUID
+        self.assertIn(self.note_uuid, data["url"])
+        # The file URL should NOT contain the integer note id
+        self.assertNotIn(f"note_{self.note.id}", data["url"])

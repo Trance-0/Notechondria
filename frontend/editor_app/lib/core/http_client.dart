@@ -848,6 +848,56 @@ class HttpNotechondriaClient
   }
 
   @override
+  Future<List<Map<String, dynamic>>> listNoteAttachmentsByUuid(
+    String token,
+    String noteUuid,
+  ) async {
+    final uri = _uri('/notes/uuid/$noteUuid/attachments/');
+    final response = await _get(uri, token: token);
+    final data =
+        await decode(response, uri: uri, method: 'GET') as List<dynamic>;
+    return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+  }
+
+  @override
+  Future<Map<String, dynamic>> uploadNoteAttachmentByUuid(
+    String token,
+    String noteUuid,
+    XFile file,
+  ) async {
+    final uri = _uri('/notes/uuid/$noteUuid/attachments/');
+    final request = http.MultipartRequest('POST', uri)
+      ..headers.addAll(headers(token: token))
+      ..files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          await file.readAsBytes(),
+          filename: file.name,
+        ),
+      );
+    final streamed = await send(
+        'POST', uri, () => request.send().then(http.Response.fromStream));
+    return Map<String, dynamic>.from(
+      await decode(streamed, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
+  Future<void> deleteNoteAttachmentByUuid(
+    String token,
+    String noteUuid,
+    int attachmentId,
+  ) async {
+    final uri = _uri('/notes/uuid/$noteUuid/attachments/$attachmentId/');
+    final response = await send(
+      'DELETE',
+      uri,
+      () => _httpClient.delete(uri, headers: headers(token: token)),
+    );
+    await decode(response, uri: uri, method: 'DELETE');
+  }
+
+  @override
   Future<Map<String, dynamic>> uploadNoteCoverImage(
     String token,
     int noteId,

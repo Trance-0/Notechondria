@@ -125,18 +125,19 @@ file and add a round-log entry to the new version doc.
   and should adopt the same PopupMenuButton pattern for
   consistency.
 
-- [ ] **Attachment CDN — remaining deferred items.** The frontend
-  three-commit plan (shared store + editor wiring + planner/portal
-  parity + attachments list) landed across 0.1.40 / 0.1.41 / 0.1.42.
-  Still open:
-  - IndexedDB web backend to replace the in-memory stub in
-    `notechondria_shared/lib/src/local_attachment_store.dart`
-    (`_WebLocalAttachmentBackend`) so attachments survive a tab
-    refresh. Detailed spec in `docs/versions/0.1.42.md`.
-  - Storage-budget UI surface: wire `LocalAttachmentStore.totalBytes()`
-    into the debug log card + a settings "Storage" row with a
-    "Clear unused local attachments" action. Detailed spec in
-    `docs/versions/0.1.42.md`.
+- [x] **Attachment CDN — remaining deferred items — 0.1.88.**
+  IndexedDB web backend replaced the in-memory stub
+  (`_WebLocalAttachmentBackend` now uses `idb_shim`-backed
+  IndexedDB). Storage-budget UI surface added: `formatBytes` utility
+  shared across apps, `_AttachmentStorageTile` widget in editor
+  settings showing total bytes + 500 MB warning.
+
+- [x] **Attachment CDN server-side — 0.1.88.**
+  `note_attachment_path` now keys by `note.uuid.hex` instead of
+  integer `note.id`. New UUID-keyed API endpoints at
+  `/notes/uuid/<uuid>/attachments/` for list/upload/delete.
+  Backward-compatible with existing integer-keyed endpoints.
+  Backend tests cover list, upload, delete, permissions, size caps.
 
 ### Editor Settings
 
@@ -168,13 +169,6 @@ file and add a round-log entry to the new version doc.
   break, so gather feedback before touching.
 
 ## Backend
-
-- [ ] **Attachment CDN server-side.** Currently uploads go to a
-  single path. Consider keying by `note.uuid` at the URL level
-  (`/notes/<uuid>/attachments/<filename>`) so the frontend can
-  invalidate / sync without passing integer ids. Align with the
-  frontend `local://<note-uuid>/<safe-filename>` scheme in the
-  attachment-CDN rework above.
 
 ### MCP
 

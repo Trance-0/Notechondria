@@ -288,7 +288,7 @@ class NoteBlock(models.Model):
 
 def note_attachment_path(instance, filename):
     return "user_upload/user_{0}/notes/note_{1}/{2}".format(
-        instance.note_id.creator_id.user_id.id, instance.note_id.id, filename
+        instance.note_id.creator_id.user_id.id, instance.note_id.uuid.hex, filename
     )
 
 

@@ -190,6 +190,30 @@ extension _AppShellInitialDataX on _AppShellState {
       }
     }
 
+    // Anonymous / local-only safety net: if _chooseDefaultCourse returned
+    // null (e.g. the Inbox's negative id didn't match any entry in the
+    // _chooseDefaultCourse iteration), the fallback on line 135 already
+    // tried `_selectedCourse`. This guard catches the remaining edge case
+    // where `hadExplicitSelection` was false AND no course was picked,
+    // ensuring local-only users always see their Inbox on first paint.
+    if (_selectedCourse == null && (_token == null || _token.isEmpty)) {
+      final localDefault = _localCourses.cast<Map<String, dynamic>?>().firstWhere(
+        (c) => c?['is_default'] == true,
+        orElse: () => _localCourses.isNotEmpty ? _localCourses.first : null,
+      );
+      if (localDefault != null) {
+        selectedCourse = Map<String, dynamic>.from(localDefault);
+        courseNotes = _localNotesForCourse(selectedCourse!);
+        log(
+          source: 'Editor._loadInitialData',
+          level: DebugLogLevel.info,
+          message:
+              'Safety net activated: selected local default '
+              "'${localDefault['title']}' for anonymous boot.",
+        );
+      }
+    }
+
     // Detect a rejected DRF token (revoked server-side, or signed by a
     // different SECRET_KEY after a deploy) and clear the local session
     // so the user sees the auth UI instead of silently dropping into

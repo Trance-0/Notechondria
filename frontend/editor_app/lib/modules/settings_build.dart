@@ -768,12 +768,18 @@ extension _SettingsPageBuildX on _SettingsPageState {
         '${widget.localDraftCount} local draft(s), ${widget.localCourseCount} local category(ies).';
     final controller = widget.debugLogController;
     if (controller != null) {
-      return DebugLogCard(
-        controller: controller,
-        title: 'Debug log',
-        summary: summary,
-        onCopyLogs: widget.onCopyLogs,
-        onPing: () => pingBackend(widget.apiBaseUrl),
+      return Column(
+        children: [
+          DebugLogCard(
+            controller: controller,
+            title: 'Debug log',
+            summary: summary,
+            onCopyLogs: widget.onCopyLogs,
+            onPing: () => pingBackend(widget.apiBaseUrl),
+          ),
+          const SizedBox(height: 8),
+          _AttachmentStorageTile(),
+        ],
       );
     }
     return Card(
@@ -820,6 +826,8 @@ extension _SettingsPageBuildX on _SettingsPageState {
                       ),
                     ),
             ),
+            const SizedBox(height: 8),
+            _AttachmentStorageTile(),
           ],
         ),
       ),
@@ -856,6 +864,78 @@ class _OAuthPillButton extends StatelessWidget {
         onPressed: onPressed,
         icon: Icon(icon, size: 20),
         label: Text(label),
+      ),
+    );
+  }
+}
+
+/// Small tile showing local attachment storage usage. Loads
+/// stats asynchronously from [LocalAttachmentStore] and displays
+/// total bytes. Shows nothing when the store is empty or not
+/// yet initialized.
+class _AttachmentStorageTile extends StatefulWidget {
+  @override
+  State<_AttachmentStorageTile> createState() =>
+      _AttachmentStorageTileState();
+}
+
+class _AttachmentStorageTileState extends State<_AttachmentStorageTile> {
+  int? _totalBytes;
+  bool _loaded = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_loaded) _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final store = await LocalAttachmentStore.open();
+      final total = await store.totalBytes();
+      if (mounted) {
+        setState(() {
+          _totalBytes = total;
+          _loaded = true;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _loaded = true);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded || _totalBytes == null || _totalBytes == 0) {
+      return const SizedBox.shrink();
+    }
+    final colorScheme = Theme.of(context).colorScheme;
+    final overLimit = _totalBytes! > 500 * 1024 * 1024;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(Icons.storage_outlined,
+              size: 14, color: colorScheme.onSurfaceVariant),
+          const SizedBox(width: 6),
+          Text(
+            'Local attachments: ${formatBytes(_totalBytes!)}',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+          ),
+          if (overLimit) ...[
+            const SizedBox(width: 8),
+            Tooltip(
+              message:
+                  'Attachments exceed 500 MB — sync to free up space.',
+              child: Icon(Icons.warning_amber_rounded,
+                  size: 14, color: colorScheme.error),
+            ),
+          ],
+        ],
       ),
     );
   }
