@@ -41,6 +41,16 @@ extension _AppShellInitialDataX on _AppShellState {
     // into `widget.client` directly, not through `_loadInitialData`.
     final offlineMode = _localSettings['offline_mode'] == true;
     if (offlineMode) {
+      // Category auto-sync: if authenticated, still fetch courses so
+      // the sidebar category list stays up-to-date even in offline mode.
+      if (_token != null && _token!.isNotEmpty) {
+        try {
+          courses = (await widget.client.getCourses(token: _token))
+              .map(decorateRemoteCourse)
+              .toList(growable: false);
+          updatedCache = true;
+        } catch (_) {}
+      }
         _frontPage = frontPage;
         _courses = courses;
         _courseNotes = courseNotes;
@@ -196,7 +206,7 @@ extension _AppShellInitialDataX on _AppShellState {
     // tried `_selectedCourse`. This guard catches the remaining edge case
     // where `hadExplicitSelection` was false AND no course was picked,
     // ensuring local-only users always see their Inbox on first paint.
-    if (_selectedCourse == null && (_token == null || _token.isEmpty)) {
+    if (_selectedCourse == null && (_token == null || _token!.isEmpty)) {
       final localDefault = _localCourses.cast<Map<String, dynamic>?>().firstWhere(
         (c) => c?['is_default'] == true,
         orElse: () => _localCourses.isNotEmpty ? _localCourses.first : null,

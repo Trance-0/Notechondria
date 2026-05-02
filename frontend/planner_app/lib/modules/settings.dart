@@ -47,6 +47,8 @@ class _SettingsPage extends StatefulWidget {
     this.onListSessions,
     this.onRevokeSession,
     this.onCurrentSessionRevoked,
+    this.onExportLocalData,
+    this.onRestoreFromLocalImport,
   });
 
   final Map<String, dynamic>? profile;
@@ -128,6 +130,8 @@ class _SettingsPage extends StatefulWidget {
   final Future<Map<String, dynamic>> Function()? onListSessions;
   final Future<void> Function(int sessionId)? onRevokeSession;
   final VoidCallback? onCurrentSessionRevoked;
+  final Future<void> Function()? onExportLocalData;
+  final Future<void> Function()? onRestoreFromLocalImport;
 
   @override
   State<_SettingsPage> createState() => _SettingsPageState();
@@ -452,6 +456,18 @@ class _SettingsPageState extends State<_SettingsPage> {
                             'Synced drafts (recoverable) '
                             '(${widget.localTrashedDraftCount + widget.localTrashedCourseCount})',
                           ),
+                        ),
+                      if (widget.onExportLocalData != null)
+                        OutlinedButton.icon(
+                          onPressed: () => widget.onExportLocalData!(),
+                          icon: const Icon(Icons.file_download_outlined),
+                          label: const Text('Download local data'),
+                        ),
+                      if (widget.onRestoreFromLocalImport != null)
+                        OutlinedButton.icon(
+                          onPressed: () => widget.onRestoreFromLocalImport!(),
+                          icon: const Icon(Icons.file_upload_outlined),
+                          label: const Text('Restore from local archive'),
                         ),
                       OutlinedButton(
                         onPressed: widget.onLogout,

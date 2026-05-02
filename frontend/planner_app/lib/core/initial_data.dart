@@ -34,6 +34,16 @@ extension _AppShellInitialDataX on _AppShellState {
     // paths call into `widget.client` directly, not through here.
     final offlineMode = _localSettings['offline_mode'] == true;
     if (offlineMode) {
+      // Category auto-sync: if authenticated, still fetch courses so
+      // the sidebar category list stays up-to-date even in offline mode.
+      if (_token != null && _token!.isNotEmpty) {
+        try {
+          courses = (await widget.client.getCourses(token: _token))
+              .map(decorateRemoteCourse)
+              .toList(growable: false);
+          updatedCache = true;
+        } catch (_) {}
+      }
         _courses = courses;
         _activity = activity;
         _courseNotes = courseNotes;

@@ -728,6 +728,8 @@ class _AppShellState extends State<AppShell>
               ? (noteId) =>
                   widget.client.deleteNoteCoverImage(_token!, noteId)
               : null,
+          offlineMode: _localSettings['offline_mode'] == true,
+          onLoadPublicNotes: () => _loadLearnerNotes(),
         );
       case 1:
         return _CoursePage(
@@ -825,6 +827,8 @@ class _AppShellState extends State<AppShell>
             refreshState();
             unawaited(_loadInitialData());
           },
+          onExportLocalData: _exportLocalArchive,
+          onRestoreFromLocalImport: _restoreFromLocalImport,
         );
       default:
         return const SizedBox.shrink();

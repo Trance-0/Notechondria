@@ -32,6 +32,8 @@ class _LearnerPage extends StatefulWidget {
     required this.onLogEvent,
     this.onUploadCover,
     this.onDeleteCover,
+    this.offlineMode = false,
+    this.onLoadPublicNotes,
   });
 
   final List<Map<String, dynamic>> notes;
@@ -73,6 +75,8 @@ class _LearnerPage extends StatefulWidget {
   final ValueChanged<String> onLogEvent;
   final Future<Map<String, dynamic>> Function(int noteId, XFile file)? onUploadCover;
   final Future<Map<String, dynamic>> Function(int noteId)? onDeleteCover;
+  final bool offlineMode;
+  final VoidCallback? onLoadPublicNotes;
 
   @override
   State<_LearnerPage> createState() => _LearnerPageState();
@@ -314,6 +318,15 @@ class _LearnerPageState extends State<_LearnerPage> {
                   child: Text(
                     'No local drafts yet. Use the add button to create one and sync later after login.',
                   ),
+                ),
+              ),
+            if (widget.offlineMode && widget.notes.isEmpty && widget.isAuthenticated)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: OutlinedButton.icon(
+                  onPressed: widget.onLoadPublicNotes,
+                  icon: const Icon(Icons.cloud_download_outlined),
+                  label: const Text('Load notes'),
                 ),
               ),
             if (!widget.isAuthenticated)

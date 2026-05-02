@@ -569,6 +569,8 @@ extension _AppShellBuildHelpersX on _AppShellState {
               ? (noteId) =>
                   widget.client.deleteNoteCoverImage(_token!, noteId)
               : null,
+          offlineMode: _localSettings['offline_mode'] == true,
+          onLoadPublicNotes: () => _loadLearnerNotes(),
         );
       case 4:
         return _SettingsPage(

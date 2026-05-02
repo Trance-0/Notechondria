@@ -79,13 +79,11 @@ file and add a round-log entry to the new version doc.
 
 ### App preferences
 
-- [ ] **Offline-mode — secondary fetch gates.** The coarse
-  `_loadInitialData` gate landed in 0.1.46. The two finer-grained
-  items from the original spec are still open: public-notes list
-  in `_LearnerPage` should become an explicit "Load public notes"
-  button when offline_mode is true, and category auto-sync from
-  cloud needs an additional guard so the authenticated sync path
-  still runs even when offline_mode is on.
+- [x] **Offline-mode — secondary fetch gates — 0.1.89.** "Load public notes"
+  button added to all three `_LearnerPage` widgets when `offlineMode` is true
+  and notes are empty. Category auto-sync guard added to all three
+  `_loadInitialData` methods: authenticated offline-mode users still fetch
+  courses so the sidebar category list stays current.
 
 ### Debug log window
 
@@ -116,14 +114,10 @@ file and add a round-log entry to the new version doc.
 
 ### Note editor
 
-- [ ] **Port editor overflow menu to planner/portal inline editors.**
-  The note_editor.dart top-bar overflow menu (Edit note meta /
-  Switch editor / View attachments) shipped in 0.1.46 for the
-  editor app only. The inlined note editors in
-  `planner_app/lib/modules/learner.dart` and
-  `portal_app/lib/modules/learner.dart` still use the old layout
-  and should adopt the same PopupMenuButton pattern for
-  consistency.
+- [x] **Editor overflow menu already available in planner/portal.**
+  Both apps use `_NoteEditorDialog` from `editor_app/lib/modules/note_editor.dart`
+  which already ships the PopupMenuButton (Edit note meta / Switch
+  editor / View attachments). No additional porting needed.
 
 - [x] **Attachment CDN — remaining deferred items — 0.1.88.**
   IndexedDB web backend replaced the in-memory stub
@@ -141,21 +135,13 @@ file and add a round-log entry to the new version doc.
 
 ### Editor Settings
 
-- [ ] **Planner + Portal export/import** — replicate the 0.1.38
-  editor wiring in `planner_app/lib/app_shell.dart` +
-  `planner_app/lib/modules/settings.dart` and the portal
-  equivalents. Planner must add `plannerEvents` / `calendarFeeds` /
-  `activityWeek` buckets to its `LocalArchiveInput`; portal must
-  add `frontPage`. Both use the shared helpers so the format stays
-  aligned.
+- [x] **Planner export/import — 0.1.89.** New `core/local_archive_io.dart`
+  wired with `plannerEvents` / `calendarFeeds` / `activityWeek` buckets.
+  Portal export/import was already done in 0.1.87.
 
-- [ ] **Cross-app export round-trip tests** in
-  `notechondria_shared/test/local_archive_test.dart`. The parser
-  already returns empty defaults for missing optional files, so
-  editor ↔ planner ↔ portal round-trips should succeed — add
-  tests that assert a planner export imports into editor and vice
-  versa without losing shared buckets or crashing on the
-  app-specific ones.
+- [x] **Cross-app export round-trip tests — 0.1.89.** Three new tests in
+  `notechondria_shared/test/local_archive_test.dart` covering planner→editor,
+  editor→planner, and portal→planner round-trips.
 
 ## Planner
 
