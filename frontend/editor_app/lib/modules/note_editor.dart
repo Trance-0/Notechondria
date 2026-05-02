@@ -333,7 +333,13 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
           'course_id': _metadata['course_id'],
           'is_public': _metadata['is_public'] == true,
           'content': _composeMarkdown(_titleController.text, _bodyController.text),
-          'metadata_json': jsonEncode(_metadata),
+          'metadata_json': jsonEncode(
+            // `custom_meta` lives on its own column on the backend.
+            // Stripping it from the system metadata blob avoids
+            // double-storing the same key/value pairs.
+            Map<String, dynamic>.from(_metadata)..remove('custom_meta'),
+          ),
+          'custom_meta': _metadata['custom_meta']?.toString() ?? '',
           'editor_mode': _editorMode,
         },
       );

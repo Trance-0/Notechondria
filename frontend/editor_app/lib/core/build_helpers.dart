@@ -636,6 +636,35 @@ extension _AppShellBuildHelpersX on _AppShellState {
                   return result;
                 }
               : null,
+          onSaveMcpSkill: _token != null
+              ? (skillMd) async {
+                  try {
+                    final result = await widget.client.updateSettings(
+                      _token!,
+                      {'mcp_skill_md': skillMd},
+                    );
+                    if (mounted) {
+                      _settings = {
+                        ..._settings ?? <String, dynamic>{},
+                        'mcp_skill_md':
+                            result['mcp_skill_md']?.toString() ?? skillMd,
+                      };
+                      refreshState();
+                    }
+                    return const ActionFeedback(
+                      message: 'Agent skill saved.',
+                    );
+                  } catch (e) {
+                    final msg = e.toString().replaceFirst('Exception: ', '');
+                    return ActionFeedback(
+                      message:
+                          'Agent skill not saved: '
+                          'Editor.Settings/skill.save — $msg.',
+                      isError: true,
+                    );
+                  }
+                }
+              : null,
           onChangePassword: _token != null ? (current, newPw, identityCode) => widget.client.changePassword(_token!, current, newPw, identityCode) : null,
           onChangeEmailRequest: _token != null ? (email, identityCode) => widget.client.changeEmailRequest(_token!, email, identityCode) : null,
           onChangeEmailConfirm: _token != null ? (email, code) => widget.client.changeEmailConfirm(_token!, email, code) : null,

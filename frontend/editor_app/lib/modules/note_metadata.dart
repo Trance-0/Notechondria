@@ -1,5 +1,12 @@
 part of notechondria_frontend;
 
+class _CustomMetaRow {
+  _CustomMetaRow({required this.key, required this.value});
+
+  final TextEditingController key;
+  final TextEditingController value;
+}
+
 /// Dialog for editing note metadata and restoring saved versions.
 class _NoteMetadataDialog extends StatefulWidget {
   const _NoteMetadataDialog({
@@ -42,6 +49,12 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
   bool _coverBusy = false;
   String? _coverError;
 
+  /// User-defined metadata variables, surfaced as an expandable list
+  /// of `(key, value)` pairs and round-tripped to YAML frontmatter on
+  /// export. Persisted as a JSON object string on `note.custom_meta`.
+  final List<_CustomMetaRow> _customMetaRows = [];
+  bool _customMetaExpanded = false;
+
   @override
   void initState() {
     super.initState();
@@ -59,12 +72,59 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
         widget.note['is_public'] == true;
     _coverUrl = widget.note['cover_image_url']?.toString();
     _historyFuture = widget.onGetHistory(widget.note['id'] as int);
+    _loadCustomMeta();
+  }
+
+  void _loadCustomMeta() {
+    final raw = widget.note['custom_meta']?.toString() ?? '';
+    if (raw.isEmpty) return;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic>) {
+        decoded.forEach((key, value) {
+          _customMetaRows.add(
+            _CustomMetaRow(
+              key: TextEditingController(text: key),
+              value: TextEditingController(text: value?.toString() ?? ''),
+            ),
+          );
+        });
+        if (_customMetaRows.isNotEmpty) {
+          _customMetaExpanded = true;
+        }
+      }
+    } catch (_) {
+      // Malformed JSON — preserve raw payload as a single row so the
+      // user can repair it without losing data.
+      _customMetaRows.add(
+        _CustomMetaRow(
+          key: TextEditingController(text: 'invalid_json'),
+          value: TextEditingController(text: raw),
+        ),
+      );
+      _customMetaExpanded = true;
+    }
+  }
+
+  String _serializeCustomMeta() {
+    final map = <String, String>{};
+    for (final row in _customMetaRows) {
+      final k = row.key.text.trim();
+      if (k.isEmpty) continue;
+      map[k] = row.value.text;
+    }
+    if (map.isEmpty) return '';
+    return jsonEncode(map);
   }
 
   @override
   void dispose() {
     _descriptionController.dispose();
     _sectionController.dispose();
+    for (final row in _customMetaRows) {
+      row.key.dispose();
+      row.value.dispose();
+    }
     super.dispose();
   }
 
@@ -135,6 +195,117 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
         _coverError = error.toString().replaceFirst('Exception: ', '');
       });
     }
+  }
+
+  Widget _buildCustomMetaSection(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => setState(
+              () => _customMetaExpanded = !_customMetaExpanded,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Icon(
+                    _customMetaExpanded
+                        ? Icons.expand_less
+                        : Icons.expand_more,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Custom meta variables',
+                    style: theme.textTheme.titleSmall,
+                  ),
+                  if (!_customMetaExpanded &&
+                      _customMetaRows.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      '(${_customMetaRows.length})',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (_customMetaExpanded) ...[
+          const SizedBox(height: 4),
+          Text(
+            'User-defined keys round-tripped to YAML frontmatter on '
+            'export. Empty keys are dropped on save.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 8),
+          for (var i = 0; i < _customMetaRows.length; i++) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 4,
+                  child: TextField(
+                    controller: _customMetaRows[i].key,
+                    decoration: const InputDecoration(
+                      labelText: 'key',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 6,
+                  child: TextField(
+                    controller: _customMetaRows[i].value,
+                    decoration: const InputDecoration(
+                      labelText: 'value',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Remove row',
+                  icon: const Icon(Icons.close, size: 18),
+                  onPressed: () {
+                    setState(() {
+                      _customMetaRows[i].key.dispose();
+                      _customMetaRows[i].value.dispose();
+                      _customMetaRows.removeAt(i);
+                    });
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
+          OutlinedButton.icon(
+            onPressed: () => setState(() {
+              _customMetaRows.add(
+                _CustomMetaRow(
+                  key: TextEditingController(),
+                  value: TextEditingController(),
+                ),
+              );
+            }),
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Add variable'),
+          ),
+        ],
+      ],
+    );
   }
 
   Widget _buildCoverSection(BuildContext context) {
@@ -270,6 +441,8 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
                 ),
               ),
               const SizedBox(height: 16),
+              _buildCustomMetaSection(context),
+              const SizedBox(height: 16),
               Text(
                 'Version history',
                 style: Theme.of(context).textTheme.titleMedium,
@@ -307,6 +480,7 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
                                       'section': _sectionController.text,
                                       'course_id': _courseId,
                                       'is_public': _isPublic,
+                                      'custom_meta': _serializeCustomMeta(),
                                     },
                                     'restored_note': restored,
                                   });
@@ -335,6 +509,7 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
             'section': _sectionController.text,
             'course_id': _courseId,
             'is_public': _isPublic,
+            'custom_meta': _serializeCustomMeta(),
           }),
           child: const Text('Save'),
         ),

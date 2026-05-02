@@ -466,3 +466,34 @@ GOOGLE_AUTHORIZED_REDIRECT_URI = os.getenv("GOOGLE_AUTHORIZED_REDIRECT_URI", "")
 GITHUB_APP_CLIENT_ID = os.getenv("GITHUB_APP_CLIENT_ID", "")
 GITHUB_APP_CLIENT_SECRET = os.getenv("GITHUB_APP_CLIENT_SECRET", "")
 GITHUB_AUTHORIZED_REDIRECT_URI = os.getenv("GITHUB_AUTHORIZED_REDIRECT_URI", "")
+
+# Per-app OAuth redirect URIs (comma-separated). When the request Origin
+# (or Referer) matches one of the entries below, OAuthConfigApiView and
+# the OAuth callback endpoints return that origin's URI instead of the
+# single fallback above. This keeps each frontend app (editor, planner,
+# portal) on its own host after sign-in instead of always landing back
+# on the editor host. Each entry must be pre-registered in the OAuth
+# provider console (Google "Authorized redirect URIs" / GitHub OAuth
+# App callback URL).
+GOOGLE_AUTHORIZED_REDIRECT_URIS = [
+    u.strip() for u in os.getenv(
+        "GOOGLE_AUTHORIZED_REDIRECT_URIS",
+        GOOGLE_AUTHORIZED_REDIRECT_URI,
+    ).split(",") if u.strip()
+]
+GITHUB_AUTHORIZED_REDIRECT_URIS = [
+    u.strip() for u in os.getenv(
+        "GITHUB_AUTHORIZED_REDIRECT_URIS",
+        GITHUB_AUTHORIZED_REDIRECT_URI,
+    ).split(",") if u.strip()
+]
+
+# Experimental: GitHub App used for the per-user data-sync feature.
+# Distinct from the OAuth App above (which only handles sign-in). The
+# data-sync flow installs a GitHub App into the user's account so
+# Notechondria can read and push to a single user-chosen repository.
+GITHUB_DATA_SYNC_APP_NAME = os.getenv("GITHUB_DATA_SYNC_APP_NAME", "")
+GITHUB_DATA_SYNC_APP_CLIENT_ID = os.getenv("GITHUB_DATA_SYNC_APP_CLIENT_ID", "")
+GITHUB_DATA_SYNC_APP_CLIENT_SECRET = os.getenv("GITHUB_DATA_SYNC_APP_CLIENT_SECRET", "")
+GITHUB_DATA_SYNC_APP_PRIVATE_KEY = os.getenv("GITHUB_DATA_SYNC_APP_PRIVATE_KEY", "")
+GITHUB_DATA_SYNC_APP_INSTALL_URL = os.getenv("GITHUB_DATA_SYNC_APP_INSTALL_URL", "")

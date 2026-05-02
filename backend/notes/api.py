@@ -329,9 +329,15 @@ class NoteDetailSerializer(NoteSummarySerializer):
     blocks = serializers.SerializerMethodField()
     content = serializers.CharField(read_only=True)
     metadata_json = serializers.CharField(read_only=True)
+    custom_meta = serializers.CharField(read_only=True)
 
     class Meta(NoteSummarySerializer.Meta):
-        fields = NoteSummarySerializer.Meta.fields + ["blocks", "content", "metadata_json"]
+        fields = NoteSummarySerializer.Meta.fields + [
+            "blocks",
+            "content",
+            "metadata_json",
+            "custom_meta",
+        ]
 
     def get_blocks(self, obj):
         ordered_blocks = [
@@ -435,6 +441,7 @@ class NoteWriteSerializer(serializers.Serializer):
     markdown = serializers.CharField(allow_blank=True, required=False)
     content = serializers.CharField(allow_blank=True, required=False)
     metadata_json = serializers.CharField(allow_blank=True, required=False)
+    custom_meta = serializers.CharField(allow_blank=True, required=False)
     is_public = serializers.BooleanField(required=False)
     client_draft_id = serializers.CharField(required=False, allow_blank=True, max_length=64)
     blocks = serializers.ListField(child=serializers.DictField(), required=False)
@@ -1000,6 +1007,8 @@ class NoteListCreateApiView(APIView):
             note.is_public = serializer.validated_data.get("is_public", False)
             note.content = serializer.validated_data.get("content") or serializer.validated_data.get("markdown") or ""
             note.metadata_json = serializer.validated_data.get("metadata_json") or ""
+            if "custom_meta" in serializer.validated_data:
+                note.custom_meta = serializer.validated_data.get("custom_meta") or ""
             note.editor_mode = serializer.validated_data.get("editor_mode") or creator.editor_mode
             note.save()
             RecycleBinEntry.objects.filter(creator_id=creator, note_id=note).delete()
@@ -1017,6 +1026,7 @@ class NoteListCreateApiView(APIView):
                 is_public=serializer.validated_data.get("is_public", False),
                 content=serializer.validated_data.get("content") or serializer.validated_data.get("markdown") or "",
                 metadata_json=serializer.validated_data.get("metadata_json") or "",
+                custom_meta=serializer.validated_data.get("custom_meta") or "",
                 client_draft_id=client_draft_id,
                 editor_mode=serializer.validated_data.get("editor_mode") or creator.editor_mode,
                 note_type=serializer.validated_data.get("note_type", "N"),
@@ -1102,7 +1112,14 @@ class NoteDetailApiView(APIView):
             )
         serializer = NoteWriteSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        for field in ["title", "description", "metadata_json", "editor_mode", "is_public"]:
+        for field in [
+            "title",
+            "description",
+            "metadata_json",
+            "custom_meta",
+            "editor_mode",
+            "is_public",
+        ]:
             if field in serializer.validated_data:
                 setattr(note, field, serializer.validated_data[field])
         if "course_id" in serializer.validated_data:
@@ -1237,7 +1254,14 @@ class NoteByUuidApiView(APIView):
             )
         serializer = NoteWriteSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        for field in ["title", "description", "metadata_json", "editor_mode", "is_public"]:
+        for field in [
+            "title",
+            "description",
+            "metadata_json",
+            "custom_meta",
+            "editor_mode",
+            "is_public",
+        ]:
             if field in serializer.validated_data:
                 setattr(note, field, serializer.validated_data[field])
         if "course_id" in serializer.validated_data:
@@ -1588,6 +1612,32 @@ class CourseSubscribeApiView(APIView):
         subscription.is_active = False
         subscription.save(update_fields=["is_active", "last_edit"])
         append_course_operation(creator, course, CourseOperationTypeChoices.UNSUBSCRIBE)
+        subscription_map = active_subscription_map(creator)
+        return Response(
+            CourseSerializer(
+                course,
+                context={"request": request, "subscription_map": subscription_map},
+            ).data
+        )
+
+
+class CourseSubscribePrivateApiView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, course_id):
+        creator = ensure_creator(request.user)
+        course = get_object_or_404(Course, pk=course_id)
+        subscription, created = CourseSubscription.objects.get_or_create(
+            creator_id=creator,
+            course_id=course,
+            defaults={"is_active": True, "is_private": True, "subscribed_at": timezone.now()},
+        )
+        if not created:
+            subscription.is_active = True
+            subscription.is_private = True
+            subscription.subscribed_at = timezone.now()
+            subscription.save(update_fields=["is_active", "is_private", "subscribed_at", "last_edit"])
+        append_course_operation(creator, course, CourseOperationTypeChoices.SUBSCRIBE)
         subscription_map = active_subscription_map(creator)
         return Response(
             CourseSerializer(

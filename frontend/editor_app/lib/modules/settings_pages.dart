@@ -643,6 +643,65 @@ class _ApiSettingsPage extends StatelessWidget {
                 'Context Protocol bridge. Rotate it if you suspect '
                 'leakage.',
           ),
+          if (p.widget.onSaveMcpSkill != null) ...[
+            const SizedBox(height: 12),
+            Card(
+              clipBehavior: Clip.antiAlias,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: _McpSkillSection(
+                  initialContent:
+                      p.widget.settings?['mcp_skill_md']?.toString() ?? '',
+                  onSave: p.widget.onSaveMcpSkill!,
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          Card(
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.science_outlined,
+                        size: 18,
+                        color: Theme.of(context).colorScheme.tertiary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Experimental — GitHub Sync',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Push your full account (profile, settings, MCP '
+                    'skill, courses, notes, custom meta, planner '
+                    'events) to a GitHub repo you own so you can '
+                    'recover everything if our server is wiped. '
+                    'Static assets we host (avatars, attachments, '
+                    'cover images) are referenced by URL, not '
+                    'committed. Wire-up requires a Notechondria '
+                    'GitHub App install — see docs/integrations/'
+                    'github-sync.md for the full flow.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: null,
+                    icon: const Icon(Icons.link, size: 18),
+                    label: const Text('Connect to GitHub (coming soon)'),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

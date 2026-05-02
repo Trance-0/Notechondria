@@ -43,6 +43,7 @@ class _SettingsPage extends StatefulWidget {
     this.onCurrentSessionRevoked,
     this.onSendIdentityCode,
     this.onRotateApiKey,
+    this.onSaveMcpSkill,
     this.onChangePassword,
     this.onChangeEmailRequest,
     this.onChangeEmailConfirm,
@@ -132,6 +133,12 @@ class _SettingsPage extends StatefulWidget {
   final Future<ActionFeedback> Function() onRestoreLocalStarterTemplate;
   final Future<Map<String, dynamic>> Function()? onSendIdentityCode;
   final Future<Map<String, dynamic>> Function()? onRotateApiKey;
+
+  /// Persists the user's MCP `skill.md` body to the backend Creator
+  /// row. Returns an `ActionFeedback` so the section widget can show a
+  /// snackbar reflecting success / failure. Null when the user is
+  /// signed out or the field has not been wired yet.
+  final Future<ActionFeedback> Function(String skillMd)? onSaveMcpSkill;
   final Future<Map<String, dynamic>> Function(String currentPassword, String newPassword, String identityCode)? onChangePassword;
   final Future<Map<String, dynamic>> Function(String newEmail, String identityCode)? onChangeEmailRequest;
   final Future<Map<String, dynamic>> Function(String newEmail, String code)? onChangeEmailConfirm;

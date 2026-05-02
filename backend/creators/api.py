@@ -376,6 +376,7 @@ class SettingsSerializer(serializers.Serializer):
         required=False,
     )
     api_base_url = serializers.CharField(required=False, allow_blank=False, max_length=255)
+    mcp_skill_md = serializers.CharField(required=False, allow_blank=True)
     app_settings = serializers.JSONField(required=False)
     app_settings_updated_at = serializers.DateTimeField(required=False, allow_null=True)
     editor_mode = serializers.ChoiceField(
@@ -404,6 +405,7 @@ class SettingsSerializer(serializers.Serializer):
             "theme_mode": instance.theme_mode,
             "api_key_prefix": instance.api_key_prefix or "",
             "api_base_url": instance.api_base_url,
+            "mcp_skill_md": instance.mcp_skill_md or "",
             "app_settings": creator_app_settings_payload(instance),
             "app_settings_updated_at": instance.app_settings_updated_at.isoformat()
             if instance.app_settings_updated_at
@@ -465,6 +467,8 @@ class SettingsSerializer(serializers.Serializer):
         instance.motto = validated_data.get("motto", instance.motto)
         instance.social_link = validated_data.get("social_link", instance.social_link)
         instance.editor_mode = validated_data.get("editor_mode", instance.editor_mode)
+        if "mcp_skill_md" in validated_data:
+            instance.mcp_skill_md = validated_data["mcp_skill_md"]
         if "avatar" in validated_data:
             instance.image = validated_data["avatar"]
         app_settings = creator_app_settings_payload(instance)
@@ -1234,19 +1238,82 @@ def _get_or_create_oauth_user(provider: str, provider_uid: str, email: str,
 # Google OAuth
 # ---------------------------------------------------------------------------
 
+def _request_origin(request) -> str:
+    """Return the lower-cased ``scheme://host[:port]`` of the calling
+    frontend, derived from ``Origin`` (preferred) or ``Referer``. Empty
+    string when neither header is present or parseable."""
+    origin = (request.META.get("HTTP_ORIGIN") or "").strip().lower()
+    if origin:
+        return origin
+    referer = (request.META.get("HTTP_REFERER") or "").strip()
+    if referer:
+        try:
+            parsed = urlparse(referer)
+            if parsed.scheme and parsed.netloc:
+                return f"{parsed.scheme}://{parsed.netloc}".lower()
+        except Exception:
+            return ""
+    return ""
+
+
+def _pick_redirect_uri(allowed_uris: list[str], request_origin: str,
+                        fallback: str) -> str:
+    """Choose the redirect URI whose origin matches ``request_origin``.
+
+    Falls back to the first entry in ``allowed_uris`` (or the legacy
+    single ``fallback`` env var) when there is no host match. This is
+    the per-app login-redirect fix: when portal_app on
+    ``https://portal.example.com`` calls /oauth-config/, it gets back
+    its own callback URL instead of the editor's.
+    """
+    if request_origin:
+        for uri in allowed_uris:
+            try:
+                parsed = urlparse(uri)
+                if not parsed.scheme or not parsed.netloc:
+                    continue
+                origin = f"{parsed.scheme}://{parsed.netloc}".lower()
+                if origin == request_origin:
+                    return uri
+            except Exception:
+                continue
+    if allowed_uris:
+        return allowed_uris[0]
+    return fallback
+
+
 class OAuthConfigApiView(APIView):
-    """Return public OAuth client IDs and redirect URIs for the frontend."""
+    """Return public OAuth client IDs and redirect URIs for the frontend.
+
+    The ``redirect_uri`` per provider is chosen from
+    ``settings.GOOGLE_AUTHORIZED_REDIRECT_URIS`` /
+    ``GITHUB_AUTHORIZED_REDIRECT_URIS`` by matching the request
+    ``Origin`` (or ``Referer``) against each entry's host. This lets
+    editor / planner / portal each receive their own callback URL even
+    though they share one Django backend.
+    """
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
+        origin = _request_origin(request)
+        google_uri = _pick_redirect_uri(
+            settings.GOOGLE_AUTHORIZED_REDIRECT_URIS,
+            origin,
+            settings.GOOGLE_AUTHORIZED_REDIRECT_URI,
+        )
+        github_uri = _pick_redirect_uri(
+            settings.GITHUB_AUTHORIZED_REDIRECT_URIS,
+            origin,
+            settings.GITHUB_AUTHORIZED_REDIRECT_URI,
+        )
         return Response({
             "google": {
                 "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
-                "redirect_uri": settings.GOOGLE_AUTHORIZED_REDIRECT_URI,
+                "redirect_uri": google_uri,
             },
             "github": {
                 "client_id": settings.GITHUB_APP_CLIENT_ID,
-                "redirect_uri": settings.GITHUB_AUTHORIZED_REDIRECT_URI,
+                "redirect_uri": github_uri,
             },
         })
 
@@ -1301,7 +1368,11 @@ class GoogleOAuthApiView(APIView):
 
         code = (data.get("code") or "").strip()
         raw_id_token = (data.get("id_token") or "").strip()
-        redirect_uri = (data.get("redirect_uri") or "").strip() or settings.GOOGLE_AUTHORIZED_REDIRECT_URI
+        redirect_uri = (data.get("redirect_uri") or "").strip() or _pick_redirect_uri(
+            settings.GOOGLE_AUTHORIZED_REDIRECT_URIS,
+            _request_origin(request),
+            settings.GOOGLE_AUTHORIZED_REDIRECT_URI,
+        )
         invitation_code = data.get("invitation_code", "")
         intent = data.get("intent", "register")
 
@@ -1434,7 +1505,11 @@ class GitHubOAuthApiView(APIView):
         data = serializer.validated_data
 
         code = data["code"]
-        redirect_uri = (data.get("redirect_uri") or "").strip() or settings.GITHUB_AUTHORIZED_REDIRECT_URI
+        redirect_uri = (data.get("redirect_uri") or "").strip() or _pick_redirect_uri(
+            settings.GITHUB_AUTHORIZED_REDIRECT_URIS,
+            _request_origin(request),
+            settings.GITHUB_AUTHORIZED_REDIRECT_URI,
+        )
         invitation_code = data.get("invitation_code", "")
         intent = data.get("intent", "register")
 
@@ -1676,7 +1751,11 @@ class BindGoogleApiView(_BindOAuthMixin, APIView):
 
         code = (data.get("code") or "").strip()
         raw_id_token = (data.get("id_token") or "").strip()
-        redirect_uri = (data.get("redirect_uri") or "").strip() or settings.GOOGLE_AUTHORIZED_REDIRECT_URI
+        redirect_uri = (data.get("redirect_uri") or "").strip() or _pick_redirect_uri(
+            settings.GOOGLE_AUTHORIZED_REDIRECT_URIS,
+            _request_origin(request),
+            settings.GOOGLE_AUTHORIZED_REDIRECT_URI,
+        )
         logger.info(
             "Account linking in progress: "
             "Backend.Creators.Auth/bind.google \u2014 "
@@ -1867,7 +1946,11 @@ class BindGithubApiView(_BindOAuthMixin, APIView):
         data = serializer.validated_data
 
         code = data["code"]
-        redirect_uri = (data.get("redirect_uri") or "").strip() or settings.GITHUB_AUTHORIZED_REDIRECT_URI
+        redirect_uri = (data.get("redirect_uri") or "").strip() or _pick_redirect_uri(
+            settings.GITHUB_AUTHORIZED_REDIRECT_URIS,
+            _request_origin(request),
+            settings.GITHUB_AUTHORIZED_REDIRECT_URI,
+        )
         logger.info(
             "Account linking in progress: "
             "Backend.Creators.Auth/bind.github \u2014 "
@@ -2048,3 +2131,123 @@ class BindGithubApiView(_BindOAuthMixin, APIView):
                 "html_url": gh_user.get("html_url", ""),
             },
         )
+
+
+# ---------------------------------------------------------------------------
+# Experimental: GitHub data-sync integration
+# ---------------------------------------------------------------------------
+
+
+class GithubSyncStatusApiView(APIView):
+    """GET the current install/status for the authenticated user."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from .models import GithubIntegration
+
+        creator = ensure_creator(request.user)
+        integration = GithubIntegration.objects.filter(creator=creator).first()
+        install_url = settings.GITHUB_DATA_SYNC_APP_INSTALL_URL or ""
+        if not integration:
+            return Response({
+                "connected": False,
+                "install_url": install_url,
+                "app_name": settings.GITHUB_DATA_SYNC_APP_NAME or "",
+            })
+        return Response({
+            "connected": True,
+            "install_url": install_url,
+            "app_name": settings.GITHUB_DATA_SYNC_APP_NAME or "",
+            "account_login": integration.account_login,
+            "repo_full_name": integration.repo_full_name,
+            "repo_default_branch": integration.repo_default_branch,
+            "last_push_at": integration.last_push_at.isoformat()
+            if integration.last_push_at
+            else None,
+            "last_push_sha": integration.last_push_sha,
+            "last_error": integration.last_error or "",
+        })
+
+    def delete(self, request):
+        """Disconnect the App installation. Does NOT uninstall the App
+        on GitHub's side — the user must do that from their GitHub
+        settings; we just drop our record so the local UI shows
+        disconnected."""
+        from .models import GithubIntegration
+
+        creator = ensure_creator(request.user)
+        GithubIntegration.objects.filter(creator=creator).delete()
+        return Response({"connected": False})
+
+
+class GithubSyncCallbackSerializer(serializers.Serializer):
+    installation_id = serializers.CharField(max_length=64)
+    account_login = serializers.CharField(
+        max_length=80, required=False, allow_blank=True, default=""
+    )
+    repo_full_name = serializers.CharField(
+        max_length=160, required=False, allow_blank=True, default=""
+    )
+    repo_default_branch = serializers.CharField(
+        max_length=80, required=False, allow_blank=True, default="main"
+    )
+
+
+class GithubSyncCallbackApiView(APIView):
+    """Persist (or update) the install id after the user completes the
+    GitHub App install flow.
+
+    The frontend sends the install id from the GitHub redirect query
+    string (`?installation_id=...`) along with the user's chosen repo.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        from .models import GithubIntegration
+
+        serializer = GithubSyncCallbackSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        creator = ensure_creator(request.user)
+        integration, _created = GithubIntegration.objects.update_or_create(
+            creator=creator,
+            defaults={
+                "installation_id": serializer.validated_data["installation_id"],
+                "account_login": serializer.validated_data.get(
+                    "account_login", ""
+                ),
+                "repo_full_name": serializer.validated_data.get(
+                    "repo_full_name", ""
+                ),
+                "repo_default_branch": serializer.validated_data.get(
+                    "repo_default_branch", "main"
+                ) or "main",
+                "last_error": "",
+            },
+        )
+        return Response({
+            "connected": True,
+            "installation_id": integration.installation_id,
+            "repo_full_name": integration.repo_full_name,
+        })
+
+
+class GithubSyncPushApiView(APIView):
+    """Push the authenticated user's full server-side data to their
+    linked GitHub repo. Returns the resulting commit SHA."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        from .services.github_sync import GithubSyncError, push_user_data
+
+        creator = ensure_creator(request.user)
+        try:
+            sha = push_user_data(creator)
+        except GithubSyncError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response({"commit_sha": sha})

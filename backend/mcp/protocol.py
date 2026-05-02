@@ -106,14 +106,18 @@ def handle_request(body, user, creator):
     params = body.get("params", {})
 
     if method == "initialize":
-        return _result_response(
-            {
-                "protocolVersion": MCP_PROTOCOL_VERSION,
-                "capabilities": SERVER_CAPABILITIES,
-                "serverInfo": SERVER_INFO,
-            },
-            req_id,
-        )
+        # Surface the user's per-account skill.md (import / export
+        # preferences, target platforms, etc.) as the MCP `instructions`
+        # field. Agents that respect the spec read this on connect.
+        skill_md = (getattr(creator, "mcp_skill_md", "") or "").strip()
+        result = {
+            "protocolVersion": MCP_PROTOCOL_VERSION,
+            "capabilities": SERVER_CAPABILITIES,
+            "serverInfo": SERVER_INFO,
+        }
+        if skill_md:
+            result["instructions"] = skill_md
+        return _result_response(result, req_id)
 
     if method == "notifications/initialized":
         # Client acknowledgement — nothing to return for notifications.

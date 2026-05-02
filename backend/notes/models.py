@@ -39,6 +39,16 @@ class Note(models.Model):
     is_public = models.BooleanField(default=False, null=False)
     content = models.TextField(blank=True, default="")
     metadata_json = models.TextField(blank=True, default="")
+    custom_meta = models.TextField(
+        blank=True, default="",
+        help_text=(
+            "User-defined metadata variables surfaced as expandable list in "
+            "the note metadata UI and round-tripped to YAML frontmatter on "
+            "export. Stored as a JSON object string (`{key: value}`). "
+            "Distinct from `metadata_json`, which is reserved for "
+            "system-managed keys (sync state, attachment manifest, etc)."
+        ),
+    )
     client_draft_id = models.CharField(max_length=64, blank=True, null=True)
     deleted_at = models.DateTimeField(blank=True, null=True)
     note_type = models.CharField(

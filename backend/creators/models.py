@@ -78,6 +78,16 @@ class Creator(models.Model):
         max_length=8, blank=True, default="",
         help_text="First 8 chars of the plaintext API key (for display).",
     )
+    mcp_skill_md = models.TextField(
+        blank=True, default="",
+        help_text=(
+            "User-authored skill.md content served to MCP-connected agents "
+            "via the `instructions` field of the MCP `initialize` response. "
+            "Holds per-user import / export preferences (where to pull "
+            "external notes from, what file format to write back, which "
+            "platform to publish to). Plain markdown."
+        ),
+    )
     app_settings_json = models.TextField(blank=True, default="")
     app_settings_updated_at = models.DateTimeField(blank=True, null=True)
 
@@ -361,3 +371,60 @@ class Session(models.Model):
         if self.revoked_at is None:
             self.revoked_at = now()
             self.save(update_fields=["revoked_at"])
+
+
+class GithubIntegration(models.Model):
+    """Per-creator GitHub App installation used by the experimental
+    user-profile sync feature.
+
+    The goal of the sync is *full server-loss recovery*: a user's
+    Creator profile, app settings, MCP skill, courses, notes, custom
+    meta, planner events, and any other user-owned text content are
+    materialized into a tracked Git repository. Static assets that we
+    host (avatars, attachments, cover images) are referenced by URL or
+    UUID; their bytes stay on our CDN and are not committed.
+
+    Only the install id, the chosen repo, and last-sync metadata live
+    here. The OAuth access token is held by the Django installation
+    and not re-encrypted at rest beyond what the DB layer already
+    provides; treat this row as a sensitive credential record.
+    """
+
+    creator = models.OneToOneField(
+        Creator,
+        on_delete=models.CASCADE,
+        related_name="github_integration",
+    )
+    installation_id = models.CharField(
+        max_length=64,
+        help_text="GitHub App installation id returned by the install callback.",
+    )
+    account_login = models.CharField(
+        max_length=80, blank=True, default="",
+        help_text="GitHub account login that owns the installation.",
+    )
+    repo_full_name = models.CharField(
+        max_length=160, blank=True, default="",
+        help_text="`owner/repo` chosen by the user as the sync target.",
+    )
+    repo_default_branch = models.CharField(
+        max_length=80, blank=True, default="main",
+    )
+    access_token = models.CharField(
+        max_length=512, blank=True, default="",
+        help_text=(
+            "Latest installation access token (server-side use only; "
+            "rotates roughly every hour per GitHub policy). Never "
+            "returned by API."
+        ),
+    )
+    access_token_expires_at = models.DateTimeField(blank=True, null=True)
+    last_push_at = models.DateTimeField(blank=True, null=True)
+    last_push_sha = models.CharField(max_length=64, blank=True, default="")
+    last_pull_at = models.DateTimeField(blank=True, null=True)
+    last_error = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f"GithubIntegration({self.creator}, {self.repo_full_name or '<no repo>'})"

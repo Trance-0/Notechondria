@@ -85,6 +85,51 @@ file and add a round-log entry to the new version doc.
   `_loadInitialData` methods: authenticated offline-mode users still fetch
   courses so the sidebar category list stays current.
 
+- [x] **Per-app OAuth redirect URI — 0.1.90.** Backend now matches request
+  Origin/Referer against `GOOGLE_AUTHORIZED_REDIRECT_URIS` /
+  `GITHUB_AUTHORIZED_REDIRECT_URIS` so portal/planner sign-in lands back on
+  the calling app instead of the editor. Single-value env vars stay as a
+  fallback.
+
+- [x] **MCP skill.md editor (editor_app only) — 0.1.90.** New
+  `_McpSkillSection` in editor settings → API settings; persists via
+  `Creator.mcp_skill_md` and is surfaced as the MCP `initialize`
+  `instructions` field. Portal/planner parity tracked below.
+
+- [x] **Custom note meta variables (editor_app only) — 0.1.90.** Expandable
+  list of `(key, value)` pairs in `_NoteMetadataDialog`, persisted on new
+  `Note.custom_meta` column and round-tripped to YAML frontmatter on the
+  GitHub-sync export. Portal/planner parity tracked below.
+
+- [x] **Experimental GitHub Sync — backend export pipeline + UI shell —
+  0.1.90.** New `creators.GithubIntegration` model + `creators.services.
+  github_sync` materialize/push helpers + `/api/v1/integrations/github/*`
+  endpoints. Frontend has a disabled "Connect to GitHub" card pointing at
+  `docs/integrations/github-sync.md`. JWT signing + repo-picker still open
+  (see below).
+
+- [ ] **Settings UI parity — portal_app and planner_app — carryover from
+  0.1.90.** Editor is the canonical surface. Need to copy three things into
+  the other two apps' settings pages:
+  - `_McpSkillSection` under API settings, wired to a per-app
+    `onSaveMcpSkill` callback that PATCHes `/api/v1/settings/`.
+  - Custom-meta expandable list inside the apps' note metadata dialogs
+    (planner uses `learner_note_editor.dart`, portal uses the same plus
+    its own `note_metadata_dialog.dart`).
+  - Experimental "GitHub Sync" card under API settings with the same
+    disabled-button copy.
+
+- [ ] **Experimental GitHub Sync — wire the actual push path — carryover
+  from 0.1.90.**
+  - Add `pyjwt` + `cryptography` to `backend/requirements.txt`; finish
+    `_refresh_installation_token` (JWT sign → POST `/app/installations/
+    <id>/access_tokens`).
+  - Frontend repo-picker UI: list repos visible to the install via
+    `GET /installation/repositories` and let the user choose one; persist
+    via `POST /api/v1/integrations/github/callback/`.
+  - Restore tooling (clone → POST settings → POST notes); ship as a CLI
+    in `backend/scripts/`.
+
 ### Debug log window
 
 - [ ] Extend per-request timing instrumentation beyond editor_app's
