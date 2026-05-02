@@ -829,6 +829,36 @@ class _AppShellState extends State<AppShell>
           },
           onExportLocalData: _exportLocalArchive,
           onRestoreFromLocalImport: _restoreFromLocalImport,
+          onSaveMcpSkill: _token != null
+              ? (skillMd) async {
+                  try {
+                    final result = await widget.client.updateSettings(
+                      _token!,
+                      {'mcp_skill_md': skillMd},
+                    );
+                    if (mounted) {
+                      _settings = {
+                        ..._settings ?? <String, dynamic>{},
+                        'mcp_skill_md':
+                            result['mcp_skill_md']?.toString() ?? skillMd,
+                      };
+                      refreshState();
+                    }
+                    return const ActionFeedback(
+                      message: 'Agent skill saved.',
+                    );
+                  } catch (e) {
+                    final msg =
+                        e.toString().replaceFirst('Exception: ', '');
+                    return ActionFeedback(
+                      message:
+                          'Agent skill not saved: '
+                          'Planner.Settings/skill.save — $msg.',
+                      isError: true,
+                    );
+                  }
+                }
+              : null,
         );
       default:
         return const SizedBox.shrink();

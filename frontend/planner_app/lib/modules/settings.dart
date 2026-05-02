@@ -49,6 +49,7 @@ class _SettingsPage extends StatefulWidget {
     this.onCurrentSessionRevoked,
     this.onExportLocalData,
     this.onRestoreFromLocalImport,
+    this.onSaveMcpSkill,
   });
 
   final Map<String, dynamic>? profile;
@@ -132,6 +133,11 @@ class _SettingsPage extends StatefulWidget {
   final VoidCallback? onCurrentSessionRevoked;
   final Future<void> Function()? onExportLocalData;
   final Future<void> Function()? onRestoreFromLocalImport;
+
+  /// Persists the user's MCP `skill.md` body to the backend Creator
+  /// row. Returns an `ActionFeedback` so the section widget can show a
+  /// snackbar. Null when the user is signed out.
+  final Future<ActionFeedback> Function(String skillMd)? onSaveMcpSkill;
 
   @override
   State<_SettingsPage> createState() => _SettingsPageState();
@@ -491,11 +497,23 @@ class _SettingsPageState extends State<_SettingsPage> {
                       onCurrentRevoked: widget.onCurrentSessionRevoked,
                     ),
                   ],
+                  if (widget.onSaveMcpSkill != null) ...[
+                    const SizedBox(height: 16),
+                    McpSkillSection(
+                      initialContent:
+                          widget.settings?['mcp_skill_md']?.toString() ?? '',
+                      onSave: widget.onSaveMcpSkill!,
+                    ),
+                  ],
                 ],
               ],
             ),
           ),
         ),
+        if (widget.onSaveMcpSkill != null) ...[
+          const SizedBox(height: 16),
+          const GithubSyncExperimentalCard(),
+        ],
         const SizedBox(height: 16),
         Card(
           child: Padding(

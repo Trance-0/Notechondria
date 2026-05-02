@@ -243,6 +243,8 @@ class _SecuritySection extends StatelessWidget {
   const _SecuritySection({
     required this.apiKeyPrefix,
     required this.apiBaseUrl,
+    required this.mcpSkillMd,
+    required this.onSaveMcpSkill,
     required this.onRotateApiKey,
     required this.onSendIdentityCode,
     required this.onChangePassword,
@@ -254,6 +256,8 @@ class _SecuritySection extends StatelessWidget {
 
   final String apiKeyPrefix;
   final String apiBaseUrl;
+  final String mcpSkillMd;
+  final Future<ActionFeedback> Function(String skillMd)? onSaveMcpSkill;
   final Future<Map<String, dynamic>> Function()? onRotateApiKey;
   final Future<Map<String, dynamic>> Function()? onSendIdentityCode;
   final Future<Map<String, dynamic>> Function(
@@ -294,6 +298,13 @@ class _SecuritySection extends StatelessWidget {
               apiBaseUrl: apiBaseUrl,
               onRotate: onRotateApiKey,
             ),
+            if (onSaveMcpSkill != null) ...[
+              const Divider(height: 24),
+              McpSkillSection(
+                initialContent: mcpSkillMd,
+                onSave: onSaveMcpSkill!,
+              ),
+            ],
             if (onSendIdentityCode != null) ...[
               const Divider(height: 24),
               ListTile(

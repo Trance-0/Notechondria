@@ -108,16 +108,19 @@ file and add a round-log entry to the new version doc.
   `docs/integrations/github-sync.md`. JWT signing + repo-picker still open
   (see below).
 
-- [ ] **Settings UI parity — portal_app and planner_app — carryover from
-  0.1.90.** Editor is the canonical surface. Need to copy three things into
-  the other two apps' settings pages:
-  - `_McpSkillSection` under API settings, wired to a per-app
-    `onSaveMcpSkill` callback that PATCHes `/api/v1/settings/`.
-  - Custom-meta expandable list inside the apps' note metadata dialogs
-    (planner uses `learner_note_editor.dart`, portal uses the same plus
-    its own `note_metadata_dialog.dart`).
-  - Experimental "GitHub Sync" card under API settings with the same
-    disabled-button copy.
+- [x] **Settings UI parity (MCP skill + GitHub Sync) — portal_app and
+  planner_app — 0.1.91.** Shared `McpSkillSection` /
+  `GithubSyncExperimentalCard` extracted into `notechondria_shared`
+  and mounted in portal's Security card and planner's Login&sync
+  card. Editor switched to the shared widget too. App-shell wiring
+  for `onSaveMcpSkill` added in both apps.
+
+- [ ] **Custom-meta expandable list — portal/planner note dialogs.**
+  Editor's `_NoteEditorDialog` already drives all three apps via
+  `editor_app/lib/modules/note_editor.dart`, but planner uses
+  `learner_note_editor.dart` and portal has `note_metadata_dialog.dart`
+  in their own modules. Need to verify each forked dialog and lift the
+  expandable list there if it isn't surfaced.
 
 - [ ] **Experimental GitHub Sync — wire the actual push path — carryover
   from 0.1.90.**

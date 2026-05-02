@@ -49,6 +49,7 @@ class _SettingsPage extends StatefulWidget {
     this.onCurrentSessionRevoked,
     this.onSendIdentityCode,
     this.onRotateApiKey,
+    this.onSaveMcpSkill,
     this.onChangePassword,
     this.onChangeEmailRequest,
     this.onChangeEmailConfirm,
@@ -129,6 +130,12 @@ class _SettingsPage extends StatefulWidget {
   final VoidCallback? onCurrentSessionRevoked;
   final Future<Map<String, dynamic>> Function()? onSendIdentityCode;
   final Future<Map<String, dynamic>> Function()? onRotateApiKey;
+
+  /// Persists the user's MCP `skill.md` body to the backend Creator
+  /// row. Returns an `ActionFeedback` so the section widget can show a
+  /// snackbar reflecting success / failure. Null when the user is
+  /// signed out or the field has not been wired yet.
+  final Future<ActionFeedback> Function(String skillMd)? onSaveMcpSkill;
   final Future<Map<String, dynamic>> Function(
     String currentPassword,
     String newPassword,
@@ -546,6 +553,9 @@ class _SettingsPageState extends State<_SettingsPage> {
               apiKeyPrefix:
                   widget.settings?['api_key_prefix']?.toString() ?? '',
               apiBaseUrl: widget.apiBaseUrl ?? '',
+              mcpSkillMd:
+                  widget.settings?['mcp_skill_md']?.toString() ?? '',
+              onSaveMcpSkill: widget.onSaveMcpSkill,
               onRotateApiKey: widget.onRotateApiKey,
               onSendIdentityCode: widget.onSendIdentityCode,
               onChangePassword: widget.onChangePassword,
@@ -555,6 +565,8 @@ class _SettingsPageState extends State<_SettingsPage> {
                   _openChangePasswordDialog(context),
               onOpenChangeEmail: () => _openChangeEmailDialog(context),
             ),
+            const SizedBox(height: 16),
+            const GithubSyncExperimentalCard(),
           ],
           const SizedBox(height: 12),
           OutlinedButton(
