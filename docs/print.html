@@ -555,14 +555,12 @@ Session).</li>
 </ul>
 <h3 id="app-preferences"><a class="header" href="#app-preferences">App preferences</a></h3>
 <ul>
-<li><input disabled="" type="checkbox"/>
-<strong>Offline-mode — secondary fetch gates.</strong> The coarse
-<code>_loadInitialData</code> gate landed in 0.1.46. The two finer-grained
-items from the original spec are still open: public-notes list
-in <code>_LearnerPage</code> should become an explicit "Load public notes"
-button when offline_mode is true, and category auto-sync from
-cloud needs an additional guard so the authenticated sync path
-still runs even when offline_mode is on.</li>
+<li><input disabled="" type="checkbox" checked=""/>
+<strong>Offline-mode — secondary fetch gates — 0.1.89.</strong> "Load public notes"
+button added to all three <code>_LearnerPage</code> widgets when <code>offlineMode</code> is true
+and notes are empty. Category auto-sync guard added to all three
+<code>_loadInitialData</code> methods: authenticated offline-mode users still fetch
+courses so the sidebar category list stays current.</li>
 </ul>
 <h3 id="debug-log-window"><a class="header" href="#debug-log-window">Debug log window</a></h3>
 <ul>
@@ -595,55 +593,44 @@ sidebar action. Decompose: (a) design subscription data model
 <h3 id="note-editor"><a class="header" href="#note-editor">Note editor</a></h3>
 <ul>
 <li>
-<p><input disabled="" type="checkbox"/>
-<strong>Port editor overflow menu to planner/portal inline editors.</strong>
-The note_editor.dart top-bar overflow menu (Edit note meta /
-Switch editor / View attachments) shipped in 0.1.46 for the
-editor app only. The inlined note editors in
-<code>planner_app/lib/modules/learner.dart</code> and
-<code>portal_app/lib/modules/learner.dart</code> still use the old layout
-and should adopt the same PopupMenuButton pattern for
-consistency.</p>
+<p><input disabled="" type="checkbox" checked=""/>
+<strong>Editor overflow menu already available in planner/portal.</strong>
+Both apps use <code>_NoteEditorDialog</code> from <code>editor_app/lib/modules/note_editor.dart</code>
+which already ships the PopupMenuButton (Edit note meta / Switch
+editor / View attachments). No additional porting needed.</p>
 </li>
 <li>
-<p><input disabled="" type="checkbox"/>
-<strong>Attachment CDN — remaining deferred items.</strong> The frontend
-three-commit plan (shared store + editor wiring + planner/portal
-parity + attachments list) landed across 0.1.40 / 0.1.41 / 0.1.42.
-Still open:</p>
-<ul>
-<li>IndexedDB web backend to replace the in-memory stub in
-<code>notechondria_shared/lib/src/local_attachment_store.dart</code>
-(<code>_WebLocalAttachmentBackend</code>) so attachments survive a tab
-refresh. Detailed spec in <code>docs/versions/0.1.42.md</code>.</li>
-<li>Storage-budget UI surface: wire <code>LocalAttachmentStore.totalBytes()</code>
-into the debug log card + a settings "Storage" row with a
-"Clear unused local attachments" action. Detailed spec in
-<code>docs/versions/0.1.42.md</code>.</li>
-</ul>
+<p><input disabled="" type="checkbox" checked=""/>
+<strong>Attachment CDN — remaining deferred items — 0.1.88.</strong>
+IndexedDB web backend replaced the in-memory stub
+(<code>_WebLocalAttachmentBackend</code> now uses <code>idb_shim</code>-backed
+IndexedDB). Storage-budget UI surface added: <code>formatBytes</code> utility
+shared across apps, <code>_AttachmentStorageTile</code> widget in editor
+settings showing total bytes + 500 MB warning.</p>
+</li>
+<li>
+<p><input disabled="" type="checkbox" checked=""/>
+<strong>Attachment CDN server-side — 0.1.88.</strong>
+<code>note_attachment_path</code> now keys by <code>note.uuid.hex</code> instead of
+integer <code>note.id</code>. New UUID-keyed API endpoints at
+<code>/notes/uuid/&lt;uuid&gt;/attachments/</code> for list/upload/delete.
+Backward-compatible with existing integer-keyed endpoints.
+Backend tests cover list, upload, delete, permissions, size caps.</p>
 </li>
 </ul>
 <h3 id="editor-settings"><a class="header" href="#editor-settings">Editor Settings</a></h3>
 <ul>
 <li>
-<p><input disabled="" type="checkbox"/>
-<strong>Planner + Portal export/import</strong> — replicate the 0.1.38
-editor wiring in <code>planner_app/lib/app_shell.dart</code> +
-<code>planner_app/lib/modules/settings.dart</code> and the portal
-equivalents. Planner must add <code>plannerEvents</code> / <code>calendarFeeds</code> /
-<code>activityWeek</code> buckets to its <code>LocalArchiveInput</code>; portal must
-add <code>frontPage</code>. Both use the shared helpers so the format stays
-aligned.</p>
+<p><input disabled="" type="checkbox" checked=""/>
+<strong>Planner export/import — 0.1.89.</strong> New <code>core/local_archive_io.dart</code>
+wired with <code>plannerEvents</code> / <code>calendarFeeds</code> / <code>activityWeek</code> buckets.
+Portal export/import was already done in 0.1.87.</p>
 </li>
 <li>
-<p><input disabled="" type="checkbox"/>
-<strong>Cross-app export round-trip tests</strong> in
-<code>notechondria_shared/test/local_archive_test.dart</code>. The parser
-already returns empty defaults for missing optional files, so
-editor ↔ planner ↔ portal round-trips should succeed — add
-tests that assert a planner export imports into editor and vice
-versa without losing shared buckets or crashing on the
-app-specific ones.</p>
+<p><input disabled="" type="checkbox" checked=""/>
+<strong>Cross-app export round-trip tests — 0.1.89.</strong> Three new tests in
+<code>notechondria_shared/test/local_archive_test.dart</code> covering planner→editor,
+editor→planner, and portal→planner round-trips.</p>
 </li>
 </ul>
 <h2 id="planner"><a class="header" href="#planner">Planner</a></h2>
@@ -659,15 +646,6 @@ the right default. Changing planner's starter default is a UX
 break, so gather feedback before touching.</li>
 </ul>
 <h2 id="backend"><a class="header" href="#backend">Backend</a></h2>
-<ul>
-<li><input disabled="" type="checkbox"/>
-<strong>Attachment CDN server-side.</strong> Currently uploads go to a
-single path. Consider keying by <code>note.uuid</code> at the URL level
-(<code>/notes/&lt;uuid&gt;/attachments/&lt;filename&gt;</code>) so the frontend can
-invalidate / sync without passing integer ids. Align with the
-frontend <code>local://&lt;note-uuid&gt;/&lt;safe-filename&gt;</code> scheme in the
-attachment-CDN rework above.</li>
-</ul>
 <h3 id="mcp"><a class="header" href="#mcp">MCP</a></h3>
 <h2 id="release--ci"><a class="header" href="#release--ci">Release / CI</a></h2>
 <ul>
