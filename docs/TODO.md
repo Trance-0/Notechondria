@@ -115,12 +115,16 @@ file and add a round-log entry to the new version doc.
   card. Editor switched to the shared widget too. App-shell wiring
   for `onSaveMcpSkill` added in both apps.
 
-- [ ] **Custom-meta expandable list — portal/planner note dialogs.**
-  Editor's `_NoteEditorDialog` already drives all three apps via
-  `editor_app/lib/modules/note_editor.dart`, but planner uses
-  `learner_note_editor.dart` and portal has `note_metadata_dialog.dart`
-  in their own modules. Need to verify each forked dialog and lift the
-  expandable list there if it isn't surfaced.
+- [x] **Custom-meta expandable list — portal/planner note dialogs —
+  0.1.92.** New shared `CustomMetaController` + `CustomMetaListEditor`
+  in `notechondria_shared/lib/src/components/`. Editor migrated off
+  its private copy; portal and planner `_NoteMetadataDialog`s now mount
+  the same widget and their `learner_note_editor.dart` save payload
+  strips `custom_meta` from `metadata_json` and sends it on its own
+  field. Docs (root `README.md`, `docs/readme.md`,
+  `docs/deployment/{deploy,render_free_tier,northflank}.md`) updated
+  with the per-app OAuth allow-list and GitHub data-sync env-var
+  guidance.
 
 - [ ] **Experimental GitHub Sync — wire the actual push path — carryover
   from 0.1.90.**

@@ -76,6 +76,48 @@ user edits the URL in Settings, the client calls
 [`verifyHandshake`](server/backend.md#handshake) against the candidate
 before committing.
 
+### Per-app OAuth redirect URIs (since 0.1.90)
+
+When editor / planner / portal share one backend, each app needs its
+own OAuth callback host. The backend now accepts a comma-separated
+allow-list and chooses the matching entry by request `Origin`/`Referer`:
+
+- `GOOGLE_AUTHORIZED_REDIRECT_URIS`
+- `GITHUB_AUTHORIZED_REDIRECT_URIS`
+
+Each URI must be pre-registered in the corresponding provider console.
+The legacy single-value `GOOGLE_AUTHORIZED_REDIRECT_URI` /
+`GITHUB_AUTHORIZED_REDIRECT_URI` env vars remain as a fallback.
+
+### Per-user MCP skill (since 0.1.90)
+
+Every authenticated user has a `Creator.mcp_skill_md` text field
+editable in Settings → API settings. Its contents are returned as the
+`instructions` field of the MCP `initialize` JSON-RPC response so any
+agent connecting via `Bearer ntc_<key>` reads the user's import /
+export playbook on connect.
+
+### Custom note meta variables (since 0.1.90)
+
+Notes carry a free-form JSON object on `Note.custom_meta`, surfaced in
+all three apps' note metadata dialogs as an expandable
+key/value list. The shared widget lives at
+`notechondria_shared/lib/src/components/custom_meta_list_editor.dart`
+and is exported as `CustomMetaController` + `CustomMetaListEditor`.
+Custom keys round-trip to YAML frontmatter when the GitHub-sync export
+runs.
+
+### Experimental: GitHub data-sync (since 0.1.90)
+
+Per-user backup of all server-held text + metadata into a GitHub
+repository the user owns. Materializes Creator profile, app settings,
+MCP skill, courses, notes (incl. custom_meta), planner events, and
+calendar feeds; static assets we host (avatars, attachments, cover
+images) are referenced by URL only. See
+[`integrations/github-sync.md`](integrations/github-sync.md) for the
+full repo layout, env-var contract, and the known gap on JWT signing
+(needs `pyjwt + cryptography` added to `backend/requirements.txt`).
+
 ## Where to go next
 
 - [`index.md`](index.md) — project-local agent rules (§0),

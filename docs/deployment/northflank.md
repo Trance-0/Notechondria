@@ -137,6 +137,25 @@ Optional but required if you use email verification or social sign-in — see
 `sample.northflank.env` for the full list (`SMTP_*`, `GOOGLE_OAUTH_*`,
 `GITHUB_APP_*`).
 
+If more than one Flutter app (editor / planner / portal) shares this
+backend, also set `GOOGLE_AUTHORIZED_REDIRECT_URIS` and
+`GITHUB_AUTHORIZED_REDIRECT_URIS` (comma-separated, since 0.1.90) so
+each app's sign-in lands back on its own host. Each entry must be
+pre-registered in the OAuth provider console.
+
+### Experimental: GitHub data-sync
+
+Since 0.1.90, every authenticated user can push their full account
+state (profile, settings, MCP skill, courses, notes, custom_meta,
+planner) to a GitHub repo they own via
+`POST /api/v1/integrations/github/push/`. To enable:
+
+- Set the `GITHUB_DATA_SYNC_APP_*` env vars (see `docs/integrations/
+  github-sync.md` for the full list).
+- Add `pyjwt + cryptography` to `backend/requirements.txt` and rebuild
+  the image — the JWT signer used by `_refresh_installation_token`
+  raises `GithubSyncError` otherwise.
+
 ## Runtime behaviour
 
 - Northflank injects `PORT`; the Dockerfile `EXPOSE 8000` must match the

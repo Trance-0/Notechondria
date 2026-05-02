@@ -37,6 +37,10 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
   bool _coverBusy = false;
   String? _coverError;
 
+  /// Backing store for the shared `CustomMetaListEditor`. Round-tripped
+  /// to `note.custom_meta` (JSON object string) on save.
+  late final CustomMetaController _customMetaController;
+
   @override
   void initState() {
     super.initState();
@@ -54,12 +58,16 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
         widget.note['is_public'] == true;
     _coverUrl = widget.note['cover_image_url']?.toString();
     _historyFuture = widget.onGetHistory(widget.note['id'] as int);
+    _customMetaController = CustomMetaController(
+      initialJson: widget.note['custom_meta']?.toString() ?? '',
+    );
   }
 
   @override
   void dispose() {
     _descriptionController.dispose();
     _sectionController.dispose();
+    _customMetaController.dispose();
     super.dispose();
   }
 
@@ -269,6 +277,8 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
                 _buildCoverSection(context),
               ],
               const SizedBox(height: 16),
+              CustomMetaListEditor(controller: _customMetaController),
+              const SizedBox(height: 16),
               Text(
                 'Version history',
                 style: Theme.of(context).textTheme.titleMedium,
@@ -306,6 +316,8 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
                                       'section': _sectionController.text,
                                       'course_id': _courseId,
                                       'is_public': _isPublic,
+                                      'custom_meta':
+                                          _customMetaController.serialize(),
                                     },
                                     'restored_note': restored,
                                   });
@@ -334,6 +346,7 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
             'section': _sectionController.text,
             'course_id': _courseId,
             'is_public': _isPublic,
+            'custom_meta': _customMetaController.serialize(),
           }),
           child: const Text('Save'),
         ),

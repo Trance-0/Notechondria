@@ -51,6 +51,8 @@ export 'src/components/debug_log.dart'
 export 'src/components/debug_widgets.dart' show ApiDebugCard, ApiDebugSummary;
 export 'src/components/error_state.dart' show ErrorStateView;
 export 'src/components/navigation.dart' show ConfirmWithDelayDialog, SidebarItem;
+export 'src/components/custom_meta_list_editor.dart'
+    show CustomMetaController, CustomMetaListEditor;
 export 'src/components/mcp_skill_section.dart'
     show GithubSyncExperimentalCard, McpSkillSection;
 export 'src/components/note_cover_image.dart' show NoteCoverImage;

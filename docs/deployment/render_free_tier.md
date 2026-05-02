@@ -18,7 +18,16 @@ Set these in the Render dashboard:
 - `ALLOWED_HOSTS`
 - `CSRF_TRUSTED_ORIGINS`
 - `OPENAI_API_KEY` (if needed)
-- any `GITHUB_APP_*` values if that integration is enabled
+- any `GITHUB_APP_*` values if the OAuth integration is enabled
+- `GOOGLE_AUTHORIZED_REDIRECT_URIS` /
+  `GITHUB_AUTHORIZED_REDIRECT_URIS` (comma-separated, since 0.1.90) —
+  set when more than one frontend app shares this backend so each
+  app's sign-in lands back on its own host. Falls back to the
+  single-value `GOOGLE_AUTHORIZED_REDIRECT_URI` /
+  `GITHUB_AUTHORIZED_REDIRECT_URI` when unset.
+- any `GITHUB_DATA_SYNC_APP_*` values for the experimental per-user
+  GitHub data-sync (since 0.1.90); the push pipeline is gated until
+  `pyjwt + cryptography` ship in `backend/requirements*.txt`
 
 Render also provides:
 - `PORT`

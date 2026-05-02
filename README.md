@@ -57,6 +57,30 @@ Entry points:
 - On local browser full-stack deploy (`localhost` / `127.0.0.1`): defaults to same-origin `${origin}/api/v1`
 - In Docker full-stack deploy: root gateway nginx routes `/api/v1` to the Django backend
 
+## Per-app OAuth redirect URIs (since 0.1.90)
+
+- The backend matches the request `Origin` header against the
+  comma-separated allow-lists below and returns the matching URI to
+  whichever Flutter app calls `/api/v1/auth/oauth-config/`. Each entry
+  must also be pre-registered with the OAuth provider (Google
+  "Authorized redirect URIs" / GitHub OAuth App callback URL).
+  - `GOOGLE_AUTHORIZED_REDIRECT_URIS=https://editor.example/,https://portal.example/,https://planner.example/`
+  - `GITHUB_AUTHORIZED_REDIRECT_URIS=...same shape...`
+- Legacy single-value `GOOGLE_AUTHORIZED_REDIRECT_URI` /
+  `GITHUB_AUTHORIZED_REDIRECT_URI` continue to work as a fallback.
+
+## Experimental: GitHub data-sync (since 0.1.90)
+
+- See [`docs/integrations/github-sync.md`](docs/integrations/github-sync.md)
+  for the full flow + repo layout.
+- Required env: `GITHUB_DATA_SYNC_APP_NAME`,
+  `GITHUB_DATA_SYNC_APP_CLIENT_ID`, `GITHUB_DATA_SYNC_APP_CLIENT_SECRET`,
+  `GITHUB_DATA_SYNC_APP_PRIVATE_KEY`,
+  `GITHUB_DATA_SYNC_APP_INSTALL_URL`.
+- The push pipeline (`POST /api/v1/integrations/github/push/`) is wired
+  but gated: enabling it requires `pyjwt + cryptography` in
+  `backend/requirements.txt` to finish the JWT-signing step.
+
 ## Local verification
 ```bash
 for app in frontend/editor_app frontend/planner_app frontend/portal_app; do
