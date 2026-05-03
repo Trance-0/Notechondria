@@ -105,6 +105,18 @@ abstract class NotechondriaClient implements AuthClient {
   Future<Map<String, dynamic>> checkSession(String token);
   Future<Map<String, dynamic>> sendIdentityCode(String token);
   Future<Map<String, dynamic>> rotateApiKey(String token);
+
+  /// Experimental GitHub data-sync. See
+  /// `docs/integrations/github-sync.md` for the full flow.
+  Future<Map<String, dynamic>> githubSyncStatus(String token);
+  Future<List<Map<String, dynamic>>> githubSyncRepos(String token);
+  Future<Map<String, dynamic>> githubSyncCallback(
+    String token,
+    Map<String, dynamic> payload,
+  );
+  Future<Map<String, dynamic>> githubSyncPush(String token);
+  Future<void> githubSyncDisconnect(String token);
+
   Future<Map<String, dynamic>> changePassword(
     String token,
     String currentPassword,

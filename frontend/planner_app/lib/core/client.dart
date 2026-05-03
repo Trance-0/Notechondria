@@ -101,6 +101,18 @@ abstract class NotechondriaClient implements AuthClient {
     String token,
     Map<String, dynamic> payload,
   );
+
+  /// Experimental GitHub data-sync. See
+  /// `docs/integrations/github-sync.md` for the full flow.
+  Future<Map<String, dynamic>> githubSyncStatus(String token);
+  Future<List<Map<String, dynamic>>> githubSyncRepos(String token);
+  Future<Map<String, dynamic>> githubSyncCallback(
+    String token,
+    Map<String, dynamic> payload,
+  );
+  Future<Map<String, dynamic>> githubSyncPush(String token);
+  Future<void> githubSyncDisconnect(String token);
+
   Future<Map<String, dynamic>> uploadAvatar(String token, XFile file);
   /// Upload a cover image for the given note. Backend returns the
   /// updated note summary including the new `cover_image_url`. Owner-
@@ -818,6 +830,57 @@ class HttpNotechondriaClient
     return Map<String, dynamic>.from(
       await decode(response, uri: uri, method: 'PATCH'),
     );
+  }
+
+  @override
+  Future<Map<String, dynamic>> githubSyncStatus(String token) async {
+    final uri = _uri('/integrations/github/status/');
+    final response = await _get(uri, token: token);
+    return Map<String, dynamic>.from(
+      await decode(response, uri: uri, method: 'GET'),
+    );
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> githubSyncRepos(String token) async {
+    final uri = _uri('/integrations/github/repos/');
+    final response = await _get(uri, token: token);
+    final body = await decode(response, uri: uri, method: 'GET');
+    if (body is Map && body['repositories'] is List) {
+      return [
+        for (final r in body['repositories'] as List)
+          Map<String, dynamic>.from(r as Map),
+      ];
+    }
+    return const [];
+  }
+
+  @override
+  Future<Map<String, dynamic>> githubSyncCallback(
+    String token,
+    Map<String, dynamic> payload,
+  ) async {
+    final uri = _uri('/integrations/github/callback/');
+    final response = await _post(uri, token: token, payload: payload);
+    return Map<String, dynamic>.from(
+      await decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> githubSyncPush(String token) async {
+    final uri = _uri('/integrations/github/push/');
+    final response = await _post(uri, token: token, payload: const {});
+    return Map<String, dynamic>.from(
+      await decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
+  Future<void> githubSyncDisconnect(String token) async {
+    final uri = _uri('/integrations/github/status/');
+    final response = await _delete(uri, token: token);
+    await decode(response, uri: uri, method: 'DELETE');
   }
 
   @override

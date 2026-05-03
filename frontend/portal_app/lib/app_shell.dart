@@ -877,6 +877,33 @@ class _AppShellState extends State<AppShell>
                   }
                 }
               : null,
+          githubSyncCardBuilder: _token != null
+              ? () => GithubSyncExperimentalCard(
+                    onLoadStatus: () =>
+                        widget.client.githubSyncStatus(_token!),
+                    onListRepos: () =>
+                        widget.client.githubSyncRepos(_token!),
+                    onConnect: ({
+                      required String installationId,
+                      String? accountLogin,
+                      String? repoFullName,
+                      String? repoDefaultBranch,
+                    }) =>
+                        widget.client.githubSyncCallback(_token!, {
+                      'installation_id': installationId,
+                      if (accountLogin != null && accountLogin.isNotEmpty)
+                        'account_login': accountLogin,
+                      if (repoFullName != null && repoFullName.isNotEmpty)
+                        'repo_full_name': repoFullName,
+                      if (repoDefaultBranch != null &&
+                          repoDefaultBranch.isNotEmpty)
+                        'repo_default_branch': repoDefaultBranch,
+                    }),
+                    onPushNow: () => widget.client.githubSyncPush(_token!),
+                    onDisconnect: () =>
+                        widget.client.githubSyncDisconnect(_token!),
+                  )
+              : null,
           onChangePassword: _token != null
               ? (current, newPw, identityCode) =>
                   widget.client.changePassword(

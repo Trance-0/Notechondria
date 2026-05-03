@@ -44,6 +44,7 @@ class _SettingsPage extends StatefulWidget {
     this.onSendIdentityCode,
     this.onRotateApiKey,
     this.onSaveMcpSkill,
+    this.githubSyncCardBuilder,
     this.onChangePassword,
     this.onChangeEmailRequest,
     this.onChangeEmailConfirm,
@@ -139,6 +140,13 @@ class _SettingsPage extends StatefulWidget {
   /// snackbar reflecting success / failure. Null when the user is
   /// signed out or the field has not been wired yet.
   final Future<ActionFeedback> Function(String skillMd)? onSaveMcpSkill;
+
+  /// Builder for the experimental GitHub-Sync card. Constructed in
+  /// the host `app_shell` so the network callbacks bind to the
+  /// authenticated client + token. Null when the user is signed out;
+  /// the API-settings page renders a passive disabled card in that
+  /// case.
+  final Widget Function()? githubSyncCardBuilder;
   final Future<Map<String, dynamic>> Function(String currentPassword, String newPassword, String identityCode)? onChangePassword;
   final Future<Map<String, dynamic>> Function(String newEmail, String identityCode)? onChangeEmailRequest;
   final Future<Map<String, dynamic>> Function(String newEmail, String code)? onChangeEmailConfirm;

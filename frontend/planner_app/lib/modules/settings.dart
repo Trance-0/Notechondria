@@ -50,6 +50,7 @@ class _SettingsPage extends StatefulWidget {
     this.onExportLocalData,
     this.onRestoreFromLocalImport,
     this.onSaveMcpSkill,
+    this.githubSyncCardBuilder,
   });
 
   final Map<String, dynamic>? profile;
@@ -138,6 +139,11 @@ class _SettingsPage extends StatefulWidget {
   /// row. Returns an `ActionFeedback` so the section widget can show a
   /// snackbar. Null when the user is signed out.
   final Future<ActionFeedback> Function(String skillMd)? onSaveMcpSkill;
+
+  /// Builder for the experimental GitHub-Sync card. Constructed in
+  /// `app_shell` so the network callbacks bind to the authenticated
+  /// client + token. Null when the user is signed out.
+  final Widget Function()? githubSyncCardBuilder;
 
   @override
   State<_SettingsPage> createState() => _SettingsPageState();
@@ -512,7 +518,8 @@ class _SettingsPageState extends State<_SettingsPage> {
         ),
         if (widget.onSaveMcpSkill != null) ...[
           const SizedBox(height: 16),
-          const GithubSyncExperimentalCard(),
+          widget.githubSyncCardBuilder?.call() ??
+              const GithubSyncExperimentalCard(),
         ],
         const SizedBox(height: 16),
         Card(

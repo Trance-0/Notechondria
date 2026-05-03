@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../app_shell/url_strategy.dart'
+    if (dart.library.html) '../app_shell/url_strategy_web.dart'
+    as url_strategy;
 import '../models/action_feedback.dart';
 
 /// Editable text area for the user's MCP `skill.md`. Surfaced to MCP-
@@ -154,12 +157,363 @@ class _McpSkillSectionState extends State<McpSkillSection> {
   }
 }
 
-/// Disabled "Connect to GitHub" card for the experimental data-sync
-/// feature. Shared across the three apps; the actual install flow is
-/// gated behind backend env vars (`GITHUB_DATA_SYNC_APP_*`) plus a
-/// JWT-signing dependency that has not landed yet.
-class GithubSyncExperimentalCard extends StatelessWidget {
-  const GithubSyncExperimentalCard({super.key});
+/// Stateful "Connect to GitHub" card for the experimental data-sync
+/// feature. Shared across editor / planner / portal. Three states:
+///
+/// - **No callbacks** (signed out): renders a passive description card
+///   so anonymous users still see what the feature is.
+/// - **Disconnected** (callbacks present, status returns
+///   `connected: false`): renders an "Install Notechondria GitHub App"
+///   button that opens `install_url` in a new tab. After the GitHub
+///   App callback returns, the host page is responsible for calling
+///   `onConnect(installation_id)` from the URL query string.
+/// - **Connected**: renders a repo-picker dropdown sourced from
+///   `onListRepos()`, a "Push now" action that calls `onPushNow()` and
+///   surfaces the resulting commit SHA, and a Disconnect button.
+///
+/// The widget never makes its own HTTP calls — every network operation
+/// is delegated to a callback so each app's `NotechondriaClient` keeps
+/// owning the HTTP layer. Errors are surfaced via the SnackBar pattern
+/// already used by `McpSkillSection` so the failure copy stays
+/// consistent across the three apps.
+class GithubSyncExperimentalCard extends StatefulWidget {
+  const GithubSyncExperimentalCard({
+    this.onLoadStatus,
+    this.onListRepos,
+    this.onConnect,
+    this.onPushNow,
+    this.onDisconnect,
+    super.key,
+  });
+
+  /// `GET /api/v1/integrations/github/status/`. Returns the raw
+  /// payload (`connected`, `install_url`, `repo_full_name`, etc.).
+  /// Null for signed-out users.
+  final Future<Map<String, dynamic>> Function()? onLoadStatus;
+
+  /// `GET /api/v1/integrations/github/repos/`. Returns the
+  /// `repositories` list once an installation is wired.
+  final Future<List<Map<String, dynamic>>> Function()? onListRepos;
+
+  /// `POST /api/v1/integrations/github/callback/`. Persists
+  /// installation id + chosen repo. The host calls this in two
+  /// places: (a) right after the GitHub App install redirect with
+  /// just `installation_id`; (b) when the user picks a repo from the
+  /// dropdown, including `repo_full_name` and `repo_default_branch`.
+  final Future<Map<String, dynamic>> Function({
+    required String installationId,
+    String? accountLogin,
+    String? repoFullName,
+    String? repoDefaultBranch,
+  })? onConnect;
+
+  /// `POST /api/v1/integrations/github/push/`. Returns the commit SHA
+  /// or surfaces a `GithubSyncError` message via thrown exception.
+  final Future<Map<String, dynamic>> Function()? onPushNow;
+
+  /// `DELETE /api/v1/integrations/github/status/`. Drops the
+  /// integration row; the GitHub App stays installed on the user's
+  /// side until they uninstall it from their GitHub settings.
+  final Future<void> Function()? onDisconnect;
+
+  @override
+  State<GithubSyncExperimentalCard> createState() =>
+      _GithubSyncExperimentalCardState();
+}
+
+class _GithubSyncExperimentalCardState
+    extends State<GithubSyncExperimentalCard> {
+  Map<String, dynamic>? _status;
+  List<Map<String, dynamic>>? _repos;
+  String? _selectedRepo;
+  bool _loading = true;
+  bool _busy = false;
+  String? _lastCommitSha;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshStatus();
+  }
+
+  bool get _hasCallbacks => widget.onLoadStatus != null;
+
+  bool get _isConnected => _status?['connected'] == true;
+
+  String get _installUrl => _status?['install_url']?.toString() ?? '';
+
+  Future<void> _refreshStatus() async {
+    if (widget.onLoadStatus == null) {
+      setState(() => _loading = false);
+      return;
+    }
+    try {
+      final status = await widget.onLoadStatus!();
+      if (!mounted) return;
+      setState(() {
+        _status = status;
+        _selectedRepo = status['repo_full_name']?.toString();
+        if (_selectedRepo != null && _selectedRepo!.isEmpty) {
+          _selectedRepo = null;
+        }
+        _loading = false;
+      });
+      if (status['connected'] == true && widget.onListRepos != null) {
+        try {
+          final repos = await widget.onListRepos!();
+          if (!mounted) return;
+          setState(() => _repos = repos);
+        } catch (_) {
+          // Repo listing can fail if the install token can't be
+          // refreshed (e.g. private key not yet provisioned). Leave
+          // _repos null so the UI shows the error chip below.
+        }
+      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+      });
+      _snackError('Cannot load GitHub Sync status', error);
+    }
+  }
+
+  Future<void> _selectRepo(String? fullName) async {
+    if (fullName == null || fullName.isEmpty) return;
+    if (widget.onConnect == null) return;
+    final installationId = _status?['installation_id']?.toString() ??
+        // Fall back to whatever is on the row already; the callback
+        // helper on the app side may keep the install id implicit.
+        '';
+    final defaultBranch = _repos
+            ?.firstWhere(
+              (r) => r['full_name']?.toString() == fullName,
+              orElse: () => const {},
+            )['default_branch']
+            ?.toString() ??
+        'main';
+    setState(() => _busy = true);
+    try {
+      await widget.onConnect!(
+        installationId: installationId,
+        repoFullName: fullName,
+        repoDefaultBranch: defaultBranch,
+      );
+      if (!mounted) return;
+      setState(() => _selectedRepo = fullName);
+      await _refreshStatus();
+    } catch (error) {
+      _snackError('Cannot select repository', error);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _pushNow() async {
+    if (widget.onPushNow == null) return;
+    setState(() => _busy = true);
+    try {
+      final result = await widget.onPushNow!();
+      final sha = result['commit_sha']?.toString() ?? '';
+      if (!mounted) return;
+      setState(() => _lastCommitSha = sha);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Pushed to GitHub (sha ${sha.substring(0, sha.length < 8 ? sha.length : 8)}).')),
+      );
+      await _refreshStatus();
+    } catch (error) {
+      _snackError('GitHub Sync push failed', error);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _disconnect() async {
+    if (widget.onDisconnect == null) return;
+    setState(() => _busy = true);
+    try {
+      await widget.onDisconnect!();
+      if (!mounted) return;
+      setState(() {
+        _status = {'connected': false};
+        _repos = null;
+        _selectedRepo = null;
+        _lastCommitSha = null;
+      });
+    } catch (error) {
+      _snackError('Cannot disconnect GitHub Sync', error);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  void _openInstallUrl() {
+    final url = _installUrl;
+    if (url.isEmpty) {
+      _snackError(
+        'Cannot install GitHub App',
+        Exception('Frontend.GithubSync/install — no install_url configured.'),
+      );
+      return;
+    }
+    final uri = Uri.tryParse(url);
+    if (uri == null || uri.scheme.isEmpty || uri.host.isEmpty) {
+      _snackError(
+        'Cannot install GitHub App',
+        Exception('Frontend.GithubSync/install — install_url is not a valid http(s) URL.'),
+      );
+      return;
+    }
+    // Same-tab redirect: GitHub returns the user back via the
+    // configured callback URL after the install completes.
+    url_strategy.browserRedirect(url);
+  }
+
+  void _snackError(String prefix, Object error) {
+    final msg = error.toString().replaceFirst('Exception: ', '');
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$prefix: $msg')),
+    );
+  }
+
+  Widget _buildDisconnectedActions(BuildContext context) {
+    final theme = Theme.of(context);
+    final hasInstallUrl = _installUrl.isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!hasInstallUrl)
+          const _DisabledHint(
+            text: 'Operator note: GITHUB_DATA_SYNC_APP_INSTALL_URL '
+                'is not configured on this backend. See '
+                'docs/integrations/github-sync.md for the env-var '
+                'contract.',
+          )
+        else ...[
+          OutlinedButton.icon(
+            onPressed: _busy ? null : _openInstallUrl,
+            icon: const Icon(Icons.link, size: 18),
+            label: const Text('Install Notechondria GitHub App'),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'After approving the install, GitHub redirects back here '
+            'and we persist your installation id automatically. The '
+            'app stays installed until you remove it from your GitHub '
+            'settings.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildConnectedActions(BuildContext context) {
+    final theme = Theme.of(context);
+    final repos = _repos;
+    final account = _status?['account_login']?.toString() ?? '';
+    final lastPushAt = _status?['last_push_at']?.toString() ?? '';
+    final lastError = _status?['last_error']?.toString() ?? '';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.check_circle, size: 16, color: Colors.green),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                account.isEmpty
+                    ? 'GitHub App installed.'
+                    : 'GitHub App installed on @$account.',
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (repos == null)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 4),
+            child: LinearProgressIndicator(minHeight: 2),
+          )
+        else if (repos.isEmpty)
+          const _DisabledHint(
+            text: 'No repositories visible to this installation. '
+                'Open GitHub settings → Applications → Notechondria '
+                'data sync, and grant access to a repo.',
+          )
+        else
+          DropdownButtonFormField<String>(
+            initialValue: _selectedRepo,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Sync target repository',
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+            items: [
+              for (final repo in repos)
+                DropdownMenuItem<String>(
+                  value: repo['full_name']?.toString(),
+                  child: Text(
+                    repo['full_name']?.toString() ?? 'unknown',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+            ],
+            onChanged: _busy ? null : _selectRepo,
+          ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            FilledButton.icon(
+              onPressed: (_busy || _selectedRepo == null) ? null : _pushNow,
+              icon: _busy
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.cloud_upload_outlined, size: 18),
+              label: const Text('Push now'),
+            ),
+            const SizedBox(width: 8),
+            TextButton.icon(
+              onPressed: _busy ? null : _disconnect,
+              icon: const Icon(Icons.link_off, size: 18),
+              label: const Text('Disconnect'),
+            ),
+          ],
+        ),
+        if (_lastCommitSha != null && _lastCommitSha!.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            'Last push: ${_lastCommitSha!.substring(0, _lastCommitSha!.length < 8 ? _lastCommitSha!.length : 8)}',
+            style: theme.textTheme.bodySmall,
+          ),
+        ] else if (lastPushAt.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            'Last push at $lastPushAt.',
+            style: theme.textTheme.bodySmall,
+          ),
+        ],
+        if (lastError.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            lastError,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.error,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -192,18 +546,52 @@ class GithubSyncExperimentalCard extends StatelessWidget {
               'GitHub repo you own so you can recover everything if '
               'our server is wiped. Static assets we host (avatars, '
               'attachments, cover images) are referenced by URL, not '
-              'committed. Wire-up requires a Notechondria GitHub App '
-              'install — see docs/integrations/github-sync.md for the '
-              'full flow.',
+              'committed. See docs/integrations/github-sync.md for '
+              'the full flow.',
               style: theme.textTheme.bodySmall,
             ),
             const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: null,
-              icon: const Icon(Icons.link, size: 18),
-              label: const Text('Connect to GitHub (coming soon)'),
-            ),
+            if (!_hasCallbacks)
+              const _DisabledHint(
+                  text: 'Sign in to enable GitHub Sync.')
+            else if (_loading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 4),
+                child: LinearProgressIndicator(minHeight: 2),
+              )
+            else if (!_isConnected)
+              _buildDisconnectedActions(context)
+            else
+              _buildConnectedActions(context),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DisabledHint extends StatelessWidget {
+  const _DisabledHint({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Text(
+        text,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
         ),
       ),
     );

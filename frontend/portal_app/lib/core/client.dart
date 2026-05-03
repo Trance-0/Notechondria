@@ -644,6 +644,78 @@ class HttpNotechondriaClient
   }
 
   @override
+  Future<Map<String, dynamic>> githubSyncStatus(String token) async {
+    final uri = _uri('/integrations/github/status/');
+    final response = await send(
+      'GET',
+      uri,
+      () => _httpClient.get(uri, headers: headers(token: token)),
+    );
+    return Map<String, dynamic>.from(
+        await decode(response, uri: uri, method: 'GET'));
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> githubSyncRepos(String token) async {
+    final uri = _uri('/integrations/github/repos/');
+    final response = await send(
+      'GET',
+      uri,
+      () => _httpClient.get(uri, headers: headers(token: token)),
+    );
+    final body = await decode(response, uri: uri, method: 'GET');
+    if (body is Map && body['repositories'] is List) {
+      return [
+        for (final r in body['repositories'] as List)
+          Map<String, dynamic>.from(r as Map),
+      ];
+    }
+    return const [];
+  }
+
+  @override
+  Future<Map<String, dynamic>> githubSyncCallback(
+    String token,
+    Map<String, dynamic> payload,
+  ) async {
+    final uri = _uri('/integrations/github/callback/');
+    final response = await send(
+      'POST',
+      uri,
+      () => _httpClient.post(
+        uri,
+        headers: headers(token: token),
+        body: jsonEncode(payload),
+      ),
+    );
+    return Map<String, dynamic>.from(
+        await decode(response, uri: uri, method: 'POST'));
+  }
+
+  @override
+  Future<Map<String, dynamic>> githubSyncPush(String token) async {
+    final uri = _uri('/integrations/github/push/');
+    final response = await send(
+      'POST',
+      uri,
+      () => _httpClient.post(uri, headers: headers(token: token)),
+    );
+    return Map<String, dynamic>.from(
+        await decode(response, uri: uri, method: 'POST'));
+  }
+
+  @override
+  Future<void> githubSyncDisconnect(String token) async {
+    final uri = _uri('/integrations/github/status/');
+    final response = await send(
+      'DELETE',
+      uri,
+      () => _httpClient.delete(uri, headers: headers(token: token)),
+    );
+    await decode(response, uri: uri, method: 'DELETE');
+  }
+
+  @override
   Future<Map<String, dynamic>> changePassword(
     String token,
     String currentPassword,
