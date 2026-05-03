@@ -203,37 +203,6 @@ restate them here. When a task is landed, delete its entry from this
 file and add a round-log entry to the new version doc.</p>
 <h2 id="global-reusable-components"><a class="header" href="#global-reusable-components">Global reusable components</a></h2>
 <h3 id="login-and-account-info"><a class="header" href="#login-and-account-info">Login and account info</a></h3>
-<ul>
-<li><input disabled="" type="checkbox"/>
-<strong>Two-factor auth for password login.</strong> Tracked separately
-because it needs a new backend flow plus UI. Scope:
-<ul>
-<li>Backend: on password login (NOT OAuth — skip 2FA there by
-design), challenge the user with one of two second-factor
-paths:
-<ol>
-<li><strong>Trusted-device approval.</strong> Send a push-style prompt to
-the user's first-registered session (the one created during
-the original email-verify flow). Requires the user to have
-completed email verification during that first sign-up so
-we know the device is genuine.</li>
-<li><strong>Email code.</strong> Same 6-digit flow as the existing
-<code>/api/v1/auth/resend-verification/</code> / <code>VerificationCode</code>
-helpers — just re-purposed for login confirmation.</li>
-</ol>
-</li>
-<li>New endpoints: <code>POST /api/v1/auth/2fa/challenge/</code> and
-<code>POST /api/v1/auth/2fa/verify/</code>.</li>
-<li><code>LoginApiView</code> needs a two-step variant: first call returns
-<code>{pending_2fa: true, challenge_id, channels: [...]}</code> instead
-of a token. Second call submits the code / approval id and
-returns the full <code>auth_payload</code>.</li>
-<li>Settings UI for choosing / revoking trusted devices (can share
-the sessions card if trusted-device is modelled as a flag on
-Session).</li>
-</ul>
-</li>
-</ul>
 <h3 id="app-preferences"><a class="header" href="#app-preferences">App preferences</a></h3>
 <h3 id="debug-log-window"><a class="header" href="#debug-log-window">Debug log window</a></h3>
 <ul>
@@ -278,6 +247,41 @@ the right default. Changing planner's starter default is a UX
 break, so gather feedback before touching.</li>
 </ul>
 <h2 id="backend"><a class="header" href="#backend">Backend</a></h2>
+<h3 id="auth"><a class="header" href="#auth">Auth</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"/>
+<strong>Casdoor migration (next major).</strong> Replace the in-house
+registration / email-verify / password-reset / OAuth login + bind
+/ multi-device session stack with <a href="https://casdoor.org">Casdoor</a>.
+App-level user state stays on <code>creators.Creator</code>; only identity,
+credentials, and the social-provider plumbing move out.
+Survey + phased plan landed in
+<a href="integrations/casdoor-migration.html"><code>docs/integrations/casdoor-migration.md</code></a>.
+Five phases:
+<ol>
+<li>Survey + design doc (DONE this round).</li>
+<li>Add Casdoor SDK + JWT-validating DRF authentication class
+alongside <code>MultiSessionAuthentication</code> (shadow mode).</li>
+<li>Flutter Casdoor SDK in <code>notechondria_shared</code>; route
+<code>launchOAuth</code> / <code>_AuthDialog</code> through Casdoor.</li>
+<li>Cutover: disable legacy <code>LoginApiView</code> / <code>RegisterApiView</code> etc.;
+<code>Session</code> model becomes read-only.</li>
+<li>Cleanup: delete every endpoint / serializer / template / helper
+listed in the survey.
+Each phase is independently shippable. Steps 2 and 3 can land in
+either order; both must land before step 4. Plan to pre-populate
+Casdoor with existing usernames via a one-shot management command
+that records <code>Creator.casdoor_sub</code> so first-login users don't get
+duplicated.</li>
+</ol>
+</li>
+<li><input disabled="" type="checkbox"/>
+<strong>MCP API keys stay app-internal.</strong> Casdoor is NOT in the
+per-request hot path for MCP — the <code>Bearer ntc_&lt;key&gt;</code> scheme keeps
+using <code>creators.authentication.ApiKeyAuthentication</code> and the
+<code>/api/v1/auth/rotate-api-key/</code> endpoint. Document this in
+<code>docs/server/mcp.md</code> as part of the cutover round.</li>
+</ul>
 <h3 id="mcp"><a class="header" href="#mcp">MCP</a></h3>
 <h3 id="github-sync"><a class="header" href="#github-sync">GitHub Sync</a></h3>
 <ul>
