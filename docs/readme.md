@@ -123,9 +123,16 @@ GitHub" card in Settings → API settings. After installing the
 Notechondria GitHub App, the user picks a repo from the dropdown and
 clicks "Push now"; the backend signs an App JWT, exchanges it for a
 short-lived installation token, and PUTs every materialized file via
-the GitHub Contents API. Restore is a separate stdlib-only CLI at
+the GitHub Contents API. Toggle "Include assets" before pushing
+(since 0.1.94) to inline avatar / cover / attachment bytes under
+`assets/...` so the clone is genuinely self-contained — subject to
+50 MB per-file and 200 MB per-push caps; oversized files are
+recorded in `manifest.skipped_assets` and the parent record's URL
+reference is preserved unchanged. Restore is a separate stdlib-only
+CLI at
 [`../backend/scripts/github_sync_restore.py`](../backend/scripts/github_sync_restore.py)
-(`--dry-run` supported; reruns are idempotent via `client_draft_id`).
+(`--dry-run` and `--include-assets` supported; reruns are idempotent
+via `client_draft_id`).
 
 ## Where to go next
 

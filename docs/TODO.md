@@ -139,11 +139,20 @@ file and add a round-log entry to the new version doc.
   - Restore CLI landed at `backend/scripts/github_sync_restore.py`
     (stdlib-only; supports `--dry-run` + `--verbose`; idempotent
     via `client_draft_id`).
-  - **Carryover (next round):** static-asset re-bundling
-    (`--include-assets` flag that fetches avatars / attachments /
-    cover images instead of leaving CDN URLs in place); push-side
-    conflict resolution (fetch-diff-warn before overwriting a remote
-    blob the user has edited from another device).
+  - **Static-asset re-bundling — landed 0.1.94.** Push side gains
+    `include_assets=true` toggle on the card and on
+    `POST /api/v1/integrations/github/push/`; per-file (50 MB) +
+    per-push (200 MB) caps; oversized files recorded in
+    `manifest.skipped_assets`. Restore CLI gains `--include-assets`
+    and re-uploads through the existing multipart endpoints.
+  - **Push-side conflict resolution** still open — Contents API
+    PUTs overwrite the remote blob; multi-device edits between
+    syncs can lose changes. Next round: fetch-diff-warn before
+    overwrite.
+  - **Asset rotation / pruning** still open — orphan asset paths
+    accumulate as notes are deleted; needs a `--prune-orphans` mode
+    that walks the Trees API and removes unreferenced
+    `assets/notes/<uuid>/` subtrees in the same commit.
 
 ### Debug log window
 

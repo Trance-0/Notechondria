@@ -91,22 +91,37 @@ covers the export half. Tracked under "Release / CI" in
    Backend materializes the file tree and PUTs each file via the
    GitHub Contents API using an installation-scoped access token.
 
-## Known gaps as of 0.1.93
+## Known gaps as of 0.1.94
 
-The push pipeline is now end-to-end functional; the remaining work
-is around static assets and concurrent edits.
+The push and restore halves are now end-to-end functional including
+binary assets. The remaining work is around concurrent edits and
+long-term repo hygiene.
 
-- **Static-asset re-bundling.** Avatars, attachments, and cover
-  images are referenced by URL in the export, not committed. If a
-  user restores into a fresh server with no access to the original
-  CDN, those URLs 404. The next iteration should add an opt-in
-  `--include-assets` flag on the restore CLI that fetches each
-  asset and re-uploads it before re-creating the parent record.
 - **Conflict resolution.** The Contents API PUTs we use overwrite
   the remote blob. A user editing on two devices between syncs can
   lose changes. The next iteration should fetch the existing blob
   on each path, diff it against the materialized payload, and
   surface a "remote changed" warning before overwriting.
+- **Asset rotation / pruning.** Repeated pushes with assets
+  accumulate orphan files for notes that have been deleted
+  client-side but whose old asset paths still live in the remote
+  tree. A `--prune-orphans` mode on the push pipeline can walk the
+  Trees API and delete unreferenced `assets/notes/<uuid>/` subtrees
+  in the same commit.
+
+## Closed gaps (0.1.94)
+
+- Static-asset re-bundling for both push and restore.
+  - **Push:** opt-in via the "Include assets" toggle on the
+    GitHub Sync card (or `include_assets=true` on the
+    `/api/v1/integrations/github/push/` endpoint). Inlines avatar /
+    cover / attachment bytes under `assets/...` paths. Per-file
+    50 MB and per-push 200 MB caps; oversized files are recorded
+    in `manifest.skipped_assets`.
+  - **Restore:** `backend/scripts/github_sync_restore.py
+    --include-assets` walks the same paths and re-uploads via the
+    existing multipart endpoints (`PATCH /settings/` for avatar,
+    `POST /notes/<id>/cover/`, `POST /notes/<id>/attachments/`).
 
 ## Closed gaps (0.1.93)
 

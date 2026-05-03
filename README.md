@@ -82,9 +82,13 @@ Entry points:
   dropdown and hit "Push now"; the backend signs an App JWT,
   exchanges it for an installation token, and PUTs every materialized
   file via the GitHub Contents API.
+- Toggle "Include assets" before pushing (since 0.1.94) to inline
+  avatar / cover / attachment bytes under `assets/...` so the clone
+  is self-contained. Per-file 50 MB / per-push 200 MB caps; oversized
+  files are recorded in `manifest.skipped_assets`.
 - Restore from a cloned backup repo via
   [`backend/scripts/github_sync_restore.py`](backend/scripts/github_sync_restore.py)
-  (stdlib-only; supports `--dry-run`).
+  (stdlib-only; supports `--dry-run` and `--include-assets`).
 
 ## Local verification
 ```bash
