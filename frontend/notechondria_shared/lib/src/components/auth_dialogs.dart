@@ -90,108 +90,222 @@ class AuthHub extends StatelessWidget {
       color: Theme.of(context).colorScheme.surfaceVariant,
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Account', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 8),
-            const Text('Sign up or log in. '
-                'Email verification happens inside the signup wizard; '
-                'password reset is inside the login dialog.'),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                FilledButton(
-                  onPressed: () => _openDialog(
-                    context,
-                    RegistrationWizard(
-                      onValidateInvitation: onValidateInvitation,
-                      onRegister: onRegister,
-                      onResendVerification: onResendVerification,
-                      onGoogleLogin: onGoogleLogin,
-                      onGithubLogin: onGithubLogin,
-                    ),
-                  ),
-                  child: const Text('Sign up'),
-                ),
-                // Standalone "Verify email" entry point was removed in
-                // 0.1.66 — verification belongs inside the signup wizard
-                // flow, not as a top-level account action. `onVerify`
-                // stays on the widget so the registration wizard can
-                // still hand a code to the backend.
-                OutlinedButton(
-                  onPressed: () {
-                    // `showBlurDialog` returns Future<void>; we use the
-                    // navigator the button is attached to so the
-                    // forgot-password branch can pop THIS login dialog
-                    // and open the reset one without a stale context.
-                    final rootNavigator = Navigator.of(context);
-                    _openDialog(
-                      context,
-                      EmailPasswordDialog(
-                        title: 'Login',
-                        description: _apiHostSubtitle(apiBaseUrl),
-                        submitLabel: 'Login',
-                        emailLabel: 'Email or username',
-                        onSubmit: onLogin,
-                        onForgotPassword: () {
-                          // Pop the login dialog, then open the reset
-                          // one. The reset dialog is a separate route
-                          // so the user can still cancel and come back.
-                          rootNavigator.pop();
-                          _openDialog(
-                            rootNavigator.context,
-                            PasswordResetDialog(
-                              onRequestPasswordReset: onRequestPasswordReset,
-                              onConfirmPasswordReset: onConfirmPasswordReset,
-                            ),
-                          );
-                        },
-                      ),
-                    );
-                  },
-                  child: const Text('Login'),
-                ),
-              ],
-            ),
-            if (onGoogleLoginOnly != null ||
-                onGithubLoginOnly != null ||
-                onCasdoorLogin != null) ...[
-              const SizedBox(height: 12),
-              const Divider(),
-              const SizedBox(height: 4),
-              Text('Or sign in with', style: Theme.of(context).textTheme.bodySmall),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  if (onCasdoorLogin != null)
-                    FilledButton.tonalIcon(
-                      onPressed: onCasdoorLogin,
-                      icon: const Icon(Icons.shield_outlined, size: 20),
-                      label: const Text('Casdoor SSO'),
-                    ),
-                  if (onGoogleLoginOnly != null)
-                    OutlinedButton.icon(
-                      onPressed: onGoogleLoginOnly,
-                      icon: const Icon(Icons.g_mobiledata, size: 20),
-                      label: const Text('Google'),
-                    ),
-                  if (onGithubLoginOnly != null)
-                    OutlinedButton.icon(
-                      onPressed: onGithubLoginOnly,
-                      icon: const Icon(Icons.code, size: 20),
-                      label: const Text('GitHub'),
-                    ),
-                ],
-              ),
-            ],
-          ],
+        child: _AuthHubBody(
+          apiBaseUrl: apiBaseUrl,
+          onRegister: onRegister,
+          onValidateInvitation: onValidateInvitation,
+          onVerify: onVerify,
+          onResendVerification: onResendVerification,
+          onLogin: onLogin,
+          onRequestPasswordReset: onRequestPasswordReset,
+          onConfirmPasswordReset: onConfirmPasswordReset,
+          onGoogleLogin: onGoogleLogin,
+          onGithubLogin: onGithubLogin,
+          onGoogleLoginOnly: onGoogleLoginOnly,
+          onGithubLoginOnly: onGithubLoginOnly,
+          onCasdoorLogin: onCasdoorLogin,
+          openDialog: _openDialog,
         ),
       ),
+    );
+  }
+}
+
+/// Stateful body for [AuthHub]. Owns the "show legacy options"
+/// expander state. When `onCasdoorLogin` is non-null, Casdoor is the
+/// primary call-to-action and the legacy email/password + Google /
+/// GitHub buttons collapse behind a "Use email / password instead"
+/// expander so users with un-migrated accounts can still get in.
+class _AuthHubBody extends StatefulWidget {
+  const _AuthHubBody({
+    required this.openDialog,
+    required this.onRegister,
+    required this.onValidateInvitation,
+    required this.onVerify,
+    required this.onResendVerification,
+    required this.onLogin,
+    required this.onRequestPasswordReset,
+    required this.onConfirmPasswordReset,
+    this.onGoogleLogin,
+    this.onGithubLogin,
+    this.onGoogleLoginOnly,
+    this.onGithubLoginOnly,
+    this.onCasdoorLogin,
+    this.apiBaseUrl,
+  });
+
+  final String? apiBaseUrl;
+  final Future<void> Function(BuildContext, Widget) openDialog;
+  final Future<ActionFeedback> Function(
+    String username,
+    String email,
+    String password, {
+    String invitationCode,
+  }) onRegister;
+  final Future<Map<String, dynamic>> Function(String code) onValidateInvitation;
+  final Future<ActionFeedback> Function(String email, String code) onVerify;
+  final Future<ActionFeedback> Function(String email) onResendVerification;
+  final Future<ActionFeedback> Function(String email, String password) onLogin;
+  final Future<ActionFeedback> Function(String email) onRequestPasswordReset;
+  final Future<ActionFeedback> Function(
+    String email,
+    String code,
+    String password,
+  ) onConfirmPasswordReset;
+  final void Function(String invitationCode)? onGoogleLogin;
+  final void Function(String invitationCode)? onGithubLogin;
+  final VoidCallback? onGoogleLoginOnly;
+  final VoidCallback? onGithubLoginOnly;
+  final VoidCallback? onCasdoorLogin;
+
+  @override
+  State<_AuthHubBody> createState() => _AuthHubBodyState();
+}
+
+class _AuthHubBodyState extends State<_AuthHubBody> {
+  bool _showLegacy = false;
+
+  void _openLogin(BuildContext context) {
+    final rootNavigator = Navigator.of(context);
+    widget.openDialog(
+      context,
+      EmailPasswordDialog(
+        title: 'Login',
+        description: _apiHostSubtitle(widget.apiBaseUrl),
+        submitLabel: 'Login',
+        emailLabel: 'Email or username',
+        onSubmit: widget.onLogin,
+        onForgotPassword: () {
+          rootNavigator.pop();
+          widget.openDialog(
+            rootNavigator.context,
+            PasswordResetDialog(
+              onRequestPasswordReset: widget.onRequestPasswordReset,
+              onConfirmPasswordReset: widget.onConfirmPasswordReset,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _openSignup(BuildContext context) {
+    widget.openDialog(
+      context,
+      RegistrationWizard(
+        onValidateInvitation: widget.onValidateInvitation,
+        onRegister: widget.onRegister,
+        onResendVerification: widget.onResendVerification,
+        onGoogleLogin: widget.onGoogleLogin,
+        onGithubLogin: widget.onGithubLogin,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final casdoorPrimary = widget.onCasdoorLogin != null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Account', style: theme.textTheme.titleLarge),
+        const SizedBox(height: 8),
+        Text(
+          casdoorPrimary
+              ? 'Sign in via the Notechondria SSO. The legacy email / '
+                  'password and per-provider OAuth flows are still '
+                  'available below for accounts that haven\'t been '
+                  'migrated yet.'
+              : 'Sign up or log in. Email verification happens inside '
+                  'the signup wizard; password reset is inside the '
+                  'login dialog.',
+        ),
+        const SizedBox(height: 16),
+        if (casdoorPrimary) ...[
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: widget.onCasdoorLogin,
+              icon: const Icon(Icons.shield_outlined, size: 20),
+              label: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 4),
+                child: Text('Continue with Casdoor SSO'),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => setState(() => _showLegacy = !_showLegacy),
+              icon: Icon(
+                _showLegacy ? Icons.expand_less : Icons.expand_more,
+                size: 18,
+              ),
+              label: Text(
+                _showLegacy
+                    ? 'Hide email / password fallback'
+                    : 'Use email / password instead',
+              ),
+            ),
+          ),
+          if (_showLegacy) ...[
+            const Divider(),
+            _legacyButtons(context),
+          ],
+        ] else
+          _legacyButtons(context),
+      ],
+    );
+  }
+
+  Widget _legacyButtons(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            FilledButton(
+              onPressed: () => _openSignup(context),
+              child: const Text('Sign up'),
+            ),
+            OutlinedButton(
+              onPressed: () => _openLogin(context),
+              child: const Text('Login'),
+            ),
+          ],
+        ),
+        if (widget.onGoogleLoginOnly != null ||
+            widget.onGithubLoginOnly != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            'Or sign in with',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              if (widget.onGoogleLoginOnly != null)
+                OutlinedButton.icon(
+                  onPressed: widget.onGoogleLoginOnly,
+                  icon: const Icon(Icons.g_mobiledata, size: 20),
+                  label: const Text('Google'),
+                ),
+              if (widget.onGithubLoginOnly != null)
+                OutlinedButton.icon(
+                  onPressed: widget.onGithubLoginOnly,
+                  icon: const Icon(Icons.code, size: 20),
+                  label: const Text('GitHub'),
+                ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 }

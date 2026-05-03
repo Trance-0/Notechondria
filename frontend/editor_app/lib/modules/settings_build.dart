@@ -152,84 +152,132 @@ extension _SettingsPageBuildX on _SettingsPageState {
               ],
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Sign in to sync notes with the cloud. Local notes '
-              'stay editable while signed out.',
+            Text(
+              hasCasdoor
+                  ? 'Sign in via the Notechondria SSO. The legacy '
+                      'email / password and per-provider OAuth flows '
+                      'are still available below for accounts that '
+                      'haven\'t been migrated yet.'
+                  : 'Sign in to sync notes with the cloud. Local notes '
+                      'stay editable while signed out.',
             ),
             const SizedBox(height: 16),
-            // Sign-up + Login on the same row, equal width.
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () => _openSignUpDialog(context),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 4),
-                      child: Text('Sign up'),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.tonal(
-                    onPressed: () => _openLoginDialog(context),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 4),
-                      child: Text('Login'),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            if (hasGoogle || hasGithub || hasCasdoor) ...[
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  const Expanded(child: Divider()),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Text(
-                      'or',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                          ),
-                    ),
-                  ),
-                  const Expanded(child: Divider()),
-                ],
+            if (hasCasdoor) ...[
+              _OAuthPillButton(
+                icon: Icons.shield_outlined,
+                label: 'Continue with Casdoor SSO',
+                onPressed: widget.onCasdoorLogin!,
               ),
-              const SizedBox(height: 16),
-              if (hasCasdoor) ...[
-                _OAuthPillButton(
-                  icon: Icons.shield_outlined,
-                  label: 'Continue with Casdoor SSO',
-                  onPressed: widget.onCasdoorLogin!,
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: toggleLegacyAuthFallback,
+                  icon: Icon(
+                    _showLegacyAuthFallback
+                        ? Icons.expand_less
+                        : Icons.expand_more,
+                    size: 18,
+                  ),
+                  label: Text(
+                    _showLegacyAuthFallback
+                        ? 'Hide email / password fallback'
+                        : 'Use email / password instead',
+                  ),
                 ),
-                if (hasGithub || hasGoogle) const SizedBox(height: 10),
+              ),
+              if (_showLegacyAuthFallback) ...[
+                const Divider(),
+                const SizedBox(height: 8),
+                _legacyAuthBlock(
+                  context,
+                  hasGoogle: hasGoogle,
+                  hasGithub: hasGithub,
+                ),
               ],
-              if (hasGithub) ...[
-                _OAuthPillButton(
-                  icon: Icons.code,
-                  label: 'Continue with GitHub',
-                  onPressed: widget.onGithubLoginOnly!,
-                ),
-                if (hasGoogle) const SizedBox(height: 10),
-              ],
-              if (hasGoogle)
-                _OAuthPillButton(
-                  icon: Icons.g_mobiledata,
-                  label: 'Continue with Google',
-                  onPressed: widget.onGoogleLoginOnly!,
-                ),
-            ],
+            ] else
+              _legacyAuthBlock(
+                context,
+                hasGoogle: hasGoogle,
+                hasGithub: hasGithub,
+              ),
           ],
         ),
       ),
+    );
+  }
+
+  /// Legacy sign-up + login + Google/GitHub block. Pulled out so the
+  /// Casdoor-primary path (which renders this only when the user
+  /// expands "Use email / password instead") and the no-Casdoor path
+  /// (which renders it inline) both go through the same widget tree.
+  Widget _legacyAuthBlock(
+    BuildContext context, {
+    required bool hasGoogle,
+    required bool hasGithub,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: FilledButton(
+                onPressed: () => _openSignUpDialog(context),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 4),
+                  child: Text('Sign up'),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: FilledButton.tonal(
+                onPressed: () => _openLoginDialog(context),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 4),
+                  child: Text('Login'),
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (hasGoogle || hasGithub) ...[
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Expanded(child: Divider()),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  'or',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurfaceVariant,
+                      ),
+                ),
+              ),
+              const Expanded(child: Divider()),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (hasGithub) ...[
+            _OAuthPillButton(
+              icon: Icons.code,
+              label: 'Continue with GitHub',
+              onPressed: widget.onGithubLoginOnly!,
+            ),
+            if (hasGoogle) const SizedBox(height: 10),
+          ],
+          if (hasGoogle)
+            _OAuthPillButton(
+              icon: Icons.g_mobiledata,
+              label: 'Continue with Google',
+              onPressed: widget.onGoogleLoginOnly!,
+            ),
+        ],
+      ],
     );
   }
 
