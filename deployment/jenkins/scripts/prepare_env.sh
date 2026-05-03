@@ -197,6 +197,14 @@ APP_IMAGE=${APP_IMAGE:-trancezero/notechondria:${VERSION_TAG}}
 NGINX_IMAGE=${NGINX_IMAGE:-trancezero/nginx:${VERSION_TAG}}
 FRONTEND_IMAGE=${FRONTEND_IMAGE:-trancezero/notechondria-frontend:${VERSION_TAG}}
 DB_AUTO_REINIT_IF_MISMATCH=${DB_AUTO_REINIT_IF_MISMATCH:-False}
+# Backend version + build provenance surfaced via /api/v1/handshake/.
+# BACKEND_VERSION is the escape hatch for runtimes where the
+# Dockerfile's COPY VERSION /home/VERSION isn't reached (e.g.
+# wheel-based deploys); leave it empty when the file is shipped.
+BACKEND_VERSION=${BACKEND_VERSION:-${PROJECT_VERSION}}
+BACKEND_BUILD_COMMIT=${BACKEND_BUILD_COMMIT:-${GIT_COMMIT:-}}
+BACKEND_BUILD_TIME=${BACKEND_BUILD_TIME:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}
+BACKEND_DEPLOY_TARGET=${BACKEND_DEPLOY_TARGET:-jenkins}
 EOF
 fi
 

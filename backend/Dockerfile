@@ -22,6 +22,14 @@ RUN pip3 install -r requirements.txt --no-cache-dir
 WORKDIR ${APP_HOME}
 COPY backend/ .
 COPY sample/ /home/sample/
+# Ship VERSION into the image so /api/v1/handshake/ can return the
+# deployed build. Without this the handshake's version lookup falls
+# through to "0.0.0" because BASE_DIR.parent inside the container is
+# /home/, which has no VERSION file — only the repo root does on the
+# dev machine. _read_backend_version() in notechondria.api_views
+# walks several candidate paths; /home/VERSION is the canonical
+# Docker location.
+COPY VERSION /home/VERSION
 # bootstrap_platform seeds a starter note from this file's content.
 # Project-local rules now live in docs/index.md (the repo-root
 # AGENTS.md pointer file was removed; shared cross-project rules come

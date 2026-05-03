@@ -39,15 +39,62 @@ _cached_backend_version: Optional[str] = None
 
 
 def _read_backend_version() -> str:
+    """Resolve the deployed VERSION string by trying every place a
+    deploy might leave the file. Order:
+
+    1. ``BACKEND_VERSION`` env var — populated by Dockerfile/deploy
+       scripts when the file isn't physically present.
+    2. ``BASE_DIR.parent / VERSION`` — dev machine layout
+       (`<repo>/backend/...` resolves parent to ``<repo>/``).
+    3. ``BASE_DIR.parent.parent / VERSION`` — Render/Northflank
+       layouts that nest the Django project one level deeper.
+    4. ``/home/VERSION`` — Docker image layout shipped from the
+       repo-root by the Dockerfile (``COPY VERSION /home/VERSION``).
+    5. ``/VERSION`` — any deployment that drops the file at root.
+
+    The cache covers the lifetime of the gunicorn worker, refreshing
+    on restart. Returns ``0.0.0`` only when none of the above
+    surface the file, and that's a useful signal in itself.
+    """
     global _cached_backend_version
     if _cached_backend_version is not None:
         return _cached_backend_version
-    candidate = Path(settings.BASE_DIR).parent / "VERSION"
-    try:
-        _cached_backend_version = candidate.read_text(encoding="utf-8").strip() or "0.0.0"
-    except OSError:
-        _cached_backend_version = "0.0.0"
+
+    env_version = (os.getenv("BACKEND_VERSION") or "").strip()
+    if env_version:
+        _cached_backend_version = env_version
+        return _cached_backend_version
+
+    base = Path(settings.BASE_DIR)
+    candidates = [
+        base.parent / "VERSION",
+        base.parent.parent / "VERSION",
+        Path("/home/VERSION"),
+        Path("/VERSION"),
+    ]
+    for candidate in candidates:
+        try:
+            text = candidate.read_text(encoding="utf-8").strip()
+        except OSError:
+            continue
+        if text:
+            _cached_backend_version = text
+            return _cached_backend_version
+    _cached_backend_version = "0.0.0"
     return _cached_backend_version
+
+
+def _build_metadata() -> dict:
+    """Return optional build provenance fields. Populated from env
+    vars that deploy scripts can set (see deployment/*/scripts/).
+    All fields are safe to expose — git SHAs, ISO timestamps, and
+    the deployment-method label. Never include secrets here."""
+    return {
+        "version": _read_backend_version(),
+        "commit": (os.getenv("BACKEND_BUILD_COMMIT") or "")[:40],
+        "build_time": os.getenv("BACKEND_BUILD_TIME") or "",
+        "deploy_target": os.getenv("BACKEND_DEPLOY_TARGET") or "",
+    }
 
 
 def health_check(request):
@@ -92,6 +139,7 @@ def handshake(request):
             "api_version": HANDSHAKE_API_VERSION,
             "version": _read_backend_version(),
             "capabilities": HANDSHAKE_CAPABILITIES,
+            "build": _build_metadata(),
         }
     )
 

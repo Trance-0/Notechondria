@@ -27,6 +27,15 @@ export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
 export PORT="${PORT:-8000}"
 export WEB_CONCURRENCY="${WEB_CONCURRENCY:-2}"
 
+# Surface VERSION + build provenance via /api/v1/handshake/ so the
+# deploy-status check can see which version is actually serving.
+if [[ -f "$ROOT_DIR/VERSION" && -z "${BACKEND_VERSION:-}" ]]; then
+  export BACKEND_VERSION="$(tr -d '\r\n' < "$ROOT_DIR/VERSION")"
+fi
+export BACKEND_BUILD_COMMIT="${BACKEND_BUILD_COMMIT:-${NORTHFLANK_GIT_COMMIT:-}}"
+export BACKEND_BUILD_TIME="${BACKEND_BUILD_TIME:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+export BACKEND_DEPLOY_TARGET="${BACKEND_DEPLOY_TARGET:-northflank}"
+
 printf '==> Running Django migrations\n'
 python manage.py migrate --noinput
 

@@ -24,6 +24,17 @@ export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
 export PORT="${PORT:-10000}"
 export WEB_CONCURRENCY="${WEB_CONCURRENCY:-2}"
 
+# Surface VERSION + build provenance via /api/v1/handshake/ so the
+# deploy-status check can see which version is actually serving.
+# Render's filesystem path differs from the Docker layout; falling
+# through these defaults keeps the field non-empty either way.
+if [[ -f "$ROOT_DIR/VERSION" && -z "${BACKEND_VERSION:-}" ]]; then
+  export BACKEND_VERSION="$(tr -d '\r\n' < "$ROOT_DIR/VERSION")"
+fi
+export BACKEND_BUILD_COMMIT="${BACKEND_BUILD_COMMIT:-${RENDER_GIT_COMMIT:-}}"
+export BACKEND_BUILD_TIME="${BACKEND_BUILD_TIME:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+export BACKEND_DEPLOY_TARGET="${BACKEND_DEPLOY_TARGET:-render}"
+
 printf '==> Running Django migrations\n'
 python manage.py migrate --noinput
 

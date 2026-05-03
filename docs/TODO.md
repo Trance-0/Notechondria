@@ -24,29 +24,6 @@ file and add a round-log entry to the new version doc.
 
 ### Login and account info
 
-- [ ] **Two-factor auth for password login.** Tracked separately
-  because it needs a new backend flow plus UI. Scope:
-  - Backend: on password login (NOT OAuth — skip 2FA there by
-    design), challenge the user with one of two second-factor
-    paths:
-    1. **Trusted-device approval.** Send a push-style prompt to
-       the user's first-registered session (the one created during
-       the original email-verify flow). Requires the user to have
-       completed email verification during that first sign-up so
-       we know the device is genuine.
-    2. **Email code.** Same 6-digit flow as the existing
-       `/api/v1/auth/resend-verification/` / `VerificationCode`
-       helpers — just re-purposed for login confirmation.
-  - New endpoints: `POST /api/v1/auth/2fa/challenge/` and
-    `POST /api/v1/auth/2fa/verify/`.
-  - `LoginApiView` needs a two-step variant: first call returns
-    `{pending_2fa: true, challenge_id, channels: [...]}` instead
-    of a token. Second call submits the code / approval id and
-    returns the full `auth_payload`.
-  - Settings UI for choosing / revoking trusted devices (can share
-    the sessions card if trusted-device is modelled as a flag on
-    Session).
-
 ### App preferences
 
 ### Debug log window
@@ -92,6 +69,36 @@ file and add a round-log entry to the new version doc.
   break, so gather feedback before touching.
 
 ## Backend
+
+### Auth
+
+- [ ] **Casdoor migration (next major).** Replace the in-house
+  registration / email-verify / password-reset / OAuth login + bind
+  / multi-device session stack with [Casdoor](https://casdoor.org).
+  App-level user state stays on `creators.Creator`; only identity,
+  credentials, and the social-provider plumbing move out.
+  Survey + phased plan landed in
+  [`docs/integrations/casdoor-migration.md`](integrations/casdoor-migration.md).
+  Five phases:
+  1. Survey + design doc (DONE this round).
+  2. Add Casdoor SDK + JWT-validating DRF authentication class
+     alongside `MultiSessionAuthentication` (shadow mode).
+  3. Flutter Casdoor SDK in `notechondria_shared`; route
+     `launchOAuth` / `_AuthDialog` through Casdoor.
+  4. Cutover: disable legacy `LoginApiView` / `RegisterApiView` etc.;
+     `Session` model becomes read-only.
+  5. Cleanup: delete every endpoint / serializer / template / helper
+     listed in the survey.
+  Each phase is independently shippable. Steps 2 and 3 can land in
+  either order; both must land before step 4. Plan to pre-populate
+  Casdoor with existing usernames via a one-shot management command
+  that records `Creator.casdoor_sub` so first-login users don't get
+  duplicated.
+- [ ] **MCP API keys stay app-internal.** Casdoor is NOT in the
+  per-request hot path for MCP — the `Bearer ntc_<key>` scheme keeps
+  using `creators.authentication.ApiKeyAuthentication` and the
+  `/api/v1/auth/rotate-api-key/` endpoint. Document this in
+  `docs/server/mcp.md` as part of the cutover round.
 
 ### MCP
 
