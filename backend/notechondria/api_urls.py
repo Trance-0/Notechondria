@@ -11,6 +11,7 @@ from creators.api import (
     GitHubOAuthApiView,
     GithubSyncCallbackApiView,
     GithubSyncPushApiView,
+    GithubSyncReposApiView,
     GithubSyncStatusApiView,
     GoogleOAuthApiView,
     LoginApiView,
@@ -135,4 +136,5 @@ urlpatterns = [
     path("integrations/github/status/", GithubSyncStatusApiView.as_view(), name="github-sync-status"),
     path("integrations/github/callback/", GithubSyncCallbackApiView.as_view(), name="github-sync-callback"),
     path("integrations/github/push/", GithubSyncPushApiView.as_view(), name="github-sync-push"),
+    path("integrations/github/repos/", GithubSyncReposApiView.as_view(), name="github-sync-repos"),
 ]

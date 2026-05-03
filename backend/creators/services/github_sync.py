@@ -320,28 +320,113 @@ def _github_headers(token: str) -> dict[str, str]:
     }
 
 
+def _normalize_pem(pem: str) -> str:
+    """Operators store the PEM as a single-line env value with literal
+    `\\n` escapes. Convert it back to the multi-line form `cryptography`
+    expects. Idempotent for already-multi-line input."""
+    if "\\n" in pem and "\n" not in pem:
+        return pem.replace("\\n", "\n")
+    return pem
+
+
+def _build_app_jwt(client_id: str, pem: str, *, now_seconds: int | None = None) -> str:
+    """Build the GitHub App JWT used to obtain an installation token.
+
+    Per https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-json-web-token-jwt-for-a-github-app,
+    `iat` may be backdated by 60s for clock skew, `exp` must be ≤ 10
+    minutes in the future, and `iss` is the App's client_id (or app id).
+    """
+    import jwt as _jwt  # local import keeps the dep optional at module load
+
+    now = now_seconds if now_seconds is not None else int(time.time())
+    payload = {
+        "iat": now - 60,
+        "exp": now + 9 * 60,
+        "iss": client_id,
+    }
+    return _jwt.encode(payload, _normalize_pem(pem), algorithm="RS256")
+
+
 def _refresh_installation_token(integration: GithubIntegration) -> str:
     """Exchange the App's installation id for a short-lived access
-    token. Caller is responsible for persisting the result."""
-    if not settings.GITHUB_DATA_SYNC_APP_PRIVATE_KEY:
+    token. Persists the new token + expiry on ``integration`` and
+    returns the token. Raises ``GithubSyncError`` on missing config or
+    GitHub failure."""
+    pem = settings.GITHUB_DATA_SYNC_APP_PRIVATE_KEY or ""
+    client_id = settings.GITHUB_DATA_SYNC_APP_CLIENT_ID or ""
+    if not pem:
         raise GithubSyncError(
             "GitHub sync unavailable: "
             "Backend.Creators.GithubSync/refresh_token — "
             "GITHUB_DATA_SYNC_APP_PRIVATE_KEY is not configured."
         )
-    # JWT signing happens here in the real implementation; the JWT
-    # then exchanges for an installation token via:
-    # POST /app/installations/<install_id>/access_tokens
-    # The full PyJWT flow is intentionally elided in this scaffold:
-    # production deploys must add `pyjwt` + `cryptography` to
-    # requirements.txt before enabling the feature flag in settings.
-    raise GithubSyncError(
-        "GitHub sync unavailable: "
-        "Backend.Creators.GithubSync/refresh_token — "
-        "JWT signing scaffold not yet wired (add pyjwt + cryptography "
-        "to requirements and complete the App-installation token "
-        "exchange before enabling)."
+    if not client_id:
+        raise GithubSyncError(
+            "GitHub sync unavailable: "
+            "Backend.Creators.GithubSync/refresh_token — "
+            "GITHUB_DATA_SYNC_APP_CLIENT_ID is not configured."
+        )
+    try:
+        app_jwt = _build_app_jwt(client_id, pem)
+    except Exception as exc:  # noqa: BLE001
+        raise GithubSyncError(
+            "GitHub sync unavailable: "
+            "Backend.Creators.GithubSync/refresh_token — "
+            f"failed to sign App JWT (check PEM format): {exc}."
+        )
+    url = f"{GITHUB_API}/app/installations/{integration.installation_id}/access_tokens"
+    headers = {
+        "Authorization": f"Bearer {app_jwt}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "notechondria-data-sync/0.1",
+    }
+    try:
+        resp = requests.post(url, headers=headers, timeout=15)
+    except requests.RequestException as exc:
+        raise GithubSyncError(
+            "GitHub sync aborted: "
+            "Backend.Creators.GithubSync/refresh_token — "
+            f"network error contacting GitHub: {exc}."
+        )
+    if resp.status_code >= 400:
+        # Avoid leaking the JWT or PEM in the message; only surface
+        # GitHub's status + truncated body.
+        body = (resp.text or "")[:200]
+        raise GithubSyncError(
+            "GitHub sync rejected: "
+            "Backend.Creators.GithubSync/refresh_token — "
+            f"GitHub returned {resp.status_code} on installation "
+            f"{integration.installation_id}: {body}."
+        )
+    data = resp.json() or {}
+    token = data.get("token") or ""
+    expires_at_raw = data.get("expires_at") or ""
+    if not token:
+        raise GithubSyncError(
+            "GitHub sync rejected: "
+            "Backend.Creators.GithubSync/refresh_token — "
+            "GitHub response did not include an installation token."
+        )
+    expires_at = None
+    if expires_at_raw:
+        try:
+            # GitHub returns RFC3339 with `Z` suffix; convert to UTC datetime.
+            expires_at = datetime.fromisoformat(
+                expires_at_raw.replace("Z", "+00:00")
+            )
+        except ValueError:
+            expires_at = None
+    integration.access_token = token
+    integration.access_token_expires_at = expires_at
+    integration.save(
+        update_fields=[
+            "access_token",
+            "access_token_expires_at",
+            "updated_at",
+        ]
     )
+    return token
 
 
 def _ensure_token(integration: GithubIntegration) -> str:

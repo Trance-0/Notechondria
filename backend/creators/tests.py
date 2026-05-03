@@ -476,3 +476,208 @@ class OAuthBindRejectionTests(TestCase):
         self.assertIsInstance(vc, VerificationCode)
         self.assertEqual(len(plaintext), 6)
         self.assertEqual(vc.code, VerificationCode.hash_code(plaintext))
+
+
+class GithubSyncTests(TestCase):
+    """Coverage for the experimental GitHub data-sync feature
+    (`creators.services.github_sync`, `GithubSync*ApiView`)."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='gh-sync', email='gh@example.com', password='pw',
+        )
+        self.creator = Creator.objects.create(user_id=self.user)
+        self.client_api = APIClient()
+
+    def _auth(self):
+        from creators.models import Session
+
+        session = Session.create_for_user(self.user)
+        self.client_api.credentials(HTTP_AUTHORIZATION=f'Token {session.key}')
+
+    def test_status_view_requires_auth(self):
+        resp = self.client_api.get('/api/v1/integrations/github/status/')
+        self.assertIn(resp.status_code, (401, 403))
+
+    def test_status_view_disconnected_when_no_integration(self):
+        self._auth()
+        resp = self.client_api.get('/api/v1/integrations/github/status/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(resp.json()['connected'])
+
+    def test_callback_upserts_by_installation_id(self):
+        from creators.models import GithubIntegration
+
+        self._auth()
+        resp = self.client_api.post(
+            '/api/v1/integrations/github/callback/',
+            {
+                'installation_id': '12345',
+                'account_login': 'octocat',
+                'repo_full_name': 'octocat/notes-backup',
+                'repo_default_branch': 'main',
+            },
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()['connected'])
+        # Re-POST with new repo: should update existing row, not duplicate.
+        resp = self.client_api.post(
+            '/api/v1/integrations/github/callback/',
+            {
+                'installation_id': '12345',
+                'repo_full_name': 'octocat/notes-backup-2',
+            },
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            GithubIntegration.objects.filter(creator=self.creator).count(),
+            1,
+        )
+        self.assertEqual(
+            GithubIntegration.objects.get(creator=self.creator).repo_full_name,
+            'octocat/notes-backup-2',
+        )
+
+    def test_status_view_after_callback_returns_repo(self):
+        self._auth()
+        self.client_api.post(
+            '/api/v1/integrations/github/callback/',
+            {
+                'installation_id': '12345',
+                'account_login': 'octocat',
+                'repo_full_name': 'octocat/notes-backup',
+            },
+            format='json',
+        )
+        resp = self.client_api.get('/api/v1/integrations/github/status/')
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertTrue(body['connected'])
+        self.assertEqual(body['repo_full_name'], 'octocat/notes-backup')
+
+    def test_disconnect_clears_integration(self):
+        from creators.models import GithubIntegration
+
+        self._auth()
+        self.client_api.post(
+            '/api/v1/integrations/github/callback/',
+            {'installation_id': '99'},
+            format='json',
+        )
+        resp = self.client_api.delete('/api/v1/integrations/github/status/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(resp.json()['connected'])
+        self.assertFalse(
+            GithubIntegration.objects.filter(creator=self.creator).exists()
+        )
+
+    def test_jwt_signer_round_trips_with_test_keypair(self):
+        """The JWT signer must produce a token verifiable by the public
+        half of the same key, with the App's client_id as `iss`. We
+        skip the network call entirely — only exercise the crypto path."""
+        try:
+            import jwt as _jwt
+            from cryptography.hazmat.primitives import serialization
+            from cryptography.hazmat.primitives.asymmetric import rsa
+        except ImportError:
+            self.skipTest("pyjwt + cryptography not installed in this venv")
+
+        from creators.services.github_sync import _build_app_jwt
+
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        pem_private = key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        ).decode('utf-8')
+        pem_public = key.public_key().public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        ).decode('utf-8')
+
+        token = _build_app_jwt('Iv1.fake-app-id', pem_private)
+        decoded = _jwt.decode(token, pem_public, algorithms=['RS256'])
+        self.assertEqual(decoded['iss'], 'Iv1.fake-app-id')
+        # `iat` is backdated 60s; `exp` is 9 minutes ahead.
+        self.assertLess(decoded['iat'], decoded['exp'])
+        self.assertLessEqual(decoded['exp'] - decoded['iat'], 11 * 60)
+
+    def test_jwt_signer_normalizes_escaped_pem(self):
+        """Operators store the PEM with literal `\\n` escapes in env
+        files; the signer must convert before passing to cryptography."""
+        try:
+            import jwt as _jwt  # noqa: F401
+            from cryptography.hazmat.primitives import serialization
+            from cryptography.hazmat.primitives.asymmetric import rsa
+        except ImportError:
+            self.skipTest("pyjwt + cryptography not installed in this venv")
+
+        from creators.services.github_sync import _build_app_jwt
+
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        pem_private = key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        ).decode('utf-8')
+        escaped = pem_private.replace('\n', '\\n')
+        # Should not raise even though `escaped` is a single-line value.
+        _build_app_jwt('Iv1.fake-app-id', escaped)
+
+    def test_materialize_produces_expected_paths(self):
+        """`materialize` covers profile, courses, notes (+ sidecar),
+        planner, manifest, and README for a seeded creator."""
+        from courses.models import Course
+        from notes.models import Note
+        from notechondria.utils import generate_unique_id
+        from creators.services.github_sync import materialize
+
+        course = Course.objects.create(
+            creator_id=self.creator,
+            slug='inbox',
+            title='Inbox',
+            description='',
+            is_default=True,
+        )
+        note = Note.objects.create(
+            creator_id=self.creator,
+            course_id=course,
+            sharing_id=generate_unique_id(Note, 'sharing_id'),
+            title='Hello',
+            content='# hello',
+            custom_meta='{"tag": "demo"}',
+        )
+        files = materialize(self.creator)
+        paths = {f.path for f in files}
+        self.assertIn('README.md', paths)
+        self.assertIn('manifest.json', paths)
+        self.assertIn('profile/creator.json', paths)
+        self.assertIn('profile/skill.md', paths)
+        self.assertIn('courses/inbox.json', paths)
+        self.assertIn(f'notes/{note.uuid.hex}.md', paths)
+        self.assertIn(f'notes/{note.uuid.hex}.meta.json', paths)
+        self.assertIn('planner/events.json', paths)
+        self.assertIn('planner/feeds.json', paths)
+        # Note frontmatter should carry the user's custom_meta keys.
+        body = next(
+            f.content_bytes for f in files
+            if f.path == f'notes/{note.uuid.hex}.md'
+        ).decode('utf-8')
+        self.assertIn('tag: "demo"', body)
+
+    def test_repos_endpoint_rejects_when_disconnected(self):
+        self._auth()
+        resp = self.client_api.get('/api/v1/integrations/github/repos/')
+        self.assertEqual(resp.status_code, 400)
+        detail = resp.json()['detail']
+        # Error shape per AGENTS.md §1.8: consequence + module/process + cause.
+        self.assertIn('Backend.Creators.GithubSync', detail)
+        self.assertIn('no GitHub App installation', detail)
+
+    def test_push_endpoint_rejects_when_disconnected(self):
+        self._auth()
+        resp = self.client_api.post('/api/v1/integrations/github/push/')
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('no GitHub App installation', resp.json()['detail'])

@@ -8,6 +8,7 @@ asgiref==3.7.2
 beautifulsoup4==4.12.2
 certifi==2023.11.17
 charset-normalizer==3.3.2
+cryptography>=42,<46
 defusedxml==0.7.1
 dj-database-url>=2.1.0
 distro==1.9.0
@@ -25,6 +26,7 @@ openai==1.12.0
 packaging==23.2
 pillow==10.2.0
 psycopg2-binary==2.9.6
+PyJWT>=2.8,<3
 pydantic==2.6.1
 pydantic_core==2.16.2
 python-dotenv==1.0.0

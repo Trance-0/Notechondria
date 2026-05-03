@@ -2251,3 +2251,91 @@ class GithubSyncPushApiView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return Response({"commit_sha": sha})
+
+
+class GithubSyncReposApiView(APIView):
+    """List the repositories accessible to the user's GitHub App
+    installation. Used by the frontend repo-picker dropdown.
+
+    Returns ``{"repositories": [{"full_name", "default_branch",
+    "private"}]}`` paginated through ``per_page=100`` until GitHub
+    runs out of results. Errors map to a 400 with the structured
+    `GithubSyncError` message so the UI can surface a useful hint.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        import requests as http_requests
+
+        from .models import GithubIntegration
+        from .services.github_sync import (
+            GithubSyncError,
+            _ensure_token,
+            _github_headers,
+        )
+
+        creator = ensure_creator(request.user)
+        integration = GithubIntegration.objects.filter(creator=creator).first()
+        if integration is None:
+            return Response(
+                {"detail": (
+                    "Cannot list repositories: "
+                    "Backend.Creators.GithubSync/list_repos — "
+                    "no GitHub App installation linked to this account. "
+                    "Click “Install Notechondria GitHub App” first."
+                )},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            token = _ensure_token(integration)
+        except GithubSyncError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        headers = _github_headers(token)
+        repos = []
+        page = 1
+        while True:
+            try:
+                resp = http_requests.get(
+                    "https://api.github.com/installation/repositories",
+                    headers=headers,
+                    params={"per_page": 100, "page": page},
+                    timeout=15,
+                )
+            except http_requests.RequestException as exc:
+                return Response(
+                    {"detail": (
+                        "Cannot list repositories: "
+                        "Backend.Creators.GithubSync/list_repos — "
+                        f"network error contacting GitHub: {exc}."
+                    )},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if resp.status_code >= 400:
+                return Response(
+                    {"detail": (
+                        "Cannot list repositories: "
+                        "Backend.Creators.GithubSync/list_repos — "
+                        f"GitHub returned {resp.status_code}."
+                    )},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            payload = resp.json() or {}
+            chunk = payload.get("repositories") or []
+            for repo in chunk:
+                repos.append({
+                    "full_name": repo.get("full_name", ""),
+                    "default_branch": repo.get("default_branch", "main"),
+                    "private": bool(repo.get("private", False)),
+                })
+            # GitHub paginates via Link header; falling out when a page
+            # returns fewer than per_page entries is the simpler invariant
+            # and matches the contract of /installation/repositories.
+            if len(chunk) < 100:
+                break
+            page += 1
+            if page > 50:
+                # Defensive cap: 5,000 repos. Anything past that is a
+                # mis-installed App, not a real personal account.
+                break
+        return Response({"repositories": repos})
