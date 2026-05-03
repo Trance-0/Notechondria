@@ -6,6 +6,8 @@ from notechondria.api_views import ping as ping_view
 from creators.api import (
     BindGithubApiView,
     BindGoogleApiView,
+    CasdoorConfigApiView,
+    CasdoorExchangeApiView,
     ChangeEmailApiView,
     ChangePasswordApiView,
     GitHubOAuthApiView,
@@ -97,6 +99,10 @@ urlpatterns = [
     path("auth/social-accounts/<str:provider>/", SocialAccountUnlinkApiView.as_view(), name="social-account-unlink"),
     path("auth/bind/google/", BindGoogleApiView.as_view(), name="bind-google"),
     path("auth/bind/github/", BindGithubApiView.as_view(), name="bind-github"),
+    # Casdoor migration phase 2 — see docs/integrations/casdoor-migration.md.
+    # Both endpoints are no-ops when CASDOOR_* env vars aren't configured.
+    path("auth/casdoor/config/", CasdoorConfigApiView.as_view(), name="casdoor-config"),
+    path("auth/casdoor/exchange/", CasdoorExchangeApiView.as_view(), name="casdoor-exchange"),
     path("front-page/", FrontPageApiView.as_view(), name="front-page"),
     path("courses/", CourseListApiView.as_view(), name="course-list"),
     path("courses/reorder/", CourseReorderApiView.as_view(), name="course-reorder"),

@@ -99,18 +99,25 @@ the Django `User` FK).
 The cutover is too big for one round. Suggested phases (each its
 own version log):
 
-1. **Survey + design** (this round, version 0.1.95). Inventory the
-   auth surface; ship `docs/integrations/casdoor-migration.md`.
-2. **Casdoor SDK + JWT auth class.** Add `casdoor` Python SDK,
-   wire JWKS-cached JWT verification as a new DRF authentication
-   class. Run alongside `MultiSessionAuthentication` (shadow mode):
-   the new class is added LAST in `DEFAULT_AUTHENTICATION_CLASSES`
-   so it's a no-op until a JWT shows up.
+1. **Survey + design** (0.1.95 — DONE). Inventory the auth surface;
+   ship `docs/integrations/casdoor-migration.md`.
+2. **Casdoor SDK + JWT auth class** (0.1.96 — DONE). Adds the
+   `casdoor>=1.41` Python SDK, the `CasdoorJWTAuthentication` DRF
+   class (registered LAST in `DEFAULT_AUTHENTICATION_CLASSES` so
+   it's a no-op until a Bearer JWT shows up that isn't an MCP key),
+   `Creator.casdoor_sub`, and the public
+   `/api/v1/auth/casdoor/{config,exchange}/` endpoints. Returns
+   503 / `{configured: false}` when env vars aren't populated, so
+   existing `MultiSessionAuthentication` + `LoginApiView` paths
+   keep working unchanged.
 3. **Frontend Casdoor SDK.** Add the Flutter Casdoor package to
    `notechondria_shared`; route the existing `_AuthDialog` and
    `launchOAuth` paths through Casdoor's `/login/oauth/authorize`
-   instead of the per-provider Google/GitHub URLs. Backend
-   endpoints stay backwards-compatible during this phase.
+   instead of the per-provider Google/GitHub URLs. The frontend
+   client gains a `casdoorExchange(code)` method that hits the new
+   `POST /api/v1/auth/casdoor/exchange/` and reuses the existing
+   `applyAuthPayload` machinery. Backend endpoints stay
+   backwards-compatible during this phase.
 4. **Cutover.** Disable the legacy `LoginApiView` /
    `RegisterApiView` etc. endpoints; the JWT path is now the only
    way in. Remove `MultiSessionAuthentication` + `Session` writes;
@@ -122,6 +129,61 @@ own version log):
 
 Each phase is independently shippable. Steps 2 and 3 can land in
 either order; both should land before step 4.
+
+## Phase 2 wire shape (shipped 0.1.96)
+
+### Backend authentication
+
+- `creators.casdoor_auth.CasdoorJWTAuthentication` validates
+  `Authorization: Bearer <jwt>` against
+  `settings.CASDOOR_CERTIFICATE` (RS256). Audience must equal
+  `CASDOOR_CLIENT_ID`. Bearer headers starting with `ntc_` are
+  ignored so MCP API keys keep flowing to
+  `ApiKeyAuthentication`.
+- The class is no-op when any of `CASDOOR_ENDPOINT`,
+  `CASDOOR_CLIENT_ID`, `CASDOOR_ORG_NAME`, `CASDOOR_APP_NAME` is
+  empty. Returns `None` (not `AuthenticationFailed`) so other
+  classes in the chain can still handle the same header.
+- On first valid JWT, user resolution order is:
+  1. `Creator.casdoor_sub == claims['id' | 'sub']` (fast path
+     after the link is persisted).
+  2. `User.email iexact claims['email']` — links an existing
+     legacy account; `Creator.casdoor_sub` is backfilled.
+  3. Auto-provision a new `User` + `Creator`, stamp the sub.
+- Stamps `User.last_login` so the existing "recently signed in"
+  surfaces stay accurate.
+
+### Public endpoints
+
+`GET /api/v1/auth/casdoor/config/` (anon):
+
+```json
+{"configured": true,
+ "endpoint": "https://auth.example",
+ "client_id": "...",
+ "organization": "...",
+ "application": "...",
+ "signin_url": "https://auth.example/login/oauth/authorize"}
+```
+
+When unconfigured: `{"configured": false}` with no other fields,
+so the SPA can keep showing the legacy auth surface.
+
+`POST /api/v1/auth/casdoor/exchange/` (anon):
+
+Request: `{"code": "<casdoor-authz-code>", "state": "..."}`.
+Response (200): the standard `auth_payload` shape used by
+`LoginApiView` — `token` + `session` + `user` + `app_settings`.
+Response (503): `{detail: "...shadow mode..."}` when the SDK
+isn't configured.
+
+### Migration
+
+- `creators/0030_creator_casdoor_sub.py` adds
+  `Creator.casdoor_sub` (CharField, indexed, blank default).
+- No data migration. Legacy users continue without a sub until
+  their first Casdoor sign-in, at which point either the email
+  link or the auto-provision branch records it.
 
 ## Open questions
 

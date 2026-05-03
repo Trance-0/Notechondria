@@ -293,6 +293,14 @@ REST_FRAMEWORK = {
         # timeouts).
         "creators.authentication.MultiSessionAuthentication",
         "creators.authentication.ApiKeyAuthentication",
+        # 0.1.96 — Casdoor migration phase 2 (shadow mode). The class
+        # is a no-op when CASDOOR_* env vars are unset; otherwise it
+        # validates Bearer JWTs against the configured Casdoor app.
+        # Listed last so it doesn't preempt the legacy Token / MCP
+        # paths above; Bearer headers starting with `ntc_` are handed
+        # back to ApiKeyAuthentication explicitly inside the class.
+        # See docs/integrations/casdoor-migration.md.
+        "creators.casdoor_auth.CasdoorJWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",
@@ -497,3 +505,23 @@ GITHUB_DATA_SYNC_APP_CLIENT_ID = os.getenv("GITHUB_DATA_SYNC_APP_CLIENT_ID", "")
 GITHUB_DATA_SYNC_APP_CLIENT_SECRET = os.getenv("GITHUB_DATA_SYNC_APP_CLIENT_SECRET", "")
 GITHUB_DATA_SYNC_APP_PRIVATE_KEY = os.getenv("GITHUB_DATA_SYNC_APP_PRIVATE_KEY", "")
 GITHUB_DATA_SYNC_APP_INSTALL_URL = os.getenv("GITHUB_DATA_SYNC_APP_INSTALL_URL", "")
+
+# Casdoor (https://casdoor.org). Phase 2 of the auth migration plan
+# — see docs/integrations/casdoor-migration.md. When CASDOOR_ENDPOINT
+# is empty, the JWT-validating authentication class is a no-op and
+# the exchange endpoint returns 503; existing MultiSessionAuthentication
+# + LoginApiView paths keep working unchanged. Set the values below
+# to flip on shadow mode; cutover happens in a future round once the
+# Flutter SDK leg lands.
+CASDOOR_ENDPOINT = os.getenv("CASDOOR_ENDPOINT", "").rstrip("/")
+CASDOOR_CLIENT_ID = os.getenv("CASDOOR_CLIENT_ID", "")
+CASDOOR_CLIENT_SECRET = os.getenv("CASDOOR_CLIENT_SECRET", "")
+CASDOOR_ORG_NAME = os.getenv("CASDOOR_ORG_NAME", "")
+CASDOOR_APP_NAME = os.getenv("CASDOOR_APP_NAME", "")
+# Single-line PEM with literal `\n` escapes — the JWT verifier
+# normalizes it (same shape as GITHUB_DATA_SYNC_APP_PRIVATE_KEY).
+CASDOOR_CERTIFICATE = os.getenv("CASDOOR_CERTIFICATE", "")
+# How long to cache JWT-verification results (in seconds). The
+# verifier itself is stateless; this just amortizes the JWKS cert
+# parsing cost when the same token shows up again within the window.
+CASDOOR_TOKEN_CACHE_TTL = int(os.getenv("CASDOOR_TOKEN_CACHE_TTL", "300"))

@@ -6,7 +6,7 @@ beautifulsoup4==4.12.2
 certifi==2023.11.17
 charset-normalizer==3.3.2
 colorama==0.4.6
-cryptography>=42,<46
+cryptography>=42,<48
 defusedxml==0.7.1
 dill==0.3.8
 distro==1.9.0
@@ -56,3 +56,4 @@ whitenoise==6.5.0
 django-storages[s3]==1.14.4
 boto3==1.35.0
 yarg==0.1.9
+casdoor>=1.41,<2

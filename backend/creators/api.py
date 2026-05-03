@@ -2355,3 +2355,128 @@ class GithubSyncReposApiView(APIView):
                 # mis-installed App, not a real personal account.
                 break
         return Response({"repositories": repos})
+
+
+# ---------------------------------------------------------------------------
+# Casdoor: phase 2 of the auth migration plan
+# (docs/integrations/casdoor-migration.md)
+# ---------------------------------------------------------------------------
+
+
+class CasdoorConfigApiView(APIView):
+    """Public OIDC endpoints + client id for the frontend Casdoor
+    SDK. Returns ``configured: false`` plus an empty payload when the
+    backend doesn't have ``CASDOOR_*`` env vars set, so the SPA can
+    keep showing the legacy auth surface in shadow mode."""
+
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        endpoint = (settings.CASDOOR_ENDPOINT or "").rstrip("/")
+        configured = bool(
+            endpoint
+            and settings.CASDOOR_CLIENT_ID
+            and settings.CASDOOR_ORG_NAME
+            and settings.CASDOOR_APP_NAME
+        )
+        if not configured:
+            return Response({"configured": False})
+        return Response({
+            "configured": True,
+            "endpoint": endpoint,
+            "client_id": settings.CASDOOR_CLIENT_ID,
+            "organization": settings.CASDOOR_ORG_NAME,
+            "application": settings.CASDOOR_APP_NAME,
+            "signin_url": f"{endpoint}/login/oauth/authorize",
+        })
+
+
+class CasdoorExchangeSerializer(serializers.Serializer):
+    code = serializers.CharField(required=True, allow_blank=False)
+    state = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class CasdoorExchangeApiView(APIView):
+    """Exchange a Casdoor authorization code for the standard
+    Notechondria ``auth_payload``. This is the bridge that lets the
+    Flutter apps adopt Casdoor without rewriting their auth state
+    machinery: same response shape (``token``, ``session``,
+    ``user``), but the underlying identity now comes from Casdoor.
+
+    Returns 503 when the SDK isn't configured; the frontend should
+    fall through to the legacy ``LoginApiView`` until the operator
+    flips the flag.
+    """
+
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        from .casdoor_auth import _build_sdk, _resolve_user, verify_token
+
+        sdk = _build_sdk()
+        if sdk is None:
+            return Response(
+                {"detail": (
+                    "Casdoor sign-in unavailable: "
+                    "Backend.Creators.CasdoorAuth/exchange — "
+                    "backend is in shadow mode (CASDOOR_* env vars "
+                    "not configured). Use the legacy login flow."
+                )},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        serializer = CasdoorExchangeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        code = serializer.validated_data["code"]
+        try:
+            tokens = sdk.get_oauth_token(code=code)
+        except Exception as exc:  # noqa: BLE001
+            return Response(
+                {"detail": (
+                    "Cannot sign in: "
+                    "Backend.Creators.CasdoorAuth/exchange — "
+                    f"Casdoor rejected the authorization code: {exc}."
+                )},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        access_token = (
+            tokens.get("access_token") if isinstance(tokens, dict) else None
+        )
+        if not access_token:
+            return Response(
+                {"detail": (
+                    "Cannot sign in: "
+                    "Backend.Creators.CasdoorAuth/exchange — "
+                    "Casdoor token response did not include an "
+                    "`access_token` field."
+                )},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        claims = verify_token(access_token)
+        if claims is None:
+            return Response(
+                {"detail": (
+                    "Cannot sign in: "
+                    "Backend.Creators.CasdoorAuth/exchange — "
+                    "Casdoor returned a token whose JWT signature "
+                    "could not be verified against the configured "
+                    "certificate."
+                )},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        user = _resolve_user(claims)
+        if user is None:
+            return Response(
+                {"detail": (
+                    "Cannot sign in: "
+                    "Backend.Creators.CasdoorAuth/exchange — "
+                    "JWT is valid but does not carry an `id` / "
+                    "`sub` claim, so no Notechondria account can be "
+                    "located or auto-provisioned."
+                )},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Mint a session row so the frontend's existing
+        # MultiSessionAuthentication path can continue to work
+        # alongside Casdoor JWTs. The session token is opaque to
+        # Casdoor and lives only on Notechondria.
+        return Response(auth_payload(user, request=request))

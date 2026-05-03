@@ -8,7 +8,7 @@ asgiref==3.7.2
 beautifulsoup4==4.12.2
 certifi==2023.11.17
 charset-normalizer==3.3.2
-cryptography>=42,<46
+cryptography>=42,<48
 defusedxml==0.7.1
 dj-database-url>=2.1.0
 distro==1.9.0
@@ -44,3 +44,4 @@ urllib3>=1.25.4,<1.27
 whitenoise==6.5.0
 django-storages[s3]==1.14.4
 boto3==1.35.0
+casdoor>=1.41,<2

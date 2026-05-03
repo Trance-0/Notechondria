@@ -792,3 +792,146 @@ class GithubSyncTests(TestCase):
             ),
             msg=f'skipped_assets did not record the cover: {skipped!r}',
         )
+
+
+class CasdoorAuthTests(TestCase):
+    """Coverage for the Casdoor migration phase-2 surface
+    (`creators.casdoor_auth`, `CasdoorConfigApiView`,
+    `CasdoorExchangeApiView`)."""
+
+    def setUp(self):
+        self.client_api = APIClient()
+
+    def test_config_view_reports_unconfigured_in_shadow_mode(self):
+        """When CASDOOR_* env vars are unset, the config endpoint
+        must return `{configured: false}` so the SPA falls through
+        to the legacy auth surface."""
+        from django.test import override_settings
+        with override_settings(
+            CASDOOR_ENDPOINT='', CASDOOR_CLIENT_ID='',
+            CASDOOR_ORG_NAME='', CASDOOR_APP_NAME='',
+        ):
+            resp = self.client_api.get('/api/v1/auth/casdoor/config/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {'configured': False})
+
+    def test_config_view_returns_oauth_targets_when_configured(self):
+        from django.test import override_settings
+        with override_settings(
+            CASDOOR_ENDPOINT='https://auth.example/',
+            CASDOOR_CLIENT_ID='client-abc',
+            CASDOOR_CLIENT_SECRET='shh',
+            CASDOOR_ORG_NAME='notechondria',
+            CASDOOR_APP_NAME='notechondria',
+            CASDOOR_CERTIFICATE='---PEM---',
+        ):
+            resp = self.client_api.get('/api/v1/auth/casdoor/config/')
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertTrue(body['configured'])
+        self.assertEqual(body['client_id'], 'client-abc')
+        self.assertEqual(body['organization'], 'notechondria')
+        self.assertEqual(
+            body['signin_url'], 'https://auth.example/login/oauth/authorize',
+        )
+
+    def test_exchange_endpoint_returns_503_in_shadow_mode(self):
+        from django.test import override_settings
+        with override_settings(
+            CASDOOR_ENDPOINT='', CASDOOR_CLIENT_ID='',
+        ):
+            resp = self.client_api.post(
+                '/api/v1/auth/casdoor/exchange/',
+                {'code': 'irrelevant'}, format='json',
+            )
+        self.assertEqual(resp.status_code, 503)
+        self.assertIn('shadow mode', resp.json()['detail'])
+
+    def test_jwt_auth_class_is_noop_when_not_configured(self):
+        """The DRF authentication class must return None (silently)
+        when CASDOOR_* env vars aren't set, so other auth backends
+        can still match the same Bearer header."""
+        from creators.casdoor_auth import (
+            CasdoorJWTAuthentication,
+            _build_sdk,
+        )
+        # Reset module cache between tests; settings overrides don't
+        # invalidate _cached_sdk on their own.
+        import creators.casdoor_auth as ca
+        ca._cached_sdk = None
+        ca._cached_sdk_signature = ()
+
+        from django.test import override_settings, RequestFactory
+        rf = RequestFactory()
+        with override_settings(CASDOOR_ENDPOINT=''):
+            self.assertIsNone(_build_sdk())
+            req = rf.get(
+                '/', HTTP_AUTHORIZATION='Bearer some.jwt.value',
+            )
+            self.assertIsNone(CasdoorJWTAuthentication().authenticate(req))
+
+    def test_jwt_auth_class_skips_mcp_keys(self):
+        """A `Bearer ntc_<key>` header must be handed off to the next
+        auth class — Casdoor only owns OAuth JWTs, not MCP keys."""
+        from creators.casdoor_auth import CasdoorJWTAuthentication
+        import creators.casdoor_auth as ca
+        ca._cached_sdk = None
+        ca._cached_sdk_signature = ()
+
+        from django.test import override_settings, RequestFactory
+        rf = RequestFactory()
+        with override_settings(
+            CASDOOR_ENDPOINT='https://auth.example',
+            CASDOOR_CLIENT_ID='c',
+            CASDOOR_CLIENT_SECRET='s',
+            CASDOOR_ORG_NAME='o',
+            CASDOOR_APP_NAME='a',
+            # Use a syntactically-valid PEM so _build_sdk doesn't
+            # blow up on cert parsing — actual verification is
+            # bypassed by the ntc_ prefix check before we get there.
+            CASDOOR_CERTIFICATE='dummy',
+        ):
+            req = rf.get(
+                '/', HTTP_AUTHORIZATION='Bearer ntc_abcdef0123456789',
+            )
+            self.assertIsNone(CasdoorJWTAuthentication().authenticate(req))
+
+    def test_resolve_user_links_existing_account_by_email(self):
+        """An existing legacy account (no `casdoor_sub`) should adopt
+        the link automatically when its email matches the JWT claim,
+        instead of getting a duplicate."""
+        from creators.casdoor_auth import _resolve_user
+        existing = User.objects.create_user(
+            username='legacy', email='legacy@example.com', password='pw',
+        )
+        Creator.objects.create(user_id=existing)
+        resolved = _resolve_user({
+            'id': 'casdoor-uid-1',
+            'email': 'legacy@example.com',
+            'name': 'legacy-from-casdoor',
+        })
+        self.assertEqual(resolved.pk, existing.pk)
+        # Backfill must persist so the second call hits the fast path.
+        creator = Creator.objects.get(user_id=existing)
+        self.assertEqual(creator.casdoor_sub, 'casdoor-uid-1')
+
+    def test_resolve_user_auto_provisions_when_no_match(self):
+        from creators.casdoor_auth import _resolve_user
+        before = User.objects.count()
+        resolved = _resolve_user({
+            'id': 'casdoor-uid-2',
+            'email': 'fresh@example.com',
+            'name': 'fresh',
+            'firstName': 'Fresh',
+            'lastName': 'User',
+        })
+        self.assertIsNotNone(resolved)
+        self.assertEqual(User.objects.count(), before + 1)
+        self.assertEqual(resolved.email, 'fresh@example.com')
+        self.assertEqual(resolved.first_name, 'Fresh')
+        creator = Creator.objects.get(user_id=resolved)
+        self.assertEqual(creator.casdoor_sub, 'casdoor-uid-2')
+
+    def test_resolve_user_returns_none_without_sub(self):
+        from creators.casdoor_auth import _resolve_user
+        self.assertIsNone(_resolve_user({'email': 'noid@example.com'}))

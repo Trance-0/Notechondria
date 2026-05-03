@@ -88,6 +88,16 @@ class Creator(models.Model):
             "platform to publish to). Plain markdown."
         ),
     )
+    casdoor_sub = models.CharField(
+        max_length=128, blank=True, default="", db_index=True,
+        help_text=(
+            "Soft pointer to the Casdoor user record (the `sub` / `id` "
+            "claim on the JWT). Populated by `CasdoorJWTAuthentication` "
+            "on first sign-in via Casdoor; left empty for accounts that "
+            "still use the legacy MultiSessionAuthentication path. "
+            "See docs/integrations/casdoor-migration.md."
+        ),
+    )
     app_settings_json = models.TextField(blank=True, default="")
     app_settings_updated_at = models.DateTimeField(blank=True, null=True)
 
