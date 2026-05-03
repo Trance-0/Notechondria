@@ -9,6 +9,12 @@ on:
     # `main` (see docs/index.md §0). The pages build used to fire only
     # on `codex` pushes, which is why `docs/server/*.html` stopped
     # updating once day-to-day commits started landing on `main`.
+    #
+    # 0.1.100 added `VERSION` + `sample.env` to the trigger so pure
+    # version-bump or env-sample commits also rebuild the docs leg.
+    # Round logs always touch `docs/versions/<semver>.md` so they
+    # already match `docs/**`, but the trigger here is the
+    # belt-and-braces guard for commits that only touch VERSION.
     branches: [ main ]
     paths:
       - 'frontend/editor_app/**'
@@ -17,6 +23,8 @@ on:
       - 'frontend/notechondria_shared/**'
       - 'docs/**'
       - 'README.md'
+      - 'VERSION'
+      - 'sample.env'
       - '.github/workflows/frontend-pages.yml'
   workflow_dispatch:
 
@@ -88,8 +96,21 @@ jobs:
 
       - name: Build docs (mdBook)
         run: |
+          set -euo pipefail
           curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.4.40/mdbook-v0.4.40-x86_64-unknown-linux-gnu.tar.gz | tar xz -C /usr/local/bin
           mdbook build docs
+          # Sanity check: the docs site must include the round-log
+          # for the deployed VERSION, otherwise SUMMARY.md drifted
+          # behind docs/versions/ again (the bug 0.1.100 fixed) and
+          # the gh-pages copy will be stale-by-default. Fail loudly
+          # so the next commit can't accidentally re-introduce the
+          # silent-stale failure mode.
+          version="$(tr -d '\n' < VERSION)"
+          expected="docs/build/versions/${version}.html"
+          if [ ! -f "$expected" ]; then
+            echo "::error file=docs/SUMMARY.md::expected $expected after mdbook build but it is missing — SUMMARY.md probably doesn't list versions/${version}.md. Re-add the entry."
+            exit 1
+          fi
 
       - name: Stage Pages tree
         run: |
