@@ -107,7 +107,7 @@ and is exported as `CustomMetaController` + `CustomMetaListEditor`.
 Custom keys round-trip to YAML frontmatter when the GitHub-sync export
 runs.
 
-### Experimental: GitHub data-sync (since 0.1.90)
+### Experimental: GitHub data-sync (since 0.1.90, push pipeline wired in 0.1.93)
 
 Per-user backup of all server-held text + metadata into a GitHub
 repository the user owns. Materializes Creator profile, app settings,
@@ -115,8 +115,17 @@ MCP skill, courses, notes (incl. custom_meta), planner events, and
 calendar feeds; static assets we host (avatars, attachments, cover
 images) are referenced by URL only. See
 [`integrations/github-sync.md`](integrations/github-sync.md) for the
-full repo layout, env-var contract, and the known gap on JWT signing
-(needs `pyjwt + cryptography` added to `backend/requirements.txt`).
+full repo layout, env-var contract, and the open static-asset gap.
+
+Once `GITHUB_DATA_SYNC_APP_*` env vars are set on the backend, every
+authenticated app (editor / planner / portal) shows a "Connect to
+GitHub" card in Settings → API settings. After installing the
+Notechondria GitHub App, the user picks a repo from the dropdown and
+clicks "Push now"; the backend signs an App JWT, exchanges it for a
+short-lived installation token, and PUTs every materialized file via
+the GitHub Contents API. Restore is a separate stdlib-only CLI at
+[`../backend/scripts/github_sync_restore.py`](../backend/scripts/github_sync_restore.py)
+(`--dry-run` supported; reruns are idempotent via `client_draft_id`).
 
 ## Where to go next
 

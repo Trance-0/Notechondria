@@ -69,17 +69,22 @@ Entry points:
 - Legacy single-value `GOOGLE_AUTHORIZED_REDIRECT_URI` /
   `GITHUB_AUTHORIZED_REDIRECT_URI` continue to work as a fallback.
 
-## Experimental: GitHub data-sync (since 0.1.90)
+## Experimental: GitHub data-sync (since 0.1.90, push pipeline wired in 0.1.93)
 
 - See [`docs/integrations/github-sync.md`](docs/integrations/github-sync.md)
-  for the full flow + repo layout.
+  for the full flow + repo layout + restore steps.
 - Required env: `GITHUB_DATA_SYNC_APP_NAME`,
   `GITHUB_DATA_SYNC_APP_CLIENT_ID`, `GITHUB_DATA_SYNC_APP_CLIENT_SECRET`,
-  `GITHUB_DATA_SYNC_APP_PRIVATE_KEY`,
-  `GITHUB_DATA_SYNC_APP_INSTALL_URL`.
-- The push pipeline (`POST /api/v1/integrations/github/push/`) is wired
-  but gated: enabling it requires `pyjwt + cryptography` in
-  `backend/requirements.txt` to finish the JWT-signing step.
+  `GITHUB_DATA_SYNC_APP_PRIVATE_KEY` (single-line PEM with `\n`
+  escapes), `GITHUB_DATA_SYNC_APP_INSTALL_URL`.
+- The frontend exposes a "Connect to GitHub" card in Settings → API
+  settings on every app. Once connected, pick a repo from the
+  dropdown and hit "Push now"; the backend signs an App JWT,
+  exchanges it for an installation token, and PUTs every materialized
+  file via the GitHub Contents API.
+- Restore from a cloned backup repo via
+  [`backend/scripts/github_sync_restore.py`](backend/scripts/github_sync_restore.py)
+  (stdlib-only; supports `--dry-run`).
 
 ## Local verification
 ```bash

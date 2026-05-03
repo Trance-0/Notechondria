@@ -91,16 +91,37 @@ covers the export half. Tracked under "Release / CI" in
    Backend materializes the file tree and PUTs each file via the
    GitHub Contents API using an installation-scoped access token.
 
-## Known gaps as of 0.1.90
+## Known gaps as of 0.1.93
 
-- `_refresh_installation_token` raises `GithubSyncError` because the
-  JWT signing path requires `pyjwt + cryptography`. Add those to
-  `requirements.txt` before flipping this from experimental → on.
-- No conflict resolution: PUT-based commits overwrite the remote
-  copy. Multi-device users who edit on two devices between syncs can
-  lose changes; the workaround is to push from device A first.
-- Static-asset references are URLs, not files. Restoring images +
-  attachments requires Notechondria's CDN to still be reachable. If
-  the goal is offline-survivable backup, the next iteration must
-  fetch and inline the bytes (Git LFS or a `static/` subdirectory).
-- No CLI-only / scriptable backup yet. Tracked.
+The push pipeline is now end-to-end functional; the remaining work
+is around static assets and concurrent edits.
+
+- **Static-asset re-bundling.** Avatars, attachments, and cover
+  images are referenced by URL in the export, not committed. If a
+  user restores into a fresh server with no access to the original
+  CDN, those URLs 404. The next iteration should add an opt-in
+  `--include-assets` flag on the restore CLI that fetches each
+  asset and re-uploads it before re-creating the parent record.
+- **Conflict resolution.** The Contents API PUTs we use overwrite
+  the remote blob. A user editing on two devices between syncs can
+  lose changes. The next iteration should fetch the existing blob
+  on each path, diff it against the materialized payload, and
+  surface a "remote changed" warning before overwriting.
+
+## Closed gaps (0.1.93)
+
+- `_refresh_installation_token` is wired: `pyjwt + cryptography`
+  ship in both `backend/requirements.txt` and
+  `backend/requirements-render.txt`; the signer is covered by
+  `creators.tests.GithubSyncTests` against a freshly generated
+  test RSA keypair.
+- The frontend repo picker shipped via the shared
+  `GithubSyncExperimentalCard`. Editor / planner / portal each
+  expose `githubSyncStatus / githubSyncRepos / githubSyncCallback /
+  githubSyncPush / githubSyncDisconnect` on their
+  `NotechondriaClient`; the card itself is callback-driven and
+  works from any of the three apps.
+- A scriptable restore lives at
+  [`backend/scripts/github_sync_restore.py`](../../backend/scripts/github_sync_restore.py).
+  Stdlib-only, supports `--dry-run` and `--verbose`, and uses
+  `client_draft_id` to make reruns idempotent.

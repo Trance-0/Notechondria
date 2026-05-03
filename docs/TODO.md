@@ -126,16 +126,24 @@ file and add a round-log entry to the new version doc.
   with the per-app OAuth allow-list and GitHub data-sync env-var
   guidance.
 
-- [ ] **Experimental GitHub Sync — wire the actual push path — carryover
-  from 0.1.90.**
-  - Add `pyjwt` + `cryptography` to `backend/requirements.txt`; finish
-    `_refresh_installation_token` (JWT sign → POST `/app/installations/
-    <id>/access_tokens`).
-  - Frontend repo-picker UI: list repos visible to the install via
-    `GET /installation/repositories` and let the user choose one; persist
-    via `POST /api/v1/integrations/github/callback/`.
-  - Restore tooling (clone → POST settings → POST notes); ship as a CLI
-    in `backend/scripts/`.
+- [x] **Experimental GitHub Sync — wire the actual push path — 0.1.93.**
+  - JWT signer landed: `PyJWT>=2.8` + `cryptography>=42` shipped in
+    `backend/requirements{,-render}.txt`; `_refresh_installation_token`
+    signs the App JWT, exchanges it for an installation token, and
+    persists `access_token` + expiry on `GithubIntegration`.
+  - Repo-picker UI landed: `GithubSyncExperimentalCard` is now
+    stateful with three states (no-callbacks / disconnected /
+    connected), reads `/installation/repositories` via the new
+    `GET /api/v1/integrations/github/repos/`, and persists the
+    chosen repo via the existing callback endpoint.
+  - Restore CLI landed at `backend/scripts/github_sync_restore.py`
+    (stdlib-only; supports `--dry-run` + `--verbose`; idempotent
+    via `client_draft_id`).
+  - **Carryover (next round):** static-asset re-bundling
+    (`--include-assets` flag that fetches avatars / attachments /
+    cover images instead of leaving CDN URLs in place); push-side
+    conflict resolution (fetch-diff-warn before overwriting a remote
+    blob the user has edited from another device).
 
 ### Debug log window
 
