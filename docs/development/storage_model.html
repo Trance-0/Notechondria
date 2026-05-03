@@ -354,9 +354,8 @@ empties <code>local_drafts</code> (after pushing); refresh refills
 <h2 id="known-issues-to-be-aware-of"><a class="header" href="#known-issues-to-be-aware-of">Known issues to be aware of</a></h2>
 <ul>
 <li><strong>Token expiry / "Invalid token"</strong> — the frontend's "offline
-fallback: Invalid token" message (in
-<a href="../TODO.html"><code>docs/TODO.md</code></a>) fires when a stored DRF token is
-rejected by the server (revoked, deleted, or signed by a
+fallback: Invalid token" message fires when a stored DRF token
+is rejected by the server (revoked, deleted, or signed by a
 different <code>SECRET_KEY</code>). The current behavior is to fall back to
 offline mode silently, which can mask the underlying issue. The
 right fix is to surface a "session expired — please sign in

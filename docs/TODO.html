@@ -201,49 +201,12 @@
 <p>Completed rounds live in <code>./docs/versions/&lt;semver&gt;.md</code> — do <strong>not</strong>
 restate them here. When a task is landed, delete its entry from this
 file and add a round-log entry to the new version doc.</p>
-<ul>
-<li><input disabled="" type="checkbox" checked=""/>
-<strong>Cross-app shared mixins — 8 of 8 COMPLETE.</strong> 0.1.52
-codified the 1000-LOC ceiling in AGENTS.md §1.5; 0.1.53–0.1.61
-brought every file in the three apps under the cap and shipped
-the first three shared mixins out of
-<code>notechondria_shared/lib/src/app_shell/</code>: <code>AppShellLogMixin</code>,
-<code>AppShellAuthActionsMixin</code>, <code>AppShellOAuthMixin</code> (plus the
-shared <code>AuthClient</code> interface and <code>url_strategy</code> shim).
-0.1.78 added <code>AppShellLocalPersistMixin</code>; 0.1.79 added
-<code>AppShellCourseHelpersMixin</code>; 0.1.80 added
-<code>AppShellDraftHelpersMixin</code>; 0.1.81 added
-<code>HttpClientInternalsMixin</code>; 0.1.82 added
-<code>AppShellSessionMixin</code>. All eight mixins shipped — the
-byte-identical chunks that used to live three times in
-per-app <code>_AppShellState</code> files now live once in
-<code>notechondria_shared</code>. See round-logs 0.1.78–0.1.82 for
-per-mixin details.</li>
-</ul>
 <h2 id="global-reusable-components"><a class="header" href="#global-reusable-components">Global reusable components</a></h2>
-<h3 id="start-up-animations"><a class="header" href="#start-up-animations">Start up animations</a></h3>
-<h3 id="sidebarnavigation"><a class="header" href="#sidebarnavigation">Sidebar/Navigation</a></h3>
 <h3 id="login-and-account-info"><a class="header" href="#login-and-account-info">Login and account info</a></h3>
 <ul>
-<li>
-<p><input disabled="" type="checkbox" checked=""/>
-<strong>Full feature parity with editor Settings in portal.</strong> 0.1.87.
-API key section, password-change dialog, email-change dialog,
-config file export/import.</p>
-</li>
-<li>
-<p><input disabled="" type="checkbox" checked=""/>
-<strong>Note cover images — planner / portal frontend.</strong> 0.1.86.</p>
-</li>
-<li>
-<p><input disabled="" type="checkbox" checked=""/>
-<strong>Multi-device session manager — planner / portal frontend.</strong>
-0.1.86.</p>
-</li>
-<li>
-<p><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox"/>
 <strong>Two-factor auth for password login.</strong> Tracked separately
-because it needs a new backend flow plus UI. Scope:</p>
+because it needs a new backend flow plus UI. Scope:
 <ul>
 <li>Backend: on password login (NOT OAuth — skip 2FA there by
 design), challenge the user with one of two second-factor
@@ -272,100 +235,6 @@ Session).</li>
 </li>
 </ul>
 <h3 id="app-preferences"><a class="header" href="#app-preferences">App preferences</a></h3>
-<ul>
-<li>
-<p><input disabled="" type="checkbox" checked=""/>
-<strong>Offline-mode — secondary fetch gates — 0.1.89.</strong> "Load public notes"
-button added to all three <code>_LearnerPage</code> widgets when <code>offlineMode</code> is true
-and notes are empty. Category auto-sync guard added to all three
-<code>_loadInitialData</code> methods: authenticated offline-mode users still fetch
-courses so the sidebar category list stays current.</p>
-</li>
-<li>
-<p><input disabled="" type="checkbox" checked=""/>
-<strong>Per-app OAuth redirect URI — 0.1.90.</strong> Backend now matches request
-Origin/Referer against <code>GOOGLE_AUTHORIZED_REDIRECT_URIS</code> /
-<code>GITHUB_AUTHORIZED_REDIRECT_URIS</code> so portal/planner sign-in lands back on
-the calling app instead of the editor. Single-value env vars stay as a
-fallback.</p>
-</li>
-<li>
-<p><input disabled="" type="checkbox" checked=""/>
-<strong>MCP skill.md editor (editor_app only) — 0.1.90.</strong> New
-<code>_McpSkillSection</code> in editor settings → API settings; persists via
-<code>Creator.mcp_skill_md</code> and is surfaced as the MCP <code>initialize</code>
-<code>instructions</code> field. Portal/planner parity tracked below.</p>
-</li>
-<li>
-<p><input disabled="" type="checkbox" checked=""/>
-<strong>Custom note meta variables (editor_app only) — 0.1.90.</strong> Expandable
-list of <code>(key, value)</code> pairs in <code>_NoteMetadataDialog</code>, persisted on new
-<code>Note.custom_meta</code> column and round-tripped to YAML frontmatter on the
-GitHub-sync export. Portal/planner parity tracked below.</p>
-</li>
-<li>
-<p><input disabled="" type="checkbox" checked=""/>
-<strong>Experimental GitHub Sync — backend export pipeline + UI shell —
-0.1.90.</strong> New <code>creators.GithubIntegration</code> model + <code>creators.services. github_sync</code> materialize/push helpers + <code>/api/v1/integrations/github/*</code>
-endpoints. Frontend has a disabled "Connect to GitHub" card pointing at
-<code>docs/integrations/github-sync.md</code>. JWT signing + repo-picker still open
-(see below).</p>
-</li>
-<li>
-<p><input disabled="" type="checkbox" checked=""/>
-<strong>Settings UI parity (MCP skill + GitHub Sync) — portal_app and
-planner_app — 0.1.91.</strong> Shared <code>McpSkillSection</code> /
-<code>GithubSyncExperimentalCard</code> extracted into <code>notechondria_shared</code>
-and mounted in portal's Security card and planner's Login&amp;sync
-card. Editor switched to the shared widget too. App-shell wiring
-for <code>onSaveMcpSkill</code> added in both apps.</p>
-</li>
-<li>
-<p><input disabled="" type="checkbox" checked=""/>
-<strong>Custom-meta expandable list — portal/planner note dialogs —
-0.1.92.</strong> New shared <code>CustomMetaController</code> + <code>CustomMetaListEditor</code>
-in <code>notechondria_shared/lib/src/components/</code>. Editor migrated off
-its private copy; portal and planner <code>_NoteMetadataDialog</code>s now mount
-the same widget and their <code>learner_note_editor.dart</code> save payload
-strips <code>custom_meta</code> from <code>metadata_json</code> and sends it on its own
-field. Docs (root <code>README.md</code>, <code>docs/readme.md</code>,
-<code>docs/deployment/{deploy,render_free_tier,northflank}.md</code>) updated
-with the per-app OAuth allow-list and GitHub data-sync env-var
-guidance.</p>
-</li>
-<li>
-<p><input disabled="" type="checkbox" checked=""/>
-<strong>Experimental GitHub Sync — wire the actual push path — 0.1.93.</strong></p>
-<ul>
-<li>JWT signer landed: <code>PyJWT&gt;=2.8</code> + <code>cryptography&gt;=42</code> shipped in
-<code>backend/requirements{,-render}.txt</code>; <code>_refresh_installation_token</code>
-signs the App JWT, exchanges it for an installation token, and
-persists <code>access_token</code> + expiry on <code>GithubIntegration</code>.</li>
-<li>Repo-picker UI landed: <code>GithubSyncExperimentalCard</code> is now
-stateful with three states (no-callbacks / disconnected /
-connected), reads <code>/installation/repositories</code> via the new
-<code>GET /api/v1/integrations/github/repos/</code>, and persists the
-chosen repo via the existing callback endpoint.</li>
-<li>Restore CLI landed at <code>backend/scripts/github_sync_restore.py</code>
-(stdlib-only; supports <code>--dry-run</code> + <code>--verbose</code>; idempotent
-via <code>client_draft_id</code>).</li>
-<li><strong>Static-asset re-bundling — landed 0.1.94.</strong> Push side gains
-<code>include_assets=true</code> toggle on the card and on
-<code>POST /api/v1/integrations/github/push/</code>; per-file (50 MB) +
-per-push (200 MB) caps; oversized files recorded in
-<code>manifest.skipped_assets</code>. Restore CLI gains <code>--include-assets</code>
-and re-uploads through the existing multipart endpoints.</li>
-<li><strong>Push-side conflict resolution</strong> still open — Contents API
-PUTs overwrite the remote blob; multi-device edits between
-syncs can lose changes. Next round: fetch-diff-warn before
-overwrite.</li>
-<li><strong>Asset rotation / pruning</strong> still open — orphan asset paths
-accumulate as notes are deleted; needs a <code>--prune-orphans</code> mode
-that walks the Trees API and removes unreferenced
-<code>assets/notes/&lt;uuid&gt;/</code> subtrees in the same commit.</li>
-</ul>
-</li>
-</ul>
 <h3 id="debug-log-window"><a class="header" href="#debug-log-window">Debug log window</a></h3>
 <ul>
 <li><input disabled="" type="checkbox"/>
@@ -395,48 +264,7 @@ sidebar action. Decompose: (a) design subscription data model
 (b) backend endpoint + tests, (c) frontend wiring.</li>
 </ul>
 <h3 id="note-editor"><a class="header" href="#note-editor">Note editor</a></h3>
-<ul>
-<li>
-<p><input disabled="" type="checkbox" checked=""/>
-<strong>Editor overflow menu already available in planner/portal.</strong>
-Both apps use <code>_NoteEditorDialog</code> from <code>editor_app/lib/modules/note_editor.dart</code>
-which already ships the PopupMenuButton (Edit note meta / Switch
-editor / View attachments). No additional porting needed.</p>
-</li>
-<li>
-<p><input disabled="" type="checkbox" checked=""/>
-<strong>Attachment CDN — remaining deferred items — 0.1.88.</strong>
-IndexedDB web backend replaced the in-memory stub
-(<code>_WebLocalAttachmentBackend</code> now uses <code>idb_shim</code>-backed
-IndexedDB). Storage-budget UI surface added: <code>formatBytes</code> utility
-shared across apps, <code>_AttachmentStorageTile</code> widget in editor
-settings showing total bytes + 500 MB warning.</p>
-</li>
-<li>
-<p><input disabled="" type="checkbox" checked=""/>
-<strong>Attachment CDN server-side — 0.1.88.</strong>
-<code>note_attachment_path</code> now keys by <code>note.uuid.hex</code> instead of
-integer <code>note.id</code>. New UUID-keyed API endpoints at
-<code>/notes/uuid/&lt;uuid&gt;/attachments/</code> for list/upload/delete.
-Backward-compatible with existing integer-keyed endpoints.
-Backend tests cover list, upload, delete, permissions, size caps.</p>
-</li>
-</ul>
 <h3 id="editor-settings"><a class="header" href="#editor-settings">Editor Settings</a></h3>
-<ul>
-<li>
-<p><input disabled="" type="checkbox" checked=""/>
-<strong>Planner export/import — 0.1.89.</strong> New <code>core/local_archive_io.dart</code>
-wired with <code>plannerEvents</code> / <code>calendarFeeds</code> / <code>activityWeek</code> buckets.
-Portal export/import was already done in 0.1.87.</p>
-</li>
-<li>
-<p><input disabled="" type="checkbox" checked=""/>
-<strong>Cross-app export round-trip tests — 0.1.89.</strong> Three new tests in
-<code>notechondria_shared/test/local_archive_test.dart</code> covering planner→editor,
-editor→planner, and portal→planner round-trips.</p>
-</li>
-</ul>
 <h2 id="planner"><a class="header" href="#planner">Planner</a></h2>
 <ul>
 <li><input disabled="" type="checkbox"/>
@@ -451,6 +279,24 @@ break, so gather feedback before touching.</li>
 </ul>
 <h2 id="backend"><a class="header" href="#backend">Backend</a></h2>
 <h3 id="mcp"><a class="header" href="#mcp">MCP</a></h3>
+<h3 id="github-sync"><a class="header" href="#github-sync">GitHub Sync</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"/>
+<strong>Push-side conflict resolution.</strong> The Contents API PUTs in
+<code>creators.services.github_sync.commit_and_push</code> overwrite the
+remote blob unconditionally. A user editing on two devices
+between syncs can lose changes. Fetch the existing blob on each
+path, diff against the materialized payload, and surface a
+"remote changed — overwrite or merge?" prompt before writing.
+Lifted from the 0.1.94 carryover.</li>
+<li><input disabled="" type="checkbox"/>
+<strong>Asset rotation / pruning.</strong> Repeated <code>include_assets=true</code>
+pushes accumulate orphan files for notes deleted client-side
+whose old <code>assets/notes/&lt;uuid&gt;/</code> paths still live in the remote
+tree. Add a <code>--prune-orphans</code> mode on the push pipeline that
+walks the Trees API and removes unreferenced subtrees in the
+same commit. Lifted from the 0.1.94 carryover.</li>
+</ul>
 <h2 id="release--ci"><a class="header" href="#release--ci">Release / CI</a></h2>
 <ul>
 <li><input disabled="" type="checkbox"/>
