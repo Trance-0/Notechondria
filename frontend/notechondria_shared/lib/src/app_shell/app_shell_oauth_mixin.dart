@@ -200,12 +200,81 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
         ? 'Linking $providerLabel account'
         : 'Completing sign-in via $providerLabel';
 
-    // Casdoor login flow short-circuits the per-provider bind/login
-    // branches below — its exchange endpoint accepts the authz code
-    // and returns the standard auth_payload. Bind flow isn't wired
-    // for Casdoor in phase 3; account linking will be picked up in a
-    // later round if the use case shows up.
+    // Casdoor short-circuit. The login path goes through the public
+    // exchange endpoint (returns a fresh auth_payload + new Session
+    // row); the bind path goes through the authenticated bind
+    // endpoint (links sub to the *current* user without minting a
+    // new identity). Bind without a token is a sign-out race —
+    // bail out with a clear message instead of falling through to
+    // the legacy provider branches below.
     if (state == 'casdoor') {
+      if (intent == 'bind') {
+        final currentToken = token;
+        if (currentToken == null || currentToken.isEmpty) {
+          log(
+            level: DebugLogLevel.warning,
+            source: '$logAppTag.Auth/casdoor.bind',
+            message:
+                'Casdoor account linking aborted: '
+                '$logAppTag.Auth/casdoor.bind — session token missing at '
+                'OAuth callback (user signed out between click and redirect).',
+          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Casdoor account linking aborted: '
+                  '$logAppTag.Auth/casdoor.bind — your session expired '
+                  'before the provider redirected back. Sign in first, '
+                  'then try linking the account again.',
+                ),
+              ),
+            );
+          }
+          return false;
+        }
+        try {
+          await authClient.casdoorBind(currentToken, code);
+          log(
+            level: DebugLogLevel.info,
+            source: '$logAppTag.Auth/casdoor.bind',
+            message:
+                'Linked Casdoor account: $logAppTag.Auth/casdoor.bind — '
+                'server accepted the bind token.',
+          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Casdoor account linked: $logAppTag.Auth/casdoor.bind — '
+                  'ready to sign in with Casdoor next time.',
+                ),
+              ),
+            );
+          }
+          return true;
+        } catch (error) {
+          final msg = error.toString().replaceFirst('Exception: ', '');
+          log(
+            level: DebugLogLevel.error,
+            source: '$logAppTag.Auth/casdoor.bind',
+            message:
+                'Casdoor account linking failed: '
+                '$logAppTag.Auth/casdoor.bind — $msg.',
+          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Casdoor account linking failed: '
+                  '$logAppTag.Auth/casdoor.bind — $msg.',
+                ),
+              ),
+            );
+          }
+          return false;
+        }
+      }
       try {
         final result = await authClient.casdoorExchange(code, state: state!);
         await applyAuthPayload(result);

@@ -6,8 +6,10 @@ from notechondria.api_views import ping as ping_view
 from creators.api import (
     BindGithubApiView,
     BindGoogleApiView,
+    CasdoorBindApiView,
     CasdoorConfigApiView,
     CasdoorExchangeApiView,
+    CasdoorUnlinkApiView,
     ChangeEmailApiView,
     ChangePasswordApiView,
     GitHubOAuthApiView,
@@ -103,6 +105,8 @@ urlpatterns = [
     # Both endpoints are no-ops when CASDOOR_* env vars aren't configured.
     path("auth/casdoor/config/", CasdoorConfigApiView.as_view(), name="casdoor-config"),
     path("auth/casdoor/exchange/", CasdoorExchangeApiView.as_view(), name="casdoor-exchange"),
+    path("auth/casdoor/bind/", CasdoorBindApiView.as_view(), name="casdoor-bind"),
+    path("auth/casdoor/unlink/", CasdoorUnlinkApiView.as_view(), name="casdoor-unlink"),
     path("front-page/", FrontPageApiView.as_view(), name="front-page"),
     path("courses/", CourseListApiView.as_view(), name="course-list"),
     path("courses/reorder/", CourseReorderApiView.as_view(), name="course-reorder"),

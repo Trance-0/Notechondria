@@ -595,6 +595,23 @@ extension _AppShellBuildHelpersX on _AppShellState {
           onCasdoorLogin: _casdoorConfigured
               ? () => launchOAuth('casdoor', intent: 'login')
               : null,
+          onBindCasdoor: (_casdoorConfigured && _token != null)
+              ? () => launchOAuth('casdoor', intent: 'bind')
+              : null,
+          onUnlinkCasdoor: (_casdoorConfigured && _token != null)
+              ? () async {
+                  try {
+                    await widget.client.casdoorUnlink(_token!);
+                    if (mounted) {
+                      _settings = {
+                        ..._settings ?? <String, dynamic>{},
+                        'casdoor_linked': false,
+                      };
+                      refreshState();
+                    }
+                  } catch (_) {/* swallowed; UI stays stale */}
+                }
+              : null,
           onBindGoogle: () => launchOAuth('google', intent: 'bind'),
           onBindGithub: () => launchOAuth('github', intent: 'bind'),
           onListSocialAccounts: _token != null ? () => widget.client.listSocialAccounts(_token!) : null,

@@ -552,6 +552,34 @@ class HttpNotechondriaClient
   }
 
   @override
+  Future<Map<String, dynamic>> casdoorBind(String token, String code) async {
+    final uri = _uri('/auth/casdoor/bind/');
+    final response = await send(
+      'POST',
+      uri,
+      () => _httpClient.post(
+        uri,
+        headers: headers(token: token),
+        body: jsonEncode({'code': code}),
+      ),
+    );
+    return Map<String, dynamic>.from(
+      await decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
+  Future<void> casdoorUnlink(String token) async {
+    final uri = _uri('/auth/casdoor/unlink/');
+    final response = await send(
+      'DELETE',
+      uri,
+      () => _httpClient.delete(uri, headers: headers(token: token)),
+    );
+    await decode(response, uri: uri, method: 'DELETE');
+  }
+
+  @override
   Future<List<Map<String, dynamic>>> listSocialAccounts(String token) async {
     final uri = _uri('/auth/social-accounts/');
     final response = await _get(uri, token: token);

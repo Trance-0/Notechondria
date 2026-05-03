@@ -406,6 +406,7 @@ class SettingsSerializer(serializers.Serializer):
             "api_key_prefix": instance.api_key_prefix or "",
             "api_base_url": instance.api_base_url,
             "mcp_skill_md": instance.mcp_skill_md or "",
+            "casdoor_linked": bool(instance.casdoor_sub),
             "app_settings": creator_app_settings_payload(instance),
             "app_settings_updated_at": instance.app_settings_updated_at.isoformat()
             if instance.app_settings_updated_at
@@ -2394,6 +2395,141 @@ class CasdoorConfigApiView(APIView):
 class CasdoorExchangeSerializer(serializers.Serializer):
     code = serializers.CharField(required=True, allow_blank=False)
     state = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class CasdoorUnlinkApiView(APIView):
+    """Drop the Casdoor link on the current user's Creator. Idempotent
+    — returns success even if the link wasn't set. Does NOT log the
+    user out: the legacy Token session continues to work, and
+    `_resolve_user` in casdoor_auth will simply auto-link again on
+    next Casdoor sign-in via the email-iexact path (or refuse to
+    auto-provision if the email differs)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request):
+        creator = ensure_creator(request.user)
+        had_link = bool(creator.casdoor_sub)
+        if had_link:
+            creator.casdoor_sub = ""
+            creator.save(update_fields=["casdoor_sub"])
+            logger.info(
+                "Unlinked Casdoor account: "
+                "Backend.Creators.CasdoorAuth/unlink — user=%s.",
+                request.user.username,
+            )
+        return Response({"casdoor_linked": False, "was_linked": had_link})
+
+
+class CasdoorBindApiView(APIView):
+    """Link a Casdoor identity to the *currently* signed-in user.
+
+    The exchange flow on `/auth/casdoor/exchange/` resolves identity
+    via `Creator.casdoor_sub` → email-iexact → auto-provision; this
+    endpoint is the manual override for users who want to link a
+    Casdoor account *to their existing legacy account* without
+    going through the email match (e.g. when the Casdoor email
+    differs from the Notechondria email).
+
+    Wire shape:
+
+    - Auth: standard ``Authorization: Token <session-key>``.
+    - Body: ``{"code": "<casdoor-authz-code>"}``.
+    - Returns the standard ``auth_payload`` shape on success.
+    - 409 when the Casdoor `sub` is already linked to a different
+      Creator. The user must unlink that side first.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        from .casdoor_auth import _build_sdk, verify_token
+
+        sdk = _build_sdk()
+        if sdk is None:
+            return Response(
+                {"detail": (
+                    "Casdoor account linking unavailable: "
+                    "Backend.Creators.CasdoorAuth/bind — "
+                    "backend is in shadow mode (CASDOOR_* env vars "
+                    "not configured)."
+                )},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        code = (request.data.get("code") or "").strip()
+        if not code:
+            return Response(
+                {"detail": (
+                    "Casdoor account linking aborted: "
+                    "Backend.Creators.CasdoorAuth/bind — "
+                    "request body is missing required field `code`."
+                )},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            tokens = sdk.get_oauth_token(code=code)
+        except Exception as exc:  # noqa: BLE001
+            return Response(
+                {"detail": (
+                    "Casdoor account linking aborted: "
+                    "Backend.Creators.CasdoorAuth/bind — "
+                    f"Casdoor rejected the authorization code: {exc}."
+                )},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        access_token = (
+            tokens.get("access_token") if isinstance(tokens, dict) else None
+        )
+        claims = verify_token(access_token) if access_token else None
+        if claims is None:
+            return Response(
+                {"detail": (
+                    "Casdoor account linking aborted: "
+                    "Backend.Creators.CasdoorAuth/bind — "
+                    "Casdoor returned a token whose JWT signature "
+                    "could not be verified."
+                )},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        sub = (claims.get("id") or claims.get("sub") or "").strip()
+        if not sub:
+            return Response(
+                {"detail": (
+                    "Casdoor account linking aborted: "
+                    "Backend.Creators.CasdoorAuth/bind — "
+                    "JWT does not carry an `id` / `sub` claim."
+                )},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        creator = ensure_creator(request.user)
+        # Conflict: the Casdoor sub is already on a different
+        # Creator. We refuse to silently transfer the link.
+        from .models import Creator
+        existing = (
+            Creator.objects.filter(casdoor_sub=sub)
+            .exclude(user_id=request.user)
+            .first()
+        )
+        if existing is not None:
+            return Response(
+                {"detail": (
+                    "Casdoor account linking aborted: "
+                    "Backend.Creators.CasdoorAuth/bind — "
+                    "this Casdoor identity is already linked to "
+                    "another Notechondria account. Unlink that side "
+                    "first or sign in with it directly."
+                )},
+                status=status.HTTP_409_CONFLICT,
+            )
+        creator.casdoor_sub = sub
+        creator.save(update_fields=["casdoor_sub"])
+        logger.info(
+            "Linked Casdoor account: "
+            "Backend.Creators.CasdoorAuth/bind — "
+            "user=%s sub=%s.",
+            request.user.username, sub[:12],
+        )
+        return Response(auth_payload(request.user, request=request))
 
 
 class CasdoorExchangeApiView(APIView):

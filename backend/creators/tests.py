@@ -935,3 +935,145 @@ class CasdoorAuthTests(TestCase):
     def test_resolve_user_returns_none_without_sub(self):
         from creators.casdoor_auth import _resolve_user
         self.assertIsNone(_resolve_user({'email': 'noid@example.com'}))
+
+    def test_bind_endpoint_requires_auth(self):
+        resp = self.client_api.post(
+            '/api/v1/auth/casdoor/bind/',
+            {'code': 'irrelevant'}, format='json',
+        )
+        self.assertIn(resp.status_code, (401, 403))
+
+    def test_bind_endpoint_returns_503_in_shadow_mode(self):
+        from django.test import override_settings
+        u = User.objects.create_user(username='ub', password='pw')
+        Creator.objects.create(user_id=u)
+        from creators.models import Session
+        s = Session.create_for_user(u)
+        self.client_api.credentials(HTTP_AUTHORIZATION=f'Token {s.key}')
+        with override_settings(CASDOOR_ENDPOINT=''):
+            resp = self.client_api.post(
+                '/api/v1/auth/casdoor/bind/',
+                {'code': 'x'}, format='json',
+            )
+        self.assertEqual(resp.status_code, 503)
+        self.assertIn('shadow mode', resp.json()['detail'])
+
+    def test_bind_endpoint_rejects_conflicting_sub(self):
+        """If the Casdoor sub is already on another Creator, the bind
+        must return 409 instead of silently transferring the link."""
+        from unittest.mock import patch
+        from django.test import override_settings
+
+        # User A already linked to sub `casdoor-uid-99`.
+        a = User.objects.create_user(username='a', email='a@x.com', password='pw')
+        Creator.objects.create(user_id=a, casdoor_sub='casdoor-uid-99')
+
+        # User B is signed in and tries to bind the same sub.
+        b = User.objects.create_user(username='b', email='b@x.com', password='pw')
+        Creator.objects.create(user_id=b)
+        from creators.models import Session
+        s = Session.create_for_user(b)
+        self.client_api.credentials(HTTP_AUTHORIZATION=f'Token {s.key}')
+
+        with override_settings(
+            CASDOOR_ENDPOINT='https://auth.example',
+            CASDOOR_CLIENT_ID='c',
+            CASDOOR_CLIENT_SECRET='s',
+            CASDOOR_ORG_NAME='o',
+            CASDOOR_APP_NAME='ap',
+            CASDOOR_CERTIFICATE='dummy',
+        ), patch(
+            'creators.casdoor_auth._build_sdk',
+        ) as mock_sdk_factory, patch(
+            'creators.casdoor_auth.verify_token',
+            return_value={'id': 'casdoor-uid-99', 'email': 'a@x.com'},
+        ):
+            mock_sdk = mock_sdk_factory.return_value
+            mock_sdk.get_oauth_token.return_value = {
+                'access_token': 'fake.jwt.value',
+            }
+            resp = self.client_api.post(
+                '/api/v1/auth/casdoor/bind/',
+                {'code': 'codez'}, format='json',
+            )
+        self.assertEqual(resp.status_code, 409)
+        self.assertIn('already linked', resp.json()['detail'])
+        # User B's casdoor_sub must remain empty after the rejected bind.
+        b_creator = Creator.objects.get(user_id=b)
+        self.assertEqual(b_creator.casdoor_sub, '')
+
+    def test_bind_endpoint_happy_path_persists_link(self):
+        from unittest.mock import patch
+        from django.test import override_settings
+
+        u = User.objects.create_user(username='happy', email='h@x.com', password='pw')
+        Creator.objects.create(user_id=u)
+        from creators.models import Session
+        s = Session.create_for_user(u)
+        self.client_api.credentials(HTTP_AUTHORIZATION=f'Token {s.key}')
+
+        with override_settings(
+            CASDOOR_ENDPOINT='https://auth.example',
+            CASDOOR_CLIENT_ID='c',
+            CASDOOR_CLIENT_SECRET='s',
+            CASDOOR_ORG_NAME='o',
+            CASDOOR_APP_NAME='ap',
+            CASDOOR_CERTIFICATE='dummy',
+        ), patch(
+            'creators.casdoor_auth._build_sdk',
+        ) as mock_sdk_factory, patch(
+            'creators.casdoor_auth.verify_token',
+            return_value={'id': 'casdoor-uid-new', 'email': 'h@x.com'},
+        ):
+            mock_sdk = mock_sdk_factory.return_value
+            mock_sdk.get_oauth_token.return_value = {
+                'access_token': 'fake.jwt.value',
+            }
+            resp = self.client_api.post(
+                '/api/v1/auth/casdoor/bind/',
+                {'code': 'codez'}, format='json',
+            )
+        self.assertEqual(resp.status_code, 200)
+        # Standard auth_payload must include token + user fields.
+        body = resp.json()
+        self.assertIn('token', body)
+        self.assertIn('user', body)
+        # And the link must persist.
+        creator = Creator.objects.get(user_id=u)
+        self.assertEqual(creator.casdoor_sub, 'casdoor-uid-new')
+
+    def test_unlink_endpoint_clears_sub(self):
+        u = User.objects.create_user(username='unlinker', password='pw')
+        Creator.objects.create(user_id=u, casdoor_sub='casdoor-uid-old')
+        from creators.models import Session
+        s = Session.create_for_user(u)
+        self.client_api.credentials(HTTP_AUTHORIZATION=f'Token {s.key}')
+
+        resp = self.client_api.delete('/api/v1/auth/casdoor/unlink/')
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertFalse(body['casdoor_linked'])
+        self.assertTrue(body['was_linked'])
+        creator = Creator.objects.get(user_id=u)
+        self.assertEqual(creator.casdoor_sub, '')
+
+    def test_unlink_endpoint_idempotent(self):
+        u = User.objects.create_user(username='unlinker2', password='pw')
+        Creator.objects.create(user_id=u)
+        from creators.models import Session
+        s = Session.create_for_user(u)
+        self.client_api.credentials(HTTP_AUTHORIZATION=f'Token {s.key}')
+        resp = self.client_api.delete('/api/v1/auth/casdoor/unlink/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(resp.json()['was_linked'])
+
+    def test_settings_payload_exposes_casdoor_linked(self):
+        from creators.api import SettingsSerializer
+        u = User.objects.create_user(username='settings-user', password='pw')
+        c = Creator.objects.create(user_id=u, casdoor_sub='abc')
+        body = SettingsSerializer(c).to_representation(c)
+        self.assertTrue(body['casdoor_linked'])
+        c.casdoor_sub = ''
+        c.save(update_fields=['casdoor_sub'])
+        body = SettingsSerializer(c).to_representation(c)
+        self.assertFalse(body['casdoor_linked'])

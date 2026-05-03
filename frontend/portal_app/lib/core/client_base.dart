@@ -106,6 +106,13 @@ abstract class NotechondriaClient implements AuthClient {
   Future<Map<String, dynamic>> sendIdentityCode(String token);
   Future<Map<String, dynamic>> rotateApiKey(String token);
 
+  /// Casdoor link / unlink — see docs/integrations/casdoor-migration.md.
+  /// `getCasdoorConfig` and `casdoorExchange` are inherited from
+  /// `AuthClient`; the per-user link operations live here because
+  /// they need an authenticated session.
+  Future<Map<String, dynamic>> casdoorBind(String token, String code);
+  Future<void> casdoorUnlink(String token);
+
   /// Experimental GitHub data-sync. See
   /// `docs/integrations/github-sync.md` for the full flow.
   Future<Map<String, dynamic>> githubSyncStatus(String token);

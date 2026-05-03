@@ -59,6 +59,18 @@ abstract class AuthClient {
   /// required.
   Future<Map<String, dynamic>> casdoorExchange(String code, {String state});
 
+  /// `POST /api/v1/auth/casdoor/bind/`. Authenticated bind path —
+  /// links the Casdoor `sub` from the freshly-exchanged token to the
+  /// CURRENT signed-in user (instead of resolving identity via the
+  /// email-iexact / auto-provision branches). 409 when the same sub
+  /// is already linked to a different account.
+  Future<Map<String, dynamic>> casdoorBind(String token, String code);
+
+  /// `DELETE /api/v1/auth/casdoor/unlink/`. Idempotent. Drops the
+  /// Casdoor link on the current user's Creator without logging the
+  /// session out.
+  Future<void> casdoorUnlink(String token);
+
   Future<Map<String, dynamic>> checkSession(String token);
 
   /// GET /api/v1/auth/sessions/ — multi-device manager listing

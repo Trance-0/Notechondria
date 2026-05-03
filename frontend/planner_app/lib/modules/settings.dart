@@ -21,6 +21,8 @@ class _SettingsPage extends StatefulWidget {
     this.onGoogleLoginOnly,
     this.onGithubLoginOnly,
     this.onCasdoorLogin,
+    this.onBindCasdoor,
+    this.onUnlinkCasdoor,
     this.onBindGoogle,
     this.onBindGithub,
     this.onListSocialAccounts,
@@ -96,6 +98,10 @@ class _SettingsPage extends StatefulWidget {
   /// Triggers Casdoor SSO. Null in shadow mode (no `CASDOOR_*` env
   /// vars). See `docs/integrations/casdoor-migration.md`.
   final VoidCallback? onCasdoorLogin;
+
+  /// Triggers Casdoor account binding. Null in shadow mode.
+  final VoidCallback? onBindCasdoor;
+  final Future<void> Function()? onUnlinkCasdoor;
   final VoidCallback? onBindGoogle;
   final VoidCallback? onBindGithub;
   final Future<List<Map<String, dynamic>>> Function()? onListSocialAccounts;
@@ -499,6 +505,10 @@ class _SettingsPageState extends State<_SettingsPage> {
                     onUnlinkSocialAccount: widget.onUnlinkSocialAccount,
                     onBindGoogle: widget.onBindGoogle,
                     onBindGithub: widget.onBindGithub,
+                    onBindCasdoor: widget.onBindCasdoor,
+                    onUnlinkCasdoor: widget.onUnlinkCasdoor,
+                    casdoorLinked:
+                        widget.settings?['casdoor_linked'] == true,
                   ),
                   if (widget.onListSessions != null &&
                       widget.onRevokeSession != null) ...[
@@ -712,18 +722,26 @@ class _StatChip extends StatelessWidget {
 }
 
 
+// _ConnectedAccountsSection (planner copy) — Casdoor row added
+// 0.1.98 alongside Google / GitHub.
 class _ConnectedAccountsSection extends StatefulWidget {
   const _ConnectedAccountsSection({
     this.onListSocialAccounts,
     this.onUnlinkSocialAccount,
     this.onBindGoogle,
     this.onBindGithub,
+    this.onBindCasdoor,
+    this.onUnlinkCasdoor,
+    this.casdoorLinked = false,
   });
 
   final Future<List<Map<String, dynamic>>> Function()? onListSocialAccounts;
   final Future<void> Function(String provider)? onUnlinkSocialAccount;
   final VoidCallback? onBindGoogle;
   final VoidCallback? onBindGithub;
+  final VoidCallback? onBindCasdoor;
+  final Future<void> Function()? onUnlinkCasdoor;
+  final bool casdoorLinked;
 
   @override
   State<_ConnectedAccountsSection> createState() =>
@@ -770,7 +788,9 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
 
   @override
   Widget build(BuildContext context) {
-    final hasAny = widget.onBindGoogle != null || widget.onBindGithub != null;
+    final hasAny = widget.onBindGoogle != null ||
+        widget.onBindGithub != null ||
+        widget.onBindCasdoor != null;
     if (!hasAny && widget.onListSocialAccounts == null) {
       return const SizedBox.shrink();
     }
@@ -791,10 +811,52 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
             child: LinearProgressIndicator(minHeight: 2),
           )
         else ...[
+          if (widget.onBindCasdoor != null) _buildCasdoorRow(context),
           _buildProviderRow(context, 'google', 'Google', Icons.g_mobiledata, widget.onBindGoogle),
           _buildProviderRow(context, 'github', 'GitHub', Icons.code, widget.onBindGithub),
         ],
       ],
+    );
+  }
+
+  Widget _buildCasdoorRow(BuildContext context) {
+    final linked = widget.casdoorLinked;
+    return ListTile(
+      leading: const Icon(Icons.shield_outlined),
+      title: const Text('Casdoor SSO'),
+      subtitle: Text(linked ? 'Linked' : 'Not linked'),
+      dense: true,
+      trailing: linked
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.onBindCasdoor != null)
+                  TextButton(
+                    onPressed: widget.onBindCasdoor,
+                    child: const Text('Switch'),
+                  ),
+                TextButton(
+                  onPressed: widget.onUnlinkCasdoor == null
+                      ? null
+                      : () async {
+                          try {
+                            await widget.onUnlinkCasdoor!();
+                          } catch (_) {}
+                          if (mounted) setState(() {});
+                        },
+                  child: Text(
+                    'Unlink',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : TextButton(
+              onPressed: widget.onBindCasdoor,
+              child: const Text('Link Casdoor'),
+            ),
     );
   }
 

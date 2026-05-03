@@ -36,6 +36,8 @@ class _SettingsPage extends StatefulWidget {
     this.onGithubLoginOnly,
     this.onCasdoorLogin,
     this.onBindGoogle,
+    this.onBindCasdoor,
+    this.onUnlinkCasdoor,
     this.onBindGithub,
     this.onListSocialAccounts,
     this.onUnlinkSocialAccount,
@@ -107,6 +109,13 @@ class _SettingsPage extends StatefulWidget {
   /// See `docs/integrations/casdoor-migration.md`.
   final VoidCallback? onCasdoorLogin;
   final VoidCallback? onBindGoogle;
+
+  /// Triggers `launchOAuth('casdoor', intent: 'bind')`. Null in
+  /// shadow mode. See `docs/integrations/casdoor-migration.md`.
+  final VoidCallback? onBindCasdoor;
+
+  /// Calls the unlink endpoint. Null in shadow mode.
+  final Future<void> Function()? onUnlinkCasdoor;
   final VoidCallback? onBindGithub;
   final Future<List<Map<String, dynamic>>> Function()? onListSocialAccounts;
   final Future<void> Function(String provider)? onUnlinkSocialAccount;

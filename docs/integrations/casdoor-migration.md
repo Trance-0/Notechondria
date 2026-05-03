@@ -185,6 +185,55 @@ isn't configured.
   their first Casdoor sign-in, at which point either the email
   link or the auto-provision branch records it.
 
+## Phase-3-and-a-half — bind / unlink (shipped 0.1.98)
+
+The phase-2 exchange endpoint resolves identity automatically via
+`Creator.casdoor_sub` → email-iexact → auto-provision. The
+bind/unlink path covers two cases the auto-resolve can't:
+
+1. The Casdoor email differs from the Notechondria email, so the
+   email-iexact branch can't find the legacy account.
+2. The user wants to deliberately disconnect a previously linked
+   Casdoor identity without losing access (the legacy session
+   keeps working).
+
+### Endpoints
+
+`POST /api/v1/auth/casdoor/bind/` (auth required):
+
+Request: `{"code": "<casdoor-authz-code>"}`. Backend exchanges via
+`get_oauth_token`, verifies the JWT, takes the `sub`, and:
+
+- Returns 409 if the same `sub` is already on a different Creator
+  (the user must unlink that side first).
+- Otherwise persists `Creator.casdoor_sub` for the current user
+  and returns the standard `auth_payload`.
+
+`DELETE /api/v1/auth/casdoor/unlink/` (auth required):
+
+Idempotent. Clears `Creator.casdoor_sub`. Returns
+`{"casdoor_linked": false, "was_linked": <bool>}`. Does NOT log
+the user out — the existing legacy `Session` keeps working.
+
+### Settings surface
+
+`Settings` GET response now includes `casdoor_linked: bool` so the
+Connected Accounts UI can render the right state without an extra
+round-trip.
+
+### Frontend
+
+- `AuthClient` gains `casdoorBind(token, code)` +
+  `casdoorUnlink(token)`. Each app's client implements them.
+- `AppShellOAuthMixin.handleOAuthCallback` dispatches the
+  `state=casdoor` branch on `intent`: `'login'` → exchange,
+  `'bind'` → bind. The bind branch refuses to fall through to the
+  legacy provider login when the session token is missing.
+- All three apps' `_ConnectedAccountsSection` widgets gain a
+  Casdoor SSO row with Link / Unlink controls; `onBindCasdoor`
+  and `onUnlinkCasdoor` are constructed in each app shell when
+  `_casdoorConfigured && _token != null`.
+
 ## Open questions
 
 - **Username migration.** Casdoor users are keyed by an opaque
