@@ -30,6 +30,23 @@ extension _AppShellInitialDataX on _AppShellState {
     };
     var updatedCache = false;
 
+    // Phase-3 Casdoor probe — fire-and-forget. Drives the SSO pill
+    // visibility on the AuthHub; failures fall through to the
+    // legacy Google / GitHub buttons. See
+    // docs/integrations/casdoor-migration.md.
+    unawaited(() async {
+      try {
+        final config = await widget.client.getCasdoorConfig();
+        final configured = config['configured'] == true;
+        if (mounted && configured != _casdoorConfigured) {
+          _casdoorConfigured = configured;
+          refreshState();
+        }
+      } catch (_) {
+        // shadow mode or transient — leave the flag false.
+      }
+    }());
+
     // Offline-mode gate: skip every remote fetch and render from the
     // local cache. Sign-in and explicit sync still work because those
     // paths call into `widget.client` directly, not through here.

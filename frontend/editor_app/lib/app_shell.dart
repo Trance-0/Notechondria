@@ -266,6 +266,11 @@ class _AppShellState extends State<AppShell>
   Map<String, dynamic>? _profile;
   Map<String, dynamic>? _settings;
   Map<String, dynamic>? _frontPage;
+  // True once /auth/casdoor/config/ has confirmed CASDOOR_* env vars
+  // are set on the backend (`{configured: true}`). Probed once at
+  // boot, then read by `build_helpers.dart` to decide whether to
+  // surface the Casdoor SSO button. Stays `false` in shadow mode.
+  bool _casdoorConfigured = false;
   List<Map<String, dynamic>> _courses = const [];
   List<Map<String, dynamic>> _localCourses = const [];
   List<Map<String, dynamic>> _courseNotes = const [];

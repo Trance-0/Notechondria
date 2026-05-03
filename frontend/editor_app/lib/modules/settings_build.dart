@@ -129,6 +129,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
   Widget _buildSignedOutAccount(BuildContext context) {
     final hasGoogle = widget.onGoogleLoginOnly != null;
     final hasGithub = widget.onGithubLoginOnly != null;
+    final hasCasdoor = widget.onCasdoorLogin != null;
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Padding(
@@ -180,7 +181,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
                 ),
               ],
             ),
-            if (hasGoogle || hasGithub) ...[
+            if (hasGoogle || hasGithub || hasCasdoor) ...[
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -203,6 +204,14 @@ extension _SettingsPageBuildX on _SettingsPageState {
                 ],
               ),
               const SizedBox(height: 16),
+              if (hasCasdoor) ...[
+                _OAuthPillButton(
+                  icon: Icons.shield_outlined,
+                  label: 'Continue with Casdoor SSO',
+                  onPressed: widget.onCasdoorLogin!,
+                ),
+                if (hasGithub || hasGoogle) const SizedBox(height: 10),
+              ],
               if (hasGithub) ...[
                 _OAuthPillButton(
                   icon: Icons.code,

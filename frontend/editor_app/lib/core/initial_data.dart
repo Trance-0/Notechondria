@@ -39,6 +39,25 @@ extension _AppShellInitialDataX on _AppShellState {
     // local cache. Target < 500 ms first paint on signed-out boot.
     // Sign-in and explicit sync still work because those paths call
     // into `widget.client` directly, not through `_loadInitialData`.
+    // Phase-3 Casdoor probe — fire-and-forget. The result drives
+    // whether `_buildSignedOutAccount` renders the SSO pill;
+    // failures (offline, backend on shadow mode, network blip) are
+    // swallowed silently and the SPA falls through to the legacy
+    // Google / GitHub buttons. See docs/integrations/
+    // casdoor-migration.md.
+    unawaited(() async {
+      try {
+        final config = await widget.client.getCasdoorConfig();
+        final configured = config['configured'] == true;
+        if (mounted && configured != _casdoorConfigured) {
+          _casdoorConfigured = configured;
+          refreshState();
+        }
+      } catch (_) {
+        // shadow mode or transient — leave the flag false.
+      }
+    }());
+
     final offlineMode = _localSettings['offline_mode'] == true;
     if (offlineMode) {
       // Category auto-sync: if authenticated, still fetch courses so

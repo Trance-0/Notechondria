@@ -52,6 +52,56 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
     String intent = 'register',
   }) async {
     try {
+      // Casdoor goes through a separate /auth/casdoor/config/
+      // endpoint instead of the per-provider /auth/oauth-config/
+      // bundle. The Casdoor app issues its own JWT, so the
+      // callback path uses POST /auth/casdoor/exchange/ rather
+      // than the per-provider login endpoints.
+      if (provider == 'casdoor') {
+        final config = await authClient.getCasdoorConfig();
+        if (config['configured'] != true) {
+          log(
+            level: DebugLogLevel.warning,
+            source: '$logAppTag.Auth/oauth.launch',
+            message:
+                'Cannot start Casdoor sign-in: $logAppTag.Auth/oauth.launch — '
+                'backend reports CASDOOR_* env vars are not configured.',
+          );
+          return;
+        }
+        final clientId = config['client_id']?.toString() ?? '';
+        final signinUrl = config['signin_url']?.toString() ?? '';
+        if (clientId.isEmpty || signinUrl.isEmpty) {
+          log(
+            level: DebugLogLevel.error,
+            source: '$logAppTag.Auth/oauth.launch',
+            message:
+                'Cannot start Casdoor sign-in: $logAppTag.Auth/oauth.launch — '
+                'client_id or signin_url missing in /auth/casdoor/config/.',
+          );
+          return;
+        }
+        // The current page origin doubles as the redirect URI;
+        // Casdoor must have it pre-registered in the application
+        // settings on the admin UI. Drop any existing query string
+        // so the round-trip's `?code=&state=` is the only thing
+        // present when handleOAuthCallback wakes back up.
+        final origin = Uri.base.replace(queryParameters: {}).toString();
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('oauth_redirect_uri', origin);
+        await prefs.setString('oauth_invitation_code', invitationCode);
+        await prefs.setString('oauth_intent', intent);
+        final base = Uri.parse(signinUrl);
+        final authUrl = base.replace(queryParameters: {
+          'client_id': clientId,
+          'redirect_uri': origin,
+          'response_type': 'code',
+          'scope': 'openid profile email',
+          'state': 'casdoor',
+        }).toString();
+        url_strategy.browserRedirect(authUrl);
+        return;
+      }
       final config = await authClient.getOAuthConfig();
       final providerConfig = Map<String, dynamic>.from(
         config[provider] as Map? ?? {},
@@ -112,7 +162,9 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
     final code = uri.queryParameters['code'];
     final state = uri.queryParameters['state'];
     if (code == null || code.isEmpty) return false;
-    if (state != 'google' && state != 'github') return false;
+    if (state != 'google' && state != 'github' && state != 'casdoor') {
+      return false;
+    }
 
     // Clean the URL so a page refresh doesn't re-process the code.
     // Preserve the fragment — it may carry a note deep-link
@@ -136,10 +188,55 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
     // Surface provider-specific status on the splash so the user
     // knows which third-party flow is completing. The splash widget
     // cross-fades between these strings as the bootstrap advances.
-    final providerLabel = state == 'google' ? 'Google' : 'GitHub';
+    final String providerLabel;
+    if (state == 'google') {
+      providerLabel = 'Google';
+    } else if (state == 'github') {
+      providerLabel = 'GitHub';
+    } else {
+      providerLabel = 'Casdoor';
+    }
     splashStatus.value = intent == 'bind'
         ? 'Linking $providerLabel account'
         : 'Completing sign-in via $providerLabel';
+
+    // Casdoor login flow short-circuits the per-provider bind/login
+    // branches below — its exchange endpoint accepts the authz code
+    // and returns the standard auth_payload. Bind flow isn't wired
+    // for Casdoor in phase 3; account linking will be picked up in a
+    // later round if the use case shows up.
+    if (state == 'casdoor') {
+      try {
+        final result = await authClient.casdoorExchange(code, state: state!);
+        await applyAuthPayload(result);
+        log(
+          level: DebugLogLevel.info,
+          source: '$logAppTag.Auth/casdoor.callback',
+          message:
+              'Signed in via Casdoor: $logAppTag.Auth/casdoor.callback — '
+              'server accepted the authorization code.',
+        );
+        return true;
+      } catch (error) {
+        final msg = error.toString().replaceFirst('Exception: ', '');
+        log(
+          level: DebugLogLevel.error,
+          source: '$logAppTag.Auth/casdoor.callback',
+          message:
+              'Casdoor sign-in failed: $logAppTag.Auth/casdoor.callback — $msg.',
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Casdoor sign-in failed: $logAppTag.Auth/casdoor.callback — $msg.',
+              ),
+            ),
+          );
+        }
+        return false;
+      }
+    }
 
     // Bind flow: user should already be authenticated. We handle
     // three cases distinctly so the user gets a coherent error:

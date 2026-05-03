@@ -592,6 +592,9 @@ extension _AppShellBuildHelpersX on _AppShellState {
           onGithubLogin: (invitationCode) => launchOAuth('github', invitationCode: invitationCode),
           onGoogleLoginOnly: () => launchOAuth('google', intent: 'login'),
           onGithubLoginOnly: () => launchOAuth('github', intent: 'login'),
+          onCasdoorLogin: _casdoorConfigured
+              ? () => launchOAuth('casdoor', intent: 'login')
+              : null,
           onBindGoogle: () => launchOAuth('google', intent: 'bind'),
           onBindGithub: () => launchOAuth('github', intent: 'bind'),
           onListSocialAccounts: _token != null ? () => widget.client.listSocialAccounts(_token!) : null,

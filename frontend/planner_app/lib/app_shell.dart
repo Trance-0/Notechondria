@@ -242,6 +242,10 @@ class _AppShellState extends State<AppShell>
   String? _token;
   Map<String, dynamic>? _profile;
   Map<String, dynamic>? _settings;
+  // True once /auth/casdoor/config/ has confirmed CASDOOR_* env vars
+  // are set on the backend. Probed once on _loadInitialData; drives
+  // whether `_SettingsPage`'s AuthHub renders the Casdoor SSO button.
+  bool _casdoorConfigured = false;
   List<Map<String, dynamic>> _courses = const [];
   List<Map<String, dynamic>> _localCourses = const [];
   List<Map<String, dynamic>> _courseNotes = const [];
@@ -785,6 +789,9 @@ class _AppShellState extends State<AppShell>
           onGithubLogin: (invitationCode) => launchOAuth('github', invitationCode: invitationCode),
           onGoogleLoginOnly: () => launchOAuth('google', intent: 'login'),
           onGithubLoginOnly: () => launchOAuth('github', intent: 'login'),
+          onCasdoorLogin: _casdoorConfigured
+              ? () => launchOAuth('casdoor', intent: 'login')
+              : null,
           onBindGoogle: () => launchOAuth('google', intent: 'bind'),
           onBindGithub: () => launchOAuth('github', intent: 'bind'),
           onListSocialAccounts: _token != null ? () => widget.client.listSocialAccounts(_token!) : null,

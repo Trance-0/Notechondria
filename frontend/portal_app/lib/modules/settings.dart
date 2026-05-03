@@ -20,6 +20,7 @@ class _SettingsPage extends StatefulWidget {
     this.onGithubLogin,
     this.onGoogleLoginOnly,
     this.onGithubLoginOnly,
+    this.onCasdoorLogin,
     this.onBindGoogle,
     this.onBindGithub,
     this.onListSocialAccounts,
@@ -94,6 +95,10 @@ class _SettingsPage extends StatefulWidget {
   final void Function(String invitationCode)? onGithubLogin;
   final VoidCallback? onGoogleLoginOnly;
   final VoidCallback? onGithubLoginOnly;
+
+  /// Triggers Casdoor SSO. Null in shadow mode (no `CASDOOR_*` env
+  /// vars). See `docs/integrations/casdoor-migration.md`.
+  final VoidCallback? onCasdoorLogin;
   final VoidCallback? onBindGoogle;
   final VoidCallback? onBindGithub;
   final Future<List<Map<String, dynamic>>> Function()? onListSocialAccounts;
@@ -409,6 +414,7 @@ class _SettingsPageState extends State<_SettingsPage> {
             onGithubLogin: widget.onGithubLogin,
             onGoogleLoginOnly: widget.onGoogleLoginOnly,
             onGithubLoginOnly: widget.onGithubLoginOnly,
+            onCasdoorLogin: widget.onCasdoorLogin,
             apiBaseUrl: widget.apiBaseUrl,
           ),
           const SizedBox(height: 24),

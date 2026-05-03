@@ -630,6 +630,29 @@ class HttpNotechondriaClient
   }
 
   @override
+  Future<Map<String, dynamic>> getCasdoorConfig() async {
+    final uri = _uri('/auth/casdoor/config/');
+    final response = await _get(uri);
+    return Map<String, dynamic>.from(
+      await decode(response, uri: uri, method: 'GET'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> casdoorExchange(
+    String code, {
+    String state = '',
+  }) async {
+    final uri = _uri('/auth/casdoor/exchange/');
+    final payload = <String, dynamic>{'code': code};
+    if (state.isNotEmpty) payload['state'] = state;
+    final response = await _post(uri, payload: payload);
+    return Map<String, dynamic>.from(
+      await decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
   Future<Map<String, dynamic>> requestPasswordReset(String email) async {
     final uri = _uri('/auth/password-reset/');
     final response = await _post(uri, payload: {'email': email});

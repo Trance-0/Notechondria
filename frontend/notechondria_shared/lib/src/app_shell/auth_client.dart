@@ -42,6 +42,23 @@ abstract class AuthClient {
     String redirectUri,
   });
   Future<Map<String, dynamic>> getOAuthConfig();
+
+  /// `GET /api/v1/auth/casdoor/config/`. Returns
+  /// `{configured: bool, endpoint, client_id, organization,
+  /// application, signin_url}`. When the backend is in shadow mode
+  /// (no `CASDOOR_*` env vars set), returns `{configured: false}`
+  /// with no other fields, so the SPA falls through to the legacy
+  /// auth surface. Public — no token required.
+  Future<Map<String, dynamic>> getCasdoorConfig();
+
+  /// `POST /api/v1/auth/casdoor/exchange/`. Accepts a Casdoor
+  /// authorization code from the SSO redirect, returns the standard
+  /// `auth_payload` shape (`token`, `session`, `user`, ...) so the
+  /// existing `applyAuthPayload` machinery on each app's
+  /// `_AppShellState` keeps working unchanged. Public — no token
+  /// required.
+  Future<Map<String, dynamic>> casdoorExchange(String code, {String state});
+
   Future<Map<String, dynamic>> checkSession(String token);
 
   /// GET /api/v1/auth/sessions/ — multi-device manager listing

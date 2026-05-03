@@ -39,6 +39,7 @@ class AuthHub extends StatelessWidget {
     this.onGithubLogin,
     this.onGoogleLoginOnly,
     this.onGithubLoginOnly,
+    this.onCasdoorLogin,
     this.apiBaseUrl,
   });
 
@@ -67,6 +68,13 @@ class AuthHub extends StatelessWidget {
   final void Function(String invitationCode)? onGithubLogin;
   final VoidCallback? onGoogleLoginOnly;
   final VoidCallback? onGithubLoginOnly;
+
+  /// Triggers the Casdoor SSO redirect (AppShellOAuthMixin's
+  /// `launchOAuth('casdoor', intent: 'login')`). Null when the
+  /// backend is in shadow mode (no `CASDOOR_*` env vars set), so the
+  /// hub falls through to the legacy Google / GitHub buttons. See
+  /// `docs/integrations/casdoor-migration.md`.
+  final VoidCallback? onCasdoorLogin;
 
   Future<void> _openDialog(BuildContext context, Widget dialog) {
     return showBlurDialog<void>(
@@ -148,7 +156,9 @@ class AuthHub extends StatelessWidget {
                 ),
               ],
             ),
-            if (onGoogleLoginOnly != null || onGithubLoginOnly != null) ...[
+            if (onGoogleLoginOnly != null ||
+                onGithubLoginOnly != null ||
+                onCasdoorLogin != null) ...[
               const SizedBox(height: 12),
               const Divider(),
               const SizedBox(height: 4),
@@ -158,6 +168,12 @@ class AuthHub extends StatelessWidget {
                 spacing: 10,
                 runSpacing: 10,
                 children: [
+                  if (onCasdoorLogin != null)
+                    FilledButton.tonalIcon(
+                      onPressed: onCasdoorLogin,
+                      icon: const Icon(Icons.shield_outlined, size: 20),
+                      label: const Text('Casdoor SSO'),
+                    ),
                   if (onGoogleLoginOnly != null)
                     OutlinedButton.icon(
                       onPressed: onGoogleLoginOnly,
