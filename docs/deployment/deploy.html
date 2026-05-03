@@ -312,6 +312,23 @@ GITHUB_AUTHORIZED_REDIRECT_URI=
 GOOGLE_OAUTH_CLIENT_ID=
 GOOGLE_OAUTH_CLIENT_SECRET=
 GOOGLE_AUTHORIZED_REDIRECT_URI=
+# Per-app OAuth allow-lists (since 0.1.90). Comma-separated. The
+# backend matches the request Origin/Referer against each entry's
+# host and returns the matching URI. Each value MUST be
+# pre-registered in the corresponding OAuth provider console.
+# When unset, the single-value vars above are used as the sole
+# allowed redirect URI.
+GOOGLE_AUTHORIZED_REDIRECT_URIS=
+GITHUB_AUTHORIZED_REDIRECT_URIS=
+# Experimental data-sync GitHub App (since 0.1.90). Distinct from
+# the OAuth App above — this one drives `/api/v1/integrations/github/`
+# endpoints. The push pipeline still requires `pyjwt + cryptography`
+# in backend/requirements.txt before it can sign installation tokens.
+GITHUB_DATA_SYNC_APP_NAME=
+GITHUB_DATA_SYNC_APP_CLIENT_ID=
+GITHUB_DATA_SYNC_APP_CLIENT_SECRET=
+GITHUB_DATA_SYNC_APP_PRIVATE_KEY=
+GITHUB_DATA_SYNC_APP_INSTALL_URL=
 NOTECHONDRIA_SHARED_NETWORK=notechondria-shared
 DB_AUTO_REINIT_IF_MISMATCH=False
 </code></pre>

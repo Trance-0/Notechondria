@@ -316,6 +316,22 @@ required credentials are missing, the app will fail to start.</strong></p>
 <p>Optional but required if you use email verification or social sign-in — see
 <code>sample.northflank.env</code> for the full list (<code>SMTP_*</code>, <code>GOOGLE_OAUTH_*</code>,
 <code>GITHUB_APP_*</code>).</p>
+<p>If more than one Flutter app (editor / planner / portal) shares this
+backend, also set <code>GOOGLE_AUTHORIZED_REDIRECT_URIS</code> and
+<code>GITHUB_AUTHORIZED_REDIRECT_URIS</code> (comma-separated, since 0.1.90) so
+each app's sign-in lands back on its own host. Each entry must be
+pre-registered in the OAuth provider console.</p>
+<h3 id="experimental-github-data-sync"><a class="header" href="#experimental-github-data-sync">Experimental: GitHub data-sync</a></h3>
+<p>Since 0.1.90, every authenticated user can push their full account
+state (profile, settings, MCP skill, courses, notes, custom_meta,
+planner) to a GitHub repo they own via
+<code>POST /api/v1/integrations/github/push/</code>. To enable:</p>
+<ul>
+<li>Set the <code>GITHUB_DATA_SYNC_APP_*</code> env vars (see <code>docs/integrations/ github-sync.md</code> for the full list).</li>
+<li>Add <code>pyjwt + cryptography</code> to <code>backend/requirements.txt</code> and rebuild
+the image — the JWT signer used by <code>_refresh_installation_token</code>
+raises <code>GithubSyncError</code> otherwise.</li>
+</ul>
 <h2 id="runtime-behaviour"><a class="header" href="#runtime-behaviour">Runtime behaviour</a></h2>
 <ul>
 <li>Northflank injects <code>PORT</code>; the Dockerfile <code>EXPOSE 8000</code> must match the

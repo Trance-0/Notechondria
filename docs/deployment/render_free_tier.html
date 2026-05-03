@@ -196,7 +196,16 @@
 <li><code>ALLOWED_HOSTS</code></li>
 <li><code>CSRF_TRUSTED_ORIGINS</code></li>
 <li><code>OPENAI_API_KEY</code> (if needed)</li>
-<li>any <code>GITHUB_APP_*</code> values if that integration is enabled</li>
+<li>any <code>GITHUB_APP_*</code> values if the OAuth integration is enabled</li>
+<li><code>GOOGLE_AUTHORIZED_REDIRECT_URIS</code> /
+<code>GITHUB_AUTHORIZED_REDIRECT_URIS</code> (comma-separated, since 0.1.90) —
+set when more than one frontend app shares this backend so each
+app's sign-in lands back on its own host. Falls back to the
+single-value <code>GOOGLE_AUTHORIZED_REDIRECT_URI</code> /
+<code>GITHUB_AUTHORIZED_REDIRECT_URI</code> when unset.</li>
+<li>any <code>GITHUB_DATA_SYNC_APP_*</code> values for the experimental per-user
+GitHub data-sync (since 0.1.90); the push pipeline is gated until
+<code>pyjwt + cryptography</code> ship in <code>backend/requirements*.txt</code></li>
 </ul>
 <p>Render also provides:</p>
 <ul>
