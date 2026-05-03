@@ -75,8 +75,9 @@ The MCP endpoint is exposed in:
 
 - [editor_app Settings → API Key section](../client/editor_app.md)
   — the rotate button + `mcp_endpoint` helper text.
-- Portal/planner ports tracked in [TODO.md](../TODO.md) under
-  "Login and account info".
+- Portal and planner reached MCP-skill / GitHub-sync card parity
+  with the editor in 0.1.91 — see
+  [`docs/versions/0.1.91.md`](../versions/0.1.91.md).
 
 ## Notes
 

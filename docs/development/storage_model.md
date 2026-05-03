@@ -204,9 +204,8 @@ empties `local_drafts` (after pushing); refresh refills
 ## Known issues to be aware of
 
 - **Token expiry / "Invalid token"** — the frontend's "offline
-  fallback: Invalid token" message (in
-  [`docs/TODO.md`](../TODO.md)) fires when a stored DRF token is
-  rejected by the server (revoked, deleted, or signed by a
+  fallback: Invalid token" message fires when a stored DRF token
+  is rejected by the server (revoked, deleted, or signed by a
   different `SECRET_KEY`). The current behavior is to fall back to
   offline mode silently, which can mask the underlying issue. The
   right fix is to surface a "session expired — please sign in

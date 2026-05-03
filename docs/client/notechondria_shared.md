@@ -16,8 +16,10 @@ across their `app_shell.dart` files. 0.1.52/0.1.53 codified the
 1000-LOC hard ceiling per file and started peeling those duplicates
 up into a shared library; 0.1.65+ added the multi-device session
 client surface here so the UI can be built once, not three times.
-Remaining de-dup work is tracked in the "File-size rule + cross-app
-sharing" entry in [`docs/TODO.md`](../TODO.md).
+The cross-app de-dup work landed in 0.1.78–0.1.82 (eight shared
+mixins under `notechondria_shared/lib/src/app_shell/`); see
+[`docs/versions/0.1.82.md`](../versions/0.1.82.md) and the
+adjacent rounds for per-mixin details.
 
 ## Layout
 

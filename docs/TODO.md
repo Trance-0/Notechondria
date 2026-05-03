@@ -20,39 +20,9 @@ Completed rounds live in `./docs/versions/<semver>.md` — do **not**
 restate them here. When a task is landed, delete its entry from this
 file and add a round-log entry to the new version doc.
 
-- [x] **Cross-app shared mixins — 8 of 8 COMPLETE.** 0.1.52
-  codified the 1000-LOC ceiling in AGENTS.md §1.5; 0.1.53–0.1.61
-  brought every file in the three apps under the cap and shipped
-  the first three shared mixins out of
-  `notechondria_shared/lib/src/app_shell/`: `AppShellLogMixin`,
-  `AppShellAuthActionsMixin`, `AppShellOAuthMixin` (plus the
-  shared `AuthClient` interface and `url_strategy` shim).
-  0.1.78 added `AppShellLocalPersistMixin`; 0.1.79 added
-  `AppShellCourseHelpersMixin`; 0.1.80 added
-  `AppShellDraftHelpersMixin`; 0.1.81 added
-  `HttpClientInternalsMixin`; 0.1.82 added
-  `AppShellSessionMixin`. All eight mixins shipped — the
-  byte-identical chunks that used to live three times in
-  per-app `_AppShellState` files now live once in
-  `notechondria_shared`. See round-logs 0.1.78–0.1.82 for
-  per-mixin details.
-
 ## Global reusable components
 
-### Start up animations
-
-### Sidebar/Navigation
-
 ### Login and account info
-
-- [x] **Full feature parity with editor Settings in portal.** 0.1.87.
-  API key section, password-change dialog, email-change dialog,
-  config file export/import.
-
-- [x] **Note cover images — planner / portal frontend.** 0.1.86.
-
-- [x] **Multi-device session manager — planner / portal frontend.**
-  0.1.86.
 
 - [ ] **Two-factor auth for password login.** Tracked separately
   because it needs a new backend flow plus UI. Scope:
@@ -78,81 +48,6 @@ file and add a round-log entry to the new version doc.
     Session).
 
 ### App preferences
-
-- [x] **Offline-mode — secondary fetch gates — 0.1.89.** "Load public notes"
-  button added to all three `_LearnerPage` widgets when `offlineMode` is true
-  and notes are empty. Category auto-sync guard added to all three
-  `_loadInitialData` methods: authenticated offline-mode users still fetch
-  courses so the sidebar category list stays current.
-
-- [x] **Per-app OAuth redirect URI — 0.1.90.** Backend now matches request
-  Origin/Referer against `GOOGLE_AUTHORIZED_REDIRECT_URIS` /
-  `GITHUB_AUTHORIZED_REDIRECT_URIS` so portal/planner sign-in lands back on
-  the calling app instead of the editor. Single-value env vars stay as a
-  fallback.
-
-- [x] **MCP skill.md editor (editor_app only) — 0.1.90.** New
-  `_McpSkillSection` in editor settings → API settings; persists via
-  `Creator.mcp_skill_md` and is surfaced as the MCP `initialize`
-  `instructions` field. Portal/planner parity tracked below.
-
-- [x] **Custom note meta variables (editor_app only) — 0.1.90.** Expandable
-  list of `(key, value)` pairs in `_NoteMetadataDialog`, persisted on new
-  `Note.custom_meta` column and round-tripped to YAML frontmatter on the
-  GitHub-sync export. Portal/planner parity tracked below.
-
-- [x] **Experimental GitHub Sync — backend export pipeline + UI shell —
-  0.1.90.** New `creators.GithubIntegration` model + `creators.services.
-  github_sync` materialize/push helpers + `/api/v1/integrations/github/*`
-  endpoints. Frontend has a disabled "Connect to GitHub" card pointing at
-  `docs/integrations/github-sync.md`. JWT signing + repo-picker still open
-  (see below).
-
-- [x] **Settings UI parity (MCP skill + GitHub Sync) — portal_app and
-  planner_app — 0.1.91.** Shared `McpSkillSection` /
-  `GithubSyncExperimentalCard` extracted into `notechondria_shared`
-  and mounted in portal's Security card and planner's Login&sync
-  card. Editor switched to the shared widget too. App-shell wiring
-  for `onSaveMcpSkill` added in both apps.
-
-- [x] **Custom-meta expandable list — portal/planner note dialogs —
-  0.1.92.** New shared `CustomMetaController` + `CustomMetaListEditor`
-  in `notechondria_shared/lib/src/components/`. Editor migrated off
-  its private copy; portal and planner `_NoteMetadataDialog`s now mount
-  the same widget and their `learner_note_editor.dart` save payload
-  strips `custom_meta` from `metadata_json` and sends it on its own
-  field. Docs (root `README.md`, `docs/readme.md`,
-  `docs/deployment/{deploy,render_free_tier,northflank}.md`) updated
-  with the per-app OAuth allow-list and GitHub data-sync env-var
-  guidance.
-
-- [x] **Experimental GitHub Sync — wire the actual push path — 0.1.93.**
-  - JWT signer landed: `PyJWT>=2.8` + `cryptography>=42` shipped in
-    `backend/requirements{,-render}.txt`; `_refresh_installation_token`
-    signs the App JWT, exchanges it for an installation token, and
-    persists `access_token` + expiry on `GithubIntegration`.
-  - Repo-picker UI landed: `GithubSyncExperimentalCard` is now
-    stateful with three states (no-callbacks / disconnected /
-    connected), reads `/installation/repositories` via the new
-    `GET /api/v1/integrations/github/repos/`, and persists the
-    chosen repo via the existing callback endpoint.
-  - Restore CLI landed at `backend/scripts/github_sync_restore.py`
-    (stdlib-only; supports `--dry-run` + `--verbose`; idempotent
-    via `client_draft_id`).
-  - **Static-asset re-bundling — landed 0.1.94.** Push side gains
-    `include_assets=true` toggle on the card and on
-    `POST /api/v1/integrations/github/push/`; per-file (50 MB) +
-    per-push (200 MB) caps; oversized files recorded in
-    `manifest.skipped_assets`. Restore CLI gains `--include-assets`
-    and re-uploads through the existing multipart endpoints.
-  - **Push-side conflict resolution** still open — Contents API
-    PUTs overwrite the remote blob; multi-device edits between
-    syncs can lose changes. Next round: fetch-diff-warn before
-    overwrite.
-  - **Asset rotation / pruning** still open — orphan asset paths
-    accumulate as notes are deleted; needs a `--prune-orphans` mode
-    that walks the Trees API and removes unreferenced
-    `assets/notes/<uuid>/` subtrees in the same commit.
 
 ### Debug log window
 
@@ -183,34 +78,7 @@ file and add a round-log entry to the new version doc.
 
 ### Note editor
 
-- [x] **Editor overflow menu already available in planner/portal.**
-  Both apps use `_NoteEditorDialog` from `editor_app/lib/modules/note_editor.dart`
-  which already ships the PopupMenuButton (Edit note meta / Switch
-  editor / View attachments). No additional porting needed.
-
-- [x] **Attachment CDN — remaining deferred items — 0.1.88.**
-  IndexedDB web backend replaced the in-memory stub
-  (`_WebLocalAttachmentBackend` now uses `idb_shim`-backed
-  IndexedDB). Storage-budget UI surface added: `formatBytes` utility
-  shared across apps, `_AttachmentStorageTile` widget in editor
-  settings showing total bytes + 500 MB warning.
-
-- [x] **Attachment CDN server-side — 0.1.88.**
-  `note_attachment_path` now keys by `note.uuid.hex` instead of
-  integer `note.id`. New UUID-keyed API endpoints at
-  `/notes/uuid/<uuid>/attachments/` for list/upload/delete.
-  Backward-compatible with existing integer-keyed endpoints.
-  Backend tests cover list, upload, delete, permissions, size caps.
-
 ### Editor Settings
-
-- [x] **Planner export/import — 0.1.89.** New `core/local_archive_io.dart`
-  wired with `plannerEvents` / `calendarFeeds` / `activityWeek` buckets.
-  Portal export/import was already done in 0.1.87.
-
-- [x] **Cross-app export round-trip tests — 0.1.89.** Three new tests in
-  `notechondria_shared/test/local_archive_test.dart` covering planner→editor,
-  editor→planner, and portal→planner round-trips.
 
 ## Planner
 
@@ -226,6 +94,22 @@ file and add a round-log entry to the new version doc.
 ## Backend
 
 ### MCP
+
+### GitHub Sync
+
+- [ ] **Push-side conflict resolution.** The Contents API PUTs in
+  `creators.services.github_sync.commit_and_push` overwrite the
+  remote blob unconditionally. A user editing on two devices
+  between syncs can lose changes. Fetch the existing blob on each
+  path, diff against the materialized payload, and surface a
+  "remote changed — overwrite or merge?" prompt before writing.
+  Lifted from the 0.1.94 carryover.
+- [ ] **Asset rotation / pruning.** Repeated `include_assets=true`
+  pushes accumulate orphan files for notes deleted client-side
+  whose old `assets/notes/<uuid>/` paths still live in the remote
+  tree. Add a `--prune-orphans` mode on the push pipeline that
+  walks the Trees API and removes unreferenced subtrees in the
+  same commit. Lifted from the 0.1.94 carryover.
 
 ## Release / CI
 
