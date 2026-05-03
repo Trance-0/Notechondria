@@ -209,7 +209,11 @@ class GithubSyncExperimentalCard extends StatefulWidget {
 
   /// `POST /api/v1/integrations/github/push/`. Returns the commit SHA
   /// or surfaces a `GithubSyncError` message via thrown exception.
-  final Future<Map<String, dynamic>> Function()? onPushNow;
+  /// ``includeAssets`` opts into inlining avatar / cover / attachment
+  /// bytes under ``assets/`` so the resulting clone is self-contained;
+  /// subject to the per-file and per-push size caps documented in
+  /// `creators.services.github_sync`.
+  final Future<Map<String, dynamic>> Function({bool includeAssets})? onPushNow;
 
   /// `DELETE /api/v1/integrations/github/status/`. Drops the
   /// integration row; the GitHub App stays installed on the user's
@@ -228,6 +232,7 @@ class _GithubSyncExperimentalCardState
   String? _selectedRepo;
   bool _loading = true;
   bool _busy = false;
+  bool _includeAssets = false;
   String? _lastCommitSha;
 
   @override
@@ -313,7 +318,7 @@ class _GithubSyncExperimentalCardState
     if (widget.onPushNow == null) return;
     setState(() => _busy = true);
     try {
-      final result = await widget.onPushNow!();
+      final result = await widget.onPushNow!(includeAssets: _includeAssets);
       final sha = result['commit_sha']?.toString() ?? '';
       if (!mounted) return;
       setState(() => _lastCommitSha = sha);
@@ -467,7 +472,26 @@ class _GithubSyncExperimentalCardState
             ],
             onChanged: _busy ? null : _selectRepo,
           ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 6),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          dense: true,
+          value: _includeAssets,
+          onChanged: _busy
+              ? null
+              : (value) => setState(() => _includeAssets = value),
+          title: const Text('Include assets'),
+          subtitle: Text(
+            _includeAssets
+                ? 'Avatar, cover images, and attachments are inlined '
+                    'under assets/. Subject to per-file (50 MB) and '
+                    'per-push (200 MB) caps.'
+                : 'Static assets stay referenced by URL only. Faster '
+                    'push, but a fresh server can\'t recover the bytes.',
+            style: theme.textTheme.bodySmall,
+          ),
+        ),
+        const SizedBox(height: 4),
         Row(
           children: [
             FilledButton.icon(

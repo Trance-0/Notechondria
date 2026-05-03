@@ -721,9 +721,16 @@ class HttpNotechondriaClient
   }
 
   @override
-  Future<Map<String, dynamic>> githubSyncPush(String token) async {
+  Future<Map<String, dynamic>> githubSyncPush(
+    String token, {
+    bool includeAssets = false,
+  }) async {
     final uri = _uri('/integrations/github/push/');
-    final response = await _post(uri, token: token, payload: const {});
+    final response = await _post(
+      uri,
+      token: token,
+      payload: {'include_assets': includeAssets},
+    );
     return Map<String, dynamic>.from(
       await decode(response, uri: uri, method: 'POST'),
     );

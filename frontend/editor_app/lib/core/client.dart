@@ -131,8 +131,13 @@ abstract class NotechondriaClient implements AuthClient {
   );
 
   /// `POST /api/v1/integrations/github/push/`. Materializes user
-  /// data into the chosen repo. Returns `{commit_sha: ...}`.
-  Future<Map<String, dynamic>> githubSyncPush(String token);
+  /// data into the chosen repo. Returns `{commit_sha: ...}`. When
+  /// ``includeAssets`` is true the backend also inlines avatar /
+  /// cover / attachment bytes under ``assets/``.
+  Future<Map<String, dynamic>> githubSyncPush(
+    String token, {
+    bool includeAssets,
+  });
 
   /// `DELETE /api/v1/integrations/github/status/`. Drops the local
   /// integration row; the GitHub App stays installed until the user

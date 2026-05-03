@@ -29,6 +29,8 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import mimetypes
+import secrets
 import sys
 from pathlib import Path
 from typing import Any
@@ -131,6 +133,83 @@ class RestoreClient:
     def get(self, path: str) -> dict:
         return self._request("GET", path)
 
+    def upload(
+        self,
+        method: str,
+        path: str,
+        *,
+        field: str,
+        filename: str,
+        content: bytes,
+        extra_fields: dict[str, str] | None = None,
+    ) -> dict:
+        """Send a multipart/form-data request. Used for the
+        --include-assets path: avatar / cover / attachment uploads
+        each go through their dedicated endpoint with a fixed file
+        field name (`avatar`, `cover`, `file`)."""
+        url = f"{self.api_base}{path}"
+        boundary = f"----notechondria{secrets.token_hex(16)}"
+        content_type = (
+            mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        )
+        body_parts: list[bytes] = []
+        for k, v in (extra_fields or {}).items():
+            body_parts.append(
+                f"--{boundary}\r\n"
+                f'Content-Disposition: form-data; name="{k}"\r\n\r\n'
+                f"{v}\r\n".encode("utf-8")
+            )
+        body_parts.append(
+            (
+                f"--{boundary}\r\n"
+                f'Content-Disposition: form-data; name="{field}"; '
+                f'filename="{filename}"\r\n'
+                f"Content-Type: {content_type}\r\n\r\n"
+            ).encode("utf-8")
+        )
+        body_parts.append(content)
+        body_parts.append(f"\r\n--{boundary}--\r\n".encode("utf-8"))
+        body = b"".join(body_parts)
+        headers = {
+            "Accept": "application/json",
+            "Authorization": f"Bearer {self.token}",
+            "User-Agent": "github-sync-restore/0.1",
+            "Content-Type": f"multipart/form-data; boundary={boundary}",
+            "Content-Length": str(len(body)),
+        }
+        if self.dry_run:
+            print(
+                f"[dry-run] {method} {url} multipart "
+                f"field={field} filename={filename} bytes={len(content)}"
+            )
+            return {}
+        req = request.Request(url, data=body, method=method, headers=headers)
+        try:
+            with request.urlopen(req, timeout=120) as resp:
+                raw = resp.read()
+        except error.HTTPError as exc:
+            try:
+                detail = exc.read().decode("utf-8", errors="replace")
+            except Exception:
+                detail = ""
+            raise RuntimeError(
+                "Restore aborted: "
+                "Backend.Scripts.GithubSyncRestore/upload — "
+                f"{method} {url} returned {exc.code}: {detail[:200]}."
+            ) from exc
+        except error.URLError as exc:
+            raise RuntimeError(
+                "Restore aborted: "
+                "Backend.Scripts.GithubSyncRestore/upload — "
+                f"{method} {url} network error: {exc.reason}."
+            ) from exc
+        if not raw:
+            return {}
+        try:
+            return json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return {}
+
 
 def _restore_settings(client: RestoreClient, repo: Path, *, verbose: bool) -> None:
     creator_path = repo / "profile" / "creator.json"
@@ -214,6 +293,7 @@ def _restore_notes(
     slug_to_id: dict[str, int],
     *,
     verbose: bool,
+    uuid_to_id: dict[str, int] | None = None,
 ) -> int:
     note_dir = repo / "notes"
     if not note_dir.exists():
@@ -244,7 +324,20 @@ def _restore_notes(
         }
         if course_id is not None:
             payload["course_id"] = course_id
-        client.post("/notes/", payload)
+        result = client.post("/notes/", payload)
+        # Track uuid → server id so the asset-restore phase can target
+        # this note's cover / attachment endpoints.
+        if uuid_to_id is not None and isinstance(result, dict):
+            note_uuid = (
+                meta.get("uuid")
+                or result.get("uuid")
+                or sidecar.stem
+            )
+            note_id = result.get("id")
+            if note_uuid and isinstance(note_id, int):
+                # Strip dashes so the map keys match the
+                # `notes/<uuid-hex>/...` paths in the export.
+                uuid_to_id[str(note_uuid).replace("-", "")] = note_id
         count += 1
         if verbose:
             print(f"notes: POST /notes/ {title!r} (client_draft_id={client_draft_id})")
@@ -275,6 +368,108 @@ def _restore_planner(client: RestoreClient, repo: Path, *, verbose: bool) -> int
     if verbose:
         print(f"planner: POSTed {count} event(s) to /planner-events/")
     return count
+
+
+def _restore_assets(
+    client: RestoreClient,
+    repo: Path,
+    uuid_to_id: dict[str, int],
+    *,
+    verbose: bool,
+) -> dict[str, int]:
+    """Walk the repo's `assets/` tree and POST avatar / cover /
+    attachment uploads through the existing multipart endpoints.
+
+    The map is built by `_restore_notes` from the note POST responses
+    so per-note cover and attachment uploads can target the right
+    server id without an extra lookup round-trip."""
+    asset_dir = repo / "assets"
+    counts = {"avatar": 0, "cover": 0, "attachment": 0, "skipped": 0}
+    if not asset_dir.exists():
+        return counts
+
+    # Avatar: assets/avatar.<ext>
+    for path in sorted(asset_dir.glob("avatar.*")):
+        try:
+            data = path.read_bytes()
+        except OSError:
+            counts["skipped"] += 1
+            continue
+        client.upload(
+            "PATCH",
+            "/settings/",
+            field="avatar",
+            filename=path.name,
+            content=data,
+        )
+        counts["avatar"] += 1
+        if verbose:
+            print(f"assets: PATCH /settings/ avatar={path.name} ({len(data)} bytes)")
+
+    # Per-note: assets/notes/<uuid-hex>/cover.<ext> +
+    # assets/notes/<uuid-hex>/attachments/*
+    notes_dir = asset_dir / "notes"
+    if notes_dir.exists():
+        for note_dir in sorted(p for p in notes_dir.iterdir() if p.is_dir()):
+            note_uuid_hex = note_dir.name
+            note_id = uuid_to_id.get(note_uuid_hex)
+            if note_id is None:
+                # We didn't restore the note in this run (already on
+                # server, or never appeared), so we have no id to
+                # target the multipart endpoints with.
+                if verbose:
+                    print(
+                        f"assets: skip {note_uuid_hex} "
+                        "(no server id from notes phase)"
+                    )
+                # Each missing note can hide multiple files; count once
+                # per orphan asset so the summary reflects the real
+                # skip count.
+                counts["skipped"] += sum(1 for _ in note_dir.rglob("*") if _.is_file())
+                continue
+            for cover in note_dir.glob("cover.*"):
+                try:
+                    data = cover.read_bytes()
+                except OSError:
+                    counts["skipped"] += 1
+                    continue
+                client.upload(
+                    "POST",
+                    f"/notes/{note_id}/cover/",
+                    field="cover",
+                    filename=cover.name,
+                    content=data,
+                )
+                counts["cover"] += 1
+                if verbose:
+                    print(
+                        f"assets: POST /notes/{note_id}/cover/ "
+                        f"{cover.name} ({len(data)} bytes)"
+                    )
+            attach_dir = note_dir / "attachments"
+            if attach_dir.exists():
+                for attach in sorted(attach_dir.iterdir()):
+                    if not attach.is_file():
+                        continue
+                    try:
+                        data = attach.read_bytes()
+                    except OSError:
+                        counts["skipped"] += 1
+                        continue
+                    client.upload(
+                        "POST",
+                        f"/notes/{note_id}/attachments/",
+                        field="file",
+                        filename=attach.name,
+                        content=data,
+                    )
+                    counts["attachment"] += 1
+                    if verbose:
+                        print(
+                            f"assets: POST /notes/{note_id}/attachments/ "
+                            f"{attach.name} ({len(data)} bytes)"
+                        )
+    return counts
 
 
 def _restore_calendar_feeds(client: RestoreClient, repo: Path, *, verbose: bool) -> int:
@@ -320,6 +515,14 @@ def main(argv: list[str] | None = None) -> int:
                         help="Print requests instead of issuing them.")
     parser.add_argument("--verbose", action="store_true",
                         help="Print per-section counters.")
+    parser.add_argument("--include-assets", action="store_true",
+                        help=(
+                            "After restoring notes, walk `assets/` and "
+                            "re-upload avatar / cover / attachment bytes "
+                            "via the multipart endpoints. Requires the "
+                            "source repo to have been pushed with "
+                            "`include_assets=true`."
+                        ))
     args = parser.parse_args(argv)
 
     repo = args.repo_path.expanduser().resolve()
@@ -341,16 +544,27 @@ def main(argv: list[str] | None = None) -> int:
 
     _restore_settings(client, repo, verbose=args.verbose)
     slug_to_id = _restore_courses(client, repo, verbose=args.verbose)
-    notes = _restore_notes(client, repo, slug_to_id, verbose=args.verbose)
+    uuid_to_id: dict[str, int] = {}
+    notes = _restore_notes(
+        client, repo, slug_to_id,
+        verbose=args.verbose, uuid_to_id=uuid_to_id,
+    )
     events = _restore_planner(client, repo, verbose=args.verbose)
     feeds = _restore_calendar_feeds(client, repo, verbose=args.verbose)
+    asset_counts: dict[str, int] = {}
+    if args.include_assets:
+        asset_counts = _restore_assets(
+            client, repo, uuid_to_id, verbose=args.verbose,
+        )
 
-    summary = {
+    summary: dict[str, Any] = {
         "courses": len(slug_to_id),
         "notes": notes,
         "planner_events": events,
         "calendar_feeds": feeds,
     }
+    if args.include_assets:
+        summary["assets"] = asset_counts
     print("Restore summary:", json.dumps(summary, indent=2))
     return 0
 

@@ -693,12 +693,19 @@ class HttpNotechondriaClient
   }
 
   @override
-  Future<Map<String, dynamic>> githubSyncPush(String token) async {
+  Future<Map<String, dynamic>> githubSyncPush(
+    String token, {
+    bool includeAssets = false,
+  }) async {
     final uri = _uri('/integrations/github/push/');
     final response = await send(
       'POST',
       uri,
-      () => _httpClient.post(uri, headers: headers(token: token)),
+      () => _httpClient.post(
+        uri,
+        headers: headers(token: token),
+        body: jsonEncode({'include_assets': includeAssets}),
+      ),
     );
     return Map<String, dynamic>.from(
         await decode(response, uri: uri, method: 'POST'));

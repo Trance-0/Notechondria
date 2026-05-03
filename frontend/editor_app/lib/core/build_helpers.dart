@@ -687,7 +687,11 @@ extension _AppShellBuildHelpersX on _AppShellState {
                           repoDefaultBranch.isNotEmpty)
                         'repo_default_branch': repoDefaultBranch,
                     }),
-                    onPushNow: () => widget.client.githubSyncPush(_token!),
+                    onPushNow: ({bool includeAssets = false}) =>
+                        widget.client.githubSyncPush(
+                      _token!,
+                      includeAssets: includeAssets,
+                    ),
                     onDisconnect: () =>
                         widget.client.githubSyncDisconnect(_token!),
                   )

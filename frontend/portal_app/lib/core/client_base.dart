@@ -114,7 +114,10 @@ abstract class NotechondriaClient implements AuthClient {
     String token,
     Map<String, dynamic> payload,
   );
-  Future<Map<String, dynamic>> githubSyncPush(String token);
+  Future<Map<String, dynamic>> githubSyncPush(
+    String token, {
+    bool includeAssets,
+  });
   Future<void> githubSyncDisconnect(String token);
 
   Future<Map<String, dynamic>> changePassword(
