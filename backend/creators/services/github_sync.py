@@ -59,6 +59,17 @@ logger = logging.getLogger("django")
 GITHUB_API = "https://api.github.com"
 SCHEMA_VERSION = 1
 
+# Caps for the experimental --include-assets push path. GitHub's
+# Contents API rejects blobs > 100 MB; we keep a tighter per-file cap
+# so a single rogue attachment can't blow the per-push budget. The
+# total cap is a soft guard against pushes that would push the user's
+# repo over GitHub's free-tier soft limits (1 GB recommended). Files
+# over the per-file cap are recorded in the manifest with `size_bytes`
+# but their bytes are not written; static-asset URLs in the export
+# still point at the original CDN, matching the asset-less behaviour.
+ASSET_FILE_MAX_BYTES = 50 * 1024 * 1024
+ASSET_TOTAL_MAX_BYTES = 200 * 1024 * 1024
+
 
 class GithubSyncError(RuntimeError):
     """User-visible failure during a push/pull cycle. The message must
@@ -221,6 +232,123 @@ def _note_files(creator: Creator) -> list[_RepoFile]:
     return files
 
 
+def _read_field_bytes(field) -> bytes | None:
+    """Read a Django ImageField/FileField's content into memory.
+
+    Returns None if the field is empty, the underlying storage doesn't
+    have the file, or the read raised an OSError (file moved between
+    Django save and our read). Lossy by design — we don't want one
+    missing avatar to kill a whole push.
+    """
+    if not field:
+        return None
+    try:
+        with field.open("rb") as fh:
+            return fh.read()
+    except (OSError, FileNotFoundError, ValueError):
+        return None
+
+
+def _ext_from_name(name: str, default: str = "") -> str:
+    """Extract a lowercase extension (without leading dot). Used to
+    keep asset paths recognizable by the user when they browse the
+    repo."""
+    if not name:
+        return default
+    base = name.rsplit("/", 1)[-1]
+    if "." not in base:
+        return default
+    return base.rsplit(".", 1)[-1].lower()
+
+
+def _asset_files(
+    creator: Creator,
+    *,
+    skipped: list[dict[str, Any]],
+) -> list[_RepoFile]:
+    """Materialize avatar + cover image + attachment bytes into the
+    repo so a `git clone` is genuinely server-loss-survivable.
+
+    Layout:
+    - `assets/avatar.<ext>` — single profile picture per Creator.
+    - `assets/notes/<note-uuid>/cover.<ext>` — note cover image.
+    - `assets/notes/<note-uuid>/attachments/<attachment-uuid>.<ext>`
+      — every attachment for the note.
+
+    Files larger than ``ASSET_FILE_MAX_BYTES`` and any read that pushes
+    the running total past ``ASSET_TOTAL_MAX_BYTES`` are skipped and
+    recorded in ``skipped`` so the manifest can surface them; the
+    parent record's URL reference is preserved unchanged in the
+    JSON sidecars regardless.
+    """
+    from notes.models import Note, NoteAttachment
+
+    files: list[_RepoFile] = []
+    total_bytes = 0
+
+    def _budget_ok(size: int) -> bool:
+        return (
+            size <= ASSET_FILE_MAX_BYTES
+            and total_bytes + size <= ASSET_TOTAL_MAX_BYTES
+        )
+
+    # Avatar.
+    if creator.image:
+        ext = _ext_from_name(creator.image.name, "png")
+        data = _read_field_bytes(creator.image)
+        if data is not None:
+            if _budget_ok(len(data)):
+                files.append(_RepoFile(f"assets/avatar.{ext}", data))
+                total_bytes += len(data)
+            else:
+                skipped.append({
+                    "path": f"assets/avatar.{ext}",
+                    "size_bytes": len(data),
+                    "reason": "exceeds_per_file_or_total_cap",
+                })
+
+    # Note covers + attachments.
+    for note in Note.objects.filter(creator_id=creator, deleted_at__isnull=True):
+        if note.cover_image:
+            ext = _ext_from_name(note.cover_image.name, "png")
+            data = _read_field_bytes(note.cover_image)
+            path = f"assets/notes/{note.uuid.hex}/cover.{ext}"
+            if data is not None:
+                if _budget_ok(len(data)):
+                    files.append(_RepoFile(path, data))
+                    total_bytes += len(data)
+                else:
+                    skipped.append({
+                        "path": path,
+                        "size_bytes": len(data),
+                        "reason": "exceeds_per_file_or_total_cap",
+                    })
+        for attachment in NoteAttachment.objects.filter(note_id=note):
+            if not attachment.file:
+                continue
+            ext = _ext_from_name(
+                attachment.original_filename or attachment.file.name,
+                "bin",
+            )
+            data = _read_field_bytes(attachment.file)
+            uid = getattr(attachment, "uuid", None)
+            uid_hex = uid.hex if hasattr(uid, "hex") else str(attachment.id)
+            path = (
+                f"assets/notes/{note.uuid.hex}/attachments/{uid_hex}.{ext}"
+            )
+            if data is not None:
+                if _budget_ok(len(data)):
+                    files.append(_RepoFile(path, data))
+                    total_bytes += len(data)
+                else:
+                    skipped.append({
+                        "path": path,
+                        "size_bytes": len(data),
+                        "reason": "exceeds_per_file_or_total_cap",
+                    })
+    return files
+
+
 def _planner_files(creator: Creator) -> list[_RepoFile]:
     from planner.models import CalendarFeed, PlannerEvent
 
@@ -284,24 +412,57 @@ def _readme(creator: Creator) -> _RepoFile:
     return _RepoFile("README.md", body.encode("utf-8"))
 
 
-def _manifest(creator: Creator, files: list[_RepoFile]) -> _RepoFile:
+def _manifest(
+    creator: Creator,
+    files: list[_RepoFile],
+    *,
+    skipped_assets: list[dict[str, Any]] | None = None,
+    include_assets: bool = False,
+) -> _RepoFile:
     payload = {
         "schema_version": SCHEMA_VERSION,
         "creator_username": creator.user_id.username,
         "exported_at": _utc_iso(now()),
         "files": sorted(f.path for f in files),
+        "include_assets": include_assets,
     }
+    if skipped_assets:
+        payload["skipped_assets"] = skipped_assets
     return _RepoFile("manifest.json", _safe_json(payload).encode("utf-8"))
 
 
-def materialize(creator: Creator) -> list[_RepoFile]:
-    """Build the full export tree for ``creator``."""
+def materialize(
+    creator: Creator,
+    *,
+    include_assets: bool = False,
+) -> list[_RepoFile]:
+    """Build the full export tree for ``creator``.
+
+    When ``include_assets`` is True, the user's avatar, every note
+    cover image, and every note attachment are read from Django
+    storage and added under ``assets/...`` so a ``git clone`` is
+    self-contained. Files larger than ``ASSET_FILE_MAX_BYTES`` and any
+    asset that would push the running total past
+    ``ASSET_TOTAL_MAX_BYTES`` are skipped; the skipped list is
+    recorded in ``manifest.json`` so the operator (or restore CLI)
+    can decide what to do.
+    """
     files: list[_RepoFile] = []
     files.extend(_profile_files(creator))
     files.extend(_course_files(creator))
     files.extend(_note_files(creator))
     files.extend(_planner_files(creator))
-    files.append(_manifest(creator, files))
+    skipped_assets: list[dict[str, Any]] = []
+    if include_assets:
+        files.extend(_asset_files(creator, skipped=skipped_assets))
+    files.append(
+        _manifest(
+            creator,
+            files,
+            skipped_assets=skipped_assets,
+            include_assets=include_assets,
+        )
+    )
     files.append(_readme(creator))
     return files
 
@@ -510,9 +671,11 @@ def commit_and_push(
     return last_sha
 
 
-def push_user_data(creator: Creator) -> str:
+def push_user_data(creator: Creator, *, include_assets: bool = False) -> str:
     """Materialize and push the creator's full data export. Returns the
-    final commit SHA."""
+    final commit SHA. Pass ``include_assets=True`` to inline avatar /
+    cover / attachment bytes (subject to the per-file and per-push
+    size caps documented at the top of this module)."""
     integration = getattr(creator, "github_integration", None)
     if integration is None:
         raise GithubSyncError(
@@ -520,7 +683,7 @@ def push_user_data(creator: Creator) -> str:
             "Backend.Creators.GithubSync/push_user_data — "
             "no GitHub App installation linked to this account."
         )
-    files = materialize(creator)
+    files = materialize(creator, include_assets=include_assets)
     started = time.monotonic()
     sha = ""
     try:
@@ -544,10 +707,11 @@ def push_user_data(creator: Creator) -> str:
     logger.info(
         "Pushed user data to GitHub: "
         "Backend.Creators.GithubSync/push_user_data — "
-        "creator=%s repo=%s files=%d sha=%s duration=%.2fs.",
+        "creator=%s repo=%s files=%d include_assets=%s sha=%s duration=%.2fs.",
         creator.user_id.username,
         integration.repo_full_name,
         len(files),
+        include_assets,
         sha[:8],
         duration,
     )

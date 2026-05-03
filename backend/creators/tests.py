@@ -681,3 +681,114 @@ class GithubSyncTests(TestCase):
         resp = self.client_api.post('/api/v1/integrations/github/push/')
         self.assertEqual(resp.status_code, 400)
         self.assertIn('no GitHub App installation', resp.json()['detail'])
+
+    def test_materialize_skips_assets_by_default(self):
+        """Without `include_assets`, the export must NOT contain
+        any `assets/...` paths even if the user has an avatar."""
+        from django.core.files.base import ContentFile
+        from creators.services.github_sync import materialize
+
+        self.creator.image.save(
+            'avatar.png', ContentFile(b'\x89PNG\r\n\x1a\nfake'),
+        )
+        self.creator.refresh_from_db()
+        files = materialize(self.creator)
+        for f in files:
+            self.assertFalse(
+                f.path.startswith('assets/'),
+                msg=f'unexpected asset path in default export: {f.path}',
+            )
+
+    def test_materialize_include_assets_inlines_avatar_and_cover(self):
+        """With `include_assets=True`, the avatar and any note
+        cover_image are read from Django storage and added under
+        `assets/`. The manifest's `include_assets` flag flips true."""
+        from django.core.files.base import ContentFile
+        from courses.models import Course
+        from notes.models import Note
+        from notechondria.utils import generate_unique_id
+        from creators.services.github_sync import materialize
+
+        self.creator.image.save(
+            'avatar.png', ContentFile(b'\x89PNG\r\n\x1a\nfake'),
+        )
+        self.creator.refresh_from_db()
+        course = Course.objects.create(
+            creator_id=self.creator,
+            slug='inbox',
+            title='Inbox',
+            is_default=True,
+        )
+        note = Note.objects.create(
+            creator_id=self.creator,
+            course_id=course,
+            sharing_id=generate_unique_id(Note, 'sharing_id'),
+            title='Hello',
+            content='# hello',
+        )
+        note.cover_image.save(
+            'cover.jpg', ContentFile(b'\xff\xd8\xff\xe0fakejpg'),
+        )
+        note.refresh_from_db()
+        files = materialize(self.creator, include_assets=True)
+        paths = {f.path for f in files}
+        self.assertIn('assets/avatar.png', paths)
+        self.assertIn(f'assets/notes/{note.uuid.hex}/cover.jpg', paths)
+        # Manifest should declare the flag so the restore CLI knows
+        # whether to look for assets or follow CDN URLs.
+        manifest_bytes = next(
+            f.content_bytes for f in files if f.path == 'manifest.json'
+        )
+        manifest = json.loads(manifest_bytes.decode('utf-8'))
+        self.assertTrue(manifest['include_assets'])
+
+    def test_materialize_skips_assets_over_per_file_cap(self):
+        """A single attachment over `ASSET_FILE_MAX_BYTES` must NOT
+        appear in the export; the manifest records the skip with a
+        `size_bytes` and `reason` so the operator can audit."""
+        from unittest.mock import patch
+
+        from django.core.files.base import ContentFile
+        from courses.models import Course
+        from notes.models import Note
+        from notechondria.utils import generate_unique_id
+        from creators.services import github_sync
+
+        course = Course.objects.create(
+            creator_id=self.creator, slug='inbox', title='Inbox',
+            is_default=True,
+        )
+        note = Note.objects.create(
+            creator_id=self.creator,
+            course_id=course,
+            sharing_id=generate_unique_id(Note, 'sharing_id'),
+            title='Heavy',
+            content='heavy',
+        )
+        note.cover_image.save(
+            'big.png', ContentFile(b'X' * 1024),
+        )
+        note.refresh_from_db()
+        # Lower the cap to 100 bytes so the 1 KB cover trips it.
+        with patch.object(github_sync, 'ASSET_FILE_MAX_BYTES', 100):
+            files = github_sync.materialize(
+                self.creator, include_assets=True,
+            )
+        paths = {f.path for f in files}
+        self.assertNotIn(
+            f'assets/notes/{note.uuid.hex}/cover.png', paths,
+            msg='oversized asset should have been skipped',
+        )
+        manifest = json.loads(
+            next(
+                f.content_bytes for f in files if f.path == 'manifest.json'
+            ).decode('utf-8'),
+        )
+        skipped = manifest.get('skipped_assets') or []
+        self.assertTrue(
+            any(
+                entry['path'].endswith(f'/{note.uuid.hex}/cover.png')
+                for entry in skipped
+            ),
+            msg=f'skipped_assets did not record the cover: {skipped!r}',
+        )

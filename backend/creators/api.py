@@ -2235,7 +2235,14 @@ class GithubSyncCallbackApiView(APIView):
 
 class GithubSyncPushApiView(APIView):
     """Push the authenticated user's full server-side data to their
-    linked GitHub repo. Returns the resulting commit SHA."""
+    linked GitHub repo. Returns the resulting commit SHA.
+
+    Accepts an optional ``include_assets`` query string flag (or JSON
+    body field) — when truthy, avatar / cover / attachment bytes are
+    inlined under ``assets/`` in the export so the resulting clone is
+    self-contained. Subject to the per-file and per-push size caps in
+    `creators.services.github_sync`.
+    """
 
     permission_classes = [permissions.IsAuthenticated]
 
@@ -2243,14 +2250,23 @@ class GithubSyncPushApiView(APIView):
         from .services.github_sync import GithubSyncError, push_user_data
 
         creator = ensure_creator(request.user)
+        # Accept the flag from either the query string (for the
+        # frontend's GET-style toggle) or the JSON body (for scripted
+        # callers that prefer to keep everything in one payload).
+        raw = (
+            request.query_params.get("include_assets")
+            or request.data.get("include_assets")
+            if hasattr(request, "data") else None
+        )
+        include_assets = str(raw).lower() in ("1", "true", "yes", "on")
         try:
-            sha = push_user_data(creator)
+            sha = push_user_data(creator, include_assets=include_assets)
         except GithubSyncError as exc:
             return Response(
                 {"detail": str(exc)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        return Response({"commit_sha": sha})
+        return Response({"commit_sha": sha, "include_assets": include_assets})
 
 
 class GithubSyncReposApiView(APIView):
