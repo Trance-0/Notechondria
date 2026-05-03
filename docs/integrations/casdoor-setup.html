@@ -1,0 +1,449 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Casdoor login setup runbook - Notechondria Documentation</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "navy";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../index.html">Project Overview</a></li><li class="chapter-item expanded affix "><a href="../index.html">Long-Form Agent Handoff</a></li><li class="chapter-item expanded affix "><a href="../TODO.html">TODO</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">Client (frontend apps)</li><li class="chapter-item expanded "><a href="../client/editor_app.html"><strong aria-hidden="true">1.</strong> Editor app</a></li><li class="chapter-item expanded "><a href="../client/planner_app.html"><strong aria-hidden="true">2.</strong> Planner app</a></li><li class="chapter-item expanded "><a href="../client/portal_app.html"><strong aria-hidden="true">3.</strong> Portal app</a></li><li class="chapter-item expanded "><a href="../client/notechondria_shared.html"><strong aria-hidden="true">4.</strong> notechondria_shared package</a></li><li class="chapter-item expanded affix "><li class="part-title">Server (backend)</li><li class="chapter-item expanded "><a href="../server/backend.html"><strong aria-hidden="true">5.</strong> Backend overview</a></li><li class="chapter-item expanded "><a href="../server/creators.html"><strong aria-hidden="true">6.</strong> creators app</a></li><li class="chapter-item expanded "><a href="../server/notes.html"><strong aria-hidden="true">7.</strong> notes app</a></li><li class="chapter-item expanded "><a href="../server/mcp.html"><strong aria-hidden="true">8.</strong> mcp app</a></li><li class="chapter-item expanded affix "><li class="part-title">API</li><li class="chapter-item expanded "><a href="../api/backend_api_spec.html"><strong aria-hidden="true">9.</strong> Backend API Specification</a></li><li class="chapter-item expanded affix "><li class="part-title">Deployment</li><li class="chapter-item expanded "><a href="../deployment/overview.html"><strong aria-hidden="true">10.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../deployment/release.html"><strong aria-hidden="true">11.</strong> Release process (tag → GitHub Release)</a></li><li class="chapter-item expanded "><a href="../deployment/deploy.html"><strong aria-hidden="true">12.</strong> Docker-compose / Jenkins Full-stack Guide</a></li><li class="chapter-item expanded "><a href="../deployment/render_free_tier.html"><strong aria-hidden="true">13.</strong> Render Free Tier (Backend)</a></li><li class="chapter-item expanded "><a href="../deployment/northflank.html"><strong aria-hidden="true">14.</strong> Northflank Free Tier (Backend)</a></li><li class="chapter-item expanded affix "><li class="part-title">Development</li><li class="chapter-item expanded "><a href="../development/local_dev.html"><strong aria-hidden="true">15.</strong> Local Development Guide</a></li><li class="chapter-item expanded "><a href="../development/python_environments.html"><strong aria-hidden="true">16.</strong> Python Environments</a></li><li class="chapter-item expanded "><a href="../development/ai_integration.html"><strong aria-hidden="true">17.</strong> AI Integration (stub status and forward plan)</a></li><li class="chapter-item expanded "><a href="../development/storage_model.html"><strong aria-hidden="true">18.</strong> Storage model (Django + frontend offline)</a></li><li class="chapter-item expanded "><a href="../development/canvas_like_calendar_mvp.html"><strong aria-hidden="true">19.</strong> Canvas-like Calendar Product Concept</a></li><li class="chapter-item expanded affix "><li class="part-title">Integrations</li><li class="chapter-item expanded "><a href="../integrations/github_app_integration.html"><strong aria-hidden="true">20.</strong> GitHub App Integration</a></li><li class="chapter-item expanded "><a href="../integrations/github-sync.html"><strong aria-hidden="true">21.</strong> GitHub Sync (experimental)</a></li><li class="chapter-item expanded "><a href="../integrations/casdoor-migration.html"><strong aria-hidden="true">22.</strong> Casdoor migration plan</a></li><li class="chapter-item expanded "><a href="../integrations/casdoor-setup.html" class="active"><strong aria-hidden="true">23.</strong> Casdoor login setup runbook</a></li><li class="chapter-item expanded affix "><li class="part-title">Operations</li><li class="chapter-item expanded "><a href="../operations/postgres_migration.html"><strong aria-hidden="true">24.</strong> PostgreSQL Migration</a></li><li class="chapter-item expanded affix "><li class="part-title">Testing</li><li class="chapter-item expanded "><a href="../testing/backend_test_plan.html"><strong aria-hidden="true">25.</strong> Backend Test Plan</a></li><li class="chapter-item expanded affix "><li class="part-title">Versions</li><li class="chapter-item expanded "><a href="../versions/0.1.100.html"><strong aria-hidden="true">26.</strong> 0.1.100 — docs site fixed + Casdoor setup runbook + sample.env refresh</a></li><li class="chapter-item expanded "><a href="../versions/0.1.99.html"><strong aria-hidden="true">27.</strong> 0.1.99 — Casdoor as the primary auth surface</a></li><li class="chapter-item expanded "><a href="../versions/0.1.98.html"><strong aria-hidden="true">28.</strong> 0.1.98 — Casdoor bind / unlink (post-phase-3 hardening)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.97.html"><strong aria-hidden="true">29.</strong> 0.1.97 — Casdoor migration phase 3 (Flutter SDK leg)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.96.html"><strong aria-hidden="true">30.</strong> 0.1.96 — Casdoor migration phase 2 (JWT auth + exchange endpoint)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.95.html"><strong aria-hidden="true">31.</strong> 0.1.95 — handshake version fix + Casdoor migration plan + MCP smoke test</a></li><li class="chapter-item expanded "><a href="../versions/0.1.94.html"><strong aria-hidden="true">32.</strong> 0.1.94 — GitHub Sync static-asset bundling (push + restore round-trip)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.93.html"><strong aria-hidden="true">33.</strong> 0.1.93 — GitHub Sync push pipeline (JWT signing, repo picker, restore CLI)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.92.html"><strong aria-hidden="true">34.</strong> 0.1.92 — shared CustomMetaListEditor in all three note-metadata dialogs + docs sync</a></li><li class="chapter-item expanded "><a href="../versions/0.1.91.html"><strong aria-hidden="true">35.</strong> 0.1.91 — settings UI parity: MCP skill + GitHub Sync into portal/planner</a></li><li class="chapter-item expanded "><a href="../versions/0.1.90.html"><strong aria-hidden="true">36.</strong> 0.1.90 — per-app OAuth redirect, MCP skill.md, custom note meta, experimental GitHub sync</a></li><li class="chapter-item expanded "><a href="../versions/0.1.89.html"><strong aria-hidden="true">37.</strong> 0.1.89 — offline-mode gates + planner export/import + cross-app tests</a></li><li class="chapter-item expanded "><a href="../versions/0.1.88.html"><strong aria-hidden="true">38.</strong> 0.1.88 — attachment UUID routing + IndexedDB web backend + storage-budget UI</a></li><li class="chapter-item expanded "><a href="../versions/0.1.87.html"><strong aria-hidden="true">39.</strong> 0.1.87 — portal Settings parity + editor bug fixes</a></li><li class="chapter-item expanded "><a href="../versions/0.1.86.html"><strong aria-hidden="true">40.</strong> 0.1.86</a></li><li class="chapter-item expanded "><a href="../versions/0.1.85.html"><strong aria-hidden="true">41.</strong> 0.1.85</a></li><li class="chapter-item expanded "><a href="../versions/0.1.84.html"><strong aria-hidden="true">42.</strong> 0.1.84</a></li><li class="chapter-item expanded "><a href="../versions/0.1.83.html"><strong aria-hidden="true">43.</strong> 0.1.83</a></li><li class="chapter-item expanded "><a href="../versions/0.1.82.html"><strong aria-hidden="true">44.</strong> 0.1.82</a></li><li class="chapter-item expanded "><a href="../versions/0.1.81.html"><strong aria-hidden="true">45.</strong> 0.1.81</a></li><li class="chapter-item expanded "><a href="../versions/0.1.80.html"><strong aria-hidden="true">46.</strong> 0.1.80</a></li><li class="chapter-item expanded "><a href="../versions/0.1.79.html"><strong aria-hidden="true">47.</strong> 0.1.79</a></li><li class="chapter-item expanded "><a href="../versions/0.1.78.html"><strong aria-hidden="true">48.</strong> 0.1.78</a></li><li class="chapter-item expanded "><a href="../versions/0.1.77.html"><strong aria-hidden="true">49.</strong> 0.1.77</a></li><li class="chapter-item expanded "><a href="../versions/0.1.76.html"><strong aria-hidden="true">50.</strong> 0.1.76</a></li><li class="chapter-item expanded "><a href="../versions/0.1.75.html"><strong aria-hidden="true">51.</strong> 0.1.75</a></li><li class="chapter-item expanded "><a href="../versions/0.1.74.html"><strong aria-hidden="true">52.</strong> 0.1.74</a></li><li class="chapter-item expanded "><a href="../versions/0.1.73.html"><strong aria-hidden="true">53.</strong> 0.1.73</a></li><li class="chapter-item expanded "><a href="../versions/0.1.72.html"><strong aria-hidden="true">54.</strong> 0.1.72</a></li><li class="chapter-item expanded "><a href="../versions/0.1.71.html"><strong aria-hidden="true">55.</strong> 0.1.71</a></li><li class="chapter-item expanded "><a href="../versions/0.1.70.html"><strong aria-hidden="true">56.</strong> 0.1.70</a></li><li class="chapter-item expanded "><a href="../versions/0.1.69.html"><strong aria-hidden="true">57.</strong> 0.1.69</a></li><li class="chapter-item expanded "><a href="../versions/0.1.68.html"><strong aria-hidden="true">58.</strong> 0.1.68</a></li><li class="chapter-item expanded "><a href="../versions/0.1.67.html"><strong aria-hidden="true">59.</strong> 0.1.67</a></li><li class="chapter-item expanded "><a href="../versions/0.1.66.html"><strong aria-hidden="true">60.</strong> 0.1.66</a></li><li class="chapter-item expanded "><a href="../versions/0.1.65.html"><strong aria-hidden="true">61.</strong> 0.1.65</a></li><li class="chapter-item expanded "><a href="../versions/0.1.64.html"><strong aria-hidden="true">62.</strong> 0.1.64</a></li><li class="chapter-item expanded "><a href="../versions/0.1.63.html"><strong aria-hidden="true">63.</strong> 0.1.63</a></li><li class="chapter-item expanded "><a href="../versions/0.1.62.html"><strong aria-hidden="true">64.</strong> 0.1.62</a></li><li class="chapter-item expanded "><a href="../versions/0.1.61.html"><strong aria-hidden="true">65.</strong> 0.1.61</a></li><li class="chapter-item expanded "><a href="../versions/0.1.60.html"><strong aria-hidden="true">66.</strong> 0.1.60</a></li><li class="chapter-item expanded "><a href="../versions/0.1.59.html"><strong aria-hidden="true">67.</strong> 0.1.59</a></li><li class="chapter-item expanded "><a href="../versions/0.1.58.html"><strong aria-hidden="true">68.</strong> 0.1.58</a></li><li class="chapter-item expanded "><a href="../versions/0.1.57.html"><strong aria-hidden="true">69.</strong> 0.1.57</a></li><li class="chapter-item expanded "><a href="../versions/0.1.56.html"><strong aria-hidden="true">70.</strong> 0.1.56</a></li><li class="chapter-item expanded "><a href="../versions/0.1.55.html"><strong aria-hidden="true">71.</strong> 0.1.55</a></li><li class="chapter-item expanded "><a href="../versions/0.1.54.html"><strong aria-hidden="true">72.</strong> 0.1.54</a></li><li class="chapter-item expanded "><a href="../versions/0.1.53.html"><strong aria-hidden="true">73.</strong> 0.1.53</a></li><li class="chapter-item expanded "><a href="../versions/0.1.52.html"><strong aria-hidden="true">74.</strong> 0.1.52</a></li><li class="chapter-item expanded "><a href="../versions/0.1.51.html"><strong aria-hidden="true">75.</strong> 0.1.51</a></li><li class="chapter-item expanded "><a href="../versions/0.1.50.html"><strong aria-hidden="true">76.</strong> 0.1.50</a></li><li class="chapter-item expanded "><a href="../versions/0.1.49.html"><strong aria-hidden="true">77.</strong> 0.1.49</a></li><li class="chapter-item expanded "><a href="../versions/0.1.48.html"><strong aria-hidden="true">78.</strong> 0.1.48</a></li><li class="chapter-item expanded "><a href="../versions/0.1.47.html"><strong aria-hidden="true">79.</strong> 0.1.47</a></li><li class="chapter-item expanded "><a href="../versions/0.1.46.html"><strong aria-hidden="true">80.</strong> 0.1.46</a></li><li class="chapter-item expanded "><a href="../versions/0.1.45.html"><strong aria-hidden="true">81.</strong> 0.1.45</a></li><li class="chapter-item expanded "><a href="../versions/0.1.44.html"><strong aria-hidden="true">82.</strong> 0.1.44</a></li><li class="chapter-item expanded "><a href="../versions/0.1.43.html"><strong aria-hidden="true">83.</strong> 0.1.43</a></li><li class="chapter-item expanded "><a href="../versions/0.1.42.html"><strong aria-hidden="true">84.</strong> 0.1.42</a></li><li class="chapter-item expanded "><a href="../versions/0.1.41.html"><strong aria-hidden="true">85.</strong> 0.1.41</a></li><li class="chapter-item expanded "><a href="../versions/0.1.40.html"><strong aria-hidden="true">86.</strong> 0.1.40</a></li><li class="chapter-item expanded "><a href="../versions/0.1.39.html"><strong aria-hidden="true">87.</strong> 0.1.39</a></li><li class="chapter-item expanded "><a href="../versions/0.1.38.html"><strong aria-hidden="true">88.</strong> 0.1.38</a></li><li class="chapter-item expanded "><a href="../versions/0.1.37.html"><strong aria-hidden="true">89.</strong> 0.1.37</a></li><li class="chapter-item expanded "><a href="../versions/0.1.36.html"><strong aria-hidden="true">90.</strong> 0.1.36</a></li><li class="chapter-item expanded "><a href="../versions/0.1.35.html"><strong aria-hidden="true">91.</strong> 0.1.35</a></li><li class="chapter-item expanded "><a href="../versions/0.1.34.html"><strong aria-hidden="true">92.</strong> 0.1.34</a></li><li class="chapter-item expanded "><a href="../versions/0.1.33.html"><strong aria-hidden="true">93.</strong> 0.1.33</a></li><li class="chapter-item expanded "><a href="../versions/0.1.32.html"><strong aria-hidden="true">94.</strong> 0.1.32</a></li><li class="chapter-item expanded "><a href="../versions/0.1.31.html"><strong aria-hidden="true">95.</strong> 0.1.31</a></li><li class="chapter-item expanded "><a href="../versions/0.1.30.html"><strong aria-hidden="true">96.</strong> 0.1.30</a></li><li class="chapter-item expanded "><a href="../versions/0.1.29.html"><strong aria-hidden="true">97.</strong> 0.1.29</a></li><li class="chapter-item expanded "><a href="../versions/0.1.28.html"><strong aria-hidden="true">98.</strong> 0.1.28</a></li><li class="chapter-item expanded "><a href="../versions/0.1.27.html"><strong aria-hidden="true">99.</strong> 0.1.27</a></li><li class="chapter-item expanded "><a href="../versions/0.1.26.html"><strong aria-hidden="true">100.</strong> 0.1.26</a></li><li class="chapter-item expanded "><a href="../versions/0.1.25.html"><strong aria-hidden="true">101.</strong> 0.1.25</a></li><li class="chapter-item expanded "><a href="../versions/0.1.24.html"><strong aria-hidden="true">102.</strong> 0.1.24</a></li><li class="chapter-item expanded "><a href="../versions/0.1.23.html"><strong aria-hidden="true">103.</strong> 0.1.23</a></li><li class="chapter-item expanded "><a href="../versions/0.1.22.html"><strong aria-hidden="true">104.</strong> 0.1.22</a></li><li class="chapter-item expanded "><a href="../versions/0.1.21.html"><strong aria-hidden="true">105.</strong> 0.1.21</a></li><li class="chapter-item expanded "><a href="../versions/0.1.20.html"><strong aria-hidden="true">106.</strong> 0.1.20</a></li><li class="chapter-item expanded "><a href="../versions/0.1.19.html"><strong aria-hidden="true">107.</strong> 0.1.19</a></li><li class="chapter-item expanded "><a href="../versions/0.1.18.html"><strong aria-hidden="true">108.</strong> 0.1.18</a></li><li class="chapter-item expanded "><a href="../versions/0.1.17.html"><strong aria-hidden="true">109.</strong> 0.1.17</a></li><li class="chapter-item expanded "><a href="../versions/0.1.16.html"><strong aria-hidden="true">110.</strong> 0.1.16</a></li><li class="chapter-item expanded "><a href="../versions/0.1.15.html"><strong aria-hidden="true">111.</strong> 0.1.15</a></li><li class="chapter-item expanded "><a href="../versions/0.1.14.html"><strong aria-hidden="true">112.</strong> 0.1.14</a></li><li class="chapter-item expanded "><a href="../versions/0.1.13.html"><strong aria-hidden="true">113.</strong> 0.1.13</a></li><li class="chapter-item expanded "><a href="../versions/0.1.12.html"><strong aria-hidden="true">114.</strong> 0.1.12</a></li><li class="chapter-item expanded "><a href="../versions/0.1.11.html"><strong aria-hidden="true">115.</strong> 0.1.11</a></li><li class="chapter-item expanded "><a href="../versions/0.1.10.html"><strong aria-hidden="true">116.</strong> 0.1.10</a></li><li class="chapter-item expanded "><a href="../versions/0.1.9.html"><strong aria-hidden="true">117.</strong> 0.1.9</a></li><li class="chapter-item expanded "><a href="../versions/0.1.8.html"><strong aria-hidden="true">118.</strong> 0.1.8</a></li><li class="chapter-item expanded "><a href="../versions/0.1.7.html"><strong aria-hidden="true">119.</strong> 0.1.7</a></li><li class="chapter-item expanded "><a href="../versions/0.1.6.html"><strong aria-hidden="true">120.</strong> 0.1.6</a></li><li class="chapter-item expanded "><a href="../versions/0.1.5.html"><strong aria-hidden="true">121.</strong> 0.1.5</a></li><li class="chapter-item expanded "><a href="../versions/0.1.4.html"><strong aria-hidden="true">122.</strong> 0.1.4</a></li><li class="chapter-item expanded "><a href="../versions/0.1.3.html"><strong aria-hidden="true">123.</strong> 0.1.3</a></li><li class="chapter-item expanded "><a href="../versions/0.1.2.html"><strong aria-hidden="true">124.</strong> 0.1.2</a></li><li class="chapter-item expanded "><a href="../versions/0.1.1.html"><strong aria-hidden="true">125.</strong> 0.1.1</a></li><li class="chapter-item expanded "><a href="../versions/0.1.0.html"><strong aria-hidden="true">126.</strong> 0.1.0</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Notechondria Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria/edit/codex/docs/./integrations/casdoor-setup.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="casdoor-login-setup-authtrance-0com"><a class="header" href="#casdoor-login-setup-authtrance-0com">Casdoor login setup (auth.trance-0.com)</a></h1>
+<p>Step-by-step runbook for wiring the Notechondria backend to a
+Casdoor instance — covers the admin-UI walkthrough, the env-var
+contract on the Notechondria side, and the per-app redirect URIs.
+Pairs with <a href="casdoor-migration.html"><code>casdoor-migration.md</code></a>, which
+covers the <em>why</em> + the phased migration plan.</p>
+<p>This document assumes:</p>
+<ul>
+<li>The Casdoor instance is deployed at
+<a href="https://auth.trance-0.com"><code>https://auth.trance-0.com</code></a>.
+(Self-hosted via <code>docker-compose</code> from a separate Gitea repo;
+see <code>auth.trance-0.com.conf</code> + <code>docker-compose.yml</code> next to
+<code>init_data.json</code> for the reverse-proxy + container topology.)</li>
+<li>The backend is on 0.1.96 or later
+(<a href="../versions/0.1.96.html"><code>docs/versions/0.1.96.md</code></a>) — that's
+the round that landed <code>CasdoorJWTAuthentication</code> and the
+<code>/api/v1/auth/casdoor/{config,exchange}/</code> endpoints.</li>
+<li>The frontend is on 0.1.97 or later
+(<a href="../versions/0.1.97.html"><code>docs/versions/0.1.97.md</code></a>) for the
+shared <code>launchOAuth('casdoor', ...)</code> plumbing, and ideally
+0.1.99+
+(<a href="../versions/0.1.99.html"><code>docs/versions/0.1.99.md</code></a>) for the
+Casdoor-primary login surface.</li>
+</ul>
+<h2 id="1-casdoor-admin-ui-walkthrough"><a class="header" href="#1-casdoor-admin-ui-walkthrough">1. Casdoor admin-UI walkthrough</a></h2>
+<p>Sign in to <code>https://auth.trance-0.com</code> with the bootstrap admin
+user (set at first boot via <code>init_data.json</code> or the seeded
+<code>built-in/admin</code> account).</p>
+<h3 id="1a-create-the-organization"><a class="header" href="#1a-create-the-organization">1a. Create the organization</a></h3>
+<p>Top nav → <strong>Organizations</strong> → <strong>Add</strong>.</p>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>
+<tr><td>Name</td><td><code>notechondria</code></td></tr>
+<tr><td>Display name</td><td><code>Notechondria</code></td></tr>
+<tr><td>Tags</td><td>(optional, e.g. <code>notes</code>, <code>productivity</code>)</td></tr>
+</tbody></table>
+</div>
+<p>Save. The organization name is the value of <code>CASDOOR_ORG_NAME</code> on
+the backend.</p>
+<h3 id="1b-create-the-application"><a class="header" href="#1b-create-the-application">1b. Create the application</a></h3>
+<p>Top nav → <strong>Applications</strong> → <strong>Add</strong>.</p>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>
+<tr><td>Organization</td><td><code>notechondria</code> (the one you just created)</td></tr>
+<tr><td>Name</td><td><code>notechondria</code></td></tr>
+<tr><td>Display name</td><td><code>Notechondria</code></td></tr>
+<tr><td>Logo URL</td><td>(optional)</td></tr>
+<tr><td>Login URL</td><td><code>https://auth.trance-0.com/login/oauth/authorize</code> (Casdoor sets this automatically)</td></tr>
+<tr><td><strong>Redirect URIs</strong></td><td>one entry per Flutter app — see §1d</td></tr>
+<tr><td>Token format</td><td><code>JWT</code></td></tr>
+<tr><td>Token signing algorithm</td><td><code>RS256</code></td></tr>
+<tr><td>Token expire</td><td><code>2 hours</code> (the Notechondria SDK only needs ~9 minutes; longer is fine)</td></tr>
+<tr><td>Refresh token expire</td><td><code>7 days</code> (or per your security policy)</td></tr>
+<tr><td><strong>Providers</strong></td><td>(optional) attach Google / GitHub / etc. so Casdoor itself can act as the OAuth proxy; otherwise it will accept username/password against the Casdoor user table only</td></tr>
+</tbody></table>
+</div>
+<p>Save. Casdoor reveals a <code>Client ID</code> and <code>Client secret</code> for this
+application — those are the next two env vars you'll need.</p>
+<h3 id="1c-generate-or-pick-the-signing-certificate"><a class="header" href="#1c-generate-or-pick-the-signing-certificate">1c. Generate (or pick) the signing certificate</a></h3>
+<p>If the application doesn't already show a certificate under the
+<strong>Cert</strong> field, create one: top nav → <strong>Certs</strong> → <strong>Add</strong>.</p>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>
+<tr><td>Name</td><td><code>notechondria-cert</code></td></tr>
+<tr><td>Display name</td><td><code>Notechondria signing cert</code></td></tr>
+<tr><td>Type</td><td><code>x509</code></td></tr>
+<tr><td>Crypto algorithm</td><td><code>RS256</code></td></tr>
+<tr><td>Bit size</td><td><code>4096</code></td></tr>
+<tr><td>Expire in years</td><td><code>5</code> (or longer; Casdoor lets you rotate)</td></tr>
+</tbody></table>
+</div>
+<p>Save, then <strong>download</strong> the public key half. The Notechondria
+backend verifies inbound JWTs against this PEM.</p>
+<p>Back on the <strong>Applications → notechondria</strong> screen, set the
+<strong>Cert</strong> field to <code>notechondria-cert</code>.</p>
+<h3 id="1d-per-app-redirect-uris"><a class="header" href="#1d-per-app-redirect-uris">1d. Per-app redirect URIs</a></h3>
+<p>Casdoor's redirect-URI allow-list is centralised on the
+application. Each Flutter frontend lives at a different origin,
+so add <strong>one entry per app</strong>:</p>
+<div class="table-wrapper"><table><thead><tr><th>App</th><th>Redirect URI</th></tr></thead><tbody>
+<tr><td>Editor</td><td><code>https://trance-0.github.io/Notechondria/editor/</code></td></tr>
+<tr><td>Planner</td><td><code>https://trance-0.github.io/Notechondria/planner/</code></td></tr>
+<tr><td>Portal</td><td><code>https://trance-0.github.io/Notechondria/portal/</code></td></tr>
+</tbody></table>
+</div>
+<p>For local dev add the <code>localhost</code> equivalents too:</p>
+<div class="table-wrapper"><table><thead><tr><th>App</th><th>Redirect URI</th></tr></thead><tbody>
+<tr><td>Editor</td><td><code>http://localhost:8001/</code></td></tr>
+<tr><td>Planner</td><td><code>http://localhost:8002/</code></td></tr>
+<tr><td>Portal</td><td><code>http://localhost:8003/</code></td></tr>
+</tbody></table>
+</div>
+<p>(The exact ports depend on what <code>flutter run -d chrome</code> picks for
+each app — pin them via <code>--web-port</code> if you want stable values.)</p>
+<p>The Notechondria backend computes the <code>redirect_uri</code> from the
+caller's <code>Origin</code> header per the
+<code>launchOAuth('casdoor', ...)</code> flow, so each app's outbound
+authorization URL ends with the matching origin. Any URI <strong>not</strong>
+on Casdoor's allow-list above will be rejected with a
+<code>redirect_uri mismatch</code> error.</p>
+<h3 id="1e-optional-configure-email--invitation-gates"><a class="header" href="#1e-optional-configure-email--invitation-gates">1e. (Optional) configure email + invitation gates</a></h3>
+<p>If you want Casdoor to send the verification / password-reset
+emails (Notechondria's own SMTP path stops being used after the
+phase-4 cutover):</p>
+<ul>
+<li>Top nav → <strong>Providers</strong> → <strong>Add</strong> → category <code>Email</code>,
+type <code>SMTP</code>. The instance ships with a sample
+<code>provider_email_smtp</code> row preloaded by <code>init_data.json</code>; reuse
+or replace.</li>
+<li>Application → <strong>notechondria</strong> → <strong>Email provider</strong> = the SMTP
+provider above.</li>
+</ul>
+<p>If you want sign-up gated by an invitation code (matches the
+existing <code>InvitationCode</code> table on Notechondria):</p>
+<ul>
+<li>Application → <strong>notechondria</strong> → <strong>Enable signup</strong> = off.</li>
+<li>Top nav → <strong>Invitations</strong> → <strong>Add</strong> → assign to the
+<code>notechondria</code> org.</li>
+</ul>
+<p>Until phase 4 ships, the legacy invitation flow on Notechondria
+keeps working in parallel — Casdoor doesn't need to take this
+over yet.</p>
+<h2 id="2-notechondria-backend-env-vars"><a class="header" href="#2-notechondria-backend-env-vars">2. Notechondria backend env vars</a></h2>
+<p>Drop these into the backend <code>.env</code> (or the deployment-method
+equivalent — see <a href="../deployment/deploy.html"><code>deploy.md</code></a>,
+<a href="../deployment/render_free_tier.html"><code>render_free_tier.md</code></a>,
+<a href="../deployment/northflank.html"><code>northflank.md</code></a>):</p>
+<pre><code class="language-text">CASDOOR_ENDPOINT=https://auth.trance-0.com
+CASDOOR_CLIENT_ID=&lt;from the application "Client ID" field&gt;
+CASDOOR_CLIENT_SECRET=&lt;from the application "Client secret" field&gt;
+CASDOOR_ORG_NAME=notechondria
+CASDOOR_APP_NAME=notechondria
+CASDOOR_CERTIFICATE=&lt;single-line PEM with literal \n escapes&gt;
+# Optional: how long to cache JWT-verification results in seconds
+# (default 300). The verifier itself is stateless; this just
+# amortises the cert-parsing cost when the same token shows up
+# again within the window.
+CASDOOR_TOKEN_CACHE_TTL=300
+</code></pre>
+<p><code>CASDOOR_CERTIFICATE</code> is the public-key PEM you downloaded in
+§1c. The newline-to-<code>\n</code> escape is so the PEM survives a
+single-line shell <code>.env</code>. <code>_normalize_pem</code> in
+<code>backend/creators/casdoor_auth.py</code> converts the escaped form back
+to multi-line at signing time. Same trick used by the GitHub
+data-sync app's private key.</p>
+<p>When any of the first four are empty, every Casdoor surface on
+the backend is a no-op (auth class returns <code>None</code>, exchange
+endpoint returns 503, config endpoint returns
+<code>{configured: false}</code>). That's the <strong>shadow mode</strong> the migration
+plan calls out — safe default until you're ready to flip the
+switch.</p>
+<h2 id="3-verify"><a class="header" href="#3-verify">3. Verify</a></h2>
+<p>After <code>pip install -r backend/requirements.txt &amp;&amp; python manage.py migrate creators</code> (the
+<code>0030_creator_casdoor_sub.py</code> migration must have run):</p>
+<pre><code class="language-bash"># Backend reports configured:
+curl -s http://localhost:8000/api/v1/auth/casdoor/config/
+# -&gt; {"configured": true,
+#     "endpoint": "https://auth.trance-0.com",
+#     "client_id": "...",
+#     "organization": "notechondria",
+#     "application": "notechondria",
+#     "signin_url": "https://auth.trance-0.com/login/oauth/authorize"}
+</code></pre>
+<p>Hit <code>/api/v1/handshake/</code> and confirm <code>version</code> matches the
+deployed <code>VERSION</code> file (this surface was fixed in
+<a href="../versions/0.1.95.html"><code>0.1.95</code></a> — if it returns <code>"0.0.0"</code> your
+container didn't ship <code>VERSION</code> to <code>/home/VERSION</code>).</p>
+<p>On the frontend:</p>
+<ol>
+<li>Open any of the three apps. Sign-out.</li>
+<li>The Account card should now lead with a full-width "Continue
+with Casdoor SSO" button (since 0.1.99). Legacy
+email / password sits behind the
+"Use email / password instead" expander.</li>
+<li>Click the SSO button → redirects to
+<code>https://auth.trance-0.com/login/oauth/authorize?client_id=…&amp;state=casdoor&amp;...</code>.</li>
+<li>Casdoor authenticates → redirects back with <code>?code=...</code>.</li>
+<li>Frontend calls
+<code>POST /api/v1/auth/casdoor/exchange/</code> automatically; the SPA
+ends up signed in the same way as the legacy login flow.</li>
+<li>Inspect <code>Settings → Connected accounts</code> — the Casdoor row
+shows "Linked".</li>
+</ol>
+<p>For the bind path (link Casdoor to an <em>existing</em> legacy account
+when the emails differ): sign in legacy first, then in Settings
+→ Connected accounts click <strong>Link Casdoor</strong> on the Casdoor row.
+Casdoor is opened with <code>state=casdoor</code> + <code>intent=bind</code>; the
+callback hits <code>POST /api/v1/auth/casdoor/bind/</code> with the
+existing session token, and the link is recorded on
+<code>Creator.casdoor_sub</code>. The legacy session keeps working.</p>
+<h2 id="4-failure-modes"><a class="header" href="#4-failure-modes">4. Failure modes</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr></thead><tbody>
+<tr><td>Frontend SSO button missing</td><td><code>/auth/casdoor/config/</code> returned <code>{configured: false}</code></td><td>Backend env vars not populated, or container hasn't been rebuilt since they were added</td></tr>
+<tr><td><code>redirect_uri mismatch</code> on the Casdoor login page</td><td>URI not in §1d allow-list</td><td>Add the exact origin (scheme + host + port + trailing slash) under Application → Redirect URIs</td></tr>
+<tr><td><code>Cannot sign in: ...JWT verification failed</code></td><td><code>CASDOOR_CERTIFICATE</code> doesn't match the application's signing cert</td><td>Re-download the PEM in §1c, re-escape newlines, redeploy</td></tr>
+<tr><td><code>409 Conflict</code> on bind</td><td>The Casdoor <code>sub</code> is already linked to a different Notechondria account</td><td>Unlink that side first; or sign in with that account directly via SSO</td></tr>
+<tr><td><code>503 Service Unavailable</code> from <code>/auth/casdoor/exchange/</code></td><td>One of the four required env vars is still empty</td><td>Re-check <code>CASDOOR_ENDPOINT</code>, <code>CASDOOR_CLIENT_ID</code>, <code>CASDOOR_ORG_NAME</code>, <code>CASDOOR_APP_NAME</code></td></tr>
+<tr><td>Backend <code>version</code> returns <code>"0.0.0"</code></td><td><code>VERSION</code> file isn't shipped to the container</td><td>The Dockerfile copies it to <code>/home/VERSION</code> since 0.1.95; for non-Docker deploys set the <code>BACKEND_VERSION</code> env var</td></tr>
+</tbody></table>
+</div>
+<h2 id="5-what-gets-stored-where"><a class="header" href="#5-what-gets-stored-where">5. What gets stored where</a></h2>
+<p>After a successful Casdoor sign-in:</p>
+<ul>
+<li><code>Creator.casdoor_sub</code> (TextField on
+<code>backend/creators/models.py</code>) holds the Casdoor user id /
+<code>sub</code> claim. Used as the fast-path key on subsequent JWT
+verifies.</li>
+<li><code>creators.Session</code> row is still minted by
+<code>auth_payload(user, request)</code> so the existing
+<code>MultiSessionAuthentication</code> keeps working — the SPA uses the
+same <code>Authorization: Token &lt;session-key&gt;</code> header it always
+did. Casdoor JWTs are only used at sign-in time; the per-
+request hot path stays on the legacy session token until the
+phase-4 cutover.</li>
+</ul>
+<p>Once cutover lands, <code>Session</code> becomes a read-only audit table
+populated from Casdoor session-events webhooks; the per-request
+hot path moves entirely onto JWT verification by
+<code>CasdoorJWTAuthentication</code>. That's the next major version.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../integrations/casdoor-migration.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../operations/postgres_migration.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../integrations/casdoor-migration.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../operations/postgres_migration.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
