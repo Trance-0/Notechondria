@@ -61,6 +61,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.102 — local Inbox stays pinned across boots](versions/0.1.102.md)
 - [0.1.101 — Casdoor cutover + portal settings parity + Inbox fix](versions/0.1.101.md)
 - [0.1.100 — docs site fixed + Casdoor setup runbook + sample.env refresh](versions/0.1.100.md)
 - [0.1.99 — Casdoor as the primary auth surface](versions/0.1.99.md)

@@ -92,24 +92,48 @@ extension _AppShellLocalStarterX on _AppShellState {
       return;
     }
     Map<String, dynamic>? existingInbox;
-    for (final course in _localCourses) {
-      final title = course['title']?.toString().trim().toLowerCase() ?? '';
+    int existingInboxIdx = -1;
+    for (var i = 0; i < _localCourses.length; i++) {
+      final title =
+          _localCourses[i]['title']?.toString().trim().toLowerCase() ?? '';
       if (title == 'inbox') {
-        existingInbox = course;
+        existingInbox = _localCourses[i];
+        existingInboxIdx = i;
         break;
       }
     }
-    final inboxCourse = existingInbox ??
-        {
-          ..._buildLocalCourse(
-            title: 'Inbox',
-            description:
-                'Offline-first local note bucket for the editor app.',
-          ),
-          'is_default': true,
-        };
+    final Map<String, dynamic> inboxCourse;
     if (existingInbox == null) {
+      inboxCourse = {
+        ..._buildLocalCourse(
+          title: 'Inbox',
+          description:
+              'Offline-first local note bucket for the editor app.',
+        ),
+        'is_default': true,
+      };
       _localCourses = [..._localCourses, inboxCourse];
+    } else {
+      // The reuse path also has to stamp `is_default: true`. Without
+      // it, an Inbox that landed in `_localCourses` via any other path
+      // (manual `_createCategory` while offline, archive restore, an
+      // older seeder version that wrote `is_default: false`) stays
+      // unflagged forever. Symptoms: the sidebar's pinned filter at
+      // `build_helpers.dart` skips the row so the Inbox vanishes from
+      // the top of the category list, and `_loadInitialData`'s dedupe
+      // can't find a `localDefault` to swap out for the cloud Inbox,
+      // so the user can end up with two Inbox rows after the next
+      // sync.
+      if (existingInbox['is_default'] == true) {
+        inboxCourse = existingInbox;
+      } else {
+        inboxCourse = {...existingInbox, 'is_default': true};
+        _localCourses = [
+          ..._localCourses.sublist(0, existingInboxIdx),
+          inboxCourse,
+          ..._localCourses.sublist(existingInboxIdx + 1),
+        ];
+      }
     }
     final inboxId = inboxCourse['id'];
     final hasDrafts = _localDrafts.any((draft) {
