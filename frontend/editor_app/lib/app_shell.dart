@@ -224,20 +224,9 @@ class _AppShellState extends State<AppShell>
   Future<void> syncAllLocalCourses() => _syncAllLocalCourses();
   @override
   Future<void> syncAllLocalDrafts() => _syncAllLocalDrafts();
-  @override
-  void applySessionMetadata(Map<String, dynamic> payload) {
-    final sessionMap = payload['session'] as Map?;
-    _currentSessionId = (sessionMap?['id'] as num?)?.toInt();
-    _multiDevice = payload['multi_device'] == true;
-    _otherSessionsCount =
-        (payload['other_sessions_count'] as num?)?.toInt() ?? 0;
-  }
-  @override
-  void clearSessionMetadata() {
-    _currentSessionId = null;
-    _multiDevice = false;
-    _otherSessionsCount = 0;
-  }
+  // Session metadata hooks default to no-ops post-Casdoor cutover —
+  // Casdoor owns session lifecycle, so the SPA no longer tracks
+  // per-device ids / multi-device flags / other-session counts.
   @override
   Future<void> persistSession(String token, Map<String, dynamic> user) =>
       _LocalAppStore.saveSession(token, user);
@@ -252,17 +241,6 @@ class _AppShellState extends State<AppShell>
   bool _showSplash = true;
   String? _errorMessage;
   String? _token;
-  // Multi-device session metadata captured from the most recent
-  // /auth/login/ / /auth/register/ / /auth/verify/ / /auth/oauth/
-  // / /auth/session/ response. Drives the Active Sessions card in
-  // Settings → Sign in & security and the multi-device warning
-  // banner shown above the Settings menu when `_multiDevice` is
-  // true. None of these fields are persisted across cold boots —
-  // the next session-restore call refreshes them.
-  // ignore: unused_field
-  int? _currentSessionId;
-  bool _multiDevice = false;
-  int _otherSessionsCount = 0;
   Map<String, dynamic>? _profile;
   Map<String, dynamic>? _settings;
   Map<String, dynamic>? _frontPage;
@@ -460,11 +438,9 @@ class _AppShellState extends State<AppShell>
   //   settings_helpers.dart       app_settings payload helpers
   //
   // applyAuthPayload + logout moved into the shared
-  // AppShellSessionMixin (notechondria_shared 0.1.82). Editor's
-  // multi-device fields (`_currentSessionId` / `_multiDevice` /
-  // `_otherSessionsCount`) and `_LocalAppStore` session
-  // persistence are wired through the mixin's hook overrides at
-  // the top of this class.
+  // AppShellSessionMixin (notechondria_shared 0.1.82). Session
+  // metadata hooks are no-ops post-0.1.106 — Casdoor owns the
+  // session lifecycle on its side.
 
   // ---------------------------------------------------------------------------
   // Build

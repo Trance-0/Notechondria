@@ -1,15 +1,12 @@
 import json
 from datetime import datetime, timezone as dt_timezone
-from unittest.mock import patch
 
-from django.conf import settings
 from django.contrib.auth.models import User
 from django.test import TestCase
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
-from .models import Creator, InvitationCode, VerificationChoices, VerificationCode, user_profile_path
-from .utils import issue_registration_code, send_password_reset_email, send_registration_email
+from .models import Creator, user_profile_path
 
 
 class CreatorModelTests(TestCase):
@@ -21,30 +18,8 @@ class CreatorModelTests(TestCase):
 
         self.assertEqual(path, f'user_upload/user_{user.id}/profile_pic/profile_latest.png')
 
-    def test_verification_defaults(self):
-        verification = VerificationCode.objects.create(code='abc123')
 
-        self.assertEqual(verification.usage, VerificationChoices.AUTHENTICATE)
-        self.assertEqual(verification.max_use, 1)
-
-    @patch('creators.utils.logger')
-    def test_send_registration_email_falls_back_to_logs_when_smtp_missing(self, logger):
-        previous_host = settings.EMAIL_HOST
-        previous_from = settings.DEFAULT_FROM_EMAIL
-        settings.EMAIL_HOST = ''
-        settings.DEFAULT_FROM_EMAIL = ''
-        try:
-            result = send_registration_email('demo@example.com', 'code-123')
-        finally:
-            settings.EMAIL_HOST = previous_host
-            settings.DEFAULT_FROM_EMAIL = previous_from
-
-        self.assertFalse(result['delivered'])
-        self.assertTrue(result['fallback'])
-        logger.warning.assert_called_once()
-
-
-class AuthApiTests(TestCase):
+class SettingsApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.admin = User.objects.create_user(
@@ -55,42 +30,6 @@ class AuthApiTests(TestCase):
             is_staff=True,
             is_superuser=True,
         )
-
-    def test_login_accepts_bootstrapped_admin_email(self):
-        response = self.client.post(
-            '/api/v1/auth/login/',
-            {'email': 'admin@example.com', 'password': 'change-me'},
-            format='json',
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('token', response.json())
-
-    def test_login_accepts_bootstrapped_admin_username(self):
-        response = self.client.post(
-            '/api/v1/auth/login/',
-            {'email': 'admin', 'password': 'change-me'},
-            format='json',
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('token', response.json())
-
-    @patch('creators.utils.logger')
-    def test_send_password_reset_email_falls_back_to_logs_when_smtp_missing(self, logger):
-        previous_host = settings.EMAIL_HOST
-        previous_from = settings.DEFAULT_FROM_EMAIL
-        settings.EMAIL_HOST = ''
-        settings.DEFAULT_FROM_EMAIL = ''
-        try:
-            result = send_password_reset_email('demo@example.com', 'code-456')
-        finally:
-            settings.EMAIL_HOST = previous_host
-            settings.DEFAULT_FROM_EMAIL = previous_from
-
-        self.assertFalse(result['delivered'])
-        self.assertTrue(result['fallback'])
-        logger.warning.assert_called_once()
 
     def test_settings_update_supports_username_theme_and_api_base(self):
         token = Token.objects.create(user=self.admin)
@@ -178,306 +117,6 @@ class AuthApiTests(TestCase):
         self.assertIn('api_base_url', response.json())
 
 
-class RegistrationFlowTests(TestCase):
-    """Full registration cycle: register → verify → login."""
-
-    def setUp(self):
-        self.client = APIClient()
-
-    @patch('creators.utils.smtp_is_configured', return_value=False)
-    @patch('creators.utils.log_manual_verification_code')
-    def test_register_creates_inactive_user_and_sends_code(self, mock_log, _smtp):
-        response = self.client.post(
-            '/api/v1/auth/register/',
-            {
-                'username': 'alice',
-                'email': 'alice@example.com',
-                'password': 'Strong1pw',
-            },
-            format='json',
-        )
-        self.assertEqual(response.status_code, 201)
-        user = User.objects.get(email='alice@example.com')
-        self.assertFalse(user.is_active)
-        self.assertEqual(user.username, 'alice')
-        # The verification code was logged (SMTP not configured).
-        mock_log.assert_called_once()
-        logged_code = mock_log.call_args[0][1]  # positional: email, code, reason
-        self.assertEqual(len(logged_code), 6)
-        self.assertTrue(logged_code.isdigit())
-
-    @patch('creators.utils.smtp_is_configured', return_value=False)
-    @patch('creators.utils.log_manual_verification_code')
-    def test_register_then_verify_activates_user(self, mock_log, _smtp):
-        self.client.post(
-            '/api/v1/auth/register/',
-            {
-                'username': 'bob',
-                'email': 'bob@example.com',
-                'password': 'Strong1pw',
-            },
-            format='json',
-        )
-        plaintext_code = mock_log.call_args[0][1]
-        response = self.client.post(
-            '/api/v1/auth/verify-email/',
-            {'email': 'bob@example.com', 'code': plaintext_code},
-            format='json',
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('token', response.json())
-        user = User.objects.get(email='bob@example.com')
-        self.assertTrue(user.is_active)
-
-    def test_register_rejects_weak_password_no_uppercase(self):
-        response = self.client.post(
-            '/api/v1/auth/register/',
-            {'username': 'weak', 'email': 'w@example.com', 'password': 'alllower1'},
-            format='json',
-        )
-        self.assertEqual(response.status_code, 400)
-        self.assertIn('password', response.json())
-
-    def test_register_rejects_short_password(self):
-        response = self.client.post(
-            '/api/v1/auth/register/',
-            {'username': 'short', 'email': 's@example.com', 'password': 'Ab1'},
-            format='json',
-        )
-        self.assertEqual(response.status_code, 400)
-        self.assertIn('password', response.json())
-
-    def test_register_rejects_duplicate_username(self):
-        User.objects.create_user(username='taken', email='t@example.com', password='pw')
-        response = self.client.post(
-            '/api/v1/auth/register/',
-            {'username': 'taken', 'email': 'new@example.com', 'password': 'Strong1pw'},
-            format='json',
-        )
-        self.assertEqual(response.status_code, 400)
-        self.assertIn('username', response.json())
-
-    def test_register_requires_username(self):
-        response = self.client.post(
-            '/api/v1/auth/register/',
-            {'email': 'no-user@example.com', 'password': 'Strong1pw'},
-            format='json',
-        )
-        self.assertEqual(response.status_code, 400)
-        self.assertIn('username', response.json())
-
-
-class InvitationCodeTests(TestCase):
-    """Invitation code gate on registration."""
-
-    def setUp(self):
-        self.client = APIClient()
-
-    @patch('creators.utils.smtp_is_configured', return_value=False)
-    @patch('creators.utils.log_manual_verification_code')
-    def test_invitation_code_required_when_codes_exist(self, mock_log, _smtp):
-        InvitationCode.objects.create(code_hash=InvitationCode.hash_code('secret-invite'))
-        response = self.client.post(
-            '/api/v1/auth/register/',
-            {
-                'username': 'carol',
-                'email': 'carol@example.com',
-                'password': 'Strong1pw',
-            },
-            format='json',
-        )
-        self.assertEqual(response.status_code, 400)
-        self.assertIn('invitation_code', response.json())
-
-    @patch('creators.utils.smtp_is_configured', return_value=False)
-    @patch('creators.utils.log_manual_verification_code')
-    def test_valid_invitation_code_allows_registration(self, mock_log, _smtp):
-        InvitationCode.objects.create(
-            code_hash=InvitationCode.hash_code('secret-invite'),
-            label='test',
-            max_uses=5,
-        )
-        response = self.client.post(
-            '/api/v1/auth/register/',
-            {
-                'username': 'dave',
-                'email': 'dave@example.com',
-                'password': 'Strong1pw',
-                'invitation_code': 'secret-invite',
-            },
-            format='json',
-        )
-        self.assertEqual(response.status_code, 201)
-        invite = InvitationCode.objects.get(label='test')
-        self.assertEqual(invite.times_used, 1)
-
-    @patch('creators.utils.smtp_is_configured', return_value=False)
-    @patch('creators.utils.log_manual_verification_code')
-    def test_wrong_invitation_code_rejected(self, mock_log, _smtp):
-        InvitationCode.objects.create(code_hash=InvitationCode.hash_code('real'))
-        response = self.client.post(
-            '/api/v1/auth/register/',
-            {
-                'username': 'eve',
-                'email': 'eve@example.com',
-                'password': 'Strong1pw',
-                'invitation_code': 'wrong-guess',
-            },
-            format='json',
-        )
-        self.assertEqual(response.status_code, 400)
-
-    @patch('creators.utils.smtp_is_configured', return_value=False)
-    @patch('creators.utils.log_manual_verification_code')
-    def test_no_invitation_codes_in_db_allows_open_registration(self, mock_log, _smtp):
-        """When no InvitationCode records exist, anyone can register."""
-        response = self.client.post(
-            '/api/v1/auth/register/',
-            {
-                'username': 'frank',
-                'email': 'frank@example.com',
-                'password': 'Strong1pw',
-            },
-            format='json',
-        )
-        self.assertEqual(response.status_code, 201)
-
-    def test_invitation_code_model_auto_hashes_plaintext_on_save(self):
-        invite = InvitationCode(code_hash='my-plain-code', label='auto')
-        invite.save()
-        self.assertEqual(len(invite.code_hash), 64)
-        self.assertEqual(invite.code_hash, InvitationCode.hash_code('my-plain-code'))
-
-
-class PasswordResetFlowTests(TestCase):
-    """Password reset with 6-digit hashed codes."""
-
-    def setUp(self):
-        self.client = APIClient()
-        self.user = User.objects.create_user(
-            username='resetuser',
-            email='reset@example.com',
-            password='OldPass1!',
-            is_active=True,
-        )
-
-    @patch('creators.utils.smtp_is_configured', return_value=False)
-    @patch('creators.utils.log_manual_verification_code')
-    def test_password_reset_full_cycle(self, mock_log, _smtp):
-        # Request reset
-        response = self.client.post(
-            '/api/v1/auth/password-reset/',
-            {'email': 'reset@example.com'},
-            format='json',
-        )
-        self.assertEqual(response.status_code, 200)
-        plaintext_code = mock_log.call_args[0][1]
-        self.assertEqual(len(plaintext_code), 6)
-
-        # Confirm reset with new password
-        response = self.client.post(
-            '/api/v1/auth/password-reset/confirm/',
-            {
-                'email': 'reset@example.com',
-                'code': plaintext_code,
-                'password': 'NewPass2!',
-            },
-            format='json',
-        )
-        self.assertEqual(response.status_code, 200)
-
-        # Old password no longer works
-        response = self.client.post(
-            '/api/v1/auth/login/',
-            {'email': 'reset@example.com', 'password': 'OldPass1!'},
-            format='json',
-        )
-        self.assertEqual(response.status_code, 400)
-
-        # New password works
-        response = self.client.post(
-            '/api/v1/auth/login/',
-            {'email': 'reset@example.com', 'password': 'NewPass2!'},
-            format='json',
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('token', response.json())
-
-    def test_password_reset_rejects_unknown_email(self):
-        response = self.client.post(
-            '/api/v1/auth/password-reset/',
-            {'email': 'nobody@example.com'},
-            format='json',
-        )
-        self.assertEqual(response.status_code, 400)
-
-
-class VerificationCodeModelTests(TestCase):
-    """Tests for the 6-digit hashed verification code model."""
-
-    def test_generate_code_returns_6_digit_string(self):
-        vc = VerificationCode()
-        plaintext = vc.generate_code()
-        self.assertEqual(len(plaintext), 6)
-        self.assertTrue(plaintext.isdigit())
-
-    def test_generate_code_stores_sha256_hash(self):
-        vc = VerificationCode()
-        plaintext = vc.generate_code()
-        self.assertEqual(len(vc.code), 64)  # SHA-256 hex digest
-        self.assertEqual(vc.code, VerificationCode.hash_code(plaintext))
-
-
-class OAuthBindRejectionTests(TestCase):
-    """Public OAuth endpoints must refuse intent='bind'.
-
-    Binding requires an authenticated user — routing the bind through the
-    unauthenticated endpoint would either (a) log the caller in as whoever
-    owns the matching email or (b) mint a brand-new account from the
-    OAuth-provided username/email. Either outcome silently overwrites the
-    existing account from the original user's perspective, which is the
-    bug this guard exists to prevent.
-    """
-
-    def setUp(self):
-        self.client = APIClient()
-
-    def test_google_public_endpoint_rejects_bind_intent(self):
-        response = self.client.post(
-            '/api/v1/auth/google/',
-            {'code': 'fake-authorization-code', 'intent': 'bind'},
-            format='json',
-        )
-        self.assertEqual(response.status_code, 400)
-        self.assertIn('bind', response.json().get('detail', '').lower())
-
-    def test_github_public_endpoint_rejects_bind_intent(self):
-        response = self.client.post(
-            '/api/v1/auth/github/',
-            {'code': 'fake-authorization-code', 'intent': 'bind'},
-            format='json',
-        )
-        self.assertEqual(response.status_code, 400)
-        self.assertIn('bind', response.json().get('detail', '').lower())
-
-    def test_hash_code_is_deterministic(self):
-        self.assertEqual(
-            VerificationCode.hash_code('123456'),
-            VerificationCode.hash_code('123456'),
-        )
-        self.assertNotEqual(
-            VerificationCode.hash_code('123456'),
-            VerificationCode.hash_code('654321'),
-        )
-
-    def test_issue_registration_code_returns_tuple(self):
-        User.objects.create_user(username='u', email='u@x.com', password='pw')
-        vc, plaintext = issue_registration_code('u@x.com')
-        self.assertIsInstance(vc, VerificationCode)
-        self.assertEqual(len(plaintext), 6)
-        self.assertEqual(vc.code, VerificationCode.hash_code(plaintext))
-
-
 class GithubSyncTests(TestCase):
     """Coverage for the experimental GitHub data-sync feature
     (`creators.services.github_sync`, `GithubSync*ApiView`)."""
@@ -490,10 +129,8 @@ class GithubSyncTests(TestCase):
         self.client_api = APIClient()
 
     def _auth(self):
-        from creators.models import Session
-
-        session = Session.create_for_user(self.user)
-        self.client_api.credentials(HTTP_AUTHORIZATION=f'Token {session.key}')
+        token = Token.objects.create(user=self.user)
+        self.client_api.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
     def test_status_view_requires_auth(self):
         resp = self.client_api.get('/api/v1/integrations/github/status/')
@@ -795,17 +432,17 @@ class GithubSyncTests(TestCase):
 
 
 class CasdoorAuthTests(TestCase):
-    """Coverage for the Casdoor migration phase-2 surface
-    (`creators.casdoor_auth`, `CasdoorConfigApiView`,
-    `CasdoorExchangeApiView`)."""
+    """Coverage for the Casdoor surface (`creators.casdoor_auth`,
+    `CasdoorConfigApiView`, `CasdoorExchangeApiView`,
+    `CasdoorBindApiView`, `CasdoorUnlinkApiView`)."""
 
     def setUp(self):
         self.client_api = APIClient()
 
     def test_config_view_reports_unconfigured_in_shadow_mode(self):
         """When CASDOOR_* env vars are unset, the config endpoint
-        must return `{configured: false}` so the SPA falls through
-        to the legacy auth surface."""
+        must return `{configured: false}` so the SPA can show a
+        "Casdoor not configured" hint."""
         from django.test import override_settings
         with override_settings(
             CASDOOR_ENDPOINT='', CASDOOR_CLIENT_ID='',
@@ -886,9 +523,6 @@ class CasdoorAuthTests(TestCase):
             CASDOOR_CLIENT_SECRET='s',
             CASDOOR_ORG_NAME='o',
             CASDOOR_APP_NAME='a',
-            # Use a syntactically-valid PEM so _build_sdk doesn't
-            # blow up on cert parsing — actual verification is
-            # bypassed by the ntc_ prefix check before we get there.
             CASDOOR_CERTIFICATE='dummy',
         ):
             req = rf.get(
@@ -947,9 +581,8 @@ class CasdoorAuthTests(TestCase):
         from django.test import override_settings
         u = User.objects.create_user(username='ub', password='pw')
         Creator.objects.create(user_id=u)
-        from creators.models import Session
-        s = Session.create_for_user(u)
-        self.client_api.credentials(HTTP_AUTHORIZATION=f'Token {s.key}')
+        token = Token.objects.create(user=u)
+        self.client_api.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
         with override_settings(CASDOOR_ENDPOINT=''):
             resp = self.client_api.post(
                 '/api/v1/auth/casdoor/bind/',
@@ -971,9 +604,8 @@ class CasdoorAuthTests(TestCase):
         # User B is signed in and tries to bind the same sub.
         b = User.objects.create_user(username='b', email='b@x.com', password='pw')
         Creator.objects.create(user_id=b)
-        from creators.models import Session
-        s = Session.create_for_user(b)
-        self.client_api.credentials(HTTP_AUTHORIZATION=f'Token {s.key}')
+        token = Token.objects.create(user=b)
+        self.client_api.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         with override_settings(
             CASDOOR_ENDPOINT='https://auth.example',
@@ -1008,9 +640,8 @@ class CasdoorAuthTests(TestCase):
 
         u = User.objects.create_user(username='happy', email='h@x.com', password='pw')
         Creator.objects.create(user_id=u)
-        from creators.models import Session
-        s = Session.create_for_user(u)
-        self.client_api.credentials(HTTP_AUTHORIZATION=f'Token {s.key}')
+        token = Token.objects.create(user=u)
+        self.client_api.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         with override_settings(
             CASDOOR_ENDPOINT='https://auth.example',
@@ -1045,9 +676,8 @@ class CasdoorAuthTests(TestCase):
     def test_unlink_endpoint_clears_sub(self):
         u = User.objects.create_user(username='unlinker', password='pw')
         Creator.objects.create(user_id=u, casdoor_sub='casdoor-uid-old')
-        from creators.models import Session
-        s = Session.create_for_user(u)
-        self.client_api.credentials(HTTP_AUTHORIZATION=f'Token {s.key}')
+        token = Token.objects.create(user=u)
+        self.client_api.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         resp = self.client_api.delete('/api/v1/auth/casdoor/unlink/')
         self.assertEqual(resp.status_code, 200)
@@ -1060,9 +690,8 @@ class CasdoorAuthTests(TestCase):
     def test_unlink_endpoint_idempotent(self):
         u = User.objects.create_user(username='unlinker2', password='pw')
         Creator.objects.create(user_id=u)
-        from creators.models import Session
-        s = Session.create_for_user(u)
-        self.client_api.credentials(HTTP_AUTHORIZATION=f'Token {s.key}')
+        token = Token.objects.create(user=u)
+        self.client_api.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
         resp = self.client_api.delete('/api/v1/auth/casdoor/unlink/')
         self.assertEqual(resp.status_code, 200)
         self.assertFalse(resp.json()['was_linked'])

@@ -285,22 +285,22 @@ else:
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        # 0.1.65: replaced rest_framework.authentication.TokenAuthentication
-        # with MultiSessionAuthentication so a user can be signed in on
-        # multiple devices at once. Wire shape unchanged
-        # (Authorization: Token <40-hex>), but the backing table is now
-        # creators.Session (multi-row per user, with idle + absolute
-        # timeouts).
-        "creators.authentication.MultiSessionAuthentication",
+        # MCP API keys (long-lived, per-creator, ``Authorization:
+        # Bearer ntc_...``). Listed first so MCP traffic resolves
+        # without ever consulting the Casdoor JWT path.
         "creators.authentication.ApiKeyAuthentication",
-        # 0.1.96 — Casdoor migration phase 2 (shadow mode). The class
-        # is a no-op when CASDOOR_* env vars are unset; otherwise it
+        # Casdoor JWTs are the only user-facing credential as of 0.1.106
+        # (post invitation/verification/session cleanup). The class is
+        # a no-op when CASDOOR_* env vars are unset; otherwise it
         # validates Bearer JWTs against the configured Casdoor app.
-        # Listed last so it doesn't preempt the legacy Token / MCP
-        # paths above; Bearer headers starting with `ntc_` are handed
-        # back to ApiKeyAuthentication explicitly inside the class.
+        # Bearer headers starting with `ntc_` are handed back to
+        # ApiKeyAuthentication explicitly inside the class.
         # See docs/integrations/casdoor-migration.md.
         "creators.casdoor_auth.CasdoorJWTAuthentication",
+        # DRF's stock TokenAuthentication is kept for the auth-token
+        # rows in `authtoken_token` that still back a few internal
+        # tooling paths (admin scripts, MCP rotate tests).
+        "rest_framework.authentication.TokenAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",
@@ -455,17 +455,6 @@ OFFLINE = False
 LOGIN_URL="/creators/login"
 
 # LOGIN_REDIRECT_URL="/creators/profile"
-
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = os.getenv("SMTP_HOST", "")
-EMAIL_PORT = int(os.getenv("SMTP_PORT", "587"))
-EMAIL_HOST_USER = os.getenv("SMTP_USERNAME", "")
-EMAIL_HOST_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-EMAIL_USE_TLS = env_bool("SMTP_USE_TLS", True)
-EMAIL_USE_SSL = env_bool("SMTP_USE_SSL", False)
-DEFAULT_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", EMAIL_HOST_USER or "no-reply@notechondria.local")
-EMAIL_VERIFICATION_TTL_HOURS = int(os.getenv("SMTP_EMAIL_VERIFICATION_TTL_HOURS", "24"))
-FRONTEND_VERIFY_URL = os.getenv("FRONTEND_VERIFY_URL", "")
 
 # Experimental: GitHub App used for the per-user data-sync feature.
 # Unrelated to authentication — Casdoor is the only third-party sign-in

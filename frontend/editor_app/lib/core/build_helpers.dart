@@ -581,13 +581,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
           deletedNotes: _deletedNotes,
           onSave: _updateSettings,
           onLogout: logout,
-          onRegister: register,
-          onValidateInvitation: (code) => widget.client.validateInvitation(code),
-          onVerify: verify,
-          onResendVerification: resendVerification,
           onLogin: login,
-          onRequestPasswordReset: requestPasswordReset,
-          onConfirmPasswordReset: confirmPasswordReset,
           onCasdoorLogin: _casdoorConfigured
               ? () => launchOAuth('casdoor', intent: 'login')
               : null,
@@ -609,30 +603,6 @@ extension _AppShellBuildHelpersX on _AppShellState {
                   } catch (_) {/* swallowed; UI stays stale */}
                 }
               : null,
-          onListSessions: _token != null
-              ? () => widget.client.listSessions(_token!)
-              : null,
-          onRevokeSession: _token != null
-              ? (sessionId) =>
-                  widget.client.revokeSession(_token!, sessionId)
-              : null,
-          // When the user revokes their CURRENT session through the
-          // Active Sessions card, run the same local sign-out the
-          // top-bar Logout button uses so the app drops back to the
-          // anonymous view immediately.
-          onCurrentSessionRevoked: () {
-            _token = null;
-            _profile = null;
-            _settings = null;
-            _deletedNotes = const [];
-            _currentSessionId = null;
-            _multiDevice = false;
-            _otherSessionsCount = 0;
-            refreshState();
-            unawaited(_LocalAppStore.clearSession());
-            unawaited(_loadInitialData());
-          },
-          onSendIdentityCode: _token != null ? () => widget.client.sendIdentityCode(_token!) : null,
           onRotateApiKey: _token != null
               ? () async {
                   final result = await widget.client.rotateApiKey(_token!);
@@ -709,9 +679,6 @@ extension _AppShellBuildHelpersX on _AppShellState {
                         widget.client.githubSyncDisconnect(_token!),
                   )
               : null,
-          onChangePassword: _token != null ? (current, newPw, identityCode) => widget.client.changePassword(_token!, current, newPw, identityCode) : null,
-          onChangeEmailRequest: _token != null ? (email, identityCode) => widget.client.changeEmailRequest(_token!, email, identityCode) : null,
-          onChangeEmailConfirm: _token != null ? (email, code) => widget.client.changeEmailConfirm(_token!, email, code) : null,
           onRestoreDeletedNote: _restoreDeletedNote,
           onEmptyDeletedNotes: _emptyDeletedNotes,
           onCopyLogs: _copyFrontendLogs,
@@ -726,8 +693,6 @@ extension _AppShellBuildHelpersX on _AppShellState {
           onOpenLocalRecycleBin: _openLocalRecycleBinDialog,
           localTrashedDraftCount: _localTrashedDrafts.length,
           localTrashedCourseCount: _localTrashedCourses.length,
-          multiDevice: _multiDevice,
-          otherSessionsCount: _otherSessionsCount,
           onOfflineModeChanged: _setOfflineMode,
           localDraftCount: _localDrafts.length,
           localCourseCount: _localCourses.length,

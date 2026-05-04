@@ -11,13 +11,7 @@ class _SettingsPage extends StatefulWidget {
     required this.deletedNotes,
     required this.onSave,
     required this.onLogout,
-    required this.onRegister,
-    required this.onValidateInvitation,
-    required this.onVerify,
-    required this.onResendVerification,
     required this.onLogin,
-    required this.onRequestPasswordReset,
-    required this.onConfirmPasswordReset,
     required this.onRestoreDeletedNote,
     required this.onEmptyDeletedNotes,
     required this.onCopyLogs,
@@ -34,23 +28,14 @@ class _SettingsPage extends StatefulWidget {
     this.casdoorOrgLoginUrl,
     this.onBindCasdoor,
     this.onUnlinkCasdoor,
-    this.onListSessions,
-    this.onRevokeSession,
-    this.onCurrentSessionRevoked,
-    this.onSendIdentityCode,
     this.onRotateApiKey,
     this.onSaveMcpSkill,
     this.githubSyncCardBuilder,
-    this.onChangePassword,
-    this.onChangeEmailRequest,
-    this.onChangeEmailConfirm,
     this.onExportLocalData,
     this.onRestoreFromLocalImport,
     this.onOpenLocalRecycleBin,
     this.localTrashedDraftCount = 0,
     this.localTrashedCourseCount = 0,
-    this.multiDevice = false,
-    this.otherSessionsCount = 0,
     this.onOfflineModeChanged,
     this.apiBaseUrl,
     this.debugSnapshotListenable,
@@ -76,22 +61,7 @@ class _SettingsPage extends StatefulWidget {
     String lastName,
   }) onSave;
   final Future<void> Function() onLogout;
-  final Future<ActionFeedback> Function(
-    String username,
-    String email,
-    String password, {
-    String invitationCode,
-  }) onRegister;
-  final Future<Map<String, dynamic>> Function(String code) onValidateInvitation;
-  final Future<ActionFeedback> Function(String email, String code) onVerify;
-  final Future<ActionFeedback> Function(String email) onResendVerification;
   final Future<ActionFeedback> Function(String email, String password) onLogin;
-  final Future<ActionFeedback> Function(String email) onRequestPasswordReset;
-  final Future<ActionFeedback> Function(
-    String email,
-    String code,
-    String password,
-  ) onConfirmPasswordReset;
   /// Triggers the Casdoor SSO flow. Null when the backend reports
   /// `configured: false` from `/auth/casdoor/config/` (shadow mode).
   /// See `docs/integrations/casdoor-migration.md`.
@@ -112,20 +82,6 @@ class _SettingsPage extends StatefulWidget {
 
   /// Calls the unlink endpoint. Null in shadow mode.
   final Future<void> Function()? onUnlinkCasdoor;
-
-  /// Hits `GET /api/v1/auth/sessions/`. Returns the raw payload
-  /// `{sessions, current_session_id}`. Null when signed out so
-  /// the Settings UI can hide the Active Sessions card.
-  final Future<Map<String, dynamic>> Function()? onListSessions;
-
-  /// Hits `DELETE /api/v1/auth/sessions/<id>/`.
-  final Future<void> Function(int sessionId)? onRevokeSession;
-
-  /// Fired when the user revoked their CURRENT session through the
-  /// Active Sessions card. `_AppShellState` should clear `_token`,
-  /// reset session metadata, and re-run `_loadInitialData` so the
-  /// app drops back to the anonymous view immediately.
-  final VoidCallback? onCurrentSessionRevoked;
   final Future<void> Function(Map<String, dynamic> note) onRestoreDeletedNote;
   final Future<void> Function() onEmptyDeletedNotes;
   final Future<void> Function() onCopyLogs;
@@ -140,7 +96,6 @@ class _SettingsPage extends StatefulWidget {
   /// only `onRestoreTemplateCourses` which seeds the remote 3-course
   /// template catalog.
   final Future<ActionFeedback> Function() onRestoreLocalStarterTemplate;
-  final Future<Map<String, dynamic>> Function()? onSendIdentityCode;
   final Future<Map<String, dynamic>> Function()? onRotateApiKey;
 
   /// Persists the user's MCP `skill.md` body to the backend Creator
@@ -155,9 +110,6 @@ class _SettingsPage extends StatefulWidget {
   /// the API-settings page renders a passive disabled card in that
   /// case.
   final Widget Function()? githubSyncCardBuilder;
-  final Future<Map<String, dynamic>> Function(String currentPassword, String newPassword, String identityCode)? onChangePassword;
-  final Future<Map<String, dynamic>> Function(String newEmail, String identityCode)? onChangeEmailRequest;
-  final Future<Map<String, dynamic>> Function(String newEmail, String code)? onChangeEmailConfirm;
   /// Exports every persisted local bucket as a versioned `.nchron`
   /// zip package (v1, see `docs/export_format_v1.md`). Replaces the
   /// minimal `.env` config download.
@@ -179,14 +131,6 @@ class _SettingsPage extends StatefulWidget {
   /// ("Local recycle bin (3)") without re-reading SharedPreferences.
   final int localTrashedDraftCount;
   final int localTrashedCourseCount;
-
-  /// Multi-device session metadata captured from the most recent
-  /// `auth_payload` response (0.1.65 backend shape). Drives the
-  /// banner shown above the Settings menu when the user is
-  /// signed in on more than one device. Always false when signed
-  /// out.
-  final bool multiDevice;
-  final int otherSessionsCount;
 
   /// Called when the user flips the offline-mode switch. The host
   /// app_shell is expected to persist the flag via
@@ -678,10 +622,6 @@ class _SettingsPageState extends State<_SettingsPage> {
             );
           },
         ),
-        if (widget.multiDevice && widget.otherSessionsCount > 0) ...[
-          const SizedBox(height: 12),
-          _buildMultiDeviceBanner(context),
-        ],
         const SizedBox(height: 20),
         _buildOnlineAccountSection(context),
         const SizedBox(height: 16),
@@ -689,47 +629,6 @@ class _SettingsPageState extends State<_SettingsPage> {
         const SizedBox(height: 16),
         _buildDebugSection(context),
       ],
-    );
-  }
-
-  /// Multi-device warning banner. Renders above the Settings menu
-  /// when the most recent `auth_payload` reported the user is
-  /// signed in on more than one device. Tap dives into the
-  /// "Sign in & security" sub-page, which hosts the Active
-  /// Sessions card. Mirrors iOS' "You're signed in on N other
-  /// devices" pattern — the user can audit and revoke without
-  /// hunting through the menu.
-  Widget _buildMultiDeviceBanner(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final count = widget.otherSessionsCount;
-    final plural = count == 1 ? 'device' : 'devices';
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      color: scheme.tertiaryContainer,
-      child: ListTile(
-        leading: Icon(Icons.devices_outlined, color: scheme.onTertiaryContainer),
-        title: Text(
-          'Signed in on $count other $plural',
-          style: TextStyle(
-            color: scheme.onTertiaryContainer,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        subtitle: Text(
-          'Tap to review active sessions and sign out devices you '
-          "don't recognize.",
-          style: TextStyle(color: scheme.onTertiaryContainer),
-        ),
-        trailing:
-            Icon(Icons.chevron_right, color: scheme.onTertiaryContainer),
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => _SignInSecurityPage(parent: this),
-            ),
-          );
-        },
-      ),
     );
   }
 

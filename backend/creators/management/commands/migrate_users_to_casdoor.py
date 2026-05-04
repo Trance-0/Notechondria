@@ -135,20 +135,6 @@ class Command(BaseCommand):
             ),
         )
         parser.add_argument(
-            "--invitation-code",
-            type=str,
-            default="",
-            help=(
-                "Optional migration breadcrumb. When set, the value is "
-                "written to the Casdoor user's `tag` field on every "
-                "upserted row, so the operator can later filter "
-                "migrated-vs-self-signup users in the Casdoor admin "
-                "UI by tag. Notechondria invitation codes (e.g. one "
-                "minted by the legacy /auth/invitation/ flow) are the "
-                "expected value."
-            ),
-        )
-        parser.add_argument(
             "--admin-password-from-env",
             action="store_true",
             help=(
@@ -169,7 +155,6 @@ class Command(BaseCommand):
         retry_existing = options["retry_existing"]
         strict = options["strict"]
         limit = options["limit"]
-        invitation_code = (options.get("invitation_code") or "").strip()
         use_admin_env_password = options["admin_password_from_env"]
 
         admin_username = (
@@ -253,7 +238,6 @@ class Command(BaseCommand):
                     creator=creator,
                     dry_run=dry_run,
                     password=user_password,
-                    invitation_code=invitation_code,
                 )
             except Exception as exc:  # noqa: BLE001
                 failed += 1
@@ -342,7 +326,7 @@ class Command(BaseCommand):
     # per-user upsert
     # ------------------------------------------------------------------
     def _upsert_casdoor_user(
-        self, *, sdk, user, creator, dry_run, password, invitation_code
+        self, *, sdk, user, creator, dry_run, password
     ):
         """Idempotently push *user* into Casdoor. Returns the resolved
         ``id`` (Casdoor sub) so the caller can stamp it on
@@ -361,11 +345,6 @@ class Command(BaseCommand):
         they had). The caller picks the value:
         ``DJANGO_SUPERUSER_PASSWORD`` for the admin row when
         ``--admin-password-from-env`` is on, random otherwise.
-
-        ``invitation_code`` is the operator-supplied breadcrumb. When
-        non-empty, it's written to ``CasdoorUser.tag`` on every
-        upserted row (add OR update path) so migrated users can be
-        filtered in the Casdoor admin UI by tag value.
         """
         from casdoor.user import User as CasdoorUser
 
@@ -377,8 +356,7 @@ class Command(BaseCommand):
             self.stdout.write(
                 f"   would upsert username={username!r} email={email!r} "
                 f"display_name={(creator.username or username)!r} "
-                f"password={password_origin} "
-                f"tag={invitation_code!r}"
+                f"password={password_origin}"
             )
             # Use the Notechondria pk as the dry-run "sub" so the log
             # output is stable and easy to diff between runs.
@@ -414,8 +392,6 @@ class Command(BaseCommand):
         cu.lastName = (user.last_name or "")[:150]
         if user.is_superuser:
             cu.isAdmin = True
-        if invitation_code:
-            cu.tag = invitation_code
 
         # Provider linkage — pre-populate the Casdoor User's google /
         # github fields from any SocialAccount rows we have. Casdoor

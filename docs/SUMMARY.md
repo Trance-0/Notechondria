@@ -61,6 +61,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.106 — drop invitation codes, email-verification codes, sessions, change-password / change-email; SMTP code path retired](versions/0.1.106.md)
 - [0.1.105 — migrate_users_to_casdoor: --invitation-code + --admin-password-from-env](versions/0.1.105.md)
 - [0.1.104 — handshake auto-derives version + commit + build_time; sidebar Inbox restored for signed-out users; Casdoor probe failures now logged](versions/0.1.104.md)
 - [0.1.103 — in-app signup gone; "Login via third party" + Casdoor signup link](versions/0.1.103.md)

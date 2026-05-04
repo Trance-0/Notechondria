@@ -69,25 +69,8 @@ abstract class NotechondriaClient implements AuthClient {
   Future<Map<String, dynamic>> unsubscribeCourse(String token, int courseId);
   Future<Map<String, dynamic>> openCourse(String token, int courseId);
   Future<Map<String, dynamic>> restoreTemplateCourses(String token);
-  Future<Map<String, dynamic>> register(
-    String username,
-    String email,
-    String password, {
-    String invitationCode = '',
-  });
-  Future<Map<String, dynamic>> validateInvitation(String invitationCode);
-  Future<Map<String, dynamic>> verifyEmail(String email, String code);
-  Future<Map<String, dynamic>> resendVerification(String email);
   Future<Map<String, dynamic>> login(String email, String password);
-  Future<Map<String, dynamic>> requestPasswordReset(String email);
-  Future<Map<String, dynamic>> confirmPasswordReset(
-    String email,
-    String code,
-    String password,
-  );
   Future<Map<String, dynamic>> checkSession(String token);
-  // listSessions + revokeSession are inherited from shared AuthClient;
-  // don't re-declare here.
   Future<void> logout(String token);
   Future<Map<String, dynamic>> getSettings(String token);
   Future<Map<String, dynamic>> updateSettings(
@@ -606,61 +589,6 @@ class HttpNotechondriaClient
   }
 
   @override
-  Future<Map<String, dynamic>> register(
-    String username,
-    String email,
-    String password, {
-    String invitationCode = '',
-  }) async {
-    final uri = _uri('/auth/register/');
-    final payload = <String, dynamic>{
-      'username': username,
-      'email': email,
-      'password': password,
-    };
-    if (invitationCode.isNotEmpty) {
-      payload['invitation_code'] = invitationCode;
-    }
-    final response = await _post(uri, payload: payload);
-    return Map<String, dynamic>.from(
-      await decode(response, uri: uri, method: 'POST'),
-    );
-  }
-
-  @override
-  Future<Map<String, dynamic>> validateInvitation(String invitationCode) async {
-    final uri = _uri('/auth/validate-invitation/');
-    final response = await _post(
-      uri,
-      payload: {'invitation_code': invitationCode},
-    );
-    return Map<String, dynamic>.from(
-      await decode(response, uri: uri, method: 'POST'),
-    );
-  }
-
-  @override
-  Future<Map<String, dynamic>> verifyEmail(String email, String code) async {
-    final uri = _uri('/auth/verify-email/');
-    final response = await _post(
-      uri,
-      payload: {'email': email, 'code': code},
-    );
-    return Map<String, dynamic>.from(
-      await decode(response, uri: uri, method: 'POST'),
-    );
-  }
-
-  @override
-  Future<Map<String, dynamic>> resendVerification(String email) async {
-    final uri = _uri('/auth/resend-verification/');
-    final response = await _post(uri, payload: {'email': email});
-    return Map<String, dynamic>.from(
-      await decode(response, uri: uri, method: 'POST'),
-    );
-  }
-
-  @override
   Future<Map<String, dynamic>> login(String email, String password) async {
     final uri = _uri('/auth/login/');
     final response = await _post(
@@ -712,53 +640,12 @@ class HttpNotechondriaClient
   }
 
   @override
-  Future<Map<String, dynamic>> requestPasswordReset(String email) async {
-    final uri = _uri('/auth/password-reset/');
-    final response = await _post(uri, payload: {'email': email});
-    return Map<String, dynamic>.from(
-      await decode(response, uri: uri, method: 'POST'),
-    );
-  }
-
-  @override
-  Future<Map<String, dynamic>> confirmPasswordReset(
-    String email,
-    String code,
-    String password,
-  ) async {
-    final uri = _uri('/auth/password-reset/confirm/');
-    final response = await _post(
-      uri,
-      payload: {'email': email, 'code': code, 'password': password},
-    );
-    return Map<String, dynamic>.from(
-      await decode(response, uri: uri, method: 'POST'),
-    );
-  }
-
-  @override
   Future<Map<String, dynamic>> checkSession(String token) async {
     final uri = _uri('/auth/session/');
     final response = await _get(uri, token: token);
     return Map<String, dynamic>.from(
       await decode(response, uri: uri, method: 'GET'),
     );
-  }
-
-  @override
-  Future<Map<String, dynamic>> listSessions(String token) async {
-    final uri = _uri('/auth/sessions/');
-    final response = await _get(uri, token: token);
-    return Map<String, dynamic>.from(
-      await decode(response, uri: uri, method: 'GET'),
-    );
-  }
-
-  @override
-  Future<void> revokeSession(String token, int sessionId) async {
-    final uri = _uri('/auth/sessions/$sessionId/');
-    final response = await _delete(uri, token: token);
-    await decode(response, uri: uri, method: 'DELETE');
   }
 
   @override

@@ -9,13 +9,7 @@ class _SettingsPage extends StatefulWidget {
     required this.deletedNotes,
     required this.onSave,
     required this.onLogout,
-    required this.onRegister,
-    required this.onValidateInvitation,
-    required this.onVerify,
-    required this.onResendVerification,
     required this.onLogin,
-    required this.onRequestPasswordReset,
-    required this.onConfirmPasswordReset,
     this.onCasdoorLogin,
     this.casdoorOrgLoginUrl,
     this.onBindCasdoor,
@@ -40,9 +34,6 @@ class _SettingsPage extends StatefulWidget {
     this.debugSnapshotListenable,
     this.debugHistoryListenable,
     this.debugLogController,
-    this.onListSessions,
-    this.onRevokeSession,
-    this.onCurrentSessionRevoked,
     this.onExportLocalData,
     this.onRestoreFromLocalImport,
     this.onSaveMcpSkill,
@@ -67,22 +58,7 @@ class _SettingsPage extends StatefulWidget {
     double deadlineImportanceWeight,
   ) onSave;
   final Future<void> Function() onLogout;
-  final Future<ActionFeedback> Function(
-    String username,
-    String email,
-    String password, {
-    String invitationCode,
-  }) onRegister;
-  final Future<Map<String, dynamic>> Function(String code) onValidateInvitation;
-  final Future<ActionFeedback> Function(String email, String code) onVerify;
-  final Future<ActionFeedback> Function(String email) onResendVerification;
   final Future<ActionFeedback> Function(String email, String password) onLogin;
-  final Future<ActionFeedback> Function(String email) onRequestPasswordReset;
-  final Future<ActionFeedback> Function(
-    String email,
-    String code,
-    String password,
-  ) onConfirmPasswordReset;
   /// Triggers Casdoor SSO. Null in shadow mode (no `CASDOOR_*` env
   /// vars). See `docs/integrations/casdoor-migration.md`.
   final VoidCallback? onCasdoorLogin;
@@ -133,9 +109,6 @@ class _SettingsPage extends StatefulWidget {
   final ValueListenable<ApiDebugSnapshot?>? debugSnapshotListenable;
   final ValueListenable<List<ApiDebugSnapshot>>? debugHistoryListenable;
   final DebugLogController? debugLogController;
-  final Future<Map<String, dynamic>> Function()? onListSessions;
-  final Future<void> Function(int sessionId)? onRevokeSession;
-  final VoidCallback? onCurrentSessionRevoked;
   final Future<void> Function()? onExportLocalData;
   final Future<void> Function()? onRestoreFromLocalImport;
 
@@ -490,15 +463,6 @@ class _SettingsPageState extends State<_SettingsPage> {
                     casdoorLinked:
                         widget.settings?['casdoor_linked'] == true,
                   ),
-                  if (widget.onListSessions != null &&
-                      widget.onRevokeSession != null) ...[
-                    const SizedBox(height: 16),
-                    ActiveSessionsCard(
-                      onListSessions: widget.onListSessions!,
-                      onRevokeSession: widget.onRevokeSession!,
-                      onCurrentRevoked: widget.onCurrentSessionRevoked,
-                    ),
-                  ],
                   if (widget.onSaveMcpSkill != null) ...[
                     const SizedBox(height: 16),
                     McpSkillSection(

@@ -30,16 +30,8 @@ export 'src/utils/local_attachment_store.dart'
         LocalAttachmentStore,
         LocalAttachmentStoreException;
 
-export 'src/components/active_sessions_card.dart'
-    show ActiveSessionsCard;
 export 'src/components/auth_dialogs.dart'
-    show
-        AuthHub,
-        EmailCodeDialog,
-        EmailPasswordDialog,
-        FeedbackText,
-        PasswordResetDialog;
-export 'src/components/auth_dialogs_wizard.dart' show RegistrationWizard;
+    show AuthHub, EmailPasswordDialog, FeedbackText;
 export 'src/components/debug_log.dart'
     show
         DebugLogCard,

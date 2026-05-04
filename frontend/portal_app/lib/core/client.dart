@@ -429,61 +429,6 @@ class HttpNotechondriaClient
   }
 
   @override
-  Future<Map<String, dynamic>> register(
-    String username,
-    String email,
-    String password, {
-    String invitationCode = '',
-  }) async {
-    final uri = _uri('/auth/register/');
-    final payload = <String, dynamic>{
-      'username': username,
-      'email': email,
-      'password': password,
-    };
-    if (invitationCode.isNotEmpty) {
-      payload['invitation_code'] = invitationCode;
-    }
-    final response = await _post(uri, payload: payload);
-    return Map<String, dynamic>.from(
-      await decode(response, uri: uri, method: 'POST'),
-    );
-  }
-
-  @override
-  Future<Map<String, dynamic>> validateInvitation(String invitationCode) async {
-    final uri = _uri('/auth/validate-invitation/');
-    final response = await _post(
-      uri,
-      payload: {'invitation_code': invitationCode},
-    );
-    return Map<String, dynamic>.from(
-      await decode(response, uri: uri, method: 'POST'),
-    );
-  }
-
-  @override
-  Future<Map<String, dynamic>> verifyEmail(String email, String code) async {
-    final uri = _uri('/auth/verify-email/');
-    final response = await _post(
-      uri,
-      payload: {'email': email, 'code': code},
-    );
-    return Map<String, dynamic>.from(
-      await decode(response, uri: uri, method: 'POST'),
-    );
-  }
-
-  @override
-  Future<Map<String, dynamic>> resendVerification(String email) async {
-    final uri = _uri('/auth/resend-verification/');
-    final response = await _post(uri, payload: {'email': email});
-    return Map<String, dynamic>.from(
-      await decode(response, uri: uri, method: 'POST'),
-    );
-  }
-
-  @override
   Future<Map<String, dynamic>> login(String email, String password) async {
     final uri = _uri('/auth/login/');
     final response = await _post(
@@ -547,65 +492,12 @@ class HttpNotechondriaClient
   }
 
   @override
-  Future<Map<String, dynamic>> requestPasswordReset(String email) async {
-    final uri = _uri('/auth/password-reset/');
-    final response = await _post(uri, payload: {'email': email});
-    return Map<String, dynamic>.from(
-      await decode(response, uri: uri, method: 'POST'),
-    );
-  }
-
-  @override
-  Future<Map<String, dynamic>> confirmPasswordReset(
-    String email,
-    String code,
-    String password,
-  ) async {
-    final uri = _uri('/auth/password-reset/confirm/');
-    final response = await _post(
-      uri,
-      payload: {'email': email, 'code': code, 'password': password},
-    );
-    return Map<String, dynamic>.from(
-      await decode(response, uri: uri, method: 'POST'),
-    );
-  }
-
-  @override
   Future<Map<String, dynamic>> checkSession(String token) async {
     final uri = _uri('/auth/session/');
     final response = await _get(uri, token: token);
     return Map<String, dynamic>.from(
       await decode(response, uri: uri, method: 'GET'),
     );
-  }
-
-  @override
-  Future<Map<String, dynamic>> listSessions(String token) async {
-    final uri = _uri('/auth/sessions/');
-    final response = await _get(uri, token: token);
-    return Map<String, dynamic>.from(
-      await decode(response, uri: uri, method: 'GET'),
-    );
-  }
-
-  @override
-  Future<void> revokeSession(String token, int sessionId) async {
-    final uri = _uri('/auth/sessions/$sessionId/');
-    final response = await _delete(uri, token: token);
-    await decode(response, uri: uri, method: 'DELETE');
-  }
-
-  @override
-  Future<Map<String, dynamic>> sendIdentityCode(String token) async {
-    final uri = _uri('/auth/send-identity-code/');
-    final response = await send(
-      'POST',
-      uri,
-      () => _httpClient.post(uri, headers: headers(token: token)),
-    );
-    return Map<String, dynamic>.from(
-        await decode(response, uri: uri, method: 'POST'));
   }
 
   @override
@@ -697,77 +589,6 @@ class HttpNotechondriaClient
       () => _httpClient.delete(uri, headers: headers(token: token)),
     );
     await decode(response, uri: uri, method: 'DELETE');
-  }
-
-  @override
-  Future<Map<String, dynamic>> changePassword(
-    String token,
-    String currentPassword,
-    String newPassword,
-    String identityCode,
-  ) async {
-    final uri = _uri('/auth/change-password/');
-    final response = await send(
-      'POST',
-      uri,
-      () => _httpClient.post(
-        uri,
-        headers: headers(token: token),
-        body: jsonEncode({
-          'current_password': currentPassword,
-          'new_password': newPassword,
-          'identity_code': identityCode,
-        }),
-      ),
-    );
-    return Map<String, dynamic>.from(
-        await decode(response, uri: uri, method: 'POST'));
-  }
-
-  @override
-  Future<Map<String, dynamic>> changeEmailRequest(
-    String token,
-    String newEmail,
-    String identityCode,
-  ) async {
-    final uri = _uri('/auth/change-email/');
-    final response = await send(
-      'POST',
-      uri,
-      () => _httpClient.post(
-        uri,
-        headers: headers(token: token),
-        body: jsonEncode({
-          'new_email': newEmail,
-          'identity_code': identityCode,
-        }),
-      ),
-    );
-    return Map<String, dynamic>.from(
-        await decode(response, uri: uri, method: 'POST'));
-  }
-
-  @override
-  Future<Map<String, dynamic>> changeEmailConfirm(
-    String token,
-    String newEmail,
-    String code,
-  ) async {
-    final uri = _uri('/auth/change-email/');
-    final response = await send(
-      'POST',
-      uri,
-      () => _httpClient.post(
-        uri,
-        headers: headers(token: token),
-        body: jsonEncode({
-          'new_email': newEmail,
-          'code': code,
-        }),
-      ),
-    );
-    return Map<String, dynamic>.from(
-        await decode(response, uri: uri, method: 'POST'));
   }
 
   @override
