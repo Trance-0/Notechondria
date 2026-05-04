@@ -523,13 +523,20 @@ class CasdoorConfigApiView(APIView):
         )
         if not configured:
             return Response({"configured": False})
+        # signin_url points at the org-themed login page
+        # (`/login/<orgName>`) rather than the raw OAuth authorize
+        # endpoint. Casdoor accepts the same OAuth params on both,
+        # but `/login/<orgName>` shows the branded login UI users
+        # expect ("Continue with Notechondria via auth.trance-0.com")
+        # instead of a generic OAuth consent screen. Per user
+        # request in 0.1.109.
         return Response({
             "configured": True,
             "endpoint": endpoint,
             "client_id": settings.CASDOOR_CLIENT_ID,
             "organization": settings.CASDOOR_ORG_NAME,
             "application": settings.CASDOOR_APP_NAME,
-            "signin_url": f"{endpoint}/login/oauth/authorize",
+            "signin_url": f"{endpoint}/login/{settings.CASDOOR_ORG_NAME}",
         })
 
 

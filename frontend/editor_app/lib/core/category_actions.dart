@@ -306,65 +306,90 @@ extension _AppShellCategoryX on _AppShellState {
     }
   }
 
-  /// Unsubscribes the current user from a cloud category they do not
-  /// own, removing it from their sidebar without touching the
-  /// course itself on the server. Mirrors planner/portal's existing
-  /// unsubscribe flow. Returns an `ActionFeedback` shaped per §1.7.
+  /// Removes a category from the user's sidebar. Works in any auth
+  /// state — when signed in against a cloud course we best-effort
+  /// `widget.client.unsubscribeCourse(...)`; offline (no token) or
+  /// for local-only rows we skip the server call entirely. Either
+  /// way the row is dropped from `_courses` / `_localCourses` and
+  /// the UI updates immediately. A failed cloud unsubscribe (401
+  /// stale session, 403 owned-row, network blip) is logged at
+  /// warning and does NOT block the local removal — user intent
+  /// ("get this off my sidebar") wins. Next online sync may
+  /// re-surface a cloud row whose server-side subscription wasn't
+  /// actually dropped; that's acceptable for now and clearer than
+  /// blocking the action when the cloud call fails.
   Future<ActionFeedback> _unsubscribeCategory(
       Map<String, dynamic> course) async {
     final courseId = (course['id'] as num?)?.toInt();
-    final token = _token;
-    if (token == null || token.isEmpty || courseId == null) {
+    if (courseId == null) {
       return const ActionFeedback(
-          message: 'Category not unsubscribed: '
+          message: 'Category not removed: '
               'Editor.Sync.Courses/unsubscribe \u2014 '
-              'sign in first; unsubscribing requires a cloud session.',
+              'category id missing from row.',
           isError: true);
     }
-    try {
-      await widget.client.unsubscribeCourse(token, courseId);
-      // Land back on the remote Inbox after unsubscribing (by name).
-      final defaultRemote = _courses.cast<Map<String, dynamic>?>().firstWhere(
-            (c) =>
-                c != null &&
-                (c['id'] as num?)?.toInt() != courseId &&
-                _isInboxCategory(c),
-            orElse: () => null,
-          );
-        _courses = _courses
-            .where((item) => (item['id'] as num?)?.toInt() != courseId)
-            .toList(growable: false);
-        if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
-          _selectedCourse = defaultRemote;
-          _selectedCategoryId = (defaultRemote?['id'] as num?)?.toInt();
-        }
-      refreshState();
-      await _persistLocalCache();
-      await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
-      log(
-        level: DebugLogLevel.info,
-        source: 'Editor.Sync.Courses/unsubscribe',
-        message:
-            'Category unsubscribed: Editor.Sync.Courses/unsubscribe \u2014 '
-            "'${course['title']}' removed from sidebar; course stays on server.",
-      );
-      return ActionFeedback(
+    final token = _token;
+    final isLocal = isLocalCourse(course);
+    final hasToken = token != null && token.isNotEmpty;
+    if (!isLocal && hasToken) {
+      try {
+        await widget.client.unsubscribeCourse(token, courseId);
+      } catch (error) {
+        log(
+          level: DebugLogLevel.warning,
+          source: 'Editor.Sync.Courses/unsubscribe',
           message:
-              'Category unsubscribed: Editor.Sync.Courses/unsubscribe \u2014 '
-              "'${course['title']}' removed from your sidebar.");
-    } catch (error) {
-      final cause = error.toString().replaceFirst('Exception: ', '');
-      log(
-        level: DebugLogLevel.error,
-        source: 'Editor.Sync.Courses/unsubscribe',
-        message: 'Category not unsubscribed: '
-            'Editor.Sync.Courses/unsubscribe \u2014 $cause.',
-      );
-      return ActionFeedback(
-          message: 'Category not unsubscribed: '
-              'Editor.Sync.Courses/unsubscribe \u2014 $cause.',
-          isError: true);
+              'Cloud unsubscribe failed; sidebar row dropped locally anyway: '
+              'Editor.Sync.Courses/unsubscribe \u2014 '
+              '${error.toString().replaceFirst("Exception: ", "")}.',
+        );
+      }
     }
+    final fallback = (isLocal ? _localCourses : _courses)
+        .cast<Map<String, dynamic>?>()
+        .firstWhere(
+          (c) =>
+              c != null &&
+              (c['id'] as num?)?.toInt() != courseId &&
+              _isInboxCategory(c),
+          orElse: () => null,
+        );
+    if (isLocal) {
+      _localCourses = _localCourses
+          .where((item) => (item['id'] as num?)?.toInt() != courseId)
+          .toList(growable: false);
+      await persistLocalCourses();
+    } else {
+      _courses = _courses
+          .where((item) => (item['id'] as num?)?.toInt() != courseId)
+          .toList(growable: false);
+      await _persistLocalCache();
+    }
+    if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
+      _selectedCourse = fallback;
+      _selectedCategoryId = (fallback?['id'] as num?)?.toInt();
+    }
+    refreshState();
+    if (hasToken) {
+      await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
+    }
+    final scope = !hasToken
+        ? 'sidebar (offline; cloud not contacted)'
+        : (isLocal
+            ? 'sidebar (local row)'
+            : 'sidebar; server unsubscribe attempted');
+    log(
+      level: DebugLogLevel.info,
+      source: 'Editor.Sync.Courses/unsubscribe',
+      message:
+          'Category removed from sidebar: '
+          'Editor.Sync.Courses/unsubscribe \u2014 '
+          "'${course['title']}' dropped from $scope.",
+    );
+    return ActionFeedback(
+        message:
+            'Category removed: Editor.Sync.Courses/unsubscribe \u2014 '
+            "'${course['title']}' dropped from your sidebar.");
   }
 
   /// Renders a single sidebar category row with the shared tooltip, long-press,
@@ -493,9 +518,16 @@ extension _AppShellCategoryX on _AppShellState {
   }
 
   /// Shows an edit dialog for a category (rename + icon + delete).
+  /// The Inbox row gets a stripped-down dialog: no rename / icon /
+  /// delete — only an immediate "Remove from sidebar" action that
+  /// routes through `_unsubscribeCategory` so it works offline and
+  /// without the 3-second confirm delay that the destructive-delete
+  /// path uses. The Inbox itself is reseeded on next launch by
+  /// `_ensureStarterWorkspace`, so removing it from the sidebar is
+  /// recoverable.
   Future<void> _promptEditCategory(Map<String, dynamic> course) async {
     if (_isInboxCategory(course)) {
-      showDialog<void>(
+      final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
           title: Row(
@@ -506,17 +538,34 @@ extension _AppShellCategoryX on _AppShellState {
             ],
           ),
           content: const Text(
-            'Inbox is the default category. It cannot be renamed or deleted.\n\n'
-            'Notes that lose their category are automatically moved here.',
+            'Inbox is the default category. Renaming and icon changes '
+            'are reserved for it. You can remove it from the sidebar '
+            'right now (no waiting period); the row reseeds itself the '
+            'next time the editor launches.',
           ),
           actions: [
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('OK'),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(ctx).colorScheme.error,
+              ),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Remove from sidebar'),
             ),
           ],
         ),
       );
+      if (confirmed == true) {
+        final feedback = await _unsubscribeCategory(course);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(feedback.message)),
+          );
+        }
+      }
       return;
     }
     final controller =
@@ -554,19 +603,16 @@ extension _AppShellCategoryX on _AppShellState {
         }
       }
     } else if (action == 'unsubscribe') {
-      final confirmed = await _confirmWithDelay(
-        title: 'Unsubscribe from category?',
-        message:
-            "'${course['title']}' will be removed from your sidebar. "
-            'The category itself stays on the server and you can resubscribe later.',
-      );
-      if (confirmed) {
-        final feedback = await _unsubscribeCategory(course);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(feedback.message)),
-          );
-        }
+      // Unsubscribe is non-destructive (the category stays on the
+      // server; only the sidebar row is dropped) and the user has
+      // already confirmed by tapping "Unsubscribe" in the edit
+      // dialog — no second 3s-delay confirmation, since the action
+      // is recoverable by resubscribing or signing in again.
+      final feedback = await _unsubscribeCategory(course);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(feedback.message)),
+        );
       }
     } else if (action == 'save') {
       final newTitle = result['title'] as String? ?? '';
