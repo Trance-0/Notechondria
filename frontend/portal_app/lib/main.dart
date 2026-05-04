@@ -56,6 +56,8 @@ part 'modules/activity_week.dart';
 part 'modules/learner_note_editor.dart';
 part 'modules/note_metadata_dialog.dart';
 part 'modules/settings.dart';
+part 'modules/settings_build.dart';
+part 'modules/settings_pages.dart';
 part 'modules/settings_sections.dart';
 part 'modules/settings_dialogs.dart';
 

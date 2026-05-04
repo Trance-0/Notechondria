@@ -1,5 +1,13 @@
 part of notechondria_frontend;
 
+/// Portal Settings page. Apple-style two-level navigation: a short
+/// top-level page with grouped nav rows, each row pushing a dedicated
+/// `_SettingsXxxPage` (see `settings_pages.dart`). The grouped-card
+/// primitives live in `settings_build.dart`. Mirrors the editor's
+/// structure (see `frontend/editor_app/lib/modules/settings.dart`)
+/// while keeping every existing portal callback wired to its
+/// existing widget — this is a structural reorganization, not a
+/// behavior change.
 class _SettingsPage extends StatefulWidget {
   const _SettingsPage({
     required this.profile,
@@ -16,17 +24,9 @@ class _SettingsPage extends StatefulWidget {
     required this.onLogin,
     required this.onRequestPasswordReset,
     required this.onConfirmPasswordReset,
-    this.onGoogleLogin,
-    this.onGithubLogin,
-    this.onGoogleLoginOnly,
-    this.onGithubLoginOnly,
     this.onCasdoorLogin,
-    this.onBindGoogle,
-    this.onBindGithub,
     this.onBindCasdoor,
     this.onUnlinkCasdoor,
-    this.onListSocialAccounts,
-    this.onUnlinkSocialAccount,
     required this.onRestoreDeletedNote,
     required this.onEmptyDeletedNotes,
     required this.onCopyLogs,
@@ -93,22 +93,14 @@ class _SettingsPage extends StatefulWidget {
     String code,
     String password,
   ) onConfirmPasswordReset;
-  final void Function(String invitationCode)? onGoogleLogin;
-  final void Function(String invitationCode)? onGithubLogin;
-  final VoidCallback? onGoogleLoginOnly;
-  final VoidCallback? onGithubLoginOnly;
 
   /// Triggers Casdoor SSO. Null in shadow mode (no `CASDOOR_*` env
   /// vars). See `docs/integrations/casdoor-migration.md`.
   final VoidCallback? onCasdoorLogin;
-  final VoidCallback? onBindGoogle;
-  final VoidCallback? onBindGithub;
 
   /// Triggers Casdoor account binding. Null in shadow mode.
   final VoidCallback? onBindCasdoor;
   final Future<void> Function()? onUnlinkCasdoor;
-  final Future<List<Map<String, dynamic>>> Function()? onListSocialAccounts;
-  final Future<void> Function(String provider)? onUnlinkSocialAccount;
   final Future<void> Function(Map<String, dynamic> note) onRestoreDeletedNote;
   final Future<void> Function() onEmptyDeletedNotes;
   final Future<void> Function() onCopyLogs;
@@ -182,12 +174,23 @@ class _SettingsPageState extends State<_SettingsPage> {
   String _editorMode = 'P';
   String _themePreset = 'teal';
   String _themeMode = 'S';
-  ActionFeedback? _saveFeedback;
+
+  /// Feedback bus shared across the top-level Settings page and
+  /// every pushed sub-page. Each long-running action
+  /// (`_runMaintenanceAction`, `_submitSettings`,
+  /// `_handleAvatarUpload`, ...) writes the `ActionFeedback` here, and
+  /// every page that wants to surface it listens via
+  /// `ValueListenableBuilder` (see `_FeedbackBanner` in
+  /// `settings_build.dart`). Replaces the old `setState` field that
+  /// only re-rendered the top page — sub-pages couldn't see errors
+  /// from controls they hosted.
+  final ValueNotifier<ActionFeedback?> _feedback = ValueNotifier(null);
   bool _saving = false;
   bool _uploadingAvatar = false;
   String? _socialLinkError;
 
-  bool get _isAuthenticated => widget.profile != null && widget.settings != null;
+  bool get _isAuthenticated =>
+      widget.profile != null && widget.settings != null;
 
   bool get _isAdmin =>
       widget.profile?['is_superuser'] == true ||
@@ -224,7 +227,8 @@ class _SettingsPageState extends State<_SettingsPage> {
   @override
   void didUpdateWidget(covariant _SettingsPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.settings != widget.settings || oldWidget.profile != widget.profile) {
+    if (oldWidget.settings != widget.settings ||
+        oldWidget.profile != widget.profile) {
       _usernameController.text = widget.settings?['username']?.toString() ??
           widget.profile?['username']?.toString() ??
           '';
@@ -236,9 +240,10 @@ class _SettingsPageState extends State<_SettingsPage> {
       _editorMode = widget.settings?['editor_mode']?.toString() ?? _editorMode;
     }
     if (oldWidget.localSettings != widget.localSettings) {
-      _apiBaseController.text = widget.localSettings['api_base_url']?.toString() ??
-          widget.apiBaseUrl ??
-          _defaultApiBaseUrl();
+      _apiBaseController.text =
+          widget.localSettings['api_base_url']?.toString() ??
+              widget.apiBaseUrl ??
+              _defaultApiBaseUrl();
       _themePreset = widget.localSettings['theme_preset']?.toString() ?? 'teal';
       _themeMode = widget.localSettings['theme_mode']?.toString() ?? 'S';
     }
@@ -251,15 +256,27 @@ class _SettingsPageState extends State<_SettingsPage> {
     _mottoController.dispose();
     _socialController.dispose();
     _apiBaseController.dispose();
+    _feedback.dispose();
     super.dispose();
+  }
+
+  /// Shared `setState` wrapper for extensions — `setState` is
+  /// `@protected` and invisible to extensions, so build helpers
+  /// mutate state fields directly and then call this to trigger a
+  /// rebuild. Same pattern used on `_AppShellState`.
+  void refreshState() {
+    if (mounted) setState(() {});
   }
 
   bool _isValidUrl(String value) {
     final uri = Uri.tryParse(value);
-    return uri != null && uri.hasScheme && (uri.scheme == 'http' || uri.scheme == 'https');
+    return uri != null &&
+        uri.hasScheme &&
+        (uri.scheme == 'http' || uri.scheme == 'https');
   }
 
   Future<void> _submitSettings() async {
+    if (_saving) return;
     final social = _socialController.text.trim();
     if (social.isNotEmpty && !_isValidUrl(social)) {
       setState(() => _socialLinkError = 'Must be a valid URL (https://...)');
@@ -267,9 +284,9 @@ class _SettingsPageState extends State<_SettingsPage> {
     }
     setState(() {
       _saving = true;
-      _saveFeedback = null;
       _socialLinkError = null;
     });
+    _feedback.value = null;
     final feedback = await widget.onSave(
       _usernameController.text.trim(),
       _emailController.text.trim(),
@@ -285,38 +302,34 @@ class _SettingsPageState extends State<_SettingsPage> {
     }
     setState(() {
       _saving = false;
-      _saveFeedback = feedback;
     });
+    _feedback.value = feedback;
   }
 
   Future<void> _handleAvatarUpload() async {
     setState(() {
       _uploadingAvatar = true;
-      _saveFeedback = null;
     });
+    _feedback.value = null;
     final feedback = await widget.onUploadAvatar();
     if (!mounted) {
       return;
     }
     setState(() {
       _uploadingAvatar = false;
-      _saveFeedback = feedback;
     });
+    _feedback.value = feedback;
   }
 
   Future<void> _runMaintenanceAction(
     Future<ActionFeedback> Function() action,
   ) async {
-    setState(() {
-      _saveFeedback = null;
-    });
+    _feedback.value = null;
     final feedback = await action();
     if (!mounted) {
       return;
     }
-    setState(() {
-      _saveFeedback = feedback;
-    });
+    _feedback.value = feedback;
   }
 
   Future<void> _openRecycleBinDialog() async {
@@ -394,391 +407,187 @@ class _SettingsPageState extends State<_SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final avatarUrl = _resolveRemoteUrl(
-      widget.profile?['image_url']?.toString() ??
-          widget.settings?['image_url']?.toString() ??
-          '',
-      apiBaseUrl: widget.localSettings['api_base_url']?.toString(),
-    );
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        if (!_isAuthenticated) ...[
-          const Text(
-            'Use this tab to register, verify email, and log in. Local settings still apply without an account.',
-          ),
-          const SizedBox(height: 16),
-          AuthHub(
-            onRegister: widget.onRegister,
-            onValidateInvitation: widget.onValidateInvitation,
-            onVerify: widget.onVerify,
-            onResendVerification: widget.onResendVerification,
-            onLogin: widget.onLogin,
-            onRequestPasswordReset: widget.onRequestPasswordReset,
-            onConfirmPasswordReset: widget.onConfirmPasswordReset,
-            onGoogleLogin: widget.onGoogleLogin,
-            onGithubLogin: widget.onGithubLogin,
-            onGoogleLoginOnly: widget.onGoogleLoginOnly,
-            onGithubLoginOnly: widget.onGithubLoginOnly,
-            onCasdoorLogin: widget.onCasdoorLogin,
-            apiBaseUrl: widget.apiBaseUrl,
-          ),
-          const SizedBox(height: 24),
-        ] else ...[
-          Row(
-            children: [
-              _RemoteAvatar(
-                radius: 28,
-                imageUrl: avatarUrl,
-                fallbackLabel: widget.profile?['username']?.toString() ?? '',
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.profile?['username']?.toString() ??
-                          widget.profile?['email']?.toString() ??
-                          '',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    Text(
-                      widget.profile?['email']?.toString() ?? '',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-              OutlinedButton.icon(
-                onPressed: _uploadingAvatar ? null : _handleAvatarUpload,
-                icon: const Icon(Icons.photo_camera_outlined),
-                label: Text(_uploadingAvatar ? 'Uploading...' : 'Edit avatar'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          TextField(
-            controller: _usernameController,
-            decoration: const InputDecoration(
-              labelText: 'Username',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _emailController,
-            decoration: const InputDecoration(
-              labelText: 'Email',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _mottoController,
-            decoration: const InputDecoration(
-              labelText: 'Motto',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _socialController,
-            decoration: InputDecoration(
-              labelText: 'Social link',
-              hintText: 'https://...',
-              border: const OutlineInputBorder(),
-              errorText: _socialLinkError,
-            ),
-            onChanged: (_) {
-              if (_socialLinkError != null) {
-                setState(() => _socialLinkError = null);
-              }
-            },
-          ),
-          const SizedBox(height: 24),
-        ],
         Text(
-          'Local app settings',
+          'Settings',
           style: Theme.of(context)
               .textTheme
-              .titleMedium
-              ?.copyWith(fontWeight: FontWeight.w700),
+              .headlineSmall
+              ?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 8),
-        AppPreferencesCard(
-          editorMode: _editorMode,
-          themePreset: _themePreset,
-          themeMode: _themeMode,
-          apiBaseController: _apiBaseController,
-          isAuthenticated: _isAuthenticated,
-          onEditorModeChanged: (v) => setState(() => _editorMode = v),
-          onThemePresetChanged: (v) => setState(() => _themePreset = v),
-          onThemeModeChanged: (v) => setState(() => _themeMode = v),
-          offlineMode: widget.onOfflineModeChanged == null
-              ? null
-              : widget.localSettings['offline_mode'] == true,
-          onOfflineModeChanged: widget.onOfflineModeChanged == null
-              ? null
-              : (value) {
-                  widget.onOfflineModeChanged!(value);
-                },
-          apiBaseHintText: 'http://localhost:9060/api/v1',
-          apiBaseHelperText: 'Stored locally and mirrored to the profile on login.',
+        Text(
+          _isAuthenticated
+              ? 'Manage your account, preferences, and local data.'
+              : 'Sign in to sync to the cloud, or keep using local-only '
+                  'preferences below.',
         ),
         const SizedBox(height: 16),
-        if (_saveFeedback != null) ...[
-          FeedbackText(feedback: _saveFeedback!),
-          const SizedBox(height: 12),
-        ],
-        FilledButton(
-          onPressed: _saving ? null : _submitSettings,
-          child: Text(_saving ? 'Saving...' : 'Save settings'),
+        ValueListenableBuilder<ActionFeedback?>(
+          valueListenable: _feedback,
+          builder: (context, feedback, _) {
+            if (feedback == null) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: FeedbackText(feedback: feedback),
+            );
+          },
         ),
-        if (_isAdmin) ...[
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () => _runMaintenanceAction(widget.onRestoreTemplateCourses),
-            icon: const Icon(Icons.restart_alt_outlined),
-            label: const Text('Restore templates'),
-          ),
-        ],
+        _buildOnlineAccountSection(context),
+        const SizedBox(height: 16),
+        _buildSettingsMenu(context),
         if (_isAuthenticated) ...[
           const SizedBox(height: 16),
-          _ConnectedAccountsSection(
-            onListSocialAccounts: widget.onListSocialAccounts,
-            onUnlinkSocialAccount: widget.onUnlinkSocialAccount,
-            onBindGoogle: widget.onBindGoogle,
-            onBindGithub: widget.onBindGithub,
-            onBindCasdoor: widget.onBindCasdoor,
-            onUnlinkCasdoor: widget.onUnlinkCasdoor,
-            casdoorLinked: widget.settings?['casdoor_linked'] == true,
-          ),
-          if (widget.onListSessions != null && widget.onRevokeSession != null) ...[
-            const SizedBox(height: 16),
-            ActiveSessionsCard(
-              onListSessions: widget.onListSessions!,
-              onRevokeSession: widget.onRevokeSession!,
-              onCurrentRevoked: widget.onCurrentSessionRevoked,
-            ),
-          ],
-          if (widget.onRotateApiKey != null ||
-              widget.onSendIdentityCode != null) ...[
-            const SizedBox(height: 16),
-            _SecuritySection(
-              apiKeyPrefix:
-                  widget.settings?['api_key_prefix']?.toString() ?? '',
-              apiBaseUrl: widget.apiBaseUrl ?? '',
-              mcpSkillMd:
-                  widget.settings?['mcp_skill_md']?.toString() ?? '',
-              onSaveMcpSkill: widget.onSaveMcpSkill,
-              onRotateApiKey: widget.onRotateApiKey,
-              onSendIdentityCode: widget.onSendIdentityCode,
-              onChangePassword: widget.onChangePassword,
-              onChangeEmailRequest: widget.onChangeEmailRequest,
-              onChangeEmailConfirm: widget.onChangeEmailConfirm,
-              onOpenChangePassword: () =>
-                  _openChangePasswordDialog(context),
-              onOpenChangeEmail: () => _openChangeEmailDialog(context),
-            ),
-            const SizedBox(height: 16),
-            widget.githubSyncCardBuilder?.call() ??
-                const GithubSyncExperimentalCard(),
-          ],
-          const SizedBox(height: 12),
-          OutlinedButton(
-            onPressed: () {
-              widget.onLogout();
-            },
-            child: const Text('Logout'),
-          ),
-        ],
-        const SizedBox(height: 24),
-        Text(
-          'Local data and cache',
-          style: Theme.of(context)
-              .textTheme
-              .titleMedium
-              ?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${widget.localDraftCount} local draft(s), ${widget.localCourseCount} local course(s).',
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'The app keeps local drafts, local courses, cached API content, and debug logs so it can still run when the backend is unavailable.',
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    FilledButton.icon(
-                      onPressed: _isAuthenticated
-                          ? () => _runMaintenanceAction(
-                                () => widget.onSyncLocalData(announce: false),
-                              )
-                          : null,
-                      icon: const Icon(Icons.cloud_upload_outlined),
-                      label: const Text('Sync local data'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: _isAuthenticated
-                          ? () => _runMaintenanceAction(widget.onPullCloudData)
-                          : null,
-                      icon: const Icon(Icons.download_for_offline_outlined),
-                      label: const Text('Pull cloud notes'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: () => _runMaintenanceAction(widget.onClearLocalCache),
-                      icon: const Icon(Icons.cleaning_services_outlined),
-                      label: const Text('Clear local cache'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: () => _runMaintenanceAction(widget.onClearLocalData),
-                      icon: const Icon(Icons.delete_sweep_outlined),
-                      label: const Text('Remove local data'),
-                    ),
-                    if (widget.onOpenLocalRecycleBin != null)
-                      OutlinedButton.icon(
-                        onPressed: widget.onOpenLocalRecycleBin,
-                        icon:
-                            const Icon(Icons.restore_from_trash_outlined),
-                        label: Text(
-                          'Synced drafts (recoverable) '
-                          '(${widget.localTrashedDraftCount + widget.localTrashedCourseCount})',
-                        ),
-                      ),
-                    if (widget.onExportLocalData != null)
-                      OutlinedButton.icon(
-                        onPressed: () => widget.onExportLocalData!(),
-                        icon: const Icon(Icons.file_download_outlined),
-                        label: const Text('Download local data'),
-                      ),
-                    if (widget.onRestoreFromLocalImport != null)
-                      OutlinedButton.icon(
-                        onPressed: () => widget.onRestoreFromLocalImport!(),
-                        icon: const Icon(Icons.file_upload_outlined),
-                        label: const Text('Restore from local archive'),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        Text(
-          'Recycle bin',
-          style: Theme.of(context)
-              .textTheme
-              .titleMedium
-              ?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    !_isAuthenticated
-                        ? 'Sign in to manage deleted cloud notes.'
-                        : '${widget.deletedNotes.length} note(s) currently in the recycle bin.',
-                  ),
-                ),
-                OutlinedButton(
-                  onPressed: !_isAuthenticated ? null : _openRecycleBinDialog,
-                  child: const Text('Open recycle bin'),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        if (widget.debugLogController != null)
-          DebugLogCard(
-            controller: widget.debugLogController!,
-            title: 'Debug log',
-            summary:
-                '${widget.localDraftCount} local draft(s), ${widget.localCourseCount} local category(ies).',
-            onCopyLogs: widget.onCopyLogs,
-            onPing: () => pingBackend(widget.apiBaseUrl),
-          )
-        else ...[
-          Row(
-            children: [
-              Expanded(
-                child: Text('Debug log',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700)),
-              ),
-              TextButton.icon(
-                onPressed: widget.onCopyLogs,
-                icon: const Icon(Icons.copy_all_outlined),
-                label: const Text('Copy logs'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Card(
-            child: SizedBox(
-              height: 260,
-              child: widget.uiLogs.isEmpty
-                  ? const Center(child: Text('No frontend logs captured yet.'))
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(12),
-                      itemCount: widget.uiLogs.length,
-                      itemBuilder: (context, index) => Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: SelectableText(
-                          widget.uiLogs[index],
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(fontFamily: 'monospace'),
-                        ),
-                      ),
-                    ),
-            ),
-          ),
+          _buildLogoutCard(context),
         ],
       ],
+    );
+  }
+
+  /// Apple-style settings menu card with rows for portal preferences,
+  /// backend, local data, recycle bin, and debug. Each row pushes a
+  /// dedicated sub-page (see `settings_pages.dart`).
+  Widget _buildSettingsMenu(BuildContext context) {
+    final recoverableCount =
+        widget.localTrashedDraftCount + widget.localTrashedCourseCount;
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      margin: EdgeInsets.zero,
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.tune_outlined),
+            title: const Text('Portal preferences'),
+            subtitle: const Text(
+              'Theme preset, theme mode, default editor.',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => _PortalPreferencesPage(parent: this),
+                ),
+              );
+            },
+          ),
+          const Divider(height: 0, indent: 16, endIndent: 16),
+          ListTile(
+            leading: const Icon(Icons.cloud_outlined),
+            title: const Text('Backend settings'),
+            subtitle: Text(
+              widget.localSettings['offline_mode'] == true
+                  ? 'Offline mode is on. API URL: '
+                      '${widget.apiBaseUrl ?? "—"}'
+                  : 'Online. API URL: ${widget.apiBaseUrl ?? "—"}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => _BackendSettingsPage(parent: this),
+                ),
+              );
+            },
+          ),
+          const Divider(height: 0, indent: 16, endIndent: 16),
+          ListTile(
+            leading: const Icon(Icons.folder_outlined),
+            title: const Text('Local data'),
+            subtitle: Text(
+              '${widget.localDraftCount} draft(s), '
+              '${widget.localCourseCount} course(s) on this device.',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => _LocalDataPage(parent: this),
+                ),
+              );
+            },
+          ),
+          const Divider(height: 0, indent: 16, endIndent: 16),
+          ListTile(
+            leading: const Icon(Icons.delete_outline),
+            title: const Text('Recycle bin'),
+            subtitle: Text(
+              '$recoverableCount synced draft(s) recoverable, '
+              '${widget.deletedNotes.length} cloud note(s) trashed.',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => _RecycleBinPage(parent: this),
+                ),
+              );
+            },
+          ),
+          const Divider(height: 0, indent: 16, endIndent: 16),
+          ListTile(
+            leading: const Icon(Icons.bug_report_outlined),
+            title: const Text('Debug'),
+            subtitle: const Text(
+              'Inspect frontend logs and ping the backend.',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => _DebugPage(parent: this),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Destructive-styled Logout card — sits in its own card, full
+  /// width, red text. Matches the iOS Settings convention of a
+  /// destructive bottom action separated from the menu rows above.
+  Widget _buildLogoutCard(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      margin: EdgeInsets.zero,
+      child: ListTile(
+        leading: Icon(Icons.logout, color: scheme.error),
+        title: Text(
+          'Sign out',
+          style: TextStyle(
+            color: scheme.error,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        onTap: () {
+          widget.onLogout();
+        },
+      ),
     );
   }
 }
 
 
+/// Casdoor-only "Connected accounts" card. Per-provider Google /
+/// GitHub bindings were retired in favor of letting Casdoor itself
+/// proxy those identities via its application Providers tab.
 class _ConnectedAccountsSection extends StatefulWidget {
   const _ConnectedAccountsSection({
-    this.onListSocialAccounts,
-    this.onUnlinkSocialAccount,
-    this.onBindGoogle,
-    this.onBindGithub,
     this.onBindCasdoor,
     this.onUnlinkCasdoor,
     this.casdoorLinked = false,
   });
 
-  final Future<List<Map<String, dynamic>>> Function()? onListSocialAccounts;
-  final Future<void> Function(String provider)? onUnlinkSocialAccount;
-  final VoidCallback? onBindGoogle;
-  final VoidCallback? onBindGithub;
   final VoidCallback? onBindCasdoor;
   final Future<void> Function()? onUnlinkCasdoor;
   final bool casdoorLinked;
@@ -789,50 +598,26 @@ class _ConnectedAccountsSection extends StatefulWidget {
 }
 
 class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
-  List<Map<String, dynamic>>? _accounts;
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    if (widget.onListSocialAccounts == null) {
-      setState(() => _loading = false);
-      return;
-    }
-    try {
-      final accounts = await widget.onListSocialAccounts!();
-      if (mounted) setState(() { _accounts = accounts; _loading = false; });
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  Map<String, dynamic>? _accountFor(String provider) {
-    return _accounts?.cast<Map<String, dynamic>?>().firstWhere(
-      (a) => a?['provider'] == provider,
-      orElse: () => null,
-    );
-  }
-
-  Future<void> _unlink(String provider) async {
-    if (widget.onUnlinkSocialAccount == null) return;
-    try {
-      await widget.onUnlinkSocialAccount!(provider);
-      await _load();
-    } catch (_) {}
-  }
-
   @override
   Widget build(BuildContext context) {
-    final hasAny = widget.onBindGoogle != null ||
-        widget.onBindGithub != null ||
-        widget.onBindCasdoor != null;
-    if (!hasAny && widget.onListSocialAccounts == null) {
-      return const SizedBox.shrink();
+    if (widget.onBindCasdoor == null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Connected accounts',
+            style: Theme.of(context)
+                .textTheme
+                .labelLarge
+                ?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Casdoor is in shadow mode on this backend; no third-party '
+            'accounts can be linked.',
+          ),
+        ],
+      );
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -845,16 +630,7 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
               ?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
-        if (_loading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: LinearProgressIndicator(minHeight: 2),
-          )
-        else ...[
-          if (widget.onBindCasdoor != null) _buildCasdoorRow(context),
-          _buildProviderRow(context, 'google', 'Google', Icons.g_mobiledata, widget.onBindGoogle),
-          _buildProviderRow(context, 'github', 'GitHub', Icons.code, widget.onBindGithub),
-        ],
+        _buildCasdoorRow(context),
       ],
     );
   }
@@ -862,6 +638,7 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
   Widget _buildCasdoorRow(BuildContext context) {
     final linked = widget.casdoorLinked;
     return ListTile(
+      contentPadding: EdgeInsets.zero,
       leading: const Icon(Icons.shield_outlined),
       title: const Text('Casdoor SSO'),
       subtitle: Text(linked ? 'Linked' : 'Not linked'),
@@ -897,38 +674,6 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
               onPressed: widget.onBindCasdoor,
               child: const Text('Link Casdoor'),
             ),
-    );
-  }
-
-  Widget _buildProviderRow(
-    BuildContext context, String provider, String label, IconData icon, VoidCallback? onBind,
-  ) {
-    final account = _accountFor(provider);
-    final linked = account != null;
-    final email = account?['email']?.toString() ?? '';
-    return ListTile(
-      leading: Icon(icon),
-      title: Text(label),
-      subtitle: linked
-          ? Text(email.isNotEmpty ? email : 'Linked')
-          : const Text('Not linked'),
-      dense: true,
-      trailing: linked
-          ? Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (onBind != null)
-                  TextButton(onPressed: onBind, child: const Text('Switch')),
-                TextButton(
-                  onPressed: () => _unlink(provider),
-                  child: Text('Unlink',
-                      style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                ),
-              ],
-            )
-          : onBind != null
-              ? TextButton(onPressed: onBind, child: Text('Link $label'))
-              : null,
     );
   }
 }

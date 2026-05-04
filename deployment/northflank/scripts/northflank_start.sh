@@ -17,8 +17,10 @@ set -Eeuo pipefail
 # - PYTHONUNBUFFERED=1
 # - WEB_CONCURRENCY=2
 # - BACKEND_CUSTOM_DOMAIN
-# - GOOGLE_OAUTH_*, GITHUB_APP_* if OAuth is enabled
-# - SMTP_* if email verification is enabled
+# - CASDOOR_* to enable Casdoor SSO (auth.trance-0.com); empty leaves the
+#   backend in shadow mode and the legacy email/password fallback still works
+# - GITHUB_DATA_SYNC_APP_* to enable the experimental per-user data-sync
+#   feature (POST /api/v1/integrations/github/push/)
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$ROOT_DIR/backend"

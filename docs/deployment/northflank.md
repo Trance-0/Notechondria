@@ -52,8 +52,9 @@ The three Flutter frontends still deploy separately to GitHub Pages via
 3. **Configure secrets** — the template seeds `DJANGO_SECRET_KEY` with
    `REPLACE_ME_FROM_SECRET_GROUP`. Create a Secret Group
    (`Project > Secrets > Create`), add the sensitive variables from
-   `sample.northflank.env` (`DJANGO_SECRET_KEY`, `SMTP_PASSWORD`, OAuth
-   secrets, R2 keys), and link it to the service under
+   `sample.northflank.env` (`DJANGO_SECRET_KEY`, `CASDOOR_CLIENT_SECRET`,
+   `CASDOOR_CERTIFICATE`, R2 keys, and any `GITHUB_DATA_SYNC_APP_*` you
+   plan to enable), and link it to the service under
    `Service > Environment > Link secret group`.
 
 4. **Trigger the first build** from `Service > Builds > Start build`.
@@ -131,17 +132,26 @@ When `CLOUDFLARE_R2_BUCKET_NAME` is set, Django auto-switches to R2 for both
 static and media files. **If the bucket name is set but any of the three
 required credentials are missing, the app will fail to start.**
 
-### SMTP and OAuth
+### Casdoor SSO
 
-Optional but required if you use email verification or social sign-in — see
-`sample.northflank.env` for the full list (`SMTP_*`, `GOOGLE_OAUTH_*`,
-`GITHUB_APP_*`).
+The primary auth surface since 0.1.99. Wire the backend to a Casdoor
+instance (default: `https://auth.trance-0.com`) by populating the six
+`CASDOOR_*` env vars in `sample.northflank.env`:
 
-If more than one Flutter app (editor / planner / portal) shares this
-backend, also set `GOOGLE_AUTHORIZED_REDIRECT_URIS` and
-`GITHUB_AUTHORIZED_REDIRECT_URIS` (comma-separated, since 0.1.90) so
-each app's sign-in lands back on its own host. Each entry must be
-pre-registered in the OAuth provider console.
+| Variable | Description |
+| --- | --- |
+| `CASDOOR_ENDPOINT` | Casdoor instance URL (no trailing slash) |
+| `CASDOOR_CLIENT_ID` | Application's Client ID |
+| `CASDOOR_CLIENT_SECRET` | Application's Client secret |
+| `CASDOOR_ORG_NAME` | Organization name (e.g. `notechondria`) |
+| `CASDOOR_APP_NAME` | Application name (e.g. `notechondria`) |
+| `CASDOOR_CERTIFICATE` | Public-key PEM, single line, with literal `\n` escapes |
+| `CASDOOR_TOKEN_CACHE_TTL` *(optional)* | JWT verification cache TTL in seconds (default `300`) |
+
+Empty values keep the backend in shadow mode (Casdoor JWT auth is no-op,
+the legacy email/password fallback continues to serve). See
+[`docs/integrations/casdoor-setup.md`](../integrations/casdoor-setup.md)
+for the admin-UI walkthrough and per-app redirect URI registration.
 
 ### Experimental: GitHub data-sync
 
