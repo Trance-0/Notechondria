@@ -240,9 +240,16 @@ round-trip.
   `name` (Casdoor) plus an `id` (UUID). The mapping table from
   existing `auth_user.username` to Casdoor `name` must be
   pre-populated before cutover or first-login users will end up
-  duplicated. Plan: a one-shot management command that imports
-  the existing user table into Casdoor via its `add-user` API and
-  records the mapping on `Creator.casdoor_sub`.
+  duplicated. **Resolved (cutover round):** the management command
+  `python manage.py migrate_users_to_casdoor` walks
+  `auth_user.is_active=True`, calls `CasdoorSDK.get_user_by_email`
+  to deduplicate, then `add_user` / `update_user` for each row, and
+  finally stamps `Creator.casdoor_sub` so the next JWT login takes
+  the fast path. Idempotent; supports `--dry-run`,
+  `--retry-existing`, `--strict`, and `--limit N` for staged rollout.
+  Linked `SocialAccount` rows are pushed into Casdoor's per-provider
+  fields (`user.google`, `user.github`) so prior OAuth identities
+  resolve to the same Casdoor row.
 - **MCP API keys.** The `ntc_<32-hex>` Bearer scheme stays
   app-internal; Casdoor is not used for the MCP per-request hot
   path. The `/api/v1/auth/rotate-api-key/` endpoint stays.
