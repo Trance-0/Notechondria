@@ -77,13 +77,23 @@ extension _AppShellInitialDataX on _AppShellState {
         // at warning so the operator can grep without flagging
         // shadow-mode setups (which return `{configured: false}` as
         // a 200 response, not an exception).
+        // 0.1.101: include the resolved request URL in the log line
+        // so the operator can tell which backend host returned 404.
+        // Without it the bare "API route not found" was useless —
+        // the same string appears whether you're hitting prod, a
+        // stale Render deploy, or `localhost` with the wrong port.
+        final baseUrl = _httpClient?.baseUrl ?? '<unresolved>';
+        final probedUrl = baseUrl.endsWith('/')
+            ? '${baseUrl}auth/casdoor/config/'
+            : '$baseUrl/auth/casdoor/config/';
         log(
           level: DebugLogLevel.warning,
           source: 'Editor.Auth/casdoor.config.probe',
           message:
               'Casdoor SSO surface unavailable: '
               'Editor.Auth/casdoor.config.probe — '
-              '${error.toString().replaceFirst("Exception: ", "")}.',
+              '${error.toString().replaceFirst("Exception: ", "")} '
+              '(probed $probedUrl).',
         );
       }
     }());

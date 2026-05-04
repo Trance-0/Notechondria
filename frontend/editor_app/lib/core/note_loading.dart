@@ -13,9 +13,19 @@ extension _AppShellNoteLoadingX on _AppShellState {
     if (_isLoadingMoreNotes) return;
     final isAuthenticated = _token != null && _token!.isNotEmpty;
     final effectiveQuery = query ?? _learnerSearchQuery;
-    // Anonymous users always see public notes (scope=all).
-    final effectiveScope =
-        isAuthenticated ? (scope ?? _learnerSearchScope) : 'all';
+    // Anonymous users only get two scopes: `all` (public notes) and
+    // `local` (local drafts only). Authenticated users get the full
+    // four-way (personal / private / public / local). Don't silently
+    // collapse `local` to `all` for anonymous users — that's the bug
+    // 0.1.101 fixed: picking "Local drafts only" while signed-out
+    // would still fetch public notes because the scope override here
+    // forced `all`, leaving public-note cards visible until the next
+    // refresh. Local drafts live entirely client-side, no auth
+    // required.
+    final pickedScope = scope ?? _learnerSearchScope;
+    final effectiveScope = isAuthenticated
+        ? pickedScope
+        : (pickedScope == 'local' ? 'local' : 'all');
     final nextOffset = reset ? 0 : _learnerNotesOffset;
     if (reset) {
       _learnerSearchQuery = effectiveQuery;

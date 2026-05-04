@@ -60,13 +60,21 @@ extension _AppShellInitialDataX on _AppShellState {
         // 0.1.104: surface the failure as a debug-log line instead
         // of a silent swallow. See editor_app's matching block for
         // the rationale.
+        // 0.1.101: include the resolved request URL so the bare
+        // "API route not found" string carries enough info to tell
+        // which backend host is stale.
+        final baseUrl = _httpClient?.baseUrl ?? '<unresolved>';
+        final probedUrl = baseUrl.endsWith('/')
+            ? '${baseUrl}auth/casdoor/config/'
+            : '$baseUrl/auth/casdoor/config/';
         log(
           level: DebugLogLevel.warning,
           source: 'Portal.Auth/casdoor.config.probe',
           message:
               'Casdoor SSO surface unavailable: '
               'Portal.Auth/casdoor.config.probe — '
-              '${error.toString().replaceFirst("Exception: ", "")}.',
+              '${error.toString().replaceFirst("Exception: ", "")} '
+              '(probed $probedUrl).',
         );
       }
     }());

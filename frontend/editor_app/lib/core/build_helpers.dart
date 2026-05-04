@@ -94,12 +94,24 @@ extension _AppShellBuildHelpersX on _AppShellState {
                 if (_coursePanelExpanded)
                   Expanded(
                     child: Builder(builder: (context) {
+                      // 0.1.101: defensive pinning guard. Older builds
+                      // and some sync paths could leave a row titled
+                      // "Inbox" with `is_default == false`, which made
+                      // the pinned filter below come up empty and the
+                      // category vanished from the top of the sidebar
+                      // until "Restore default Inbox" got tapped from
+                      // Settings. Now we treat any Inbox-named row as
+                      // pinned so the user always sees it.
                       final pinned = _allCategories
-                          .where((c) => c['is_default'] == true)
+                          .where(isCategoryPinned)
                           .toList(growable: false);
                       final draggable = _allCategories
-                          .where((c) => c['is_default'] != true)
+                          .where((c) => !isCategoryPinned(c))
                           .toList(growable: false);
+                      emitSidebarPinDiagnostics(
+                        total: _allCategories.length,
+                        pinned: pinned.length,
+                      );
                       return Column(
                         children: [
                           for (var ci = 0; ci < pinned.length; ci++)
@@ -302,14 +314,22 @@ extension _AppShellBuildHelpersX on _AppShellState {
                     if (_coursePanelExpanded)
                       Expanded(
                         child: Builder(builder: (context) {
-                          // Pin the default (Inbox) category at the top so it
-                          // stays out of the drag-reorder zone.
+                          // Pin the default (Inbox) category at the
+                          // top so it stays out of the drag-reorder
+                          // zone. Same defensive title-fallback as
+                          // the compact layout above (0.1.101) so an
+                          // Inbox-named row pins even when
+                          // `is_default` got stripped on the way in.
                           final pinned = _allCategories
-                              .where((c) => c['is_default'] == true)
+                              .where(isCategoryPinned)
                               .toList(growable: false);
                           final draggable = _allCategories
-                              .where((c) => c['is_default'] != true)
+                              .where((c) => !isCategoryPinned(c))
                               .toList(growable: false);
+                          emitSidebarPinDiagnostics(
+                            total: _allCategories.length,
+                            pinned: pinned.length,
+                          );
                           return Column(
                             children: [
                               for (var ci = 0; ci < pinned.length; ci++)
@@ -741,5 +761,48 @@ extension _AppShellBuildHelpersX on _AppShellState {
       default:
         return const SizedBox.shrink();
     }
+  }
+
+  /// True iff *course* should pin to the top of the sidebar's
+  /// Categories block. Defensive: a course with `is_default == true`
+  /// always pins, AND any course titled "Inbox" pins regardless of
+  /// the flag, so older builds + sync paths that left the flag off
+  /// can't make the default category disappear from the sidebar.
+  bool isCategoryPinned(Map<String, dynamic> course) {
+    if (course['is_default'] == true) return true;
+    final title = course['title']?.toString().trim().toLowerCase() ?? '';
+    return title == 'inbox';
+  }
+
+  /// Diagnostic: emit a debug-log line per sidebar rebuild that
+  /// records `total` categories vs `pinned` count. Goes warning
+  /// when `pinned == 0 && total > 0` — that case is the
+  /// "Inbox vanished from my sidebar" symptom users have reported
+  /// across releases, where the seed flag got stripped server- or
+  /// persistence-side. Filter by `Editor.UI/sidebar.pin_diagnostics`
+  /// in the Debug Log card to see the breadcrumbs.
+  ///
+  /// Stays at `debug` for the healthy case so the log doesn't fill
+  /// up with churn during typing-driven rebuilds; `warning` is
+  /// rare enough to be useful when it fires.
+  void emitSidebarPinDiagnostics({
+    required int total,
+    required int pinned,
+  }) {
+    log(
+      level: pinned == 0 && total > 0
+          ? DebugLogLevel.warning
+          : DebugLogLevel.debug,
+      source: 'Editor.UI/sidebar.pin_diagnostics',
+      message:
+          'Sidebar Categories rebuilt: '
+          'Editor.UI/sidebar.pin_diagnostics — '
+          'total=$total pinned=$pinned. '
+          'Pinned counts the rows whose `is_default == true` OR '
+          'whose title casefolds to "inbox" — see isCategoryPinned. '
+          'A `pinned=0` warning with `total>0` means the seed flag '
+          'got stripped server- or persistence-side; tap '
+          '"Restore default Inbox" in Settings to reseed.',
+    );
   }
 }

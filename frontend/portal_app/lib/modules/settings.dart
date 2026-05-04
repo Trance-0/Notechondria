@@ -448,11 +448,96 @@ class _SettingsPageState extends State<_SettingsPage> {
         _buildOnlineAccountSection(context),
         const SizedBox(height: 16),
         _buildSettingsMenu(context),
+        // 0.1.101: render the Debug log inline on the main Settings
+        // scroll, matching the editor app's `_buildDebugSection`.
+        // The "Debug" ListTile in `_buildSettingsMenu` still pushes
+        // the focused subpage (`_DebugPage`); this card is the
+        // at-a-glance surface so common ops ("copy logs", "ping
+        // backend", scan recent UI events) don't require a nav
+        // hop. See docs/versions/0.1.101.md.
+        const SizedBox(height: 16),
+        _buildInlineDebugCard(context),
         if (_isAuthenticated) ...[
           const SizedBox(height: 16),
           _buildLogoutCard(context),
         ],
       ],
+    );
+  }
+
+  /// Inline Debug log card mirroring `editor_app`'s
+  /// `_buildDebugSection`. When the host wired a `DebugLogController`
+  /// (the modern path), render the shared `DebugLogCard` directly so
+  /// users get the same level filter + terminal as on the focused
+  /// `_DebugPage`. Otherwise fall back to a minimal frontend-log
+  /// card so the surface degrades gracefully.
+  Widget _buildInlineDebugCard(BuildContext context) {
+    final controller = widget.debugLogController;
+    final summary =
+        '${widget.localDraftCount} local draft(s), '
+        '${widget.localCourseCount} local course(s).';
+    if (controller != null) {
+      return DebugLogCard(
+        controller: controller,
+        title: 'Debug log',
+        summary: summary,
+        onCopyLogs: widget.onCopyLogs,
+        onPing: () => pingBackend(widget.apiBaseUrl),
+      );
+    }
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Debug log',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: widget.onCopyLogs,
+                  icon: const Icon(Icons.copy_all_outlined),
+                  label: const Text('Copy logs'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(summary),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 240,
+              child: widget.uiLogs.isEmpty
+                  ? const Center(
+                      child: Text('No frontend logs captured yet.'),
+                    )
+                  : ListView.builder(
+                      padding: EdgeInsets.zero,
+                      itemCount: widget.uiLogs.length,
+                      itemBuilder: (context, index) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: SelectableText(
+                          widget.uiLogs[index],
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(fontFamily: 'monospace'),
+                        ),
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
