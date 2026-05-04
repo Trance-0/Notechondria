@@ -18,7 +18,7 @@ Wire shape:
   if no Creator carries the sub yet, fall back to the e-mail claim
   to let an existing legacy account adopt the link automatically.
 - A new user is auto-provisioned when neither path finds a match,
-  mirroring the OAuth login behaviour in ``_get_or_create_oauth_user``.
+  mirroring the email-verify seeding flow in ``creators.api``.
 
 Errors keep the AGENTS.md §1.8 shape (consequence + module/process +
 cause) so the auth-failure SnackBar copy stays diagnosable.
@@ -125,8 +125,9 @@ def _resolve_user(claims: dict) -> Optional[User]:
       2. ``User.email iexact claims['email']`` — first-time link for
          an existing legacy account; on success we backfill
          ``Creator.casdoor_sub`` so subsequent requests take path 1.
-      3. Auto-provision a new ``User`` + ``Creator`` and stamp the sub.
-         Mirrors ``_get_or_create_oauth_user`` in ``creators.api``.
+      3. Auto-provision a new ``User`` + ``Creator``, stamp the sub,
+         and seed the inbox + welcome note (same shape as the
+         email-verify registration flow in ``creators.api``).
     """
     sub = (claims.get("id") or claims.get("sub") or "").strip()
     if not sub:
@@ -136,12 +137,19 @@ def _resolve_user(claims: dict) -> Optional[User]:
     if creator is not None:
         return creator.user_id
 
+    # Lazy import to avoid the notes <-> creators app boot cycle.
+    from notes.services import seed_inbox_and_welcome_note
+
     email = (claims.get("email") or "").strip().lower()
     if email:
         existing = User.objects.filter(email__iexact=email).first()
         if existing is not None:
-            ensure_creator(existing)
+            existing_creator = ensure_creator(existing)
             existing.creator_set.update(casdoor_sub=sub)
+            # Idempotent — protects legacy accounts that predate the
+            # email-verify / OAuth onboarding seed and would otherwise
+            # land on an empty editor sidebar.
+            seed_inbox_and_welcome_note(existing_creator)
             return existing
 
     # Auto-provision. Casdoor's `name` field is its username; fall
@@ -168,6 +176,11 @@ def _resolve_user(claims: dict) -> Optional[User]:
     creator = ensure_creator(user)
     creator.casdoor_sub = sub
     creator.save(update_fields=["casdoor_sub"])
+    # Match the email-verify and OAuth-register flows so every newly
+    # provisioned user lands on a non-empty workspace (Inbox + welcome
+    # note). Without this, Casdoor users hit an empty editor sidebar
+    # because /api/v1/courses/ returns no rows on first load.
+    seed_inbox_and_welcome_note(creator)
     logger.info(
         "Auto-provisioned user from Casdoor JWT: "
         "Backend.Creators.CasdoorAuth/auto_provision — username=%s sub=%s.",
