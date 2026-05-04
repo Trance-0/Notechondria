@@ -246,6 +246,12 @@ class _AppShellState extends State<AppShell>
   // are set on the backend. Probed once on _loadInitialData; drives
   // whether `_SettingsPage`'s AuthHub renders the Casdoor SSO button.
   bool _casdoorConfigured = false;
+
+  /// Casdoor org-login URL derived from the `endpoint` + `organization`
+  /// fields returned by `/api/v1/auth/casdoor/config/`. Threads through
+  /// to `_SettingsPage` -> `AuthHub` so the signed-out card can render
+  /// the "Login via third party" + "Sign up via Casdoor" CTAs.
+  String? _casdoorOrgLoginUrl;
   Map<String, dynamic>? _frontPage;
   List<Map<String, dynamic>> _courses = const [];
   List<Map<String, dynamic>> _localCourses = const [];
@@ -786,6 +792,7 @@ class _AppShellState extends State<AppShell>
           onLogin: login,
           onRequestPasswordReset: requestPasswordReset,
           onConfirmPasswordReset: confirmPasswordReset,
+          casdoorOrgLoginUrl: _casdoorOrgLoginUrl,
           onCasdoorLogin: _casdoorConfigured
               ? () => launchOAuth('casdoor', intent: 'login')
               : null,

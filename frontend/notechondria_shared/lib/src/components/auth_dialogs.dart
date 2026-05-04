@@ -3,9 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../app_shell/url_strategy.dart'
+    if (dart.library.html) '../app_shell/url_strategy_web.dart' as url_strategy;
 import '../models/action_feedback.dart';
 import '../utils/blur_dialog.dart';
-import 'auth_dialogs_wizard.dart';
 import 'phased_status.dart';
 
 /// Formats the login dialog's API-host subtitle. Accepts the full
@@ -24,18 +25,31 @@ String _apiHostSubtitle(String? apiBaseUrl) {
   }
 }
 
-/// Compact auth hub with sign-up, verify, login, and password-reset dialogs.
+/// Compact auth hub. After the 0.1.103 cutover, the only in-app
+/// auth surface is email + password Login; sign-up and password
+/// reset both live on the Casdoor side. The hub renders three
+/// CTAs in priority order:
+///
+/// 1. **Continue with Casdoor SSO** — OAuth code flow via
+///    [AppShellOAuthMixin.launchOAuth]. Auto-redirects back. The
+///    fast path. Shown only when `onCasdoorLogin != null`
+///    (backend is in shadow mode otherwise).
+/// 2. **Login via third party** — direct browser navigation to the
+///    Casdoor org-login page (`casdoorOrgLoginUrl`). Shown only
+///    when that URL is non-empty. Use this when the user wants to
+///    pick a provider from Casdoor's hosted UI (Google / GitHub /
+///    etc., configured on the Casdoor application's Providers tab).
+/// 3. **Email / password fallback** — collapsed behind an expander
+///    so it doesn't compete with the Casdoor CTAs. The legacy
+///    `onLogin` callback still talks to the Notechondria backend
+///    for un-migrated accounts. Sign-up and password reset are
+///    intentionally absent — both are owned by Casdoor now.
 class AuthHub extends StatelessWidget {
   const AuthHub({
     super.key,
-    required this.onRegister,
-    required this.onValidateInvitation,
-    required this.onVerify,
-    required this.onResendVerification,
     required this.onLogin,
-    required this.onRequestPasswordReset,
-    required this.onConfirmPasswordReset,
     this.onCasdoorLogin,
+    this.casdoorOrgLoginUrl,
     this.apiBaseUrl,
   });
 
@@ -44,31 +58,24 @@ class AuthHub extends StatelessWidget {
   /// signing into before typing credentials.
   final String? apiBaseUrl;
 
-  final Future<ActionFeedback> Function(
-    String username,
-    String email,
-    String password, {
-    String invitationCode,
-  }) onRegister;
-  final Future<Map<String, dynamic>> Function(String code) onValidateInvitation;
-  final Future<ActionFeedback> Function(String email, String code) onVerify;
-  final Future<ActionFeedback> Function(String email) onResendVerification;
+  /// Submits an email + password pair to the legacy
+  /// `/api/v1/auth/login/` endpoint. The only in-app credential path
+  /// that survives the 0.1.103 cutover.
   final Future<ActionFeedback> Function(String email, String password) onLogin;
-  final Future<ActionFeedback> Function(String email) onRequestPasswordReset;
-  final Future<ActionFeedback> Function(
-    String email,
-    String code,
-    String password,
-  ) onConfirmPasswordReset;
 
   /// Triggers the Casdoor SSO redirect (AppShellOAuthMixin's
   /// `launchOAuth('casdoor', intent: 'login')`). Null when the
-  /// backend is in shadow mode (no `CASDOOR_*` env vars set), so the
-  /// hub falls through to the legacy email/password block. See
-  /// `docs/integrations/casdoor-migration.md`. Per-provider Google /
-  /// GitHub buttons were retired in favor of Casdoor's own provider
-  /// proxy (configure them on the Casdoor application's Providers tab).
+  /// backend is in shadow mode (no `CASDOOR_*` env vars set).
   final VoidCallback? onCasdoorLogin;
+
+  /// Casdoor org-login page URL, e.g.
+  /// `https://auth.trance-0.com/login/notechondria`. Built from the
+  /// `endpoint` + `organization` fields returned by
+  /// `/api/v1/auth/casdoor/config/`. Backs both the "Login via third
+  /// party" button and the "Sign up via Casdoor" link. When null,
+  /// both surfaces collapse and the user only sees the OAuth pill +
+  /// email/password fallback.
+  final String? casdoorOrgLoginUrl;
 
   Future<void> _openDialog(BuildContext context, Widget dialog) {
     return showBlurDialog<void>(
@@ -81,19 +88,14 @@ class AuthHub extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 0,
-      color: Theme.of(context).colorScheme.surfaceVariant,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: _AuthHubBody(
           apiBaseUrl: apiBaseUrl,
-          onRegister: onRegister,
-          onValidateInvitation: onValidateInvitation,
-          onVerify: onVerify,
-          onResendVerification: onResendVerification,
           onLogin: onLogin,
-          onRequestPasswordReset: onRequestPasswordReset,
-          onConfirmPasswordReset: onConfirmPasswordReset,
           onCasdoorLogin: onCasdoorLogin,
+          casdoorOrgLoginUrl: casdoorOrgLoginUrl,
           openDialog: _openDialog,
         ),
       ),
@@ -109,36 +111,17 @@ class AuthHub extends StatelessWidget {
 class _AuthHubBody extends StatefulWidget {
   const _AuthHubBody({
     required this.openDialog,
-    required this.onRegister,
-    required this.onValidateInvitation,
-    required this.onVerify,
-    required this.onResendVerification,
     required this.onLogin,
-    required this.onRequestPasswordReset,
-    required this.onConfirmPasswordReset,
     this.onCasdoorLogin,
+    this.casdoorOrgLoginUrl,
     this.apiBaseUrl,
   });
 
   final String? apiBaseUrl;
   final Future<void> Function(BuildContext, Widget) openDialog;
-  final Future<ActionFeedback> Function(
-    String username,
-    String email,
-    String password, {
-    String invitationCode,
-  }) onRegister;
-  final Future<Map<String, dynamic>> Function(String code) onValidateInvitation;
-  final Future<ActionFeedback> Function(String email, String code) onVerify;
-  final Future<ActionFeedback> Function(String email) onResendVerification;
   final Future<ActionFeedback> Function(String email, String password) onLogin;
-  final Future<ActionFeedback> Function(String email) onRequestPasswordReset;
-  final Future<ActionFeedback> Function(
-    String email,
-    String code,
-    String password,
-  ) onConfirmPasswordReset;
   final VoidCallback? onCasdoorLogin;
+  final String? casdoorOrgLoginUrl;
 
   @override
   State<_AuthHubBody> createState() => _AuthHubBodyState();
@@ -148,7 +131,6 @@ class _AuthHubBodyState extends State<_AuthHubBody> {
   bool _showLegacy = false;
 
   void _openLogin(BuildContext context) {
-    final rootNavigator = Navigator.of(context);
     widget.openDialog(
       context,
       EmailPasswordDialog(
@@ -157,35 +139,22 @@ class _AuthHubBodyState extends State<_AuthHubBody> {
         submitLabel: 'Login',
         emailLabel: 'Email or username',
         onSubmit: widget.onLogin,
-        onForgotPassword: () {
-          rootNavigator.pop();
-          widget.openDialog(
-            rootNavigator.context,
-            PasswordResetDialog(
-              onRequestPasswordReset: widget.onRequestPasswordReset,
-              onConfirmPasswordReset: widget.onConfirmPasswordReset,
-            ),
-          );
-        },
       ),
     );
   }
 
-  void _openSignup(BuildContext context) {
-    widget.openDialog(
-      context,
-      RegistrationWizard(
-        onValidateInvitation: widget.onValidateInvitation,
-        onRegister: widget.onRegister,
-        onResendVerification: widget.onResendVerification,
-      ),
-    );
+  void _openCasdoorBrowserLogin() {
+    final url = widget.casdoorOrgLoginUrl;
+    if (url == null || url.isEmpty) return;
+    url_strategy.browserRedirect(url);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final casdoorPrimary = widget.onCasdoorLogin != null;
+    final casdoorBrowserUrl = widget.casdoorOrgLoginUrl ?? '';
+    final hasBrowserLogin = casdoorBrowserUrl.isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -193,13 +162,13 @@ class _AuthHubBodyState extends State<_AuthHubBody> {
         const SizedBox(height: 8),
         Text(
           casdoorPrimary
-              ? 'Sign in via the Notechondria SSO. The legacy email / '
-                  'password fallback below is kept for accounts that '
-                  'haven\'t been migrated yet; Google and GitHub now '
-                  'go through Casdoor itself.'
-              : 'Sign up or log in. Email verification happens inside '
-                  'the signup wizard; password reset is inside the '
-                  'login dialog.',
+              ? 'Sign in via the Notechondria SSO. Account creation '
+                  'and password reset are handled on the Casdoor side; '
+                  'use the link below to register or contact the '
+                  'administrator if your password needs to be reset.'
+              : 'Sign in with your existing account. Account creation '
+                  'and password resets have moved to the Casdoor SSO; '
+                  'contact the administrator if you cannot sign in.',
         ),
         const SizedBox(height: 16),
         if (casdoorPrimary) ...[
@@ -214,45 +183,60 @@ class _AuthHubBodyState extends State<_AuthHubBody> {
               ),
             ),
           ),
+        ],
+        if (hasBrowserLogin) ...[
           const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () => setState(() => _showLegacy = !_showLegacy),
-              icon: Icon(
-                _showLegacy ? Icons.expand_less : Icons.expand_more,
-                size: 18,
-              ),
-              label: Text(
-                _showLegacy
-                    ? 'Hide email / password fallback'
-                    : 'Use email / password instead',
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _openCasdoorBrowserLogin,
+              icon: const Icon(Icons.open_in_new, size: 18),
+              label: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 4),
+                child: Text('Login via third party'),
               ),
             ),
           ),
-          if (_showLegacy) ...[
-            const Divider(),
-            _legacyButtons(context),
-          ],
-        ] else
-          _legacyButtons(context),
-      ],
-    );
-  }
-
-  Widget _legacyButtons(BuildContext context) {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: [
-        FilledButton(
-          onPressed: () => _openSignup(context),
-          child: const Text('Sign up'),
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _openCasdoorBrowserLogin,
+              icon: const Icon(Icons.person_add_alt_outlined, size: 18),
+              label: const Text('No account? Sign up via Casdoor'),
+            ),
+          ),
+        ],
+        const SizedBox(height: 6),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => setState(() => _showLegacy = !_showLegacy),
+            icon: Icon(
+              _showLegacy ? Icons.expand_less : Icons.expand_more,
+              size: 18,
+            ),
+            label: Text(
+              _showLegacy
+                  ? 'Hide email / password fallback'
+                  : 'Use email / password instead',
+            ),
+          ),
         ),
-        OutlinedButton(
-          onPressed: () => _openLogin(context),
-          child: const Text('Login'),
-        ),
+        if (_showLegacy) ...[
+          const Divider(),
+          OutlinedButton(
+            onPressed: () => _openLogin(context),
+            child: const Text('Login'),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Forgot password? Contact the administrator to reset it. '
+            'Self-service password reset has moved to Casdoor for '
+            'accounts that have been migrated.',
+            style: theme.textTheme.bodySmall,
+          ),
+        ],
       ],
     );
   }
@@ -266,7 +250,6 @@ class EmailPasswordDialog extends StatefulWidget {
     required this.submitLabel,
     required this.onSubmit,
     this.emailLabel = 'Email',
-    this.onForgotPassword,
   });
 
   final String title;
@@ -274,13 +257,6 @@ class EmailPasswordDialog extends StatefulWidget {
   final String submitLabel;
   final Future<ActionFeedback> Function(String email, String password) onSubmit;
   final String emailLabel;
-
-  /// Optional callback to open the password-reset flow. When provided,
-  /// the dialog renders a "Forgot password" TextButton in the same
-  /// action row as the submit button (leftmost). The callback is
-  /// responsible for closing THIS dialog and opening the reset one —
-  /// the Login flow in AuthHub passes a closure that does exactly that.
-  final VoidCallback? onForgotPassword;
 
   @override
   State<EmailPasswordDialog> createState() => _EmailPasswordDialogState();
@@ -426,16 +402,6 @@ class _EmailPasswordDialogState extends State<EmailPasswordDialog> {
           },
           child: Text(_submitting ? 'Cancel' : 'Close'),
         ),
-        // "Forgot password" sits in the same row as the submit button
-        // (per the owner's spec: "left, same row as login button").
-        // Disabled while a submit is in flight — clicking it pops this
-        // dialog and opens the reset flow, so interrupting an in-flight
-        // login isn't the user's intent here.
-        if (widget.onForgotPassword != null)
-          TextButton(
-            onPressed: _submitting ? null : widget.onForgotPassword,
-            child: const Text('Forgot password'),
-          ),
         FilledButton(
           onPressed: _submitting ? null : _submit,
           child: Text(_submitting ? 'Working...' : widget.submitLabel),

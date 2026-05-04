@@ -271,6 +271,14 @@ class _AppShellState extends State<AppShell>
   // boot, then read by `build_helpers.dart` to decide whether to
   // surface the Casdoor SSO button. Stays `false` in shadow mode.
   bool _casdoorConfigured = false;
+
+  /// Casdoor org-login URL derived from the `endpoint` + `organization`
+  /// fields returned by `/api/v1/auth/casdoor/config/`. Populated inside
+  /// the same probe that flips `_casdoorConfigured`. Threads through to
+  /// `_SettingsPage(casdoorOrgLoginUrl: ...)` so the signed-out account
+  /// card can render the "Login via third party" + "Sign up via
+  /// Casdoor" CTAs that redirect the browser there.
+  String? _casdoorOrgLoginUrl;
   List<Map<String, dynamic>> _courses = const [];
   List<Map<String, dynamic>> _localCourses = const [];
   List<Map<String, dynamic>> _courseNotes = const [];

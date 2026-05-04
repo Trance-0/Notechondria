@@ -25,6 +25,7 @@ class _SettingsPage extends StatefulWidget {
     required this.onRequestPasswordReset,
     required this.onConfirmPasswordReset,
     this.onCasdoorLogin,
+    this.casdoorOrgLoginUrl,
     this.onBindCasdoor,
     this.onUnlinkCasdoor,
     required this.onRestoreDeletedNote,
@@ -97,6 +98,15 @@ class _SettingsPage extends StatefulWidget {
   /// Triggers Casdoor SSO. Null in shadow mode (no `CASDOOR_*` env
   /// vars). See `docs/integrations/casdoor-migration.md`.
   final VoidCallback? onCasdoorLogin;
+
+  /// Casdoor org-login page URL, e.g.
+  /// `https://auth.trance-0.com/login/notechondria`. Built in
+  /// `_AppShellState` from the `endpoint` + `organization` fields
+  /// returned by `/api/v1/auth/casdoor/config/`. Threaded into
+  /// `AuthHub` so the "Login via third party" + "Sign up via
+  /// Casdoor" CTAs can redirect the browser there. Null when the
+  /// backend has no Casdoor config.
+  final String? casdoorOrgLoginUrl;
 
   /// Triggers Casdoor account binding. Null in shadow mode.
   final VoidCallback? onBindCasdoor;

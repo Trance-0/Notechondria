@@ -31,6 +31,7 @@ class _SettingsPage extends StatefulWidget {
     required this.localCourseCount,
     required this.uiLogs,
     this.onCasdoorLogin,
+    this.casdoorOrgLoginUrl,
     this.onBindCasdoor,
     this.onUnlinkCasdoor,
     this.onListSessions,
@@ -95,6 +96,15 @@ class _SettingsPage extends StatefulWidget {
   /// `configured: false` from `/auth/casdoor/config/` (shadow mode).
   /// See `docs/integrations/casdoor-migration.md`.
   final VoidCallback? onCasdoorLogin;
+
+  /// Casdoor org-login page URL, e.g.
+  /// `https://auth.trance-0.com/login/notechondria`. Built in
+  /// `_AppShellState` from the `endpoint` + `organization` fields
+  /// returned by `/api/v1/auth/casdoor/config/`. Backs the "Login via
+  /// third party" button and the "Sign up via Casdoor" link in the
+  /// signed-out account card. Empty / null when the backend hasn't
+  /// reported a Casdoor config — both CTAs collapse in that state.
+  final String? casdoorOrgLoginUrl;
 
   /// Triggers `launchOAuth('casdoor', intent: 'bind')`. Null in
   /// shadow mode. See `docs/integrations/casdoor-migration.md`.

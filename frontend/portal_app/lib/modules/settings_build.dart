@@ -157,14 +157,9 @@ extension _SettingsPageBuildX on _SettingsPageState {
   /// the rest of the Apple-style cards.
   Widget _buildSignedOutAccount(BuildContext context) {
     return AuthHub(
-      onRegister: widget.onRegister,
-      onValidateInvitation: widget.onValidateInvitation,
-      onVerify: widget.onVerify,
-      onResendVerification: widget.onResendVerification,
       onLogin: widget.onLogin,
-      onRequestPasswordReset: widget.onRequestPasswordReset,
-      onConfirmPasswordReset: widget.onConfirmPasswordReset,
       onCasdoorLogin: widget.onCasdoorLogin,
+      casdoorOrgLoginUrl: widget.casdoorOrgLoginUrl,
       apiBaseUrl: widget.apiBaseUrl,
     );
   }

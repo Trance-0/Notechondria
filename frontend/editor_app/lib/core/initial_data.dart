@@ -49,8 +49,23 @@ extension _AppShellInitialDataX on _AppShellState {
       try {
         final config = await widget.client.getCasdoorConfig();
         final configured = config['configured'] == true;
-        if (mounted && configured != _casdoorConfigured) {
+        // The org-login URL backs the "Login via third party" button +
+        // "Sign up via Casdoor" link in the signed-out account card.
+        // Casdoor's hosted login page lives at
+        // `${endpoint}/login/${organization}` — both fields are
+        // returned by /auth/casdoor/config/ so the SPA doesn't need to
+        // know about them at compile time.
+        final endpoint =
+            (config['endpoint']?.toString() ?? '').replaceAll(RegExp(r'/+$'), '');
+        final orgName = config['organization']?.toString() ?? '';
+        final orgLoginUrl = (configured && endpoint.isNotEmpty && orgName.isNotEmpty)
+            ? '$endpoint/login/$orgName'
+            : null;
+        if (mounted &&
+            (configured != _casdoorConfigured ||
+                orgLoginUrl != _casdoorOrgLoginUrl)) {
           _casdoorConfigured = configured;
+          _casdoorOrgLoginUrl = orgLoginUrl;
           refreshState();
         }
       } catch (_) {

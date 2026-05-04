@@ -38,8 +38,22 @@ extension _AppShellInitialDataX on _AppShellState {
       try {
         final config = await widget.client.getCasdoorConfig();
         final configured = config['configured'] == true;
-        if (mounted && configured != _casdoorConfigured) {
+        // Derive the Casdoor org-login URL from the same payload so
+        // AuthHub's "Login via third party" + "Sign up via Casdoor"
+        // CTAs can navigate the browser to the hosted login page at
+        // `${endpoint}/login/${organization}`.
+        final endpoint =
+            (config['endpoint']?.toString() ?? '').replaceAll(RegExp(r'/+$'), '');
+        final orgName = config['organization']?.toString() ?? '';
+        final orgLoginUrl =
+            (configured && endpoint.isNotEmpty && orgName.isNotEmpty)
+                ? '$endpoint/login/$orgName'
+                : null;
+        if (mounted &&
+            (configured != _casdoorConfigured ||
+                orgLoginUrl != _casdoorOrgLoginUrl)) {
           _casdoorConfigured = configured;
+          _casdoorOrgLoginUrl = orgLoginUrl;
           refreshState();
         }
       } catch (_) {

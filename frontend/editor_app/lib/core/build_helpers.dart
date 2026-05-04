@@ -591,6 +591,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
           onCasdoorLogin: _casdoorConfigured
               ? () => launchOAuth('casdoor', intent: 'login')
               : null,
+          casdoorOrgLoginUrl: _casdoorOrgLoginUrl,
           onBindCasdoor: (_casdoorConfigured && _token != null)
               ? () => launchOAuth('casdoor', intent: 'bind')
               : null,

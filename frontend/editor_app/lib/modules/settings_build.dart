@@ -152,10 +152,11 @@ extension _SettingsPageBuildX on _SettingsPageState {
             const SizedBox(height: 8),
             Text(
               hasCasdoor
-                  ? 'Sign in via the Notechondria SSO. The legacy '
-                      'email / password fallback is kept below for '
-                      'accounts that haven\'t been migrated yet; '
-                      'Google and GitHub now go through Casdoor itself.'
+                  ? 'Sign in via the Notechondria SSO. Account creation '
+                      'and password reset are handled on the Casdoor '
+                      'side; use the link below to register or contact '
+                      'the administrator if your password needs to be '
+                      'reset.'
                   : 'Sign in to sync notes with the cloud. Local notes '
                       'stay editable while signed out.',
             ),
@@ -166,93 +167,102 @@ extension _SettingsPageBuildX on _SettingsPageState {
                 label: 'Continue with Casdoor SSO',
                 onPressed: widget.onCasdoorLogin!,
               ),
+            ],
+            if (_casdoorBrowserLoginUrl.isNotEmpty) ...[
               const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: toggleLegacyAuthFallback,
-                  icon: Icon(
-                    _showLegacyAuthFallback
-                        ? Icons.expand_less
-                        : Icons.expand_more,
-                    size: 18,
-                  ),
-                  label: Text(
-                    _showLegacyAuthFallback
-                        ? 'Hide email / password fallback'
-                        : 'Use email / password instead',
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _openCasdoorBrowserLogin,
+                  icon: const Icon(Icons.open_in_new, size: 18),
+                  label: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 4),
+                    child: Text('Login via third party'),
                   ),
                 ),
               ),
-              if (_showLegacyAuthFallback) ...[
-                const Divider(),
-                const SizedBox(height: 8),
-                _legacyAuthBlock(context),
-              ],
-            ] else
+              const SizedBox(height: 6),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: _openCasdoorBrowserLogin,
+                  icon: const Icon(Icons.person_add_alt_outlined, size: 18),
+                  label: const Text('No account? Sign up via Casdoor'),
+                ),
+              ),
+            ],
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: toggleLegacyAuthFallback,
+                icon: Icon(
+                  _showLegacyAuthFallback
+                      ? Icons.expand_less
+                      : Icons.expand_more,
+                  size: 18,
+                ),
+                label: Text(
+                  _showLegacyAuthFallback
+                      ? 'Hide email / password fallback'
+                      : 'Use email / password instead',
+                ),
+              ),
+            ),
+            if (_showLegacyAuthFallback) ...[
+              const Divider(),
+              const SizedBox(height: 8),
               _legacyAuthBlock(context),
+            ],
           ],
         ),
       ),
     );
   }
 
-  /// Legacy sign-up + login block. Pulled out so the Casdoor-primary
-  /// path (which renders this only when the user expands "Use email /
-  /// password instead") and the no-Casdoor path (which renders it
-  /// inline) both go through the same widget tree. Per-provider Google
-  /// / GitHub buttons were retired in favor of Casdoor's own provider
-  /// proxy.
+  /// Casdoor org-login page URL (e.g. https://auth.trance-0.com/login/notechondria).
+  /// Empty string when the backend hasn't reported a Casdoor config —
+  /// in that state the third-party / signup CTAs collapse.
+  String get _casdoorBrowserLoginUrl =>
+      widget.casdoorOrgLoginUrl ?? '';
+
+  void _openCasdoorBrowserLogin() {
+    final url = _casdoorBrowserLoginUrl;
+    if (url.isEmpty) return;
+    url_strategy.browserRedirect(url);
+  }
+
+  /// Legacy email + password Login block. After the 0.1.103 cutover,
+  /// signup lives on the Casdoor side — this block is just the
+  /// fallback Login button + a caption pointing un-migrated users
+  /// at the administrator for password resets.
   Widget _legacyAuthBlock(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: FilledButton(
-                onPressed: () => _openSignUpDialog(context),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 4),
-                  child: Text('Sign up'),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: FilledButton.tonal(
-                onPressed: () => _openLoginDialog(context),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 4),
-                  child: Text('Login'),
-                ),
-              ),
-            ),
-          ],
+        FilledButton.tonal(
+          onPressed: () => _openLoginDialog(context),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(vertical: 4),
+            child: Text('Login'),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Forgot password? Contact the administrator to reset it. '
+          'Self-service password reset has moved to Casdoor for '
+          'accounts that have been migrated.',
+          style: Theme.of(context).textTheme.bodySmall,
         ),
       ],
     );
   }
 
-  /// Opens the existing `RegistrationWizard` (multi-step signup +
-  /// email verification) shared from `notechondria_shared`.
-  void _openSignUpDialog(BuildContext context) {
-    showBlurDialog<void>(
-      context: context,
-      child: RegistrationWizard(
-        onValidateInvitation: widget.onValidateInvitation,
-        onRegister: widget.onRegister,
-        onResendVerification: widget.onResendVerification,
-      ),
-    );
-  }
-
-  /// Opens the shared email-password login dialog. Mirrors the
-  /// previous `AuthHub` behavior \u2014 the forgot-password branch pops
-  /// THIS dialog and opens `PasswordResetDialog` so the user can
-  /// cancel and come back without a stale context.
+  /// Opens the email-password login dialog. After the 0.1.103 cutover,
+  /// self-registration and password reset both moved to the Casdoor
+  /// side \u2014 there's no in-app signup wizard or forgot-password flow
+  /// anymore; the dialog only needs the username + password fields.
   void _openLoginDialog(BuildContext context) {
-    final rootNavigator = Navigator.of(context);
     showBlurDialog<void>(
       context: context,
       child: EmailPasswordDialog(
@@ -261,16 +271,6 @@ extension _SettingsPageBuildX on _SettingsPageState {
         submitLabel: 'Login',
         emailLabel: 'Email or username',
         onSubmit: widget.onLogin,
-        onForgotPassword: () {
-          rootNavigator.pop();
-          showBlurDialog<void>(
-            context: rootNavigator.context,
-            child: PasswordResetDialog(
-              onRequestPasswordReset: widget.onRequestPasswordReset,
-              onConfirmPasswordReset: widget.onConfirmPasswordReset,
-            ),
-          );
-        },
       ),
     );
   }
