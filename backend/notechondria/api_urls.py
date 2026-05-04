@@ -4,23 +4,18 @@ from notechondria.api_views import handshake as handshake_view
 from notechondria.api_views import ping as ping_view
 
 from creators.api import (
-    BindGithubApiView,
-    BindGoogleApiView,
     CasdoorBindApiView,
     CasdoorConfigApiView,
     CasdoorExchangeApiView,
     CasdoorUnlinkApiView,
     ChangeEmailApiView,
     ChangePasswordApiView,
-    GitHubOAuthApiView,
     GithubSyncCallbackApiView,
     GithubSyncPushApiView,
     GithubSyncReposApiView,
     GithubSyncStatusApiView,
-    GoogleOAuthApiView,
     LoginApiView,
     LogoutApiView,
-    OAuthConfigApiView,
     PasswordResetConfirmApiView,
     PasswordResetRequestApiView,
     RegisterApiView,
@@ -31,8 +26,6 @@ from creators.api import (
     SessionListApiView,
     SessionRevokeApiView,
     SettingsApiView,
-    SocialAccountListApiView,
-    SocialAccountUnlinkApiView,
     ValidateInvitationApiView,
     VerifyEmailApiView,
 )
@@ -94,15 +87,9 @@ urlpatterns = [
     path("auth/session/", SessionApiView.as_view(), name="session"),
     path("auth/sessions/", SessionListApiView.as_view(), name="session-list"),
     path("auth/sessions/<int:session_id>/", SessionRevokeApiView.as_view(), name="session-revoke"),
-    path("auth/oauth-config/", OAuthConfigApiView.as_view(), name="oauth-config"),
-    path("auth/google/", GoogleOAuthApiView.as_view(), name="google-oauth"),
-    path("auth/github/", GitHubOAuthApiView.as_view(), name="github-oauth"),
-    path("auth/social-accounts/", SocialAccountListApiView.as_view(), name="social-accounts"),
-    path("auth/social-accounts/<str:provider>/", SocialAccountUnlinkApiView.as_view(), name="social-account-unlink"),
-    path("auth/bind/google/", BindGoogleApiView.as_view(), name="bind-google"),
-    path("auth/bind/github/", BindGithubApiView.as_view(), name="bind-github"),
-    # Casdoor migration phase 2 — see docs/integrations/casdoor-migration.md.
-    # Both endpoints are no-ops when CASDOOR_* env vars aren't configured.
+    # Casdoor SSO is the only third-party auth surface — see
+    # docs/integrations/casdoor-migration.md. Both endpoints are no-ops when
+    # CASDOOR_* env vars aren't configured.
     path("auth/casdoor/config/", CasdoorConfigApiView.as_view(), name="casdoor-config"),
     path("auth/casdoor/exchange/", CasdoorExchangeApiView.as_view(), name="casdoor-exchange"),
     path("auth/casdoor/bind/", CasdoorBindApiView.as_view(), name="casdoor-bind"),

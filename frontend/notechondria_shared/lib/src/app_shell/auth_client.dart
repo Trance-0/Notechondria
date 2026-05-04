@@ -19,29 +19,6 @@ abstract class AuthClient {
     String code,
     String password,
   );
-  Future<Map<String, dynamic>> loginWithGoogle(
-    String code, {
-    String redirectUri,
-    String invitationCode,
-    String intent,
-  });
-  Future<Map<String, dynamic>> loginWithGithub(
-    String code, {
-    String redirectUri,
-    String invitationCode,
-    String intent,
-  });
-  Future<Map<String, dynamic>> bindGoogle(
-    String token,
-    String code, {
-    String redirectUri,
-  });
-  Future<Map<String, dynamic>> bindGithub(
-    String token,
-    String code, {
-    String redirectUri,
-  });
-  Future<Map<String, dynamic>> getOAuthConfig();
 
   /// `GET /api/v1/auth/casdoor/config/`. Returns
   /// `{configured: bool, endpoint, client_id, organization,

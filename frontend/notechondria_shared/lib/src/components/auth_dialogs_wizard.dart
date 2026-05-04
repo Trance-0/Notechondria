@@ -9,7 +9,9 @@ import 'phased_status.dart';
 /// Multi-step registration wizard.
 ///
 /// Step 0 - Invitation code (skipped automatically when no codes exist).
-/// Step 1 - Choose registration method: Email, Google, or GitHub.
+/// Step 1 - Choose registration method (currently email only; Casdoor SSO
+///          replaces the legacy Google / GitHub buttons and is offered
+///          from the parent AuthHub directly).
 /// Step 2 - Email registration form (username, email + verify, password).
 class RegistrationWizard extends StatefulWidget {
   const RegistrationWizard({
@@ -17,8 +19,6 @@ class RegistrationWizard extends StatefulWidget {
     required this.onValidateInvitation,
     required this.onRegister,
     required this.onResendVerification,
-    this.onGoogleLogin,
-    this.onGithubLogin,
   });
 
   final Future<Map<String, dynamic>> Function(String code) onValidateInvitation;
@@ -29,8 +29,6 @@ class RegistrationWizard extends StatefulWidget {
     String invitationCode,
   }) onRegister;
   final Future<ActionFeedback> Function(String email) onResendVerification;
-  final void Function(String invitationCode)? onGoogleLogin;
-  final void Function(String invitationCode)? onGithubLogin;
 
   @override
   State<RegistrationWizard> createState() => _RegistrationWizardState();
@@ -286,34 +284,6 @@ class _RegistrationWizardState extends State<RegistrationWizard> {
             label: const Text('Register with email'),
           ),
         ),
-        if (widget.onGoogleLogin != null) ...[
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () {
-                widget.onGoogleLogin!(_validatedInvitationCode);
-                Navigator.of(context).pop();
-              },
-              icon: const Icon(Icons.g_mobiledata, size: 22),
-              label: const Text('Continue with Google'),
-            ),
-          ),
-        ],
-        if (widget.onGithubLogin != null) ...[
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () {
-                widget.onGithubLogin!(_validatedInvitationCode);
-                Navigator.of(context).pop();
-              },
-              icon: const Icon(Icons.code, size: 18),
-              label: const Text('Continue with GitHub'),
-            ),
-          ),
-        ],
       ],
     );
   }

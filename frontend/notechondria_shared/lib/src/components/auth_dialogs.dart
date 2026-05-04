@@ -35,10 +35,6 @@ class AuthHub extends StatelessWidget {
     required this.onLogin,
     required this.onRequestPasswordReset,
     required this.onConfirmPasswordReset,
-    this.onGoogleLogin,
-    this.onGithubLogin,
-    this.onGoogleLoginOnly,
-    this.onGithubLoginOnly,
     this.onCasdoorLogin,
     this.apiBaseUrl,
   });
@@ -64,16 +60,14 @@ class AuthHub extends StatelessWidget {
     String code,
     String password,
   ) onConfirmPasswordReset;
-  final void Function(String invitationCode)? onGoogleLogin;
-  final void Function(String invitationCode)? onGithubLogin;
-  final VoidCallback? onGoogleLoginOnly;
-  final VoidCallback? onGithubLoginOnly;
 
   /// Triggers the Casdoor SSO redirect (AppShellOAuthMixin's
   /// `launchOAuth('casdoor', intent: 'login')`). Null when the
   /// backend is in shadow mode (no `CASDOOR_*` env vars set), so the
-  /// hub falls through to the legacy Google / GitHub buttons. See
-  /// `docs/integrations/casdoor-migration.md`.
+  /// hub falls through to the legacy email/password block. See
+  /// `docs/integrations/casdoor-migration.md`. Per-provider Google /
+  /// GitHub buttons were retired in favor of Casdoor's own provider
+  /// proxy (configure them on the Casdoor application's Providers tab).
   final VoidCallback? onCasdoorLogin;
 
   Future<void> _openDialog(BuildContext context, Widget dialog) {
@@ -99,10 +93,6 @@ class AuthHub extends StatelessWidget {
           onLogin: onLogin,
           onRequestPasswordReset: onRequestPasswordReset,
           onConfirmPasswordReset: onConfirmPasswordReset,
-          onGoogleLogin: onGoogleLogin,
-          onGithubLogin: onGithubLogin,
-          onGoogleLoginOnly: onGoogleLoginOnly,
-          onGithubLoginOnly: onGithubLoginOnly,
           onCasdoorLogin: onCasdoorLogin,
           openDialog: _openDialog,
         ),
@@ -126,10 +116,6 @@ class _AuthHubBody extends StatefulWidget {
     required this.onLogin,
     required this.onRequestPasswordReset,
     required this.onConfirmPasswordReset,
-    this.onGoogleLogin,
-    this.onGithubLogin,
-    this.onGoogleLoginOnly,
-    this.onGithubLoginOnly,
     this.onCasdoorLogin,
     this.apiBaseUrl,
   });
@@ -152,10 +138,6 @@ class _AuthHubBody extends StatefulWidget {
     String code,
     String password,
   ) onConfirmPasswordReset;
-  final void Function(String invitationCode)? onGoogleLogin;
-  final void Function(String invitationCode)? onGithubLogin;
-  final VoidCallback? onGoogleLoginOnly;
-  final VoidCallback? onGithubLoginOnly;
   final VoidCallback? onCasdoorLogin;
 
   @override
@@ -196,8 +178,6 @@ class _AuthHubBodyState extends State<_AuthHubBody> {
         onValidateInvitation: widget.onValidateInvitation,
         onRegister: widget.onRegister,
         onResendVerification: widget.onResendVerification,
-        onGoogleLogin: widget.onGoogleLogin,
-        onGithubLogin: widget.onGithubLogin,
       ),
     );
   }
@@ -214,9 +194,9 @@ class _AuthHubBodyState extends State<_AuthHubBody> {
         Text(
           casdoorPrimary
               ? 'Sign in via the Notechondria SSO. The legacy email / '
-                  'password and per-provider OAuth flows are still '
-                  'available below for accounts that haven\'t been '
-                  'migrated yet.'
+                  'password fallback below is kept for accounts that '
+                  'haven\'t been migrated yet; Google and GitHub now '
+                  'go through Casdoor itself.'
               : 'Sign up or log in. Email verification happens inside '
                   'the signup wizard; password reset is inside the '
                   'login dialog.',
@@ -261,50 +241,18 @@ class _AuthHubBodyState extends State<_AuthHubBody> {
   }
 
   Widget _legacyButtons(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
       children: [
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            FilledButton(
-              onPressed: () => _openSignup(context),
-              child: const Text('Sign up'),
-            ),
-            OutlinedButton(
-              onPressed: () => _openLogin(context),
-              child: const Text('Login'),
-            ),
-          ],
+        FilledButton(
+          onPressed: () => _openSignup(context),
+          child: const Text('Sign up'),
         ),
-        if (widget.onGoogleLoginOnly != null ||
-            widget.onGithubLoginOnly != null) ...[
-          const SizedBox(height: 12),
-          Text(
-            'Or sign in with',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              if (widget.onGoogleLoginOnly != null)
-                OutlinedButton.icon(
-                  onPressed: widget.onGoogleLoginOnly,
-                  icon: const Icon(Icons.g_mobiledata, size: 20),
-                  label: const Text('Google'),
-                ),
-              if (widget.onGithubLoginOnly != null)
-                OutlinedButton.icon(
-                  onPressed: widget.onGithubLoginOnly,
-                  icon: const Icon(Icons.code, size: 20),
-                  label: const Text('GitHub'),
-                ),
-            ],
-          ),
-        ],
+        OutlinedButton(
+          onPressed: () => _openLogin(context),
+          child: const Text('Login'),
+        ),
       ],
     );
   }

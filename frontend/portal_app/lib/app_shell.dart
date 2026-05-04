@@ -786,10 +786,6 @@ class _AppShellState extends State<AppShell>
           onLogin: login,
           onRequestPasswordReset: requestPasswordReset,
           onConfirmPasswordReset: confirmPasswordReset,
-          onGoogleLogin: (invitationCode) => launchOAuth('google', invitationCode: invitationCode),
-          onGithubLogin: (invitationCode) => launchOAuth('github', invitationCode: invitationCode),
-          onGoogleLoginOnly: () => launchOAuth('google', intent: 'login'),
-          onGithubLoginOnly: () => launchOAuth('github', intent: 'login'),
           onCasdoorLogin: _casdoorConfigured
               ? () => launchOAuth('casdoor', intent: 'login')
               : null,
@@ -810,10 +806,6 @@ class _AppShellState extends State<AppShell>
                   } catch (_) {/* swallowed; UI stays stale */}
                 }
               : null,
-          onBindGoogle: () => launchOAuth('google', intent: 'bind'),
-          onBindGithub: () => launchOAuth('github', intent: 'bind'),
-          onListSocialAccounts: _token != null ? () => widget.client.listSocialAccounts(_token!) : null,
-          onUnlinkSocialAccount: _token != null ? (provider) => widget.client.unlinkSocialAccount(_token!, provider) : null,
           onRestoreDeletedNote: _restoreDeletedNote,
           onEmptyDeletedNotes: _emptyDeletedNotes,
           onCopyLogs: _copyFrontendLogs,

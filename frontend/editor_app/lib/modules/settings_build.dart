@@ -127,8 +127,6 @@ extension _SettingsPageBuildX on _SettingsPageState {
   /// full-width pill buttons below ("show in round button, span
   /// horizontal line").
   Widget _buildSignedOutAccount(BuildContext context) {
-    final hasGoogle = widget.onGoogleLoginOnly != null;
-    final hasGithub = widget.onGithubLoginOnly != null;
     final hasCasdoor = widget.onCasdoorLogin != null;
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -155,9 +153,9 @@ extension _SettingsPageBuildX on _SettingsPageState {
             Text(
               hasCasdoor
                   ? 'Sign in via the Notechondria SSO. The legacy '
-                      'email / password and per-provider OAuth flows '
-                      'are still available below for accounts that '
-                      'haven\'t been migrated yet.'
+                      'email / password fallback is kept below for '
+                      'accounts that haven\'t been migrated yet; '
+                      'Google and GitHub now go through Casdoor itself.'
                   : 'Sign in to sync notes with the cloud. Local notes '
                       'stay editable while signed out.',
             ),
@@ -189,33 +187,23 @@ extension _SettingsPageBuildX on _SettingsPageState {
               if (_showLegacyAuthFallback) ...[
                 const Divider(),
                 const SizedBox(height: 8),
-                _legacyAuthBlock(
-                  context,
-                  hasGoogle: hasGoogle,
-                  hasGithub: hasGithub,
-                ),
+                _legacyAuthBlock(context),
               ],
             ] else
-              _legacyAuthBlock(
-                context,
-                hasGoogle: hasGoogle,
-                hasGithub: hasGithub,
-              ),
+              _legacyAuthBlock(context),
           ],
         ),
       ),
     );
   }
 
-  /// Legacy sign-up + login + Google/GitHub block. Pulled out so the
-  /// Casdoor-primary path (which renders this only when the user
-  /// expands "Use email / password instead") and the no-Casdoor path
-  /// (which renders it inline) both go through the same widget tree.
-  Widget _legacyAuthBlock(
-    BuildContext context, {
-    required bool hasGoogle,
-    required bool hasGithub,
-  }) {
+  /// Legacy sign-up + login block. Pulled out so the Casdoor-primary
+  /// path (which renders this only when the user expands "Use email /
+  /// password instead") and the no-Casdoor path (which renders it
+  /// inline) both go through the same widget tree. Per-provider Google
+  /// / GitHub buttons were retired in favor of Casdoor's own provider
+  /// proxy.
+  Widget _legacyAuthBlock(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -242,41 +230,6 @@ extension _SettingsPageBuildX on _SettingsPageState {
             ),
           ],
         ),
-        if (hasGoogle || hasGithub) ...[
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              const Expanded(child: Divider()),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  'or',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurfaceVariant,
-                      ),
-                ),
-              ),
-              const Expanded(child: Divider()),
-            ],
-          ),
-          const SizedBox(height: 16),
-          if (hasGithub) ...[
-            _OAuthPillButton(
-              icon: Icons.code,
-              label: 'Continue with GitHub',
-              onPressed: widget.onGithubLoginOnly!,
-            ),
-            if (hasGoogle) const SizedBox(height: 10),
-          ],
-          if (hasGoogle)
-            _OAuthPillButton(
-              icon: Icons.g_mobiledata,
-              label: 'Continue with Google',
-              onPressed: widget.onGoogleLoginOnly!,
-            ),
-        ],
       ],
     );
   }
@@ -290,8 +243,6 @@ extension _SettingsPageBuildX on _SettingsPageState {
         onValidateInvitation: widget.onValidateInvitation,
         onRegister: widget.onRegister,
         onResendVerification: widget.onResendVerification,
-        onGoogleLogin: widget.onGoogleLogin,
-        onGithubLogin: widget.onGithubLogin,
       ),
     );
   }

@@ -79,13 +79,6 @@ abstract class NotechondriaClient implements AuthClient {
   Future<Map<String, dynamic>> verifyEmail(String email, String code);
   Future<Map<String, dynamic>> resendVerification(String email);
   Future<Map<String, dynamic>> login(String email, String password);
-  Future<Map<String, dynamic>> loginWithGoogle(String code, {String redirectUri = '', String invitationCode = '', String intent = 'register'});
-  Future<Map<String, dynamic>> loginWithGithub(String code, {String redirectUri = '', String invitationCode = '', String intent = 'register'});
-  Future<Map<String, dynamic>> getOAuthConfig();
-  Future<List<Map<String, dynamic>>> listSocialAccounts(String token);
-  Future<void> unlinkSocialAccount(String token, String provider);
-  Future<Map<String, dynamic>> bindGoogle(String token, String code, {String redirectUri = ''});
-  Future<Map<String, dynamic>> bindGithub(String token, String code, {String redirectUri = ''});
   Future<Map<String, dynamic>> requestPasswordReset(String email);
   Future<Map<String, dynamic>> confirmPasswordReset(
     String email,
@@ -680,39 +673,6 @@ class HttpNotechondriaClient
   }
 
   @override
-  Future<Map<String, dynamic>> loginWithGoogle(String code, {String redirectUri = '', String invitationCode = '', String intent = 'register'}) async {
-    final uri = _uri('/auth/google/');
-    final payload = <String, dynamic>{'code': code, 'intent': intent};
-    if (redirectUri.isNotEmpty) payload['redirect_uri'] = redirectUri;
-    if (invitationCode.isNotEmpty) payload['invitation_code'] = invitationCode;
-    final response = await _post(uri, payload: payload);
-    return Map<String, dynamic>.from(
-      await decode(response, uri: uri, method: 'POST'),
-    );
-  }
-
-  @override
-  Future<Map<String, dynamic>> loginWithGithub(String code, {String redirectUri = '', String invitationCode = '', String intent = 'register'}) async {
-    final uri = _uri('/auth/github/');
-    final payload = <String, dynamic>{'code': code, 'intent': intent};
-    if (redirectUri.isNotEmpty) payload['redirect_uri'] = redirectUri;
-    if (invitationCode.isNotEmpty) payload['invitation_code'] = invitationCode;
-    final response = await _post(uri, payload: payload);
-    return Map<String, dynamic>.from(
-      await decode(response, uri: uri, method: 'POST'),
-    );
-  }
-
-  @override
-  Future<Map<String, dynamic>> getOAuthConfig() async {
-    final uri = _uri('/auth/oauth-config/');
-    final response = await _get(uri);
-    return Map<String, dynamic>.from(
-      await decode(response, uri: uri, method: 'GET'),
-    );
-  }
-
-  @override
   Future<Map<String, dynamic>> getCasdoorConfig() async {
     final uri = _uri('/auth/casdoor/config/');
     final response = await _get(uri);
@@ -749,47 +709,6 @@ class HttpNotechondriaClient
     final uri = _uri('/auth/casdoor/unlink/');
     final response = await _delete(uri, token: token);
     await decode(response, uri: uri, method: 'DELETE');
-  }
-
-  @override
-  Future<List<Map<String, dynamic>>> listSocialAccounts(String token) async {
-    final uri = _uri('/auth/social-accounts/');
-    final response = await _get(uri, token: token);
-    final decoded = await decode(response, uri: uri, method: 'GET');
-    return List<Map<String, dynamic>>.from(
-      (decoded as List).map((e) => Map<String, dynamic>.from(e)),
-    );
-  }
-
-  @override
-  Future<void> unlinkSocialAccount(String token, String provider) async {
-    final uri = _uri('/auth/social-accounts/$provider/');
-    final response = await _httpClient.delete(uri, headers: {'Authorization': 'Token $token'});
-    if (response.statusCode != 204) {
-      await decode(response, uri: uri, method: 'DELETE');
-    }
-  }
-
-  @override
-  Future<Map<String, dynamic>> bindGoogle(String token, String code, {String redirectUri = ''}) async {
-    final uri = _uri('/auth/bind/google/');
-    final payload = <String, dynamic>{'code': code};
-    if (redirectUri.isNotEmpty) payload['redirect_uri'] = redirectUri;
-    final response = await _post(uri, token: token, payload: payload);
-    return Map<String, dynamic>.from(
-      await decode(response, uri: uri, method: 'POST'),
-    );
-  }
-
-  @override
-  Future<Map<String, dynamic>> bindGithub(String token, String code, {String redirectUri = ''}) async {
-    final uri = _uri('/auth/bind/github/');
-    final payload = <String, dynamic>{'code': code};
-    if (redirectUri.isNotEmpty) payload['redirect_uri'] = redirectUri;
-    final response = await _post(uri, token: token, payload: payload);
-    return Map<String, dynamic>.from(
-      await decode(response, uri: uri, method: 'POST'),
-    );
   }
 
   @override

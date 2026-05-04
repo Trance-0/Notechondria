@@ -30,17 +30,9 @@ class _SettingsPage extends StatefulWidget {
     required this.localDraftCount,
     required this.localCourseCount,
     required this.uiLogs,
-    this.onGoogleLogin,
-    this.onGithubLogin,
-    this.onGoogleLoginOnly,
-    this.onGithubLoginOnly,
     this.onCasdoorLogin,
-    this.onBindGoogle,
     this.onBindCasdoor,
     this.onUnlinkCasdoor,
-    this.onBindGithub,
-    this.onListSocialAccounts,
-    this.onUnlinkSocialAccount,
     this.onListSessions,
     this.onRevokeSession,
     this.onCurrentSessionRevoked,
@@ -99,16 +91,10 @@ class _SettingsPage extends StatefulWidget {
     String code,
     String password,
   ) onConfirmPasswordReset;
-  final void Function(String invitationCode)? onGoogleLogin;
-  final void Function(String invitationCode)? onGithubLogin;
-  final VoidCallback? onGoogleLoginOnly;
-  final VoidCallback? onGithubLoginOnly;
-
   /// Triggers the Casdoor SSO flow. Null when the backend reports
   /// `configured: false` from `/auth/casdoor/config/` (shadow mode).
   /// See `docs/integrations/casdoor-migration.md`.
   final VoidCallback? onCasdoorLogin;
-  final VoidCallback? onBindGoogle;
 
   /// Triggers `launchOAuth('casdoor', intent: 'bind')`. Null in
   /// shadow mode. See `docs/integrations/casdoor-migration.md`.
@@ -116,9 +102,6 @@ class _SettingsPage extends StatefulWidget {
 
   /// Calls the unlink endpoint. Null in shadow mode.
   final Future<void> Function()? onUnlinkCasdoor;
-  final VoidCallback? onBindGithub;
-  final Future<List<Map<String, dynamic>>> Function()? onListSocialAccounts;
-  final Future<void> Function(String provider)? onUnlinkSocialAccount;
 
   /// Hits `GET /api/v1/auth/sessions/`. Returns the raw payload
   /// `{sessions, current_session_id}`. Null when signed out so

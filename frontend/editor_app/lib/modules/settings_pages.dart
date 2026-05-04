@@ -567,10 +567,6 @@ class _SignInSecurityPage extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: _ConnectedAccountsSection(
-                onListSocialAccounts: p.widget.onListSocialAccounts,
-                onUnlinkSocialAccount: p.widget.onUnlinkSocialAccount,
-                onBindGoogle: p.widget.onBindGoogle,
-                onBindGithub: p.widget.onBindGithub,
                 onBindCasdoor: p.widget.onBindCasdoor,
                 onUnlinkCasdoor: p.widget.onUnlinkCasdoor,
                 casdoorLinked: p.widget.settings?['casdoor_linked'] == true,

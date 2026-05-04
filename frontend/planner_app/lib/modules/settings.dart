@@ -16,17 +16,9 @@ class _SettingsPage extends StatefulWidget {
     required this.onLogin,
     required this.onRequestPasswordReset,
     required this.onConfirmPasswordReset,
-    this.onGoogleLogin,
-    this.onGithubLogin,
-    this.onGoogleLoginOnly,
-    this.onGithubLoginOnly,
     this.onCasdoorLogin,
     this.onBindCasdoor,
     this.onUnlinkCasdoor,
-    this.onBindGoogle,
-    this.onBindGithub,
-    this.onListSocialAccounts,
-    this.onUnlinkSocialAccount,
     required this.onRestoreDeletedNote,
     required this.onEmptyDeletedNotes,
     required this.onCopyLogs,
@@ -90,11 +82,6 @@ class _SettingsPage extends StatefulWidget {
     String code,
     String password,
   ) onConfirmPasswordReset;
-  final void Function(String invitationCode)? onGoogleLogin;
-  final void Function(String invitationCode)? onGithubLogin;
-  final VoidCallback? onGoogleLoginOnly;
-  final VoidCallback? onGithubLoginOnly;
-
   /// Triggers Casdoor SSO. Null in shadow mode (no `CASDOOR_*` env
   /// vars). See `docs/integrations/casdoor-migration.md`.
   final VoidCallback? onCasdoorLogin;
@@ -102,10 +89,6 @@ class _SettingsPage extends StatefulWidget {
   /// Triggers Casdoor account binding. Null in shadow mode.
   final VoidCallback? onBindCasdoor;
   final Future<void> Function()? onUnlinkCasdoor;
-  final VoidCallback? onBindGoogle;
-  final VoidCallback? onBindGithub;
-  final Future<List<Map<String, dynamic>>> Function()? onListSocialAccounts;
-  final Future<void> Function(String provider)? onUnlinkSocialAccount;
   final Future<void> Function(Map<String, dynamic> note) onRestoreDeletedNote;
   final Future<void> Function() onEmptyDeletedNotes;
   final Future<void> Function() onCopyLogs;
@@ -443,10 +426,6 @@ class _SettingsPageState extends State<_SettingsPage> {
                     onLogin: widget.onLogin,
                     onRequestPasswordReset: widget.onRequestPasswordReset,
                     onConfirmPasswordReset: widget.onConfirmPasswordReset,
-                    onGoogleLogin: widget.onGoogleLogin,
-                    onGithubLogin: widget.onGithubLogin,
-                    onGoogleLoginOnly: widget.onGoogleLoginOnly,
-                    onGithubLoginOnly: widget.onGithubLoginOnly,
                     onCasdoorLogin: widget.onCasdoorLogin,
                     apiBaseUrl: widget.apiBaseUrl,
                   ),
@@ -501,10 +480,6 @@ class _SettingsPageState extends State<_SettingsPage> {
                   ),
                   const SizedBox(height: 16),
                   _ConnectedAccountsSection(
-                    onListSocialAccounts: widget.onListSocialAccounts,
-                    onUnlinkSocialAccount: widget.onUnlinkSocialAccount,
-                    onBindGoogle: widget.onBindGoogle,
-                    onBindGithub: widget.onBindGithub,
                     onBindCasdoor: widget.onBindCasdoor,
                     onUnlinkCasdoor: widget.onUnlinkCasdoor,
                     casdoorLinked:
@@ -722,23 +697,17 @@ class _StatChip extends StatelessWidget {
 }
 
 
-// _ConnectedAccountsSection (planner copy) — Casdoor row added
-// 0.1.98 alongside Google / GitHub.
+// _ConnectedAccountsSection (planner copy) — Casdoor is now the only
+// connected-account row; per-provider Google / GitHub bindings were
+// retired in favor of letting Casdoor itself proxy those identities
+// via its application Providers tab.
 class _ConnectedAccountsSection extends StatefulWidget {
   const _ConnectedAccountsSection({
-    this.onListSocialAccounts,
-    this.onUnlinkSocialAccount,
-    this.onBindGoogle,
-    this.onBindGithub,
     this.onBindCasdoor,
     this.onUnlinkCasdoor,
     this.casdoorLinked = false,
   });
 
-  final Future<List<Map<String, dynamic>>> Function()? onListSocialAccounts;
-  final Future<void> Function(String provider)? onUnlinkSocialAccount;
-  final VoidCallback? onBindGoogle;
-  final VoidCallback? onBindGithub;
   final VoidCallback? onBindCasdoor;
   final Future<void> Function()? onUnlinkCasdoor;
   final bool casdoorLinked;
@@ -749,49 +718,9 @@ class _ConnectedAccountsSection extends StatefulWidget {
 }
 
 class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
-  List<Map<String, dynamic>>? _accounts;
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    if (widget.onListSocialAccounts == null) {
-      setState(() => _loading = false);
-      return;
-    }
-    try {
-      final accounts = await widget.onListSocialAccounts!();
-      if (mounted) setState(() { _accounts = accounts; _loading = false; });
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  Map<String, dynamic>? _accountFor(String provider) {
-    return _accounts?.cast<Map<String, dynamic>?>().firstWhere(
-      (a) => a?['provider'] == provider,
-      orElse: () => null,
-    );
-  }
-
-  Future<void> _unlink(String provider) async {
-    if (widget.onUnlinkSocialAccount == null) return;
-    try {
-      await widget.onUnlinkSocialAccount!(provider);
-      await _load();
-    } catch (_) {}
-  }
-
   @override
   Widget build(BuildContext context) {
-    final hasAny = widget.onBindGoogle != null ||
-        widget.onBindGithub != null ||
-        widget.onBindCasdoor != null;
-    if (!hasAny && widget.onListSocialAccounts == null) {
+    if (widget.onBindCasdoor == null) {
       return const SizedBox.shrink();
     }
     return Column(
@@ -805,16 +734,7 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
               ?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
-        if (_loading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: LinearProgressIndicator(minHeight: 2),
-          )
-        else ...[
-          if (widget.onBindCasdoor != null) _buildCasdoorRow(context),
-          _buildProviderRow(context, 'google', 'Google', Icons.g_mobiledata, widget.onBindGoogle),
-          _buildProviderRow(context, 'github', 'GitHub', Icons.code, widget.onBindGithub),
-        ],
+        _buildCasdoorRow(context),
       ],
     );
   }
@@ -857,38 +777,6 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
               onPressed: widget.onBindCasdoor,
               child: const Text('Link Casdoor'),
             ),
-    );
-  }
-
-  Widget _buildProviderRow(
-    BuildContext context, String provider, String label, IconData icon, VoidCallback? onBind,
-  ) {
-    final account = _accountFor(provider);
-    final linked = account != null;
-    final email = account?['email']?.toString() ?? '';
-    return ListTile(
-      leading: Icon(icon),
-      title: Text(label),
-      subtitle: linked
-          ? Text(email.isNotEmpty ? email : 'Linked')
-          : const Text('Not linked'),
-      dense: true,
-      trailing: linked
-          ? Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (onBind != null)
-                  TextButton(onPressed: onBind, child: const Text('Switch')),
-                TextButton(
-                  onPressed: () => _unlink(provider),
-                  child: Text('Unlink',
-                      style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                ),
-              ],
-            )
-          : onBind != null
-              ? TextButton(onPressed: onBind, child: Text('Link $label'))
-              : null,
     );
   }
 }

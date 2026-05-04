@@ -240,22 +240,16 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
   }
 }
 
-/// Shows linked Google/GitHub accounts with bind/unbind controls.
+/// Shows the Casdoor SSO link with bind/unlink controls. Per-provider
+/// Google / GitHub rows were retired in favor of Casdoor's own
+/// provider proxy (configure them on the Casdoor application's
+/// Providers tab).
 class _ConnectedAccountsSection extends StatefulWidget {
   const _ConnectedAccountsSection({
-    this.onListSocialAccounts,
-    this.onUnlinkSocialAccount,
-    this.onBindGoogle,
-    this.onBindGithub,
     this.onBindCasdoor,
     this.onUnlinkCasdoor,
     this.casdoorLinked = false,
   });
-
-  final Future<List<Map<String, dynamic>>> Function()? onListSocialAccounts;
-  final Future<void> Function(String provider)? onUnlinkSocialAccount;
-  final VoidCallback? onBindGoogle;
-  final VoidCallback? onBindGithub;
 
   /// Triggers `launchOAuth('casdoor', intent: 'bind')`. Null when
   /// the backend reports Casdoor is in shadow mode.
@@ -276,49 +270,9 @@ class _ConnectedAccountsSection extends StatefulWidget {
 }
 
 class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
-  List<Map<String, dynamic>>? _accounts;
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    if (widget.onListSocialAccounts == null) {
-      setState(() => _loading = false);
-      return;
-    }
-    try {
-      final accounts = await widget.onListSocialAccounts!();
-      if (mounted) setState(() { _accounts = accounts; _loading = false; });
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  Map<String, dynamic>? _accountFor(String provider) {
-    return _accounts?.cast<Map<String, dynamic>?>().firstWhere(
-      (a) => a?['provider'] == provider,
-      orElse: () => null,
-    );
-  }
-
-  Future<void> _unlink(String provider) async {
-    if (widget.onUnlinkSocialAccount == null) return;
-    try {
-      await widget.onUnlinkSocialAccount!(provider);
-      await _load();
-    } catch (_) {}
-  }
-
   @override
   Widget build(BuildContext context) {
-    final hasAnyProvider = widget.onBindGoogle != null ||
-        widget.onBindGithub != null ||
-        widget.onBindCasdoor != null;
-    if (!hasAnyProvider && widget.onListSocialAccounts == null) {
+    if (widget.onBindCasdoor == null) {
       return const SizedBox.shrink();
     }
     return Column(
@@ -332,17 +286,7 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
               ?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
-        if (_loading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: LinearProgressIndicator(minHeight: 2),
-          )
-        else ...[
-          if (widget.onBindCasdoor != null)
-            _buildCasdoorRow(context),
-          _buildProviderRow(context, 'google', 'Google', Icons.g_mobiledata, widget.onBindGoogle),
-          _buildProviderRow(context, 'github', 'GitHub', Icons.code, widget.onBindGithub),
-        ],
+        _buildCasdoorRow(context),
       ],
     );
   }
@@ -385,42 +329,6 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
               onPressed: widget.onBindCasdoor,
               child: const Text('Link Casdoor'),
             ),
-    );
-  }
-
-  Widget _buildProviderRow(
-    BuildContext context,
-    String provider,
-    String label,
-    IconData icon,
-    VoidCallback? onBind,
-  ) {
-    final account = _accountFor(provider);
-    final linked = account != null;
-    final email = account?['email']?.toString() ?? '';
-    return ListTile(
-      leading: Icon(icon),
-      title: Text(label),
-      subtitle: linked
-          ? Text(email.isNotEmpty ? email : 'Linked')
-          : const Text('Not linked'),
-      dense: true,
-      trailing: linked
-          ? Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (onBind != null)
-                  TextButton(onPressed: onBind, child: const Text('Switch')),
-                TextButton(
-                  onPressed: () => _unlink(provider),
-                  child: Text('Unlink',
-                      style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                ),
-              ],
-            )
-          : onBind != null
-              ? TextButton(onPressed: onBind, child: Text('Link $label'))
-              : null,
     );
   }
 }

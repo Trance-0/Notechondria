@@ -81,21 +81,6 @@ abstract class NotechondriaClient implements AuthClient {
   Future<Map<String, dynamic>> verifyEmail(String email, String code);
   Future<Map<String, dynamic>> resendVerification(String email);
   Future<Map<String, dynamic>> login(String email, String password);
-  Future<Map<String, dynamic>> loginWithGoogle(String code,
-      {String redirectUri = '',
-      String invitationCode = '',
-      String intent = 'register'});
-  Future<Map<String, dynamic>> loginWithGithub(String code,
-      {String redirectUri = '',
-      String invitationCode = '',
-      String intent = 'register'});
-  Future<Map<String, dynamic>> getOAuthConfig();
-  Future<List<Map<String, dynamic>>> listSocialAccounts(String token);
-  Future<void> unlinkSocialAccount(String token, String provider);
-  Future<Map<String, dynamic>> bindGoogle(
-      String token, String code, {String redirectUri = ''});
-  Future<Map<String, dynamic>> bindGithub(
-      String token, String code, {String redirectUri = ''});
   Future<Map<String, dynamic>> requestPasswordReset(String email);
   Future<Map<String, dynamic>> confirmPasswordReset(
     String email,

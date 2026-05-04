@@ -588,10 +588,6 @@ extension _AppShellBuildHelpersX on _AppShellState {
           onLogin: login,
           onRequestPasswordReset: requestPasswordReset,
           onConfirmPasswordReset: confirmPasswordReset,
-          onGoogleLogin: (invitationCode) => launchOAuth('google', invitationCode: invitationCode),
-          onGithubLogin: (invitationCode) => launchOAuth('github', invitationCode: invitationCode),
-          onGoogleLoginOnly: () => launchOAuth('google', intent: 'login'),
-          onGithubLoginOnly: () => launchOAuth('github', intent: 'login'),
           onCasdoorLogin: _casdoorConfigured
               ? () => launchOAuth('casdoor', intent: 'login')
               : null,
@@ -612,10 +608,6 @@ extension _AppShellBuildHelpersX on _AppShellState {
                   } catch (_) {/* swallowed; UI stays stale */}
                 }
               : null,
-          onBindGoogle: () => launchOAuth('google', intent: 'bind'),
-          onBindGithub: () => launchOAuth('github', intent: 'bind'),
-          onListSocialAccounts: _token != null ? () => widget.client.listSocialAccounts(_token!) : null,
-          onUnlinkSocialAccount: _token != null ? (provider) => widget.client.unlinkSocialAccount(_token!, provider) : null,
           onListSessions: _token != null
               ? () => widget.client.listSessions(_token!)
               : null,
