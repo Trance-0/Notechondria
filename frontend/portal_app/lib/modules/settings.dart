@@ -17,13 +17,7 @@ class _SettingsPage extends StatefulWidget {
     required this.deletedNotes,
     required this.onSave,
     required this.onLogout,
-    required this.onRegister,
-    required this.onValidateInvitation,
-    required this.onVerify,
-    required this.onResendVerification,
     required this.onLogin,
-    required this.onRequestPasswordReset,
-    required this.onConfirmPasswordReset,
     this.onCasdoorLogin,
     this.casdoorOrgLoginUrl,
     this.onBindCasdoor,
@@ -48,16 +42,9 @@ class _SettingsPage extends StatefulWidget {
     this.debugSnapshotListenable,
     this.debugHistoryListenable,
     this.debugLogController,
-    this.onListSessions,
-    this.onRevokeSession,
-    this.onCurrentSessionRevoked,
-    this.onSendIdentityCode,
     this.onRotateApiKey,
     this.onSaveMcpSkill,
     this.githubSyncCardBuilder,
-    this.onChangePassword,
-    this.onChangeEmailRequest,
-    this.onChangeEmailConfirm,
     this.onExportLocalData,
     this.onRestoreFromLocalImport,
   });
@@ -78,22 +65,7 @@ class _SettingsPage extends StatefulWidget {
     String apiBaseUrl,
   ) onSave;
   final Future<void> Function() onLogout;
-  final Future<ActionFeedback> Function(
-    String username,
-    String email,
-    String password, {
-    String invitationCode,
-  }) onRegister;
-  final Future<Map<String, dynamic>> Function(String code) onValidateInvitation;
-  final Future<ActionFeedback> Function(String email, String code) onVerify;
-  final Future<ActionFeedback> Function(String email) onResendVerification;
   final Future<ActionFeedback> Function(String email, String password) onLogin;
-  final Future<ActionFeedback> Function(String email) onRequestPasswordReset;
-  final Future<ActionFeedback> Function(
-    String email,
-    String code,
-    String password,
-  ) onConfirmPasswordReset;
 
   /// Triggers Casdoor SSO. Null in shadow mode (no `CASDOOR_*` env
   /// vars). See `docs/integrations/casdoor-migration.md`.
@@ -139,10 +111,6 @@ class _SettingsPage extends StatefulWidget {
   final ValueListenable<ApiDebugSnapshot?>? debugSnapshotListenable;
   final ValueListenable<List<ApiDebugSnapshot>>? debugHistoryListenable;
   final DebugLogController? debugLogController;
-  final Future<Map<String, dynamic>> Function()? onListSessions;
-  final Future<void> Function(int sessionId)? onRevokeSession;
-  final VoidCallback? onCurrentSessionRevoked;
-  final Future<Map<String, dynamic>> Function()? onSendIdentityCode;
   final Future<Map<String, dynamic>> Function()? onRotateApiKey;
 
   /// Persists the user's MCP `skill.md` body to the backend Creator
@@ -155,19 +123,6 @@ class _SettingsPage extends StatefulWidget {
   /// `app_shell` so the network callbacks bind to the authenticated
   /// client + token. Null when the user is signed out.
   final Widget Function()? githubSyncCardBuilder;
-  final Future<Map<String, dynamic>> Function(
-    String currentPassword,
-    String newPassword,
-    String identityCode,
-  )? onChangePassword;
-  final Future<Map<String, dynamic>> Function(
-    String newEmail,
-    String identityCode,
-  )? onChangeEmailRequest;
-  final Future<Map<String, dynamic>> Function(
-    String newEmail,
-    String code,
-  )? onChangeEmailConfirm;
   final Future<void> Function()? onExportLocalData;
   final Future<void> Function()? onRestoreFromLocalImport;
 

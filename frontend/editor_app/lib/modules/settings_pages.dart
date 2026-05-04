@@ -547,21 +547,11 @@ class _SignInSecurityPage extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           _FeedbackBanner(parent: p),
-          // Active Sessions card — multi-device session manager
-          // shipped in 0.1.65 (backend) / this round (frontend).
-          // Lists every device currently signed in to the user's
-          // account; the trash button revokes by id. The card
-          // hides itself when signed out (its `onListSessions`
-          // callback is null then).
-          if (p.widget.onListSessions != null &&
-              p.widget.onRevokeSession != null) ...[
-            ActiveSessionsCard(
-              onListSessions: p.widget.onListSessions!,
-              onRevokeSession: p.widget.onRevokeSession!,
-              onCurrentRevoked: p.widget.onCurrentSessionRevoked,
-            ),
-            const SizedBox(height: 16),
-          ],
+          // Post-Casdoor cutover: account creation, password change,
+          // email change, and per-device session management all
+          // live on the Casdoor user portal at `auth.trance-0.com`.
+          // The only thing this page still owns is the Casdoor
+          // bind / unlink toggle.
           Card(
             clipBehavior: Clip.antiAlias,
             child: Padding(
@@ -572,34 +562,6 @@ class _SignInSecurityPage extends StatelessWidget {
                 casdoorLinked: p.widget.settings?['casdoor_linked'] == true,
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          _SettingsGroupCard(
-            children: [
-              if (p.widget.onChangeEmailRequest != null)
-                ListTile(
-                  leading: const Icon(Icons.alternate_email_outlined),
-                  title: const Text('Change email'),
-                  subtitle: Text(
-                    p.widget.profile?['email']?.toString() ?? '',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => p._openChangeEmailDialog(context),
-                ),
-              if (p.widget.onChangeEmailRequest != null &&
-                  p.widget.onChangePassword != null)
-                const Divider(height: 0, indent: 16, endIndent: 16),
-              if (p.widget.onChangePassword != null)
-                ListTile(
-                  leading: const Icon(Icons.lock_outline),
-                  title: const Text('Change password'),
-                  subtitle: const Text(
-                    'Identity-code verified two-step flow.',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => p._openChangePasswordDialog(context),
-                ),
-            ],
           ),
         ],
       ),

@@ -59,7 +59,6 @@ part 'modules/settings.dart';
 part 'modules/settings_build.dart';
 part 'modules/settings_pages.dart';
 part 'modules/settings_sections.dart';
-part 'modules/settings_dialogs.dart';
 
 void main() {
   runApp(

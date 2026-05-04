@@ -219,21 +219,9 @@ class _AppShellState extends State<AppShell>
     _plannerEvents = const [];
   }
 
-  @override
-  void applySessionMetadata(Map<String, dynamic> payload) {
-    final sessionMap = payload['session'] as Map?;
-    _currentSessionId = (sessionMap?['id'] as num?)?.toInt();
-    _multiDevice = payload['multi_device'] == true;
-    _otherSessionsCount =
-        (payload['other_sessions_count'] as num?)?.toInt() ?? 0;
-  }
-
-  @override
-  void clearSessionMetadata() {
-    _currentSessionId = null;
-    _multiDevice = false;
-    _otherSessionsCount = 0;
-  }
+  // Session metadata hooks are no-ops post-Casdoor cutover: Casdoor
+  // owns session lifecycle, so the SPA no longer tracks per-device
+  // ids / multi-device flags / other-session counts locally.
 
   int _selectedIndex = 0;
   bool _isLoading = true;
@@ -269,11 +257,6 @@ class _AppShellState extends State<AppShell>
   Map<String, dynamic>? _activityWeek;
   Map<String, dynamic>? _selectedCourse;
   Map<String, dynamic>? _selectedNote;
-  // Session metadata from /auth/session/ — drives the Active Sessions
-  // card in Settings. Not persisted; refreshed on every cold boot.
-  int? _currentSessionId;
-  bool _multiDevice = false;
-  int _otherSessionsCount = 0;
   Map<String, dynamic> _localSettings = _LocalAppStore.defaultSettings();
   Map<String, dynamic> _localStats = _LocalAppStore.defaultStats();
   Map<String, dynamic> _localCache = _LocalAppStore.defaultCache();
@@ -784,13 +767,7 @@ class _AppShellState extends State<AppShell>
           deletedNotes: _deletedNotes,
           onSave: _updateSettings,
           onLogout: logout,
-          onRegister: register,
-          onValidateInvitation: (code) => widget.client.validateInvitation(code),
-          onVerify: verify,
-          onResendVerification: resendVerification,
           onLogin: login,
-          onRequestPasswordReset: requestPasswordReset,
-          onConfirmPasswordReset: confirmPasswordReset,
           casdoorOrgLoginUrl: _casdoorOrgLoginUrl,
           onCasdoorLogin: _casdoorConfigured
               ? () => launchOAuth('casdoor', intent: 'login')
@@ -833,23 +810,6 @@ class _AppShellState extends State<AppShell>
           debugHistoryListenable: _httpClient?.debugHistory,
           debugLogController: logController,
           uiLogs: uiLogs,
-          onListSessions: _token != null
-              ? () => widget.client.listSessions(_token!)
-              : null,
-          onRevokeSession: _token != null
-              ? (sessionId) => widget.client.revokeSession(_token!, sessionId)
-              : null,
-          onCurrentSessionRevoked: () {
-            _token = null;
-            _profile = null;
-            _settings = null;
-            _deletedNotes = const [];
-            _currentSessionId = null;
-            _multiDevice = false;
-            _otherSessionsCount = 0;
-            refreshState();
-            unawaited(_loadInitialData());
-          },
           onExportLocalData: _exportLocalArchive,
           onRestoreFromLocalImport: _restoreFromLocalImport,
           onSaveMcpSkill: _token != null

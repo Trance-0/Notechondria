@@ -71,24 +71,8 @@ abstract class NotechondriaClient implements AuthClient {
   Future<Map<String, dynamic>> unsubscribeCourse(String token, int courseId);
   Future<Map<String, dynamic>> openCourse(String token, int courseId);
   Future<Map<String, dynamic>> restoreTemplateCourses(String token);
-  Future<Map<String, dynamic>> register(
-    String username,
-    String email,
-    String password, {
-    String invitationCode = '',
-  });
-  Future<Map<String, dynamic>> validateInvitation(String invitationCode);
-  Future<Map<String, dynamic>> verifyEmail(String email, String code);
-  Future<Map<String, dynamic>> resendVerification(String email);
   Future<Map<String, dynamic>> login(String email, String password);
-  Future<Map<String, dynamic>> requestPasswordReset(String email);
-  Future<Map<String, dynamic>> confirmPasswordReset(
-    String email,
-    String code,
-    String password,
-  );
   Future<Map<String, dynamic>> checkSession(String token);
-  Future<Map<String, dynamic>> sendIdentityCode(String token);
   Future<Map<String, dynamic>> rotateApiKey(String token);
 
   /// Casdoor link / unlink — see docs/integrations/casdoor-migration.md.
@@ -112,22 +96,6 @@ abstract class NotechondriaClient implements AuthClient {
   });
   Future<void> githubSyncDisconnect(String token);
 
-  Future<Map<String, dynamic>> changePassword(
-    String token,
-    String currentPassword,
-    String newPassword,
-    String identityCode,
-  );
-  Future<Map<String, dynamic>> changeEmailRequest(
-    String token,
-    String newEmail,
-    String identityCode,
-  );
-  Future<Map<String, dynamic>> changeEmailConfirm(
-    String token,
-    String newEmail,
-    String code,
-  );
   Future<void> logout(String token);
   Future<Map<String, dynamic>> getSettings(String token);
   Future<Map<String, dynamic>> updateSettings(

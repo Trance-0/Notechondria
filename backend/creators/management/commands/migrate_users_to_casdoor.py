@@ -63,6 +63,7 @@ Requires:
 from __future__ import annotations
 
 import logging
+import os
 import secrets
 import string
 import time
@@ -133,6 +134,18 @@ class Command(BaseCommand):
                 "production DB before doing the full batch."
             ),
         )
+        parser.add_argument(
+            "--admin-password-from-env",
+            action="store_true",
+            help=(
+                "When the user being upserted matches "
+                "DJANGO_SUPERUSER_USERNAME, set their Casdoor password "
+                "to the value of DJANGO_SUPERUSER_PASSWORD instead of "
+                "a random string. Lets the operator keep the admin's "
+                "password in lockstep with the .env file across the "
+                "migration. Other users still get a random password."
+            ),
+        )
 
     # ------------------------------------------------------------------
     # entry point
@@ -142,6 +155,21 @@ class Command(BaseCommand):
         retry_existing = options["retry_existing"]
         strict = options["strict"]
         limit = options["limit"]
+        use_admin_env_password = options["admin_password_from_env"]
+
+        admin_username = (
+            os.getenv("DJANGO_SUPERUSER_USERNAME") or "admin"
+        ).strip()
+        admin_password = os.getenv("DJANGO_SUPERUSER_PASSWORD") or ""
+        if use_admin_env_password and not admin_password:
+            raise CommandError(
+                "Cannot migrate users: "
+                "Backend.Creators.MigrateToCasdoor/handle — "
+                "--admin-password-from-env requested but "
+                "DJANGO_SUPERUSER_PASSWORD is unset / empty in this "
+                "shell. Set it (or drop the flag and accept a random "
+                "admin password)."
+            )
 
         sdk = self._build_admin_sdk()
 
@@ -189,12 +217,27 @@ class Command(BaseCommand):
                 )
                 continue
 
+            # Per-user password resolution. Admin row gets the .env
+            # password if --admin-password-from-env was passed; everyone
+            # else gets a random string + the Casdoor "Forgot password"
+            # handoff. Match by username (case-insensitive) so the
+            # operator doesn't have to keep DJANGO_SUPERUSER_USERNAME in
+            # sync with their actual admin row capitalisation.
+            if (
+                use_admin_env_password
+                and user.username.lower() == admin_username.lower()
+            ):
+                user_password = admin_password
+            else:
+                user_password = _random_password()
+
             try:
                 sub = self._upsert_casdoor_user(
                     sdk=sdk,
                     user=user,
                     creator=creator,
                     dry_run=dry_run,
+                    password=user_password,
                 )
             except Exception as exc:  # noqa: BLE001
                 failed += 1
@@ -282,7 +325,9 @@ class Command(BaseCommand):
     # ------------------------------------------------------------------
     # per-user upsert
     # ------------------------------------------------------------------
-    def _upsert_casdoor_user(self, *, sdk, user, creator, dry_run):
+    def _upsert_casdoor_user(
+        self, *, sdk, user, creator, dry_run, password
+    ):
         """Idempotently push *user* into Casdoor. Returns the resolved
         ``id`` (Casdoor sub) so the caller can stamp it on
         ``creator.casdoor_sub``.
@@ -293,6 +338,13 @@ class Command(BaseCommand):
            reuse it (this catches users who self-signed up directly on
            the Casdoor side before this migration ran).
         2. Otherwise ``add_user(...)`` a fresh row.
+
+        ``password`` is the Casdoor password to set on the row when
+        we hit the add-user branch (the update branch never touches
+        password — Casdoor users that already exist keep whatever
+        they had). The caller picks the value:
+        ``DJANGO_SUPERUSER_PASSWORD`` for the admin row when
+        ``--admin-password-from-env`` is on, random otherwise.
         """
         from casdoor.user import User as CasdoorUser
 
@@ -300,9 +352,11 @@ class Command(BaseCommand):
         username = user.username.strip()
 
         if dry_run:
+            password_origin = "env" if password and len(password) < 40 else "random"
             self.stdout.write(
                 f"   would upsert username={username!r} email={email!r} "
-                f"display_name={(creator.username or username)!r}"
+                f"display_name={(creator.username or username)!r} "
+                f"password={password_origin}"
             )
             # Use the Notechondria pk as the dry-run "sub" so the log
             # output is stable and easy to diff between runs.
@@ -357,10 +411,12 @@ class Command(BaseCommand):
             sdk.update_user(cu)
             return existing_id
 
-        # Add path — random password (Casdoor will hash). The user
-        # picks their own via the "Forgot password?" flow on first
-        # sign-in.
-        cu.password = _random_password()
+        # Add path — Casdoor hashes the password we send. Caller
+        # supplies it: DJANGO_SUPERUSER_PASSWORD for the admin row
+        # (when --admin-password-from-env), random for everyone else.
+        # Random-password users go through the Casdoor "Forgot
+        # password?" flow on first sign-in to pick their own.
+        cu.password = password
         sdk.add_user(cu)
 
         # Re-read so we can return the assigned ``id`` (Casdoor stamps

@@ -8,8 +8,8 @@ from django.contrib import messages
 from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib.auth import login, logout, authenticate
 
-from .forms import LoginForm, RegisterForm, EditForm
-from .models import Creator,VerificationCode
+from .forms import LoginForm, EditForm
+from .models import Creator
 
 
 # Create your views here.
@@ -52,41 +52,6 @@ def login_request(request):
     # if a GET (or any other method) we'll create a blank form
     form = LoginForm()
     return render(request, "login_bootstrap.html", {"form": form})
-
-
-def register_request(request):
-    """Process the register request
-
-    If post, the do data validation
-    If get, return the form
-    """
-    if request.method == "POST":
-        # create a form instance and populate it with data from the request:
-        form = RegisterForm(request.POST,request.FILES)
-        # check whether it's valid:
-        if form.is_valid():
-            username=form.cleaned_data["user_name"]
-            password=form.cleaned_data["password"]
-            # if you don't set commit as true, you need to save by yourself, which makes it no sense to write save function by yourself.
-            form.save(commit=True)
-            # redirect to a new URL:
-            messages.info(request, "User registration success")
-            user = authenticate(username=username, password=password)
-            # impossible to happen, don't know why someone will write this.
-            if user is not None:
-                login(request, user)
-            # reduce usage of registration code (already done on form save), and the code must be valid or it will not pass the test
-            # code_instance=get_object_or_404(VerificationCode,code=code_val)
-            # code_instance.max_use-=1
-            # code_instance.save()
-            return redirect("home")
-        if form.errors:
-            for key, value in form.errors.items():
-                messages.error(request, f"validation error {key},{value}")
-        return render(request, "register_bootstrap.html", {"form": form})
-    # processing GET request
-    form = RegisterForm()
-    return render(request, "register_bootstrap.html", {"form": form})
 
 
 def logout_request(request):
