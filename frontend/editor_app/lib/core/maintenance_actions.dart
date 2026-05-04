@@ -290,6 +290,13 @@ extension _AppShellMaintenanceX on _AppShellState {
       };
       await persistLocalSettings();
       await _seedStarterInboxAlongsideExisting();
+      // The seeder mutates `_localCourses` / `_selectedCourse` directly
+      // (it's an extension method that can't call setState). Without
+      // refreshState() here, the sidebar would not pick up the new row
+      // until the next unrelated rebuild — which made the "Restore"
+      // action look like a no-op when the user observed the sidebar
+      // immediately after tapping it.
+      if (mounted) refreshState();
       const message = 'Starter inbox restored: '
           'Editor.LocalStore/restore_local_starter — '
           'local Inbox + welcome note re-seeded.';

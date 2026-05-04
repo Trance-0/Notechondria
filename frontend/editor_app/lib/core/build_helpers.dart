@@ -740,20 +740,50 @@ extension _AppShellBuildHelpersX on _AppShellState {
   }
 
   /// Diagnostic: emit a debug-log line per sidebar rebuild that
-  /// records `total` categories vs `pinned` count. Goes warning
-  /// when `pinned == 0 && total > 0` — that case is the
-  /// "Inbox vanished from my sidebar" symptom users have reported
-  /// across releases, where the seed flag got stripped server- or
-  /// persistence-side. Filter by `Editor.UI/sidebar.pin_diagnostics`
-  /// in the Debug Log card to see the breadcrumbs.
+  /// records `total` categories vs `pinned` count, plus a sample of
+  /// the first 5 rows' `id`/`title`/`is_default`/source-list so the
+  /// user can paste a single log line that fully describes what's
+  /// in their sidebar. Goes warning when `pinned == 0 && total > 0`
+  /// — that case is the "Inbox vanished from my sidebar" symptom
+  /// users have reported across releases, where the seed flag got
+  /// stripped server- or persistence-side. Filter by
+  /// `Editor.UI/sidebar.pin_diagnostics` in the Debug Log card to
+  /// see the breadcrumbs.
   ///
-  /// Stays at `debug` for the healthy case so the log doesn't fill
-  /// up with churn during typing-driven rebuilds; `warning` is
-  /// rare enough to be useful when it fires.
+  /// Throttled: re-emits only when the category set composition
+  /// changes (different ids, titles, flags, or list-of-origin). The
+  /// dedupe key is parked on `_AppShellState._lastSidebarPinDiagnosticKey`
+  /// because Dart extensions cannot declare instance fields. Without
+  /// dedupe this fires ~120×/second on a busy editor (every rebuild
+  /// of the sidebar tree), drowning the log card.
   void emitSidebarPinDiagnostics({
     required int total,
     required int pinned,
   }) {
+    final cats = _allCategories;
+    final localIds = _localCourses
+        .map((c) => c['id']?.toString() ?? '')
+        .toSet();
+    String describe(Map<String, dynamic> c) {
+      final id = c['id']?.toString() ?? '<noid>';
+      final title = (c['title']?.toString() ?? '<untitled>').replaceAll('|', '/');
+      final isDefault = c['is_default'] == true ? 'default' : 'plain';
+      final origin = localIds.contains(id) ? 'local' : 'cloud';
+      final pinnedFlag = isCategoryPinned(c) ? 'pin' : 'drag';
+      return '#$id "$title" $isDefault/$origin/$pinnedFlag';
+    }
+    final sampleCount = cats.length > 5 ? 5 : cats.length;
+    final sample = [
+      for (var i = 0; i < sampleCount; i++) describe(cats[i]),
+    ].join(' | ');
+    final overflow = cats.length > sampleCount
+        ? ' (+${cats.length - sampleCount} more)'
+        : '';
+    final key =
+        'total=$total pinned=$pinned signedIn=${_token != null && _token!.isNotEmpty} '
+        'rows=$sample$overflow';
+    if (_lastSidebarPinDiagnosticKey == key) return;
+    _lastSidebarPinDiagnosticKey = key;
     log(
       level: pinned == 0 && total > 0
           ? DebugLogLevel.warning
@@ -762,11 +792,13 @@ extension _AppShellBuildHelpersX on _AppShellState {
       message:
           'Sidebar Categories rebuilt: '
           'Editor.UI/sidebar.pin_diagnostics — '
-          'total=$total pinned=$pinned. '
-          'Pinned counts the rows whose `is_default == true` OR '
-          'whose title casefolds to "inbox" — see isCategoryPinned. '
-          'A `pinned=0` warning with `total>0` means the seed flag '
-          'got stripped server- or persistence-side; tap '
+          'total=$total pinned=$pinned signedIn='
+          '${_token != null && _token!.isNotEmpty}. '
+          'Rows: $sample$overflow. '
+          'Pinned counts rows where `is_default == true` OR title '
+          'casefolds to "inbox". A `pinned=0` warning with `total>0` '
+          'means neither signal matched any row — paste this line so '
+          'we can see the actual title/flag/origin tuple. Tap '
           '"Restore default Inbox" in Settings to reseed.',
     );
   }

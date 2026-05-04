@@ -290,6 +290,12 @@ class _AppShellState extends State<AppShell>
   /// Currently selected category (course) for note filtering. null = all notes.
   int? _selectedCategoryId;
 
+  /// Dedupe-key for the sidebar pin diagnostic so we don't spam the debug
+  /// log with one warning per rebuild. Re-emit only when the category set
+  /// composition (id/title/is_default tuple) changes. Lives on the State
+  /// because the build_helpers extension can't declare instance fields.
+  String? _lastSidebarPinDiagnosticKey;
+
   HttpNotechondriaClient? get _httpClient =>
       widget.client is HttpNotechondriaClient
           ? widget.client as HttpNotechondriaClient
