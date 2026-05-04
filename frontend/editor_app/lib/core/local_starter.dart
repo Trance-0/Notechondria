@@ -31,8 +31,22 @@ extension _AppShellLocalStarterX on _AppShellState {
       }
       return false;
     }
-    if (hasInbox(_courses) || hasInbox(_localCourses)) {
-      if (_token == null || _token!.isEmpty) {
+    final signedIn = _token != null && _token!.isNotEmpty;
+    // Signed-out / token-expired users only see `_localCourses` in the
+    // sidebar (the `_allCategories` getter on `_AppShellState` excludes
+    // cached cloud `_courses` whenever the token is empty so the editor
+    // reads as a local-only workspace until the user re-authenticates).
+    // Counting a cached cloud Inbox here as "the user has an Inbox"
+    // would cause the seeder to early-return, leave `_localCourses`
+    // empty, and the entire Categories section in the sidebar
+    // (gated on `_allCategories.isNotEmpty`) would collapse for the
+    // signed-out user. Only consult `_courses` when there's a token
+    // that can actually fetch from it.
+    final relevantHasInbox = signedIn
+        ? (hasInbox(_courses) || hasInbox(_localCourses))
+        : hasInbox(_localCourses);
+    if (relevantHasInbox) {
+      if (!signedIn) {
         // Local-only user: ensure the Inbox is selected even
         // when found from a prior session, so the sidebar shows
         // a usable default category on cold boot.

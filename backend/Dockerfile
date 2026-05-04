@@ -23,13 +23,32 @@ WORKDIR ${APP_HOME}
 COPY backend/ .
 COPY sample/ /home/sample/
 # Ship VERSION into the image so /api/v1/handshake/ can return the
-# deployed build. Without this the handshake's version lookup falls
-# through to "0.0.0" because BASE_DIR.parent inside the container is
-# /home/, which has no VERSION file — only the repo root does on the
-# dev machine. _read_backend_version() in notechondria.api_views
+# deployed build. _read_backend_version() in notechondria.api_views
 # walks several candidate paths; /home/VERSION is the canonical
-# Docker location.
+# Docker location. The same file's mtime doubles as the
+# build_time fallback when no BUILD_TIME file is present.
 COPY VERSION /home/VERSION
+
+# Bake commit + build time into the image so /api/v1/handshake/'s
+# `build` block stays accurate without runtime env vars. Both ARGs
+# are optional — when omitted, the handshake falls back to the file
+# mtime (build_time) or "" (commit). CI / Northflank build pipelines
+# should set them via `docker build --build-arg`:
+#
+#   docker build --build-arg GIT_COMMIT=$(git rev-parse HEAD) \
+#                --build-arg BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+#                ...
+#
+# Northflank exposes `NORTHFLANK_GIT_COMMIT` to build steps; map it
+# into GIT_COMMIT in the service's build configuration.
+ARG GIT_COMMIT=""
+ARG BUILD_TIME=""
+RUN sh -c 'echo "${GIT_COMMIT}" > /home/BUILD_COMMIT && \
+           if [ -n "${BUILD_TIME}" ]; then \
+             echo "${BUILD_TIME}" > /home/BUILD_TIME; \
+           else \
+             date -u +%Y-%m-%dT%H:%M:%SZ > /home/BUILD_TIME; \
+           fi'
 # bootstrap_platform seeds a starter note from this file's content.
 # Project-local rules now live in docs/index.md (the repo-root
 # AGENTS.md pointer file was removed; shared cross-project rules come

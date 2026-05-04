@@ -78,7 +78,9 @@
                       }
                     }
                   },
-                  "buildArguments": {},
+                  "buildArguments": {
+                    "GIT_COMMIT": "${NORTHFLANK_GIT_COMMIT}"
+                  },
                   "buildFiles": {},
                   "runtimeEnvironment": {
                     "PORT": "8000",

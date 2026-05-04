@@ -56,8 +56,18 @@ extension _AppShellInitialDataX on _AppShellState {
           _casdoorOrgLoginUrl = orgLoginUrl;
           refreshState();
         }
-      } catch (_) {
-        // shadow mode or transient — leave the flag false.
+      } catch (error) {
+        // 0.1.104: surface the failure as a debug-log line instead
+        // of a silent swallow. See editor_app's matching block for
+        // the rationale.
+        log(
+          level: DebugLogLevel.warning,
+          source: 'Portal.Auth/casdoor.config.probe',
+          message:
+              'Casdoor SSO surface unavailable: '
+              'Portal.Auth/casdoor.config.probe — '
+              '${error.toString().replaceFirst("Exception: ", "")}.',
+        );
       }
     }());
 

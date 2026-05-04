@@ -29,13 +29,18 @@ export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
 export PORT="${PORT:-8000}"
 export WEB_CONCURRENCY="${WEB_CONCURRENCY:-2}"
 
-# Surface VERSION + build provenance via /api/v1/handshake/ so the
-# deploy-status check can see which version is actually serving.
-if [[ -f "$ROOT_DIR/VERSION" && -z "${BACKEND_VERSION:-}" ]]; then
-  export BACKEND_VERSION="$(tr -d '\r\n' < "$ROOT_DIR/VERSION")"
-fi
-export BACKEND_BUILD_COMMIT="${BACKEND_BUILD_COMMIT:-${NORTHFLANK_GIT_COMMIT:-}}"
-export BACKEND_BUILD_TIME="${BACKEND_BUILD_TIME:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+# `BACKEND_VERSION`, `BACKEND_BUILD_COMMIT`, and `BACKEND_BUILD_TIME`
+# are no longer wired here — `_read_backend_version()` and
+# `_build_metadata()` in `backend/notechondria/api_views.py` derive
+# them from `/home/VERSION`, `/home/BUILD_COMMIT`, and
+# `/home/BUILD_TIME` respectively, all baked into the image at
+# Docker build time. The Dockerfile takes a `GIT_COMMIT` build ARG
+# (Northflank populates it from `NORTHFLANK_GIT_COMMIT` per
+# northflank.json's `buildArguments`).
+#
+# `BACKEND_DEPLOY_TARGET` is still env-driven because it's a label,
+# not a derived fact — left as a runtime override so the same image
+# can serve under different "deploy_target" identities.
 export BACKEND_DEPLOY_TARGET="${BACKEND_DEPLOY_TARGET:-northflank}"
 
 printf '==> Running Django migrations\n'

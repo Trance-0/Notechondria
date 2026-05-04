@@ -1,5 +1,7 @@
+import datetime as _dt
 import logging
 import os
+import subprocess
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlencode
@@ -36,43 +38,42 @@ HANDSHAKE_CAPABILITIES = {
 }
 
 _cached_backend_version: Optional[str] = None
+_cached_build_metadata: Optional[dict] = None
+
+
+def _version_file_candidates() -> list[Path]:
+    """Filesystem paths to check for the VERSION file. Same set is
+    reused by `_build_metadata` to look up the file's mtime as a
+    last-resort `build_time` proxy."""
+    base = Path(settings.BASE_DIR)
+    return [
+        base.parent / "VERSION",          # dev: <repo>/VERSION when BASE_DIR=<repo>/backend
+        base.parent.parent / "VERSION",   # nested layouts
+        Path("/home/VERSION"),            # canonical Docker location (COPY VERSION /home/VERSION)
+        Path("/VERSION"),
+    ]
 
 
 def _read_backend_version() -> str:
-    """Resolve the deployed VERSION string by trying every place a
-    deploy might leave the file. Order:
+    """Resolve the deployed VERSION string. Filesystem first (the
+    Dockerfile copies VERSION into the image at build time, so the
+    file mtime is a reliable build-time proxy too), then the
+    `BACKEND_VERSION` env var as a runtime override, then `git
+    describe` for dev machines. Returns the literal string
+    ``"unknown"`` only when every source fails — never falls back to
+    ``"0.0.0"`` because that string was indistinguishable from a real
+    version and silently masked stale-deploy bugs in production.
 
-    1. ``BACKEND_VERSION`` env var — populated by Dockerfile/deploy
-       scripts when the file isn't physically present.
-    2. ``BASE_DIR.parent / VERSION`` — dev machine layout
-       (`<repo>/backend/...` resolves parent to ``<repo>/``).
-    3. ``BASE_DIR.parent.parent / VERSION`` — Render/Northflank
-       layouts that nest the Django project one level deeper.
-    4. ``/home/VERSION`` — Docker image layout shipped from the
-       repo-root by the Dockerfile (``COPY VERSION /home/VERSION``).
-    5. ``/VERSION`` — any deployment that drops the file at root.
-
-    The cache covers the lifetime of the gunicorn worker, refreshing
-    on restart. Returns ``0.0.0`` only when none of the above
-    surface the file, and that's a useful signal in itself.
+    Cached for the lifetime of the gunicorn worker (refreshes on
+    restart). The cache is also used by `/api/v1/handshake/`'s
+    `build` block, so the version + commit + build_time fields stay
+    in sync across requests within the same worker.
     """
     global _cached_backend_version
     if _cached_backend_version is not None:
         return _cached_backend_version
 
-    env_version = (os.getenv("BACKEND_VERSION") or "").strip()
-    if env_version:
-        _cached_backend_version = env_version
-        return _cached_backend_version
-
-    base = Path(settings.BASE_DIR)
-    candidates = [
-        base.parent / "VERSION",
-        base.parent.parent / "VERSION",
-        Path("/home/VERSION"),
-        Path("/VERSION"),
-    ]
-    for candidate in candidates:
+    for candidate in _version_file_candidates():
         try:
             text = candidate.read_text(encoding="utf-8").strip()
         except OSError:
@@ -80,21 +81,117 @@ def _read_backend_version() -> str:
         if text:
             _cached_backend_version = text
             return _cached_backend_version
-    _cached_backend_version = "0.0.0"
+
+    env_version = (os.getenv("BACKEND_VERSION") or "").strip()
+    if env_version:
+        _cached_backend_version = env_version
+        return _cached_backend_version
+
+    sha = _git_describe()
+    if sha:
+        _cached_backend_version = f"git-{sha}"
+        return _cached_backend_version
+
+    logger.warning(
+        "Backend version unresolved: "
+        "Backend.Notechondria.Handshake/read_version — "
+        "no VERSION file at any candidate path, no BACKEND_VERSION env "
+        "var, no git available. Returning 'unknown' so handshake never "
+        "lies about the deployed build."
+    )
+    _cached_backend_version = "unknown"
     return _cached_backend_version
 
 
+def _git_describe() -> str:
+    """Best-effort short git SHA + dirty flag. Used as the version /
+    commit fallback when no VERSION / BUILD_COMMIT file made it into
+    the image (typical dev / first-build state). Silent on
+    failure — git isn't always installed in the production image."""
+    repo_root = Path(settings.BASE_DIR).parent
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--short=12", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            cwd=str(repo_root),
+            check=False,
+        )
+    except (FileNotFoundError, OSError, subprocess.SubprocessError):
+        return ""
+    if result.returncode != 0:
+        return ""
+    return result.stdout.strip()
+
+
+def _read_build_commit() -> str:
+    """Resolve the build commit. Filesystem (`/home/BUILD_COMMIT`,
+    written by the Dockerfile from a build ARG) → env var →
+    `git rev-parse HEAD`. Truncated to 40 chars to fit a SHA."""
+    for candidate in [
+        Path("/home/BUILD_COMMIT"),
+        Path(settings.BASE_DIR).parent / "BUILD_COMMIT",
+    ]:
+        try:
+            text = candidate.read_text(encoding="utf-8").strip()
+        except OSError:
+            continue
+        if text:
+            return text[:40]
+    env_commit = (os.getenv("BACKEND_BUILD_COMMIT") or "").strip()
+    if env_commit:
+        return env_commit[:40]
+    sha = _git_describe()
+    if sha:
+        return sha
+    return ""
+
+
+def _read_build_time() -> str:
+    """Resolve the build timestamp. Filesystem (`/home/BUILD_TIME`,
+    written by the Dockerfile at COPY time) → env var → mtime of the
+    VERSION file as a proxy (the file is COPY'd into the image so its
+    mtime equals the image build time)."""
+    for candidate in [
+        Path("/home/BUILD_TIME"),
+        Path(settings.BASE_DIR).parent / "BUILD_TIME",
+    ]:
+        try:
+            text = candidate.read_text(encoding="utf-8").strip()
+        except OSError:
+            continue
+        if text:
+            return text
+    env_time = os.getenv("BACKEND_BUILD_TIME") or ""
+    if env_time:
+        return env_time
+    for candidate in _version_file_candidates():
+        try:
+            stat = candidate.stat()
+        except OSError:
+            continue
+        return _dt.datetime.fromtimestamp(
+            stat.st_mtime, tz=_dt.timezone.utc
+        ).isoformat()
+    return ""
+
+
 def _build_metadata() -> dict:
-    """Return optional build provenance fields. Populated from env
-    vars that deploy scripts can set (see deployment/*/scripts/).
-    All fields are safe to expose — git SHAs, ISO timestamps, and
-    the deployment-method label. Never include secrets here."""
-    return {
-        "version": _read_backend_version(),
-        "commit": (os.getenv("BACKEND_BUILD_COMMIT") or "")[:40],
-        "build_time": os.getenv("BACKEND_BUILD_TIME") or "",
-        "deploy_target": os.getenv("BACKEND_DEPLOY_TARGET") or "",
-    }
+    """Build provenance for `/api/v1/handshake/`. Auto-derives every
+    field from the filesystem first so a fresh container with no env
+    vars set still reports the truth. Cached on the worker — these
+    facts don't change after the image is built. `deploy_target` is
+    the only env-driven knob (it's a label, not a derived fact)."""
+    global _cached_build_metadata
+    if _cached_build_metadata is None:
+        _cached_build_metadata = {
+            "version": _read_backend_version(),
+            "commit": _read_build_commit(),
+            "build_time": _read_build_time(),
+            "deploy_target": os.getenv("BACKEND_DEPLOY_TARGET") or "",
+        }
+    return _cached_build_metadata
 
 
 def health_check(request):

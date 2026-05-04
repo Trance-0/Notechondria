@@ -68,8 +68,23 @@ extension _AppShellInitialDataX on _AppShellState {
           _casdoorOrgLoginUrl = orgLoginUrl;
           refreshState();
         }
-      } catch (_) {
-        // shadow mode or transient — leave the flag false.
+      } catch (error) {
+        // 0.1.104: surface the failure as a debug-log line instead
+        // of a silent swallow. The previous catch-all hid stale-
+        // deploy bugs (e.g. backend running pre-0.1.96 returns 404
+        // on /auth/casdoor/config/) — the SSO pill silently failed
+        // to appear with no breadcrumb in the UI debug log. Logged
+        // at warning so the operator can grep without flagging
+        // shadow-mode setups (which return `{configured: false}` as
+        // a 200 response, not an exception).
+        log(
+          level: DebugLogLevel.warning,
+          source: 'Editor.Auth/casdoor.config.probe',
+          message:
+              'Casdoor SSO surface unavailable: '
+              'Editor.Auth/casdoor.config.probe — '
+              '${error.toString().replaceFirst("Exception: ", "")}.',
+        );
       }
     }());
 
