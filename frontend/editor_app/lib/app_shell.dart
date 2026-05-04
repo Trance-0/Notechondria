@@ -326,14 +326,19 @@ class _AppShellState extends State<AppShell>
 
   bool _showWidePageHeader(int index) => false;
 
-  /// All categories visible in the sidebar. Cloud (`_courses`) rows are
-  /// hidden while the user is offline / signed out so the editor reads as
-  /// a local-only workspace until they re-authenticate. Cached cloud note
-  /// content stays addressable by UUID so mid-edit work isn't dropped.
+  /// All categories visible in the sidebar. Always merges
+  /// `_localCourses` with `_courses` (cloud) — gating cloud rows on
+  /// `_token` non-empty (the previous behavior) was hiding the user's
+  /// real cloud Inbox in the post-Casdoor world: cloud GETs succeed
+  /// via session cookies / Casdoor JWT but the legacy DRF `_token`
+  /// field can stay empty, so the gate produced false negatives that
+  /// looked like "Inbox vanished". Inbox visibility is the user-
+  /// critical invariant; if `_courses` is populated at all, we show
+  /// it. Post-logout, `_loadInitialData` re-runs and replaces
+  /// `_courses` with whatever the backend returns for an
+  /// unauthenticated request, so signed-out users end up with the
+  /// public-feed catalog (or nothing) — same end state as before.
   List<Map<String, dynamic>> get _allCategories {
-    if (_token == null || _token!.isEmpty) {
-      return [..._localCourses];
-    }
     return [..._localCourses, ..._courses];
   }
 

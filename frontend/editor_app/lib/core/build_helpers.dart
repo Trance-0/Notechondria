@@ -602,9 +602,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
           onSave: _updateSettings,
           onLogout: logout,
           onLogin: login,
-          onCasdoorLogin: _casdoorConfigured
-              ? () => launchOAuth('casdoor', intent: 'login')
-              : null,
+          onCasdoorLogin: () => launchOAuth('casdoor', intent: 'login'),
           casdoorOrgLoginUrl: _casdoorOrgLoginUrl,
           onBindCasdoor: (_casdoorConfigured && _token != null)
               ? () => launchOAuth('casdoor', intent: 'bind')

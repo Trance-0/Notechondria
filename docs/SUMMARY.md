@@ -61,6 +61,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.108 — Inbox always visible + Casdoor login always available](versions/0.1.108.md)
 - [0.1.107 — sidebar pin diagnostic dedupe + richer payload + Restore-Inbox refreshState fix](versions/0.1.107.md)
 - [0.1.106 — drop invitation codes, email-verification codes, sessions, change-password / change-email; SMTP code path retired](versions/0.1.106.md)
 - [0.1.105 — four user-reported bug fixes](versions/0.1.105.md)
