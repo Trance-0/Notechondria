@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+  <title id="title">Meaning of Work in Age of AI cover art</title>
+  <desc id="desc">A reflective editorial composition with architecture lines, soft sunrise gradients, and human figures framed against automated systems.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#101827"/>
+      <stop offset="45%" stop-color="#0f4c5c"/>
+      <stop offset="100%" stop-color="#f4a261"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fffaf0" stop-opacity="0.96"/>
+      <stop offset="100%" stop-color="#dbeafe" stop-opacity="0.84"/>
+    </linearGradient>
+  </defs>
+  <rect width="1440" height="900" fill="url(#bg)"/>
+  <rect x="96" y="92" width="1248" height="624" rx="42" fill="url(#panel)"/>
+  <rect x="138" y="136" width="420" height="500" rx="30" fill="#f8fafc"/>
+  <rect x="602" y="136" width="698" height="220" rx="30" fill="#0f172a" opacity="0.94"/>
+  <rect x="602" y="388" width="698" height="248" rx="30" fill="#1f2937" opacity="0.9"/>
+  <g opacity="0.18" stroke="#f8fafc">
+    <path d="M0 742H1440"/>
+    <path d="M0 786H1440"/>
+    <path d="M0 830H1440"/>
+    <path d="M260 680V900"/>
+    <path d="M520 680V900"/>
+    <path d="M780 680V900"/>
+    <path d="M1040 680V900"/>
+  </g>
+  <circle cx="1148" cy="178" r="96" fill="#fde68a" opacity="0.9"/>
+  <rect x="186" y="198" width="120" height="120" rx="60" fill="#0f4c5c"/>
+  <rect x="336" y="198" width="120" height="120" rx="60" fill="#f4a261"/>
+  <rect x="212" y="364" width="270" height="16" rx="8" fill="#334155"/>
+  <rect x="212" y="398" width="240" height="12" rx="6" fill="#64748b"/>
+  <rect x="212" y="424" width="212" height="12" rx="6" fill="#94a3b8"/>
+  <rect x="212" y="480" width="92" height="92" rx="22" fill="#e76f51"/>
+  <rect x="322" y="480" width="92" height="92" rx="22" fill="#2a9d8f"/>
+  <rect x="432" y="480" width="92" height="92" rx="22" fill="#264653"/>
+  <rect x="650" y="186" width="268" height="20" rx="10" fill="#fbbf24"/>
+  <rect x="650" y="228" width="584" height="14" rx="7" fill="#e5e7eb"/>
+  <rect x="650" y="258" width="542" height="14" rx="7" fill="#cbd5e1"/>
+  <rect x="650" y="434" width="604" height="18" rx="9" fill="#f8fafc"/>
+  <rect x="650" y="474" width="536" height="12" rx="6" fill="#cbd5e1"/>
+  <rect x="650" y="504" width="570" height="12" rx="6" fill="#94a3b8"/>
+  <rect x="650" y="534" width="498" height="12" rx="6" fill="#94a3b8"/>
+  <text x="132" y="792" fill="#fffaf0" font-size="66" font-family="Georgia, 'Times New Roman', serif">Meaning of Work in Age of AI</text>
+  <text x="132" y="848" fill="#e2e8f0" font-size="28" font-family="'Trebuchet MS', sans-serif">Seeded sample course on labor, value, and dignity under intelligent automation.</text>
+</svg>

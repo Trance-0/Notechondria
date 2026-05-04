@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+  <title id="title">Vibe Coding 101 cover art</title>
+  <desc id="desc">A layered retro-futurist notebook scene with code windows, warm gradients, and a grid horizon.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#07111f"/>
+      <stop offset="50%" stop-color="#13305a"/>
+      <stop offset="100%" stop-color="#f97316"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#fff7ed" stop-opacity="0.92"/>
+      <stop offset="100%" stop-color="#dbeafe" stop-opacity="0.86"/>
+    </linearGradient>
+  </defs>
+  <rect width="1440" height="900" fill="url(#bg)"/>
+  <g opacity="0.22" stroke="#f8fafc">
+    <path d="M0 700H1440"/>
+    <path d="M0 740H1440"/>
+    <path d="M0 780H1440"/>
+    <path d="M0 820H1440"/>
+    <path d="M0 860H1440"/>
+    <path d="M360 640V900"/>
+    <path d="M540 640V900"/>
+    <path d="M720 640V900"/>
+    <path d="M900 640V900"/>
+    <path d="M1080 640V900"/>
+  </g>
+  <circle cx="1160" cy="168" r="102" fill="#fde68a" opacity="0.88"/>
+  <rect x="132" y="126" width="1176" height="542" rx="36" fill="#020617" opacity="0.38"/>
+  <rect x="116" y="108" width="1176" height="542" rx="36" fill="url(#panel)"/>
+  <rect x="164" y="166" width="472" height="360" rx="26" fill="#0f172a"/>
+  <rect x="692" y="166" width="546" height="142" rx="24" fill="#111827"/>
+  <rect x="692" y="334" width="546" height="192" rx="24" fill="#1e293b"/>
+  <rect x="202" y="214" width="248" height="20" rx="10" fill="#38bdf8"/>
+  <rect x="202" y="252" width="394" height="14" rx="7" fill="#e5e7eb"/>
+  <rect x="202" y="282" width="362" height="14" rx="7" fill="#cbd5e1"/>
+  <rect x="202" y="312" width="286" height="14" rx="7" fill="#cbd5e1"/>
+  <rect x="202" y="360" width="160" height="96" rx="20" fill="#f97316"/>
+  <rect x="386" y="360" width="160" height="96" rx="20" fill="#22c55e"/>
+  <rect x="740" y="204" width="180" height="16" rx="8" fill="#fb7185"/>
+  <rect x="740" y="236" width="452" height="12" rx="6" fill="#e2e8f0"/>
+  <rect x="740" y="364" width="450" height="18" rx="9" fill="#f8fafc"/>
+  <rect x="740" y="404" width="396" height="12" rx="6" fill="#cbd5e1"/>
+  <rect x="740" y="432" width="422" height="12" rx="6" fill="#cbd5e1"/>
+  <rect x="740" y="460" width="360" height="12" rx="6" fill="#94a3b8"/>
+  <text x="170" y="790" fill="#fff7ed" font-size="72" font-family="Georgia, 'Times New Roman', serif">Vibe Coding 101</text>
+  <text x="170" y="850" fill="#e2e8f0" font-size="28" font-family="'Trebuchet MS', sans-serif">Seeded from CODEX.md so the first deploy has a live course, recent notes, and a frontend story.</text>
+</svg>
