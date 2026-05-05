@@ -115,21 +115,93 @@ def verify_token(token: str) -> Optional[dict]:
     return claims
 
 
+def _split_csv(raw: str) -> list[str]:
+    """Parse a comma-separated env-var value into a list, trimming
+    whitespace and dropping empties. Idempotent for already-clean input."""
+    return [piece.strip() for piece in (raw or "").split(",") if piece.strip()]
+
+
+def _claim_str(claims: dict, setting_name: str) -> str:
+    """Read the first non-empty string claim listed in
+    ``settings.<setting_name>``. Lets the operator remap the JWT
+    Token Format tab in Casdoor (preferred_username vs name vs uid)
+    without code changes — see ``CASDOOR_CLAIM_*`` in settings.py."""
+    keys = _split_csv(getattr(settings, setting_name, ""))
+    for key in keys:
+        value = claims.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def _claim_groups(claims: dict) -> list[str]:
+    """Read the JWT array claim listed in ``CASDOOR_CLAIM_GROUPS`` and
+    return it as a list of strings. Tolerant of three Casdoor shapes:
+    a single string, a list of strings, or a list of `{name: ...}`
+    objects. Returns ``[]`` for any other shape so the caller's group
+    check fails closed when the claim is missing."""
+    keys = _split_csv(getattr(settings, "CASDOOR_CLAIM_GROUPS", ""))
+    for key in keys:
+        value = claims.get(key)
+        if value is None:
+            continue
+        if isinstance(value, str):
+            return [value] if value.strip() else []
+        if isinstance(value, (list, tuple)):
+            out: list[str] = []
+            for item in value:
+                if isinstance(item, str):
+                    if item.strip():
+                        out.append(item.strip())
+                elif isinstance(item, dict):
+                    name = item.get("name") or item.get("displayName") or ""
+                    if isinstance(name, str) and name.strip():
+                        out.append(name.strip())
+            return out
+    return []
+
+
+def _check_group_access(claims: dict) -> Optional[str]:
+    """Return None if the user's groups include at least one of the
+    configured ``CASDOOR_REQUIRED_GROUPS``, or if the setting is
+    empty (no gating). Otherwise return a human-readable rejection
+    reason for the AuthenticationFailed message. Modeled on the
+    Nextcloud user_oidc plugin's "Restrict login to a list of
+    groups" toggle."""
+    required = _split_csv(getattr(settings, "CASDOOR_REQUIRED_GROUPS", ""))
+    if not required:
+        return None  # gating disabled
+    user_groups = set(_claim_groups(claims))
+    if user_groups.intersection(required):
+        return None
+    # Compose a precise log-friendly reason. Don't echo the user's
+    # full group list to error messages (could leak unrelated org
+    # memberships); just say which groups would have been accepted.
+    return (
+        f"user is not a member of any required group "
+        f"({', '.join(required)})"
+    )
+
+
 def _resolve_user(claims: dict) -> Optional[User]:
     """Find or create the Django ``User`` matching this Casdoor JWT.
 
     Resolution order:
-      1. ``Creator.casdoor_sub == claims['id' | 'sub']`` — the
+      1. ``Creator.casdoor_sub == <CASDOOR_CLAIM_SUB>`` — the
          post-cutover hot path; one DB hit when the link is already
          persisted.
-      2. ``User.email iexact claims['email']`` — first-time link for
-         an existing legacy account; on success we backfill
+      2. ``User.email iexact <CASDOOR_CLAIM_EMAIL>`` — first-time
+         link for an existing legacy account; on success we backfill
          ``Creator.casdoor_sub`` so subsequent requests take path 1.
       3. Auto-provision a new ``User`` + ``Creator``, stamp the sub,
          and seed the inbox + welcome note (same shape as the
          email-verify registration flow in ``creators.api``).
+
+    All claim names are read from ``settings.CASDOOR_CLAIM_*`` so the
+    Casdoor app's Token Format tab can be reshaped by the operator
+    without re-deploying code.
     """
-    sub = (claims.get("id") or claims.get("sub") or "").strip()
+    sub = _claim_str(claims, "CASDOOR_CLAIM_SUB")
     if not sub:
         return None
 
@@ -140,7 +212,7 @@ def _resolve_user(claims: dict) -> Optional[User]:
     # Lazy import to avoid the notes <-> creators app boot cycle.
     from notes.services import seed_inbox_and_welcome_note
 
-    email = (claims.get("email") or "").strip().lower()
+    email = _claim_str(claims, "CASDOOR_CLAIM_EMAIL").lower()
     if email:
         existing = User.objects.filter(email__iexact=email).first()
         if existing is not None:
@@ -152,9 +224,11 @@ def _resolve_user(claims: dict) -> Optional[User]:
             seed_inbox_and_welcome_note(existing_creator)
             return existing
 
-    # Auto-provision. Casdoor's `name` field is its username; fall
-    # back to the email local-part when missing.
-    raw_username = (claims.get("name") or claims.get("preferred_username") or "").strip()
+    # Auto-provision. Username comes from CASDOOR_CLAIM_USERNAME (e.g.
+    # `preferred_username`), display-name parts from
+    # CASDOOR_CLAIM_DISPLAY_NAME / GIVEN_NAME / FAMILY_NAME. Fall back
+    # to the email local-part when no username claim is present.
+    raw_username = _claim_str(claims, "CASDOOR_CLAIM_USERNAME")
     if not raw_username and email:
         raw_username = email.split("@", 1)[0]
     if not raw_username:
@@ -167,8 +241,8 @@ def _resolve_user(claims: dict) -> Optional[User]:
     user = User.objects.create(
         username=candidate,
         email=email or "",
-        first_name=(claims.get("firstName") or claims.get("given_name") or "")[:30],
-        last_name=(claims.get("lastName") or claims.get("family_name") or "")[:150],
+        first_name=_claim_str(claims, "CASDOOR_CLAIM_GIVEN_NAME")[:30],
+        last_name=_claim_str(claims, "CASDOOR_CLAIM_FAMILY_NAME")[:150],
         is_active=True,
     )
     user.set_unusable_password()
@@ -233,6 +307,25 @@ class CasdoorJWTAuthentication(BaseAuthentication):
                 "Backend.Creators.CasdoorAuth/authenticate — "
                 "JWT verification failed (signature, audience, or "
                 "expiry mismatch). Sign in again to refresh the token."
+            )
+
+        # Group-based ACL gate. When CASDOOR_REQUIRED_GROUPS is empty
+        # this returns None and we fall through; otherwise the JWT
+        # must carry at least one matching group in the configured
+        # groups claim or auth is rejected. Mirrors the Nextcloud
+        # user_oidc "Restrict login to a list of groups" toggle.
+        denied_reason = _check_group_access(claims)
+        if denied_reason is not None:
+            logger.info(
+                "Casdoor JWT rejected by group ACL: "
+                "Backend.Creators.CasdoorAuth/authenticate — %s.",
+                denied_reason,
+            )
+            raise AuthenticationFailed(
+                "Cannot sign in: "
+                "Backend.Creators.CasdoorAuth/authenticate — "
+                f"{denied_reason}. Ask the Notechondria admin to add "
+                "your account to an allowed group on the Casdoor side."
             )
 
         user = _resolve_user(claims)

@@ -486,3 +486,36 @@ CASDOOR_CERTIFICATE = os.getenv("CASDOOR_CERTIFICATE", "")
 # verifier itself is stateless; this just amortizes the JWKS cert
 # parsing cost when the same token shows up again within the window.
 CASDOOR_TOKEN_CACHE_TTL = int(os.getenv("CASDOOR_TOKEN_CACHE_TTL", "300"))
+
+# JWT claim-name mapping (modeled on the Nextcloud user_oidc plugin's
+# attribute mapping). Each value is a comma-separated list of claim
+# names tried in order — the first non-empty value wins. Lets the
+# operator point Notechondria at whatever Casdoor's Token Format tab
+# is configured to emit (e.g. preferred_username vs name vs uid)
+# without a code change. Defaults preserve the historical 0.1.96
+# behavior.
+CASDOOR_CLAIM_SUB = os.getenv("CASDOOR_CLAIM_SUB", "id,sub")
+CASDOOR_CLAIM_USERNAME = os.getenv(
+    "CASDOOR_CLAIM_USERNAME", "preferred_username,name"
+)
+CASDOOR_CLAIM_EMAIL = os.getenv("CASDOOR_CLAIM_EMAIL", "email")
+CASDOOR_CLAIM_DISPLAY_NAME = os.getenv(
+    "CASDOOR_CLAIM_DISPLAY_NAME", "displayName,name"
+)
+CASDOOR_CLAIM_GIVEN_NAME = os.getenv(
+    "CASDOOR_CLAIM_GIVEN_NAME", "given_name,firstName"
+)
+CASDOOR_CLAIM_FAMILY_NAME = os.getenv(
+    "CASDOOR_CLAIM_FAMILY_NAME", "family_name,lastName"
+)
+CASDOOR_CLAIM_GROUPS = os.getenv("CASDOOR_CLAIM_GROUPS", "groups")
+
+# Group-based ACL. Comma-separated list of group names that must
+# include at least one of the user's `groups` claim values for the
+# JWT to authenticate. Empty (default) = no gating; any successfully-
+# verified Casdoor JWT is accepted. Group strings are compared
+# case-sensitively against the JWT array exactly as Casdoor emits
+# them (Casdoor typically sends `org/group_name` for group-scoped
+# membership). Mirrors the user_oidc `Restrict login to a list of
+# groups` toggle.
+CASDOOR_REQUIRED_GROUPS = os.getenv("CASDOOR_REQUIRED_GROUPS", "")

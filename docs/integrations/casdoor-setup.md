@@ -250,3 +250,80 @@ Once cutover lands, `Session` becomes a read-only audit table
 populated from Casdoor session-events webhooks; the per-request
 hot path moves entirely onto JWT verification by
 `CasdoorJWTAuthentication`. That's the next major version.
+
+## 6. JWT claim mapping + group ACL (since 0.1.110)
+
+Casdoor's `Application > Token > Token Format` tab lets you
+emit arbitrary custom JWT claims. The default Notechondria
+backend reads `id` / `sub`, `email`, `name`, `firstName`,
+`lastName` — the historical Casdoor shape. To match a
+Nextcloud-style attribute mapping, configure the backend env
+to read whichever claim names Casdoor emits. The pattern is
+identical to the Nextcloud `user_oidc` plugin's claim mapping.
+
+Recommended Token Format mapping in the Casdoor admin UI
+(matches the user_oidc convention):
+
+| JWT claim | Casdoor source | Type |
+| --- | --- | --- |
+| `preferred_username` | `Name` | String |
+| `name` | `DisplayName` | String |
+| `email` | `Email` | String |
+| `groups` | `Groups` | Array |
+
+Then in the backend env (Northflank service env or linked
+Secret Group), set:
+
+```env
+CASDOOR_CLAIM_USERNAME=preferred_username,name
+CASDOOR_CLAIM_DISPLAY_NAME=name,displayName
+CASDOOR_CLAIM_EMAIL=email
+CASDOOR_CLAIM_GROUPS=groups
+```
+
+Each value is a comma-separated list of claim names tried in
+order — the first non-empty wins. Defaults preserve historical
+0.1.96 behavior, so leaving these unset keeps the existing
+auto-provision flow working.
+
+### Group-based access control
+
+`CASDOOR_REQUIRED_GROUPS` is a comma-separated list of group
+names; the JWT's `groups` claim (read via
+`CASDOOR_CLAIM_GROUPS`) must contain at least one match for
+the JWT to authenticate. Empty (default) disables gating —
+any verified Casdoor JWT is accepted.
+
+```env
+# Only let members of the app-notechondria group sign in.
+# Casdoor typically emits org-scoped groups as `<org>/<group>`,
+# so list the full path as it appears in the JWT.
+CASDOOR_REQUIRED_GROUPS=notechondria/app-notechondria
+```
+
+Match is exact and case-sensitive. When a sign-in is denied,
+the backend logs a warning at
+`Backend.Creators.CasdoorAuth/authenticate` with the reason,
+and the frontend's auth-failure SnackBar surfaces a precise
+message ("Cannot sign in: ... — user is not a member of any
+required group (...)").
+
+This mirrors the Nextcloud `user_oidc` plugin's "Restrict
+login to a list of groups" toggle. Group membership itself is
+managed in Casdoor under `Identity > Groups` and assigned to
+users via `Identity > Users > <user> > Edit`. There is no
+Notechondria-side group management — group state lives
+entirely in Casdoor and the backend just gates on it.
+
+### Note: deploy freshness
+
+The `/api/v1/auth/casdoor/config/` endpoint and the entire
+`CasdoorJWTAuthentication` class are gated by the deployed
+backend image. If `curl
+https://<backend>/api/v1/auth/casdoor/config/` returns 404 even
+after setting all the env vars, the deployed image predates
+0.1.96 — redeploy on Northflank (or whichever host is in use)
+to pick up the routes. The frontend boot probe writes a
+warning to `Editor.Auth/casdoor.config.probe` with the full
+URL it tried, so the operator can grep the log for the exact
+backend that's stale.
