@@ -168,19 +168,15 @@ extension _SettingsPageBuildX on _SettingsPageState {
                 onPressed: widget.onCasdoorLogin!,
               ),
             ],
+            // 0.1.116: "Login via third party" OutlinedButton removed
+            // per user directive. The Casdoor SSO pill above already
+            // covers the third-party login flow; the standalone
+            // OutlinedButton was a duplicate that landed on the same
+            // hosted Casdoor page. The signup link below is preserved
+            // because it serves a different intent — directing users
+            // who don't yet have a Casdoor account to the registration
+            // surface.
             if (_casdoorBrowserLoginUrl.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _openCasdoorBrowserLogin,
-                  icon: const Icon(Icons.open_in_new, size: 18),
-                  label: const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 4),
-                    child: Text('Login via third party'),
-                  ),
-                ),
-              ),
               const SizedBox(height: 6),
               Align(
                 alignment: Alignment.centerLeft,

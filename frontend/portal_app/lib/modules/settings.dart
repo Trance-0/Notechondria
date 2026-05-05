@@ -581,22 +581,14 @@ class _SettingsPageState extends State<_SettingsPage> {
               );
             },
           ),
-          const Divider(height: 0, indent: 16, endIndent: 16),
-          ListTile(
-            leading: const Icon(Icons.bug_report_outlined),
-            title: const Text('Debug'),
-            subtitle: const Text(
-              'Inspect frontend logs and ping the backend.',
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => _DebugPage(parent: this),
-                ),
-              );
-            },
-          ),
+          // 0.1.116: removed the duplicate "Debug" ListTile + its
+          // _DebugPage push. The inline Debug log card on the main
+          // Settings scroll (added in 0.1.105 via
+          // `_buildInlineDebugCard`) now owns the only debug surface,
+          // matching the editor app's pattern. The focused
+          // `_DebugPage` and its subroute are still defined further
+          // down the file in case a future surface re-introduces a
+          // dedicated entry, but no settings menu row points at them.
         ],
       ),
     );

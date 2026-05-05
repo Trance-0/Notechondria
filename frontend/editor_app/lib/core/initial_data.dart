@@ -49,27 +49,25 @@ extension _AppShellInitialDataX on _AppShellState {
       try {
         final config = await widget.client.getCasdoorConfig();
         final configured = config['configured'] == true;
-        // The login URL backs the "Login via third party" button +
-        // "Sign up via Casdoor" link in the signed-out account card.
-        // Casdoor's hosted per-app login page lives at
-        // `${endpoint}/login/${application}`. 0.1.112 corrected this
-        // from `${organization}` after the user renamed their
-        // Casdoor org from `notechondria` to `trance-0`; app-name
-        // is the stable identifier for the per-app login surface.
-        // Prefer `signin_url` from the backend response when it's
-        // present (built by `CasdoorConfigApiView` so the URL stays
-        // consistent across SPA + backend), and only synthesize from
-        // endpoint+application as a fallback.
+        // The login URL backs the "Sign up via Casdoor" link in the
+        // signed-out account card. Casdoor's hosted org-themed login
+        // page lives at `${endpoint}/login/${organization}` —
+        // env-driven on the backend (`CASDOOR_ENDPOINT`,
+        // `CASDOOR_ORG_NAME`), no client-side hard-coding. Prefer
+        // `signin_url` from the backend response when present so the
+        // URL stays in lockstep with the backend's view; the local
+        // synthesis is only a fallback for very old backend images
+        // that pre-date the `signin_url` field.
         final endpoint =
             (config['endpoint']?.toString() ?? '').replaceAll(RegExp(r'/+$'), '');
-        final appName = config['application']?.toString() ?? '';
+        final orgName = config['organization']?.toString() ?? '';
         final backendSigninUrl = config['signin_url']?.toString() ?? '';
         final orgLoginUrl = !configured
             ? null
             : (backendSigninUrl.isNotEmpty
                 ? backendSigninUrl
-                : (endpoint.isNotEmpty && appName.isNotEmpty
-                    ? '$endpoint/login/$appName'
+                : (endpoint.isNotEmpty && orgName.isNotEmpty
+                    ? '$endpoint/login/$orgName'
                     : null));
         if (mounted &&
             (configured != _casdoorConfigured ||

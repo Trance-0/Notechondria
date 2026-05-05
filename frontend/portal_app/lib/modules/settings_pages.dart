@@ -719,95 +719,10 @@ class _RecycleBinPage extends StatelessWidget {
   }
 }
 
-/// Subpage 9 — Debug. Backend ping + structured log viewer + copy
-/// button. Falls back to a plain string-list view when no
-/// `DebugLogController` was wired (matches the legacy contract).
-class _DebugPage extends StatelessWidget {
-  const _DebugPage({required this.parent});
-
-  final _SettingsPageState parent;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = parent;
-    final controller = p.widget.debugLogController;
-    final summary =
-        '${p.widget.localDraftCount} local draft(s), '
-        '${p.widget.localCourseCount} local course(s).';
-    return Scaffold(
-      appBar: AppBar(title: const Text('Debug')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _FeedbackBanner(parent: p),
-            if (controller != null)
-              DebugLogCard(
-                controller: controller,
-                title: 'Debug log',
-                summary: summary,
-                onCopyLogs: p.widget.onCopyLogs,
-                onPing: () => pingBackend(p.widget.apiBaseUrl),
-              )
-            else
-              Card(
-                clipBehavior: Clip.antiAlias,
-                margin: EdgeInsets.zero,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'Debug log',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w700),
-                            ),
-                          ),
-                          TextButton.icon(
-                            onPressed: p.widget.onCopyLogs,
-                            icon: const Icon(Icons.copy_all_outlined),
-                            label: const Text('Copy logs'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(summary),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        height: 320,
-                        child: p.widget.uiLogs.isEmpty
-                            ? const Center(
-                                child:
-                                    Text('No frontend logs captured yet.'),
-                              )
-                            : ListView.builder(
-                                padding: EdgeInsets.zero,
-                                itemCount: p.widget.uiLogs.length,
-                                itemBuilder: (context, index) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 4),
-                                  child: SelectableText(
-                                    p.widget.uiLogs[index],
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.copyWith(fontFamily: 'monospace'),
-                                  ),
-                                ),
-                              ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+// 0.1.116: `_DebugPage` removed along with its menu-row entry in
+// `settings.dart`. The inline Debug log card on the main Settings
+// scroll (`_buildInlineDebugCard`, since 0.1.105) now owns the only
+// debug surface, matching the editor app's pattern. Both the focused
+// subpage and its menu row were carrying the same `DebugLogCard` /
+// fallback widget — keeping them in lockstep was busywork. Restore
+// from git history if a future surface needs a focused debug page.

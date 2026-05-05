@@ -614,28 +614,27 @@ class CasdoorConfigApiView(APIView):
         )
         if not configured:
             return Response({"configured": False})
-        # signin_url points at the application-themed login page
-        # (`/login/<appName>`) rather than the raw OAuth authorize
-        # endpoint. Casdoor accepts the same OAuth params on both,
-        # but `/login/<appName>` shows the branded per-app login
-        # UI ("Continue with Notechondria via auth.trance-0.com")
-        # instead of the org's generic consent screen.
+        # signin_url is the org-themed Casdoor login page
+        # (`<endpoint>/login/<CASDOOR_ORG_NAME>`). Both the URL
+        # base and the org segment come from env vars
+        # (`CASDOOR_ENDPOINT`, `CASDOOR_ORG_NAME`) — the deploy
+        # operator can switch Casdoor instances or rename the org
+        # without touching code. Per the user's directive in
+        # 0.1.116: keep the org-themed surface, env-driven.
         #
-        # 0.1.112 corrected this from `/login/<orgName>` to
-        # `/login/<appName>`: the original 0.1.109 path produced
-        # the right URL only because the user's `CASDOOR_ORG_NAME`
-        # at that time was also `notechondria`. After the user
-        # renamed the org to `trance-0` (with `CASDOOR_APP_NAME`
-        # still `notechondria`), the org-themed path landed at
-        # `/login/trance-0` — not the `/login/notechondria` they
-        # asked for. App-name is the stable identifier.
+        # 0.1.116 reverts the 0.1.112 switch to `CASDOOR_APP_NAME`.
+        # The brief flip happened because at the time the user
+        # had renamed the org to `trance-0` and asked for
+        # `/login/notechondria`; subsequently they confirmed the
+        # final URL should land at `/login/trance-0` (org-themed)
+        # so the org name is the right segment.
         return Response({
             "configured": True,
             "endpoint": endpoint,
             "client_id": settings.CASDOOR_CLIENT_ID,
             "organization": settings.CASDOOR_ORG_NAME,
             "application": settings.CASDOOR_APP_NAME,
-            "signin_url": f"{endpoint}/login/{settings.CASDOOR_APP_NAME}",
+            "signin_url": f"{endpoint}/login/{settings.CASDOOR_ORG_NAME}",
         })
 
 
