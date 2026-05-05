@@ -32,6 +32,34 @@ abstract class AuthClient {
   /// is already linked to a different account.
   Future<Map<String, dynamic>> casdoorBind(String token, String code);
 
+  /// `POST /api/v1/auth/casdoor/link/bind/`. Completion path for the
+  /// gitea-style link-challenge flow (since 0.1.118): when
+  /// [casdoorExchange] returns a `link_challenge` instead of an
+  /// auth_payload, the user picks "bind existing account", supplies
+  /// their legacy username/email + password, and the backend stamps
+  /// `Creator.casdoor_sub = challenge.sub` after authenticating
+  /// against the legacy hasher. Returns the standard `auth_payload`
+  /// on success. Public — the nonce itself is the authentication
+  /// (one-shot, expires in 10 min).
+  Future<Map<String, dynamic>> casdoorLinkBind({
+    required String nonce,
+    required String identifier,
+    required String password,
+  });
+
+  /// `POST /api/v1/auth/casdoor/link/create/`. Completion path for
+  /// the gitea-style link-challenge flow (since 0.1.118): when the
+  /// user picks "create new account", they supply a fresh password;
+  /// the backend creates a new User with username + email drawn
+  /// from the JWT claims captured on the LinkChallenge. Returns the
+  /// standard `auth_payload` on success. 409 when a legacy account
+  /// already exists for the Casdoor email — caller should redirect
+  /// the user to [casdoorLinkBind] instead.
+  Future<Map<String, dynamic>> casdoorLinkCreate({
+    required String nonce,
+    required String password,
+  });
+
   /// `DELETE /api/v1/auth/casdoor/unlink/`. Idempotent. Drops the
   /// Casdoor link on the current user's Creator without logging the
   /// session out.

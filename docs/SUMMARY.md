@@ -61,6 +61,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.118 — gitea-style Casdoor link-challenge flow (bind existing or create new with chosen password)](versions/0.1.118.md)
 - [0.1.117 — fix post-Casdoor 401 storm: SPA + backend agree on Bearer scheme; auth diagnostic logs](versions/0.1.117.md)
 - [0.1.116 — signin URL back to org name; "Login via third party" gone; portal Debug menu de-duplicated](versions/0.1.116.md)
 - [0.1.115 — bump backend Docker base from Python 3.9.18 to 3.11.4](versions/0.1.115.md)

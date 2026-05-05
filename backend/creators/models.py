@@ -108,6 +108,73 @@ class Creator(models.Model):
         """for better list display"""
         return f"{self.user_id.get_full_name()}"
 
+class LinkChallenge(models.Model):
+    """Pending Casdoor identity awaiting an account-link decision.
+
+    Created by ``CasdoorExchangeApiView`` when a verified Casdoor
+    JWT arrives carrying a `sub` not yet linked to any
+    ``Creator.casdoor_sub``. The SPA shows the user a choice
+    dialog (gitea-style account linking): bind the Casdoor
+    identity to an existing legacy account (proves ownership via
+    legacy username + password) or create a brand-new
+    Notechondria account (user picks a fresh password). The row is
+    a one-time-use ticket — it's deleted on either path's success
+    and skipped (treated as expired) past `expires_at`.
+
+    The ``access_token`` is the Casdoor JWT we already verified,
+    stashed here so the link-completion endpoints can return it
+    in the standard ``auth_payload`` shape without re-exchanging
+    the auth code (Casdoor codes are one-time use). Storing a
+    short-lived bearer in the DB is acceptable because (a) the
+    row is deleted within a few minutes either way, (b) this
+    backend already trusts the same JWT in the headers of every
+    authenticated request, and (c) the row is owner-keyed by the
+    nonce which only the SPA that initiated the exchange knows.
+    """
+
+    nonce = models.CharField(
+        max_length=64,
+        unique=True,
+        db_index=True,
+        help_text="Cryptographically random URL-safe token returned to the "
+                  "SPA in the exchange response; must be supplied verbatim "
+                  "to the bind/create completion endpoints.",
+    )
+    sub = models.CharField(
+        max_length=255,
+        db_index=True,
+        help_text="Casdoor user sub claim from the verified JWT — what we "
+                  "stamp onto Creator.casdoor_sub once the link completes.",
+    )
+    casdoor_username = models.CharField(max_length=150, blank=True, default="")
+    casdoor_email = models.EmailField(blank=True, default="")
+    casdoor_display_name = models.CharField(max_length=255, blank=True, default="")
+    casdoor_groups = models.JSONField(default=list, blank=True)
+    access_token = models.TextField(
+        help_text="Verified Casdoor JWT replayed back to the SPA in "
+                  "auth_payload after the link completes.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(
+        help_text="UTC; the bind/create endpoints reject the row past this.",
+    )
+
+    class Meta:
+        # Indexed by nonce + (sub, expires_at) for the two hot lookups:
+        # the completion endpoints fetch by nonce, and the cleanup job
+        # may sweep expired rows by (sub, expires_at).
+        indexes = [
+            models.Index(fields=["sub", "expires_at"]),
+        ]
+
+    def __str__(self):
+        return f"LinkChallenge sub={self.sub[:12]}… expires_at={self.expires_at}"
+
+    def is_expired(self):
+        from django.utils import timezone
+        return timezone.now() >= self.expires_at
+
+
 class SocialProviderChoices(models.TextChoices):
     GOOGLE = "google", _("Google")
     GITHUB = "github", _("GitHub")

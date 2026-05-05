@@ -774,19 +774,40 @@ class CasdoorBindApiView(APIView):
 
 
 class CasdoorExchangeApiView(APIView):
-    """Exchange a Casdoor authorization code for the standard
-    Notechondria ``auth_payload``. The bridge that lets the Flutter
-    apps adopt Casdoor: same response shape (``token``, ``user``),
-    but ``token`` is now the Casdoor JWT itself and the SPA resends
-    it as ``Authorization: Bearer <jwt>`` on every call.
+    """Exchange a Casdoor authorization code for either:
 
-    Returns 503 when the SDK isn't configured.
+    - the standard ``auth_payload`` (when the Casdoor `sub` is
+      already linked to a Notechondria account), or
+    - a ``link_challenge`` (a one-time-use ticket the SPA shows
+      the user as a "bind existing account or create new"
+      dialog).
+
+    The SPA then POSTs the chosen path's credentials to
+    ``/auth/casdoor/link/bind/`` (legacy username + password) or
+    ``/auth/casdoor/link/create/`` (new password) along with the
+    challenge nonce; both completion endpoints return the
+    standard ``auth_payload``.
+
+    0.1.118 reshaped this view: prior versions auto-linked by
+    email and auto-provisioned by sub, which made it impossible
+    to know which Notechondria account a fresh Casdoor identity
+    would land on. The gitea-style choice flow is safer for
+    migrating accounts and gives the user explicit control.
+
+    Returns 503 when the Casdoor SDK isn't configured.
     """
 
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        from .casdoor_auth import _build_sdk, _resolve_user, verify_token
+        from .casdoor_auth import (
+            _build_sdk,
+            _check_group_access,
+            _claim_groups,
+            _claim_str,
+            _resolve_existing_user,
+            verify_token,
+        )
 
         sdk = _build_sdk()
         if sdk is None:
@@ -838,16 +859,317 @@ class CasdoorExchangeApiView(APIView):
                 )},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        user = _resolve_user(claims)
-        if user is None:
+        # Group-based ACL gate (since 0.1.110): if
+        # CASDOOR_REQUIRED_GROUPS is set, the JWT's `groups` claim
+        # must overlap. Empty setting = no gating.
+        denied_reason = _check_group_access(claims)
+        if denied_reason is not None:
             return Response(
                 {"detail": (
                     "Cannot sign in: "
                     "Backend.Creators.CasdoorAuth/exchange — "
-                    "JWT is valid but does not carry an `id` / "
-                    "`sub` claim, so no Notechondria account can be "
-                    "located or auto-provisioned."
+                    f"{denied_reason}. Ask the Notechondria admin "
+                    "to add your account to an allowed group on "
+                    "the Casdoor side."
+                )},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        sub = _claim_str(claims, "CASDOOR_CLAIM_SUB")
+        if not sub:
+            return Response(
+                {"detail": (
+                    "Cannot sign in: "
+                    "Backend.Creators.CasdoorAuth/exchange — "
+                    "JWT does not carry an `id`/`sub` claim, so no "
+                    "Notechondria account can be located."
                 )},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # Fast path: the Casdoor identity is already linked.
+        user = _resolve_existing_user(claims)
+        if user is not None:
+            if not user.is_active:
+                return Response(
+                    {"detail": (
+                        "Cannot sign in: "
+                        "Backend.Creators.CasdoorAuth/exchange — "
+                        "the linked Notechondria account is "
+                        "inactive."
+                    )},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            try:
+                User.objects.filter(pk=user.pk).update(last_login=now())
+            except Exception:  # noqa: BLE001
+                pass
+            return Response(
+                auth_payload(user, token=access_token, request=request)
+            )
+
+        # Slow path: the Casdoor identity is not linked yet — mint
+        # a LinkChallenge and let the SPA prompt the user. Garbage-
+        # collect any prior expired rows for the same sub so the
+        # table doesn't grow unbounded if the user retries.
+        from datetime import timedelta
+        from django.utils import timezone
+        from django.utils.crypto import get_random_string
+        from .models import LinkChallenge
+
+        LinkChallenge.objects.filter(
+            sub=sub, expires_at__lt=timezone.now()
+        ).delete()
+        challenge = LinkChallenge.objects.create(
+            nonce=get_random_string(48),
+            sub=sub,
+            casdoor_username=_claim_str(claims, "CASDOOR_CLAIM_USERNAME")[:150],
+            casdoor_email=_claim_str(claims, "CASDOOR_CLAIM_EMAIL").lower()[:254],
+            casdoor_display_name=_claim_str(
+                claims, "CASDOOR_CLAIM_DISPLAY_NAME",
+            )[:255],
+            casdoor_groups=_claim_groups(claims),
+            access_token=access_token,
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+        # Suggest a username candidate so the SPA can pre-fill the
+        # bind dialog's username field. Fall back to the email's
+        # local-part when the JWT didn't carry a usable username.
+        suggested_username = challenge.casdoor_username
+        if not suggested_username and challenge.casdoor_email:
+            suggested_username = challenge.casdoor_email.split("@", 1)[0]
+        return Response(
+            {
+                "link_challenge": challenge.nonce,
+                "expires_at": challenge.expires_at.isoformat(),
+                "casdoor_identity": {
+                    "username": challenge.casdoor_username,
+                    "email": challenge.casdoor_email,
+                    "display_name": challenge.casdoor_display_name,
+                },
+                "suggested_username": suggested_username,
+            }
+        )
+
+
+class CasdoorLinkBindApiView(APIView):
+    """Complete a Casdoor link by binding the verified Casdoor `sub`
+    to an existing Notechondria account. The user proves ownership
+    of the legacy account by supplying its username (or email) +
+    password; we authenticate via Django's standard hasher and, on
+    success, stamp ``Creator.casdoor_sub = challenge.sub``.
+
+    Errors keep the AGENTS.md §1.7 shape (consequence + module/
+    process + cause) so the SPA dialog can surface a precise
+    message without re-formulating.
+    """
+
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        from .models import Creator, LinkChallenge
+
+        nonce = (request.data.get("nonce") or "").strip()
+        identifier = (
+            request.data.get("username")
+            or request.data.get("email")
+            or request.data.get("identifier")
+            or ""
+        ).strip()
+        password = request.data.get("password") or ""
+        if not nonce or not identifier or not password:
+            return Response(
+                {"detail": (
+                    "Casdoor account binding aborted: "
+                    "Backend.Creators.CasdoorAuth/link.bind — "
+                    "nonce, username, and password are all required."
+                )},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        challenge = LinkChallenge.objects.filter(nonce=nonce).first()
+        if challenge is None or challenge.is_expired():
+            if challenge is not None:
+                challenge.delete()
+            return Response(
+                {"detail": (
+                    "Casdoor account binding aborted: "
+                    "Backend.Creators.CasdoorAuth/link.bind — "
+                    "link challenge expired or unknown. Restart the "
+                    "Casdoor sign-in flow to get a fresh ticket."
+                )},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Refuse to bind if another Notechondria account already
+        # carries this Casdoor sub (race between two parallel
+        # exchanges, or a stale challenge whose target user
+        # completed the link via a different surface).
+        if Creator.objects.filter(casdoor_sub=challenge.sub).exists():
+            challenge.delete()
+            return Response(
+                {"detail": (
+                    "Casdoor account binding aborted: "
+                    "Backend.Creators.CasdoorAuth/link.bind — "
+                    "this Casdoor identity is already linked to "
+                    "another Notechondria account. Sign in with "
+                    "that account directly, or have an admin unlink "
+                    "it first."
+                )},
+                status=status.HTTP_409_CONFLICT,
+            )
+        # Look up the legacy user case-insensitively by email then
+        # username (matches the LoginSerializer pattern from 0.1.111).
+        matched = User.objects.filter(email__iexact=identifier).first()
+        if matched is None:
+            matched = User.objects.filter(username__iexact=identifier).first()
+        if matched is None:
+            return Response(
+                {"detail": (
+                    "Casdoor account binding aborted: "
+                    "Backend.Creators.CasdoorAuth/link.bind — "
+                    "no Notechondria account found for the supplied "
+                    "username/email."
+                )},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        user = authenticate(username=matched.username, password=password)
+        if user is None or not user.is_active:
+            return Response(
+                {"detail": (
+                    "Casdoor account binding aborted: "
+                    "Backend.Creators.CasdoorAuth/link.bind — "
+                    "username/email and password do not match an "
+                    "active Notechondria account."
+                )},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        creator = ensure_creator(user)
+        creator.casdoor_sub = challenge.sub
+        creator.save(update_fields=["casdoor_sub"])
+        access_token = challenge.access_token
+        challenge.delete()
+        try:
+            User.objects.filter(pk=user.pk).update(last_login=now())
+        except Exception:  # noqa: BLE001
+            pass
+        logger.info(
+            "Linked Casdoor identity to existing account: "
+            "Backend.Creators.CasdoorAuth/link.bind — "
+            "username=%s sub=%s.",
+            user.username,
+            challenge.sub[:12],
+        )
+        return Response(auth_payload(user, token=access_token, request=request))
+
+
+class CasdoorLinkCreateApiView(APIView):
+    """Complete a Casdoor link by creating a fresh Notechondria
+    account using the user-chosen password. Username and email are
+    drawn from the JWT claims captured on the LinkChallenge — the
+    SPA cannot override them, so a malicious client can't pick an
+    arbitrary email.
+
+    Refuses (409) when a legacy account already exists for the
+    Casdoor email/username; the SPA should redirect the user to
+    the bind path instead.
+    """
+
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        from notes.services import seed_inbox_and_welcome_note
+        from .models import Creator, LinkChallenge
+
+        nonce = (request.data.get("nonce") or "").strip()
+        password = request.data.get("password") or ""
+        if not nonce or not password:
+            return Response(
+                {"detail": (
+                    "Casdoor account creation aborted: "
+                    "Backend.Creators.CasdoorAuth/link.create — "
+                    "nonce and password are both required."
+                )},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        challenge = LinkChallenge.objects.filter(nonce=nonce).first()
+        if challenge is None or challenge.is_expired():
+            if challenge is not None:
+                challenge.delete()
+            return Response(
+                {"detail": (
+                    "Casdoor account creation aborted: "
+                    "Backend.Creators.CasdoorAuth/link.create — "
+                    "link challenge expired or unknown. Restart the "
+                    "Casdoor sign-in flow to get a fresh ticket."
+                )},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if Creator.objects.filter(casdoor_sub=challenge.sub).exists():
+            challenge.delete()
+            return Response(
+                {"detail": (
+                    "Casdoor account creation aborted: "
+                    "Backend.Creators.CasdoorAuth/link.create — "
+                    "this Casdoor identity is already linked. Sign "
+                    "in with the existing account instead."
+                )},
+                status=status.HTTP_409_CONFLICT,
+            )
+        # Block clobbering an existing legacy account by email — the
+        # bind path is the right answer in that case.
+        email = challenge.casdoor_email
+        if email and User.objects.filter(email__iexact=email).exists():
+            return Response(
+                {"detail": (
+                    "Casdoor account creation aborted: "
+                    "Backend.Creators.CasdoorAuth/link.create — "
+                    "a Notechondria account already exists for "
+                    "this email. Use the bind option instead and "
+                    "supply the legacy password."
+                )},
+                status=status.HTTP_409_CONFLICT,
+            )
+        # Pick a unique username. Prefer the Casdoor username claim
+        # so the new account matches what the user sees on the
+        # auth.trance-0.com side; fall back to the email's
+        # local-part, then to a synthetic `casdoor_<sub>` so a
+        # claim-less JWT doesn't blow up the create.
+        raw_username = challenge.casdoor_username or (
+            email.split("@", 1)[0] if email else ""
+        ) or f"casdoor_{challenge.sub[:12]}"
+        candidate = raw_username[:150]
+        suffix = 0
+        while User.objects.filter(username__iexact=candidate).exists():
+            suffix += 1
+            candidate = f"{raw_username[:145]}_{suffix}"
+
+        # Display-name fields are best-effort — the create payload
+        # doesn't carry them, and the JWT claims may or may not.
+        display_name = challenge.casdoor_display_name
+        first_name, _, last_name = display_name.partition(" ")
+
+        user = User.objects.create(
+            username=candidate,
+            email=email or "",
+            first_name=first_name[:30],
+            last_name=last_name[:150],
+            is_active=True,
+        )
+        user.set_password(password)
+        user.save()
+        creator = ensure_creator(user)
+        creator.casdoor_sub = challenge.sub
+        creator.save(update_fields=["casdoor_sub"])
+        seed_inbox_and_welcome_note(creator)
+        access_token = challenge.access_token
+        challenge.delete()
+        try:
+            User.objects.filter(pk=user.pk).update(last_login=now())
+        except Exception:  # noqa: BLE001
+            pass
+        logger.info(
+            "Created Notechondria account from Casdoor link: "
+            "Backend.Creators.CasdoorAuth/link.create — "
+            "username=%s sub=%s.",
+            candidate,
+            challenge.sub[:12],
+        )
         return Response(auth_payload(user, token=access_token, request=request))

@@ -36,7 +36,6 @@ from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 
 from .models import Creator
-from .utils import ensure_creator
 
 logger = logging.getLogger("django")
 
@@ -183,85 +182,40 @@ def _check_group_access(claims: dict) -> Optional[str]:
     )
 
 
-def _resolve_user(claims: dict) -> Optional[User]:
-    """Find or create the Django ``User`` matching this Casdoor JWT.
+def _resolve_existing_user(claims: dict) -> Optional[User]:
+    """Find the Django ``User`` whose Creator already carries the
+    Casdoor `sub` from these claims, or return ``None`` to signal
+    that the SPA must run the link-challenge flow (gitea-style:
+    bind to a legacy account or create a new one with a
+    user-chosen password).
 
-    Resolution order:
-      1. ``Creator.casdoor_sub == <CASDOOR_CLAIM_SUB>`` — the
-         post-cutover hot path; one DB hit when the link is already
-         persisted.
-      2. ``User.email iexact <CASDOOR_CLAIM_EMAIL>`` — first-time
-         link for an existing legacy account; on success we backfill
-         ``Creator.casdoor_sub`` so subsequent requests take path 1.
-      3. Auto-provision a new ``User`` + ``Creator``, stamp the sub,
-         and seed the inbox + welcome note (same shape as the
-         email-verify registration flow in ``creators.api``).
-
-    All claim names are read from ``settings.CASDOOR_CLAIM_*`` so the
-    Casdoor app's Token Format tab can be reshaped by the operator
-    without re-deploying code.
+    Auto-provisioning by sub and auto-linking by email address
+    were retired in 0.1.118 — the user must explicitly choose
+    bind-vs-create after the JWT verifies. See
+    ``CasdoorExchangeApiView`` for the issuance side and
+    ``CasdoorLinkBindApiView`` / ``CasdoorLinkCreateApiView``
+    for the completion endpoints.
     """
     sub = _claim_str(claims, "CASDOOR_CLAIM_SUB")
     if not sub:
         return None
 
-    creator = Creator.objects.filter(casdoor_sub=sub).select_related("user_id").first()
+    creator = (
+        Creator.objects.filter(casdoor_sub=sub)
+        .select_related("user_id")
+        .first()
+    )
     if creator is not None:
         return creator.user_id
+    return None
 
-    # Lazy import to avoid the notes <-> creators app boot cycle.
-    from notes.services import seed_inbox_and_welcome_note
 
-    email = _claim_str(claims, "CASDOOR_CLAIM_EMAIL").lower()
-    if email:
-        existing = User.objects.filter(email__iexact=email).first()
-        if existing is not None:
-            existing_creator = ensure_creator(existing)
-            existing.creator_set.update(casdoor_sub=sub)
-            # Idempotent — protects legacy accounts that predate the
-            # email-verify / OAuth onboarding seed and would otherwise
-            # land on an empty editor sidebar.
-            seed_inbox_and_welcome_note(existing_creator)
-            return existing
-
-    # Auto-provision. Username comes from CASDOOR_CLAIM_USERNAME (e.g.
-    # `preferred_username`), display-name parts from
-    # CASDOOR_CLAIM_DISPLAY_NAME / GIVEN_NAME / FAMILY_NAME. Fall back
-    # to the email local-part when no username claim is present.
-    raw_username = _claim_str(claims, "CASDOOR_CLAIM_USERNAME")
-    if not raw_username and email:
-        raw_username = email.split("@", 1)[0]
-    if not raw_username:
-        raw_username = f"casdoor_{sub[:12]}"
-    candidate = raw_username[:150]
-    suffix = 0
-    while User.objects.filter(username__iexact=candidate).exists():
-        suffix += 1
-        candidate = f"{raw_username[:145]}_{suffix}"
-    user = User.objects.create(
-        username=candidate,
-        email=email or "",
-        first_name=_claim_str(claims, "CASDOOR_CLAIM_GIVEN_NAME")[:30],
-        last_name=_claim_str(claims, "CASDOOR_CLAIM_FAMILY_NAME")[:150],
-        is_active=True,
-    )
-    user.set_unusable_password()
-    user.save()
-    creator = ensure_creator(user)
-    creator.casdoor_sub = sub
-    creator.save(update_fields=["casdoor_sub"])
-    # Match the email-verify and OAuth-register flows so every newly
-    # provisioned user lands on a non-empty workspace (Inbox + welcome
-    # note). Without this, Casdoor users hit an empty editor sidebar
-    # because /api/v1/courses/ returns no rows on first load.
-    seed_inbox_and_welcome_note(creator)
-    logger.info(
-        "Auto-provisioned user from Casdoor JWT: "
-        "Backend.Creators.CasdoorAuth/auto_provision — username=%s sub=%s.",
-        candidate,
-        sub[:12],
-    )
-    return user
+# Backwards-compat alias kept so older callers (e.g.
+# `CasdoorExchangeApiView` between 0.1.96 and 0.1.117) that still
+# import `_resolve_user` resolve to the new fast-path-only helper.
+# The auto-provision side of the original 0.1.96 implementation
+# now lives in `CasdoorLinkCreateApiView`.
+_resolve_user = _resolve_existing_user
 
 
 class CasdoorJWTAuthentication(BaseAuthentication):

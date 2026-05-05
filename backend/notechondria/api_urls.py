@@ -7,6 +7,8 @@ from creators.api import (
     CasdoorBindApiView,
     CasdoorConfigApiView,
     CasdoorExchangeApiView,
+    CasdoorLinkBindApiView,
+    CasdoorLinkCreateApiView,
     CasdoorUnlinkApiView,
     GithubSyncCallbackApiView,
     GithubSyncPushApiView,
@@ -72,6 +74,15 @@ urlpatterns = [
     # docs/integrations/casdoor-migration.md.
     path("auth/casdoor/config/", CasdoorConfigApiView.as_view(), name="casdoor-config"),
     path("auth/casdoor/exchange/", CasdoorExchangeApiView.as_view(), name="casdoor-exchange"),
+    # Gitea-style account-link choice (since 0.1.118): when the
+    # exchange returns a `link_challenge` instead of an auth_payload,
+    # the SPA prompts the user to either bind to an existing legacy
+    # account (proves ownership via username + password) or create a
+    # fresh account with a user-chosen password. Both endpoints
+    # accept the nonce returned by the exchange and return the
+    # standard auth_payload on success.
+    path("auth/casdoor/link/bind/", CasdoorLinkBindApiView.as_view(), name="casdoor-link-bind"),
+    path("auth/casdoor/link/create/", CasdoorLinkCreateApiView.as_view(), name="casdoor-link-create"),
     path("auth/casdoor/bind/", CasdoorBindApiView.as_view(), name="casdoor-bind"),
     path("auth/casdoor/unlink/", CasdoorUnlinkApiView.as_view(), name="casdoor-unlink"),
     path("front-page/", FrontPageApiView.as_view(), name="front-page"),

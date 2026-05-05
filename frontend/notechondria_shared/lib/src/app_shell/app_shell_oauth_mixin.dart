@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../components/casdoor_link_challenge_dialog.dart';
 import '../components/debug_log.dart';
 import 'app_shell_auth_actions_mixin.dart';
 import 'url_strategy.dart'
@@ -44,6 +45,101 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
     String source,
     int? durationMs,
   });
+
+  /// Default handler for the gitea-style Casdoor link-challenge
+  /// flow (since 0.1.118). Pops a `CasdoorLinkChallengeDialog`,
+  /// dispatches the user's chosen completion endpoint
+  /// (`casdoorLinkBind` or `casdoorLinkCreate`), and runs the
+  /// returned auth_payload through `applyAuthPayload` so the
+  /// session installs exactly like the fast-path login.
+  ///
+  /// Apps can override this on `_AppShellState` if a different
+  /// UX is wanted (e.g. routing to a full screen instead of a
+  /// dialog), but the default is enough for editor / planner /
+  /// portal — they all want the same dialog. Returns `true` on
+  /// successful link, `false` on cancel or completion error.
+  ///
+  /// `payload` is the full exchange response: `link_challenge`,
+  /// `expires_at`, `casdoor_identity`, `suggested_username`. The
+  /// Casdoor JWT is held server-side on the LinkChallenge row
+  /// and replayed back in the eventual auth_payload — the SPA
+  /// never sees it before the link decision.
+  Future<bool> onCasdoorLinkChallenge(Map<String, dynamic> payload) async {
+    final nonce = payload['link_challenge']?.toString() ?? '';
+    if (nonce.isEmpty || !mounted) return false;
+    final identityRaw = payload['casdoor_identity'];
+    final identity = <String, String>{};
+    if (identityRaw is Map) {
+      identityRaw.forEach((k, v) {
+        identity[k.toString()] = v?.toString() ?? '';
+      });
+    }
+    final suggestedUsername =
+        payload['suggested_username']?.toString() ?? identity['username'] ?? '';
+    final decision = await showDialog<CasdoorLinkChallengeDecision>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => CasdoorLinkChallengeDialog(
+        casdoorIdentity: identity,
+        suggestedUsername: suggestedUsername,
+      ),
+    );
+    if (decision == null) {
+      log(
+        level: DebugLogLevel.info,
+        source: '$logAppTag.Auth/casdoor.link_challenge',
+        message:
+            'Casdoor link challenge cancelled by user: '
+            '$logAppTag.Auth/casdoor.link_challenge — '
+            'no bind/create decision applied; the challenge will '
+            'expire on the server side within 10 minutes.',
+      );
+      return false;
+    }
+    try {
+      final Map<String, dynamic> authPayload = decision.intent == 'bind'
+          ? await authClient.casdoorLinkBind(
+              nonce: nonce,
+              identifier: decision.identifier,
+              password: decision.password,
+            )
+          : await authClient.casdoorLinkCreate(
+              nonce: nonce,
+              password: decision.password,
+            );
+      await applyAuthPayload(authPayload);
+      log(
+        level: DebugLogLevel.info,
+        source: '$logAppTag.Auth/casdoor.link_challenge',
+        message:
+            'Casdoor link challenge resolved: '
+            '$logAppTag.Auth/casdoor.link_challenge — '
+            'intent=${decision.intent} succeeded; session installed.',
+      );
+      return true;
+    } catch (error) {
+      final msg = error.toString().replaceFirst('Exception: ', '');
+      log(
+        level: DebugLogLevel.error,
+        source: '$logAppTag.Auth/casdoor.link_challenge',
+        message:
+            'Casdoor link challenge failed: '
+            '$logAppTag.Auth/casdoor.link_challenge — '
+            'intent=${decision.intent} aborted: $msg.',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Casdoor link challenge failed: '
+              '$logAppTag.Auth/casdoor.link_challenge — $msg',
+            ),
+          ),
+        );
+      }
+      return false;
+    }
+  }
 
   Future<void> launchOAuth(
     String provider, {
@@ -233,6 +329,28 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
 
     try {
       final result = await authClient.casdoorExchange(code, state: state!);
+      // Two response shapes since 0.1.118:
+      //   1. Standard auth_payload (`token` + `user`) — the Casdoor
+      //      sub is already linked to a Notechondria account.
+      //   2. Link challenge (`link_challenge` + `casdoor_identity` +
+      //      `suggested_username`) — a fresh Casdoor identity needs
+      //      the user to choose between binding to an existing
+      //      legacy account or creating a new one with a chosen
+      //      password (gitea-style).
+      final linkChallenge = result['link_challenge']?.toString() ?? '';
+      if (linkChallenge.isNotEmpty) {
+        log(
+          level: DebugLogLevel.info,
+          source: '$logAppTag.Auth/casdoor.link_challenge',
+          message:
+              'Casdoor sign-in needs an account-link decision: '
+              '$logAppTag.Auth/casdoor.link_challenge — '
+              "Casdoor identity '${result['casdoor_identity']?.toString() ?? '<unknown>'}' "
+              'is not yet bound to a Notechondria account; the SPA '
+              'must show the bind/create choice dialog.',
+        );
+        return await onCasdoorLinkChallenge(result);
+      }
       await applyAuthPayload(result);
       log(
         level: DebugLogLevel.info,

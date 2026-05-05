@@ -32,6 +32,8 @@ export 'src/utils/local_attachment_store.dart'
 
 export 'src/components/auth_dialogs.dart'
     show AuthHub, EmailPasswordDialog, FeedbackText;
+export 'src/components/casdoor_link_challenge_dialog.dart'
+    show CasdoorLinkChallengeDialog, CasdoorLinkChallengeDecision;
 export 'src/components/debug_log.dart'
     show
         DebugLogCard,

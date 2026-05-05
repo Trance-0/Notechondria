@@ -481,6 +481,38 @@ class HttpNotechondriaClient
   }
 
   @override
+  Future<Map<String, dynamic>> casdoorLinkBind({
+    required String nonce,
+    required String identifier,
+    required String password,
+  }) async {
+    final uri = _uri('/auth/casdoor/link/bind/');
+    final response = await _post(uri, payload: {
+      'nonce': nonce,
+      'username': identifier,
+      'password': password,
+    });
+    return Map<String, dynamic>.from(
+      await decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> casdoorLinkCreate({
+    required String nonce,
+    required String password,
+  }) async {
+    final uri = _uri('/auth/casdoor/link/create/');
+    final response = await _post(uri, payload: {
+      'nonce': nonce,
+      'password': password,
+    });
+    return Map<String, dynamic>.from(
+      await decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
   Future<void> casdoorUnlink(String token) async {
     final uri = _uri('/auth/casdoor/unlink/');
     final response = await send(
