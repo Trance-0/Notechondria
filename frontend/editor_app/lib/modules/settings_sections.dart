@@ -249,6 +249,7 @@ class _ConnectedAccountsSection extends StatefulWidget {
     this.onBindCasdoor,
     this.onUnlinkCasdoor,
     this.casdoorLinked = false,
+    this.casdoorOrgLoginUrl,
   });
 
   /// Triggers `launchOAuth('casdoor', intent: 'bind')`. Null when
@@ -264,6 +265,15 @@ class _ConnectedAccountsSection extends StatefulWidget {
   /// extra round-trip.
   final bool casdoorLinked;
 
+  /// Org-themed Casdoor login page URL (e.g.
+  /// `https://auth.trance-0.com/login/trance-0`). Built from env
+  /// vars (`CASDOOR_ENDPOINT`, `CASDOOR_ORG_NAME`) by the backend's
+  /// `/api/v1/auth/casdoor/config/` endpoint and threaded through
+  /// the OAuth probe — no client-side hard-coding. Empty / null
+  /// when the backend is in shadow mode; the manage-account button
+  /// hides itself in that state.
+  final String? casdoorOrgLoginUrl;
+
   @override
   State<_ConnectedAccountsSection> createState() =>
       _ConnectedAccountsSectionState();
@@ -275,6 +285,7 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
     if (widget.onBindCasdoor == null) {
       return const SizedBox.shrink();
     }
+    final manageUrl = widget.casdoorOrgLoginUrl ?? '';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -287,6 +298,31 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
         ),
         const SizedBox(height: 8),
         _buildCasdoorRow(context),
+        if (manageUrl.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => url_strategy.browserRedirect(manageUrl),
+              icon: const Icon(Icons.open_in_new, size: 18),
+              label: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 4),
+                child: Text('Manage Casdoor account'),
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 6),
+        Text(
+          // 0.1.119: surface a clear escalation path when SSO is
+          // unreachable. The probe at boot logs a warning under
+          // `Editor.Auth/casdoor.config.probe`, but most users
+          // won't read the debug log — they'll see a sign-in
+          // failure and not know who to contact.
+          'If sign-in is unavailable, contact your Notechondria '
+          'admin (Casdoor backend may be off).',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
       ],
     );
   }

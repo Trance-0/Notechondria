@@ -182,6 +182,101 @@ def _check_group_access(claims: dict) -> Optional[str]:
     )
 
 
+def _sync_creator_from_claims(creator, claims: dict) -> None:
+    """Refresh a Creator's profile attributes from the verified
+    Casdoor JWT claims. Mirrors Nextcloud user_oidc's
+    `Sync user attributes on every login` pattern.
+
+    Updates (skipping any claim that comes back empty so we never
+    overwrite a meaningful local value with a blank IdP field):
+
+    - ``Creator.display_name``  — `<CASDOOR_CLAIM_DISPLAY_NAME>`
+    - ``Creator.avatar_url``    — `<CASDOOR_CLAIM_AVATAR>`
+    - ``User.first_name``       — `<CASDOOR_CLAIM_GIVEN_NAME>`
+    - ``User.last_name``        — `<CASDOOR_CLAIM_FAMILY_NAME>`
+    - ``User.email``            — `<CASDOOR_CLAIM_EMAIL>`
+
+    Deliberately **not** touched:
+
+    - ``User.username`` — changing it breaks the Django ORM PK
+      reference shape (every owner-keyed FK on courses, notes,
+      attachments resolves through the username on the Casdoor
+      side too) and external links to /api/v1/creators/<username>/.
+      The username is set once at account creation and is stable
+      for the lifetime of the account.
+    - ``Creator.image`` (local upload) — left alone so a user who
+      uploaded a custom avatar in Notechondria doesn't have it
+      silently replaced by the Casdoor avatar. The SPA prefers
+      `avatar_url` when set, otherwise falls back to `image`.
+
+    Throttled at 5-minute granularity via
+    ``casdoor_profile_synced_at`` — a busy SPA fires hundreds of
+    JWT-authenticated requests during a session and we don't want
+    each one writing to the DB. Within 5 minutes of the last
+    sync, this is a no-op.
+    """
+    from datetime import timedelta
+    from django.utils import timezone
+
+    if creator is None:
+        return
+    last_sync = creator.casdoor_profile_synced_at
+    now_utc = timezone.now()
+    if last_sync is not None and (now_utc - last_sync) < timedelta(minutes=5):
+        return
+
+    user = creator.user_id
+    user_dirty: list[str] = []
+    creator_dirty: list[str] = []
+
+    given = _claim_str(claims, "CASDOOR_CLAIM_GIVEN_NAME")
+    if given and given[:30] != user.first_name:
+        user.first_name = given[:30]
+        user_dirty.append("first_name")
+    family = _claim_str(claims, "CASDOOR_CLAIM_FAMILY_NAME")
+    if family and family[:150] != user.last_name:
+        user.last_name = family[:150]
+        user_dirty.append("last_name")
+    email = _claim_str(claims, "CASDOOR_CLAIM_EMAIL").lower()
+    if email and email[:254] != (user.email or "").lower():
+        user.email = email[:254]
+        user_dirty.append("email")
+    if user_dirty:
+        try:
+            user.save(update_fields=user_dirty)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "User profile refresh from Casdoor JWT failed: "
+                "Backend.Creators.CasdoorAuth/profile_sync — "
+                "username=%s fields=%s cause=%s.",
+                user.username,
+                ",".join(user_dirty),
+                exc,
+            )
+
+    display = _claim_str(claims, "CASDOOR_CLAIM_DISPLAY_NAME")
+    if display and display[:255] != creator.display_name:
+        creator.display_name = display[:255]
+        creator_dirty.append("display_name")
+    avatar = _claim_str(claims, "CASDOOR_CLAIM_AVATAR")
+    if avatar and avatar[:512] != creator.avatar_url:
+        creator.avatar_url = avatar[:512]
+        creator_dirty.append("avatar_url")
+    creator.casdoor_profile_synced_at = now_utc
+    creator_dirty.append("casdoor_profile_synced_at")
+    try:
+        creator.save(update_fields=creator_dirty)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "Creator profile refresh from Casdoor JWT failed: "
+            "Backend.Creators.CasdoorAuth/profile_sync — "
+            "username=%s fields=%s cause=%s.",
+            user.username,
+            ",".join(creator_dirty),
+            exc,
+        )
+
+
 def _resolve_existing_user(claims: dict) -> Optional[User]:
     """Find the Django ``User`` whose Creator already carries the
     Casdoor `sub` from these claims, or return ``None`` to signal
@@ -314,6 +409,17 @@ class CasdoorJWTAuthentication(BaseAuthentication):
             User.objects.filter(pk=user.pk).update(last_login=now())
         except Exception:  # noqa: BLE001
             pass
+        # Refresh display_name / avatar_url / first_name / last_name /
+        # email from the verified claims. Throttled at 5 minutes (see
+        # `_sync_creator_from_claims`) so a busy SPA doesn't write to
+        # the row on every JWT-authenticated request.
+        creator = (
+            Creator.objects.filter(user_id=user)
+            .select_related("user_id")
+            .first()
+        )
+        if creator is not None:
+            _sync_creator_from_claims(creator, claims)
         request.casdoor_claims = claims  # downstream views can read it
         return (user, token)
 

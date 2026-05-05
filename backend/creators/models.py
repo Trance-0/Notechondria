@@ -93,6 +93,43 @@ class Creator(models.Model):
             "See docs/integrations/casdoor-migration.md."
         ),
     )
+    # 0.1.119: profile attributes refreshed from the Casdoor JWT on
+    # every authenticated request. `display_name` is the user-facing
+    # label preferred over `User.username` on public surfaces (note
+    # author bylines, comment headers, etc.) when set; the username
+    # is left untouched on every refresh because changing it would
+    # break PK references and external links to /api/v1/creators/<id>.
+    display_name = models.CharField(
+        max_length=255, blank=True, default="",
+        help_text=(
+            "User-facing display name. Refreshed from the Casdoor "
+            "`displayName` claim on every authenticated request. "
+            "Empty = fall back to `User.first_name + last_name` and "
+            "ultimately to `User.username`. Editable from settings; "
+            "the next Casdoor sign-in re-overwrites local edits "
+            "with whatever the IdP currently has."
+        ),
+    )
+    avatar_url = models.URLField(
+        max_length=512, blank=True, default="",
+        help_text=(
+            "Remote avatar URL refreshed from the Casdoor `avatar` "
+            "claim. When set, the SPA prefers this over the locally-"
+            "uploaded `image` so a single Casdoor profile change "
+            "propagates to every Notechondria surface on next login. "
+            "Empty = use the local `image`."
+        ),
+    )
+    casdoor_profile_synced_at = models.DateTimeField(
+        blank=True, null=True,
+        help_text=(
+            "UTC timestamp of the most recent Casdoor profile refresh "
+            "(`display_name`, `avatar_url`, `User.first_name` / "
+            "`last_name` / `email`). Used by the in-process throttle "
+            "in `_sync_creator_from_claims` so a busy SPA doesn't "
+            "stamp the row on every JWT-authenticated request."
+        ),
+    )
     app_settings_json = models.TextField(blank=True, default="")
     app_settings_updated_at = models.DateTimeField(blank=True, null=True)
 
@@ -175,37 +212,12 @@ class LinkChallenge(models.Model):
         return timezone.now() >= self.expires_at
 
 
-class SocialProviderChoices(models.TextChoices):
-    GOOGLE = "google", _("Google")
-    GITHUB = "github", _("GitHub")
-
-
-class SocialAccount(models.Model):
-    """Links a Django user to an external OAuth provider account."""
-
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="social_accounts",
-    )
-    provider = models.CharField(
-        max_length=16,
-        choices=SocialProviderChoices.choices,
-    )
-    provider_uid = models.CharField(
-        max_length=255,
-        help_text="Unique ID from the OAuth provider (e.g. Google sub, GitHub id).",
-    )
-    email = models.EmailField(blank=True, default="")
-    extra_data = models.JSONField(default=dict, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        unique_together = ("provider", "provider_uid")
-
-    def __str__(self):
-        return f"{self.provider}:{self.provider_uid} → {self.user.username}"
-
+# 0.1.119: SocialAccount + SocialProviderChoices removed. The pre-
+# Casdoor era Google / GitHub OAuth flows used these to link a
+# Django user to a provider sub; post-cutover everything goes
+# through Casdoor's own provider proxy and the link is held by
+# `Creator.casdoor_sub`. The `creators_socialaccount` table is
+# dropped by migration 0033_drop_socialaccount.
 
 class GithubIntegration(models.Model):
     """Per-creator GitHub App installation used by the experimental

@@ -61,6 +61,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.119 — OIDC profile refresh + display_name/avatar_url + drop SocialAccount + Casdoor Manage button + settings menu consistency](versions/0.1.119.md)
 - [0.1.118 — gitea-style Casdoor link-challenge flow (bind existing or create new with chosen password)](versions/0.1.118.md)
 - [0.1.117 — fix post-Casdoor 401 storm: SPA + backend agree on Bearer scheme; auth diagnostic logs](versions/0.1.117.md)
 - [0.1.116 — signin URL back to org name; "Login via third party" gone; portal Debug menu de-duplicated](versions/0.1.116.md)

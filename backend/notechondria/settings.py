@@ -509,6 +509,10 @@ CASDOOR_CLAIM_FAMILY_NAME = os.getenv(
     "CASDOOR_CLAIM_FAMILY_NAME", "family_name,lastName"
 )
 CASDOOR_CLAIM_GROUPS = os.getenv("CASDOOR_CLAIM_GROUPS", "groups")
+# Avatar URL claim, refreshed onto Creator.avatar_url every login
+# (see _sync_creator_from_claims in creators/casdoor_auth.py). Empty
+# leaves the SPA falling back to the locally-uploaded Creator.image.
+CASDOOR_CLAIM_AVATAR = os.getenv("CASDOOR_CLAIM_AVATAR", "avatar")
 
 # Group-based ACL. Comma-separated list of group names that must
 # include at least one of the user's `groups` claim values for the

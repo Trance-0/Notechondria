@@ -628,11 +628,19 @@ class _ConnectedAccountsSection extends StatefulWidget {
     this.onBindCasdoor,
     this.onUnlinkCasdoor,
     this.casdoorLinked = false,
+    this.casdoorOrgLoginUrl,
   });
 
   final VoidCallback? onBindCasdoor;
   final Future<void> Function()? onUnlinkCasdoor;
   final bool casdoorLinked;
+
+  /// Org-themed Casdoor login page URL (e.g.
+  /// `https://auth.trance-0.com/login/trance-0`). Built backend-
+  /// side from `CASDOOR_ENDPOINT` + `CASDOOR_ORG_NAME` and threaded
+  /// through the boot probe so the SPA never hard-codes it. Empty
+  /// / null when the backend is in shadow mode.
+  final String? casdoorOrgLoginUrl;
 
   @override
   State<_ConnectedAccountsSection> createState() =>
@@ -642,25 +650,8 @@ class _ConnectedAccountsSection extends StatefulWidget {
 class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
   @override
   Widget build(BuildContext context) {
-    if (widget.onBindCasdoor == null) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Connected accounts',
-            style: Theme.of(context)
-                .textTheme
-                .labelLarge
-                ?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Casdoor is in shadow mode on this backend; no third-party '
-            'accounts can be linked.',
-          ),
-        ],
-      );
-    }
+    final shadowMode = widget.onBindCasdoor == null;
+    final manageUrl = widget.casdoorOrgLoginUrl ?? '';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -672,7 +663,33 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
               ?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
-        _buildCasdoorRow(context),
+        if (shadowMode)
+          const Text(
+            'Casdoor is in shadow mode on this backend; no third-party '
+            'accounts can be linked.',
+          )
+        else
+          _buildCasdoorRow(context),
+        if (manageUrl.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => url_strategy.browserRedirect(manageUrl),
+              icon: const Icon(Icons.open_in_new, size: 18),
+              label: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 4),
+                child: Text('Manage Casdoor account'),
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 6),
+        Text(
+          'If sign-in is unavailable, contact your Notechondria '
+          'admin (Casdoor backend may be off).',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
       ],
     );
   }

@@ -3,7 +3,7 @@ Admin view registration for the creators app.
 """
 from django.contrib import admin
 
-from .models import Creator, SocialAccount
+from .models import Creator
 
 
 class MemberInline(admin.TabularInline):
@@ -32,18 +32,11 @@ class CreatorAdmin(admin.ModelAdmin):
         return obj.user_id.email
 
 
-@admin.register(SocialAccount)
-class SocialAccountAdmin(admin.ModelAdmin):
-    list_display = ("owner_name", "provider", "provider_uid", "email", "created_at")
-    list_filter = ("provider",)
-    search_fields = ("user__username", "user__first_name", "user__last_name", "email", "provider_uid")
-    readonly_fields = ("created_at",)
-
-    @admin.display(description="Owner", ordering="user__first_name")
-    def owner_name(self, obj):
-        name = obj.user.get_full_name()
-        return name if name.strip() else obj.user.username
-
+# 0.1.119: SocialAccountAdmin removed alongside the SocialAccount
+# model — Casdoor handles the per-provider linkage now via its own
+# `Providers` tab on the Application, and Notechondria stores only
+# the `Creator.casdoor_sub` foreign reference. See migration
+# 0033_drop_socialaccount.
 
 admin.site.site_header = "Notechondria Admin"
 admin.site.site_title = "Notechondria Admin"

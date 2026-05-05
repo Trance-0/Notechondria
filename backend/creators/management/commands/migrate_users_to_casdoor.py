@@ -72,7 +72,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand, CommandError
 
-from creators.models import Creator, SocialAccount, SocialProviderChoices
+from creators.models import Creator
 from creators.casdoor_auth import _normalize_pem
 
 
@@ -393,15 +393,13 @@ class Command(BaseCommand):
         if user.is_superuser:
             cu.isAdmin = True
 
-        # Provider linkage — pre-populate the Casdoor User's google /
-        # github fields from any SocialAccount rows we have. Casdoor
-        # uses these on its own provider sign-in flows to find the
-        # existing user instead of provisioning a duplicate.
-        for link in SocialAccount.objects.filter(user=user):
-            if link.provider == SocialProviderChoices.GOOGLE:
-                cu.google = link.provider_uid
-            elif link.provider == SocialProviderChoices.GITHUB:
-                cu.github = link.provider_uid
+        # 0.1.119: SocialAccount-backed provider pre-population is
+        # gone along with the model. The migration command now only
+        # ports the legacy email + password hash; provider linkage
+        # (google / github) is set up directly on the Casdoor side
+        # via the Application's Providers tab. Re-running this
+        # command on a database where SocialAccount has already been
+        # dropped (post-migration 0033) is the supported path.
 
         if existing_id:
             # Update path — preserve the existing Casdoor sub. The

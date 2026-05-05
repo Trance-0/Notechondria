@@ -560,6 +560,7 @@ class _SignInSecurityPage extends StatelessWidget {
                 onBindCasdoor: p.widget.onBindCasdoor,
                 onUnlinkCasdoor: p.widget.onUnlinkCasdoor,
                 casdoorLinked: p.widget.settings?['casdoor_linked'] == true,
+                casdoorOrgLoginUrl: p.widget.casdoorOrgLoginUrl,
               ),
             ),
           ),

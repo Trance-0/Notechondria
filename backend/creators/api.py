@@ -67,6 +67,33 @@ def auth_payload(user: User, *, token: str, request=None):
     own user portal at `auth.trance-0.com`.
     """
     creator = ensure_creator_avatar(ensure_creator(user))
+    # Display name resolution (since 0.1.119): the operator-visible
+    # label preferred on public surfaces (note bylines, comment
+    # headers, sidebar header). Priority chain:
+    #   1. `Creator.display_name` — refreshed from Casdoor's
+    #      `displayName` claim every login (see
+    #      `_sync_creator_from_claims`); user can also edit it from
+    #      the settings page (next sync re-overwrites).
+    #   2. `User.first_name + last_name` — historical fallback that
+    #      the SPA already used; preserved for accounts where
+    #      Casdoor doesn't supply a `displayName`.
+    #   3. `User.username` — last-resort. Username is stable and
+    #      never changed after account creation, so this is always
+    #      a valid identifier.
+    fallback_name = f"{user.first_name} {user.last_name}".strip()
+    display_name = creator.display_name or fallback_name or user.username
+    # Avatar URL resolution: prefer the remote Casdoor avatar
+    # (`Creator.avatar_url`, refreshed each login) over the locally-
+    # uploaded `Creator.image`. Empty `avatar_url` falls back to the
+    # local file's media URL (or "" when no upload exists). This way
+    # a Casdoor profile-picture change propagates to every
+    # Notechondria surface on next login without re-uploading.
+    image_url = (
+        creator.avatar_url
+        or absolute_media_url(
+            request, creator.image.url if creator.image else "",
+        )
+    )
     return {
         "token": token,
         "user": {
@@ -75,12 +102,13 @@ def auth_payload(user: User, *, token: str, request=None):
             "username": user.username,
             "first_name": user.first_name,
             "last_name": user.last_name,
-            "display_name": f"{user.first_name} {user.last_name}".strip() or user.username,
+            "display_name": display_name,
             "is_staff": user.is_staff,
             "is_superuser": user.is_superuser,
             "motto": creator.motto or "",
             "social_link": creator.social_link or "",
-            "image_url": absolute_media_url(request, creator.image.url if creator.image else ""),
+            "image_url": image_url,
+            "avatar_url": creator.avatar_url or "",
             "editor_mode": creator.editor_mode,
             "theme_preset": creator.theme_preset,
             "theme_mode": creator.theme_mode,
@@ -89,6 +117,10 @@ def auth_payload(user: User, *, token: str, request=None):
             "app_settings_updated_at": creator.app_settings_updated_at.isoformat()
             if creator.app_settings_updated_at
             else None,
+            "casdoor_profile_synced_at":
+                creator.casdoor_profile_synced_at.isoformat()
+                if creator.casdoor_profile_synced_at
+                else None,
         },
     }
 
@@ -189,7 +221,13 @@ class SettingsSerializer(serializers.Serializer):
     email = serializers.EmailField(required=False)
     motto = serializers.CharField(allow_blank=True, required=False, max_length=100)
     social_link = serializers.URLField(allow_blank=True, required=False)
+    # 0.1.119: optional user-facing label preferred over username on
+    # public surfaces. Refreshed every login from the Casdoor JWT —
+    # editing it from the SPA will be re-overwritten by the next
+    # sign-in unless the operator also updates Casdoor's user record.
+    display_name = serializers.CharField(allow_blank=True, required=False, max_length=255)
     image_url = serializers.CharField(read_only=True)
+    avatar_url = serializers.CharField(read_only=True)
     avatar = serializers.ImageField(write_only=True, required=False)
     theme_preset = serializers.CharField(required=False, allow_blank=False, max_length=32)
     theme_mode = serializers.ChoiceField(
@@ -215,6 +253,28 @@ class SettingsSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         request = self.context.get("request") if self.context else None
+        # Same priority chain as auth_payload: prefer the explicit
+        # `Creator.display_name` (refreshed from Casdoor each login),
+        # fall back to first+last name, then username. Mirrors the
+        # SPA's expectation so settings page + auth payload show the
+        # same label.
+        fallback_name = (
+            f"{instance.user_id.first_name} {instance.user_id.last_name}".strip()
+        )
+        display_name = (
+            instance.display_name
+            or fallback_name
+            or instance.user_id.username
+        )
+        # Avatar: prefer remote (Casdoor) over local file. See
+        # auth_payload for the rationale.
+        image_url = (
+            instance.avatar_url
+            or absolute_media_url(
+                request,
+                instance.image.url if instance.image else "",
+            )
+        )
         return {
             "username": instance.user_id.username,
             "first_name": instance.user_id.first_name,
@@ -224,7 +284,9 @@ class SettingsSerializer(serializers.Serializer):
             "is_superuser": instance.user_id.is_superuser,
             "motto": instance.motto or "",
             "social_link": instance.social_link or "",
-            "image_url": absolute_media_url(request, instance.image.url if instance.image else ""),
+            "display_name": display_name,
+            "image_url": image_url,
+            "avatar_url": instance.avatar_url or "",
             "editor_mode": instance.editor_mode,
             "theme_preset": instance.theme_preset,
             "theme_mode": instance.theme_mode,
@@ -232,6 +294,10 @@ class SettingsSerializer(serializers.Serializer):
             "api_base_url": instance.api_base_url,
             "mcp_skill_md": instance.mcp_skill_md or "",
             "casdoor_linked": bool(instance.casdoor_sub),
+            "casdoor_profile_synced_at":
+                instance.casdoor_profile_synced_at.isoformat()
+                if instance.casdoor_profile_synced_at
+                else None,
             "app_settings": creator_app_settings_payload(instance),
             "app_settings_updated_at": instance.app_settings_updated_at.isoformat()
             if instance.app_settings_updated_at
@@ -292,6 +358,13 @@ class SettingsSerializer(serializers.Serializer):
             user.save(update_fields=["username", "email", "first_name", "last_name"])
         instance.motto = validated_data.get("motto", instance.motto)
         instance.social_link = validated_data.get("social_link", instance.social_link)
+        # 0.1.119: editable display_name. The next Casdoor sign-in
+        # re-overwrites this from the IdP's `displayName` claim, so
+        # operator-side edits are best-effort overrides for sessions
+        # in flight rather than a permanent record. The user-facing
+        # text in the SPA settings card calls this out.
+        if "display_name" in validated_data:
+            instance.display_name = validated_data["display_name"][:255]
         instance.editor_mode = validated_data.get("editor_mode", instance.editor_mode)
         if "mcp_skill_md" in validated_data:
             instance.mcp_skill_md = validated_data["mcp_skill_md"]
@@ -806,6 +879,7 @@ class CasdoorExchangeApiView(APIView):
             _claim_groups,
             _claim_str,
             _resolve_existing_user,
+            _sync_creator_from_claims,
             verify_token,
         )
 
@@ -903,6 +977,11 @@ class CasdoorExchangeApiView(APIView):
                 User.objects.filter(pk=user.pk).update(last_login=now())
             except Exception:  # noqa: BLE001
                 pass
+            # Refresh profile fields from the freshly-verified JWT
+            # so the user's auth_payload reflects the latest Casdoor
+            # state (avatar, displayName, first/last name, email).
+            creator = ensure_creator(user)
+            _sync_creator_from_claims(creator, claims)
             return Response(
                 auth_payload(user, token=access_token, request=request)
             )
@@ -1044,6 +1123,15 @@ class CasdoorLinkBindApiView(APIView):
         creator = ensure_creator(user)
         creator.casdoor_sub = challenge.sub
         creator.save(update_fields=["casdoor_sub"])
+        # 0.1.119: refresh profile (display_name, avatar_url, first/
+        # last name, email) from the captured JWT now that the link
+        # is established. The token stored on the challenge is still
+        # valid (<10 min old); re-verifying it gives us the full
+        # claims dict without re-running the OAuth code exchange.
+        from .casdoor_auth import _sync_creator_from_claims, verify_token
+        link_claims = verify_token(challenge.access_token) or {}
+        if link_claims:
+            _sync_creator_from_claims(creator, link_claims)
         access_token = challenge.access_token
         challenge.delete()
         try:
@@ -1159,6 +1247,14 @@ class CasdoorLinkCreateApiView(APIView):
         creator.casdoor_sub = challenge.sub
         creator.save(update_fields=["casdoor_sub"])
         seed_inbox_and_welcome_note(creator)
+        # 0.1.119: stamp display_name + avatar_url from the captured
+        # JWT so the freshly-created account already shows the
+        # Casdoor avatar / display-name on first paint instead of
+        # waiting for the next refresh.
+        from .casdoor_auth import _sync_creator_from_claims, verify_token
+        link_claims = verify_token(challenge.access_token) or {}
+        if link_claims:
+            _sync_creator_from_claims(creator, link_claims)
         access_token = challenge.access_token
         challenge.delete()
         try:

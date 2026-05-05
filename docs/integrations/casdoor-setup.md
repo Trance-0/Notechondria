@@ -327,3 +327,115 @@ to pick up the routes. The frontend boot probe writes a
 warning to `Editor.Auth/casdoor.config.probe` with the full
 URL it tried, so the operator can grep the log for the exact
 backend that's stale.
+
+## 7. Profile-sync custom JWT field (since 0.1.119)
+
+0.1.119 added a per-login profile refresh: every authenticated
+request runs `_sync_creator_from_claims(creator, claims)` which
+copies the JWT's profile attributes onto the local `Creator`
+row. The fields synced are:
+
+| JWT claim | Notechondria attribute | Notes |
+| --- | --- | --- |
+| `displayName` | `Creator.display_name` | preferred over username on public surfaces |
+| `avatar` | `Creator.avatar_url` | remote URL; preferred over the locally-uploaded `Creator.image` |
+| `firstName` | `User.first_name` | |
+| `lastName` | `User.last_name` | |
+| `email` | `User.email` | |
+
+Notechondria deliberately **never** writes back to
+`User.username`. Username is the stable PK reference shape —
+changing it would break every owner-keyed FK on courses, notes,
+attachments, plus external links to `/api/v1/creators/<username>/`.
+Casdoor's username can be edited freely; Notechondria's local
+username only gets set once at account creation (either through
+the bind path against an existing legacy account, or through
+the create-with-password path off the gitea-style link
+challenge in 0.1.118).
+
+The sync is throttled to **5-minute granularity** via
+`Creator.casdoor_profile_synced_at` — a busy SPA fires hundreds
+of JWT-authenticated requests during a session and we don't
+want each one writing to the DB. Within 5 minutes of the last
+sync, the helper is a no-op.
+
+### `avatar` Custom JWT field — Casdoor admin UI walkthrough
+
+Casdoor doesn't emit `avatar` by default; you have to add it
+explicitly under the application's Token tab. Steps:
+
+1. Casdoor admin UI → **Identity > Applications > notechondria**.
+2. Open the **Token** sub-tab.
+3. Scroll to **Custom JWT fields** and click **Add**.
+4. Fill in:
+   - **Name**: `avatar`
+   - **Category**: `Existing Field`
+   - **Value**: `Avatar` (the user-record's avatar URL field;
+     Casdoor stores avatars at `<endpoint>/files/avatar/<org>/<user>.png`)
+   - **Type**: `String`
+5. Save the application.
+
+After this, Casdoor's emitted JWT will include `avatar` like:
+
+```json
+{
+  "sub": "<uuid>",
+  "displayName": "ncadmin",
+  "avatar": "https://auth.trance-0.com/files/avatar/notechondria/Trance-0.png",
+  "email": "user@example.com",
+  "firstName": "",
+  "lastName": "",
+  "groups": ["trance-0/app-notechondria", ...]
+}
+```
+
+The default Notechondria env var `CASDOOR_CLAIM_AVATAR=avatar`
+already points at that claim, so no further config is needed
+when the Casdoor side names the field `avatar` exactly. Override
+via `CASDOOR_CLAIM_AVATAR=picture` (or any comma-separated
+list) if your Casdoor instance emits a different name —
+following the same pattern as the other `CASDOOR_CLAIM_*`
+mappings from §6.
+
+### Recommended Custom JWT fields, full set
+
+For a setup that maps cleanly onto Notechondria's profile
+refresh, the application's Token > Custom JWT fields should
+look like (the user-supplied JWT example for `auth.trance-0.com`
+matches this shape):
+
+| Name | Category | Value | Type |
+| --- | --- | --- | --- |
+| `preferred_username` | Existing Field | `Name` | String |
+| `displayName` | Existing Field | `DisplayName` | String |
+| `email` | Existing Field | `Email` | String |
+| `avatar` | Existing Field | `Avatar` | String |
+| `groups` | Existing Field | `Groups` | Array |
+
+`firstName` / `lastName` are part of Casdoor's standard JWT
+shape and don't need a custom-fields entry. `sub` is Casdoor's
+internal UUID — never edit it.
+
+### What an end-to-end refresh looks like
+
+When a user signs into Casdoor, edits their display name in the
+Casdoor user portal at `<endpoint>/account/<orgname>/<username>`,
+and then opens any Notechondria SPA tab:
+
+1. The SPA's stored Casdoor JWT triggers
+   `CasdoorJWTAuthentication.authenticate` on the next
+   authenticated request.
+2. JWT verifies, group ACL passes, user resolves via
+   `Creator.casdoor_sub`.
+3. `_sync_creator_from_claims(creator, claims)` runs —
+   throttled to 5 minutes, but the user's edit is fresh enough
+   to push `Creator.display_name` / `Creator.avatar_url` /
+   `User.first_name` etc. to whatever Casdoor now reports.
+4. The next page that reads `auth_payload` (or
+   `/api/v1/settings/`) sees the updated `display_name` and
+   `image_url` fields and re-renders the avatar / byline.
+
+No frontend code change is required — the SPA already prefers
+the backend's `image_url` over the local `avatar_url` field
+explicitly when the backend resolves the priority chain
+server-side (see `auth_payload` in `creators/api.py`).

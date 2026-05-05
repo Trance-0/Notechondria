@@ -81,23 +81,21 @@ class _SignInSecurityPage extends StatelessWidget {
             // Post-Casdoor cutover: account creation, password change,
             // email change, and per-device session management all
             // live on the Casdoor user portal at `auth.trance-0.com`.
-            // Casdoor bind / unlink toggles still live one row up
-            // in the Account page.
-            if (p.widget.onSaveMcpSkill != null) ...[
-              const SizedBox(height: 16),
-              Card(
-                clipBehavior: Clip.antiAlias,
-                margin: EdgeInsets.zero,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: McpSkillSection(
-                    initialContent:
-                        p.widget.settings?['mcp_skill_md']?.toString() ?? '',
-                    onSave: p.widget.onSaveMcpSkill!,
-                  ),
-                ),
-              ),
-            ],
+            // Casdoor bind / unlink toggles live one row up in the
+            // Account page.
+            //
+            // 0.1.119: Agent Skill (MCP skill markdown) moved to the
+            // API settings subpage so it sits next to the MCP API
+            // key + base URL controls — matches the editor app's
+            // placement. Sign-in & Security is now Casdoor-only.
+            const SizedBox(height: 8),
+            Text(
+              'Account creation, password change, email change, and '
+              'per-device session management live on the Casdoor user '
+              'portal. Casdoor bind / unlink controls are on the '
+              'Account page.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
           ],
         ),
       ),
@@ -210,6 +208,26 @@ class _ApiSettingsPageState extends State<_ApiSettingsPage> {
                     'leakage.',
               ),
             ],
+            // 0.1.119: Agent Skill moved here from Sign-in &
+            // Security. The MCP skill markdown is an
+            // MCP-integration concern, not an account / security
+            // setting; placing it next to the MCP API key matches
+            // the editor app's pattern.
+            if (p.widget.onSaveMcpSkill != null) ...[
+              const SizedBox(height: 16),
+              Card(
+                clipBehavior: Clip.antiAlias,
+                margin: EdgeInsets.zero,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: McpSkillSection(
+                    initialContent:
+                        p.widget.settings?['mcp_skill_md']?.toString() ?? '',
+                    onSave: p.widget.onSaveMcpSkill!,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -243,6 +261,7 @@ class _ConnectedAccountsPage extends StatelessWidget {
                   onBindCasdoor: p.widget.onBindCasdoor,
                   onUnlinkCasdoor: p.widget.onUnlinkCasdoor,
                   casdoorLinked: p.widget.settings?['casdoor_linked'] == true,
+                  casdoorOrgLoginUrl: p.widget.casdoorOrgLoginUrl,
                 ),
               ),
             ),

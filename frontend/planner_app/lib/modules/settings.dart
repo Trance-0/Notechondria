@@ -462,15 +462,16 @@ class _SettingsPageState extends State<_SettingsPage> {
                     onUnlinkCasdoor: widget.onUnlinkCasdoor,
                     casdoorLinked:
                         widget.settings?['casdoor_linked'] == true,
+                    casdoorOrgLoginUrl: widget.casdoorOrgLoginUrl,
                   ),
-                  if (widget.onSaveMcpSkill != null) ...[
-                    const SizedBox(height: 16),
-                    McpSkillSection(
-                      initialContent:
-                          widget.settings?['mcp_skill_md']?.toString() ?? '',
-                      onSave: widget.onSaveMcpSkill!,
-                    ),
-                  ],
+                  // 0.1.119: Agent Skill (McpSkillSection) moved out
+                  // of the account card and into a sibling
+                  // "Integrations" card below — matches editor's
+                  // API-settings placement so the MCP skill markdown
+                  // doesn't read as an account / sign-in concern.
+                  // TODO: when planner grows subpages, move
+                  // Integrations into a dedicated `_ApiSettingsPage`
+                  // like editor + portal.
                 ],
               ],
             ),
@@ -480,6 +481,17 @@ class _SettingsPageState extends State<_SettingsPage> {
           const SizedBox(height: 16),
           widget.githubSyncCardBuilder?.call() ??
               const GithubSyncExperimentalCard(),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: McpSkillSection(
+                initialContent:
+                    widget.settings?['mcp_skill_md']?.toString() ?? '',
+                onSave: widget.onSaveMcpSkill!,
+              ),
+            ),
+          ),
         ],
         const SizedBox(height: 16),
         Card(
@@ -675,11 +687,17 @@ class _ConnectedAccountsSection extends StatefulWidget {
     this.onBindCasdoor,
     this.onUnlinkCasdoor,
     this.casdoorLinked = false,
+    this.casdoorOrgLoginUrl,
   });
 
   final VoidCallback? onBindCasdoor;
   final Future<void> Function()? onUnlinkCasdoor;
   final bool casdoorLinked;
+
+  /// Org-themed Casdoor login page URL built from env vars
+  /// (`CASDOOR_ENDPOINT` + `CASDOOR_ORG_NAME`) on the backend.
+  /// Empty / null in shadow mode.
+  final String? casdoorOrgLoginUrl;
 
   @override
   State<_ConnectedAccountsSection> createState() =>
@@ -689,7 +707,9 @@ class _ConnectedAccountsSection extends StatefulWidget {
 class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
   @override
   Widget build(BuildContext context) {
-    if (widget.onBindCasdoor == null) {
+    final shadowMode = widget.onBindCasdoor == null;
+    final manageUrl = widget.casdoorOrgLoginUrl ?? '';
+    if (shadowMode && manageUrl.isEmpty) {
       return const SizedBox.shrink();
     }
     return Column(
@@ -703,7 +723,27 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
               ?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
-        _buildCasdoorRow(context),
+        if (!shadowMode) _buildCasdoorRow(context),
+        if (manageUrl.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => url_strategy.browserRedirect(manageUrl),
+              icon: const Icon(Icons.open_in_new, size: 18),
+              label: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 4),
+                child: Text('Manage Casdoor account'),
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 6),
+        Text(
+          'If sign-in is unavailable, contact your Notechondria '
+          'admin (Casdoor backend may be off).',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
       ],
     );
   }
