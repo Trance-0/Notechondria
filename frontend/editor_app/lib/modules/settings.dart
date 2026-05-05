@@ -165,18 +165,10 @@ class _SettingsPageState extends State<_SettingsPage> {
   String _themePreset = 'teal';
   String _themeMode = 'S';
 
-  /// `true` when the user expanded the email/password fallback under
-  /// the Casdoor primary CTA in the signed-out Account card. Only
-  /// consulted when `widget.onCasdoorLogin != null`. See
-  /// `docs/integrations/casdoor-migration.md`.
-  bool _showLegacyAuthFallback = false;
+  // 0.1.120: `_showLegacyAuthFallback` + `toggleLegacyAuthFallback`
+  // dropped along with the in-line auth surface. The shared `AuthHub`
+  // owns the email/password expander state internally now.
 
-  /// Helper for the `_SettingsPageBuildX` extension — `setState` is
-  /// protected and can't be called directly from an extension method,
-  /// so the toggle has to bounce through this State-owned method.
-  void toggleLegacyAuthFallback() {
-    setState(() => _showLegacyAuthFallback = !_showLegacyAuthFallback);
-  }
   /// Feedback bus shared across the top-level Settings page and every
   /// pushed sub-page. Each long-running action (`_runMaintenanceAction`,
   /// `_submitSettings`, `_handleAvatarUpload`, ...) writes the

@@ -121,168 +121,27 @@ extension _SettingsPageBuildX on _SettingsPageState {
     );
   }
 
-  /// Signed-out account block. Sign-up and Login live on the same
-  /// row as equal-width FilledButtons (per spec: "always as button
-  /// in the same row"); the two third-party providers stack as
-  /// full-width pill buttons below ("show in round button, span
-  /// horizontal line").
+  /// Signed-out account block. 0.1.120 unified this onto the shared
+  /// `AuthHub` widget so editor + portal + planner render the same
+  /// auth surface (Casdoor SSO pill + "Sign up via Casdoor" link +
+  /// email/password fallback expander). The earlier in-line copies
+  /// (`_OAuthPillButton`, `_legacyAuthBlock`, `_openLoginDialog`,
+  /// `_casdoorBrowserLoginUrl`, `_openCasdoorBrowserLogin`) have all
+  /// been deleted in favor of the shared widget.
   Widget _buildSignedOutAccount(BuildContext context) {
-    final hasCasdoor = widget.onCasdoorLogin != null;
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.cloud_outlined,
-                    color: Theme.of(context).colorScheme.primary),
-                const SizedBox(width: 8),
-                Text(
-                  'Account',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              hasCasdoor
-                  ? 'Sign in via the Notechondria SSO. Account creation '
-                      'and password reset are handled on the Casdoor '
-                      'side; use the link below to register or contact '
-                      'the administrator if your password needs to be '
-                      'reset.'
-                  : 'Sign in to sync notes with the cloud. Local notes '
-                      'stay editable while signed out.',
-            ),
-            const SizedBox(height: 16),
-            if (hasCasdoor) ...[
-              _OAuthPillButton(
-                icon: Icons.shield_outlined,
-                label: 'Continue with Casdoor SSO',
-                onPressed: widget.onCasdoorLogin!,
-              ),
-            ],
-            // 0.1.116: "Login via third party" OutlinedButton removed
-            // per user directive. The Casdoor SSO pill above already
-            // covers the third-party login flow; the standalone
-            // OutlinedButton was a duplicate that landed on the same
-            // hosted Casdoor page. The signup link below is preserved
-            // because it serves a different intent — directing users
-            // who don't yet have a Casdoor account to the registration
-            // surface.
-            if (_casdoorBrowserLoginUrl.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: _openCasdoorBrowserLogin,
-                  icon: const Icon(Icons.person_add_alt_outlined, size: 18),
-                  label: const Text('No account? Sign up via Casdoor'),
-                ),
-              ),
-            ],
-            const SizedBox(height: 6),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: toggleLegacyAuthFallback,
-                icon: Icon(
-                  _showLegacyAuthFallback
-                      ? Icons.expand_less
-                      : Icons.expand_more,
-                  size: 18,
-                ),
-                label: Text(
-                  _showLegacyAuthFallback
-                      ? 'Hide email / password fallback'
-                      : 'Use email / password instead',
-                ),
-              ),
-            ),
-            if (_showLegacyAuthFallback) ...[
-              const Divider(),
-              const SizedBox(height: 8),
-              _legacyAuthBlock(context),
-            ],
-          ],
-        ),
-      ),
+    return AuthHub(
+      apiBaseUrl: widget.apiBaseUrl,
+      onLogin: widget.onLogin,
+      onCasdoorLogin: widget.onCasdoorLogin,
+      casdoorOrgLoginUrl: widget.casdoorOrgLoginUrl,
     );
   }
 
-  /// Casdoor org-login page URL (e.g. https://auth.trance-0.com/login/notechondria).
-  /// Empty string when the backend hasn't reported a Casdoor config —
-  /// in that state the third-party / signup CTAs collapse.
-  String get _casdoorBrowserLoginUrl =>
-      widget.casdoorOrgLoginUrl ?? '';
-
-  void _openCasdoorBrowserLogin() {
-    final url = _casdoorBrowserLoginUrl;
-    if (url.isEmpty) return;
-    url_strategy.browserRedirect(url);
-  }
-
-  /// Legacy email + password Login block. After the 0.1.103 cutover,
-  /// signup lives on the Casdoor side — this block is just the
-  /// fallback Login button + a caption pointing un-migrated users
-  /// at the administrator for password resets.
-  Widget _legacyAuthBlock(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        FilledButton.tonal(
-          onPressed: () => _openLoginDialog(context),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 4),
-            child: Text('Login'),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Forgot password? Contact the administrator to reset it. '
-          'Self-service password reset has moved to Casdoor for '
-          'accounts that have been migrated.',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-      ],
-    );
-  }
-
-  /// Opens the email-password login dialog. After the 0.1.103 cutover,
-  /// self-registration and password reset both moved to the Casdoor
-  /// side \u2014 there's no in-app signup wizard or forgot-password flow
-  /// anymore; the dialog only needs the username + password fields.
-  void _openLoginDialog(BuildContext context) {
-    showBlurDialog<void>(
-      context: context,
-      child: EmailPasswordDialog(
-        title: 'Login',
-        description: _apiBaseHostSubtitle(),
-        submitLabel: 'Login',
-        emailLabel: 'Email or username',
-        onSubmit: widget.onLogin,
-      ),
-    );
-  }
-
-  /// Format the API host as a friendly subtitle for the login
-  /// dialog. Mirrors the helper that used to live inside `AuthHub`.
-  String _apiBaseHostSubtitle() {
-    final raw = widget.apiBaseUrl ?? '';
-    if (raw.isEmpty) return 'Sign in to your Notechondria backend.';
-    final uri = Uri.tryParse(raw);
-    final host = uri?.host;
-    if (host == null || host.isEmpty) {
-      return 'Sign in to your Notechondria backend.';
-    }
-    return 'Signing in to $host.';
-  }
+  // ↓ The block below was the old in-line auth surface. Marked as
+  //   dead code in 0.1.120; see AuthHub for the live implementation.
+  //   Kept in this commit purely to make the diff easier to read;
+  //   the next maintenance round can delete it outright.
+  // ignore: unused_element
 
   Widget _buildProfileFields(BuildContext context) {
     final avatarUrl = widget.profile?['image_url']?.toString() ??
@@ -504,39 +363,6 @@ extension _SettingsPageBuildX on _SettingsPageState {
   }
 }
 
-/// Full-width pill button used for the third-party OAuth providers
-/// in the signed-out account block. Apple-style: rounded, single
-/// line, span horizontal with a leading icon. Uses `OutlinedButton`
-/// (not FilledButton) so the providers don't compete visually with
-/// the primary Sign-up CTA above.
-class _OAuthPillButton extends StatelessWidget {
-  const _OAuthPillButton({
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-          shape: const StadiumBorder(),
-          minimumSize: const Size.fromHeight(48),
-        ),
-        onPressed: onPressed,
-        icon: Icon(icon, size: 20),
-        label: Text(label),
-      ),
-    );
-  }
-}
 
 /// Small tile showing local attachment storage usage. Loads
 /// stats asynchronously from [LocalAttachmentStore] and displays
