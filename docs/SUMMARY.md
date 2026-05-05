@@ -61,6 +61,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.112 — Casdoor signin URL uses CASDOOR_APP_NAME (not org name)](versions/0.1.112.md)
 - [0.1.111 — Restore email/username + password login (Casdoor-down fallback)](versions/0.1.111.md)
 - [0.1.110 — Casdoor JWT claim mapping + group ACL (Nextcloud user_oidc-style)](versions/0.1.110.md)
 - [0.1.109 — Inbox unsubscribe works offline + no 3s delay; Casdoor signin_url moved to org-themed page](versions/0.1.109.md)

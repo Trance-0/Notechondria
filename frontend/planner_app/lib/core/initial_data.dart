@@ -37,17 +37,26 @@ extension _AppShellInitialDataX on _AppShellState {
       try {
         final config = await widget.client.getCasdoorConfig();
         final configured = config['configured'] == true;
-        // Derive the Casdoor org-login URL from the same payload so
+        // Derive the Casdoor login URL from the same payload so
         // AuthHub's "Login via third party" + "Sign up via Casdoor"
-        // CTAs can navigate the browser there. Casdoor exposes this
-        // page at `${endpoint}/login/${organization}`.
+        // CTAs can navigate the browser to the hosted per-app login
+        // page at `${endpoint}/login/${application}`. Prefer the
+        // backend's `signin_url` when present so the URL stays
+        // consistent across SPA + backend; only synthesize from
+        // endpoint+application as a fallback. 0.1.112 corrected
+        // this from `${organization}` after the user renamed their
+        // Casdoor org from `notechondria` to `trance-0`.
         final endpoint =
             (config['endpoint']?.toString() ?? '').replaceAll(RegExp(r'/+$'), '');
-        final orgName = config['organization']?.toString() ?? '';
-        final orgLoginUrl =
-            (configured && endpoint.isNotEmpty && orgName.isNotEmpty)
-                ? '$endpoint/login/$orgName'
-                : null;
+        final appName = config['application']?.toString() ?? '';
+        final backendSigninUrl = config['signin_url']?.toString() ?? '';
+        final orgLoginUrl = !configured
+            ? null
+            : (backendSigninUrl.isNotEmpty
+                ? backendSigninUrl
+                : (endpoint.isNotEmpty && appName.isNotEmpty
+                    ? '$endpoint/login/$appName'
+                    : null));
         if (mounted &&
             (configured != _casdoorConfigured ||
                 orgLoginUrl != _casdoorOrgLoginUrl)) {

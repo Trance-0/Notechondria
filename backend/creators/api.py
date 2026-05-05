@@ -614,20 +614,28 @@ class CasdoorConfigApiView(APIView):
         )
         if not configured:
             return Response({"configured": False})
-        # signin_url points at the org-themed login page
-        # (`/login/<orgName>`) rather than the raw OAuth authorize
+        # signin_url points at the application-themed login page
+        # (`/login/<appName>`) rather than the raw OAuth authorize
         # endpoint. Casdoor accepts the same OAuth params on both,
-        # but `/login/<orgName>` shows the branded login UI users
-        # expect ("Continue with Notechondria via auth.trance-0.com")
-        # instead of a generic OAuth consent screen. Per user
-        # request in 0.1.109.
+        # but `/login/<appName>` shows the branded per-app login
+        # UI ("Continue with Notechondria via auth.trance-0.com")
+        # instead of the org's generic consent screen.
+        #
+        # 0.1.112 corrected this from `/login/<orgName>` to
+        # `/login/<appName>`: the original 0.1.109 path produced
+        # the right URL only because the user's `CASDOOR_ORG_NAME`
+        # at that time was also `notechondria`. After the user
+        # renamed the org to `trance-0` (with `CASDOOR_APP_NAME`
+        # still `notechondria`), the org-themed path landed at
+        # `/login/trance-0` — not the `/login/notechondria` they
+        # asked for. App-name is the stable identifier.
         return Response({
             "configured": True,
             "endpoint": endpoint,
             "client_id": settings.CASDOOR_CLIENT_ID,
             "organization": settings.CASDOOR_ORG_NAME,
             "application": settings.CASDOOR_APP_NAME,
-            "signin_url": f"{endpoint}/login/{settings.CASDOOR_ORG_NAME}",
+            "signin_url": f"{endpoint}/login/{settings.CASDOOR_APP_NAME}",
         })
 
 
