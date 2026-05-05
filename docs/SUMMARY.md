@@ -61,6 +61,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.114 — unblock backend Docker build: requests~=2.33.0 to satisfy casdoor 1.41](versions/0.1.114.md)
 - [0.1.113 — Backend prints build provenance at every worker boot](versions/0.1.113.md)
 - [0.1.112 — Casdoor signin URL uses CASDOOR_APP_NAME (not org name)](versions/0.1.112.md)
 - [0.1.111 — Restore email/username + password login (Casdoor-down fallback)](versions/0.1.111.md)
