@@ -203,8 +203,23 @@ mixin HttpClientInternalsMixin {
 
   /// Build the standard request headers: always `Accept:
   /// application/json`; optionally `Content-Type: application/json`
-  /// (set true for POST/PATCH/PUT bodies); `Authorization: Token
-  /// <token>` when token is non-null and non-empty.
+  /// (set true for POST/PATCH/PUT bodies); and an `Authorization:`
+  /// header whose scheme is picked from the token shape.
+  ///
+  /// Three token shapes flow through Notechondria's auth chain:
+  /// * Casdoor JWTs — base64-encoded, always start with `eyJ`. The
+  ///   backend's `CasdoorJWTAuthentication` keyword is `Bearer`.
+  /// * Notechondria MCP API keys — `ntc_<sha>`. The backend's
+  ///   `ApiKeyAuthentication` keyword is also `Bearer`.
+  /// * DRF stock authtoken hex — 40 hex chars, issued by the legacy
+  ///   email/password `/auth/login/` (restored in 0.1.111). The
+  ///   keyword is `Token`.
+  ///
+  /// 0.1.117: the prior implementation hard-coded `Token <token>`
+  /// for every shape, so JWTs and API keys reached DRF's stock
+  /// `TokenAuthentication`, which looked the value up in
+  /// `authtoken_token` and 401'd with `Invalid token` — the exact
+  /// symptom the user reported in the post-Casdoor sign-in flow.
   Map<String, String> headers({
     String? token,
     bool includeJsonContentType = false,
@@ -214,7 +229,10 @@ mixin HttpClientInternalsMixin {
       out['Content-Type'] = 'application/json';
     }
     if (token != null && token.isNotEmpty) {
-      out['Authorization'] = 'Token $token';
+      final scheme = token.startsWith('eyJ') || token.startsWith('ntc_')
+          ? 'Bearer'
+          : 'Token';
+      out['Authorization'] = '$scheme $token';
     }
     return out;
   }

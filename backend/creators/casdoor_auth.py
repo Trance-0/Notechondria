@@ -290,15 +290,27 @@ class CasdoorJWTAuthentication(BaseAuthentication):
 
         auth_header = request.META.get("HTTP_AUTHORIZATION", "") or ""
         parts = auth_header.split(None, 1)
-        if len(parts) != 2 or parts[0].lower() != self.keyword.lower():
+        if len(parts) != 2:
             return None
+        scheme = parts[0].lower()
         token = parts[1].strip()
         if not token:
             return None
-        # Defensive: MCP API keys also use the Bearer scheme but start
-        # with `ntc_`. Hand them off to ApiKeyAuthentication unchanged.
-        if token.startswith("ntc_"):
+        # Accept both `Bearer <jwt>` (the OAuth standard, used by all
+        # current SPA builds since 0.1.117) and `Token <jwt>` (the
+        # legacy scheme older SPA builds in the wild send because
+        # the original DRF authtoken plumbing always wrote `Token
+        # <hex>`). For non-JWT shapes (DRF authtoken hex), let the
+        # stock `TokenAuthentication` handle the `Token` scheme;
+        # for `Bearer ntc_...` MCP keys, hand off to
+        # `ApiKeyAuthentication`. Detect a JWT cheaply by the
+        # `eyJ` base64 prefix that every JWS header produces.
+        if scheme not in ("bearer", "token"):
             return None
+        if scheme == "token" and not token.startswith("eyJ"):
+            return None  # leave DRF hex tokens for stock TokenAuthentication
+        if token.startswith("ntc_"):
+            return None  # leave MCP API keys for ApiKeyAuthentication
 
         claims = verify_token(token)
         if claims is None:

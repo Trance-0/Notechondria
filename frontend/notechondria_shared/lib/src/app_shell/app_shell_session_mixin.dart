@@ -179,6 +179,55 @@ mixin AppShellSessionMixin<W extends StatefulWidget> on State<W> {
   Future<void> applyAuthPayload(Map<String, dynamic> payload) async {
     final token = payload['token']?.toString() ?? '';
     final user = Map<String, dynamic>.from(payload['user'] as Map? ?? {});
+    // Diagnostic breadcrumb (since 0.1.117): record what the backend
+    // actually returned in the auth payload so the operator can
+    // confirm post-OAuth provisioning succeeded without having to
+    // inspect the network panel. The token is truncated to a
+    // prefix-suffix tuple so a captured log line never carries the
+    // full bearer credential — enough to tell the JWT/Bearer/DRF
+    // scheme apart and correlate against backend logs.
+    final tokenLen = token.length;
+    final tokenPreview = tokenLen <= 18
+        ? token  // short DRF hex - safe to log in full
+        : '${token.substring(0, 12)}…${token.substring(tokenLen - 6)}';
+    final tokenScheme = token.startsWith('eyJ')
+        ? 'JWT (Bearer)'
+        : token.startsWith('ntc_')
+            ? 'API key (Bearer)'
+            : tokenLen == 40
+                ? 'DRF authtoken hex (Token)'
+                : 'unknown shape';
+    final payloadKeys = payload.keys.toList(growable: false)..sort();
+    final userFields = user.entries
+        .where((e) => e.key != 'image_url') // skip long URLs
+        .map((e) {
+      final v = e.value;
+      String preview;
+      if (v == null) {
+        preview = 'null';
+      } else if (v is String) {
+        preview = v.length > 60 ? '"${v.substring(0, 60)}…"' : '"$v"';
+      } else if (v is bool || v is num) {
+        preview = v.toString();
+      } else if (v is Map) {
+        preview = 'Map(${v.length} key${v.length == 1 ? "" : "s"})';
+      } else if (v is List) {
+        preview = 'List(${v.length})';
+      } else {
+        preview = v.runtimeType.toString();
+      }
+      return '${e.key}=$preview';
+    }).join(', ');
+    log(
+      level: DebugLogLevel.debug,
+      source: '$logAppTag.Auth/applyAuthPayload.captured',
+      message:
+          'Auth payload received: '
+          '$logAppTag.Auth/applyAuthPayload.captured — '
+          'token=$tokenPreview (len=$tokenLen, scheme=$tokenScheme); '
+          'payload keys=[${payloadKeys.join(", ")}]; '
+          'user fields={$userFields}.',
+    );
     Map<String, dynamic> serverSettings;
     try {
       serverSettings = await authClient.getSettings(token);
