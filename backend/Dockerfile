@@ -1,5 +1,11 @@
 # pull official base image
-FROM python:3.9.18-bullseye AS builder
+# Python 3.11.4 matches `.python-version` and `runtime.txt` so the
+# Northflank Docker deploy and the Render free-tier deploy both
+# resolve the same wheel set. Bumped from 3.9.18 in 0.1.115:
+# casdoor>=1.41 (added in 0.1.96) requires requests~=2.33.0, and
+# requests 2.33+ requires Python>=3.10 — pip's resolver on 3.9
+# rejected the requirement with "No matching distribution found".
+FROM python:3.11.4-bullseye AS builder
 
 # configurations
 ENV HOME=/home
