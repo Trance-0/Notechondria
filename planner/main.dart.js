@@ -34887,7 +34887,7 @@ a1=a6.fr
 a2=a6.fx
 a3=a6.fy
 if(a3==null)a3=B.bO
-k=A.bEr(new A.atJ(B.kB,"0.1.110",l,f,d,c,b,a,a0,a6.d,a1,a2,a3))
+k=A.bEr(new A.atJ(B.kB,"0.1.113",l,f,d,c,b,a,a0,a6.d,a1,a2,a3))
 s=7
 return A.m(A.b3m(A.b([B.b2f],t.es),m),$async$a5n)
 case 7:j=a8
@@ -125138,7 +125138,7 @@ I(a){var s,r,q=this,p=A.it(new A.aKS(q))
 if(q.w){s=q.a.f
 r=q.k1.h(0,"api_base_url")
 r=r==null?null:J.A(r)
-return A.hn(B.bV,A.b([p,A.BS(0,new A.Mf(s,"0.1.110",new A.aKT(q),q.R8,r,null))],t.p),B.B,B.bs,null)}return p},
+return A.hn(B.bV,A.b([p,A.BS(0,new A.Mf(s,"0.1.113",new A.aKT(q),q.R8,r,null))],t.p),B.B,B.bs,null)}return p},
 amu(){var s,r,q,p,o,n=this,m=null,l=n.f
 l=l!==2?A.a7(B.rU[l],m,m,m,m,m,m,m,m):m
 s=n.Yq()
@@ -126544,39 +126544,45 @@ A.aJ6.prototype={
 $0(){return A.fN(this.a)},
 $S:3}
 A.aJ3.prototype={
-$0(){var s=0,r=A.y(t.a),q=1,p=[],o=this,n,m,l,k,j,i,h,g,f,e,d,c,b,a,a0
-var $async$$0=A.u(function(a1,a2){if(a1===1){p.push(a2)
+$0(){var s=0,r=A.y(t.a),q=1,p=[],o=this,n,m,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1,a2,a3
+var $async$$0=A.u(function(a4,a5){if(a4===1){p.push(a5)
 s=q}for(;;)switch(s){case 0:q=3
-f=o.a
+e=o.a
 s=6
-return A.m(f.a.c.uE(),$async$$0)
-case 6:n=a2
+return A.m(e.a.c.uE(),$async$$0)
+case 6:n=a5
 m=J.e(J.K(n,"configured"),!0)
-e=J.K(n,"endpoint")
-e=e==null?null:J.A(e)
-if(e==null)e=""
-d=A.aR("/+$",!0,!1,!1)
-l=A.cZ(e,d,"")
-e=J.K(n,"organization")
-c=e==null?null:J.A(e)
-k=c==null?"":c
-j=m&&J.b7(l)!==0&&J.b7(k)!==0?A.l(l)+"/login/"+A.l(k):null
-if(f.c!=null)e=!J.e(m,f.as)||!J.e(j,f.at)
-else e=!1
-if(e){f.as=m
-f.at=j
-f.bV()}q=1
+d=J.K(n,"endpoint")
+d=d==null?null:J.A(d)
+if(d==null)d=""
+c=A.aR("/+$",!0,!1,!1)
+l=A.cZ(d,c,"")
+d=J.K(n,"application")
+b=d==null?null:J.A(d)
+k=b==null?"":b
+d=J.K(n,"signin_url")
+a=d==null?null:J.A(d)
+j=a==null?"":a
+if(!m)a0=null
+else if(J.b7(j)!==0){d=j
+a0=d}else{d=J.b7(l)!==0&&J.b7(k)!==0?A.l(l)+"/login/"+A.l(k):null
+a0=d}i=a0
+if(e.c!=null)d=!J.e(m,e.as)||!J.e(i,e.at)
+else d=!1
+if(d){e.as=m
+e.at=i
+e.bV()}q=1
 s=5
 break
 case 3:q=2
-a0=p.pop()
-i=A.ai(a0)
-f=o.a
-e=f.gmZ()
-a=e==null?null:e.b
-h=a==null?"<unresolved>":a
-g=J.b9B(h,"/")?A.l(h)+"auth/casdoor/config/":A.l(h)+"/auth/casdoor/config/"
-f.bn(B.c_,"Casdoor SSO surface unavailable: Planner.Auth/casdoor.config.probe \u2014 "+B.c.c4(J.A(i),"Exception: ","")+" (probed "+A.l(g)+").","Planner.Auth/casdoor.config.probe")
+a3=p.pop()
+h=A.ai(a3)
+e=o.a
+d=e.gmZ()
+a2=d==null?null:d.b
+g=a2==null?"<unresolved>":a2
+f=J.b9B(g,"/")?A.l(g)+"auth/casdoor/config/":A.l(g)+"/auth/casdoor/config/"
+e.bn(B.c_,"Casdoor SSO surface unavailable: Planner.Auth/casdoor.config.probe \u2014 "+B.c.c4(J.A(h),"Exception: ","")+" (probed "+A.l(f)+").","Planner.Auth/casdoor.config.probe")
 s=5
 break
 case 2:s=1
