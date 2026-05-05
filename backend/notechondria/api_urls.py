@@ -12,6 +12,7 @@ from creators.api import (
     GithubSyncPushApiView,
     GithubSyncReposApiView,
     GithubSyncStatusApiView,
+    LoginApiView,
     RotateApiKeyApiView,
     SettingsApiView,
 )
@@ -59,9 +60,16 @@ urlpatterns = [
     path("handshake/", handshake_view, name="handshake"),
     path("ping/", ping_view, name="ping"),
     path("auth/rotate-api-key/", RotateApiKeyApiView.as_view(), name="rotate-api-key"),
-    # Casdoor SSO is the only auth surface as of 0.1.106. Signup,
-    # password reset, and session lifecycle live on `auth.trance-0.com`.
-    # See docs/integrations/casdoor-migration.md.
+    # Username/password fallback so existing users can still sign in
+    # when Casdoor is down or misconfigured. Restored in 0.1.111.
+    # Casdoor SSO remains the primary surface; this view only mints a
+    # DRF stock authtoken_token row for an already-existing user. No
+    # register / password reset / email verification — those live on
+    # `auth.trance-0.com`.
+    path("auth/login/", LoginApiView.as_view(), name="auth-login"),
+    # Casdoor SSO routes (since 0.1.96). Signup, password reset, and
+    # session lifecycle live on `auth.trance-0.com`. See
+    # docs/integrations/casdoor-migration.md.
     path("auth/casdoor/config/", CasdoorConfigApiView.as_view(), name="casdoor-config"),
     path("auth/casdoor/exchange/", CasdoorExchangeApiView.as_view(), name="casdoor-exchange"),
     path("auth/casdoor/bind/", CasdoorBindApiView.as_view(), name="casdoor-bind"),

@@ -1,10 +1,12 @@
 import json
 from django.conf import settings
+from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.utils.timezone import now
 from urllib.parse import urlparse
 
 from rest_framework import permissions, serializers, status
+from rest_framework.authtoken.models import Token
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -89,6 +91,95 @@ def auth_payload(user: User, *, token: str, request=None):
             else None,
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# Legacy email/username + password login. Restored in 0.1.111 as the
+# fallback path so existing accounts can still sign in when Casdoor is
+# down or misconfigured. Register / password reset / email verification
+# stay deleted (Casdoor owns those flows post-0.1.106) — this view only
+# authenticates an existing user against their stored Django password
+# hash and mints a DRF stock `authtoken_token` row. The SPA resends it
+# as `Authorization: Token <hex>` for every subsequent call;
+# `rest_framework.authentication.TokenAuthentication` validates it.
+# ---------------------------------------------------------------------------
+
+
+class LoginSerializer(serializers.Serializer):
+    """Accepts ``{email|identifier|username, password}``. ``email`` is
+    the historical field name the SPA still posts; ``identifier`` and
+    ``username`` are aliases so a future refactor can rename without
+    breaking the wire shape. Whichever one is non-empty is matched
+    case-insensitively against ``User.email`` first, then
+    ``User.username``."""
+
+    email = serializers.CharField(required=False, allow_blank=True)
+    identifier = serializers.CharField(required=False, allow_blank=True)
+    username = serializers.CharField(required=False, allow_blank=True)
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        identifier = (
+            attrs.get("email")
+            or attrs.get("identifier")
+            or attrs.get("username")
+            or ""
+        ).strip()
+        if not identifier:
+            raise serializers.ValidationError(
+                "Sign-in rejected: "
+                "Backend.Creators.Auth/login — "
+                "either email or username is required in the login payload."
+            )
+        # Email-first match, fall back to username for legacy accounts
+        # that never had an email on file.
+        matched = User.objects.filter(email__iexact=identifier).first()
+        if matched is None:
+            matched = User.objects.filter(username__iexact=identifier).first()
+        if matched is None:
+            raise serializers.ValidationError(
+                "Sign-in rejected: "
+                "Backend.Creators.Auth/login — "
+                "no account found for the supplied email/username."
+            )
+        user = authenticate(username=matched.username, password=attrs["password"])
+        if user is None:
+            raise serializers.ValidationError(
+                "Sign-in rejected: "
+                "Backend.Creators.Auth/login — "
+                "email/username and password do not match any active account."
+            )
+        if not user.is_active:
+            raise serializers.ValidationError(
+                "Sign-in rejected: "
+                "Backend.Creators.Auth/login — "
+                "this account is inactive; ask the Notechondria admin to "
+                "reactivate it."
+            )
+        attrs["user"] = user
+        return attrs
+
+
+class LoginApiView(APIView):
+    """POST ``/auth/login/`` — username/password fallback so existing
+    users can still sign in when Casdoor is unreachable. Issues a DRF
+    stock ``authtoken_token`` row (idempotent: returns the existing
+    token if one already exists for the user). No registration, no
+    password reset, no email verification — those live in Casdoor.
+    """
+
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data["user"]
+        token, _created = Token.objects.get_or_create(user=user)
+        try:
+            User.objects.filter(pk=user.pk).update(last_login=now())
+        except Exception:  # noqa: BLE001
+            pass
+        return Response(auth_payload(user, token=token.key, request=request))
 
 
 class SettingsSerializer(serializers.Serializer):
