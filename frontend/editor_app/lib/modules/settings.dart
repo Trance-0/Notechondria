@@ -59,6 +59,10 @@ class _SettingsPage extends StatefulWidget {
     String apiBaseUrl, {
     String firstName,
     String lastName,
+    // 0.1.120: per-account label for the synthetic uncategorized
+    // bucket. Optional — empty value passes "no change" through to
+    // the backend so legacy callers compile unchanged.
+    String uncategorizedFolderName,
   }) onSave;
   final Future<void> Function() onLogout;
   final Future<ActionFeedback> Function(String email, String password) onLogin;
@@ -161,6 +165,10 @@ class _SettingsPageState extends State<_SettingsPage> {
   late final TextEditingController _mottoController;
   late final TextEditingController _socialController;
   late final TextEditingController _apiBaseController;
+  // 0.1.120: per-account label for the synthetic uncategorized
+  // folder rendered at the top of the sidebar. Changes go through
+  // `widget.onSave` like other profile fields.
+  late final TextEditingController _uncategorizedFolderNameController;
   String _editorMode = 'P';
   String _themePreset = 'teal';
   String _themeMode = 'S';
@@ -210,6 +218,10 @@ class _SettingsPageState extends State<_SettingsPage> {
           widget.apiBaseUrl ??
           _defaultApiBaseUrl(),
     );
+    _uncategorizedFolderNameController = TextEditingController(
+      text:
+          widget.settings?['uncategorized_folder_name']?.toString() ?? 'Inbox',
+    );
     _editorMode = widget.settings?['editor_mode']?.toString() ?? 'P';
     if (_editorMode == 'B') _editorMode = 'G'; // block editor removed
     _themePreset = widget.localSettings['theme_preset']?.toString() ?? 'teal';
@@ -231,6 +243,9 @@ class _SettingsPageState extends State<_SettingsPage> {
           '';
       _mottoController.text = widget.settings?['motto']?.toString() ?? '';
       _socialController.text = widget.settings?['social_link']?.toString() ?? '';
+      _uncategorizedFolderNameController.text =
+          widget.settings?['uncategorized_folder_name']?.toString() ??
+              _uncategorizedFolderNameController.text;
       _editorMode = widget.settings?['editor_mode']?.toString() ?? _editorMode;
     }
     if (oldWidget.localSettings != widget.localSettings) {
@@ -250,6 +265,7 @@ class _SettingsPageState extends State<_SettingsPage> {
     _mottoController.dispose();
     _socialController.dispose();
     _apiBaseController.dispose();
+    _uncategorizedFolderNameController.dispose();
     _feedback.dispose();
     super.dispose();
   }
@@ -270,10 +286,13 @@ class _SettingsPageState extends State<_SettingsPage> {
     final serverLastName = s['last_name']?.toString() ?? p['last_name']?.toString() ?? '';
     final serverMotto = s['motto']?.toString() ?? '';
     final serverSocial = s['social_link']?.toString() ?? '';
+    final serverUncategorized =
+        s['uncategorized_folder_name']?.toString() ?? 'Inbox';
     return _firstNameController.text.trim() != serverFirstName ||
         _lastNameController.text.trim() != serverLastName ||
         _mottoController.text.trim() != serverMotto ||
-        _socialController.text.trim() != serverSocial;
+        _socialController.text.trim() != serverSocial ||
+        _uncategorizedFolderNameController.text.trim() != serverUncategorized;
   }
 
   /// Restores profile fields to server values.
@@ -285,6 +304,8 @@ class _SettingsPageState extends State<_SettingsPage> {
       _lastNameController.text = s['last_name']?.toString() ?? p['last_name']?.toString() ?? '';
       _mottoController.text = s['motto']?.toString() ?? '';
       _socialController.text = s['social_link']?.toString() ?? '';
+      _uncategorizedFolderNameController.text =
+          s['uncategorized_folder_name']?.toString() ?? 'Inbox';
     });
   }
 
@@ -322,6 +343,12 @@ class _SettingsPageState extends State<_SettingsPage> {
     if (_socialController.text.trim() != serverSocial) {
       changes['Social link'] =
           '"${serverSocial.isEmpty ? "(empty)" : serverSocial}" \u2192 "${_socialController.text.trim()}"';
+    }
+    final serverUncategorized =
+        s['uncategorized_folder_name']?.toString() ?? 'Inbox';
+    if (_uncategorizedFolderNameController.text.trim() != serverUncategorized) {
+      changes['Uncategorized folder name'] =
+          '"$serverUncategorized" \u2192 "${_uncategorizedFolderNameController.text.trim()}"';
     }
     if (_editorMode != serverEditorMode) {
       changes['Default editor'] = '$serverEditorMode \u2192 $_editorMode';
@@ -458,6 +485,7 @@ class _SettingsPageState extends State<_SettingsPage> {
       _apiBaseController.text.trim(),
       firstName: _firstNameController.text.trim(),
       lastName: _lastNameController.text.trim(),
+      uncategorizedFolderName: _uncategorizedFolderNameController.text.trim(),
     );
     if (!mounted) {
       return;

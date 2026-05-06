@@ -71,11 +71,12 @@ from .services import (
 
 
 def note_is_public(note: Note) -> bool:
-    # Inbox is the user's private scratch category — even though it
-    # has `is_default=True`, notes living in it are NOT promoted to
-    # the public feed. Public visibility now requires the explicit
-    # `is_public=True` flag set per-note. (0.1.83 reversed the
-    # earlier "default course = public surface" promotion.)
+    # Public visibility requires the explicit ``is_public=True`` flag
+    # set per-note. Pre-0.1.83 promoted "default course" notes to the
+    # public feed automatically; that promotion was removed there and
+    # nothing replaces it here. Notes whose ``course_id`` is NULL (the
+    # uncategorized bucket) follow the exact same rule — only the
+    # per-note flag matters.
     return bool(note.is_public)
 
 
@@ -107,17 +108,57 @@ def absolute_media_url(request, raw_url: str) -> str:
 
 
 def creator_summary_payload(creator, request):
+    """Author card emitted on every public-facing note / comment surface.
+
+    Avatar resolution mirrors ``creators.api.auth_payload``: prefer the
+    Casdoor remote ``avatar_url`` (cache-busted by ``?v=<sync_ts>`` so a
+    Casdoor-side picture change paints immediately) and only fall back to
+    the locally-uploaded ``image`` when the remote URL is empty. Pre-0.1.120
+    this view read ``creator.image`` only, which meant the user's chosen
+    Casdoor avatar never showed up on a public note's byline even though
+    every other Notechondria surface honoured it.
+    """
     if creator is None:
         return None
     creator = ensure_creator_avatar(creator)
     username = creator.user_id.username if creator.user_id_id else "unknown"
-    image_url = creator.image.url if creator.image else ""
+    display_name = (
+        (creator.display_name or "").strip()
+        or (
+            f"{creator.user_id.first_name} {creator.user_id.last_name}".strip()
+            if creator.user_id_id
+            else ""
+        )
+        or username
+    )
+    avatar_url = _avatar_cache_bust(creator.avatar_url, creator)
+    image_url = (
+        avatar_url
+        or absolute_media_url(
+            request, creator.image.url if creator.image else "",
+        )
+    )
     return {
         "id": creator.id,
         "username": username,
-        "display_name": username,
-        "image_url": absolute_media_url(request, image_url),
+        "display_name": display_name,
+        "image_url": image_url,
+        "avatar_url": avatar_url,
     }
+
+
+def _avatar_cache_bust(url: str, creator) -> str:
+    """Mirror of ``creators.api.avatar_cache_bust``. Re-implemented in
+    this module to avoid pulling the entire ``creators.api`` import
+    surface (which would re-introduce the ``notes`` ⇄ ``creators``
+    cycle the apps were carefully split to avoid)."""
+    if not url:
+        return url
+    synced = getattr(creator, "casdoor_profile_synced_at", None)
+    if synced is None:
+        return url
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}v={int(synced.timestamp())}"
 
 
 def deleted_note_summary_payload(entry: RecycleBinEntry, request):
@@ -138,12 +179,12 @@ def active_subscription_map(creator):
 
 
 def course_sort_key(course, subscription_map):
-    # Default category always sticks to the top of the list so users never
-    # lose track of their Inbox.
-    if course.is_default:
-        return (0, 0, 0, course.title.lower())
-    # Explicit user-set sort order comes next — non-zero means the user
-    # dragged this course into a specific position.
+    # 0.1.120: the special "Inbox is pinned first" rule was retired
+    # along with ``Course.is_default``. The synthetic uncategorized
+    # bucket is rendered client-side as a virtual entry above the
+    # actual Course rows; ordering of real categories now uses the
+    # user-set ``sort_order`` first, then subscription recency, then
+    # title for ties.
     if course.sort_order:
         return (1, course.sort_order, 0, course.title.lower())
     subscription = subscription_map.get(course.id)
@@ -370,7 +411,6 @@ class CourseSerializer(serializers.ModelSerializer):
             "description",
             "cover_image_url",
             "icon",
-            "is_default",
             "sort_order",
             "owner",
             "subscriber_count",
@@ -393,10 +433,9 @@ class CourseSerializer(serializers.ModelSerializer):
             or obj.creator_id is None
             or obj.creator_id.user_id_id != request.user.id
         ):
-            # Inbox is private per-user scratch — unlike pre-0.1.83,
-            # notes in `is_default=True` (Inbox) categories are NOT
-            # promoted to the public feed. Non-owners only see notes
-            # explicitly flagged `is_public=True`.
+            # Non-owners only see notes explicitly flagged ``is_public=True``.
+            # Pre-0.1.83 promoted "default course" notes to public; that
+            # rule was removed there and never reinstated.
             recent_notes = recent_notes.filter(is_public=True)
         return NoteSummarySerializer(
             recent_notes[:5],
@@ -537,9 +576,11 @@ class FrontPageApiView(APIView):
         )
         courses.sort(key=lambda course: course_sort_key(course, subscription_map))
         carousel_courses = courses[:6]
-        default_course = next((course for course in carousel_courses if course.is_default), None)
-        if default_course is None and carousel_courses:
-            default_course = carousel_courses[0]
+        # 0.1.120: with `Course.is_default` removed, the carousel's
+        # "default" slot is just the top-sorted course (or None when
+        # the user has no categories yet — the SPA falls back to its
+        # synthetic uncategorized bucket).
+        default_course = carousel_courses[0] if carousel_courses else None
         recommended_notes = Note.objects.filter(
             is_public=True,
             deleted_at__isnull=True,
@@ -624,12 +665,13 @@ class CourseListApiView(APIView):
         # check against itself when only renaming, so we exclude
         # `existing.id`.
         #
-        # Special case: the Inbox category is GLOBALLY unique per
-        # user (every user gets exactly one). When a frontend pushes
-        # a local Inbox to a server that already has one, return
-        # the existing Inbox row with 200 OK so the client can
-        # remap its local id to the server id \u2014 same outcome the
-        # client wanted, no duplicate.
+        # 0.1.120: the special "Inbox is globally unique per user;
+        # silently get-or-create on collision" branch was retired
+        # along with ``Course.is_default``. "Inbox" is no longer
+        # reserved \u2014 if the user really wants a category named
+        # Inbox they get the standard 400-on-duplicate behaviour.
+        # The actual uncategorized bucket lives entirely on the
+        # frontend (any Note with ``course_id IS NULL``).
         duplicate_qs = Course.objects.filter(
             creator_id=creator,
             title__iexact=title,
@@ -638,22 +680,6 @@ class CourseListApiView(APIView):
             duplicate_qs = duplicate_qs.exclude(pk=existing.pk)
         duplicate = duplicate_qs.first()
         if duplicate is not None:
-            if title.casefold() == "inbox":
-                # Idempotent get-or-create: hand back the existing
-                # Inbox row. Don't touch description / icon \u2014 the
-                # canonical Inbox is whatever's already on the
-                # server.
-                subscription_map = active_subscription_map(creator)
-                return Response(
-                    CourseSerializer(
-                        duplicate,
-                        context={
-                            "request": request,
-                            "subscription_map": subscription_map,
-                        },
-                    ).data,
-                    status=status.HTTP_200_OK,
-                )
             return Response(
                 {"detail": (
                     "Cannot create category: "
@@ -680,7 +706,6 @@ class CourseListApiView(APIView):
                 title=title,
                 description=description,
                 icon=icon,
-                is_default=(title.casefold() == "inbox"),
             )
             response_status = status.HTTP_201_CREATED
         subscription_map = active_subscription_map(creator)
@@ -731,11 +756,10 @@ class CourseDetailApiView(APIView):
                 )},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        # Inbox is protected by name, not by `is_default`. Renaming
-        # away from "Inbox" or any rename that lands on "Inbox"
-        # (collision with another user's row of the same name) is
-        # rejected. Editing description / icon on the Inbox row is
-        # allowed \u2014 only the name and delete are locked.
+        # 0.1.120: name-based protection of "Inbox" was retired.
+        # Categories are now freely renameable \u2014 duplicate-title
+        # collisions still 400 (categories are case-insensitively
+        # unique per creator), but no title is reserved.
         serializer = CourseWriteSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         new_title = (
@@ -744,15 +768,6 @@ class CourseDetailApiView(APIView):
             else None
         )
         if new_title is not None and new_title != course.title:
-            if course.title.casefold() == "inbox":
-                return Response(
-                    {"detail": (
-                        "Cannot update category: "
-                        "Backend.Notes.Courses/update \u2014 "
-                        "the Inbox category cannot be renamed."
-                    )},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
             duplicate = (
                 Course.objects.filter(creator_id=creator, title__iexact=new_title)
                 .exclude(pk=course.pk)
@@ -802,32 +817,13 @@ class CourseDetailApiView(APIView):
                 )},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        if course.title.casefold() == "inbox":
-            return Response(
-                {"detail": (
-                    "Cannot delete category: "
-                    "Backend.Notes.Courses/delete \u2014 "
-                    "the Inbox category cannot be removed."
-                )},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        # Move owned notes into the user's default category before deletion.
-        default_course = (
-            Course.objects.filter(creator_id=creator, is_default=True)
-            .order_by("id")
-            .first()
-        )
-        if default_course is None:
-            default_course = Course.objects.create(
-                creator_id=creator,
-                slug=unique_course_slug("Inbox", fallback="inbox"),
-                title="Inbox",
-                description="Default category",
-                is_default=True,
-            )
-        with transaction.atomic():
-            Note.objects.filter(course_id=course).update(course_id=default_course)
-            course.delete()
+        # 0.1.120: any category may be deleted \u2014 including one titled
+        # "Inbox", which is no longer reserved. Notes whose category is
+        # deleted fall to ``course_id IS NULL`` automatically because
+        # ``Note.course_id`` is ``on_delete=SET_NULL``; the SPA's
+        # synthetic uncategorized bucket picks them up. No manual
+        # reassignment needed.
+        course.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -845,15 +841,13 @@ class CourseReorderApiView(APIView):
                 {"detail": "`course_ids` must be a list of integers."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        # Only allow the user to reorder their own non-default courses; the
-        # default Inbox is pinned in `course_sort_key` and not part of the
-        # drag list on the client.
+        # 0.1.120: every owned category is reorderable. The synthetic
+        # uncategorized bucket lives entirely on the frontend and isn't
+        # represented as a Course row, so it never shows up in this
+        # query and the SPA pins it client-side.
         owned = {
             c.id: c
-            for c in Course.objects.filter(
-                creator_id=creator,
-                is_default=False,
-            )
+            for c in Course.objects.filter(creator_id=creator)
         }
         # Tolerate garbage entries: non-int-ish items are skipped silently so a
         # transient client bug can't brick a reorder request. Only ids that map
@@ -902,10 +896,9 @@ class CourseNotesApiView(APIView):
             or course.creator_id is None
             or course.creator_id.user_id_id != request.user.id
         ):
-            # Inbox is private per-user (0.1.83) — even though it
-            # carries `is_default=True`, its notes are NOT visible
-            # to non-owners. Public visibility requires the
-            # explicit per-note `is_public=True` flag.
+            # Non-owners only see notes flagged ``is_public=True``.
+            # Pre-0.1.83 promoted "default-course" notes to the public
+            # feed; that rule was removed there and never reinstated.
             notes = notes.filter(is_public=True)
         return Response(
             NoteSummarySerializer(notes, many=True, context={"request": request}).data

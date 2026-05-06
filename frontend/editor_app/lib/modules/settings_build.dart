@@ -243,6 +243,21 @@ extension _SettingsPageBuildX on _SettingsPageState {
             }
           },
         ),
+        const SizedBox(height: 12),
+        // 0.1.120: per-account display label for the synthetic
+        // uncategorized folder rendered at the top of the sidebar
+        // (groups every note with no category). Falls back to "Inbox"
+        // when blank, matching the backend default.
+        TextField(
+          controller: _uncategorizedFolderNameController,
+          decoration: const InputDecoration(
+            labelText: 'Uncategorized folder name',
+            helperText:
+                'Label for the bucket that holds notes with no category. '
+                'Blank falls back to "Inbox".',
+            border: OutlineInputBorder(),
+          ),
+        ),
       ],
     );
   }

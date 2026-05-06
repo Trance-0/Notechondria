@@ -304,9 +304,9 @@ WELCOME_NOTE_TITLE = "Welcome to Notechondria"
 WELCOME_NOTE_BODY = (
     "Notechondria is an integrated workspace for taking notes, planning study "
     "sessions, and sharing public courses. Here are a few things to try first:\n\n"
-    "- **Editor** — create a new note from the `+` button. Notes live inside "
-    "categories (this one is your Inbox); drag categories in the sidebar to "
-    "reorder them.\n"
+    "- **Editor** — create a new note from the `+` button. New notes start "
+    "without a category; pick one from the metadata picker, or leave them "
+    "in your uncategorized bucket (you can rename it from Settings).\n"
     "- **Planner** — the Course view shows subscribed courses and their "
     "modules, and the Activity view lets you import an `.ics` file or "
     "subscribe to a Google Calendar share link.\n"
@@ -316,56 +316,39 @@ WELCOME_NOTE_BODY = (
     "- `Ctrl/Cmd + S` — save the current note\n"
     "- Long-press the floating add button in Activity to import calendar "
     "files or subscribe to a calendar feed\n\n"
-    "Feel free to delete this welcome note once you're done exploring. Your "
-    "Inbox category itself is pinned and cannot be removed — it's where any "
-    "orphaned notes are moved when you delete a category."
+    "Feel free to delete this welcome note once you're done exploring. "
+    "Notes whose category you delete fall back into the uncategorized "
+    "bucket automatically — nothing is lost."
 )
 
 
-def seed_inbox_and_welcome_note(creator) -> Optional[Note]:
-    """Ensure *creator* has a default Inbox category with a welcome note.
+def seed_welcome_note(creator) -> Optional[Note]:
+    """Ensure *creator* has a single welcome note in the uncategorized
+    bucket (i.e., a Note with ``course_id=None``).
 
-    Idempotent — if the Inbox already exists with at least one note, this is
-    a no-op. Used by the email-verify and OAuth-register flows so new users
-    land on a non-empty workspace the first time they sign in.
+    0.1.120 collapsed the special Inbox course into the natural "category
+    not selected" state. This seeder no longer creates any Course row; it
+    only writes a welcome ``Note`` directly into the uncategorized bucket.
 
-    Returns the welcome ``Note`` if one was created, or ``None`` if nothing
-    had to be done.
+    Idempotent — if any non-deleted note already exists for this creator
+    (anywhere, in any category), the user has already been through
+    onboarding and we skip. Used by the OAuth/Casdoor account-creation
+    flow so a brand-new account paints something on first load.
+
+    Returns the welcome ``Note`` if one was created, or ``None`` if
+    nothing had to be done.
     """
 
-    # Late imports avoid a circular dependency with ``notes.api`` (which in
-    # turn imports from ``services``).
-    from django.utils.text import slugify
+    # Late import avoids a circular dependency with ``notes.api`` (which
+    # in turn imports from ``services``).
     from notechondria.utils import generate_unique_id
 
-    inbox = (
-        Course.objects.filter(creator_id=creator, is_default=True)
-        .order_by("id")
-        .first()
-    )
-    if inbox is None:
-        base = slugify("inbox") or "inbox"
-        slug_candidate = f"{base}-{creator.id}"
-        counter = 2
-        while Course.objects.filter(slug=slug_candidate).exists():
-            slug_candidate = f"{base}-{creator.id}-{counter}"
-            counter += 1
-        inbox = Course.objects.create(
-            creator_id=creator,
-            slug=slug_candidate,
-            title="Inbox",
-            description="Default category",
-            is_default=True,
-        )
-
-    # If the Inbox already contains any non-deleted notes, do not insert a
-    # second welcome copy — the user has already been through onboarding.
-    if Note.objects.filter(course_id=inbox, deleted_at__isnull=True).exists():
+    if Note.objects.filter(creator_id=creator, deleted_at__isnull=True).exists():
         return None
 
     note = Note.objects.create(
         creator_id=creator,
-        course_id=inbox,
+        course_id=None,
         sharing_id=generate_unique_id(Note, "sharing_id"),
         title=WELCOME_NOTE_TITLE,
         description="A quick tour of Notechondria's editor, planner and portal.",
@@ -391,6 +374,12 @@ def seed_inbox_and_welcome_note(creator) -> Optional[Note]:
     )
     NoteIndex.objects.create(note_id=note, index=1, noteblock_id=body_block)
     return note
+
+
+# Backwards-compat alias kept so callers that still import the
+# pre-0.1.120 name resolve to the new uncategorized-bucket seeder. Will
+# be removed once every downstream call site has been updated.
+seed_inbox_and_welcome_note = seed_welcome_note
 
 
 def read_calendar_feed(feed: CalendarFeed) -> str:

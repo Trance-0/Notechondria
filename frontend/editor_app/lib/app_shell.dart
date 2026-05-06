@@ -326,20 +326,23 @@ class _AppShellState extends State<AppShell>
 
   bool _showWidePageHeader(int index) => false;
 
-  /// All categories visible in the sidebar. Always merges
-  /// `_localCourses` with `_courses` (cloud) — gating cloud rows on
-  /// `_token` non-empty (the previous behavior) was hiding the user's
-  /// real cloud Inbox in the post-Casdoor world: cloud GETs succeed
-  /// via session cookies / Casdoor JWT but the legacy DRF `_token`
-  /// field can stay empty, so the gate produced false negatives that
-  /// looked like "Inbox vanished". Inbox visibility is the user-
-  /// critical invariant; if `_courses` is populated at all, we show
-  /// it. Post-logout, `_loadInitialData` re-runs and replaces
-  /// `_courses` with whatever the backend returns for an
-  /// unauthenticated request, so signed-out users end up with the
-  /// public-feed catalog (or nothing) — same end state as before.
+  /// All categories visible in the sidebar.
+  ///
+  /// 0.1.120: the synthetic uncategorized folder is prepended at the
+  /// top — it groups every note with no `course_id` (post-refactor
+  /// replacement for the pre-0.1.120 hard-coded Inbox course). The
+  /// real Course rows follow: `_localCourses` (offline-created drafts
+  /// queued for sync) and `_courses` (cloud-backed). Both are always
+  /// merged regardless of `_token` so the sidebar doesn't blink during
+  /// auth refresh — `_loadInitialData` re-runs after logout and
+  /// repopulates `_courses` from the public-feed response, so signed-
+  /// out users still get a sensible catalog.
   List<Map<String, dynamic>> get _allCategories {
-    return [..._localCourses, ..._courses];
+    return [
+      buildUncategorizedFolder(),
+      ..._localCourses,
+      ..._courses,
+    ];
   }
 
   // ---------------------------------------------------------------------------

@@ -17,8 +17,7 @@ class CourseMediaInline(admin.TabularInline):
 
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
-    list_display = ("title", "owner_name", "is_default", "sort_order", "last_edit", "date_created")
-    list_filter = ("is_default",)
+    list_display = ("title", "owner_name", "sort_order", "last_edit", "date_created")
     search_fields = ("title", "description", "creator_id__user_id__username", "creator_id__user_id__first_name")
     readonly_fields = ("date_created", "last_edit")
     inlines = [CourseMediaInline]

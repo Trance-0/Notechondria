@@ -38,6 +38,28 @@ def absolute_media_url(request, raw_url: str) -> str:
     return request.build_absolute_uri(normalized)
 
 
+def avatar_cache_bust(url: str, creator) -> str:
+    """Append ``?v=<sync_ts>`` (or ``&v=...``) to an avatar URL so a
+    Casdoor-side picture change paints immediately even when the underlying
+    URL is byte-stable.
+
+    The Casdoor avatar claim typically points at a stable path like
+    ``https://auth.example.com/avatar/<sub>.png`` whose content rotates
+    in place. Without a query param, browsers and CDNs hold the old bytes
+    indefinitely. ``casdoor_profile_synced_at`` advances every time the
+    JWT-driven sync notices a fresh claim value, so it's a natural
+    cache-key. Returns the original URL unchanged when no sync timestamp
+    is available (no harm — it's the same shape as before this fix).
+    """
+    if not url:
+        return url
+    synced = getattr(creator, "casdoor_profile_synced_at", None)
+    if synced is None:
+        return url
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}v={int(synced.timestamp())}"
+
+
 def creator_app_settings_payload(creator):
     payload = {
         "theme_preset": creator.theme_preset,
@@ -88,8 +110,11 @@ def auth_payload(user: User, *, token: str, request=None):
     # local file's media URL (or "" when no upload exists). This way
     # a Casdoor profile-picture change propagates to every
     # Notechondria surface on next login without re-uploading.
+    # Append `?v=<sync_ts>` so a Casdoor-side avatar change paints
+    # immediately even when the underlying URL string is unchanged.
+    avatar_url = avatar_cache_bust(creator.avatar_url, creator)
     image_url = (
-        creator.avatar_url
+        avatar_url
         or absolute_media_url(
             request, creator.image.url if creator.image else "",
         )
@@ -108,11 +133,12 @@ def auth_payload(user: User, *, token: str, request=None):
             "motto": creator.motto or "",
             "social_link": creator.social_link or "",
             "image_url": image_url,
-            "avatar_url": creator.avatar_url or "",
+            "avatar_url": avatar_url,
             "editor_mode": creator.editor_mode,
             "theme_preset": creator.theme_preset,
             "theme_mode": creator.theme_mode,
             "api_base_url": creator.api_base_url,
+            "uncategorized_folder_name": creator.uncategorized_folder_name or "Inbox",
             "app_settings": creator_app_settings_payload(creator),
             "app_settings_updated_at": creator.app_settings_updated_at.isoformat()
             if creator.app_settings_updated_at
@@ -240,6 +266,12 @@ class SettingsSerializer(serializers.Serializer):
     )
     api_base_url = serializers.CharField(required=False, allow_blank=False, max_length=255)
     mcp_skill_md = serializers.CharField(required=False, allow_blank=True)
+    # 0.1.120: user-chosen display label for the synthetic 'no category'
+    # bucket (notes whose `course_id IS NULL`). Persisted on Creator;
+    # the SPA renders the bucket itself client-side.
+    uncategorized_folder_name = serializers.CharField(
+        required=False, allow_blank=False, max_length=120,
+    )
     app_settings = serializers.JSONField(required=False)
     app_settings_updated_at = serializers.DateTimeField(required=False, allow_null=True)
     editor_mode = serializers.ChoiceField(
@@ -267,9 +299,12 @@ class SettingsSerializer(serializers.Serializer):
             or instance.user_id.username
         )
         # Avatar: prefer remote (Casdoor) over local file. See
-        # auth_payload for the rationale.
+        # auth_payload for the rationale. ``avatar_cache_bust`` appends
+        # a sync-timestamp query param so a Casdoor-side picture
+        # change paints immediately even when the URL is byte-stable.
+        avatar_url = avatar_cache_bust(instance.avatar_url, instance)
         image_url = (
-            instance.avatar_url
+            avatar_url
             or absolute_media_url(
                 request,
                 instance.image.url if instance.image else "",
@@ -286,13 +321,14 @@ class SettingsSerializer(serializers.Serializer):
             "social_link": instance.social_link or "",
             "display_name": display_name,
             "image_url": image_url,
-            "avatar_url": instance.avatar_url or "",
+            "avatar_url": avatar_url,
             "editor_mode": instance.editor_mode,
             "theme_preset": instance.theme_preset,
             "theme_mode": instance.theme_mode,
             "api_key_prefix": instance.api_key_prefix or "",
             "api_base_url": instance.api_base_url,
             "mcp_skill_md": instance.mcp_skill_md or "",
+            "uncategorized_folder_name": instance.uncategorized_folder_name or "Inbox",
             "casdoor_linked": bool(instance.casdoor_sub),
             "casdoor_profile_synced_at":
                 instance.casdoor_profile_synced_at.isoformat()
@@ -368,6 +404,13 @@ class SettingsSerializer(serializers.Serializer):
         instance.editor_mode = validated_data.get("editor_mode", instance.editor_mode)
         if "mcp_skill_md" in validated_data:
             instance.mcp_skill_md = validated_data["mcp_skill_md"]
+        # 0.1.120: editable display label for the uncategorized bucket.
+        # Trimmed to 120 chars and falls back to "Inbox" when blank so a
+        # user clearing the field doesn't end up with an unlabelled
+        # bucket.
+        if "uncategorized_folder_name" in validated_data:
+            label = (validated_data["uncategorized_folder_name"] or "").strip()
+            instance.uncategorized_folder_name = (label or "Inbox")[:120]
         if "avatar" in validated_data:
             instance.image = validated_data["avatar"]
         app_settings = creator_app_settings_payload(instance)
@@ -514,6 +557,21 @@ class GithubSyncCallbackApiView(APIView):
     def post(self, request):
         from .models import GithubIntegration
 
+        # 0.1.120: structured entry log for the GH-link round trip.
+        # The earlier "no logs on backend" symptom came from this view
+        # being silent on success — when the SPA cold-boots after the
+        # GitHub redirect with an expired Casdoor JWT, DRF rejects the
+        # request as 401 before reaching the view, so the install is
+        # silently dropped on the floor. Logging entry + exit here
+        # plus DRF's authentication-failed line gives a clear trace.
+        logger.info(
+            "GitHub sync install callback received: "
+            "Backend.Creators.GithubSync/install_callback — "
+            "user=%s installation_id=%r repo=%r.",
+            request.user.username,
+            request.data.get("installation_id"),
+            request.data.get("repo_full_name") or "",
+        )
         serializer = GithubSyncCallbackSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         creator = ensure_creator(request.user)
@@ -532,6 +590,15 @@ class GithubSyncCallbackApiView(APIView):
                 ) or "main",
                 "last_error": "",
             },
+        )
+        logger.info(
+            "GitHub sync install persisted: "
+            "Backend.Creators.GithubSync/install_callback — "
+            "user=%s installation_id=%s repo=%s created=%s.",
+            request.user.username,
+            integration.installation_id,
+            integration.repo_full_name or "<unset>",
+            _created,
         )
         return Response({
             "connected": True,
@@ -1163,7 +1230,7 @@ class CasdoorLinkCreateApiView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        from notes.services import seed_inbox_and_welcome_note
+        from notes.services import seed_welcome_note
         from .models import Creator, LinkChallenge
 
         nonce = (request.data.get("nonce") or "").strip()
@@ -1246,7 +1313,7 @@ class CasdoorLinkCreateApiView(APIView):
         creator = ensure_creator(user)
         creator.casdoor_sub = challenge.sub
         creator.save(update_fields=["casdoor_sub"])
-        seed_inbox_and_welcome_note(creator)
+        seed_welcome_note(creator)
         # 0.1.119: stamp display_name + avatar_url from the captured
         # JWT so the freshly-created account already shows the
         # Casdoor avatar / display-name on first paint instead of

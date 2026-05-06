@@ -361,11 +361,11 @@ class _LocalDataPage extends StatelessWidget {
             children: [
               ListTile(
                 leading: const Icon(Icons.restore_outlined),
-                title: const Text('Restore starter inbox'),
+                title: const Text('Restore starter draft'),
                 subtitle: const Text(
-                  'Re-seeds the local Inbox category and welcome '
-                  'note. Safe to run any time — only fires when the '
-                  'workspace is empty.',
+                  'Re-seeds the welcome draft in the uncategorized '
+                  'bucket. Safe to run any time — only fires when no '
+                  'notes exist locally.',
                 ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => p._runMaintenanceAction(

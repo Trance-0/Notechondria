@@ -159,7 +159,6 @@ def _course_files(creator: Creator) -> list[_RepoFile]:
             "title": course.title,
             "description": course.description or "",
             "icon": course.icon,
-            "is_default": course.is_default,
             "sort_order": getattr(course, "sort_order", 0),
             "cover_image_url": course.cover_image.url if course.cover_image else "",
         }

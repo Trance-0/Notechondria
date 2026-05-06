@@ -11,12 +11,19 @@ class _NoteMetadataDialog extends StatefulWidget {
     required this.onRestoreVersion,
     this.onUploadCover,
     this.onDeleteCover,
+    this.uncategorizedLabel = 'Inbox',
   });
 
   final Map<String, dynamic> note;
   final List<Map<String, dynamic>> courses;
   final Map<String, dynamic> metadata;
   final bool allowPublicToggle;
+  /// 0.1.120: per-account display label for the synthetic
+  /// uncategorized bucket (notes with `course_id == null`). Replaces
+  /// the old "No assigned course" placeholder. Defaults to "Inbox" so
+  /// hosts that haven't wired the new field still render a sensible
+  /// label.
+  final String uncategorizedLabel;
   final Future<List<Map<String, dynamic>>> Function(int noteId) onGetHistory;
   final Future<Map<String, dynamic>> Function(int noteId, int versionId)
       onRestoreVersion;
@@ -222,9 +229,9 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
               DropdownButtonFormField<int?>(
                 value: _courseId,
                 items: [
-                  const DropdownMenuItem<int?>(
+                  DropdownMenuItem<int?>(
                     value: null,
-                    child: Text('No assigned course'),
+                    child: Text(widget.uncategorizedLabel),
                   ),
                   ...widget.courses.map(
                     (course) => DropdownMenuItem<int?>(

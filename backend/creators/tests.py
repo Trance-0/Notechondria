@@ -276,7 +276,6 @@ class GithubSyncTests(TestCase):
             slug='inbox',
             title='Inbox',
             description='',
-            is_default=True,
         )
         note = Note.objects.create(
             creator_id=self.creator,
@@ -354,7 +353,6 @@ class GithubSyncTests(TestCase):
             creator_id=self.creator,
             slug='inbox',
             title='Inbox',
-            is_default=True,
         )
         note = Note.objects.create(
             creator_id=self.creator,
@@ -393,7 +391,6 @@ class GithubSyncTests(TestCase):
 
         course = Course.objects.create(
             creator_id=self.creator, slug='inbox', title='Inbox',
-            is_default=True,
         )
         note = Note.objects.create(
             creator_id=self.creator,

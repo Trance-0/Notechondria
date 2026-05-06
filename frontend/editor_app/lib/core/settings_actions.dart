@@ -36,6 +36,11 @@ extension _AppShellSettingsActionsX on _AppShellState {
     String apiBaseUrl, {
     String firstName = '',
     String lastName = '',
+    // 0.1.120: per-account label for the synthetic uncategorized
+    // bucket. Optional so older callers (planner / portal) compile
+    // unchanged; an empty value falls through to "no change" without
+    // touching the server.
+    String uncategorizedFolderName = '',
   }) async {
     final currentSettings =
         Map<String, dynamic>.from(_settings ?? const {});
@@ -92,6 +97,14 @@ extension _AppShellSettingsActionsX on _AppShellState {
     if (!_sameTrimmedValue(socialLink, currentSocialLink)) {
       remotePayload['social_link'] = socialLink;
       changedFields.add('social link');
+    }
+    final currentUncategorized =
+        currentSettings['uncategorized_folder_name']?.toString() ?? 'Inbox';
+    final nextUncategorized = uncategorizedFolderName.trim();
+    if (nextUncategorized.isNotEmpty &&
+        nextUncategorized != currentUncategorized) {
+      remotePayload['uncategorized_folder_name'] = nextUncategorized;
+      changedFields.add('uncategorized folder name');
     }
     if (editorMode != currentEditorMode) {
       remotePayload['editor_mode'] = editorMode;

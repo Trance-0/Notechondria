@@ -235,10 +235,25 @@ class _GithubSyncExperimentalCardState
   bool _includeAssets = false;
   String? _lastCommitSha;
 
+  // 0.1.120: pop-up install flow. The closer detaches the
+  // postMessage listener and closes the orphaned popup window when
+  // the widget unmounts, so a stale reply can't fire against a
+  // disposed state. See `url_strategy_web.openPopupInstall` for
+  // the rationale (avoids the same-tab redirect that was racing
+  // a near-expiry Casdoor JWT and silently logging the user out).
+  void Function()? _installPopupCloser;
+
   @override
   void initState() {
     super.initState();
     _refreshStatus();
+  }
+
+  @override
+  void dispose() {
+    _installPopupCloser?.call();
+    _installPopupCloser = null;
+    super.dispose();
   }
 
   bool get _hasCallbacks => widget.onLoadStatus != null;
@@ -369,9 +384,51 @@ class _GithubSyncExperimentalCardState
       );
       return;
     }
-    // Same-tab redirect: GitHub returns the user back via the
-    // configured callback URL after the install completes.
-    url_strategy.browserRedirect(url);
+    // 0.1.120: popup-based install. The pre-refactor full-page
+    // redirect was costing the user their session — a long round
+    // trip through GitHub's UI plus a near-expiry Casdoor JWT meant
+    // the cold-booted SPA's first authenticated request hit 401 and
+    // the auth-error interceptor signed the user out (the "GH link
+    // logged me out, no logs on backend" bug). The popup keeps the
+    // SPA loaded; the install-callback page postMessages the
+    // install id back, we POST it to the backend straight from the
+    // existing `_selectRepo` flow.
+    _installPopupCloser?.call();
+    _installPopupCloser = url_strategy.openPopupInstall(
+      url: url,
+      onInstallation: _handleInstallationCallback,
+    );
+  }
+
+  /// Wire-up for the postMessage payload from the install popup. See
+  /// `url_strategy_web.openPopupInstall` for the envelope shape; the
+  /// only field we strictly need is `installation_id`.
+  Future<void> _handleInstallationCallback(Map<String, String> params) async {
+    if (!mounted) return;
+    _installPopupCloser?.call();
+    _installPopupCloser = null;
+    final installationId = params['installation_id'] ?? '';
+    if (installationId.isEmpty || widget.onConnect == null) {
+      // Either the popup closed without an install (user cancelled)
+      // or the host app isn't wired to accept callbacks. Either way
+      // a status refresh is the right next step — if the install
+      // really happened the backend already has it.
+      await _refreshStatus();
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      await widget.onConnect!(
+        installationId: installationId,
+        accountLogin: params['account_login'],
+      );
+      if (!mounted) return;
+      await _refreshStatus();
+    } catch (error) {
+      _snackError('Cannot complete GitHub App install', error);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   void _snackError(String prefix, Object error) {

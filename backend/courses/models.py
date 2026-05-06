@@ -27,7 +27,6 @@ class Course(models.Model):
     description = models.TextField(blank=True, null=True)
     cover_image = models.ImageField(upload_to=course_cover_path, blank=True, null=True)
     icon = models.IntegerField(blank=True, null=True, help_text="Material Icons codePoint")
-    is_default = models.BooleanField(default=False, null=False)
     sort_order = models.IntegerField(default=0, null=False)
     date_created = models.DateTimeField(auto_now_add=True, null=False)
     last_edit = models.DateTimeField(auto_now=True, null=False)

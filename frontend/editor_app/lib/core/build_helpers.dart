@@ -727,14 +727,36 @@ extension _AppShellBuildHelpersX on _AppShellState {
   }
 
   /// True iff *course* should pin to the top of the sidebar's
-  /// Categories block. Defensive: a course with `is_default == true`
-  /// always pins, AND any course titled "Inbox" pins regardless of
-  /// the flag, so older builds + sync paths that left the flag off
-  /// can't make the default category disappear from the sidebar.
+  /// Categories block.
+  ///
+  /// 0.1.120: only the synthetic uncategorized bucket pins. Every
+  /// real Course row is freely reorderable now — the pre-refactor
+  /// "is_default OR title=='inbox'" heuristic was retired along with
+  /// `Course.is_default`.
   bool isCategoryPinned(Map<String, dynamic> course) {
-    if (course['is_default'] == true) return true;
-    final title = course['title']?.toString().trim().toLowerCase() ?? '';
-    return title == 'inbox';
+    return course['is_uncategorized'] == true;
+  }
+
+  /// Build the synthetic uncategorized folder row that pins to the
+  /// top of the sidebar. Carries `is_uncategorized: true` so action
+  /// guards can identify it, and a `null` `id` so it never collides
+  /// with a real Course row. Label comes from the user's profile
+  /// (`Creator.uncategorized_folder_name`, default "Inbox") which the
+  /// auth payload exposes verbatim — falls back to "Inbox" when the
+  /// payload is missing it (anonymous, or pre-0.1.120 SPA build).
+  Map<String, dynamic> buildUncategorizedFolder() {
+    final label = (_settings?['uncategorized_folder_name']
+                ?.toString()
+                .trim() ??
+            '')
+        .isNotEmpty
+        ? _settings!['uncategorized_folder_name']!.toString().trim()
+        : 'Inbox';
+    return <String, dynamic>{
+      'id': null,
+      'title': label,
+      'is_uncategorized': true,
+    };
   }
 
   /// Diagnostic: emit a debug-log line per sidebar rebuild that

@@ -81,7 +81,6 @@ def _course_payload(course):
         "slug": course.slug,
         "description": course.description or "",
         "icon": course.icon,
-        "is_default": course.is_default,
     }
 
 
@@ -438,7 +437,6 @@ def _create_course(user, creator, params):
         title=title,
         description=params.get("description", ""),
         icon=params.get("icon"),
-        is_default=False,
     )
     return _course_payload(course)
 
@@ -463,8 +461,6 @@ def _update_course(user, creator, params):
     course = get_object_or_404(Course, pk=params["course_id"])
     if course.creator_id_id != creator.id:
         raise PermissionError("You can only edit your own courses.")
-    if course.is_default:
-        raise ValueError("The default category cannot be edited.")
     if "title" in params:
         course.title = params["title"]
     if "description" in params:
@@ -496,20 +492,18 @@ def _delete_course(user, creator, params):
     course = get_object_or_404(Course, pk=params["course_id"])
     if course.creator_id_id != creator.id:
         raise PermissionError("You can only delete your own courses.")
-    if course.is_default:
-        raise ValueError("The default category cannot be deleted.")
-    default = Course.objects.filter(creator_id=creator, is_default=True).first()
-    if default is None:
-        raise ValueError("No default category found to move notes into.")
-    with transaction.atomic():
-        Note.objects.filter(course_id=course).update(course_id=default)
-        course.delete()
-    return {"deleted": True, "notes_moved_to": default.id}
+    # 0.1.120: notes whose category is deleted fall to ``course_id IS
+    # NULL`` automatically because ``Note.course_id`` is
+    # ``on_delete=SET_NULL``. The SPA's synthetic uncategorized bucket
+    # picks them up — no manual reassignment to a "default" course.
+    course.delete()
+    return {"deleted": True}
 
 
 register_tool(
     "delete_course",
-    "Delete a course/category. Notes are moved to the default Inbox.",
+    "Delete a course/category. Notes inside are moved to the user's "
+    "uncategorized bucket (course_id=NULL) automatically.",
     {
         "type": "object",
         "properties": {
@@ -867,13 +861,10 @@ def _get_note_by_uuid(user, creator, params):
         deleted_at__isnull=True,
     )
     # Match REST `NoteByUuidApiView`: owner gets full detail; non-owner
-    # only if the note is public or belongs to a default course.
+    # only when the note is explicitly flagged ``is_public=True``.
     is_owner = note.creator_id_id == creator.id
     if not is_owner:
-        is_public = bool(
-            note.is_public or (note.course_id and note.course_id.is_default)
-        )
-        if not is_public:
+        if not note.is_public:
             raise PermissionError(
                 "Note is not public and is owned by another creator."
             )
@@ -883,8 +874,8 @@ def _get_note_by_uuid(user, creator, params):
 register_tool(
     "get_note_by_uuid",
     "Fetch a note by its UUID. Used for deep-link / share-link resolution. "
-    "Returns full detail for the owner; for other users only if the note "
-    "is public or belongs to a default course.",
+    "Returns full detail for the owner; for other users only when the "
+    "note is flagged ``is_public=True``.",
     {
         "type": "object",
         "properties": {
@@ -1008,7 +999,7 @@ def _reorder_courses(user, creator, params):
         raise ValueError("`course_ids` must be a list of integers.")
     owned = {
         c.id: c
-        for c in Course.objects.filter(creator_id=creator, is_default=False)
+        for c in Course.objects.filter(creator_id=creator)
     }
     new_order = []
     seen = set()
@@ -1031,8 +1022,8 @@ def _reorder_courses(user, creator, params):
 register_tool(
     "reorder_courses",
     "Rewrite the sidebar sort order for the authenticated user's "
-    "non-default courses. The default Inbox is always pinned first and "
-    "is excluded from the list.",
+    "courses. The synthetic uncategorized bucket is rendered "
+    "client-side and does not appear in this list.",
     {
         "type": "object",
         "properties": {
@@ -1058,7 +1049,7 @@ def _list_course_notes(user, creator, params):
     )
     is_owner = course.creator_id_id == creator.id
     if not is_owner:
-        notes_qs = notes_qs.filter(Q(is_public=True) | Q(course_id__is_default=True))
+        notes_qs = notes_qs.filter(is_public=True)
     return {
         "course_id": course.id,
         "notes": [_note_payload(n) for n in notes_qs[:200]],
@@ -1068,8 +1059,8 @@ def _list_course_notes(user, creator, params):
 register_tool(
     "list_course_notes",
     "List notes that live inside a course. For the owner, returns every "
-    "non-deleted note; for other users, only public notes and notes in "
-    "the default Inbox course.",
+    "non-deleted note; for other users, only notes flagged "
+    "``is_public=True``.",
     {
         "type": "object",
         "properties": {

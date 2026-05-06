@@ -19,7 +19,6 @@ extension _AppShellLocalCourseBuildersX on _AppShellState {
       'title': effectiveTitle,
       'description': description.trim(),
       'cover_image_url': '',
-      'is_default': false,
       'is_subscribed': false,
       'subscriber_count': 0,
       'last_opened_at': nowIso,

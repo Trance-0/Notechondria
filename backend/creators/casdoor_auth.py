@@ -213,16 +213,32 @@ def _sync_creator_from_claims(creator, claims: dict) -> None:
     ``casdoor_profile_synced_at`` — a busy SPA fires hundreds of
     JWT-authenticated requests during a session and we don't want
     each one writing to the DB. Within 5 minutes of the last
-    sync, this is a no-op.
+    sync, this is a no-op — *unless* the JWT was issued in the
+    last ~60 seconds (its ``iat`` claim is fresh), which signals the
+    user just signed in / refreshed the token and any avatar /
+    display-name change on the Casdoor side should propagate
+    immediately even if a sync ran a couple of minutes earlier.
     """
-    from datetime import timedelta
+    from datetime import datetime, timedelta, timezone as dt_timezone
     from django.utils import timezone
 
     if creator is None:
         return
     last_sync = creator.casdoor_profile_synced_at
     now_utc = timezone.now()
-    if last_sync is not None and (now_utc - last_sync) < timedelta(minutes=5):
+    iat_claim = claims.get("iat") if isinstance(claims, dict) else None
+    iat_dt: Optional[datetime] = None
+    if isinstance(iat_claim, (int, float)):
+        try:
+            iat_dt = datetime.fromtimestamp(int(iat_claim), tz=dt_timezone.utc)
+        except (OverflowError, OSError, ValueError):
+            iat_dt = None
+    fresh_token = iat_dt is not None and (now_utc - iat_dt) < timedelta(seconds=60)
+    if (
+        last_sync is not None
+        and (now_utc - last_sync) < timedelta(minutes=5)
+        and not fresh_token
+    ):
         return
 
     user = creator.user_id

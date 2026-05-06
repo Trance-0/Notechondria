@@ -690,8 +690,8 @@ IconData _courseIcon(Map<String, dynamic> course) {
   if (codePoint != null) {
     return _iconFromCodePoint(codePoint);
   }
+  if (course['is_uncategorized'] == true) return Icons.inbox_outlined;
   if (course['is_local_course'] == true) return Icons.folder_outlined;
-  if (course['is_default'] == true) return Icons.inbox_outlined;
   return Icons.school_outlined;
 }
 

@@ -34,7 +34,7 @@ from .models import (
 from .services import (
     normalize_calendar_url,
     parse_ical_datetime,
-    seed_inbox_and_welcome_note,
+    seed_welcome_note,
 )
 
 
@@ -639,13 +639,17 @@ class HeatmapApiTests(TestCase):
 
         payload = response.json()
         returned_ids = [row['id'] for row in payload]
-        # The user-ordered trio should appear in the requested sequence right
-        # after any pinned default (Inbox) category.
+        # 0.1.120: every category is reorderable. The synthetic
+        # uncategorized bucket lives client-side and never shows up in
+        # this list, so the user-ordered trio's relative sequence is
+        # the only thing that matters here.
         self.assertIn(course_c.id, returned_ids)
         self.assertIn(course_a.id, returned_ids)
         self.assertIn(course_b.id, returned_ids)
-        non_default = [row for row in payload if not row.get('is_default')]
-        ordered_custom = [row['id'] for row in non_default if row['id'] in {course_a.id, course_b.id, course_c.id}]
+        ordered_custom = [
+            row['id'] for row in payload
+            if row['id'] in {course_a.id, course_b.id, course_c.id}
+        ]
         self.assertEqual(ordered_custom, [course_c.id, course_a.id, course_b.id])
 
     def test_course_reorder_rejects_non_list_payload(self):
@@ -750,35 +754,31 @@ class HeatmapApiTests(TestCase):
         self.assertIn(existing.slug, slugs)
         self.assertIn('meaning-of-work-in-age-of-ai', slugs)
         self.assertIn('self-identity-and-expression-in-modern-arts', slugs)
-        # Template courses must never be marked as default — only the user's
-        # Inbox should carry is_default=True.
-        template_defaults = Course.objects.filter(
-            slug__in=['vibe-coding-101', 'meaning-of-work-in-age-of-ai',
-                       'self-identity-and-expression-in-modern-arts'],
-            is_default=True,
-        )
-        self.assertEqual(template_defaults.count(), 0,
-                         'Template courses must not be marked as default')
+        # 0.1.120: ``Course.is_default`` was removed; the prior
+        # "template courses must not carry is_default=True" assertion
+        # is no longer meaningful — every Course is now equal weight.
 
 
 class CourseDeleteApiTests(TestCase):
-    """Verify DELETE /api/v1/courses/<id>/ moves notes and removes course."""
+    """Verify DELETE /api/v1/courses/<id>/ removes the course and notes
+    fall to the uncategorized bucket via SET_NULL.
+
+    0.1.120: pre-refactor, the delete view manually reassigned notes to
+    a ``is_default=True`` Inbox course before dropping the category.
+    With ``Course.is_default`` removed, ``Note.course_id``'s
+    ``on_delete=SET_NULL`` does the right thing for free — notes whose
+    category disappears land in ``course_id IS NULL`` and the SPA's
+    synthetic uncategorized bucket picks them up.
+    """
 
     def setUp(self):
         self.client = Client()
         self.user = User.objects.create_user(username='deleter', password='pw')
         self.creator = Creator.objects.create(user_id=self.user)
         self.token = Token.objects.create(user=self.user)
-        # Default category (Inbox)
-        self.inbox = Course.objects.create(
-            creator_id=self.creator, slug='inbox-del', title='Inbox',
-            is_default=True,
-        )
-        # Non-default category to delete
         self.target = Course.objects.create(
             creator_id=self.creator, slug='to-delete', title='To Delete',
         )
-        # Notes inside the target category
         self.note1 = Note.objects.create(
             creator_id=self.creator, course_id=self.target,
             sharing_id='del-n1', title='Note in target',
@@ -791,25 +791,17 @@ class CourseDeleteApiTests(TestCase):
     def _auth(self):
         return {'HTTP_AUTHORIZATION': f'Token {self.token.key}'}
 
-    def test_delete_moves_notes_to_inbox(self):
+    def test_delete_drops_course_and_orphans_notes_to_uncategorized(self):
         resp = self.client.delete(
             f'/api/v1/courses/{self.target.id}/', **self._auth(),
         )
         self.assertEqual(resp.status_code, 204)
-        # Course is gone
         self.assertFalse(Course.objects.filter(pk=self.target.id).exists())
-        # Notes moved to Inbox
+        # SET_NULL propagated — notes still exist, but with no category.
         self.note1.refresh_from_db()
         self.note2.refresh_from_db()
-        self.assertEqual(self.note1.course_id_id, self.inbox.id)
-        self.assertEqual(self.note2.course_id_id, self.inbox.id)
-
-    def test_delete_default_category_rejected(self):
-        resp = self.client.delete(
-            f'/api/v1/courses/{self.inbox.id}/', **self._auth(),
-        )
-        self.assertEqual(resp.status_code, 400)
-        self.assertTrue(Course.objects.filter(pk=self.inbox.id).exists())
+        self.assertIsNone(self.note1.course_id_id)
+        self.assertIsNone(self.note2.course_id_id)
 
     def test_delete_other_users_category_rejected(self):
         other_user = User.objects.create_user(username='other', password='pw')
@@ -1031,58 +1023,69 @@ class WelcomeNoteSeedingTests(TestCase):
         self.user = User.objects.create_user(username='welcome-user', password='pw')
         self.creator = Creator.objects.create(user_id=self.user)
 
-    def test_seed_creates_inbox_and_welcome_note(self):
-        # Brand-new creator, no Inbox yet.
+    def test_seed_creates_uncategorized_welcome_note(self):
+        # Brand-new creator, no notes yet, no categories.
         self.assertFalse(
             Course.objects.filter(creator_id=self.creator).exists()
         )
-        note = seed_inbox_and_welcome_note(self.creator)
+        self.assertFalse(
+            Note.objects.filter(creator_id=self.creator).exists()
+        )
+        note = seed_welcome_note(self.creator)
 
         self.assertIsNotNone(note)
-        inbox = Course.objects.get(creator_id=self.creator, is_default=True)
-        self.assertEqual(inbox.title, 'Inbox')
-        self.assertEqual(note.course_id, inbox)
+        # 0.1.120: no Course row is created — the welcome note lives in
+        # the synthetic uncategorized bucket (course_id IS NULL).
+        self.assertIsNone(note.course_id_id)
+        self.assertFalse(
+            Course.objects.filter(creator_id=self.creator).exists()
+        )
         self.assertIn('Welcome to Notechondria', note.title)
         self.assertEqual(
             NoteBlock.objects.filter(note_id=note).count(), 2
         )
 
-    def test_seed_is_idempotent_when_inbox_has_notes(self):
-        inbox = Course.objects.create(
+    def test_seed_is_idempotent_when_creator_already_has_notes(self):
+        existing_course = Course.objects.create(
             creator_id=self.creator,
-            slug='inbox-existing',
-            title='Inbox',
-            is_default=True,
+            slug='existing-course',
+            title='Existing Course',
         )
         Note.objects.create(
             creator_id=self.creator,
-            course_id=inbox,
+            course_id=existing_course,
             sharing_id='existing-note',
             title='Existing',
         )
 
-        result = seed_inbox_and_welcome_note(self.creator)
+        result = seed_welcome_note(self.creator)
 
+        # Any pre-existing non-deleted note (anywhere) means the user
+        # has already been through onboarding — skip.
         self.assertIsNone(result)
         self.assertEqual(
-            Note.objects.filter(creator_id=self.creator, course_id=inbox).count(),
+            Note.objects.filter(creator_id=self.creator).count(),
             1,
         )
 
-    def test_seed_reuses_existing_empty_inbox(self):
-        inbox = Course.objects.create(
+    def test_seed_skips_when_creator_has_uncategorized_note(self):
+        # An uncategorized note (course_id=NULL) also counts as
+        # "already onboarded" — we don't want to drop a second
+        # welcome note on top of the user's first scratch note.
+        Note.objects.create(
             creator_id=self.creator,
-            slug='inbox-empty',
-            title='Inbox',
-            is_default=True,
+            course_id=None,
+            sharing_id='scratch',
+            title='Quick scratch',
         )
 
-        note = seed_inbox_and_welcome_note(self.creator)
+        result = seed_welcome_note(self.creator)
 
-        self.assertIsNotNone(note)
-        self.assertEqual(note.course_id_id, inbox.id)
+        self.assertIsNone(result)
         self.assertEqual(
-            Course.objects.filter(creator_id=self.creator, is_default=True).count(),
+            Note.objects.filter(
+                creator_id=self.creator, course_id__isnull=True,
+            ).count(),
             1,
         )
 

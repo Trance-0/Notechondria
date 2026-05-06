@@ -96,7 +96,6 @@ class Command(BaseCommand):
             {
                 "creator": creator,
                 "payload": self.load_course_payload(sample_root, "vibe-coding-101"),
-                "is_default": False,
                 "notes": [
                     {
                         "title": section["title"],
@@ -111,7 +110,6 @@ class Command(BaseCommand):
             {
                 "creator": demo_creator,
                 "payload": self.load_course_payload(sample_root, "meaning-of-work-in-age-of-ai"),
-                "is_default": False,
                 "notes": [
                     {
                         "title": "Why work still matters",
@@ -129,7 +127,6 @@ class Command(BaseCommand):
                     sample_root,
                     "self-identity-and-expression-in-modern-arts",
                 ),
-                "is_default": False,
                 "notes": [
                     {
                         "title": "Identity as medium",
@@ -152,13 +149,11 @@ class Command(BaseCommand):
                     "creator_id": definition["creator"],
                     "title": payload["title"],
                     "description": payload.get("description"),
-                    "is_default": definition["is_default"],
                 },
             )
             course.creator_id = course.creator_id or definition["creator"]
             course.title = payload["title"]
             course.description = payload.get("description")
-            course.is_default = definition["is_default"]
             course.save()
             cover_image = payload.get("cover_image")
             if not course.cover_image:

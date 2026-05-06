@@ -260,9 +260,9 @@ class McpToolTests(TestCase):
         self.creator.api_key_prefix = self.plaintext[:8]
         self.creator.save(update_fields=["api_key_hash", "api_key_prefix"])
 
-        # Create default course for the user
+        # 0.1.120: ``Course.is_default`` retired; use a plain category.
         self.course = Course.objects.create(
-            creator_id=self.creator, slug="inbox", title="Inbox", is_default=True,
+            creator_id=self.creator, slug="inbox", title="Inbox",
         )
 
     def _call_tool(self, name, arguments=None, req_id=1):
@@ -389,7 +389,8 @@ class McpToolTests(TestCase):
         resp = self._call_tool("create_course", {"title": "Biology 101"})
         result = self._tool_result(resp)
         self.assertEqual(result["title"], "Biology 101")
-        self.assertFalse(result["is_default"])
+        # 0.1.120: ``is_default`` is no longer in the payload.
+        self.assertNotIn("is_default", result)
         self.assertTrue(Course.objects.filter(slug="biology-101").exists())
 
     def test_update_course(self):
@@ -400,24 +401,31 @@ class McpToolTests(TestCase):
         result = self._tool_result(resp)
         self.assertEqual(result["title"], "Organic Chem")
 
-    def test_delete_course_moves_notes_to_default(self):
+    def test_delete_course_orphans_notes_to_uncategorized(self):
         extra = Course.objects.create(
             creator_id=self.creator, slug="extra", title="Extra",
         )
         note = Note.objects.create(
-            creator_id=self.creator, course_id=extra, sharing_id=_sid(), title="Migrating",
+            creator_id=self.creator, course_id=extra, sharing_id=_sid(),
+            title="Migrating",
         )
         resp = self._call_tool("delete_course", {"course_id": extra.id})
         result = self._tool_result(resp)
         self.assertTrue(result["deleted"])
-        self.assertEqual(result["notes_moved_to"], self.course.id)
+        # 0.1.120: ``notes_moved_to`` is gone — SET_NULL drops the
+        # reference instead of pointing it at a "default" course.
+        self.assertNotIn("notes_moved_to", result)
         note.refresh_from_db()
-        self.assertEqual(note.course_id_id, self.course.id)
+        self.assertIsNone(note.course_id_id)
 
-    def test_cannot_delete_default_course(self):
+    def test_can_delete_any_owned_course(self):
+        # 0.1.120: there's no longer a "default" Course to protect, so
+        # the previous test_cannot_delete_default_course assertion no
+        # longer holds. Every owned category is freely deletable.
         resp = self._call_tool("delete_course", {"course_id": self.course.id})
-        data = resp.json()
-        self.assertTrue(data["result"].get("isError", False))
+        result = self._tool_result(resp)
+        self.assertTrue(result["deleted"])
+        self.assertFalse(Course.objects.filter(pk=self.course.id).exists())
 
     # --- Planner events ---
 

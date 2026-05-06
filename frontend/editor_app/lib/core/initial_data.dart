@@ -162,35 +162,12 @@ extension _AppShellInitialDataX on _AppShellState {
       errors.add(error.toString().replaceFirst('Exception: ', ''));
     }
 
-    // If the remote courses include a default (Inbox) category, drop the
-    // local default to avoid a duplicate Inbox row in the sidebar and
-    // remap any local drafts that pointed at the local Inbox to the
-    // remote Inbox so they sync correctly.
-    final remoteDefault = courses.cast<Map<String, dynamic>?>().firstWhere(
-      (c) => c?['is_default'] == true,
-      orElse: () => null,
-    );
-    if (remoteDefault != null && _token != null && _token!.isNotEmpty) {
-      final localDefault = _localCourses.cast<Map<String, dynamic>?>().firstWhere(
-        (c) => c?['is_default'] == true,
-        orElse: () => null,
-      );
-      if (localDefault != null) {
-        final localDefaultId = (localDefault['id'] as num?)?.toInt();
-        final remoteDefaultId = (remoteDefault['id'] as num?)?.toInt();
-        _localCourses = _localCourses
-            .where((c) => c['is_default'] != true)
-            .toList(growable: false);
-        if (localDefaultId != null && remoteDefaultId != null) {
-          _localDrafts = _localDrafts.map((draft) {
-            if (_draftCourseId(draft) != localDefaultId) return draft;
-            return _remapDraftCourseId(draft, localDefaultId, remoteDefaultId);
-          }).toList(growable: false);
-          await persistLocalDrafts();
-        }
-        await persistLocalCourses();
-      }
-    }
+    // 0.1.120: the pre-refactor "find local Inbox + remote Inbox and
+    // merge them" block was retired along with `Course.is_default`.
+    // Local courses are now plain user-created folders; orphan notes
+    // (no `course_id`) live in the synthetic uncategorized bucket
+    // rendered client-side, so there's nothing to dedupe across the
+    // local/remote boundary.
 
     // 0.1.84: only auto-pick a default course if the user already
     // had one selected pre-bootstrap (e.g. they tapped a category
@@ -204,11 +181,6 @@ extension _AppShellInitialDataX on _AppShellState {
         localCourses: _localCourses,
         frontPage: frontPage,
       );
-      // If the default-course lookup returned null (e.g. offline
-      // first login — cloud courses weren't fetched, local Inbox
-      // was seeded by `_ensureStarterWorkspace` but its id scheme
-      // didn't match the lookup), fall back to the existing
-      // selection so the sidebar doesn't lose the Inbox.
       selectedCourse ??= _selectedCourse;
     }
     if (selectedCourse != null) {
@@ -267,29 +239,12 @@ extension _AppShellInitialDataX on _AppShellState {
       }
     }
 
-    // Anonymous / local-only safety net: if _chooseDefaultCourse returned
-    // null (e.g. the Inbox's negative id didn't match any entry in the
-    // _chooseDefaultCourse iteration), the fallback on line 135 already
-    // tried `_selectedCourse`. This guard catches the remaining edge case
-    // where `hadExplicitSelection` was false AND no course was picked,
-    // ensuring local-only users always see their Inbox on first paint.
-    if (_selectedCourse == null && (_token == null || _token!.isEmpty)) {
-      final localDefault = _localCourses.cast<Map<String, dynamic>?>().firstWhere(
-        (c) => c?['is_default'] == true,
-        orElse: () => _localCourses.isNotEmpty ? _localCourses.first : null,
-      );
-      if (localDefault != null) {
-        selectedCourse = Map<String, dynamic>.from(localDefault);
-        courseNotes = _localNotesForCourse(selectedCourse!);
-        log(
-          source: 'Editor._loadInitialData',
-          level: DebugLogLevel.info,
-          message:
-              'Safety net activated: selected local default '
-              "'${localDefault['title']}' for anonymous boot.",
-        );
-      }
-    }
+    // 0.1.120: the pre-refactor "anonymous safety net" picked a local
+    // course flagged is_default=true so a brand-new user always
+    // landed on their Inbox. With Inbox retired in favour of the
+    // synthetic uncategorized bucket, leaving `_selectedCourse=null`
+    // is the right thing — the sidebar's pinned uncategorized row
+    // shows on first paint and surfaces every note with no category.
 
     // Detect a rejected DRF token (revoked server-side, or signed by a
     // different SECRET_KEY after a deploy) and clear the local session

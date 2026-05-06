@@ -1,4 +1,5 @@
 import datetime as _dt
+import json
 import logging
 import os
 import subprocess
@@ -320,12 +321,43 @@ def oauth_callback(request, provider):
 
     For bind flows (``state`` ends with ``_bind``) the backend exchanges the
     code itself and renders a static success / failure page.
+
+    0.1.120: structured info logs at every branch. The earlier "user
+    suddenly logged out after GitHub repo link, no logs on backend"
+    symptom came from this view being silent on the success path while
+    the SPA's cold-boot post-redirect raced an expired Casdoor JWT —
+    making it look like the auth pipeline was broken. With these
+    logs plus the GithubSyncCallbackApiView entry/exit lines, an
+    operator can pin the failure to either the redirect leg
+    (``oauth_callback`` recorded entry) or the SPA-side install POST
+    (``GithubSync/install_callback`` recorded entry).
     """
     code = request.GET.get("code", "")
     state = request.GET.get("state", "")
     error = request.GET.get("error", "")
+    installation_id = request.GET.get("installation_id", "")
+    setup_action = request.GET.get("setup_action", "")
+
+    logger.info(
+        "OAuth callback received: "
+        "Backend.Notechondria.OAuth/callback — "
+        "provider=%s state=%r has_code=%s installation_id=%r "
+        "setup_action=%r error=%r.",
+        provider,
+        state,
+        bool(code),
+        installation_id,
+        setup_action,
+        error,
+    )
 
     if error:
+        logger.warning(
+            "OAuth callback rejected by provider: "
+            "Backend.Notechondria.OAuth/callback — "
+            "provider=%s error=%s.",
+            provider, error,
+        )
         return _oauth_result_page(
             "Authentication failed",
             f"The provider returned an error: {error}",
@@ -333,11 +365,30 @@ def oauth_callback(request, provider):
         )
 
     if not code:
-        return _oauth_result_page(
-            "Authentication failed",
-            "No authorisation code received from the provider.",
-            success=False,
-        )
+        # GitHub App install callbacks may arrive without a `code` when
+        # the user only adjusted an existing installation (no fresh OAuth
+        # exchange happened). Fall through to the redirect branch so the
+        # SPA can read `installation_id` from the query string and
+        # finish wiring up the integration.
+        if provider == "github" and installation_id:
+            logger.info(
+                "OAuth callback (GitHub install-only, no code): "
+                "Backend.Notechondria.OAuth/callback — "
+                "installation_id=%s setup_action=%s.",
+                installation_id, setup_action,
+            )
+        else:
+            logger.warning(
+                "OAuth callback missing code: "
+                "Backend.Notechondria.OAuth/callback — "
+                "provider=%s state=%r.",
+                provider, state,
+            )
+            return _oauth_result_page(
+                "Authentication failed",
+                "No authorisation code received from the provider.",
+                success=False,
+            )
 
     # Determine the frontend origin to redirect to.
     frontend_origin = os.getenv("FRONTEND_ORIGIN", "").rstrip("/")
@@ -350,21 +401,62 @@ def oauth_callback(request, provider):
         # Fallback: same origin (Docker Compose where gateway routes everything)
         redirect_target = frontend_path
 
-    params = urlencode({"code": code, "state": state})
+    forward = {"code": code, "state": state}
+    if installation_id:
+        forward["installation_id"] = installation_id
+    if setup_action:
+        forward["setup_action"] = setup_action
+    params = urlencode(forward)
     redirect_url = f"{redirect_target}?{params}"
+    logger.info(
+        "OAuth callback redirecting to SPA: "
+        "Backend.Notechondria.OAuth/callback — "
+        "provider=%s target=%s forward_keys=%s.",
+        provider,
+        redirect_target,
+        ",".join(forward.keys()),
+    )
 
+    # 0.1.120: dual-mode response.
+    # - Popup-mode (the new GitHub-install flow opens this URL via
+    #   `window.open(...)` and stays loaded in the parent SPA): the
+    #   page detects `window.opener`, posts the OAuth params back to
+    #   the parent, and closes itself. The parent SPA never reloads,
+    #   so its in-memory auth state survives — fixing the "user
+    #   suddenly logged out after GH App link" bug.
+    # - Same-tab fallback (legacy callers, plus Casdoor login flows
+    #   that aren't routed through a popup): meta-refresh + replace
+    #   to the SPA route as before, so existing flows keep working.
+    forward_json = json.dumps({k: v for k, v in forward.items()})
     return HttpResponse(
         f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
-<meta http-equiv="refresh" content="0;url={redirect_url}">
-<title>Redirecting…</title>
+<title>Completing sign-in…</title>
 <style>
   body {{ font-family: system-ui, sans-serif; display: flex;
          justify-content: center; align-items: center; min-height: 100vh;
          margin: 0; background: #f8fafc; color: #1e293b; }}
 </style></head><body>
-<p>Redirecting to the app…</p>
-<script>window.location.replace({redirect_url!r});</script>
+<p>Finishing up…</p>
+<script>
+(function () {{
+  var payload = Object.assign({{type: "gh-install"}}, {forward_json});
+  // Popup mode: the SPA opened this window with `window.open(...)`.
+  // Posting back lets the parent finish the install without losing
+  // its in-memory auth state. We close ourselves immediately after
+  // the postMessage so the parent's UI takes back focus.
+  if (window.opener && !window.opener.closed) {{
+    try {{ window.opener.postMessage(payload, "*"); }} catch (e) {{}}
+    try {{ window.close(); }} catch (e) {{}}
+    return;
+  }}
+  // Same-tab fallback: redirect to the SPA route as before.
+  window.location.replace({redirect_url!r});
+}})();
+</script>
+<noscript>
+<meta http-equiv="refresh" content="0;url={redirect_url}">
+</noscript>
 </body></html>""",
         content_type="text/html",
     )

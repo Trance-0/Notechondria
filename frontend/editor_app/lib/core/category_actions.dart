@@ -8,14 +8,15 @@ part of notechondria_frontend;
 /// can't call `setState` directly. Extracted from `app_shell.dart`
 /// so that file stays closer to the AGENTS.md §1.5 1000-line ceiling.
 extension _AppShellCategoryX on _AppShellState {
-  /// True iff the category is the protected Inbox row. The check is
-  /// purely name-based (case-insensitive) \u2014 we deliberately do NOT
-  /// rely on `is_default`, which is server-controlled and can lag the
-  /// UI while a sync is in flight. Single source of truth so all
-  /// rename / delete guards agree.
-  bool _isInboxCategory(Map<String, dynamic> course) {
-    final title = course['title']?.toString().trim() ?? '';
-    return title.toLowerCase() == 'inbox';
+  /// True iff [course] is the synthetic uncategorized folder rendered
+  /// at the top of the sidebar \u2014 the placeholder that groups every
+  /// note with no `course_id` (the post-0.1.120 replacement for the
+  /// pre-refactor Inbox course). The synthetic row is marked with
+  /// `is_uncategorized: true` by `buildUncategorizedFolder`; nothing
+  /// on the server side carries this flag, so it can't accidentally
+  /// match a real Course row that happens to be titled "Inbox".
+  bool _isUncategorizedFolder(Map<String, dynamic> course) {
+    return course['is_uncategorized'] == true;
   }
 
   /// True iff a category with [title] (case-insensitive) already
@@ -117,12 +118,16 @@ extension _AppShellCategoryX on _AppShellState {
               'title field is empty.',
           isError: true);
     }
-    if (_isInboxCategory(course) &&
-        trimmed.toLowerCase() != 'inbox') {
+    if (_isUncategorizedFolder(course)) {
+      // 0.1.120: the synthetic uncategorized bucket isn't a real
+      // Course row \u2014 its label lives on Creator.uncategorized_folder_name
+      // and is editable from Settings. Inline rename here would have
+      // nothing to write to; bail with a clear pointer.
       return const ActionFeedback(
           message: 'Category not updated: '
               'Editor.Sync.Courses/update \u2014 '
-              'the Inbox category cannot be renamed.',
+              'the uncategorized bucket is renamed from Settings, not '
+              'inline. Open Settings \u2192 Display \u2192 Uncategorized folder name.',
           isError: true);
     }
     final courseId = (course['id'] as num?)?.toInt();
@@ -201,54 +206,50 @@ extension _AppShellCategoryX on _AppShellState {
     }
   }
 
-  /// Deletes a category. Notes in it are moved to the user's default category.
+  /// Deletes a category. Notes in it fall to the synthetic
+  /// uncategorized bucket (no `course_id`).
+  ///
+  /// 0.1.120: the pre-refactor "find the Inbox course and reassign
+  /// orphaned notes to it" logic was retired along with `is_default`.
+  /// On the server, ``Note.course_id`` is `on_delete=SET_NULL` so
+  /// notes survive the category delete with `course_id IS NULL`. On
+  /// the client we just drop the row from local state and clear any
+  /// `course_id` field on local drafts that pointed at the deleted
+  /// category.
   Future<ActionFeedback> _deleteCategory(Map<String, dynamic> course) async {
-    if (_isInboxCategory(course)) {
+    if (_isUncategorizedFolder(course)) {
       return const ActionFeedback(
           message: 'Category not deleted: '
               'Editor.Sync.Courses/delete \u2014 '
-              'the Inbox category cannot be removed.',
+              'the uncategorized bucket is the fallback for orphaned '
+              'notes and cannot be removed. Rename it from Settings if '
+              'you want a different label.',
           isError: true);
     }
     final courseId = (course['id'] as num?)?.toInt();
     final isLocal = isLocalCourse(course);
     try {
       if (isLocal) {
-        // Find the local Inbox category (by name, not is_default) to
-        // reassign notes orphaned by this delete.
-        final defaultLocal = _localCourses.cast<Map<String, dynamic>?>().firstWhere(
-          (c) => c != null &&
-              c['id'] != course['id'] &&
-              _isInboxCategory(c),
-          orElse: () => null,
-        );
-        final defaultLocalId = (defaultLocal?['id'] as num?)?.toInt();
-          _localCourses = _localCourses
-              .where((item) => item['id'] != course['id'])
-              .toList(growable: false);
-          // Move drafts from the deleted category into the default category.
-          if (courseId != null && defaultLocalId != null) {
-            _localDrafts = _localDrafts.map((draft) {
-              if (_draftCourseId(draft) != courseId) return draft;
-              return _remapDraftCourseId(draft, courseId, defaultLocalId);
-            }).toList(growable: false);
-          } else {
-            // Fallback: strip course_id so they at least remain visible.
-            _localDrafts = _localDrafts.map((draft) {
-              if (_draftCourseId(draft) != courseId) return draft;
-              final metadata = _decodeNoteMetadata(
-                  draft['metadata_json']?.toString() ?? '{}');
-              metadata.remove('course_id');
-              return {
-                ...draft,
-                'metadata_json': jsonEncode(metadata),
-              };
-            }).toList(growable: false);
-          }
-          if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
-            _selectedCourse = defaultLocal;
-            _selectedCategoryId = defaultLocalId;
-          }
+        _localCourses = _localCourses
+            .where((item) => item['id'] != course['id'])
+            .toList(growable: false);
+        // Strip `course_id` from any local draft pointing at the
+        // deleted row so it surfaces in the synthetic uncategorized
+        // bucket on next render.
+        _localDrafts = _localDrafts.map((draft) {
+          if (_draftCourseId(draft) != courseId) return draft;
+          final metadata = _decodeNoteMetadata(
+              draft['metadata_json']?.toString() ?? '{}');
+          metadata.remove('course_id');
+          return {
+            ...draft,
+            'metadata_json': jsonEncode(metadata),
+          };
+        }).toList(growable: false);
+        if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
+          _selectedCourse = null;
+          _selectedCategoryId = null;
+        }
         refreshState();
         await persistLocalCourses();
         await persistLocalDrafts();
@@ -262,21 +263,13 @@ extension _AppShellCategoryX on _AppShellState {
               isError: true);
         }
         await widget.client.deleteCourse(token, courseId);
-        // Find the remote Inbox category to land on after deletion
-        // (by name, not is_default).
-        final defaultRemote = _courses.cast<Map<String, dynamic>?>().firstWhere(
-          (c) => c != null &&
-              (c['id'] as num?)?.toInt() != courseId &&
-              _isInboxCategory(c),
-          orElse: () => null,
-        );
-          _courses = _courses
-              .where((item) => (item['id'] as num?)?.toInt() != courseId)
-              .toList(growable: false);
-          if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
-            _selectedCourse = defaultRemote;
-            _selectedCategoryId = (defaultRemote?['id'] as num?)?.toInt();
-          }
+        _courses = _courses
+            .where((item) => (item['id'] as num?)?.toInt() != courseId)
+            .toList(growable: false);
+        if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
+          _selectedCourse = null;
+          _selectedCategoryId = null;
+        }
         refreshState();
         await _persistLocalCache();
         await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
@@ -286,11 +279,13 @@ extension _AppShellCategoryX on _AppShellState {
         source: 'Editor.Sync.Courses/delete',
         message:
             "Category deleted: Editor.Sync.Courses/delete \u2014 "
-            "'${course['title']}' removed; its notes moved to default.",
+            "'${course['title']}' removed; its notes fall to the "
+            "uncategorized bucket via SET_NULL.",
       );
       return ActionFeedback(
           message: "Category deleted: Editor.Sync.Courses/delete \u2014 "
-              "'${course['title']}' removed; notes moved to default.");
+              "'${course['title']}' removed; its notes are now in the "
+              "uncategorized bucket.");
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
       log(
@@ -345,15 +340,6 @@ extension _AppShellCategoryX on _AppShellState {
         );
       }
     }
-    final fallback = (isLocal ? _localCourses : _courses)
-        .cast<Map<String, dynamic>?>()
-        .firstWhere(
-          (c) =>
-              c != null &&
-              (c['id'] as num?)?.toInt() != courseId &&
-              _isInboxCategory(c),
-          orElse: () => null,
-        );
     if (isLocal) {
       _localCourses = _localCourses
           .where((item) => (item['id'] as num?)?.toInt() != courseId)
@@ -366,8 +352,10 @@ extension _AppShellCategoryX on _AppShellState {
       await _persistLocalCache();
     }
     if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
-      _selectedCourse = fallback;
-      _selectedCategoryId = (fallback?['id'] as num?)?.toInt();
+      // Fall back to the synthetic uncategorized bucket (no course
+      // selected). The sidebar pins it client-side.
+      _selectedCourse = null;
+      _selectedCategoryId = null;
     }
     refreshState();
     if (hasToken) {
@@ -396,7 +384,7 @@ extension _AppShellCategoryX on _AppShellState {
   /// and right-click handlers. Pulled out so the pinned Inbox row and the
   /// draggable rows inside the reorderable list share the exact same look.
   Widget _buildCategoryRow(Map<String, dynamic> cat) {
-    final isInbox = _isInboxCategory(cat);
+    final isInbox = _isUncategorizedFolder(cat);
     return Tooltip(
       message: isInbox
           ? cat['title']?.toString() ?? 'Category'
@@ -518,54 +506,39 @@ extension _AppShellCategoryX on _AppShellState {
   }
 
   /// Shows an edit dialog for a category (rename + icon + delete).
-  /// The Inbox row gets a stripped-down dialog: no rename / icon /
-  /// delete — only an immediate "Remove from sidebar" action that
-  /// routes through `_unsubscribeCategory` so it works offline and
-  /// without the 3-second confirm delay that the destructive-delete
-  /// path uses. The Inbox itself is reseeded on next launch by
-  /// `_ensureStarterWorkspace`, so removing it from the sidebar is
-  /// recoverable.
+  ///
+  /// 0.1.120: the synthetic uncategorized folder is informational —
+  /// long-press / right-click on it surfaces a hint pointing the user
+  /// at Settings (where its label can be edited). It can't be renamed
+  /// inline (its label lives on `Creator.uncategorized_folder_name`)
+  /// and it can't be removed (it's the fallback for any note without
+  /// a course).
   Future<void> _promptEditCategory(Map<String, dynamic> course) async {
-    if (_isInboxCategory(course)) {
-      final confirmed = await showDialog<bool>(
+    if (_isUncategorizedFolder(course)) {
+      await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
           title: Row(
             children: [
               const Icon(Icons.inbox_outlined),
               const SizedBox(width: 8),
-              Text(course['title']?.toString() ?? 'Inbox'),
+              Text(course['title']?.toString() ?? 'Uncategorized'),
             ],
           ),
           content: const Text(
-            'Inbox is the default category. Renaming and icon changes '
-            'are reserved for it. You can remove it from the sidebar '
-            'right now (no waiting period); the row reseeds itself the '
-            'next time the editor launches.',
+            'This is your uncategorized bucket — every note that has '
+            'no category lands here. It cannot be renamed inline or '
+            'removed. Open Settings → Display to rename it (the label '
+            'is per-account).',
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              style: TextButton.styleFrom(
-                foregroundColor: Theme.of(ctx).colorScheme.error,
-              ),
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Remove from sidebar'),
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Got it'),
             ),
           ],
         ),
       );
-      if (confirmed == true) {
-        final feedback = await _unsubscribeCategory(course);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(feedback.message)),
-          );
-        }
-      }
       return;
     }
     final controller =
