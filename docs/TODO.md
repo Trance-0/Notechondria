@@ -32,14 +32,6 @@ file and add a round-log entry to the new version doc.
   bootstrap path: planner_app and portal_app still emit mostly
   Info-level messages without `durationMs`. Adopt `_timed(...)`
   wrappers on their bootstrap calls when that code stabilizes.
-- [ ] Migrate remaining `_appendUiLog(String)` callback-routed
-  entries (via `onLogEvent: _appendUiLog` in module part-files) to
-  carry a structured `source` slot so the debug log card's filter
-  chip row surfaces them by module. Currently they land as
-  Info-level with empty source. Requires threading a richer
-  callback type (e.g. `void Function({String source, DebugLogLevel
-  level, String message})`) through the learner + note editor
-  widgets.
 
 ## Editor
 
@@ -56,6 +48,12 @@ file and add a round-log entry to the new version doc.
 ### Note editor
 
 ### Editor Settings
+
+- [ ] Apple Journal import (experimental). Resolve the picker contract
+  first: web builds can reliably import a selected ZIP, while recursive
+  selected-folder reads require a desktop-only `dart:io` path. Proposed
+  first phase is Apple Journal export ZIP -> local categories/drafts
+  only, with cloud sync paused until the user manually pushes.
 
 ## Planner
 

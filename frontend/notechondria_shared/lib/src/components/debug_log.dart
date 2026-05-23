@@ -245,6 +245,7 @@ class DebugLogCard extends StatefulWidget {
 
 class _DebugLogCardState extends State<DebugLogCard> {
   late DebugLogLevel _minLevel;
+  String? _sourceFilter;
   final TextEditingController _terminalController = TextEditingController();
   final ScrollController _terminalOutputController = ScrollController();
   final FocusNode _terminalFocus = FocusNode();
@@ -274,7 +275,8 @@ class _DebugLogCardState extends State<DebugLogCard> {
   }
 
   bool _passesFilter(DebugLogEntry e) {
-    return e.level.index <= _minLevel.index;
+    final sourceMatches = _sourceFilter == null || e.source == _sourceFilter;
+    return sourceMatches && e.level.index <= _minLevel.index;
   }
 
   Color _levelColor(ThemeData theme, DebugLogLevel level) {
@@ -476,6 +478,15 @@ class _DebugLogCardState extends State<DebugLogCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final sources = widget.controller.entries
+        .map((e) => e.source)
+        .where((source) => source.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    if (_sourceFilter != null && !sources.contains(_sourceFilter)) {
+      _sourceFilter = null;
+    }
     final entries =
         widget.controller.entries.where(_passesFilter).toList(growable: false);
     return Card(
@@ -514,6 +525,26 @@ class _DebugLogCardState extends State<DebugLogCard> {
                   ),
               ],
             ),
+            if (sources.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  ChoiceChip(
+                    label: const Text('All sources'),
+                    selected: _sourceFilter == null,
+                    onSelected: (_) => setState(() => _sourceFilter = null),
+                  ),
+                  for (final source in sources)
+                    ChoiceChip(
+                      label: Text(_sourceLabel(source)),
+                      selected: _sourceFilter == source,
+                      onSelected: (_) => setState(() => _sourceFilter = source),
+                    ),
+                ],
+              ),
+            ],
             const SizedBox(height: 8),
             SizedBox(
               height: 220,
@@ -530,7 +561,8 @@ class _DebugLogCardState extends State<DebugLogCard> {
                       itemCount: entries.length,
                       itemBuilder: (context, index) {
                         final e = entries[index];
-                        return _LogRow(entry: e, color: _levelColor(theme, e.level));
+                        return _LogRow(
+                            entry: e, color: _levelColor(theme, e.level));
                       },
                     ),
             ),
@@ -548,6 +580,13 @@ class _DebugLogCardState extends State<DebugLogCard> {
       ),
     );
   }
+
+  String _sourceLabel(String source) {
+    const prefix = 'Editor.';
+    final label =
+        source.startsWith(prefix) ? source.substring(prefix.length) : source;
+    return label.length > 26 ? '${label.substring(0, 23)}...' : label;
+  }
 }
 
 class _LogRow extends StatelessWidget {
@@ -561,7 +600,8 @@ class _LogRow extends StatelessWidget {
     final theme = Theme.of(context);
     final baseStyle = theme.textTheme.bodySmall
         ?.copyWith(fontFamily: 'monospace', color: theme.colorScheme.onSurface);
-    final levelStyle = baseStyle?.copyWith(color: color, fontWeight: FontWeight.w700);
+    final levelStyle =
+        baseStyle?.copyWith(color: color, fontWeight: FontWeight.w700);
     final dim = theme.colorScheme.onSurface.withValues(alpha: 0.55);
     final sourceStyle = baseStyle?.copyWith(color: dim);
     final durationPart =

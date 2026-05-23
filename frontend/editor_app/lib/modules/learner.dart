@@ -49,6 +49,7 @@ class _LearnerPage extends StatefulWidget {
   final bool hasMoreNotes;
   final bool isLoadingMore;
   final String searchQuery;
+
   /// One of: `local`, `personal`, `private`, `public`.
   ///   local    — show only local drafts (no cloud call).
   ///   personal — own cloud notes (private + public).
@@ -56,6 +57,7 @@ class _LearnerPage extends StatefulWidget {
   ///   public   — own cloud notes, public only.
   final String searchScope;
   final bool isAuthenticated;
+
   /// `true` when the user has a locally-created (offline) category open.
   /// In that case the page forces `searchScope = 'local'` because public
   /// or cloud-personal notes have no relationship to a category that
@@ -90,7 +92,7 @@ class _LearnerPage extends StatefulWidget {
   final Future<Map<String, dynamic>> Function(Map<String, dynamic> draft)
       onSyncLocalDraft;
   final Future<void> Function() onSyncAllLocalDrafts;
-  final ValueChanged<String> onLogEvent;
+  final EditorLogSink onLogEvent;
   final Future<Map<String, dynamic>> Function(int noteId, XFile file)?
       onUploadAttachment;
   final Future<Map<String, dynamic>> Function(int noteId, XFile file)?
@@ -187,8 +189,11 @@ class _LearnerPageState extends State<_LearnerPage> {
       return;
     }
     widget.onLogEvent(
-        "Note editor opened: Editor.UI/open_editor \u2014 "
-        "'${detail['title']?.toString() ?? 'Untitled note'}' loaded into dialog.");
+      source: 'Editor.UI/open_editor',
+      message: 'Note editor opened: Editor.UI/open_editor \u2014 '
+          '\'${detail['title']?.toString() ?? 'Untitled note'}\' loaded into dialog.',
+      level: DebugLogLevel.info,
+    );
     final sessionId = await widget.onStartNoteSession(
       detail['id'] as int,
       detail['title']?.toString() ?? 'Untitled note',
@@ -225,8 +230,8 @@ class _LearnerPageState extends State<_LearnerPage> {
     if (!mounted) {
       return;
     }
-    final author = Map<String, dynamic>.from(
-        detail['author'] as Map? ?? const {});
+    final author =
+        Map<String, dynamic>.from(detail['author'] as Map? ?? const {});
     final isOwner = widget.currentUsername.isNotEmpty &&
         author['username']?.toString() == widget.currentUsername;
     // Local drafts (no author) are always editable.
@@ -250,8 +255,11 @@ class _LearnerPageState extends State<_LearnerPage> {
       return;
     }
     widget.onLogEvent(
-        'Note shell created: Editor.UI/create_note \u2014 '
-        'server issued note id ${created['id']}; editor about to open.');
+      source: 'Editor.UI/create_note',
+      message: 'Note shell created: Editor.UI/create_note \u2014 '
+          'server issued note id ${created['id']}; editor about to open.',
+      level: DebugLogLevel.info,
+    );
     await _openEditor(created);
   }
 
@@ -406,8 +414,7 @@ class _LearnerPageState extends State<_LearnerPage> {
                   if (widget.isLocalCourseSelected) ...[
                     const SizedBox(width: 8),
                     Tooltip(
-                      message:
-                          'Local categories only contain local drafts. '
+                      message: 'Local categories only contain local drafts. '
                           'Switch to a synced category to filter cloud notes.',
                       child: Icon(
                         Icons.info_outline,
@@ -460,7 +467,8 @@ class _LearnerPageState extends State<_LearnerPage> {
               const SizedBox(height: 16),
             ],
             if (localDrafts.isNotEmpty &&
-                (effectiveScope == 'local' ||
+                (!widget.isAuthenticated ||
+                    effectiveScope == 'local' ||
                     effectiveScope == 'personal')) ...[
               Text(
                 'Local drafts',
@@ -599,10 +607,13 @@ class _LearnerNoteCard extends StatelessWidget {
         .take(3)
         .toList();
     final isPublic = note['is_public'] == true;
-    final author = Map<String, dynamic>.from(note['author'] as Map? ?? const {});
-    final course = Map<String, dynamic>.from(note['course'] as Map? ?? const {});
+    final author =
+        Map<String, dynamic>.from(note['author'] as Map? ?? const {});
+    final course =
+        Map<String, dynamic>.from(note['course'] as Map? ?? const {});
     final authorName = author['username']?.toString() ?? '';
-    final avatarFallback = authorName.isEmpty ? 'L' : authorName.substring(0, 1);
+    final avatarFallback =
+        authorName.isEmpty ? 'L' : authorName.substring(0, 1);
     final avatarUrl = _resolveRemoteUrl(
       author['image_url']?.toString() ?? '',
       apiBaseUrl: apiBaseUrl,
@@ -728,150 +739,142 @@ class _LearnerNoteCardBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _RemoteAvatar(
+              radius: 18,
+              imageUrl: avatarUrl,
+              fallbackLabel: avatarFallback,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  _RemoteAvatar(
-                    radius: 18,
-                    imageUrl: avatarUrl,
-                    fallbackLabel: avatarFallback,
+                  Text(
+                    note['title']?.toString() ?? 'Untitled note',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                  const SizedBox(height: 4),
+                  // Visual badge distinguishing the four note
+                  // states — Local draft, Public, Private — at
+                  // a glance. The text row below it carries the
+                  // category and last-edit metadata.
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      _NoteStateBadge(
+                        isLocalDraft: isLocalDraft,
+                        isPublic: isPublic,
+                      ),
+                      if ((course['title']?.toString() ?? '').isNotEmpty)
                         Text(
-                          note['title']?.toString() ?? 'Untitled note',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        // Visual badge distinguishing the four note
-                        // states — Local draft, Public, Private — at
-                        // a glance. The text row below it carries the
-                        // category and last-edit metadata.
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            _NoteStateBadge(
-                              isLocalDraft: isLocalDraft,
-                              isPublic: isPublic,
-                            ),
-                            if ((course['title']?.toString() ?? '').isNotEmpty)
-                              Text(
-                                course['title'].toString(),
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant,
-                                    ),
-                              ),
-                            Text(
-                              formatCompactTimestamp(
-                                note['last_edit']?.toString() ?? '',
-                              ),
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
+                          course['title'].toString(),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: Theme.of(context)
                                         .colorScheme
                                         .onSurfaceVariant,
                                   ),
+                        ),
+                      Text(
+                        formatCompactTimestamp(
+                          note['last_edit']?.toString() ?? '',
+                        ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Single status / action icon. Three states for
-                  // local drafts (offline-only / unsynced / failed)
-                  // plus a static cloud-done indicator for cloud
-                  // notes. Replaces the prior split where both an
-                  // inline status icon AND an action button rendered
-                  // simultaneously.
-                  Builder(builder: (ctx) {
-                    if (!isLocalDraft) {
-                      return Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: Tooltip(
-                          message: 'Synced to cloud',
-                          child: Icon(
-                            Icons.cloud_done_outlined,
-                            size: 18,
-                            color: Theme.of(ctx).colorScheme.primary,
-                          ),
-                        ),
-                      );
-                    }
-                    final lastSyncError =
-                        note['last_sync_error']?.toString() ?? '';
-                    final hasFailure = lastSyncError.isNotEmpty;
-                    if (canSync && onSync != null) {
-                      return IconButton(
-                        tooltip: hasFailure
-                            ? 'Sync failed: $lastSyncError\nTap to retry.'
-                            : 'Sync to cloud',
-                        icon: Icon(
-                          hasFailure
-                              ? Icons.sync_problem_outlined
-                              : Icons.cloud_upload_outlined,
-                          color: hasFailure
-                              ? Theme.of(ctx).colorScheme.error
-                              : null,
-                        ),
-                        onPressed: () async {
-                          await onSync!();
-                        },
-                      );
-                    }
-                    return Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Tooltip(
-                        message: 'Offline draft — sign in to sync.',
-                        child: Icon(
-                          Icons.cloud_off_outlined,
-                          size: 18,
-                          color: Theme.of(ctx).colorScheme.onSurfaceVariant,
-                        ),
                       ),
-                    );
-                  }),
+                    ],
+                  ),
                 ],
               ),
-              if ((note['description']?.toString() ?? '').isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Text(
-                  note['description'].toString(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontStyle: FontStyle.italic,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+            ),
+            // Single status / action icon. Three states for
+            // local drafts (offline-only / unsynced / failed)
+            // plus a static cloud-done indicator for cloud
+            // notes. Replaces the prior split where both an
+            // inline status icon AND an action button rendered
+            // simultaneously.
+            Builder(builder: (ctx) {
+              if (!isLocalDraft) {
+                return Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Tooltip(
+                    message: 'Synced to cloud',
+                    child: Icon(
+                      Icons.cloud_done_outlined,
+                      size: 18,
+                      color: Theme.of(ctx).colorScheme.primary,
+                    ),
+                  ),
+                );
+              }
+              final lastSyncError = note['last_sync_error']?.toString() ?? '';
+              final hasFailure = lastSyncError.isNotEmpty;
+              if (canSync && onSync != null) {
+                return IconButton(
+                  tooltip: hasFailure
+                      ? 'Sync failed: $lastSyncError\nTap to retry.'
+                      : 'Sync to cloud',
+                  icon: Icon(
+                    hasFailure
+                        ? Icons.sync_problem_outlined
+                        : Icons.cloud_upload_outlined,
+                    color: hasFailure ? Theme.of(ctx).colorScheme.error : null,
+                  ),
+                  onPressed: () async {
+                    await onSync!();
+                  },
+                );
+              }
+              return Padding(
+                padding: const EdgeInsets.all(8),
+                child: Tooltip(
+                  message: 'Offline draft — sign in to sync.',
+                  child: Icon(
+                    Icons.cloud_off_outlined,
+                    size: 18,
+                    color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                  ),
                 ),
-              ],
-              const SizedBox(height: 8),
-              Text(
-                previewLines.isEmpty
-                    ? (note['excerpt']?.toString() ?? '')
-                    : previewLines.join('\n'),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          );
+              );
+            }),
+          ],
+        ),
+        if ((note['description']?.toString() ?? '').isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Text(
+            note['description'].toString(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontStyle: FontStyle.italic,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
+        ],
+        const SizedBox(height: 8),
+        Text(
+          previewLines.isEmpty
+              ? (note['excerpt']?.toString() ?? '')
+              : previewLines.join('\n'),
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
   }
 }
 

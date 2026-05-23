@@ -149,3 +149,8 @@ Use this checklist at the end of each modification round.
 - `app_shell.dart` (2481) and `client.dart` (812) remain above the 500-line target; `app_shell.dart` is a single stateful class and `client.dart` is an interface+implementation pair — splitting further requires mixin-based architecture changes.
 - All three frontend apps (`editor_app`, `planner_app`, `portal_app`) verified with `flutter build web --no-tree-shake-icons` after changes.
 - Portal and planner apps still contain stale modules (`front.dart`, `course.dart`, `activity.dart`, `learner.dart`) that their `visibleIndices` don't use; removing these requires rewriting their respective `app_shell.dart` files (same scale as the editor_app rewrite).
+- Added source-filter chips to the shared Debug log card and threaded structured `EditorLogSink` callbacks through editor learner/editor/attachment widgets so module-routed UI events no longer land with an empty source.
+- Fixed the editor smoke-test regression where signed-out first-run local drafts were seeded but hidden behind the public-note scope.
+- Documented the Editor app's portable archive goal: GitHub-flavored Markdown for prose, JSON/frontmatter for metadata, and normal media files as the durable storage shape.
+- Paused Apple Journal import implementation pending the folder-vs-ZIP picker decision: Flutter web can reliably import ZIP files, while recursive selected-folder reads require a desktop-only path.
+- Refreshed `frontend/editor_app/pubspec.lock` so the editor web build resolves the shared package's `idb_shim` transitive dependency; editor smoke test and editor web build pass.

@@ -28,14 +28,16 @@ class _NoteEditorDialog extends StatefulWidget {
   final Future<List<Map<String, dynamic>>> Function(int noteId) onGetHistory;
   final Future<Map<String, dynamic>> Function(int noteId, int versionId)
       onRestoreVersion;
-  final ValueChanged<String> onLogEvent;
+  final EditorLogSink onLogEvent;
   final Future<Map<String, dynamic>> Function(int noteId, XFile file)?
       onUploadAttachment;
+
   /// Multipart upload of a cover image; returns the updated note
   /// summary so the editor can swap its local `cover_image_url`
   /// without an extra round-trip. Null when offline / signed out.
   final Future<Map<String, dynamic>> Function(int noteId, XFile file)?
       onUploadCover;
+
   /// Clear the cover image. Returns the updated note summary.
   final Future<Map<String, dynamic>> Function(int noteId)? onDeleteCover;
 
@@ -56,9 +58,11 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
   late Map<String, dynamic> _note;
   late Map<String, dynamic> _metadata;
   late String _editorMode;
+
   /// Index of the paragraph currently being edited inline in the Typora-style
   /// live editor. Null means every paragraph is rendered as a preview.
   int? _liveEditingParagraphIndex;
+
   /// Scratch controller used while a paragraph is being edited. Rebuilt every
   /// time the user enters a different paragraph and disposed on commit.
   TextEditingController? _liveParagraphController;
@@ -76,7 +80,8 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
       text: _bodyWithoutTitle(_note['content']?.toString() ?? ''),
     );
     final noteEditorMode = _note['editor_mode']?.toString() ?? '';
-    _editorMode = noteEditorMode.isNotEmpty ? noteEditorMode : widget.editorMode;
+    _editorMode =
+        noteEditorMode.isNotEmpty ? noteEditorMode : widget.editorMode;
     // Fall back to live markdown if the note was saved as block editor.
     if (_editorMode == 'B') _editorMode = 'G';
     _titleController.addListener(_handleChanged);
@@ -160,9 +165,8 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
           final inner = lines[i];
           buffer.add(inner);
           i++;
-          final closeMatch =
-              RegExp('^\\s{0,3}($fenceChar{$fenceLen,})\\s*\$')
-                  .firstMatch(inner);
+          final closeMatch = RegExp('^\\s{0,3}($fenceChar{$fenceLen,})\\s*\$')
+              .firstMatch(inner);
           if (closeMatch != null) break;
         }
         flush();
@@ -249,8 +253,7 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
     final paragraphs = _liveParagraphs();
     if (index < 0 || index >= paragraphs.length) return;
     _liveParagraphController?.dispose();
-    _liveParagraphController =
-        TextEditingController(text: paragraphs[index]);
+    _liveParagraphController = TextEditingController(text: paragraphs[index]);
     setState(() {
       _liveEditingParagraphIndex = index;
     });
@@ -332,7 +335,8 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
           'description': _metadata['description'] ?? '',
           'course_id': _metadata['course_id'],
           'is_public': _metadata['is_public'] == true,
-          'content': _composeMarkdown(_titleController.text, _bodyController.text),
+          'content':
+              _composeMarkdown(_titleController.text, _bodyController.text),
           'metadata_json': jsonEncode(
             // `custom_meta` lives on its own column on the backend.
             // Stripping it from the system metadata blob avoids
@@ -348,8 +352,11 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
       _dirty = false;
       _lastSavedAt = DateTime.now();
       widget.onLogEvent(
-          "Note saved from editor: Editor.UI/editor.save \u2014 "
-          "'${_note['title']?.toString() ?? 'Untitled note'}' persisted via $reason.");
+        source: 'Editor.UI/editor.save',
+        message: 'Note saved from editor: Editor.UI/editor.save \u2014 '
+            '\'${_note['title']?.toString() ?? 'Untitled note'}\' persisted via $reason.',
+        level: DebugLogLevel.info,
+      );
       if (reason == 'autosave' && autosaveLabel != null) {
         await widget.onSnapshot(_note['id'] as int, reason: autosaveLabel);
         _lastVersionSnapshotAt = DateTime.now();
@@ -366,8 +373,11 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
 
   Future<void> _openDetails() async {
     widget.onLogEvent(
-        'Note metadata dialog opened: Editor.UI/editor.metadata \u2014 '
-        'user requested metadata edit from the editor toolbar.');
+      source: 'Editor.UI/editor.metadata',
+      message: 'Note metadata dialog opened: Editor.UI/editor.metadata \u2014 '
+          'user requested metadata edit from the editor toolbar.',
+      level: DebugLogLevel.info,
+    );
     final noteId = _note['id'] as int? ?? -1;
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
@@ -444,8 +454,11 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
       _editorMode = mode;
     });
     widget.onLogEvent(
-        'Editor mode switched: Editor.UI/editor.mode \u2014 '
-        'active mode set to $mode.');
+      source: 'Editor.UI/editor.mode',
+      message: 'Editor mode switched: Editor.UI/editor.mode \u2014 '
+          'active mode set to $mode.',
+      level: DebugLogLevel.info,
+    );
     _handleChanged();
   }
 
@@ -455,7 +468,6 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
   // live in `modules/note_editor_attachments.dart` as an extension
   // on `_NoteEditorDialogState` so this file stays closer to the
   // AGENTS.md \u00a71.5 1000-line cap.
-
 
   /// Full-width live markdown editor. Emulates Typora-style inline rendering:
   /// every paragraph renders as a `MarkdownBody` preview until the user taps
@@ -590,10 +602,7 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                       padding: const EdgeInsets.only(top: 4, left: 2),
                       child: Text(
                         specWarnings.join(' \u2022 '),
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: Theme.of(context).colorScheme.error,
                               fontWeight: FontWeight.w600,
                             ),
@@ -668,7 +677,8 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                         await Clipboard.setData(ClipboardData(text: link));
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Link copied to clipboard')),
+                            const SnackBar(
+                                content: Text('Link copied to clipboard')),
                           );
                         }
                       },
@@ -682,12 +692,15 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                   _autosaveTimer?.cancel();
                   if (_dirty) {
                     await _save(reason: 'close');
-                    await widget.onSnapshot(_note['id'] as int,
-                        reason: 'quit');
+                    await widget.onSnapshot(_note['id'] as int, reason: 'quit');
                   }
                   widget.onLogEvent(
-                      'Note editor closed: Editor.UI/editor.close \u2014 '
-                      'dialog dismissed and focus returned to the learner view.');
+                    source: 'Editor.UI/editor.close',
+                    message:
+                        'Note editor closed: Editor.UI/editor.close \u2014 '
+                        'dialog dismissed and focus returned to the learner view.',
+                    level: DebugLogLevel.info,
+                  );
                   if (mounted) {
                     nav.pop();
                   }
@@ -748,16 +761,16 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                     isLiveMarkdown
                         ? _buildLiveMarkdownEditor()
                         : TextField(
-                                controller: _bodyController,
-                                maxLines: null,
-                                expands: true,
-                                textAlignVertical: TextAlignVertical.top,
-                                decoration: const InputDecoration(
-                                  hintText: 'Write your note...',
-                                  border: InputBorder.none,
-                                  alignLabelWithHint: true,
-                                ),
-                              ),
+                            controller: _bodyController,
+                            maxLines: null,
+                            expands: true,
+                            textAlignVertical: TextAlignVertical.top,
+                            decoration: const InputDecoration(
+                              hintText: 'Write your note...',
+                              border: InputBorder.none,
+                              alignLabelWithHint: true,
+                            ),
+                          ),
                     if (widget.onUploadAttachment != null)
                       Positioned(
                         right: 12,
@@ -778,16 +791,14 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                       bottom: 8,
                       child: IgnorePointer(
                         child: DefaultTextStyle(
-                          style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurface
-                                        .withValues(alpha: 0.55),
-                                  ) ??
-                              const TextStyle(),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.55),
+                                      ) ??
+                                  const TextStyle(),
                           child: saveStatus,
                         ),
                       ),

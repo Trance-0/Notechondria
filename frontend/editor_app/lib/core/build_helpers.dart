@@ -47,15 +47,13 @@ extension _AppShellBuildHelpersX on _AppShellState {
                 child: SidebarItem(
                   icon: Icons.menu_book_outlined,
                   label: 'All Notes',
-                  selected:
-                      _selectedIndex == 1 && _selectedCategoryId == null,
+                  selected: _selectedIndex == 1 && _selectedCategoryId == null,
                   onTap: () {
                     Navigator.of(context).pop(); // close drawer
-                      _selectedCategoryId = null;
-                      _selectedIndex = 1;
+                    _selectedCategoryId = null;
+                    _selectedIndex = 1;
                     refreshState();
-                    _loadLearnerNotes(
-                        reset: true, query: _learnerSearchQuery);
+                    _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
                   },
                 ),
               ),
@@ -126,20 +124,16 @@ extension _AppShellBuildHelpersX on _AppShellState {
                             ),
                           Expanded(
                             child: ReorderableListView.builder(
-                              padding:
-                                  const EdgeInsets.fromLTRB(12, 0, 12, 0),
+                              padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
                               buildDefaultDragHandles: false,
                               itemCount: draggable.length,
                               onReorder: (oldIndex, newIndex) {
                                 if (newIndex > oldIndex) newIndex -= 1;
                                 final reordered =
-                                    List<Map<String, dynamic>>.from(
-                                        draggable);
-                                final moved =
-                                    reordered.removeAt(oldIndex);
+                                    List<Map<String, dynamic>>.from(draggable);
+                                final moved = reordered.removeAt(oldIndex);
                                 reordered.insert(newIndex, moved);
-                                _reorderCategories(
-                                    [...pinned, ...reordered]);
+                                _reorderCategories([...pinned, ...reordered]);
                               },
                               itemBuilder: (context, index) {
                                 final cat = draggable[index];
@@ -151,12 +145,10 @@ extension _AppShellBuildHelpersX on _AppShellState {
                                     index: index + pinned.length,
                                     slideOffset: const Offset(0.06, 0),
                                     child: Padding(
-                                      padding:
-                                          const EdgeInsets.only(bottom: 4),
+                                      padding: const EdgeInsets.only(bottom: 4),
                                       child: ReorderableDragStartListener(
                                         index: index,
-                                        child:
-                                            _buildDrawerCategoryRow(cat),
+                                        child: _buildDrawerCategoryRow(cat),
                                       ),
                                     ),
                                   ),
@@ -165,8 +157,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
                             ),
                           ),
                           Padding(
-                            padding:
-                                const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                            padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
                             child: SidebarItem(
                               icon: Icons.add_circle_outline,
                               label: 'New category',
@@ -269,13 +260,14 @@ extension _AppShellBuildHelpersX on _AppShellState {
                     child: SidebarItem(
                       icon: Icons.menu_book_outlined,
                       label: 'All Notes',
-                      selected: _selectedIndex == 1 &&
-                          _selectedCategoryId == null,
+                      selected:
+                          _selectedIndex == 1 && _selectedCategoryId == null,
                       onTap: () {
-                          _selectedCategoryId = null;
-                          _selectedIndex = 1;
+                        _selectedCategoryId = null;
+                        _selectedIndex = 1;
                         refreshState();
-                        _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
+                        _loadLearnerNotes(
+                            reset: true, query: _learnerSearchQuery);
                       },
                     ),
                   ),
@@ -337,15 +329,15 @@ extension _AppShellBuildHelpersX on _AppShellState {
                                   index: ci,
                                   slideOffset: const Offset(0.06, 0),
                                   child: Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                        12, 0, 12, 4),
+                                    padding:
+                                        const EdgeInsets.fromLTRB(12, 0, 12, 4),
                                     child: _buildCategoryRow(pinned[ci]),
                                   ),
                                 ),
                               Expanded(
                                 child: ReorderableListView.builder(
-                                  padding: const EdgeInsets.fromLTRB(
-                                      12, 0, 12, 0),
+                                  padding:
+                                      const EdgeInsets.fromLTRB(12, 0, 12, 0),
                                   buildDefaultDragHandles: false,
                                   itemCount: draggable.length,
                                   onReorder: (oldIndex, newIndex) {
@@ -354,15 +346,17 @@ extension _AppShellBuildHelpersX on _AppShellState {
                                     // removal, so shift it left when moving
                                     // down the list.
                                     if (newIndex > oldIndex) newIndex -= 1;
-                                    final reordered = List<Map<String, dynamic>>
-                                        .from(draggable);
+                                    final reordered =
+                                        List<Map<String, dynamic>>.from(
+                                            draggable);
                                     final moved = reordered.removeAt(oldIndex);
                                     reordered.insert(newIndex, moved);
                                     // _reorderCategories synchronously updates
                                     // _localCourses/_courses via setState, so
                                     // the next rebuild already reflects the
                                     // new order — no local mutation needed.
-                                    _reorderCategories([...pinned, ...reordered]);
+                                    _reorderCategories(
+                                        [...pinned, ...reordered]);
                                   },
                                   itemBuilder: (context, index) {
                                     final cat = draggable[index];
@@ -374,7 +368,8 @@ extension _AppShellBuildHelpersX on _AppShellState {
                                         index: index + pinned.length,
                                         slideOffset: const Offset(0.06, 0),
                                         child: Padding(
-                                          padding: const EdgeInsets.only(bottom: 4),
+                                          padding:
+                                              const EdgeInsets.only(bottom: 4),
                                           child: ReorderableDragStartListener(
                                             index: index,
                                             child: _buildCategoryRow(cat),
@@ -386,8 +381,8 @@ extension _AppShellBuildHelpersX on _AppShellState {
                                 ),
                               ),
                               Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                    12, 4, 12, 8),
+                                padding:
+                                    const EdgeInsets.fromLTRB(12, 4, 12, 8),
                                 child: SidebarItem(
                                   icon: Icons.add_circle_outline,
                                   label: 'New category',
@@ -460,66 +455,64 @@ extension _AppShellBuildHelpersX on _AppShellState {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-                  if (_isLoading)
-                    const LinearProgressIndicator(minHeight: 2),
-                  if (_errorMessage != null)
-                    Material(
-                      color: Theme.of(context).colorScheme.errorContainer,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        child: Row(
-                          children: [
-                            Icon(Icons.cloud_off_outlined,
+            if (_isLoading) const LinearProgressIndicator(minHeight: 2),
+            if (_errorMessage != null)
+              Material(
+                color: Theme.of(context).colorScheme.errorContainer,
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      Icon(Icons.cloud_off_outlined,
+                          color:
+                              Theme.of(context).colorScheme.onErrorContainer),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(_errorMessage!,
+                            style: TextStyle(
                                 color: Theme.of(context)
                                     .colorScheme
-                                    .onErrorContainer),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(_errorMessage!,
-                                  style: TextStyle(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onErrorContainer)),
-                            ),
-                            TextButton(
-                                onPressed: _loadInitialData,
-                                child: const Text('Retry')),
-                            IconButton(
-                              onPressed: () {
-                                _errorMessage = null;
-                                refreshState();
-                              },
-                              icon: const Icon(Icons.close),
-                              tooltip: 'Dismiss',
-                            ),
-                          ],
-                        ),
+                                    .onErrorContainer)),
                       ),
-                    ),
-                  Expanded(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      switchInCurve: Curves.easeOut,
-                      switchOutCurve: Curves.easeIn,
-                      transitionBuilder: (child, animation) {
-                        return FadeTransition(
-                          opacity: animation,
-                          child: SlideTransition(
-                            position: Tween<Offset>(
-                              begin: const Offset(0.03, 0),
-                              end: Offset.zero,
-                            ).animate(animation),
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: KeyedSubtree(
-                        key: ValueKey<int>(_selectedIndex),
-                        child: _buildPage(),
+                      TextButton(
+                          onPressed: _loadInitialData,
+                          child: const Text('Retry')),
+                      IconButton(
+                        onPressed: () {
+                          _errorMessage = null;
+                          refreshState();
+                        },
+                        icon: const Icon(Icons.close),
+                        tooltip: 'Dismiss',
                       ),
-                    ),
+                    ],
                   ),
+                ),
+              ),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                transitionBuilder: (child, animation) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0.03, 0),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  );
+                },
+                child: KeyedSubtree(
+                  key: ValueKey<int>(_selectedIndex),
+                  child: _buildPage(),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -540,8 +533,8 @@ extension _AppShellBuildHelpersX on _AppShellState {
         //      categories without switching the sidebar selection).
         //   3. Otherwise → scope to the active course so we don't
         //      mix unrelated drafts from other categories.
-        final showAllLocalDrafts = _selectedCourse == null ||
-            _learnerSearchScope == 'local';
+        final showAllLocalDrafts =
+            _selectedCourse == null || _learnerSearchScope == 'local';
         final scopedLocalDrafts = showAllLocalDrafts
             ? _localDrafts
             : _localNotesForCourse(_selectedCourse!);
@@ -579,15 +572,25 @@ extension _AppShellBuildHelpersX on _AppShellState {
           onDeleteNote: _deleteNoteToRecycleBin,
           onSyncLocalDraft: _syncLocalDraft,
           onSyncAllLocalDrafts: _syncAllLocalDrafts,
-          onLogEvent: appendUiLog,
+          onLogEvent: ({
+            required source,
+            required message,
+            level = DebugLogLevel.info,
+            durationMs,
+          }) =>
+              log(
+            source: source,
+            message: message,
+            level: level,
+            durationMs: durationMs,
+          ),
           onUploadAttachment: _uploadNoteAttachment,
           onUploadCover: _token != null
               ? (noteId, file) =>
                   widget.client.uploadNoteCoverImage(_token!, noteId, file)
               : null,
           onDeleteCover: _token != null
-              ? (noteId) =>
-                  widget.client.deleteNoteCoverImage(_token!, noteId)
+              ? (noteId) => widget.client.deleteNoteCoverImage(_token!, noteId)
               : null,
           offlineMode: _localSettings['offline_mode'] == true,
           onLoadPublicNotes: () => _loadLearnerNotes(),
@@ -628,10 +631,10 @@ extension _AppShellBuildHelpersX on _AppShellState {
                   // UI shows the updated masked value after rebuild.
                   final newPrefix = result['api_key_prefix']?.toString() ?? '';
                   if (newPrefix.isNotEmpty && mounted) {
-                      _settings = {
-                        ..._settings ?? <String, dynamic>{},
-                        'api_key_prefix': newPrefix,
-                      };
+                    _settings = {
+                      ..._settings ?? <String, dynamic>{},
+                      'api_key_prefix': newPrefix,
+                    };
                     refreshState();
                   }
                   return result;
@@ -658,8 +661,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
                   } catch (e) {
                     final msg = e.toString().replaceFirst('Exception: ', '');
                     return ActionFeedback(
-                      message:
-                          'Agent skill not saved: '
+                      message: 'Agent skill not saved: '
                           'Editor.Settings/skill.save — $msg.',
                       isError: true,
                     );
@@ -668,10 +670,8 @@ extension _AppShellBuildHelpersX on _AppShellState {
               : null,
           githubSyncCardBuilder: _token != null
               ? () => GithubSyncExperimentalCard(
-                    onLoadStatus: () =>
-                        widget.client.githubSyncStatus(_token!),
-                    onListRepos: () =>
-                        widget.client.githubSyncRepos(_token!),
+                    onLoadStatus: () => widget.client.githubSyncStatus(_token!),
+                    onListRepos: () => widget.client.githubSyncRepos(_token!),
                     onConnect: ({
                       required String installationId,
                       String? accountLogin,
@@ -745,13 +745,11 @@ extension _AppShellBuildHelpersX on _AppShellState {
   /// auth payload exposes verbatim — falls back to "Inbox" when the
   /// payload is missing it (anonymous, or pre-0.1.120 SPA build).
   Map<String, dynamic> buildUncategorizedFolder() {
-    final label = (_settings?['uncategorized_folder_name']
-                ?.toString()
-                .trim() ??
-            '')
-        .isNotEmpty
-        ? _settings!['uncategorized_folder_name']!.toString().trim()
-        : 'Inbox';
+    final label =
+        (_settings?['uncategorized_folder_name']?.toString().trim() ?? '')
+                .isNotEmpty
+            ? _settings!['uncategorized_folder_name']!.toString().trim()
+            : 'Inbox';
     return <String, dynamic>{
       'id': null,
       'title': label,
@@ -781,17 +779,18 @@ extension _AppShellBuildHelpersX on _AppShellState {
     required int pinned,
   }) {
     final cats = _allCategories;
-    final localIds = _localCourses
-        .map((c) => c['id']?.toString() ?? '')
-        .toSet();
+    final localIds =
+        _localCourses.map((c) => c['id']?.toString() ?? '').toSet();
     String describe(Map<String, dynamic> c) {
       final id = c['id']?.toString() ?? '<noid>';
-      final title = (c['title']?.toString() ?? '<untitled>').replaceAll('|', '/');
+      final title =
+          (c['title']?.toString() ?? '<untitled>').replaceAll('|', '/');
       final isDefault = c['is_default'] == true ? 'default' : 'plain';
       final origin = localIds.contains(id) ? 'local' : 'cloud';
       final pinnedFlag = isCategoryPinned(c) ? 'pin' : 'drag';
       return '#$id "$title" $isDefault/$origin/$pinnedFlag';
     }
+
     final sampleCount = cats.length > 5 ? 5 : cats.length;
     final sample = [
       for (var i = 0; i < sampleCount; i++) describe(cats[i]),
@@ -809,8 +808,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
           ? DebugLogLevel.warning
           : DebugLogLevel.debug,
       source: 'Editor.UI/sidebar.pin_diagnostics',
-      message:
-          'Sidebar Categories rebuilt: '
+      message: 'Sidebar Categories rebuilt: '
           'Editor.UI/sidebar.pin_diagnostics — '
           'total=$total pinned=$pinned signedIn='
           '${_token != null && _token!.isNotEmpty}. '

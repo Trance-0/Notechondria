@@ -11,11 +11,46 @@ Related: [planner_app](planner_app.md), [portal_app](portal_app.md),
 - Offline-capable authoring surface: notes, folders, tags, attachments.
 - Local persistence via `shared_preferences` + filesystem under
   `SharedPreferences`-managed keys, so the app boots without network.
+- Long-lived archive client, not the archive authority. The app should
+  treat durable user writing as portable files first: GitHub-flavored
+  Markdown for prose, JSON/frontmatter for structured metadata, and
+  normal media files beside the entry. App databases, cloud sync, and
+  importers are adapters around that portable shape.
 - Optional cloud sync to Django when the user is signed in and the API
   base URL passes the [handshake check](../server/backend.md#handshake).
 - Settings surface handles auth (login, register, OAuth with Google and
   GitHub), API base URL, API key rotation, change-email, change-password,
   identity-code verification, and theme.
+
+## Portable diary format goal
+
+The editor's compatibility target is a boring folder format that can be
+read without Notechondria:
+
+```text
+journal/
+  2026/
+    2026-05-22/
+      entry.md
+      metadata.json
+      media/
+        IMG_001.heic
+        voice.m4a
+```
+
+`entry.md` renders as GitHub-flavored Markdown. Metadata belongs in
+YAML frontmatter and/or `metadata.json` so geodata, place names, weather,
+mood, tags, source app, media pointers, created/updated timestamps, and
+sync provenance remain structured instead of buried in prose. The format
+can support modern post/blog structure beyond simple Markdown, but should
+avoid opaque document containers such as DOCX or PDF as the canonical
+storage layer.
+
+Importer priority is one-way into local state first, with cloud sync
+remaining an explicit later user action. Apple Journal, GitJournal,
+Joplin, Obsidian, Day One, ZIP, JSONL, Git/WebDAV/S3/R2, and local
+folder flows should all map into or out of this same Markdown/JSON/media
+archive shape rather than becoming separate sources of truth.
 
 ## Shape
 

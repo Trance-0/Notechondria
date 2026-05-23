@@ -1,5 +1,12 @@
 part of notechondria_frontend;
 
+typedef EditorLogSink = void Function({
+  required String source,
+  required String message,
+  DebugLogLevel level,
+  int? durationMs,
+});
+
 /// Root application widget that configures theme state and launches the shell.
 class NotechondriaApp extends StatefulWidget {
   const NotechondriaApp({
@@ -283,6 +290,7 @@ class _AppShellState extends State<AppShell>
   Timer? _splashTimer;
   final ValueNotifier<String> _splashStatus =
       ValueNotifier<String>('Starting editor');
+
   /// Learner search scope: 'personal' (default) = only the user's own notes,
   /// 'all' = user's notes plus public notes from any other user.
   String _learnerSearchScope = 'personal';
@@ -354,17 +362,13 @@ class _AppShellState extends State<AppShell>
 
   void _pushNoteUrl(String? noteUuid) {
     final base = Uri.base.removeFragment();
-    final newUrl = noteUuid != null
-        ? '$base#/notes/$noteUuid'
-        : '$base#/';
+    final newUrl = noteUuid != null ? '$base#/notes/$noteUuid' : '$base#/';
     url_strategy.browserPushState(newUrl);
   }
 
   void _replaceNoteUrl(String? noteUuid) {
     final base = Uri.base.removeFragment();
-    final newUrl = noteUuid != null
-        ? '$base#/notes/$noteUuid'
-        : '$base#/';
+    final newUrl = noteUuid != null ? '$base#/notes/$noteUuid' : '$base#/';
     url_strategy.browserReplaceState(newUrl);
   }
 
@@ -399,7 +403,12 @@ class _AppShellState extends State<AppShell>
 
   Future<void> _bootstrapApp() async {
     _splashTimer = Timer(const Duration(seconds: 10), () {
-      if (mounted && _isLoading) setState(() { _isLoading = false; _showSplash = false; });
+      if (mounted && _isLoading) {
+        setState(() {
+          _isLoading = false;
+          _showSplash = false;
+        });
+      }
     });
     _splashStatus.value = 'Loading local workspace';
     await _loadLocalState();
@@ -479,7 +488,10 @@ class _AppShellState extends State<AppShell>
               loadingStatus: _splashStatus,
               apiBaseUrl: _localSettings['api_base_url']?.toString(),
               onFinished: () {
-                setState(() { _showSplash = false; if (_isLoading) _isLoading = false; });
+                setState(() {
+                  _showSplash = false;
+                  if (_isLoading) _isLoading = false;
+                });
               },
             ),
           ),
@@ -670,8 +682,7 @@ class _EditCategoryDialogState extends State<_EditCategoryDialog> {
         ),
         if (isOwned)
           TextButton(
-            onPressed: () =>
-                Navigator.of(context).pop({'action': 'delete'}),
+            onPressed: () => Navigator.of(context).pop({'action': 'delete'}),
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(context).colorScheme.error,
             ),

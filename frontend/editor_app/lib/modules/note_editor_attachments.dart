@@ -52,8 +52,10 @@ extension _NoteEditorAttachmentsX on _NoteEditorDialogState {
         _bodyController.text = '${_bodyController.text}\n\n$embed';
         _handleChanged();
         widget.onLogEvent(
-          'Attachment uploaded: Editor.UI/editor.attachment \u2014 '
-          '"$serverName" attached to the open note.',
+          source: 'Editor.UI/editor.attachment',
+          message: 'Attachment uploaded: Editor.UI/editor.attachment \u2014 '
+              '"$serverName" attached to the open note.',
+          level: DebugLogLevel.info,
         );
         return;
       } catch (_) {
@@ -103,10 +105,12 @@ extension _NoteEditorAttachmentsX on _NoteEditorDialogState {
       _handleChanged();
 
       widget.onLogEvent(
-        'Attachment queued for sync: '
-        'Editor.Sync.Notes/attachment.queue \u2014 '
-        '"${record.filename}" stored at ${record.localUrl} '
-        '(${record.sizeBytes} bytes); will upload on next sync.',
+        source: 'Editor.Sync.Notes/attachment.queue',
+        message: 'Attachment queued for sync: '
+            'Editor.Sync.Notes/attachment.queue \u2014 '
+            '"${record.filename}" stored at ${record.localUrl} '
+            '(${record.sizeBytes} bytes); will upload on next sync.',
+        level: DebugLogLevel.info,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -123,8 +127,10 @@ extension _NoteEditorAttachmentsX on _NoteEditorDialogState {
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
       widget.onLogEvent(
-        'Attachment not saved locally: '
-        'Editor.Sync.Notes/attachment.queue \u2014 $cause.',
+        source: 'Editor.Sync.Notes/attachment.queue',
+        message: 'Attachment not saved locally: '
+            'Editor.Sync.Notes/attachment.queue \u2014 $cause.',
+        level: DebugLogLevel.error,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -146,9 +152,8 @@ extension _NoteEditorAttachmentsX on _NoteEditorDialogState {
   String _resolveStoreNoteUuid() {
     final serverUuid = _note['uuid']?.toString() ?? '';
     if (serverUuid.isNotEmpty) return serverUuid;
-    final client = _note['client_draft_id']?.toString() ??
-        _note['id']?.toString() ??
-        '';
+    final client =
+        _note['client_draft_id']?.toString() ?? _note['id']?.toString() ?? '';
     return client.isEmpty ? 'local-unknown' : 'local-$client';
   }
 
@@ -219,10 +224,8 @@ extension _NoteEditorAttachmentsX on _NoteEditorDialogState {
                           filename: (entry['filename'] ?? '').toString(),
                           sizeBytes:
                               (entry['size_bytes'] as num?)?.toInt() ?? 0,
-                          contentType:
-                              (entry['content_type'] ?? '').toString(),
-                          localUrl:
-                              (entry['local_url'] ?? '').toString(),
+                          contentType: (entry['content_type'] ?? '').toString(),
+                          localUrl: (entry['local_url'] ?? '').toString(),
                           cloudUrl: null,
                           onDelete: () async {
                             Navigator.of(ctx).pop();
@@ -321,14 +324,15 @@ extension _NoteEditorAttachmentsX on _NoteEditorDialogState {
     // Remove any markdown line that references this localUrl so the
     // body doesn't render a broken-attachment pill afterwards.
     final lines = _bodyController.text.split('\n');
-    _bodyController.text = lines
-        .where((line) => !line.contains(localUrl))
-        .join('\n');
+    _bodyController.text =
+        lines.where((line) => !line.contains(localUrl)).join('\n');
     _handleChanged();
     widget.onLogEvent(
-      'Attachment deleted locally: '
-      'Editor.UI/editor.attachment.delete \u2014 '
-      '"$filename" removed from note body and local store.',
+      source: 'Editor.UI/editor.attachment.delete',
+      message: 'Attachment deleted locally: '
+          'Editor.UI/editor.attachment.delete \u2014 '
+          '"$filename" removed from note body and local store.',
+      level: DebugLogLevel.info,
     );
   }
 
