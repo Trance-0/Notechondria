@@ -52,6 +52,14 @@ Joplin, Obsidian, Day One, ZIP, JSONL, Git/WebDAV/S3/R2, and local
 folder flows should all map into or out of this same Markdown/JSON/media
 archive shape rather than becoming separate sources of truth.
 
+The first Apple Journal importer phase is ZIP-only because Flutter web
+can reliably read one selected archive, while recursive folder reads
+need a desktop-only `dart:io` path. Settings -> Local data -> Import
+Apple Journal ZIP parses Markdown/JSON entries, stores referenced media
+in `LocalAttachmentStore`, writes GFM/frontmatter drafts into an
+existing or new local category, and leaves cloud sync paused until the
+user explicitly runs Push local -> cloud.
+
 ## Shape
 
 Self-contained Flutter workspace with its own
@@ -106,6 +114,9 @@ Key entry points:
 - `login / register / verifyEmail / oauth...` — auth surface.
 - `getFrontPage / getCourses / getCourseNotes / getNote / updateNote`
   — read/write data.
+
+- `subscribePrivateCourse` saves a foreign cloud course as a private
+  sidebar subscription without changing ownership or republishing it.
 
 ## Build and deploy
 

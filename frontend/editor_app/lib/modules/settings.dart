@@ -33,6 +33,7 @@ class _SettingsPage extends StatefulWidget {
     this.githubSyncCardBuilder,
     this.onExportLocalData,
     this.onRestoreFromLocalImport,
+    this.onImportAppleJournal,
     this.onOpenLocalRecycleBin,
     this.localTrashedDraftCount = 0,
     this.localTrashedCourseCount = 0,
@@ -66,6 +67,7 @@ class _SettingsPage extends StatefulWidget {
   }) onSave;
   final Future<void> Function() onLogout;
   final Future<ActionFeedback> Function(String email, String password) onLogin;
+
   /// Triggers the Casdoor SSO flow. Null when the backend reports
   /// `configured: false` from `/auth/casdoor/config/` (shadow mode).
   /// See `docs/integrations/casdoor-migration.md`.
@@ -114,6 +116,7 @@ class _SettingsPage extends StatefulWidget {
   /// the API-settings page renders a passive disabled card in that
   /// case.
   final Widget Function()? githubSyncCardBuilder;
+
   /// Exports every persisted local bucket as a versioned `.nchron`
   /// zip package (v1, see `docs/export_format_v1.md`). Replaces the
   /// minimal `.env` config download.
@@ -123,6 +126,11 @@ class _SettingsPage extends StatefulWidget {
   /// platform file picker. Shows a preview + delay-confirm dialog
   /// before replacing local state.
   final Future<void> Function()? onRestoreFromLocalImport;
+
+  /// Imports an Apple Journal export ZIP into local-only categories
+  /// and drafts. Cloud sync stays paused until the user manually
+  /// pushes local data.
+  final Future<void> Function()? onImportAppleJournal;
 
   /// Opens the local recycle-bin browser where the user can restore
   /// drafts / categories that were moved to the client-side trash
@@ -188,7 +196,8 @@ class _SettingsPageState extends State<_SettingsPage> {
   bool _saving = false;
   String? _socialLinkError;
   bool _uploadingAvatar = false;
-  bool get _isAuthenticated => widget.profile != null && widget.settings != null;
+  bool get _isAuthenticated =>
+      widget.profile != null && widget.settings != null;
 
   @override
   void initState() {
@@ -208,8 +217,8 @@ class _SettingsPageState extends State<_SettingsPage> {
           widget.profile?['last_name']?.toString() ??
           '',
     );
-    _mottoController =
-        TextEditingController(text: widget.settings?['motto']?.toString() ?? '');
+    _mottoController = TextEditingController(
+        text: widget.settings?['motto']?.toString() ?? '');
     _socialController = TextEditingController(
       text: widget.settings?['social_link']?.toString() ?? '',
     );
@@ -231,7 +240,8 @@ class _SettingsPageState extends State<_SettingsPage> {
   @override
   void didUpdateWidget(covariant _SettingsPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.settings != widget.settings || oldWidget.profile != widget.profile) {
+    if (oldWidget.settings != widget.settings ||
+        oldWidget.profile != widget.profile) {
       _usernameController.text = widget.settings?['username']?.toString() ??
           widget.profile?['username']?.toString() ??
           '';
@@ -242,16 +252,18 @@ class _SettingsPageState extends State<_SettingsPage> {
           widget.profile?['last_name']?.toString() ??
           '';
       _mottoController.text = widget.settings?['motto']?.toString() ?? '';
-      _socialController.text = widget.settings?['social_link']?.toString() ?? '';
+      _socialController.text =
+          widget.settings?['social_link']?.toString() ?? '';
       _uncategorizedFolderNameController.text =
           widget.settings?['uncategorized_folder_name']?.toString() ??
               _uncategorizedFolderNameController.text;
       _editorMode = widget.settings?['editor_mode']?.toString() ?? _editorMode;
     }
     if (oldWidget.localSettings != widget.localSettings) {
-      _apiBaseController.text = widget.localSettings['api_base_url']?.toString() ??
-          widget.apiBaseUrl ??
-          _defaultApiBaseUrl();
+      _apiBaseController.text =
+          widget.localSettings['api_base_url']?.toString() ??
+              widget.apiBaseUrl ??
+              _defaultApiBaseUrl();
       _themePreset = widget.localSettings['theme_preset']?.toString() ?? 'teal';
       _themeMode = widget.localSettings['theme_mode']?.toString() ?? 'S';
     }
@@ -282,8 +294,10 @@ class _SettingsPageState extends State<_SettingsPage> {
   bool get _hasProfileChanges {
     final s = widget.settings ?? const {};
     final p = widget.profile ?? const {};
-    final serverFirstName = s['first_name']?.toString() ?? p['first_name']?.toString() ?? '';
-    final serverLastName = s['last_name']?.toString() ?? p['last_name']?.toString() ?? '';
+    final serverFirstName =
+        s['first_name']?.toString() ?? p['first_name']?.toString() ?? '';
+    final serverLastName =
+        s['last_name']?.toString() ?? p['last_name']?.toString() ?? '';
     final serverMotto = s['motto']?.toString() ?? '';
     final serverSocial = s['social_link']?.toString() ?? '';
     final serverUncategorized =
@@ -300,8 +314,10 @@ class _SettingsPageState extends State<_SettingsPage> {
     final s = widget.settings ?? const {};
     final p = widget.profile ?? const {};
     setState(() {
-      _firstNameController.text = s['first_name']?.toString() ?? p['first_name']?.toString() ?? '';
-      _lastNameController.text = s['last_name']?.toString() ?? p['last_name']?.toString() ?? '';
+      _firstNameController.text =
+          s['first_name']?.toString() ?? p['first_name']?.toString() ?? '';
+      _lastNameController.text =
+          s['last_name']?.toString() ?? p['last_name']?.toString() ?? '';
       _mottoController.text = s['motto']?.toString() ?? '';
       _socialController.text = s['social_link']?.toString() ?? '';
       _uncategorizedFolderNameController.text =
@@ -315,8 +331,10 @@ class _SettingsPageState extends State<_SettingsPage> {
     final changes = <String, String>{};
     final s = widget.settings ?? const {};
     final p = widget.profile ?? const {};
-    final serverFirstName = s['first_name']?.toString() ?? p['first_name']?.toString() ?? '';
-    final serverLastName = s['last_name']?.toString() ?? p['last_name']?.toString() ?? '';
+    final serverFirstName =
+        s['first_name']?.toString() ?? p['first_name']?.toString() ?? '';
+    final serverLastName =
+        s['last_name']?.toString() ?? p['last_name']?.toString() ?? '';
     final serverMotto = s['motto']?.toString() ?? '';
     final serverSocial = s['social_link']?.toString() ?? '';
     final serverEditorMode = s['editor_mode']?.toString() ?? 'P';
@@ -393,7 +411,8 @@ class _SettingsPageState extends State<_SettingsPage> {
           child: OutlinedButton(
             onPressed: hasChanges ? onCancel : null,
             style: OutlinedButton.styleFrom(
-              foregroundColor: hasChanges ? null : Theme.of(context).colorScheme.outline,
+              foregroundColor:
+                  hasChanges ? null : Theme.of(context).colorScheme.outline,
             ),
             child: const Text('Cancel'),
           ),
@@ -448,7 +467,9 @@ class _SettingsPageState extends State<_SettingsPage> {
 
   bool _isValidUrl(String value) {
     final uri = Uri.tryParse(value);
-    return uri != null && uri.hasScheme && (uri.scheme == 'http' || uri.scheme == 'https');
+    return uri != null &&
+        uri.hasScheme &&
+        (uri.scheme == 'http' || uri.scheme == 'https');
   }
 
   /// Auto-save hook used by the Apple-style sub-pages — every theme /
@@ -774,5 +795,4 @@ class _SettingsPageState extends State<_SettingsPage> {
       ),
     );
   }
-
 }

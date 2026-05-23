@@ -79,6 +79,7 @@ class CourseSubscription(models.Model):
         null=False,
     )
     is_active = models.BooleanField(default=True, null=False)
+    is_private = models.BooleanField(default=False, null=False)
     subscribed_at = models.DateTimeField(default=timezone.now, null=False)
     last_opened_at = models.DateTimeField(blank=True, null=True)
     date_created = models.DateTimeField(auto_now_add=True, null=False)

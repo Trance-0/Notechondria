@@ -59,7 +59,8 @@ class _EditorSettingsPageState extends State<_EditorSettingsPage> {
                 subtitle: Text(_themePresetLabel(p._themePreset)),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () async {
-                  final picked = await _pickThemePreset(context, p._themePreset);
+                  final picked =
+                      await _pickThemePreset(context, p._themePreset);
                   if (picked != null) {
                     setState(() => p._themePreset = picked);
                     p.refreshState();
@@ -133,8 +134,7 @@ class _EditorSettingsPageState extends State<_EditorSettingsPage> {
         _PickerOption(value: 'M', label: 'Live markdown'),
         _PickerOption(value: 'T', label: 'Structured (block) editor'),
       ],
-      tooltip:
-          'Picks how new notes open by default. You can still switch '
+      tooltip: 'Picks how new notes open by default. You can still switch '
           'modes per note from the editor toolbar.',
     );
   }
@@ -239,8 +239,7 @@ class _BackendSettingsPageState extends State<_BackendSettingsPage> {
                       child: Icon(
                         Icons.info_outline,
                         size: 16,
-                        color:
-                            Theme.of(context).colorScheme.onSurfaceVariant,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -326,6 +325,20 @@ class _LocalDataPage extends StatelessWidget {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: p.widget.onRestoreFromLocalImport,
                 ),
+              if (p.widget.onImportAppleJournal != null) ...[
+                const Divider(height: 0, indent: 16, endIndent: 16),
+                ListTile(
+                  leading: const Icon(Icons.auto_stories_outlined),
+                  title: const Text('Import Apple Journal ZIP'),
+                  subtitle: const Text(
+                    'Experimental local-only import. Creates local '
+                    'drafts in a selected category; cloud sync waits '
+                    'for a manual push.',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: p.widget.onImportAppleJournal,
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 16),
@@ -418,8 +431,8 @@ class _DeveloperSettingsPage extends StatelessWidget {
                   'Templates) with a welcome note in each.',
                 ),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => p._runMaintenanceAction(
-                    p.widget.onRestoreTemplateCourses),
+                onTap: () =>
+                    p._runMaintenanceAction(p.widget.onRestoreTemplateCourses),
               ),
             ],
           ),
@@ -738,9 +751,8 @@ Future<T?> _pickFromList<T>(
                       child: Icon(
                         Icons.info_outline,
                         size: 18,
-                        color: Theme.of(sheetContext)
-                            .colorScheme
-                            .onSurfaceVariant,
+                        color:
+                            Theme.of(sheetContext).colorScheme.onSurfaceVariant,
                       ),
                     ),
                 ],
@@ -749,9 +761,8 @@ Future<T?> _pickFromList<T>(
             for (final option in options)
               ListTile(
                 title: Text(option.label),
-                trailing: option.value == current
-                    ? const Icon(Icons.check)
-                    : null,
+                trailing:
+                    option.value == current ? const Icon(Icons.check) : null,
                 onTap: () => Navigator.of(sheetContext).pop(option.value),
               ),
             const SizedBox(height: 8),

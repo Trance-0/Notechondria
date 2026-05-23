@@ -56,9 +56,9 @@ class HttpNotechondriaClient
     final normalized = _normalizeBaseUrl(rawCandidateBaseUrl);
     final target = Uri.parse('$normalized/handshake/');
     try {
-      final response = await _httpClient
-          .get(target, headers: {'Accept': 'application/json'})
-          .timeout(const Duration(seconds: 8));
+      final response = await _httpClient.get(target, headers: {
+        'Accept': 'application/json'
+      }).timeout(const Duration(seconds: 8));
       if (response.statusCode != 200) {
         return HandshakeResult.failure(
           'Handshake got HTTP ${response.statusCode} from $target. '
@@ -94,7 +94,8 @@ class HttpNotechondriaClient
             : const <String, dynamic>{},
       );
     } on TimeoutException {
-      return HandshakeResult.failure('Handshake timed out after 8s hitting $target.');
+      return HandshakeResult.failure(
+          'Handshake timed out after 8s hitting $target.');
     } catch (error) {
       return HandshakeResult.failure('Handshake request failed: $error');
     }
@@ -129,7 +130,6 @@ class HttpNotechondriaClient
   // `core/http_client_internals.dart` as an extension on
   // `HttpNotechondriaClient` so this file stays closer to the
   // AGENTS.md \u00a71.5 1000-line cap.
-
 
   @override
   Future<Map<String, dynamic>> getFrontPage({String? token}) async {
@@ -218,7 +218,8 @@ class HttpNotechondriaClient
   }
 
   @override
-  Future<Map<String, dynamic>> getNoteDetail(int noteId, {String? token}) async {
+  Future<Map<String, dynamic>> getNoteDetail(int noteId,
+      {String? token}) async {
     final uri = _uri('/notes/$noteId/');
     final response = await _get(uri, token: token);
     return Map<String, dynamic>.from(
@@ -227,7 +228,8 @@ class HttpNotechondriaClient
   }
 
   @override
-  Future<Map<String, dynamic>> getNoteByUuid(String uuid, {String? token}) async {
+  Future<Map<String, dynamic>> getNoteByUuid(String uuid,
+      {String? token}) async {
     final uri = _uri('/notes/uuid/$uuid/');
     final response = await _get(uri, token: token);
     return Map<String, dynamic>.from(
@@ -288,7 +290,8 @@ class HttpNotechondriaClient
   }
 
   @override
-  Future<Map<String, dynamic>> restoreDeletedNote(String token, int noteId) async {
+  Future<Map<String, dynamic>> restoreDeletedNote(
+      String token, int noteId) async {
     final uri = _uri('/notes/$noteId/restore/');
     final response = await _post(uri, token: token);
     return Map<String, dynamic>.from(
@@ -452,8 +455,19 @@ class HttpNotechondriaClient
   }
 
   @override
-  Future<Map<String, dynamic>> subscribeCourse(String token, int courseId) async {
+  Future<Map<String, dynamic>> subscribeCourse(
+      String token, int courseId) async {
     final uri = _uri('/courses/$courseId/subscribe/');
+    final response = await _post(uri, token: token);
+    return Map<String, dynamic>.from(
+      await decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> subscribePrivateCourse(
+      String token, int courseId) async {
+    final uri = _uri('/courses/$courseId/subscribe-private/');
     final response = await _post(uri, token: token);
     return Map<String, dynamic>.from(
       await decode(response, uri: uri, method: 'POST'),
@@ -588,7 +602,8 @@ class HttpNotechondriaClient
       uri,
       () => _httpClient.post(uri, headers: headers(token: token)),
     );
-    return Map<String, dynamic>.from(await decode(response, uri: uri, method: 'POST'));
+    return Map<String, dynamic>.from(
+        await decode(response, uri: uri, method: 'POST'));
   }
 
   @override
@@ -681,7 +696,6 @@ class HttpNotechondriaClient
     );
   }
 
-
   @override
   Future<Map<String, dynamic>> uploadAvatar(String token, XFile file) async {
     final uri = _uri('/settings/');
@@ -694,7 +708,8 @@ class HttpNotechondriaClient
           filename: file.name,
         ),
       );
-    final streamed = await send('PATCH', uri, () => request.send().then(http.Response.fromStream));
+    final streamed = await send(
+        'PATCH', uri, () => request.send().then(http.Response.fromStream));
     return Map<String, dynamic>.from(
       await decode(streamed, uri: uri, method: 'PATCH'),
     );

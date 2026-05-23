@@ -37,23 +37,9 @@ file and add a round-log entry to the new version doc.
 
 ### Note view
 
-- [ ] Cloud category "subscribe but keep private" — a user can save
-  a reference to a cloud course as one of their local categories
-  without republishing it. Needs a new client method + backend
-  endpoint (`Backend.Notes.Courses/subscribe_private`) plus a
-  sidebar action. Decompose: (a) design subscription data model
-  (extend `CourseSubscription` with a visibility flag),
-  (b) backend endpoint + tests, (c) frontend wiring.
-
 ### Note editor
 
 ### Editor Settings
-
-- [ ] Apple Journal import (experimental). Resolve the picker contract
-  first: web builds can reliably import a selected ZIP, while recursive
-  selected-folder reads require a desktop-only `dart:io` path. Proposed
-  first phase is Apple Journal export ZIP -> local categories/drafts
-  only, with cloud sync paused until the user manually pushes.
 
 ## Planner
 

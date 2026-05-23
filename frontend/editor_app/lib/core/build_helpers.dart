@@ -708,6 +708,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
           onRestoreLocalStarterTemplate: _restoreLocalStarterTemplate,
           onExportLocalData: _exportLocalArchive,
           onRestoreFromLocalImport: _restoreFromLocalImport,
+          onImportAppleJournal: _importAppleJournalArchive,
           onOpenLocalRecycleBin: _openLocalRecycleBinDialog,
           localTrashedDraftCount: _localTrashedDrafts.length,
           localTrashedCourseCount: _localTrashedCourses.length,

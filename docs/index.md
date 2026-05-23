@@ -63,12 +63,6 @@ docs.
   `python:3.9.18-bullseye`, so do NOT use PEP 604 unions (`X | Y`) in
   runtime annotations — use `typing.Optional` / `typing.Union`. This
   overrides `AGENTS.md/AGENTS.md` §4.1's "target 3.11+" default.
-- **Never edit `.gitignore`.** Owner-enforced rule. If a new tracked
-  template/config needs to be added, use a path the existing ignore
-  rules already permit. If a tracked file drifted into holding
-  secrets, copy the secrets out to a gitignored path and reset the
-  tracked file — do not unlock via a new `!`-whitelist.
-
 ---
 
 ## 1. Repository map

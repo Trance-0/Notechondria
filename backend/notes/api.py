@@ -398,6 +398,7 @@ class CourseSerializer(serializers.ModelSerializer):
     owner = serializers.SerializerMethodField()
     subscriber_count = serializers.SerializerMethodField()
     is_subscribed = serializers.SerializerMethodField()
+    is_private_subscription = serializers.SerializerMethodField()
     last_opened_at = serializers.SerializerMethodField()
     media = CourseMediaSerializer(source="media_items", many=True, read_only=True)
 
@@ -415,6 +416,7 @@ class CourseSerializer(serializers.ModelSerializer):
             "owner",
             "subscriber_count",
             "is_subscribed",
+            "is_private_subscription",
             "last_opened_at",
             "recent_notes",
             "media",
@@ -457,6 +459,11 @@ class CourseSerializer(serializers.ModelSerializer):
         if subscription_map is None:
             return False
         return obj.id in subscription_map
+
+    def get_is_private_subscription(self, obj):
+        subscription_map = self.context.get("subscription_map") if self.context else None
+        subscription = subscription_map.get(obj.id) if subscription_map else None
+        return bool(subscription and subscription.is_private)
 
     def get_last_opened_at(self, obj):
         subscription_map = self.context.get("subscription_map") if self.context else None
@@ -1578,12 +1585,13 @@ class CourseSubscribeApiView(APIView):
         subscription, created = CourseSubscription.objects.get_or_create(
             creator_id=creator,
             course_id=course,
-            defaults={"is_active": True, "subscribed_at": timezone.now()},
+            defaults={"is_active": True, "is_private": False, "subscribed_at": timezone.now()},
         )
         if not created:
             subscription.is_active = True
+            subscription.is_private = False
             subscription.subscribed_at = timezone.now()
-            subscription.save(update_fields=["is_active", "subscribed_at", "last_edit"])
+            subscription.save(update_fields=["is_active", "is_private", "subscribed_at", "last_edit"])
         append_course_operation(creator, course, CourseOperationTypeChoices.SUBSCRIBE)
         subscription_map = active_subscription_map(creator)
         return Response(

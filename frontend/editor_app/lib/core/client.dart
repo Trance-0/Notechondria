@@ -16,6 +16,7 @@ abstract class NotechondriaClient implements AuthClient {
     Map<String, dynamic> payload,
   );
   Future<void> deleteCourse(String token, int courseId);
+
   /// Persists the sidebar drag-reorder by POSTing the ordered course id list.
   /// Returns the refreshed course list with new `sort_order` values applied.
   Future<List<Map<String, dynamic>>> reorderCourses(
@@ -23,7 +24,8 @@ abstract class NotechondriaClient implements AuthClient {
     List<int> courseIds,
   );
   Future<Map<String, dynamic>> getCourseDetail(int courseId, {String? token});
-  Future<List<Map<String, dynamic>>> getCourseNotes(int courseId, {String? token});
+  Future<List<Map<String, dynamic>>> getCourseNotes(int courseId,
+      {String? token});
   Future<Map<String, dynamic>> getNoteDetail(int noteId, {String? token});
   Future<Map<String, dynamic>> getNoteByUuid(String uuid, {String? token});
   Future<Map<String, dynamic>> listNotes({
@@ -32,6 +34,7 @@ abstract class NotechondriaClient implements AuthClient {
     int offset = 0,
     int limit = 20,
     int? courseId,
+
     /// Search scope: 'personal' = own notes only (default).
     /// 'all' = own notes + public notes from any user.
     String scope = 'personal',
@@ -86,6 +89,8 @@ abstract class NotechondriaClient implements AuthClient {
     Map<String, dynamic> payload,
   );
   Future<Map<String, dynamic>> subscribeCourse(String token, int courseId);
+  Future<Map<String, dynamic>> subscribePrivateCourse(
+      String token, int courseId);
   Future<Map<String, dynamic>> unsubscribeCourse(String token, int courseId);
   Future<Map<String, dynamic>> openCourse(String token, int courseId);
   Future<Map<String, dynamic>> restoreTemplateCourses(String token);
@@ -143,6 +148,7 @@ abstract class NotechondriaClient implements AuthClient {
     int noteId,
     int attachmentId,
   );
+
   /// UUID-based variants. Look up the note by its server UUID instead of
   /// integer PK, aligning with the frontend's `local://<note-uuid>/<filename>`
   /// scheme so sync code can operate without passing integer ids.
@@ -160,6 +166,7 @@ abstract class NotechondriaClient implements AuthClient {
     String noteUuid,
     int attachmentId,
   );
+
   /// Upload a cover image for the given note. Backend returns the
   /// updated note summary including the new `cover_image_url`. Owner-
   /// only on the backend (403 from non-owners).
@@ -168,6 +175,7 @@ abstract class NotechondriaClient implements AuthClient {
     int noteId,
     XFile file,
   );
+
   /// Clear the cover image for the given note. Returns the updated
   /// note summary (now with `cover_image_url == ''`).
   Future<Map<String, dynamic>> deleteNoteCoverImage(
@@ -229,4 +237,3 @@ class HandshakeResult {
   final String version;
   final Map<String, dynamic> capabilities;
 }
-

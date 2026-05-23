@@ -574,6 +574,65 @@ class HeatmapApiTests(TestCase):
             1,
         )
 
+    def test_course_subscribe_private_marks_subscription_visibility(self):
+        other_user = User.objects.create_user(
+            username='course-owner@example.com',
+            password='pw',
+        )
+        other_creator = Creator.objects.create(user_id=other_user)
+        course = Course.objects.create(
+            creator_id=other_creator,
+            slug='private-sidebar-course',
+            title='Private Sidebar Course',
+        )
+
+        response = self.client.post(
+            f'/api/v1/courses/{course.id}/subscribe-private/',
+            data=json.dumps({}),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['is_subscribed'])
+        self.assertTrue(payload['is_private_subscription'])
+        subscription = CourseSubscription.objects.get(
+            creator_id=self.creator,
+            course_id=course,
+        )
+        self.assertTrue(subscription.is_active)
+        self.assertTrue(subscription.is_private)
+
+    def test_regular_course_subscribe_clears_private_visibility(self):
+        course = Course.objects.create(
+            creator_id=self.creator,
+            slug='regular-sidebar-course',
+            title='Regular Sidebar Course',
+        )
+        CourseSubscription.objects.create(
+            creator_id=self.creator,
+            course_id=course,
+            is_active=True,
+            is_private=True,
+        )
+
+        response = self.client.post(
+            f'/api/v1/courses/{course.id}/subscribe/',
+            data=json.dumps({}),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()['is_private_subscription'])
+        subscription = CourseSubscription.objects.get(
+            creator_id=self.creator,
+            course_id=course,
+        )
+        self.assertTrue(subscription.is_active)
+        self.assertFalse(subscription.is_private)
+
     def test_course_create_is_idempotent_for_client_course_id(self):
         payload = {
             'title': 'Offline-created course',

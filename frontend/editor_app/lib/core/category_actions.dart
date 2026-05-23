@@ -32,6 +32,7 @@ extension _AppShellCategoryX on _AppShellState {
       final other = course['title']?.toString().trim().toLowerCase() ?? '';
       return other == normalized;
     }
+
     return _localCourses.any(match) || _courses.any(match);
   }
 
@@ -61,27 +62,25 @@ extension _AppShellCategoryX on _AppShellState {
           if (icon != null) 'icon': icon,
         });
         final decorated = decorateRemoteCourse(created);
-          _courses = [decorated, ..._courses];
+        _courses = [decorated, ..._courses];
         refreshState();
         await _persistLocalCache();
         log(
           level: DebugLogLevel.info,
           source: 'Editor.Sync.Courses/create',
-          message:
-              "Created cloud category '$trimmed': "
+          message: "Created cloud category '$trimmed': "
               "Editor.Sync.Courses/create \u2014 server accepted new course.",
         );
       } else {
         final localCourse = _buildLocalCourse(title: trimmed);
         if (icon != null) localCourse['icon'] = icon;
-          _localCourses = [..._localCourses, localCourse];
+        _localCourses = [..._localCourses, localCourse];
         refreshState();
         await persistLocalCourses();
         log(
           level: DebugLogLevel.info,
           source: 'Editor.Sync.Courses/create',
-          message:
-              "Created local category '$trimmed': "
+          message: "Created local category '$trimmed': "
               "Editor.Sync.Courses/create \u2014 "
               "queued for sync on next sign-in.",
         );
@@ -141,18 +140,18 @@ extension _AppShellCategoryX on _AppShellState {
     final isLocal = isLocalCourse(course);
     try {
       if (isLocal) {
-          _localCourses = _localCourses
-              .map((item) => item['id'] == course['id']
-                  ? {...item, 'title': trimmed, 'icon': icon}
-                  : item)
-              .toList(growable: false);
-          if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
-            _selectedCourse = {
-              ...?_selectedCourse,
-              'title': trimmed,
-              'icon': icon,
-            };
-          }
+        _localCourses = _localCourses
+            .map((item) => item['id'] == course['id']
+                ? {...item, 'title': trimmed, 'icon': icon}
+                : item)
+            .toList(growable: false);
+        if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
+          _selectedCourse = {
+            ...?_selectedCourse,
+            'title': trimmed,
+            'icon': icon,
+          };
+        }
         refreshState();
         await persistLocalCourses();
       } else {
@@ -170,22 +169,20 @@ extension _AppShellCategoryX on _AppShellState {
           {'title': trimmed, 'icon': icon},
         );
         final decorated = decorateRemoteCourse(updated);
-          _courses = _courses
-              .map((item) => (item['id'] as num?)?.toInt() == courseId
-                  ? decorated
-                  : item)
-              .toList(growable: false);
-          if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
-            _selectedCourse = decorated;
-          }
+        _courses = _courses
+            .map((item) =>
+                (item['id'] as num?)?.toInt() == courseId ? decorated : item)
+            .toList(growable: false);
+        if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
+          _selectedCourse = decorated;
+        }
         refreshState();
         await _persistLocalCache();
       }
       log(
         level: DebugLogLevel.info,
         source: 'Editor.Sync.Courses/update',
-        message:
-            "Category updated: Editor.Sync.Courses/update \u2014 "
+        message: "Category updated: Editor.Sync.Courses/update \u2014 "
             "'$trimmed' renamed/re-iconed.",
       );
       return ActionFeedback(
@@ -238,8 +235,8 @@ extension _AppShellCategoryX on _AppShellState {
         // bucket on next render.
         _localDrafts = _localDrafts.map((draft) {
           if (_draftCourseId(draft) != courseId) return draft;
-          final metadata = _decodeNoteMetadata(
-              draft['metadata_json']?.toString() ?? '{}');
+          final metadata =
+              _decodeNoteMetadata(draft['metadata_json']?.toString() ?? '{}');
           metadata.remove('course_id');
           return {
             ...draft,
@@ -277,8 +274,7 @@ extension _AppShellCategoryX on _AppShellState {
       log(
         level: DebugLogLevel.info,
         source: 'Editor.Sync.Courses/delete',
-        message:
-            "Category deleted: Editor.Sync.Courses/delete \u2014 "
+        message: "Category deleted: Editor.Sync.Courses/delete \u2014 "
             "'${course['title']}' removed; its notes fall to the "
             "uncategorized bucket via SET_NULL.",
       );
@@ -369,15 +365,61 @@ extension _AppShellCategoryX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Editor.Sync.Courses/unsubscribe',
-      message:
-          'Category removed from sidebar: '
+      message: 'Category removed from sidebar: '
           'Editor.Sync.Courses/unsubscribe \u2014 '
           "'${course['title']}' dropped from $scope.",
     );
     return ActionFeedback(
-        message:
-            'Category removed: Editor.Sync.Courses/unsubscribe \u2014 '
+        message: 'Category removed: Editor.Sync.Courses/unsubscribe \u2014 '
             "'${course['title']}' dropped from your sidebar.");
+  }
+
+  /// Saves a foreign cloud category as a private subscription. This
+  /// keeps the row in the user's sidebar without implying they
+  /// republished or took ownership of the source course.
+  Future<ActionFeedback> _subscribePrivateCategory(
+      Map<String, dynamic> course) async {
+    final courseId = (course['id'] as num?)?.toInt();
+    if (courseId == null) {
+      return ActionFeedback(
+        message: 'Category not saved privately: '
+            'Editor.Sync.Courses/subscribe_private — '
+            'category had no server ID.',
+        isError: true,
+      );
+    }
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      return const ActionFeedback(
+        message: 'Category not saved privately: '
+            'Editor.Sync.Courses/subscribe_private — '
+            'no cloud session; sign in first.',
+        isError: true,
+      );
+    }
+    final updated = await widget.client.subscribePrivateCourse(token, courseId);
+    final decorated = decorateRemoteCourse(updated);
+    _courses = [
+      decorated,
+      ..._courses.where((item) => (item['id'] as num?)?.toInt() != courseId),
+    ];
+    if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
+      _selectedCourse = decorated;
+    }
+    await _persistLocalCache();
+    refreshState();
+    log(
+      level: DebugLogLevel.info,
+      source: 'Editor.Sync.Courses/subscribe_private',
+      message:
+          'Category saved privately: Editor.Sync.Courses/subscribe_private — '
+          "'${decorated['title']}' is now a private sidebar subscription.",
+    );
+    return ActionFeedback(
+      message: 'Category saved privately: '
+          'Editor.Sync.Courses/subscribe_private — '
+          "'${decorated['title']}' added to your sidebar without republishing.",
+    );
   }
 
   /// Renders a single sidebar category row with the shared tooltip, long-press,
@@ -388,7 +430,7 @@ extension _AppShellCategoryX on _AppShellState {
     return Tooltip(
       message: isInbox
           ? cat['title']?.toString() ?? 'Category'
-          : 'Long-press or right-click to rename or delete. Drag to reorder.',
+          : 'Long-press or right-click for category actions. Drag to reorder.',
       waitDuration: const Duration(milliseconds: 600),
       child: GestureDetector(
         onLongPress: () => _promptEditCategory(cat),
@@ -396,12 +438,9 @@ extension _AppShellCategoryX on _AppShellState {
         child: SidebarItem(
           icon: cat['is_local_course'] == true
               ? Icons.folder_outlined
-              : (isInbox
-                  ? Icons.inbox_outlined
-                  : Icons.school_outlined),
+              : (isInbox ? Icons.inbox_outlined : Icons.school_outlined),
           label: cat['title']?.toString() ?? 'Category',
-          selected:
-              _selectedCategoryId == (cat['id'] as num?)?.toInt(),
+          selected: _selectedCategoryId == (cat['id'] as num?)?.toInt(),
           onTap: () => _selectCourse(cat),
         ),
       ),
@@ -425,8 +464,8 @@ extension _AppShellCategoryX on _AppShellState {
       }
     }
 
-      _localCourses = List<Map<String, dynamic>>.from(newLocal);
-      _courses = List<Map<String, dynamic>>.from(newRemote);
+    _localCourses = List<Map<String, dynamic>>.from(newLocal);
+    _courses = List<Map<String, dynamic>>.from(newRemote);
     refreshState();
 
     // Persist local ordering regardless of auth state.
@@ -437,8 +476,7 @@ extension _AppShellCategoryX on _AppShellState {
       log(
         level: DebugLogLevel.info,
         source: 'Editor.Sync.Courses/reorder',
-        message:
-            'Categories reordered locally: '
+        message: 'Categories reordered locally: '
             'Editor.Sync.Courses/reorder \u2014 '
             'no cloud session; new order kept in memory only.',
       );
@@ -453,14 +491,13 @@ extension _AppShellCategoryX on _AppShellState {
       final refreshed = await widget.client.reorderCourses(token, remoteIds);
       final decorated =
           refreshed.map(decorateRemoteCourse).toList(growable: false);
-        _courses = decorated;
+      _courses = decorated;
       refreshState();
       await _persistLocalCache();
       log(
         level: DebugLogLevel.info,
         source: 'Editor.Sync.Courses/reorder',
-        message:
-            'Categories reordered: Editor.Sync.Courses/reorder \u2014 '
+        message: 'Categories reordered: Editor.Sync.Courses/reorder \u2014 '
             '${remoteIds.length} cloud categories persisted.',
       );
     } catch (error) {
@@ -468,8 +505,7 @@ extension _AppShellCategoryX on _AppShellState {
       log(
         level: DebugLogLevel.error,
         source: 'Editor.Sync.Courses/reorder',
-        message:
-            'Categories not reordered: '
+        message: 'Categories not reordered: '
             'Editor.Sync.Courses/reorder \u2014 $cause.',
       );
       if (mounted) {
@@ -550,6 +586,22 @@ extension _AppShellCategoryX on _AppShellState {
     // authenticated username at decoration time) we default to
     // read-only so the user can't produce a backend 403 from the UI.
     final isOwned = isLocalCourse(course) || course['is_owned'] == true;
+    if (!isOwned) {
+      final action = await showDialog<String>(
+        context: context,
+        builder: (ctx) => _PrivateSubscriptionDialog(course: course),
+      );
+      if (action == null) return;
+      final feedback = action == 'subscribe_private'
+          ? await _subscribePrivateCategory(course)
+          : await _unsubscribeCategory(course);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(feedback.message)),
+        );
+      }
+      return;
+    }
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (ctx) => _EditCategoryDialog(
@@ -617,5 +669,58 @@ extension _AppShellCategoryX on _AppShellState {
       ),
     );
     return result == true;
+  }
+}
+
+class _PrivateSubscriptionDialog extends StatelessWidget {
+  const _PrivateSubscriptionDialog({required this.course});
+
+  final Map<String, dynamic> course;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = course['title']?.toString() ?? 'Subscribed category';
+    final isSubscribed = course['is_subscribed'] == true;
+    final isPrivate = course['is_private_subscription'] == true;
+    return AlertDialog(
+      title: const Text('Cloud category'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 12),
+          Text(
+            isPrivate
+                ? 'This category is already kept as a private sidebar '
+                    'subscription. You can remove the subscription without '
+                    'deleting the source category.'
+                : 'This category is published by another user. Save it '
+                    'privately to keep it in your sidebar without '
+                    'republishing it from your account.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        if (isSubscribed)
+          TextButton(
+            onPressed: () => Navigator.of(context).pop('unsubscribe'),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Unsubscribe'),
+          ),
+        if (!isPrivate)
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop('subscribe_private'),
+            child: const Text('Keep private'),
+          ),
+      ],
+    );
   }
 }

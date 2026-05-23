@@ -41,6 +41,14 @@ Authentication uses DRF token auth.
 - `PATCH /api/v1/blocks/{block_id}/`
 - `DELETE /api/v1/blocks/{block_id}/`
 - `POST /api/v1/notes/{note_id}/reorder/`
+- `POST /api/v1/courses/{course_id}/subscribe/` subscribes the
+  signed-in user to a cloud course and clears private-subscription
+  visibility if the course had previously been kept private.
+- `POST /api/v1/courses/{course_id}/subscribe-private/` keeps the
+  course as a private sidebar subscription for the signed-in user
+  (`is_private_subscription: true`) without republishing it.
+- `DELETE /api/v1/courses/{course_id}/subscribe/` deactivates the
+  signed-in user's subscription.
 
 ## Seed data
 

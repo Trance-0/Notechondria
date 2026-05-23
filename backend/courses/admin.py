@@ -43,8 +43,15 @@ class CourseMediaAdmin(admin.ModelAdmin):
 
 @admin.register(CourseSubscription)
 class CourseSubscriptionAdmin(admin.ModelAdmin):
-    list_display = ("owner_name", "course_title", "is_active", "subscribed_at", "last_opened_at")
-    list_filter = ("is_active",)
+    list_display = (
+        "owner_name",
+        "course_title",
+        "is_active",
+        "is_private",
+        "subscribed_at",
+        "last_opened_at",
+    )
+    list_filter = ("is_active", "is_private")
     search_fields = ("creator_id__user_id__username", "course_id__title")
     readonly_fields = ("date_created", "last_edit")
 
