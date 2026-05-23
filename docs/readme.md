@@ -150,6 +150,9 @@ via `client_draft_id`).
   current AI stub state and the future HTTP-microservice plan.
 - [`operations/postgres_migration.md`](operations/postgres_migration.md)
   — backup/restore runbook.
+- [`operations/local_backup_restore.md`](operations/local_backup_restore.md)
+  - click-run Python backup/restore scripts for PostgreSQL and
+  Cloudflare R2 using repo-root `.env`.
 - [`testing/backend_test_plan.md`](testing/backend_test_plan.md).
 - [`../LLM_CHECK.md`](../LLM_CHECK.md) — end-of-round checklist.
 - [`../AGENTS.md/AGENTS.md`](../AGENTS.md/AGENTS.md) — shared

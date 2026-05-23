@@ -154,3 +154,4 @@ Use this checklist at the end of each modification round.
 - Documented the Editor app's portable archive goal: GitHub-flavored Markdown for prose, JSON/frontmatter for metadata, and normal media files as the durable storage shape.
 - Paused Apple Journal import implementation pending the folder-vs-ZIP picker decision: Flutter web can reliably import ZIP files, while recursive selected-folder reads require a desktop-only path.
 - Refreshed `frontend/editor_app/pubspec.lock` so the editor web build resolves the shared package's `idb_shim` transitive dependency; editor smoke test and editor web build pass.
+- Added four click-run root `scripts/` Python backup/restore tools: PostgreSQL tar backup/restore via `pg_dump`/`pg_restore`, and Cloudflare R2 tar backup/restore via stdlib SigV4 requests that read root `.env`.

@@ -50,6 +50,7 @@
 # Operations
 
 - [PostgreSQL Migration](operations/postgres_migration.md)
+- [Local Backup and Restore Scripts](operations/local_backup_restore.md)
 
 # Testing
 
@@ -61,6 +62,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.122 - click-run database and R2 backup scripts](versions/0.1.122.md)
 - [0.1.121 - editor debug-log source filters + portable archive goal](versions/0.1.121.md)
 - [0.1.120 — editor signed-out auth widget unified onto shared AuthHub](versions/0.1.120.md)
 - [0.1.119 — OIDC profile refresh + display_name/avatar_url + drop SocialAccount + Casdoor Manage button + settings menu consistency](versions/0.1.119.md)
