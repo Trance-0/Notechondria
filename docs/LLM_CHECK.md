@@ -157,3 +157,4 @@ Use this checklist at the end of each modification round.
 - Added four click-run root `scripts/` Python backup/restore tools: PostgreSQL tar backup/restore via `pg_dump`/`pg_restore`, and Cloudflare R2 tar backup/restore via stdlib SigV4 requests that read root `.env`.
 - Completed the Editor TODO items: private cloud-category subscriptions now have backend model/API/client/sidebar support, and Settings has an experimental Apple Journal ZIP importer that creates local drafts/categories with sync paused until manual push.
 - Added tracked `.gitignore` entries for `scripts/db_backup/` and `scripts/r2_backup/`; removed the project-local docs rule that previously forbade `.gitignore` edits.
+- Fast-forwarded `main` to the completed feature branch and added the project-specific branch rule: work directly on `main` unless the owner explicitly names another branch; other branches are backup / provenance branches.

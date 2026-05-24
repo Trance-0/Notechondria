@@ -4,6 +4,15 @@ This file extends the canonical rules at the repo root's `AGENTS.md`
 (which inherits from the `github.com/Trance-0/AGENTS.md` submodule).
 Only project-specific overrides and conventions live here.
 
+## Branch workflow override
+
+Work directly on `main` unless the owner explicitly names another
+branch. Other branches in this repository are backup / provenance
+branches before major changes, not active collaboration lanes. Codex is
+the only active coding worker here, so this project overrides the shared
+branch-discipline default that normally prefers feature branches when a
+repo has branches other than `main`.
+
 ## §1.7 compliance — canonical module / process names
 
 The canonical `AGENTS.md` §1.7 mandates that every error, warning, info,

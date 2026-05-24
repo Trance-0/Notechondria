@@ -70,7 +70,8 @@ The three Flutter frontends still deploy separately to GitHub Pages via
 
 3. **Create the backend service.** `Create new > Combined service`.
    - **Name:** `notechondria-backend`
-   - **VCS:** select your fork of this repo, branch `main` (or `codex`).
+   - **VCS:** select your fork of this repo, branch `main` unless the
+     owner explicitly names another deployment branch.
    - **Build method:** Dockerfile
      - **Dockerfile path:** `/backend/Dockerfile`
      - **Build context / work dir:** `/` (repo root — required because the

@@ -76,8 +76,7 @@ meta-refreshes to `/Notechondria/portal/`.
     to splash screen + debug surface.
 - **Test gate:** each app's `test/smoke_test.dart` must pass before
   build.
-- **Trigger:** push to `codex` (or whichever branch the workflow
-  is configured for) + manual `workflow_dispatch`.
+- **Trigger:** push to `main` + manual `workflow_dispatch`.
 
 To override the backend a frontend points at (for staging or a fork
 deployment), pass an extra `--dart-define=DEFAULT_API_URL=https://your-backend/api/v1`

@@ -27,14 +27,15 @@ Rules in this section **override** the shared ruleset in
 Keep this section short; deeper explanations belong in the per-component
 docs.
 
-- **Upstream target branch is `main`.** As of 0.1.68 the active
-  development branch flipped from `codex` back to `main`:
-  `codex` (188 commits) was merged into `main`, and the pre-merge
-  `main` was archived locally as `human-efforts` for provenance.
-  Future PRs target `main`. The GitHub Release workflow triggers
-  on `v*` tag push (see
-  [`deployment/release.md`](deployment/release.md)), not branch,
-  so the flip doesn't affect release mechanics.
+- **Work directly on `main` unless the owner names another branch.**
+  This repo's non-`main` branches are backup / provenance branches
+  before major changes, not active collaboration lanes. Codex is the
+  only active coding worker here, so agents should commit directly on
+  `main` and push `main` when the owner asks for a push. This overrides
+  the shared branch-discipline default that normally prefers feature
+  branches when other branches exist. The GitHub Release workflow
+  triggers on `v*` tag push (see
+  [`deployment/release.md`](deployment/release.md)), not branch.
 - **Frontend is three standalone Flutter apps** under
   `frontend/editor_app/`, `frontend/planner_app/`, `frontend/portal_app/`.
   Do not merge them back into a monolith. Per-app docs:
@@ -160,8 +161,6 @@ Plus local Docker compose for dev.
   not preemptively.
 - Backend local verification still needs a reachable PostgreSQL
   service to complete full Django test runs.
-- Any future PR to upstream should target
-  `Trance-0/Notechondria:codex`, not the fork's `main`.
 - Render free-tier `SECRET_KEY` is a placeholder; rotate before any
   real production traffic.
 - `requirements-render.txt` must stay free of heavy ML packages
@@ -189,8 +188,9 @@ Plus local Docker compose for dev.
 
 ## 7. Prompt recipe for the next engineer
 
-> Work on `Trance-0/Notechondria` using the `codex` branch as the
-> upstream target. Keep frontend as three standalone Flutter apps
+> Work on `Trance-0/Notechondria` directly on `main` unless the owner
+> explicitly names another branch. Treat non-`main` branches as backup
+> / provenance branches. Keep frontend as three standalone Flutter apps
 > under `frontend/editor_app`, `frontend/planner_app`, and
 > `frontend/portal_app`. Keep the Jenkins pipeline full-stack with
 > backend/frontend test and deploy branches running in parallel.

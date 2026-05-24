@@ -62,7 +62,8 @@ On Windows, ensure Docker Desktop is running and the Jenkins service account has
    - Definition: `Pipeline script from SCM`
    - SCM: `Git`
    - Repository URL: your clone URL (HTTPS for public repos, SSH for private)
-   - Branch Specifier: `*/codex` (or your deployment branch)
+   - Branch Specifier: `*/main` (unless the owner explicitly names
+     another deployment branch)
    - Script Path: `Jenkinsfile`
 4. Click Save.
 
