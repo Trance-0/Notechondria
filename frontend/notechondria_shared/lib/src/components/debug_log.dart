@@ -249,6 +249,7 @@ class _DebugLogCardState extends State<DebugLogCard> {
   final TextEditingController _terminalController = TextEditingController();
   final ScrollController _terminalOutputController = ScrollController();
   final FocusNode _terminalFocus = FocusNode();
+  bool _filtersExpanded = false;
   final List<String> _terminalOutput = [
     'nchron-shell: type `ls`, `cd <key>`, `cd ..`, `ping`, or `clear`.',
   ];
@@ -489,6 +490,9 @@ class _DebugLogCardState extends State<DebugLogCard> {
     }
     final entries =
         widget.controller.entries.where(_passesFilter).toList(growable: false);
+    final filterSummary = _sourceFilter == null
+        ? '${_minLevel.label}+ / All sources'
+        : '${_minLevel.label}+ / ${_sourceLabel(_sourceFilter!)}';
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -512,38 +516,66 @@ class _DebugLogCardState extends State<DebugLogCard> {
               ],
             ),
             const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final level in DebugLogLevel.values)
-                  ChoiceChip(
-                    label: Text(level.label),
-                    selected: _minLevel == level,
-                    onSelected: (_) => setState(() => _minLevel = level),
-                    labelStyle: TextStyle(color: _levelColor(theme, level)),
-                  ),
-              ],
+            InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () => setState(() => _filtersExpanded = !_filtersExpanded),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Icon(
+                      _filtersExpanded ? Icons.expand_less : Icons.expand_more,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        filterSummary,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    const Text('Filters'),
+                  ],
+                ),
+              ),
             ),
-            if (sources.isNotEmpty) ...[
+            if (_filtersExpanded) ...[
               const SizedBox(height: 8),
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  ChoiceChip(
-                    label: const Text('All sources'),
-                    selected: _sourceFilter == null,
-                    onSelected: (_) => setState(() => _sourceFilter = null),
-                  ),
-                  for (final source in sources)
+                  for (final level in DebugLogLevel.values)
                     ChoiceChip(
-                      label: Text(_sourceLabel(source)),
-                      selected: _sourceFilter == source,
-                      onSelected: (_) => setState(() => _sourceFilter = source),
+                      label: Text(level.label),
+                      selected: _minLevel == level,
+                      onSelected: (_) => setState(() => _minLevel = level),
+                      labelStyle: TextStyle(color: _levelColor(theme, level)),
                     ),
                 ],
               ),
+              if (sources.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('All sources'),
+                      selected: _sourceFilter == null,
+                      onSelected: (_) => setState(() => _sourceFilter = null),
+                    ),
+                    for (final source in sources)
+                      ChoiceChip(
+                        label: Text(_sourceLabel(source)),
+                        selected: _sourceFilter == source,
+                        onSelected: (_) =>
+                            setState(() => _sourceFilter = source),
+                      ),
+                  ],
+                ),
+              ],
             ],
             const SizedBox(height: 8),
             SizedBox(

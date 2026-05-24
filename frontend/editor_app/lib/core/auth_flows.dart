@@ -70,12 +70,45 @@ extension _AppShellAuthFlowsX on _AppShellState {
         _errorMessage =
             'This note is private. Sign in to view it — open Settings → '
             'Account to log in, then the link will load.';
+        if (mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _showPrivateNotePrompt(uuid);
+          });
+        }
       } else {
         _errorMessage = 'Could not load note: $raw';
       }
       _isLoading = false;
       refreshState();
     }
+  }
+
+  void _showPrivateNotePrompt(String uuid) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Private note'),
+        content: Text(
+          'This shared note is private. Sign in from Settings > Account, '
+          'then reopen this link:\n\n#/notes/$uuid',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _selectedIndex = 4;
+              refreshState();
+            },
+            child: const Text('Open settings'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showNoteDialogForDeepLink(Map<String, dynamic> detail) {

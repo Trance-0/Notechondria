@@ -1,4 +1,4 @@
-# TODO
+﻿# TODO
 
 Pending version: 0.1
 
@@ -27,11 +27,6 @@ file and add a round-log entry to the new version doc.
 ### App preferences
 
 ### Debug log window
-
-- [ ] Extend per-request timing instrumentation beyond editor_app's
-  bootstrap path: planner_app and portal_app still emit mostly
-  Info-level messages without `durationMs`. Adopt `_timed(...)`
-  wrappers on their bootstrap calls when that code stabilizes.
 
 ## Editor
 

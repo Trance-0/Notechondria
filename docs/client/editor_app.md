@@ -54,11 +54,24 @@ archive shape rather than becoming separate sources of truth.
 
 The first Apple Journal importer phase is ZIP-only because Flutter web
 can reliably read one selected archive, while recursive folder reads
-need a desktop-only `dart:io` path. Settings -> Local data -> Import
+need a desktop-only `dart:io` path. Settings -> Developer -> Import
 Apple Journal ZIP parses Markdown/JSON entries, stores referenced media
 in `LocalAttachmentStore`, writes GFM/frontmatter drafts into an
-existing or new local category, and leaves cloud sync paused until the
-user explicitly runs Push local -> cloud.
+existing or new local category, logs each import stage in the Debug log,
+and leaves cloud sync paused until the user explicitly runs Push local
+-> cloud.
+
+Note URLs use `#/notes/<uuid>` so the copied link and the browser URL
+match the viewed note. Public UUID links render read-only when opened
+cold; private links keep the URL in place and show a sign-in prompt
+instead of redirecting back to the editor root.
+
+Legacy owned categories named `Inbox` are handled as a user-directed
+data migration. After a clean signed-in load, the editor offers to move
+their notes into a new category or remove the old category property so
+the notes fall into the uncategorized bucket. The backend already
+preserves notes on category deletion via `course_id = NULL`, so this
+flow does not require a schema migration.
 
 ## Shape
 
@@ -75,7 +88,7 @@ notechondria_frontend`) split across these files:
 | File | Responsibility |
 | --- | --- |
 | `main.dart` | Library declaration, top-level `main()`, launches `NotechondriaApp` with `visibleIndices` for this app. |
-| `app_shell.dart` | The root widget + state: bootstraps local store, runs the settings-save flow, drives theme + API base URL, owns `_localSettings`, `_localDrafts`, `_localCourses`, `_localStats`, `_localCache`. ~2500 LOC — split candidates noted in [index.md §6](../index.md). |
+| `app_shell.dart` | The root widget + state: bootstraps local store, runs the settings-save flow, drives theme + API base URL, owns `_localSettings`, `_localDrafts`, `_localCourses`, `_localStats`, `_localCache`. Most feature logic now lives in `core/*.dart` extensions to keep the shell under the hard 1000-line ceiling. |
 | `core/client.dart` | `NotechondriaClient` interface and `HttpNotechondriaClient` HTTP implementation; holds the base URL, `verifyHandshake`, token auth, debug snapshots. |
 | `core/helpers.dart` | `_defaultApiBaseUrl`, `_kDefaultApiUrl` (compile-time via `--dart-define=DEFAULT_API_URL=...`), `_slugifyLocalText`, date helpers. |
 | `core/local_store.dart` | `_LocalAppStore.load/save*` — every SharedPreferences key the app persists (settings, drafts, courses, stats, cache, UI logs, session token). |
@@ -134,8 +147,8 @@ Key entry points:
 See [index.md §6 "Open work / caution list"](../index.md#6-open-work--caution-list).
 In particular:
 
-- `app_shell.dart` is ~2500 LOC and `client.dart` is ~812 LOC — both
-  above the 500-LOC target from `AGENTS.md/AGENTS.md` §1.5.
+- `app_shell.dart` remains above the 500-LOC target but below the
+  hard 1000-line ceiling from `AGENTS.md/AGENTS.md` section 1.6.
 - Stale modules `front.dart`, `course.dart`, `activity.dart`,
   `learner.dart` that this app's `visibleIndices` doesn't use still
   compile — deleting them needs the `app_shell.dart` mixin refactor.

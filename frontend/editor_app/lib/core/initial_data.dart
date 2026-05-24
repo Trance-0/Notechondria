@@ -12,8 +12,8 @@ part of notechondria_frontend;
 /// §1.5 1000-line ceiling.
 extension _AppShellInitialDataX on _AppShellState {
   Future<void> _loadInitialData() async {
-      _isLoading = true;
-      _errorMessage = null;
+    _isLoading = true;
+    _errorMessage = null;
     refreshState();
     final errors = <String>[];
     _httpClient?.updateBaseUrl(
@@ -58,8 +58,8 @@ extension _AppShellInitialDataX on _AppShellState {
         // URL stays in lockstep with the backend's view; the local
         // synthesis is only a fallback for very old backend images
         // that pre-date the `signin_url` field.
-        final endpoint =
-            (config['endpoint']?.toString() ?? '').replaceAll(RegExp(r'/+$'), '');
+        final endpoint = (config['endpoint']?.toString() ?? '')
+            .replaceAll(RegExp(r'/+$'), '');
         final orgName = config['organization']?.toString() ?? '';
         final backendSigninUrl = config['signin_url']?.toString() ?? '';
         final orgLoginUrl = !configured
@@ -97,8 +97,7 @@ extension _AppShellInitialDataX on _AppShellState {
         log(
           level: DebugLogLevel.warning,
           source: 'Editor.Auth/casdoor.config.probe',
-          message:
-              'Casdoor SSO surface unavailable: '
+          message: 'Casdoor SSO surface unavailable: '
               'Editor.Auth/casdoor.config.probe — '
               '${error.toString().replaceFirst("Exception: ", "")} '
               '(probed $probedUrl).',
@@ -118,22 +117,21 @@ extension _AppShellInitialDataX on _AppShellState {
           updatedCache = true;
         } catch (_) {}
       }
-        _frontPage = frontPage;
-        _courses = courses;
-        _courseNotes = courseNotes;
-        _learnerNotes = learnerNotes;
-        _deletedNotes = deletedNotes;
-        _hasMoreLearnerNotes = notePage['has_more'] == true;
-        _learnerNotesOffset = learnerNotes.length;
-        _errorMessage = null;
-        _isLoading = false;
-        _showSplash = false;
+      _frontPage = frontPage;
+      _courses = courses;
+      _courseNotes = courseNotes;
+      _learnerNotes = learnerNotes;
+      _deletedNotes = deletedNotes;
+      _hasMoreLearnerNotes = notePage['has_more'] == true;
+      _learnerNotesOffset = learnerNotes.length;
+      _errorMessage = null;
+      _isLoading = false;
+      _showSplash = false;
       refreshState();
       log(
         source: 'Editor._loadInitialData',
         level: DebugLogLevel.info,
-        message:
-            'Offline mode: Editor._loadInitialData \u2014 skipped remote '
+        message: 'Offline mode: Editor._loadInitialData \u2014 skipped remote '
             'fetches, rendered from local cache.',
       );
       return;
@@ -263,29 +261,28 @@ extension _AppShellInitialDataX on _AppShellState {
           lower.contains('token_not_valid') ||
           lower.contains('session rejected:');
     }).length;
-    final sessionRejected = _token != null &&
-        _token!.isNotEmpty &&
-        authFailureCount >= 2;
+    final sessionRejected =
+        _token != null && _token!.isNotEmpty && authFailureCount >= 2;
     if (sessionRejected) {
       await _LocalAppStore.clearSession();
     }
 
-      if (sessionRejected) {
-        _token = null;
-        _profile = null;
-      }
-      _frontPage = frontPage;
-      _courses = courses;
-      _selectedCourse = selectedCourse;
-      _courseNotes = courseNotes;
-      _learnerNotes = learnerNotes;
-      _deletedNotes = deletedNotes;
-      _selectedNote = null;
-      _hasMoreLearnerNotes = notePage['has_more'] == true;
-      _learnerNotesOffset = learnerNotes.length;
-      _errorMessage = errors.isEmpty ? null : errors.first;
-      _isLoading = false;
-      _showSplash = false;
+    if (sessionRejected) {
+      _token = null;
+      _profile = null;
+    }
+    _frontPage = frontPage;
+    _courses = courses;
+    _selectedCourse = selectedCourse;
+    _courseNotes = courseNotes;
+    _learnerNotes = learnerNotes;
+    _deletedNotes = deletedNotes;
+    _selectedNote = null;
+    _hasMoreLearnerNotes = notePage['has_more'] == true;
+    _learnerNotesOffset = learnerNotes.length;
+    _errorMessage = errors.isEmpty ? null : errors.first;
+    _isLoading = false;
+    _showSplash = false;
     refreshState();
     if (updatedCache) {
       await _persistLocalCache();
@@ -304,5 +301,8 @@ extension _AppShellInitialDataX on _AppShellState {
               ? 'Session expired \u2014 signed out. Please sign in again.'
               : 'Initial load used offline fallback: ${errors.first}',
     );
+    if (!sessionRejected && errors.isEmpty) {
+      unawaited(_maybePromptInboxMigration());
+    }
   }
 }

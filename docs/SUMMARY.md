@@ -62,6 +62,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.125 - editor deep links, debug log filters, and Inbox migration](versions/0.1.125.md)
 - [0.1.124 - main-branch direct-work rule](versions/0.1.124.md)
 - [0.1.123 - editor private subscriptions + Apple Journal ZIP import](versions/0.1.123.md)
 - [0.1.122 - click-run database and R2 backup scripts](versions/0.1.122.md)

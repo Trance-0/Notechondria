@@ -325,20 +325,6 @@ class _LocalDataPage extends StatelessWidget {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: p.widget.onRestoreFromLocalImport,
                 ),
-              if (p.widget.onImportAppleJournal != null) ...[
-                const Divider(height: 0, indent: 16, endIndent: 16),
-                ListTile(
-                  leading: const Icon(Icons.auto_stories_outlined),
-                  title: const Text('Import Apple Journal ZIP'),
-                  subtitle: const Text(
-                    'Experimental local-only import. Creates local '
-                    'drafts in a selected category; cloud sync waits '
-                    'for a manual push.',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: p.widget.onImportAppleJournal,
-                ),
-              ],
             ],
           ),
           const SizedBox(height: 16),
@@ -434,6 +420,20 @@ class _DeveloperSettingsPage extends StatelessWidget {
                 onTap: () =>
                     p._runMaintenanceAction(p.widget.onRestoreTemplateCourses),
               ),
+              if (p.widget.onImportAppleJournal != null) ...[
+                const Divider(height: 0, indent: 16, endIndent: 16),
+                ListTile(
+                  leading: const Icon(Icons.auto_stories_outlined),
+                  title: const Text('Import Apple Journal ZIP'),
+                  subtitle: const Text(
+                    'Experimental local-only import. Creates local '
+                    'drafts in a selected category; cloud sync waits '
+                    'for a manual push.',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: p.widget.onImportAppleJournal,
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 4),

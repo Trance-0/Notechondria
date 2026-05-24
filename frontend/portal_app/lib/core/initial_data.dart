@@ -3,8 +3,8 @@ part of notechondria_frontend;
 /// Initial data orchestrator.
 extension _AppShellInitialDataX on _AppShellState {
   Future<void> _loadInitialData() async {
-      _isLoading = true;
-      _errorMessage = null;
+    _isLoading = true;
+    _errorMessage = null;
     refreshState();
     final errors = <String>[];
     _httpClient?.updateBaseUrl(
@@ -46,8 +46,8 @@ extension _AppShellInitialDataX on _AppShellState {
         // with the backend's view; the local synthesis is only a
         // fallback for very old backend images that pre-date the
         // `signin_url` field.
-        final endpoint =
-            (config['endpoint']?.toString() ?? '').replaceAll(RegExp(r'/+$'), '');
+        final endpoint = (config['endpoint']?.toString() ?? '')
+            .replaceAll(RegExp(r'/+$'), '');
         final orgName = config['organization']?.toString() ?? '';
         final backendSigninUrl = config['signin_url']?.toString() ?? '';
         final orgLoginUrl = !configured
@@ -78,8 +78,7 @@ extension _AppShellInitialDataX on _AppShellState {
         log(
           level: DebugLogLevel.warning,
           source: 'Portal.Auth/casdoor.config.probe',
-          message:
-              'Casdoor SSO surface unavailable: '
+          message: 'Casdoor SSO surface unavailable: '
               'Portal.Auth/casdoor.config.probe — '
               '${error.toString().replaceFirst("Exception: ", "")} '
               '(probed $probedUrl).',
@@ -96,45 +95,53 @@ extension _AppShellInitialDataX on _AppShellState {
       // the sidebar category list stays up-to-date even in offline mode.
       if (_token != null && _token!.isNotEmpty) {
         try {
-          courses = (await widget.client.getCourses(token: _token))
+          courses = (await timed(
+            'Portal._loadInitialData.getCourses.offline',
+            () => widget.client.getCourses(token: _token),
+          ))
               .map(decorateRemoteCourse)
               .toList(growable: false);
           updatedCache = true;
         } catch (_) {}
       }
-        _frontPage = frontPage;
-        _courses = courses;
-        _activity = activity;
-        _courseNotes = courseNotes;
-        _plannerEvents = plannerEvents;
-        _calendarFeeds = calendarFeeds;
-        _learnerNotes = learnerNotes;
-        _deletedNotes = deletedNotes;
-        _activityWeek = activityWeek;
-        _hasMoreLearnerNotes = notePage['has_more'] == true;
-        _learnerNotesOffset = learnerNotes.length;
-        _errorMessage = null;
-        _isLoading = false;
-        _showSplash = false;
+      _frontPage = frontPage;
+      _courses = courses;
+      _activity = activity;
+      _courseNotes = courseNotes;
+      _plannerEvents = plannerEvents;
+      _calendarFeeds = calendarFeeds;
+      _learnerNotes = learnerNotes;
+      _deletedNotes = deletedNotes;
+      _activityWeek = activityWeek;
+      _hasMoreLearnerNotes = notePage['has_more'] == true;
+      _learnerNotesOffset = learnerNotes.length;
+      _errorMessage = null;
+      _isLoading = false;
+      _showSplash = false;
       refreshState();
       log(
         source: 'Portal._loadInitialData',
         level: DebugLogLevel.info,
-        message:
-            'Offline mode: Portal._loadInitialData \u2014 skipped remote '
+        message: 'Offline mode: Portal._loadInitialData \u2014 skipped remote '
             'fetches, rendered from local cache.',
       );
       return;
     }
 
     try {
-      frontPage = await widget.client.getFrontPage(token: _token);
+      frontPage = await timed(
+        'Portal._loadInitialData.getFrontPage',
+        () => widget.client.getFrontPage(token: _token),
+      );
       updatedCache = true;
     } catch (error) {
       errors.add(error.toString().replaceFirst('Exception: ', ''));
     }
     try {
-      courses = (await widget.client.getCourses(token: _token))
+      courses = (await timed(
+        'Portal._loadInitialData.getCourses',
+        () => widget.client.getCourses(token: _token),
+      ))
           .map(decorateRemoteCourse)
           .toList(growable: false);
       updatedCache = true;
@@ -142,7 +149,10 @@ extension _AppShellInitialDataX on _AppShellState {
       errors.add(error.toString().replaceFirst('Exception: ', ''));
     }
     try {
-      activity = await widget.client.getActivity(token: _token);
+      activity = await timed(
+        'Portal._loadInitialData.getActivity',
+        () => widget.client.getActivity(token: _token),
+      );
       updatedCache = true;
     } catch (error) {
       errors.add(error.toString().replaceFirst('Exception: ', ''));
@@ -158,9 +168,12 @@ extension _AppShellInitialDataX on _AppShellState {
         courseNotes = _localNotesForCourse(selectedCourse);
       } else {
         try {
-          courseNotes = await widget.client.getCourseNotes(
-            selectedCourse['id'] as int,
-            token: _token,
+          courseNotes = await timed(
+            'Portal._loadInitialData.getCourseNotes',
+            () => widget.client.getCourseNotes(
+              selectedCourse['id'] as int,
+              token: _token,
+            ),
           );
         } catch (error) {
           errors.add(error.toString().replaceFirst('Exception: ', ''));
@@ -173,31 +186,45 @@ extension _AppShellInitialDataX on _AppShellState {
 
     if (_token != null && _token!.isNotEmpty) {
       try {
-        plannerEvents = await widget.client.getPlannerEvents(_token!);
-      } catch (error) {
-        errors.add(error.toString().replaceFirst('Exception: ', ''));
-      }
-      try {
-        calendarFeeds = await widget.client.getCalendarFeeds(_token!);
-      } catch (error) {
-        errors.add(error.toString().replaceFirst('Exception: ', ''));
-      }
-      try {
-        activityWeek = await widget.client.getActivityWeek(
-          _token!,
-          startDate: _activityWeekStart.toIso8601String().split('T').first,
+        plannerEvents = await timed(
+          'Portal._loadInitialData.getPlannerEvents',
+          () => widget.client.getPlannerEvents(_token!),
         );
       } catch (error) {
         errors.add(error.toString().replaceFirst('Exception: ', ''));
       }
       try {
-        deletedNotes = await widget.client.getDeletedNotes(_token!);
+        calendarFeeds = await timed(
+          'Portal._loadInitialData.getCalendarFeeds',
+          () => widget.client.getCalendarFeeds(_token!),
+        );
       } catch (error) {
         errors.add(error.toString().replaceFirst('Exception: ', ''));
       }
       try {
-        notePage =
-            await widget.client.listNotes(token: _token, limit: 20, offset: 0);
+        activityWeek = await timed(
+          'Portal._loadInitialData.getActivityWeek',
+          () => widget.client.getActivityWeek(
+            _token!,
+            startDate: _activityWeekStart.toIso8601String().split('T').first,
+          ),
+        );
+      } catch (error) {
+        errors.add(error.toString().replaceFirst('Exception: ', ''));
+      }
+      try {
+        deletedNotes = await timed(
+          'Portal._loadInitialData.getDeletedNotes',
+          () => widget.client.getDeletedNotes(_token!),
+        );
+      } catch (error) {
+        errors.add(error.toString().replaceFirst('Exception: ', ''));
+      }
+      try {
+        notePage = await timed(
+          'Portal._loadInitialData.listNotes',
+          () => widget.client.listNotes(token: _token, limit: 20, offset: 0),
+        );
         learnerNotes = (notePage['results'] as List<dynamic>? ?? const [])
             .map((item) => Map<String, dynamic>.from(item as Map))
             .toList(growable: false);
@@ -238,39 +265,36 @@ extension _AppShellInitialDataX on _AppShellState {
           lower.contains('token_not_valid') ||
           lower.contains('session rejected:');
     }).length;
-    final sessionRejected = _token != null &&
-        _token!.isNotEmpty &&
-        authFailureCount >= 2;
+    final sessionRejected =
+        _token != null && _token!.isNotEmpty && authFailureCount >= 2;
 
-      if (sessionRejected) {
-        _token = null;
-        _profile = null;
-      }
-      _frontPage = frontPage;
-      _courses = courses;
-      _activity = activity;
-      _selectedCourse = selectedCourse;
-      _courseNotes = courseNotes;
-      _learnerNotes = learnerNotes;
-      _deletedNotes = deletedNotes;
-      _selectedNote = null;
-      _plannerEvents = plannerEvents;
-      _calendarFeeds = calendarFeeds;
-      _activityWeek = activityWeek;
-      _hasMoreLearnerNotes = notePage['has_more'] == true;
-      _learnerNotesOffset = learnerNotes.length;
-      _errorMessage = errors.isEmpty ? null : errors.first;
-      _isLoading = false;
-      _showSplash = false;
+    if (sessionRejected) {
+      _token = null;
+      _profile = null;
+    }
+    _frontPage = frontPage;
+    _courses = courses;
+    _activity = activity;
+    _selectedCourse = selectedCourse;
+    _courseNotes = courseNotes;
+    _learnerNotes = learnerNotes;
+    _deletedNotes = deletedNotes;
+    _selectedNote = null;
+    _plannerEvents = plannerEvents;
+    _calendarFeeds = calendarFeeds;
+    _activityWeek = activityWeek;
+    _hasMoreLearnerNotes = notePage['has_more'] == true;
+    _learnerNotesOffset = learnerNotes.length;
+    _errorMessage = errors.isEmpty ? null : errors.first;
+    _isLoading = false;
+    _showSplash = false;
     refreshState();
     if (updatedCache) {
       await _persistLocalCache();
     }
     log(
       source: 'Portal._loadInitialData',
-      level: errors.isEmpty
-          ? DebugLogLevel.info
-          : DebugLogLevel.warning,
+      level: errors.isEmpty ? DebugLogLevel.info : DebugLogLevel.warning,
       message: errors.isEmpty
           ? 'Initial Portal._loadInitialData data loaded '
               '(${courses.length} cloud courses, ${learnerNotes.length} notes).'

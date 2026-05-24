@@ -31,17 +31,40 @@ class _AppleJournalImportTarget {
 
 extension _AppShellAppleJournalImportX on _AppShellState {
   Future<void> _importAppleJournalArchive() async {
+    const source = 'Editor.LocalStore/apple_journal_import';
     try {
+      log(
+        level: DebugLogLevel.info,
+        source: source,
+        message:
+            'Apple Journal import started: $source - waiting for ZIP picker.',
+      );
       final file = await openFile(
         acceptedTypeGroups: const [
           XTypeGroup(label: 'Apple Journal export ZIP', extensions: ['zip']),
         ],
       );
-      if (file == null) return;
+      if (file == null) {
+        log(
+          level: DebugLogLevel.info,
+          source: source,
+          message: 'Apple Journal import canceled: $source - no ZIP selected.',
+        );
+        return;
+      }
 
-      final archive = ZipDecoder().decodeBytes(await file.readAsBytes());
+      final archive = await timed(
+        '$source.decode_zip',
+        () async => ZipDecoder().decodeBytes(await file.readAsBytes()),
+      );
       final entries = _parseAppleJournalEntries(archive);
       if (entries.isEmpty) {
+        log(
+          level: DebugLogLevel.warning,
+          source: source,
+          message: 'Apple Journal import did not start: $source - selected ZIP '
+              'contained no readable Markdown or JSON journal entries.',
+        );
         showMessage(
           'Apple Journal import did not start: '
           'Editor.LocalStore/apple_journal_import — '
@@ -49,9 +72,25 @@ extension _AppShellAppleJournalImportX on _AppShellState {
         );
         return;
       }
+      log(
+        level: DebugLogLevel.info,
+        source: source,
+        message:
+            'Apple Journal ZIP parsed: $source - ${entries.length} readable '
+            'entr${entries.length == 1 ? 'y' : 'ies'} found.',
+      );
 
       final target = await _chooseAppleJournalImportTarget(entries.length);
-      if (target == null) return;
+      if (target == null) {
+        log(
+          level: DebugLogLevel.info,
+          source: source,
+          message:
+              'Apple Journal import canceled: $source - category selection '
+              'closed before import.',
+        );
+        return;
+      }
 
       Map<String, dynamic>? createdCourse;
       var courseId = target.courseId;
@@ -63,6 +102,15 @@ extension _AppShellAppleJournalImportX on _AppShellState {
         courseId = (createdCourse['id'] as num?)?.toInt();
         _localCourses = [createdCourse, ..._localCourses];
       }
+      log(
+        level: DebugLogLevel.info,
+        source: source,
+        message: courseId == null
+            ? 'Apple Journal import target missing: $source - local category '
+                'creation did not return an id.'
+            : 'Apple Journal import target selected: $source - saving local '
+                'drafts under category id $courseId; cloud sync remains paused.',
+      );
 
       final filesByPath = _archiveFilesByPath(archive);
       final store = await LocalAttachmentStore.open();
@@ -102,7 +150,7 @@ extension _AppShellAppleJournalImportX on _AppShellState {
             skippedAttachmentCount += 1;
             log(
               level: DebugLogLevel.warning,
-              source: 'Editor.LocalStore/apple_journal_import',
+              source: source,
               message: 'Apple Journal media skipped: '
                   'Editor.LocalStore/apple_journal_import — '
                   '"${mediaFile.name}" was not stored locally: '
@@ -177,7 +225,7 @@ extension _AppShellAppleJournalImportX on _AppShellState {
           'file(s) saved locally; cloud sync paused until manual push$suffix.';
       log(
         level: DebugLogLevel.info,
-        source: 'Editor.LocalStore/apple_journal_import',
+        source: source,
         message: message,
       );
       showMessage(message);
@@ -189,7 +237,7 @@ extension _AppShellAppleJournalImportX on _AppShellState {
       );
       log(
         level: DebugLogLevel.error,
-        source: 'Editor.LocalStore/apple_journal_import',
+        source: source,
         message: 'Apple Journal import failed: '
             'Editor.LocalStore/apple_journal_import — $cause.',
       );
