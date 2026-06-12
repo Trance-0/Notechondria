@@ -1,0 +1,581 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Cross-platform reliability and tutorials plan - Notechondria Documentation</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "navy";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../index.html">Project Overview</a></li><li class="chapter-item expanded affix "><a href="../index.html">Long-Form Agent Handoff</a></li><li class="chapter-item expanded affix "><a href="../TODO.html">TODO</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">Client (frontend apps)</li><li class="chapter-item expanded "><a href="../client/editor_app.html"><strong aria-hidden="true">1.</strong> Editor app</a></li><li class="chapter-item expanded "><a href="../client/planner_app.html"><strong aria-hidden="true">2.</strong> Planner app</a></li><li class="chapter-item expanded "><a href="../client/portal_app.html"><strong aria-hidden="true">3.</strong> Portal app</a></li><li class="chapter-item expanded "><a href="../client/notechondria_shared.html"><strong aria-hidden="true">4.</strong> notechondria_shared package</a></li><li class="chapter-item expanded affix "><li class="part-title">Server (backend)</li><li class="chapter-item expanded "><a href="../server/backend.html"><strong aria-hidden="true">5.</strong> Backend overview</a></li><li class="chapter-item expanded "><a href="../server/creators.html"><strong aria-hidden="true">6.</strong> creators app</a></li><li class="chapter-item expanded "><a href="../server/notes.html"><strong aria-hidden="true">7.</strong> notes app</a></li><li class="chapter-item expanded "><a href="../server/mcp.html"><strong aria-hidden="true">8.</strong> mcp app</a></li><li class="chapter-item expanded affix "><li class="part-title">API</li><li class="chapter-item expanded "><a href="../api/backend_api_spec.html"><strong aria-hidden="true">9.</strong> Backend API Specification</a></li><li class="chapter-item expanded affix "><li class="part-title">Deployment</li><li class="chapter-item expanded "><a href="../deployment/overview.html"><strong aria-hidden="true">10.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../deployment/release.html"><strong aria-hidden="true">11.</strong> Release process (tag → GitHub Release)</a></li><li class="chapter-item expanded "><a href="../deployment/deploy.html"><strong aria-hidden="true">12.</strong> Docker-compose / Jenkins Full-stack Guide</a></li><li class="chapter-item expanded "><a href="../deployment/render_free_tier.html"><strong aria-hidden="true">13.</strong> Render Free Tier (Backend)</a></li><li class="chapter-item expanded "><a href="../deployment/northflank.html"><strong aria-hidden="true">14.</strong> Northflank Free Tier (Backend)</a></li><li class="chapter-item expanded affix "><li class="part-title">Development</li><li class="chapter-item expanded "><a href="../development/local_dev.html"><strong aria-hidden="true">15.</strong> Local Development Guide</a></li><li class="chapter-item expanded "><a href="../development/python_environments.html"><strong aria-hidden="true">16.</strong> Python Environments</a></li><li class="chapter-item expanded "><a href="../development/ai_integration.html"><strong aria-hidden="true">17.</strong> AI Integration (stub status and forward plan)</a></li><li class="chapter-item expanded "><a href="../development/storage_model.html"><strong aria-hidden="true">18.</strong> Storage model (Django + frontend offline)</a></li><li class="chapter-item expanded "><a href="../development/cross_platform_plan.html" class="active"><strong aria-hidden="true">19.</strong> Cross-platform reliability and tutorials plan</a></li><li class="chapter-item expanded "><a href="../development/canvas_like_calendar_mvp.html"><strong aria-hidden="true">20.</strong> Canvas-like Calendar Product Concept</a></li><li class="chapter-item expanded affix "><li class="part-title">Integrations</li><li class="chapter-item expanded "><a href="../integrations/github_app_integration.html"><strong aria-hidden="true">21.</strong> GitHub App Integration</a></li><li class="chapter-item expanded "><a href="../integrations/github-sync.html"><strong aria-hidden="true">22.</strong> GitHub Sync (experimental)</a></li><li class="chapter-item expanded "><a href="../integrations/casdoor-migration.html"><strong aria-hidden="true">23.</strong> Casdoor migration plan</a></li><li class="chapter-item expanded "><a href="../integrations/casdoor-setup.html"><strong aria-hidden="true">24.</strong> Casdoor login setup runbook</a></li><li class="chapter-item expanded affix "><li class="part-title">Operations</li><li class="chapter-item expanded "><a href="../operations/postgres_migration.html"><strong aria-hidden="true">25.</strong> PostgreSQL Migration</a></li><li class="chapter-item expanded "><a href="../operations/local_backup_restore.html"><strong aria-hidden="true">26.</strong> Local Backup and Restore Scripts</a></li><li class="chapter-item expanded affix "><li class="part-title">Testing</li><li class="chapter-item expanded "><a href="../testing/backend_test_plan.html"><strong aria-hidden="true">27.</strong> Backend Test Plan</a></li><li class="chapter-item expanded affix "><li class="part-title">Versions</li><li class="chapter-item expanded "><a href="../versions/0.1.126.html"><strong aria-hidden="true">28.</strong> 0.1.126 - cross-platform survey: mobile web gaps, auth-corruption root cause, tutorials plan</a></li><li class="chapter-item expanded "><a href="../versions/0.1.125.html"><strong aria-hidden="true">29.</strong> 0.1.125 - editor deep links, debug log filters, and Inbox migration</a></li><li class="chapter-item expanded "><a href="../versions/0.1.124.html"><strong aria-hidden="true">30.</strong> 0.1.124 - main-branch direct-work rule</a></li><li class="chapter-item expanded "><a href="../versions/0.1.123.html"><strong aria-hidden="true">31.</strong> 0.1.123 - editor private subscriptions + Apple Journal ZIP import</a></li><li class="chapter-item expanded "><a href="../versions/0.1.122.html"><strong aria-hidden="true">32.</strong> 0.1.122 - click-run database and R2 backup scripts</a></li><li class="chapter-item expanded "><a href="../versions/0.1.121.html"><strong aria-hidden="true">33.</strong> 0.1.121 - editor debug-log source filters + portable archive goal</a></li><li class="chapter-item expanded "><a href="../versions/0.1.120.html"><strong aria-hidden="true">34.</strong> 0.1.120 — editor signed-out auth widget unified onto shared AuthHub</a></li><li class="chapter-item expanded "><a href="../versions/0.1.119.html"><strong aria-hidden="true">35.</strong> 0.1.119 — OIDC profile refresh + display_name/avatar_url + drop SocialAccount + Casdoor Manage button + settings menu consistency</a></li><li class="chapter-item expanded "><a href="../versions/0.1.118.html"><strong aria-hidden="true">36.</strong> 0.1.118 — gitea-style Casdoor link-challenge flow (bind existing or create new with chosen password)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.117.html"><strong aria-hidden="true">37.</strong> 0.1.117 — fix post-Casdoor 401 storm: SPA + backend agree on Bearer scheme; auth diagnostic logs</a></li><li class="chapter-item expanded "><a href="../versions/0.1.116.html"><strong aria-hidden="true">38.</strong> 0.1.116 — signin URL back to org name; "Login via third party" gone; portal Debug menu de-duplicated</a></li><li class="chapter-item expanded "><a href="../versions/0.1.115.html"><strong aria-hidden="true">39.</strong> 0.1.115 — bump backend Docker base from Python 3.9.18 to 3.11.4</a></li><li class="chapter-item expanded "><a href="../versions/0.1.114.html"><strong aria-hidden="true">40.</strong> 0.1.114 — unblock backend Docker build: requests~=2.33.0 to satisfy casdoor 1.41</a></li><li class="chapter-item expanded "><a href="../versions/0.1.113.html"><strong aria-hidden="true">41.</strong> 0.1.113 — Backend prints build provenance at every worker boot</a></li><li class="chapter-item expanded "><a href="../versions/0.1.112.html"><strong aria-hidden="true">42.</strong> 0.1.112 — Casdoor signin URL uses CASDOOR_APP_NAME (not org name)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.111.html"><strong aria-hidden="true">43.</strong> 0.1.111 — Restore email/username + password login (Casdoor-down fallback)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.110.html"><strong aria-hidden="true">44.</strong> 0.1.110 — Casdoor JWT claim mapping + group ACL (Nextcloud user_oidc-style)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.109.html"><strong aria-hidden="true">45.</strong> 0.1.109 — Inbox unsubscribe works offline + no 3s delay; Casdoor signin_url moved to org-themed page</a></li><li class="chapter-item expanded "><a href="../versions/0.1.108.html"><strong aria-hidden="true">46.</strong> 0.1.108 — Inbox always visible + Casdoor login always available</a></li><li class="chapter-item expanded "><a href="../versions/0.1.107.html"><strong aria-hidden="true">47.</strong> 0.1.107 — sidebar pin diagnostic dedupe + richer payload + Restore-Inbox refreshState fix</a></li><li class="chapter-item expanded "><a href="../versions/0.1.106.html"><strong aria-hidden="true">48.</strong> 0.1.106 — drop invitation codes, email-verification codes, sessions, change-password / change-email; SMTP code path retired</a></li><li class="chapter-item expanded "><a href="../versions/0.1.105.html"><strong aria-hidden="true">49.</strong> 0.1.105 — four user-reported bug fixes</a></li><li class="chapter-item expanded "><a href="../versions/0.1.104.html"><strong aria-hidden="true">50.</strong> 0.1.104 — handshake auto-derives version + commit + build_time; sidebar Inbox restored for signed-out users; Casdoor probe failures now logged</a></li><li class="chapter-item expanded "><a href="../versions/0.1.103.html"><strong aria-hidden="true">51.</strong> 0.1.103 — in-app signup gone; "Login via third party" + Casdoor signup link</a></li><li class="chapter-item expanded "><a href="../versions/0.1.102.html"><strong aria-hidden="true">52.</strong> 0.1.102 — local Inbox stays pinned across boots</a></li><li class="chapter-item expanded "><a href="../versions/0.1.101.html"><strong aria-hidden="true">53.</strong> 0.1.101 — Casdoor cutover + portal settings parity + Inbox fix</a></li><li class="chapter-item expanded "><a href="../versions/0.1.100.html"><strong aria-hidden="true">54.</strong> 0.1.100 — docs site fixed + Casdoor setup runbook + sample.env refresh</a></li><li class="chapter-item expanded "><a href="../versions/0.1.99.html"><strong aria-hidden="true">55.</strong> 0.1.99 — Casdoor as the primary auth surface</a></li><li class="chapter-item expanded "><a href="../versions/0.1.98.html"><strong aria-hidden="true">56.</strong> 0.1.98 — Casdoor bind / unlink (post-phase-3 hardening)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.97.html"><strong aria-hidden="true">57.</strong> 0.1.97 — Casdoor migration phase 3 (Flutter SDK leg)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.96.html"><strong aria-hidden="true">58.</strong> 0.1.96 — Casdoor migration phase 2 (JWT auth + exchange endpoint)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.95.html"><strong aria-hidden="true">59.</strong> 0.1.95 — handshake version fix + Casdoor migration plan + MCP smoke test</a></li><li class="chapter-item expanded "><a href="../versions/0.1.94.html"><strong aria-hidden="true">60.</strong> 0.1.94 — GitHub Sync static-asset bundling (push + restore round-trip)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.93.html"><strong aria-hidden="true">61.</strong> 0.1.93 — GitHub Sync push pipeline (JWT signing, repo picker, restore CLI)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.92.html"><strong aria-hidden="true">62.</strong> 0.1.92 — shared CustomMetaListEditor in all three note-metadata dialogs + docs sync</a></li><li class="chapter-item expanded "><a href="../versions/0.1.91.html"><strong aria-hidden="true">63.</strong> 0.1.91 — settings UI parity: MCP skill + GitHub Sync into portal/planner</a></li><li class="chapter-item expanded "><a href="../versions/0.1.90.html"><strong aria-hidden="true">64.</strong> 0.1.90 — per-app OAuth redirect, MCP skill.md, custom note meta, experimental GitHub sync</a></li><li class="chapter-item expanded "><a href="../versions/0.1.89.html"><strong aria-hidden="true">65.</strong> 0.1.89 — offline-mode gates + planner export/import + cross-app tests</a></li><li class="chapter-item expanded "><a href="../versions/0.1.88.html"><strong aria-hidden="true">66.</strong> 0.1.88 — attachment UUID routing + IndexedDB web backend + storage-budget UI</a></li><li class="chapter-item expanded "><a href="../versions/0.1.87.html"><strong aria-hidden="true">67.</strong> 0.1.87 — portal Settings parity + editor bug fixes</a></li><li class="chapter-item expanded "><a href="../versions/0.1.86.html"><strong aria-hidden="true">68.</strong> 0.1.86</a></li><li class="chapter-item expanded "><a href="../versions/0.1.85.html"><strong aria-hidden="true">69.</strong> 0.1.85</a></li><li class="chapter-item expanded "><a href="../versions/0.1.84.html"><strong aria-hidden="true">70.</strong> 0.1.84</a></li><li class="chapter-item expanded "><a href="../versions/0.1.83.html"><strong aria-hidden="true">71.</strong> 0.1.83</a></li><li class="chapter-item expanded "><a href="../versions/0.1.82.html"><strong aria-hidden="true">72.</strong> 0.1.82</a></li><li class="chapter-item expanded "><a href="../versions/0.1.81.html"><strong aria-hidden="true">73.</strong> 0.1.81</a></li><li class="chapter-item expanded "><a href="../versions/0.1.80.html"><strong aria-hidden="true">74.</strong> 0.1.80</a></li><li class="chapter-item expanded "><a href="../versions/0.1.79.html"><strong aria-hidden="true">75.</strong> 0.1.79</a></li><li class="chapter-item expanded "><a href="../versions/0.1.78.html"><strong aria-hidden="true">76.</strong> 0.1.78</a></li><li class="chapter-item expanded "><a href="../versions/0.1.77.html"><strong aria-hidden="true">77.</strong> 0.1.77</a></li><li class="chapter-item expanded "><a href="../versions/0.1.76.html"><strong aria-hidden="true">78.</strong> 0.1.76</a></li><li class="chapter-item expanded "><a href="../versions/0.1.75.html"><strong aria-hidden="true">79.</strong> 0.1.75</a></li><li class="chapter-item expanded "><a href="../versions/0.1.74.html"><strong aria-hidden="true">80.</strong> 0.1.74</a></li><li class="chapter-item expanded "><a href="../versions/0.1.73.html"><strong aria-hidden="true">81.</strong> 0.1.73</a></li><li class="chapter-item expanded "><a href="../versions/0.1.72.html"><strong aria-hidden="true">82.</strong> 0.1.72</a></li><li class="chapter-item expanded "><a href="../versions/0.1.71.html"><strong aria-hidden="true">83.</strong> 0.1.71</a></li><li class="chapter-item expanded "><a href="../versions/0.1.70.html"><strong aria-hidden="true">84.</strong> 0.1.70</a></li><li class="chapter-item expanded "><a href="../versions/0.1.69.html"><strong aria-hidden="true">85.</strong> 0.1.69</a></li><li class="chapter-item expanded "><a href="../versions/0.1.68.html"><strong aria-hidden="true">86.</strong> 0.1.68</a></li><li class="chapter-item expanded "><a href="../versions/0.1.67.html"><strong aria-hidden="true">87.</strong> 0.1.67</a></li><li class="chapter-item expanded "><a href="../versions/0.1.66.html"><strong aria-hidden="true">88.</strong> 0.1.66</a></li><li class="chapter-item expanded "><a href="../versions/0.1.65.html"><strong aria-hidden="true">89.</strong> 0.1.65</a></li><li class="chapter-item expanded "><a href="../versions/0.1.64.html"><strong aria-hidden="true">90.</strong> 0.1.64</a></li><li class="chapter-item expanded "><a href="../versions/0.1.63.html"><strong aria-hidden="true">91.</strong> 0.1.63</a></li><li class="chapter-item expanded "><a href="../versions/0.1.62.html"><strong aria-hidden="true">92.</strong> 0.1.62</a></li><li class="chapter-item expanded "><a href="../versions/0.1.61.html"><strong aria-hidden="true">93.</strong> 0.1.61</a></li><li class="chapter-item expanded "><a href="../versions/0.1.60.html"><strong aria-hidden="true">94.</strong> 0.1.60</a></li><li class="chapter-item expanded "><a href="../versions/0.1.59.html"><strong aria-hidden="true">95.</strong> 0.1.59</a></li><li class="chapter-item expanded "><a href="../versions/0.1.58.html"><strong aria-hidden="true">96.</strong> 0.1.58</a></li><li class="chapter-item expanded "><a href="../versions/0.1.57.html"><strong aria-hidden="true">97.</strong> 0.1.57</a></li><li class="chapter-item expanded "><a href="../versions/0.1.56.html"><strong aria-hidden="true">98.</strong> 0.1.56</a></li><li class="chapter-item expanded "><a href="../versions/0.1.55.html"><strong aria-hidden="true">99.</strong> 0.1.55</a></li><li class="chapter-item expanded "><a href="../versions/0.1.54.html"><strong aria-hidden="true">100.</strong> 0.1.54</a></li><li class="chapter-item expanded "><a href="../versions/0.1.53.html"><strong aria-hidden="true">101.</strong> 0.1.53</a></li><li class="chapter-item expanded "><a href="../versions/0.1.52.html"><strong aria-hidden="true">102.</strong> 0.1.52</a></li><li class="chapter-item expanded "><a href="../versions/0.1.51.html"><strong aria-hidden="true">103.</strong> 0.1.51</a></li><li class="chapter-item expanded "><a href="../versions/0.1.50.html"><strong aria-hidden="true">104.</strong> 0.1.50</a></li><li class="chapter-item expanded "><a href="../versions/0.1.49.html"><strong aria-hidden="true">105.</strong> 0.1.49</a></li><li class="chapter-item expanded "><a href="../versions/0.1.48.html"><strong aria-hidden="true">106.</strong> 0.1.48</a></li><li class="chapter-item expanded "><a href="../versions/0.1.47.html"><strong aria-hidden="true">107.</strong> 0.1.47</a></li><li class="chapter-item expanded "><a href="../versions/0.1.46.html"><strong aria-hidden="true">108.</strong> 0.1.46</a></li><li class="chapter-item expanded "><a href="../versions/0.1.45.html"><strong aria-hidden="true">109.</strong> 0.1.45</a></li><li class="chapter-item expanded "><a href="../versions/0.1.44.html"><strong aria-hidden="true">110.</strong> 0.1.44</a></li><li class="chapter-item expanded "><a href="../versions/0.1.43.html"><strong aria-hidden="true">111.</strong> 0.1.43</a></li><li class="chapter-item expanded "><a href="../versions/0.1.42.html"><strong aria-hidden="true">112.</strong> 0.1.42</a></li><li class="chapter-item expanded "><a href="../versions/0.1.41.html"><strong aria-hidden="true">113.</strong> 0.1.41</a></li><li class="chapter-item expanded "><a href="../versions/0.1.40.html"><strong aria-hidden="true">114.</strong> 0.1.40</a></li><li class="chapter-item expanded "><a href="../versions/0.1.39.html"><strong aria-hidden="true">115.</strong> 0.1.39</a></li><li class="chapter-item expanded "><a href="../versions/0.1.38.html"><strong aria-hidden="true">116.</strong> 0.1.38</a></li><li class="chapter-item expanded "><a href="../versions/0.1.37.html"><strong aria-hidden="true">117.</strong> 0.1.37</a></li><li class="chapter-item expanded "><a href="../versions/0.1.36.html"><strong aria-hidden="true">118.</strong> 0.1.36</a></li><li class="chapter-item expanded "><a href="../versions/0.1.35.html"><strong aria-hidden="true">119.</strong> 0.1.35</a></li><li class="chapter-item expanded "><a href="../versions/0.1.34.html"><strong aria-hidden="true">120.</strong> 0.1.34</a></li><li class="chapter-item expanded "><a href="../versions/0.1.33.html"><strong aria-hidden="true">121.</strong> 0.1.33</a></li><li class="chapter-item expanded "><a href="../versions/0.1.32.html"><strong aria-hidden="true">122.</strong> 0.1.32</a></li><li class="chapter-item expanded "><a href="../versions/0.1.31.html"><strong aria-hidden="true">123.</strong> 0.1.31</a></li><li class="chapter-item expanded "><a href="../versions/0.1.30.html"><strong aria-hidden="true">124.</strong> 0.1.30</a></li><li class="chapter-item expanded "><a href="../versions/0.1.29.html"><strong aria-hidden="true">125.</strong> 0.1.29</a></li><li class="chapter-item expanded "><a href="../versions/0.1.28.html"><strong aria-hidden="true">126.</strong> 0.1.28</a></li><li class="chapter-item expanded "><a href="../versions/0.1.27.html"><strong aria-hidden="true">127.</strong> 0.1.27</a></li><li class="chapter-item expanded "><a href="../versions/0.1.26.html"><strong aria-hidden="true">128.</strong> 0.1.26</a></li><li class="chapter-item expanded "><a href="../versions/0.1.25.html"><strong aria-hidden="true">129.</strong> 0.1.25</a></li><li class="chapter-item expanded "><a href="../versions/0.1.24.html"><strong aria-hidden="true">130.</strong> 0.1.24</a></li><li class="chapter-item expanded "><a href="../versions/0.1.23.html"><strong aria-hidden="true">131.</strong> 0.1.23</a></li><li class="chapter-item expanded "><a href="../versions/0.1.22.html"><strong aria-hidden="true">132.</strong> 0.1.22</a></li><li class="chapter-item expanded "><a href="../versions/0.1.21.html"><strong aria-hidden="true">133.</strong> 0.1.21</a></li><li class="chapter-item expanded "><a href="../versions/0.1.20.html"><strong aria-hidden="true">134.</strong> 0.1.20</a></li><li class="chapter-item expanded "><a href="../versions/0.1.19.html"><strong aria-hidden="true">135.</strong> 0.1.19</a></li><li class="chapter-item expanded "><a href="../versions/0.1.18.html"><strong aria-hidden="true">136.</strong> 0.1.18</a></li><li class="chapter-item expanded "><a href="../versions/0.1.17.html"><strong aria-hidden="true">137.</strong> 0.1.17</a></li><li class="chapter-item expanded "><a href="../versions/0.1.16.html"><strong aria-hidden="true">138.</strong> 0.1.16</a></li><li class="chapter-item expanded "><a href="../versions/0.1.15.html"><strong aria-hidden="true">139.</strong> 0.1.15</a></li><li class="chapter-item expanded "><a href="../versions/0.1.14.html"><strong aria-hidden="true">140.</strong> 0.1.14</a></li><li class="chapter-item expanded "><a href="../versions/0.1.13.html"><strong aria-hidden="true">141.</strong> 0.1.13</a></li><li class="chapter-item expanded "><a href="../versions/0.1.12.html"><strong aria-hidden="true">142.</strong> 0.1.12</a></li><li class="chapter-item expanded "><a href="../versions/0.1.11.html"><strong aria-hidden="true">143.</strong> 0.1.11</a></li><li class="chapter-item expanded "><a href="../versions/0.1.10.html"><strong aria-hidden="true">144.</strong> 0.1.10</a></li><li class="chapter-item expanded "><a href="../versions/0.1.9.html"><strong aria-hidden="true">145.</strong> 0.1.9</a></li><li class="chapter-item expanded "><a href="../versions/0.1.8.html"><strong aria-hidden="true">146.</strong> 0.1.8</a></li><li class="chapter-item expanded "><a href="../versions/0.1.7.html"><strong aria-hidden="true">147.</strong> 0.1.7</a></li><li class="chapter-item expanded "><a href="../versions/0.1.6.html"><strong aria-hidden="true">148.</strong> 0.1.6</a></li><li class="chapter-item expanded "><a href="../versions/0.1.5.html"><strong aria-hidden="true">149.</strong> 0.1.5</a></li><li class="chapter-item expanded "><a href="../versions/0.1.4.html"><strong aria-hidden="true">150.</strong> 0.1.4</a></li><li class="chapter-item expanded "><a href="../versions/0.1.3.html"><strong aria-hidden="true">151.</strong> 0.1.3</a></li><li class="chapter-item expanded "><a href="../versions/0.1.2.html"><strong aria-hidden="true">152.</strong> 0.1.2</a></li><li class="chapter-item expanded "><a href="../versions/0.1.1.html"><strong aria-hidden="true">153.</strong> 0.1.1</a></li><li class="chapter-item expanded "><a href="../versions/0.1.0.html"><strong aria-hidden="true">154.</strong> 0.1.0</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Notechondria Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria/edit/codex/docs/./development/cross_platform_plan.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="cross-platform-reliability-and-tutorials-plan"><a class="header" href="#cross-platform-reliability-and-tutorials-plan">Cross-Platform Reliability and Tutorials Plan</a></h1>
+<p>Status snapshot and forward plan, written at 0.1.126. Covers: where the
+project stands today, what breaks on mobile web (iOS Safari is the only
+mobile channel currently in use), the root cause of the multi-app auth
+corruption, the tutorials-integration design, and a phased roadmap.</p>
+<p>Owner context this plan is written for:</p>
+<ul>
+<li>The owner uses the apps <strong>purely online via Safari bookmarks on
+iPhone</strong> plus desktop browsers. There is no Apple computer available,
+so <strong>the web build is the iOS delivery channel</strong> for the foreseeable
+future — unsigned iOS archives in the release workflow cannot be
+side-loaded without a Mac. Native compile polish is explicitly out of
+scope for now.</li>
+<li>Casdoor is live at <code>auth.trance-0.com</code>; multi-app auth misbehaves
+("corrupting") and is under investigation. Section 3 names the root
+cause found during this survey.</li>
+</ul>
+<hr />
+<h2 id="1-current-progress-snapshot-as-of-01125"><a class="header" href="#1-current-progress-snapshot-as-of-01125">1. Current progress snapshot (as of 0.1.125)</a></h2>
+<p>What demonstrably works:</p>
+<ul>
+<li><strong>Three standalone Flutter apps</strong> (<code>frontend/editor_app</code>,
+<code>frontend/planner_app</code>, <code>frontend/portal_app</code>) sharing
+<code>frontend/notechondria_shared</code>, all passing smoke tests and
+<code>flutter build web</code> with repo-prefixed base-hrefs.</li>
+<li><strong>Offline-first local model</strong>: every app seeds a starter workspace on
+first run (<code>lib/core/local_starter.dart</code> in each app), persists state
+through <code>lib/core/local_store.dart</code> (web: <code>localStorage</code> via
+<code>shared_preferences</code>), and stores attachment bytes in IndexedDB
+(<code>notechondria_shared/lib/src/utils/local_attachment_store_web.dart</code>).</li>
+<li><strong>Casdoor auth is the primary surface</strong> and is much further along than
+<code>docs/TODO.md</code> suggested before this round: phases 1–3 of
+<a href="../integrations/casdoor-migration.html"><code>integrations/casdoor-migration.md</code></a>
+landed across 0.1.95–0.1.101 (JWT auth class
+<code>backend/creators/casdoor_auth.py</code>, <code>Creator.casdoor_sub</code>,
+exchange/bind/unlink endpoints, shared <code>AuthHub</code> + OAuth mixin in the
+frontend, gitea-style link challenge in 0.1.118, OIDC profile refresh
+in 0.1.119). The legacy <code>Session</code> model was dropped in 0.1.106; an
+email/password fallback login was restored in 0.1.111 for Casdoor
+outages. Remaining: phases 4–5 (legacy endpoint retirement + cleanup).</li>
+<li><strong>Backend</strong>: Django + DRF on Python 3.11 Docker base (0.1.115),
+deployable to Render / Northflank / Jenkins / Docker; GitHub data-sync
+push pipeline with asset bundling; MCP server with per-user API keys
+and per-user skill instructions; click-run backup/restore scripts
+(0.1.122).</li>
+<li><strong>Responsive layout</strong> is genuinely implemented: a 960 px
+<code>LayoutBuilder</code> breakpoint switches sidebar ↔ drawer in all three apps
+(<code>editor_app/lib/app_shell.dart:476</code>, <code>planner_app/lib/app_shell.dart:423</code>,
+<code>portal_app/lib/app_shell.dart:419</code>), with <code>SafeArea</code> wrapping and no
+hover-only or keyboard-only interactions.</li>
+</ul>
+<p>What is documented but stale:</p>
+<ul>
+<li><code>docs/TODO.md</code> still listed the Casdoor migration as a future "next
+major" item; corrected this round.</li>
+<li>No <code>docs/client/*.md</code> page mentions mobile, Safari, or PWA behavior;
+this file is now the canonical place for that.</li>
+</ul>
+<hr />
+<h2 id="2-mobile-web-findings-prioritized"><a class="header" href="#2-mobile-web-findings-prioritized">2. Mobile web findings (prioritized)</a></h2>
+<h3 id="f1--urgent-same-origin-storage-collision-corrupts-auth-and-data"><a class="header" href="#f1--urgent-same-origin-storage-collision-corrupts-auth-and-data">F1 — URGENT: same-origin storage collision corrupts auth and data</a></h3>
+<p><strong>This is the most likely root cause of the "multi app auth is
+corrupting" symptom.</strong></p>
+<p>On GitHub Pages (and on any single-domain full-stack deploy where nginx
+serves the three apps under one hostname), editor, planner, and portal
+all live on <strong>one browser origin</strong> — only the path differs
+(<code>/Notechondria/editor/</code>, <code>/Notechondria/planner/</code>,
+<code>/Notechondria/portal/</code>). Web storage is <strong>origin-scoped, not
+path-scoped</strong>, and all three apps use identical keys:</p>
+<ul>
+<li><code>notechondria.local_settings</code>, <code>notechondria.local_drafts</code>,
+<code>notechondria.local_courses</code>, <code>notechondria.local_stats</code>,
+<code>notechondria.local_cache</code>, <code>notechondria.local_logs</code>,
+<code>notechondria.session</code>, trash keys — duplicated verbatim in
+<code>editor_app/lib/core/local_store.dart:32</code>,
+<code>planner_app/lib/core/local_store.dart:29</code>, and
+<code>portal_app/lib/core/local_store.dart:26</code>.</li>
+<li>OAuth handoff keys <code>oauth_redirect_uri</code>, <code>oauth_invitation_code</code>,
+<code>oauth_intent</code> in
+<code>notechondria_shared/lib/src/app_shell/app_shell_oauth_mixin.dart:196-198</code>.</li>
+<li>IndexedDB database <code>notechondria_attachments</code>
+(<code>local_attachment_store_web.dart:8</code>).</li>
+</ul>
+<p>Consequences observed/expected on web:</p>
+<ul>
+<li>Logging in inside one app rewrites <code>notechondria.session</code> /
+<code>local_settings</code> for all three; opening another app then boots with
+the other app's settings blob, a token it may interpret differently,
+or a profile that doesn't match its cache — i.e. "auth corruption".</li>
+<li>Planner's starter-workspace seeding can fire against an empty-looking
+<code>local_courses</code> key and clobber editor categories (and vice versa),
+because each app deserializes the shared key with its own schema.</li>
+<li>An OAuth flow started in app A and a login started in app B race on
+<code>oauth_intent</code>; the Casdoor callback can complete with the wrong
+intent (<code>bind</code> vs <code>register</code>/<code>login</code>).</li>
+</ul>
+<p>Desktop and mobile <strong>native</strong> builds are unaffected (per-app
+preference stores), which is why this only shows up in the
+browser-bookmark usage pattern.</p>
+<p><strong>Fix (design shift):</strong> introduce a per-app storage namespace, e.g.
+<code>notechondria.editor.*</code> / <code>notechondria.planner.*</code> /
+<code>notechondria.portal.*</code>, defined once (constant in each app, or an
+<code>appId</code> parameter the shared mixins accept) and applied to:</p>
+<ol>
+<li>every <code>local_store.dart</code> key in the three apps,</li>
+<li>the shared <code>oauth_*</code> keys (prefix with the launching app's id —
+this also makes the callback race impossible),</li>
+<li>optionally the IndexedDB name (attachments are keyed by
+note/attachment UUID, so cross-app sharing is <em>probably</em> benign;
+decide explicitly and document rather than leave it implicit).</li>
+</ol>
+<p>Plus a one-time migration on boot: if legacy unprefixed keys exist and
+the app-scoped keys do not, <strong>copy</strong> (do not move) legacy values into
+the app's namespace, then mark the legacy keys migrated; the editor —
+as the primary data-bearing app — should be the only app allowed to
+delete the legacy keys after all three have stamped their migration
+flag. Simpler acceptable variant: copy-and-leave-forever, with a
+"Clear legacy shared storage" maintenance action in Developer settings.</p>
+<h3 id="f2--p0-missing-viewport-meta-tag-in-all-three-webindexhtml"><a class="header" href="#f2--p0-missing-viewport-meta-tag-in-all-three-webindexhtml">F2 — P0: missing <code>viewport</code> meta tag in all three <code>web/index.html</code></a></h3>
+<p><code>frontend/*/web/index.html</code> (all three apps) has <strong>no</strong>
+<code>&lt;meta name="viewport" ...&gt;</code>. Without it, iPhone Safari lays the page
+out on a ~980 px virtual viewport and scales it down: tiny text, wrong
+breakpoint (the app renders the ≥960 px <em>desktop</em> sidebar layout on a
+phone), broken pinch behavior, and an unstable keyboard/insets
+experience. This single missing line is likely the largest share of
+"the page feels broken on mobile".</p>
+<p>Fix in each app's <code>web/index.html</code> <code>&lt;head&gt;</code>:</p>
+<pre><code class="language-html">&lt;meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"&gt;
+</code></pre>
+<p>(<code>viewport-fit=cover</code> lets <code>SafeArea</code> handle the iPhone notch/home
+indicator correctly in standalone mode.)</p>
+<h3 id="f3--p0-placeholder-web-identity-frontend--a-new-flutter-project"><a class="header" href="#f3--p0-placeholder-web-identity-frontend--a-new-flutter-project">F3 — P0: placeholder web identity ("frontend" / "A new Flutter project")</a></h3>
+<p>All three <code>web/manifest.json</code> files say <code>"name": "frontend"</code>,
+<code>"description": "A new Flutter project."</code>; <code>index.html</code> has
+<code>&lt;title&gt;frontend&lt;/title&gt;</code> and
+<code>&lt;meta name="apple-mobile-web-app-title" content="frontend"&gt;</code>, and the
+icons are the stock Flutter logo. A Safari bookmark or Add-to-Home-Screen
+therefore shows "frontend" with the Flutter icon for every app, and the
+three apps are indistinguishable on a home screen.</p>
+<p>Fix per app: title/name "Notechondria Editor" / "Notechondria Planner"
+/ "Notechondria Portal" (short_name "Editor" / "Planner" / "Portal"),
+real descriptions, distinct icons (even a colored letter glyph is
+enough), and consider <code>"orientation": "any"</code> instead of
+<code>portrait-primary</code> for tablet/desktop installs.</p>
+<h3 id="f4--p1-no-offline-launch-on-web--safari-7-day-storage-eviction"><a class="header" href="#f4--p1-no-offline-launch-on-web--safari-7-day-storage-eviction">F4 — P1: no offline launch on web + Safari 7-day storage eviction</a></h3>
+<p>Two related risks for the bookmark-on-iPhone usage pattern:</p>
+<ol>
+<li><strong>Service worker registration is deliberately disabled</strong> in
+published Pages builds (<code>.github/workflows/frontend-pages.yml</code>
+rewrites the bootstrap to <code>_flutter.loader.load({});</code> and deletes
+<code>flutter_service_worker.js</code>) to avoid the stale-cache incidents
+documented in <a href="../deployment/deploy.html"><code>deployment/deploy.md</code></a>.
+Consequence: the "offline-first" apps cannot even <em>launch</em> without
+network on web — airplane mode or a flaky connection yields a blank
+page, despite all the local-draft infrastructure underneath.</li>
+<li><strong>Safari ITP caps script-writable storage at 7 days</strong> for sites the
+user hasn't interacted with: <code>localStorage</code> (all drafts, settings,
+session) and IndexedDB (attachments) can be evicted wholesale if the
+bookmark isn't opened for a week. A signed-out user who drafted
+notes locally and came back after a vacation loses everything.</li>
+</ol>
+<p>Mitigations, in recommended order:</p>
+<ol>
+<li><strong>Promote Add-to-Home-Screen as the supported iOS channel</strong> (after
+F2/F3 land, it is actually pleasant). Home-screen web apps get their
+own storage partition and are not subject to the 7-day ITP eviction
+in practice; they also get a standalone window and an app icon. Add
+a short "Install on iPhone/Android" section to <code>docs/readme.md</code> and
+a one-time dismissible hint card in the apps when
+<code>display-mode: browser</code> is detected on a mobile UA.</li>
+<li><strong>Make signed-in sync the durability story</strong> and say so in the UI:
+the existing push/pull sync plus GitHub data-sync already cover
+durable storage; surface a gentle "local-only data can be evicted by
+the browser — sign in to keep it" notice in Settings when the user
+has local drafts and no session.</li>
+<li><strong>Reconsider the service-worker ban</strong> (decision item, not a
+foregone conclusion): Flutter's generated service worker is
+content-hash versioned, so the historical stale-shell pain is
+recoverable (worst case one stale load, fixed on next reload).
+Options:
+<ul>
+<li>keep disabled (status quo: zero offline launch, zero cache risk);</li>
+<li>re-enable as built (offline launch works; accept one-reload
+staleness after deploys);</li>
+<li>re-enable plus an in-app "new version available — reload" toast
+wired to the service-worker update event (best UX, small JS shim
+in <code>index.html</code>).
+Recommendation: option 3, trialed on one app (portal) for a release
+before rolling out, with the rewrite-to-disable kept in the workflow
+behind a flag as the kill switch.</li>
+</ul>
+</li>
+</ol>
+<h3 id="f5--p1-backend-oauth-callback-hardcodes-the-editor-app"><a class="header" href="#f5--p1-backend-oauth-callback-hardcodes-the-editor-app">F5 — P1: backend OAuth callback hardcodes the editor app</a></h3>
+<p><code>backend/notechondria/api_views.py:394-399</code> resolves redirects with a
+single global <code>FRONTEND_ORIGIN</code> env var and a hardcoded
+<code>frontend_path = "/Notechondria/editor/"</code>. Any flow that round-trips
+through <code>oauth_callback</code> (GitHub App install, legacy provider logins,
+same-tab fallbacks) dumps planner/portal users into the editor, where —
+combined with F1 — the editor then rewrites the shared storage keys.
+The Casdoor login flow itself is unaffected (the SPA passes its own
+<code>Uri.base</code> as <code>redirect_uri</code>), which is why corruption looks
+intermittent.</p>
+<p>Fix: carry the originating app through <code>state</code> (e.g. suffix
+<code>_editor</code> / <code>_planner</code> / <code>_portal</code>, mirroring the existing <code>_bind</code>
+convention) and map it to the right path on return; keep
+<code>FRONTEND_ORIGIN</code> for the origin only. Until that lands, expect GitHub
+App installs initiated from planner/portal to end in the editor.</p>
+<h3 id="f6--p2-stale-auth-docs-and-casdoor-config-drift"><a class="header" href="#f6--p2-stale-auth-docs-and-casdoor-config-drift">F6 — P2: stale auth docs and Casdoor config drift</a></h3>
+<ul>
+<li><code>docs/TODO.md</code>'s Casdoor entry described the migration as not started
+(fixed this round — now tracks only phases 4–5).</li>
+<li><a href="../integrations/casdoor-migration.html"><code>integrations/casdoor-migration.md</code></a>
+should get a status header pointing at the landed phases so future
+agents stop re-planning phase 2/3.</li>
+<li>Casdoor app config at <code>auth.trance-0.com</code> must list <strong>every</strong>
+<code>redirect_uri</code> the apps can present. The SPA sends
+<code>Uri.base</code> minus query string, so the full set is (adjust hostnames
+to actual deploys):
+<ul>
+<li><code>https://trance-0.github.io/Notechondria/editor/</code></li>
+<li><code>https://trance-0.github.io/Notechondria/planner/</code></li>
+<li><code>https://trance-0.github.io/Notechondria/portal/</code></li>
+<li>custom-domain equivalents if the apps are served there, and</li>
+<li><code>http://localhost:&lt;port&gt;/</code> entries used during development.
+A missing entry produces Casdoor-side <code>redirect_uri</code> rejections that
+present in-app as failed logins on exactly one app — worth
+re-auditing while debugging the corruption, since it compounds F1.
+Keep the matching backend env list (<code>CSRF_TRUSTED_ORIGINS</code>,
+<code>FRONTEND_ORIGIN</code>) in sync; the union logic in
+<code>backend/notechondria/settings.py:119-141</code> only protects the
+auto-detected hosts.</li>
+</ul>
+</li>
+</ul>
+<h3 id="f7--p2-existing-tracked-gaps-unchanged-for-completeness"><a class="header" href="#f7--p2-existing-tracked-gaps-unchanged-for-completeness">F7 — P2: existing tracked gaps (unchanged, for completeness)</a></h3>
+<p>Already tracked in <code>docs/TODO.md</code> and carried forward: GitHub-sync
+push-side conflict resolution and asset pruning; editor + planner
+release workflows (tag-namespace decision pending); planner starter
+default; <code>app_shell.dart</code> size; stale planner/portal modules.</p>
+<hr />
+<h2 id="3-tutorials-integration-design"><a class="header" href="#3-tutorials-integration-design">3. Tutorials integration design</a></h2>
+<p>Goal: teach new users the editor/planner/portal basics, on every
+platform, without building a second content system.</p>
+<h3 id="options-considered"><a class="header" href="#options-considered">Options considered</a></h3>
+<ul>
+<li><strong>A. Tutorials as ordinary public courses (content-first).</strong> Author
+tutorial content as markdown notes inside one or more public
+"Tutorials" courses, seeded server-side exactly like the existing
+sample courses (<code>backend/notes/management/commands/bootstrap_platform.py</code>
+already seeds three demo courses from <code>sample/</code>). Clients need almost
+nothing new: public-note pull, course subscription, and the portal
+front page already exist. A "Help &amp; tutorials" entry in each app's
+Settings (and the portal front page) deep-links into the course.</li>
+<li><strong>B. In-app interactive tours (coach marks / overlays).</strong> Highest
+polish, but every tour step must be authored <strong>twice</strong> because the
+960 px breakpoint swaps drawer/sidebar layouts, it breaks whenever a
+screen is refactored, and it needs a tour framework dependency. High
+ongoing cost for three apps.</li>
+<li><strong>C. Docs-site tutorials (mdBook).</strong> Cheapest, already deployed, but
+lives outside the app and reads as developer docs, not user help.</li>
+</ul>
+<h3 id="recommendation-a-now-b-never-for-v01-c-as-the-long-tail"><a class="header" href="#recommendation-a-now-b-never-for-v01-c-as-the-long-tail">Recommendation: A now, B never (for v0.1), C as the long tail</a></h3>
+<ol>
+<li><strong>Author tutorial courses under <code>sample/</code></strong> (one per app:
+<code>editor-basics</code>, <code>planner-basics</code>, plus a shared
+<code>getting-started</code>), following the existing <code>course.json</code> + markdown
+convention so <code>bootstrap_platform</code> (or a new idempotent
+<code>seed_tutorials</code> management command that can run on a non-empty DB)
+publishes them as public courses owned by the admin user. Media
+(screenshots/GIFs) ride along via the existing course-media path.
+Authoring screenshots of the <em>mobile</em> layout matters: take them at a
+narrow viewport so phone users see their own UI.</li>
+<li><strong>Surface them in-app</strong>:
+<ul>
+<li>portal front page: a "Start here" collection pinned via the
+existing carousel/collections payload;</li>
+<li>editor + planner: a "Help &amp; tutorials" row in Settings and an
+entry in the starter-workspace welcome note (the seeded welcome
+drafts in <code>lib/core/local_starter.dart</code> already exist — link from
+there, works signed-out and offline once pulled).</li>
+</ul>
+</li>
+<li><strong>Keep the starter workspaces as the "tutorial step zero"</strong> — they
+are already the de-facto onboarding and they work offline. Extend
+the welcome note text rather than adding overlay tours.</li>
+<li>Defer any interactive tour until the responsive layouts are stable
+and a real user-confusion signal exists.</li>
+</ol>
+<p>Mobile compatibility of this design is inherent: tutorial content is
+just notes, rendered by the same responsive note viewer on every
+platform; no per-platform tutorial code exists to drift.</p>
+<hr />
+<h2 id="4-phased-roadmap"><a class="header" href="#4-phased-roadmap">4. Phased roadmap</a></h2>
+<p>Each phase is independently shippable and ordered by user-visible risk.</p>
+<p><strong>Phase A — stop the corruption (urgent, small diffs)</strong></p>
+<ol>
+<li>Per-app storage namespacing + legacy-key migration (F1).</li>
+<li>Viewport meta in all three <code>index.html</code> (F2).</li>
+<li>Casdoor redirect-URI audit at <code>auth.trance-0.com</code> + env sync (F6).</li>
+</ol>
+<p><strong>Phase B — make the web channel feel intentional</strong>
+4. Web identity: titles, manifests, icons per app (F3).
+5. OAuth callback app-routing via <code>state</code> suffix (F5).
+6. Add-to-Home-Screen guidance (docs + dismissible in-app hint) and the
+"sign in to keep local data" durability notice (F4 items 1–2).
+7. Service-worker decision and, if approved, portal-first trial with
+update toast + workflow kill switch (F4 item 3).</p>
+<p><strong>Phase C — tutorials</strong>
+8. <code>getting-started</code> / <code>editor-basics</code> / <code>planner-basics</code> courses in
+<code>sample/</code> + idempotent seeding command.
+9. Portal "Start here" collection; Settings "Help &amp; tutorials" rows;
+welcome-note links.</p>
+<p><strong>Phase D — auth debt retirement (Casdoor phases 4–5)</strong>
+10. Disable remaining legacy auth endpoints (keep the 0.1.111
+email/password fallback only if the owner wants the Casdoor-outage
+escape hatch; otherwise it goes too).
+11. Delete dead serializers/templates/models per the survey in
+<code>integrations/casdoor-migration.md</code>; refresh that doc's status
+header.</p>
+<hr />
+<h2 id="5-cross-platform-test-matrix-manual-until-automated"><a class="header" href="#5-cross-platform-test-matrix-manual-until-automated">5. Cross-platform test matrix (manual, until automated)</a></h2>
+<p>Run after each Phase A/B change, on the published Pages build:</p>
+<div class="table-wrapper"><table><thead><tr><th>Surface</th><th>Checks</th></tr></thead><tbody>
+<tr><td>iPhone Safari (bookmark)</td><td>correct breakpoint (drawer layout), text scale, login via Casdoor, draft survives reload, keyboard does not cover editor caret</td></tr>
+<tr><td>iPhone Add-to-Home-Screen</td><td>standalone window, app name/icon correct, login round-trip returns to the standalone app, notch/<code>SafeArea</code></td></tr>
+<tr><td>Android Chrome</td><td>same as Safari row + install prompt</td></tr>
+<tr><td>Desktop Chrome/Edge/Firefox</td><td>wide layout, second app in another tab does not log out / mutate the first (F1 regression check)</td></tr>
+<tr><td>Two apps, same browser</td><td>log in via editor, open planner: planner must NOT inherit/overwrite editor state (the F1 acceptance test)</td></tr>
+<tr><td>Offline (after SW decision)</td><td>airplane mode relaunch behavior matches the documented expectation</td></tr>
+</tbody></table>
+</div>
+<p>Smoke-level automation candidates: a Playwright (or <code>flutter drive</code>
+web) script that loads editor then planner under one origin and asserts
+storage isolation; this is the only regression in the matrix that is
+both high-value and easy to script.</p>
+<hr />
+<h2 id="6-decisions-needed-from-the-owner"><a class="header" href="#6-decisions-needed-from-the-owner">6. Decisions needed from the owner</a></h2>
+<ol>
+<li><strong>Service worker</strong>: keep disabled, or trial re-enable on portal with
+the update-toast pattern? (Section 2, F4.)</li>
+<li><strong>Legacy email/password fallback</strong>: keep as permanent Casdoor-outage
+escape hatch, or retire in Phase D?</li>
+<li><strong>IndexedDB attachment store</strong>: keep shared across the three apps
+(content-addressed, probably safe) or namespace it with the rest?</li>
+<li><strong>Tutorial authoring language/tone</strong> and whether tutorial courses
+should be auto-subscribed for new users or opt-in from the portal.</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../development/storage_model.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../development/canvas_like_calendar_mvp.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../development/storage_model.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../development/canvas_like_calendar_mvp.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
