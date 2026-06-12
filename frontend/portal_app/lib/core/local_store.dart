@@ -23,16 +23,54 @@ class _LocalAppSnapshot {
 }
 
 class _LocalAppStore {
-  static const String _settingsKey = 'notechondria.local_settings';
-  static const String _draftsKey = 'notechondria.local_drafts';
-  static const String _coursesKey = 'notechondria.local_courses';
-  static const String _statsKey = 'notechondria.local_stats';
-  static const String _cacheKey = 'notechondria.local_cache';
-  static const String _logsKey = 'notechondria.local_logs';
+  // 0.1.127: per-app key namespace. On GitHub Pages (and any
+  // single-domain deploy) all three apps share one browser origin,
+  // and web SharedPreferences is origin-scoped localStorage — the
+  // previous app-agnostic `notechondria.local_*` keys meant editor /
+  // planner / portal silently overwrote each other's settings,
+  // drafts, courses, and session state (the "multi app auth
+  // corrupting" bug). Keys now live under `notechondria.portal.*`;
+  // `_migrateLegacyKeys` copies any old unprefixed value into this
+  // namespace once. Copy, not move: the other apps migrate the same
+  // legacy values into their own namespaces on their next boot, so
+  // deleting here would race them. The stale legacy keys are left
+  // behind; a future maintenance action may clear them.
+  static const String _legacyKeyPrefix = 'notechondria.';
+  static const String _keyPrefix = 'notechondria.portal.';
+  static const List<String> _migratableKeySuffixes = [
+    'local_settings',
+    'local_drafts',
+    'local_courses',
+    'local_stats',
+    'local_cache',
+    'local_logs',
+    'local_trashed_drafts',
+    'local_trashed_courses',
+  ];
+  static bool _legacyKeysMigrated = false;
+
+  static Future<void> _migrateLegacyKeys(SharedPreferences prefs) async {
+    if (_legacyKeysMigrated) return;
+    for (final suffix in _migratableKeySuffixes) {
+      final namespacedKey = '$_keyPrefix$suffix';
+      if (prefs.containsKey(namespacedKey)) continue;
+      final legacy = prefs.getString('$_legacyKeyPrefix$suffix');
+      if (legacy == null || legacy.isEmpty) continue;
+      await prefs.setString(namespacedKey, legacy);
+    }
+    _legacyKeysMigrated = true;
+  }
+
+  static const String _settingsKey = 'notechondria.portal.local_settings';
+  static const String _draftsKey = 'notechondria.portal.local_drafts';
+  static const String _coursesKey = 'notechondria.portal.local_courses';
+  static const String _statsKey = 'notechondria.portal.local_stats';
+  static const String _cacheKey = 'notechondria.portal.local_cache';
+  static const String _logsKey = 'notechondria.portal.local_logs';
   static const String _trashedDraftsKey =
-      'notechondria.local_trashed_drafts';
+      'notechondria.portal.local_trashed_drafts';
   static const String _trashedCoursesKey =
-      'notechondria.local_trashed_courses';
+      'notechondria.portal.local_trashed_courses';
   static const int _trashTtlDays = 30;
 
   static Map<String, dynamic> defaultSettings() {
@@ -75,6 +113,7 @@ class _LocalAppStore {
 
   static Future<_LocalAppSnapshot> load() async {
     final prefs = await SharedPreferences.getInstance();
+    await _migrateLegacyKeys(prefs);
     final rawTrashedDrafts = _decodeList(prefs.getString(_trashedDraftsKey));
     final rawTrashedCourses = _decodeList(prefs.getString(_trashedCoursesKey));
     final trashedDrafts = _pruneTrashed(rawTrashedDrafts);
@@ -100,9 +139,8 @@ class _LocalAppStore {
   static List<Map<String, dynamic>> _pruneTrashed(
     List<Map<String, dynamic>> entries,
   ) {
-    final threshold = DateTime.now()
-        .toUtc()
-        .subtract(const Duration(days: _trashTtlDays));
+    final threshold =
+        DateTime.now().toUtc().subtract(const Duration(days: _trashTtlDays));
     return entries.where((entry) {
       final raw = entry['trashed_at']?.toString();
       if (raw == null || raw.isEmpty) return true;

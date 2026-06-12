@@ -304,5 +304,8 @@ extension _AppShellInitialDataX on _AppShellState {
     if (!sessionRejected && errors.isEmpty) {
       unawaited(_maybePromptInboxMigration());
     }
+    if (!sessionRejected) {
+      unawaited(_maybeShowWhatsNew());
+    }
   }
 }

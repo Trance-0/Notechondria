@@ -79,7 +79,20 @@ jobs:
         working-directory: frontend/portal_app
         run: flutter build web --release --base-href /Notechondria/portal/ --no-web-resources-cdn --dart-define=APP_VERSION=${{ steps.appversion.outputs.value }}
 
-      - name: Disable service worker bootstrap in Pages builds
+      # 0.1.127: service workers are ENABLED on Pages builds so the web
+      # apps can launch offline — the owner's iOS channel is a Safari
+      # bookmark / Add-to-Home-Screen install, and without a worker an
+      # airplane-mode launch is a blank page. Flutter's generated worker
+      # is content-hash versioned: after a deploy the first load may
+      # serve the previous shell once while the new worker installs, at
+      # which point the update toast in each app's web/index.html offers
+      # a one-tap reload. Kill switch: if a broken deploy needs the old
+      # always-network behavior back, set the repository variable
+      # STRIP_SERVICE_WORKER to 'true' and re-run this workflow — the
+      # step below then rewrites the bootstrap to skip registration and
+      # deletes the worker file (the pre-0.1.127 behavior).
+      - name: Strip service worker (kill switch, off by default)
+        if: vars.STRIP_SERVICE_WORKER == 'true'
         run: |
           python3 - <<'PY'
           import re

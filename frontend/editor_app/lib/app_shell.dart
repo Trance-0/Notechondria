@@ -286,6 +286,7 @@ class _AppShellState extends State<AppShell>
   bool _isLoadingMoreNotes = false;
   bool _coursePanelExpanded = true;
   bool _inboxMigrationPromptShown = false;
+  bool _whatsNewPromptShown = false;
   int _learnerNotesOffset = 0;
   String _learnerSearchQuery = '';
   Timer? _splashTimer;

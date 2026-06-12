@@ -303,5 +303,8 @@ extension _AppShellInitialDataX on _AppShellState {
               : 'Initial Portal._loadInitialData load used offline fallback: '
                   'Portal.Sync.FrontPage/bootstrap \u2014 ${errors.first}.',
     );
+    if (!sessionRejected) {
+      unawaited(_maybeShowWhatsNew());
+    }
   }
 }

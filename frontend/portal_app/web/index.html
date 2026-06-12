@@ -18,21 +18,91 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <!-- Without this tag iPhone Safari lays the page out on a ~980px
+       virtual viewport and the app renders its desktop breakpoint
+       shrunken down. viewport-fit=cover lets SafeArea own the notch /
+       home-indicator insets in standalone (Add to Home Screen) mode. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Public landing and navigation shell for the Notechondria platform.">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="frontend">
+  <meta name="apple-mobile-web-app-title" content="Portal">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>frontend</title>
+  <title>Notechondria Portal</title>
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>
+  <script>
+    // Service-worker update toast. When a new build's worker installs
+    // while an old one still controls the page (the one-reload-stale
+    // window of Flutter's content-hash-versioned worker), surface a
+    // one-tap reload instead of leaving the user on the old shell.
+    // No-op when service workers are unsupported or stripped by the
+    // Pages workflow kill switch (STRIP_SERVICE_WORKER=true).
+    (function () {
+      if (!('serviceWorker' in navigator)) return;
+      var shown = false;
+      function showReloadToast() {
+        if (shown) return;
+        shown = true;
+        var toast = document.createElement('div');
+        toast.setAttribute('role', 'status');
+        toast.style.cssText =
+          'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);' +
+          'z-index:2147483647;background:#1e293b;color:#e5e7eb;' +
+          'padding:10px 16px;border-radius:8px;font:14px system-ui,sans-serif;' +
+          'box-shadow:0 4px 12px rgba(0,0,0,.4);display:flex;gap:12px;' +
+          'align-items:center;';
+        toast.appendChild(document.createTextNode(
+          'A new version of Portal is available.'));
+        var button = document.createElement('button');
+        button.textContent = 'Reload';
+        button.style.cssText =
+          'background:#3b82f6;color:#fff;border:0;border-radius:6px;' +
+          'padding:6px 12px;font:inherit;cursor:pointer;';
+        button.addEventListener('click', function () {
+          window.location.reload();
+        });
+        toast.appendChild(button);
+        document.body.appendChild(toast);
+      }
+      function watch(registration) {
+        if (registration.waiting && navigator.serviceWorker.controller) {
+          showReloadToast();
+        }
+        registration.addEventListener('updatefound', function () {
+          var worker = registration.installing;
+          if (!worker) return;
+          worker.addEventListener('statechange', function () {
+            if (worker.state === 'installed' &&
+                navigator.serviceWorker.controller) {
+              showReloadToast();
+            }
+          });
+        });
+      }
+      window.addEventListener('load', function () {
+        var tries = 0;
+        var timer = setInterval(function () {
+          tries += 1;
+          navigator.serviceWorker.getRegistration().then(function (reg) {
+            if (reg) {
+              clearInterval(timer);
+              watch(reg);
+            } else if (tries > 20) {
+              clearInterval(timer); // worker stripped or never registered
+            }
+          });
+        }, 1500);
+      });
+    })();
+  </script>
 </body>
 </html>

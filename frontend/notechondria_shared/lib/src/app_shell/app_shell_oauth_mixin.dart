@@ -5,8 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../components/casdoor_link_challenge_dialog.dart';
 import '../components/debug_log.dart';
 import 'app_shell_auth_actions_mixin.dart';
-import 'url_strategy.dart'
-    if (dart.library.html) 'url_strategy_web.dart' as url_strategy;
+import 'url_strategy.dart' if (dart.library.html) 'url_strategy_web.dart'
+    as url_strategy;
 
 /// OAuth launch + callback handler shared across editor / planner /
 /// portal apps. Covers:
@@ -36,6 +36,13 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
   /// `ValueNotifier` feeding the splash-screen label. Updated to
   /// surface provider-specific status during OAuth completion.
   ValueNotifier<String> get splashStatus;
+
+  /// Per-app SharedPreferences namespace for the OAuth handoff keys,
+  /// derived from `logAppTag` ('Editor' -> 'notechondria.editor.').
+  /// Mirrors the 0.1.127 `_LocalAppStore` key namespacing: all three
+  /// apps share one localStorage on same-origin web deploys, so
+  /// unprefixed keys collide across apps.
+  String get _oauthKeyPrefix => 'notechondria.${logAppTag.toLowerCase()}.';
 
   /// Emits a structured debug log line. Provided by
   /// `AppShellLogMixin` on the same state class.
@@ -88,8 +95,7 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
       log(
         level: DebugLogLevel.info,
         source: '$logAppTag.Auth/casdoor.link_challenge',
-        message:
-            'Casdoor link challenge cancelled by user: '
+        message: 'Casdoor link challenge cancelled by user: '
             '$logAppTag.Auth/casdoor.link_challenge — '
             'no bind/create decision applied; the challenge will '
             'expire on the server side within 10 minutes.',
@@ -111,8 +117,7 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
       log(
         level: DebugLogLevel.info,
         source: '$logAppTag.Auth/casdoor.link_challenge',
-        message:
-            'Casdoor link challenge resolved: '
+        message: 'Casdoor link challenge resolved: '
             '$logAppTag.Auth/casdoor.link_challenge — '
             'intent=${decision.intent} succeeded; session installed.',
       );
@@ -122,8 +127,7 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
       log(
         level: DebugLogLevel.error,
         source: '$logAppTag.Auth/casdoor.link_challenge',
-        message:
-            'Casdoor link challenge failed: '
+        message: 'Casdoor link challenge failed: '
             '$logAppTag.Auth/casdoor.link_challenge — '
             'intent=${decision.intent} aborted: $msg.',
       );
@@ -193,9 +197,16 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
       // present when handleOAuthCallback wakes back up.
       final origin = Uri.base.replace(queryParameters: {}).toString();
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('oauth_redirect_uri', origin);
-      await prefs.setString('oauth_invitation_code', invitationCode);
-      await prefs.setString('oauth_intent', intent);
+      // 0.1.127: keys are app-namespaced. On GitHub Pages all three
+      // apps share one browser origin (one localStorage), so the old
+      // unprefixed keys let an OAuth flow launched in one app collide
+      // with a flow launched in another — a bind intent stashed by
+      // planner could complete an editor login with bind semantics.
+      final keyPrefix = _oauthKeyPrefix;
+      await prefs.setString('${keyPrefix}oauth_redirect_uri', origin);
+      await prefs.setString(
+          '${keyPrefix}oauth_invitation_code', invitationCode);
+      await prefs.setString('${keyPrefix}oauth_intent', intent);
       final base = Uri.parse(signinUrl);
       final authUrl = base.replace(queryParameters: {
         'client_id': clientId,
@@ -238,16 +249,24 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
     // reads right after `handleOAuthCallback` returns. Dropping the
     // fragment here used to send the user to the home view after a
     // share-link → OAuth → open-note round trip.
-    final cleanUrl = uri
-        .replace(queryParameters: {})
-        .toString();
+    final cleanUrl = uri.replace(queryParameters: {}).toString();
     url_strategy.browserReplaceState(cleanUrl);
 
     final prefs = await SharedPreferences.getInstance();
-    final intent = prefs.getString('oauth_intent') ?? 'register';
-    await prefs.remove('oauth_redirect_uri');
-    await prefs.remove('oauth_invitation_code');
-    await prefs.remove('oauth_intent');
+    final keyPrefix = _oauthKeyPrefix;
+    // Legacy unprefixed fallback covers a flow launched by a
+    // pre-0.1.127 build that completes after this deploy lands.
+    final intent = prefs.getString('${keyPrefix}oauth_intent') ??
+        prefs.getString('oauth_intent') ??
+        'register';
+    for (final suffix in const [
+      'oauth_redirect_uri',
+      'oauth_invitation_code',
+      'oauth_intent',
+    ]) {
+      await prefs.remove('$keyPrefix$suffix');
+      await prefs.remove(suffix); // clear any legacy leftover too
+    }
 
     splashStatus.value = intent == 'bind'
         ? 'Linking Casdoor account'
@@ -265,8 +284,7 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
         log(
           level: DebugLogLevel.warning,
           source: '$logAppTag.Auth/casdoor.bind',
-          message:
-              'Casdoor account linking aborted: '
+          message: 'Casdoor account linking aborted: '
               '$logAppTag.Auth/casdoor.bind — session token missing at '
               'OAuth callback (user signed out between click and redirect).',
         );
@@ -289,8 +307,7 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
         log(
           level: DebugLogLevel.info,
           source: '$logAppTag.Auth/casdoor.bind',
-          message:
-              'Linked Casdoor account: $logAppTag.Auth/casdoor.bind — '
+          message: 'Linked Casdoor account: $logAppTag.Auth/casdoor.bind — '
               'server accepted the bind token.',
         );
         if (mounted) {
@@ -309,8 +326,7 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
         log(
           level: DebugLogLevel.error,
           source: '$logAppTag.Auth/casdoor.bind',
-          message:
-              'Casdoor account linking failed: '
+          message: 'Casdoor account linking failed: '
               '$logAppTag.Auth/casdoor.bind — $msg.',
         );
         if (mounted) {
@@ -342,8 +358,7 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
         log(
           level: DebugLogLevel.info,
           source: '$logAppTag.Auth/casdoor.link_challenge',
-          message:
-              'Casdoor sign-in needs an account-link decision: '
+          message: 'Casdoor sign-in needs an account-link decision: '
               '$logAppTag.Auth/casdoor.link_challenge — '
               "Casdoor identity '${result['casdoor_identity']?.toString() ?? '<unknown>'}' "
               'is not yet bound to a Notechondria account; the SPA '
@@ -355,8 +370,7 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
       log(
         level: DebugLogLevel.info,
         source: '$logAppTag.Auth/casdoor.callback',
-        message:
-            'Signed in via Casdoor: $logAppTag.Auth/casdoor.callback — '
+        message: 'Signed in via Casdoor: $logAppTag.Auth/casdoor.callback — '
             'server accepted the authorization code.',
       );
       return true;

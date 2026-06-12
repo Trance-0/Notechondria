@@ -50,6 +50,12 @@ export 'src/components/custom_meta_list_editor.dart'
 export 'src/components/mcp_skill_section.dart'
     show GithubSyncExperimentalCard, McpSkillSection;
 export 'src/components/note_cover_image.dart' show NoteCoverImage;
+export 'src/components/whats_new_overlay.dart'
+    show
+        FeatureUpdate,
+        compareAppVersions,
+        selectMissedUpdates,
+        showWhatsNewOverlay;
 
 export 'src/http/http_client_internals_mixin.dart'
     show HttpClientInternalsMixin;

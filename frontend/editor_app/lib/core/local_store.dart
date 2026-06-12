@@ -18,32 +18,73 @@ class _LocalAppSnapshot {
   final Map<String, dynamic> stats;
   final Map<String, dynamic> cache;
   final List<String> logs;
+
   /// Drafts that were successfully synced to the cloud and then moved
   /// to a client-side recycle bin (not deleted). Each entry carries
   /// `trashed_at` (ISO-8601 UTC), the original draft payload, and
   /// `server_note_id` (int) linking to the cloud record that replaced
   /// it. Auto-pruned after [_trashTtlDays] days on next load.
   final List<Map<String, dynamic>> trashedDrafts;
+
   /// Same idea for local courses after successful cloud promotion.
   final List<Map<String, dynamic>> trashedCourses;
 }
 
 class _LocalAppStore {
-  static const String _settingsKey = 'notechondria.local_settings';
-  static const String _draftsKey = 'notechondria.local_drafts';
-  static const String _coursesKey = 'notechondria.local_courses';
-  static const String _statsKey = 'notechondria.local_stats';
-  static const String _cacheKey = 'notechondria.local_cache';
-  static const String _logsKey = 'notechondria.local_logs';
-  static const String _sessionKey = 'notechondria.session';
+  // 0.1.127: per-app key namespace. On GitHub Pages (and any
+  // single-domain deploy) all three apps share one browser origin,
+  // and web SharedPreferences is origin-scoped localStorage — the
+  // previous app-agnostic `notechondria.local_*` keys meant editor /
+  // planner / portal silently overwrote each other's settings,
+  // drafts, courses, and session state (the "multi app auth
+  // corrupting" bug). Keys now live under `notechondria.editor.*`;
+  // `_migrateLegacyKeys` copies any old unprefixed value into this
+  // namespace once. Copy, not move: the other apps migrate the same
+  // legacy values into their own namespaces on their next boot, so
+  // deleting here would race them. The stale legacy keys are left
+  // behind; a future maintenance action may clear them.
+  static const String _legacyKeyPrefix = 'notechondria.';
+  static const String _keyPrefix = 'notechondria.editor.';
+  static const List<String> _migratableKeySuffixes = [
+    'local_settings',
+    'local_drafts',
+    'local_courses',
+    'local_stats',
+    'local_cache',
+    'local_logs',
+    'local_trashed_drafts',
+    'local_trashed_courses',
+    'session',
+  ];
+  static bool _legacyKeysMigrated = false;
+
+  static Future<void> _migrateLegacyKeys(SharedPreferences prefs) async {
+    if (_legacyKeysMigrated) return;
+    for (final suffix in _migratableKeySuffixes) {
+      final namespacedKey = '$_keyPrefix$suffix';
+      if (prefs.containsKey(namespacedKey)) continue;
+      final legacy = prefs.getString('$_legacyKeyPrefix$suffix');
+      if (legacy == null || legacy.isEmpty) continue;
+      await prefs.setString(namespacedKey, legacy);
+    }
+    _legacyKeysMigrated = true;
+  }
+
+  static const String _settingsKey = 'notechondria.editor.local_settings';
+  static const String _draftsKey = 'notechondria.editor.local_drafts';
+  static const String _coursesKey = 'notechondria.editor.local_courses';
+  static const String _statsKey = 'notechondria.editor.local_stats';
+  static const String _cacheKey = 'notechondria.editor.local_cache';
+  static const String _logsKey = 'notechondria.editor.local_logs';
+  static const String _sessionKey = 'notechondria.editor.session';
   // Client-side recycle-bin buckets for just-synced drafts and
   // courses. Populated AFTER a successful cloud create/update so the
   // user can restore if the cloud copy later turns out to be wrong.
   // Auto-pruned after [_trashTtlDays] days on each load.
   static const String _trashedDraftsKey =
-      'notechondria.local_trashed_drafts';
+      'notechondria.editor.local_trashed_drafts';
   static const String _trashedCoursesKey =
-      'notechondria.local_trashed_courses';
+      'notechondria.editor.local_trashed_courses';
 
   /// Days a just-synced draft/course stays in the local recycle bin
   /// before load-time auto-prune. 30 days balances recoverability
@@ -90,6 +131,7 @@ class _LocalAppStore {
 
   static Future<_LocalAppSnapshot> load() async {
     final prefs = await SharedPreferences.getInstance();
+    await _migrateLegacyKeys(prefs);
     // Prune recycle-bin entries older than [_trashTtlDays] days so
     // the bucket doesn't grow unbounded across sessions.
     final rawTrashedDrafts = _decodeList(prefs.getString(_trashedDraftsKey));
@@ -120,9 +162,8 @@ class _LocalAppStore {
   static List<Map<String, dynamic>> _pruneTrashed(
     List<Map<String, dynamic>> entries,
   ) {
-    final threshold = DateTime.now()
-        .toUtc()
-        .subtract(const Duration(days: _trashTtlDays));
+    final threshold =
+        DateTime.now().toUtc().subtract(const Duration(days: _trashTtlDays));
     return entries.where((entry) {
       final raw = entry['trashed_at']?.toString();
       if (raw == null || raw.isEmpty) return true;
@@ -177,17 +218,21 @@ class _LocalAppStore {
   }
 
   /// Persists the auth token and profile so the session survives page refresh.
-  static Future<void> saveSession(String token, Map<String, dynamic> profile) async {
+  static Future<void> saveSession(
+      String token, Map<String, dynamic> profile) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_sessionKey, jsonEncode({
-      'token': token,
-      'profile': profile,
-    }));
+    await prefs.setString(
+        _sessionKey,
+        jsonEncode({
+          'token': token,
+          'profile': profile,
+        }));
   }
 
   /// Loads a previously persisted session. Returns null if none exists.
   static Future<Map<String, dynamic>?> loadSession() async {
     final prefs = await SharedPreferences.getInstance();
+    await _migrateLegacyKeys(prefs);
     final raw = prefs.getString(_sessionKey);
     if (raw == null || raw.isEmpty) return null;
     try {

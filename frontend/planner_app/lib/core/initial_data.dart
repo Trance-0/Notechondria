@@ -287,5 +287,8 @@ extension _AppShellInitialDataX on _AppShellState {
               : 'Initial Planner._loadInitialData load used offline fallback: '
                   'Planner.Sync.Planner/bootstrap \u2014 ${errors.first}.',
     );
+    if (!sessionRejected) {
+      unawaited(_maybeShowWhatsNew());
+    }
   }
 }

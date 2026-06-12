@@ -1,12 +1,12 @@
 {
-    "name": "frontend",
-    "short_name": "frontend",
+    "name": "Notechondria Editor",
+    "short_name": "Editor",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "description": "Offline-first markdown note editor for the Notechondria platform.",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {
