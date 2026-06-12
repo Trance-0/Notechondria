@@ -24,39 +24,33 @@ file and add a round-log entry to the new version doc.
 
 ### Cross-platform web shell
 
-Survey + full design landed in
-[`docs/development/cross_platform_plan.md`](development/cross_platform_plan.md)
-(written at 0.1.126). Finding numbers below refer to that doc.
+Survey + full design in
+[`docs/development/cross_platform_plan.md`](development/cross_platform_plan.md).
+F1 (storage namespacing), F2 (viewport meta), F3 (web identity, minus
+icons), and the F4 service-worker decision landed in 0.1.127 — see
+[`versions/0.1.127.md`](versions/0.1.127.md). Remaining:
 
-- [ ] **Urgent — per-app storage namespacing (F1).** On GitHub Pages
-  all three apps share one browser origin, and editor / planner /
-  portal use identical `shared_preferences` keys
-  (`notechondria.local_*`, `notechondria.session`, shared `oauth_*`
-  keys in `app_shell_oauth_mixin.dart`). They overwrite each other's
-  sessions, settings, drafts, and OAuth intent — the observed
-  "multi app auth is corrupting" behavior on web. Prefix every key
-  per app (`notechondria.editor.*` etc.), prefix the shared OAuth
-  handoff keys with the launching app id, and add a one-time
-  copy-style migration for legacy unprefixed keys. Acceptance test:
-  log in via editor, open planner in the same browser — planner must
-  not inherit or mutate editor state.
-- [ ] **Viewport meta tag (F2).** All three `web/index.html` lack
-  `<meta name="viewport" ...>`, so iPhone Safari renders the desktop
-  layout on a ~980 px virtual viewport. Add
-  `width=device-width, initial-scale=1, viewport-fit=cover` to each.
-- [ ] **Web identity (F3).** Replace placeholder `"frontend"` /
-  `"A new Flutter project."` in each app's `web/manifest.json`,
-  `<title>`, and `apple-mobile-web-app-title` with per-app names
-  (Notechondria Editor / Planner / Portal) and distinct icons so
-  Safari bookmarks and Add-to-Home-Screen are tellable apart.
-- [ ] **Offline / install story (F4).** Decide the service-worker
-  question (currently force-disabled in `frontend-pages.yml`, so web
-  builds cannot launch offline at all): keep disabled, or trial
-  re-enable on portal with an update toast and a workflow kill
-  switch. Independent of that decision: add Add-to-Home-Screen
-  guidance for iOS (mitigates Safari's 7-day storage eviction) and a
-  "local-only data can be evicted — sign in to keep it" notice when
-  local drafts exist without a session.
+- [ ] **Per-app icons.** The three apps still ship the stock Flutter
+  icon set (`web/icons/`, `favicon.png`), so home-screen installs are
+  only tellable apart by name. Produce distinct editor / planner /
+  portal icons (a colored letter glyph is enough) at 192/512 +
+  maskable + favicon + apple-touch sizes.
+- [ ] **Add-to-Home-Screen guidance + durability notice.** Add a short
+  "Install on iPhone/Android" section to `docs/readme.md` and a
+  one-time dismissible hint card on mobile-browser visits; show a
+  "local-only data can be evicted by the browser — sign in to keep
+  it" notice when local drafts exist without a session (Safari ITP
+  evicts script-writable storage after 7 days of inactivity;
+  home-screen installs are exempt).
+- [ ] **Legacy storage-key cleanup.** The 0.1.127 namespacing copies
+  old `notechondria.local_*` values into per-app namespaces and
+  leaves the legacy keys behind. After all three deployed apps have
+  been on >= 0.1.127 for a while, add a maintenance action (Settings >
+  Developer) that deletes the unprefixed keys.
+- [ ] **Storage-isolation regression test.** Script the F1 acceptance
+  test (load editor then planner under one origin, assert neither
+  mutates the other's namespaced keys) — Playwright against the built
+  web bundles, or a `flutter drive` web run.
 
 ### Login and account info
 
@@ -83,29 +77,27 @@ Survey + full design landed in
   the right default. Changing planner's starter default is a UX
   break, so gather feedback before touching.
 
-## Tutorials
+## Tutorials / What's New
 
-Design rationale in
-[`docs/development/cross_platform_plan.md §3`](development/cross_platform_plan.md):
-tutorials ship as ordinary public courses (reuses course / public-note
-/ subscription infra, renders responsively on every platform), not as
-in-app overlay tours.
+Owner decision (0.1.127): version-update tutorials are a **UI
+overlay**, not courses. The shared `showWhatsNewOverlay` +
+per-app `lib/core/whats_new.dart` registries landed in 0.1.127:
+on boot each app diffs its built `APP_VERSION` against the user's
+`last_seen_version` (local stats for everyone; the per-app
+`Creator.last_seen_versions` map for signed-in users) and shows the
+missed feature cards once, with a Skip option that also marks them
+seen.
 
-- [ ] **Tutorial course content + seeding (backend).** Author
-  `getting-started`, `editor-basics`, and `planner-basics` courses
-  under `sample/` following the existing `course.json` + markdown
-  convention, and add an idempotent `seed_tutorials` management
-  command that publishes them as admin-owned public courses on a
-  non-empty database (`bootstrap_platform` only runs on empty DBs).
-  Screenshots should be captured at a narrow viewport so phone users
-  see their own layout.
-- [ ] **Tutorial surfacing (frontend).** Portal front page gets a
-  "Start here" pinned collection; editor and planner get a
-  "Help & tutorials" row in Settings deep-linking into the tutorial
-  course; extend the seeded welcome notes in each app's
-  `lib/core/local_starter.dart` to link there. No overlay-tour
-  framework — the 960 px breakpoint would force double-authoring of
-  every step.
+**Standing convention for every future round:** when a round ships a
+user-visible feature, append a `FeatureUpdate` entry (version, title,
+one-to-two-sentence description, icon) to the affected app's
+`lib/core/whats_new.dart` registry in the same commit as the feature.
+
+- [ ] **First-run guided tour (deferred).** The overlay covers
+  version-to-version migration. A step-by-step guided tour for brand
+  new users (anchored coach marks) is deferred until the responsive
+  layouts are stable — every anchored step must be authored twice
+  around the 960 px drawer/sidebar breakpoint.
 
 ## Backend
 
@@ -118,12 +110,25 @@ in-app overlay tours.
   link-challenge flow in 0.1.118, OIDC profile refresh in 0.1.119;
   the `Session` model was dropped in 0.1.106). Still open:
   4. Retire the remaining legacy auth endpoints. Owner decision
-     needed: keep the 0.1.111 email/password fallback as a permanent
-     Casdoor-outage escape hatch, or remove it too.
+     (0.1.127): the email/password fallback login is **permanent**
+     (Casdoor-outage escape hatch) and now auto-syncs the Casdoor
+     password into the local hash — see
+     [`versions/0.1.127.md`](versions/0.1.127.md). Everything else
+     legacy can go.
   5. Cleanup: delete dead serializers / templates / helpers listed in
      the survey, and add a status header to
      `integrations/casdoor-migration.md` marking phases 1–3 DONE so
      future rounds stop re-planning them.
+- [ ] **Casdoor password-hash claim is scrubbed (watch upstream).**
+  The owner configured the application's Token Format (JWT-Custom,
+  RS256, token fields Password / Password salt / Password type), but
+  live tokens from auth.trance-0.com carry an **empty** `password`
+  claim value (`passwordType` says `bcrypt`; verified 2026-06-12) —
+  current Casdoor scrubs the hash server-side. The claims-sync path
+  in `backend/creators/casdoor_password.py` is implemented and
+  dormant; it activates automatically if a Casdoor upgrade starts
+  emitting the hash. Until then the ROPC grant at fallback-login
+  time covers the sync. Re-test after Casdoor upgrades.
 - [ ] **OAuth callback app routing (cross_platform_plan F5).**
   `backend/notechondria/api_views.py` `oauth_callback` redirects every
   same-tab flow to a single `FRONTEND_ORIGIN` plus a hardcoded
@@ -132,14 +137,11 @@ in-app overlay tours.
   Carry the originating app through the `state` parameter (suffix
   `_editor` / `_planner` / `_portal`, mirroring the `_bind`
   convention) and map it back to the right app path on return.
-- [ ] **Casdoor redirect-URI audit (cross_platform_plan F6).** Verify
-  the app config on `auth.trance-0.com` lists every redirect URI the
-  SPAs can present (`Uri.base` minus query): the three Pages paths
-  under `https://trance-0.github.io/Notechondria/...`, any
-  custom-domain equivalents, and local-dev `http://localhost:<port>/`
-  entries — and that backend `CSRF_TRUSTED_ORIGINS` /
-  `FRONTEND_ORIGIN` envs match. Document the final list in
-  `integrations/casdoor-setup.md`.
+- [ ] **Document the final Casdoor redirect-URI list.** The owner
+  completed the app config on `auth.trance-0.com` (0.1.127). Record
+  the registered redirect URIs and token-format settings (JWT-Custom,
+  RS256, Password / Password salt / Password type token fields) in
+  `integrations/casdoor-setup.md` so the config is reproducible.
 - [ ] **MCP API keys stay app-internal.** Casdoor is NOT in the
   per-request hot path for MCP — the `Bearer ntc_<key>` scheme keeps
   using `creators.authentication.ApiKeyAuthentication` and the

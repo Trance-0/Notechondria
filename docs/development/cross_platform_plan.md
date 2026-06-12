@@ -1,5 +1,21 @@
 # Cross-Platform Reliability and Tutorials Plan
 
+> **Status update (0.1.127).** Phase A and most of Phase B landed:
+> F1 per-app storage namespacing + legacy-key migration, F2 viewport
+> meta, F3 web identity (icons still stock Flutter), and the F4
+> service-worker decision — workers are **re-enabled** on Pages with
+> an update toast in each `web/index.html` and a
+> `STRIP_SERVICE_WORKER` repository-variable kill switch in
+> `frontend-pages.yml`. Section 3's course-based tutorial design was
+> **rejected by the owner** in favor of a version-gated What's-New
+> overlay (shipped 0.1.127; see `docs/TODO.md` "Tutorials / What's
+> New" for the standing registry convention). Owner decisions on §6:
+> service worker = option 3; email/password fallback = keep
+> permanently, now auto-synced against Casdoor (ROPC at fallback
+> login; JWT hash claims dormant because Casdoor scrubs the
+> `password` value); Casdoor config at auth.trance-0.com = done.
+> Remaining open items are tracked in `docs/TODO.md`.
+
 Status snapshot and forward plan, written at 0.1.126. Covers: where the
 project stands today, what breaks on mobile web (iOS Safari is the only
 mobile channel currently in use), the root cause of the multi-app auth

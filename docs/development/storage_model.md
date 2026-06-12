@@ -135,17 +135,31 @@ no other file in the lib should call `SharedPreferences.getInstance()`.
 
 ### Keys
 
-Seven JSON blobs per app, plus the session record:
+Since 0.1.127 every key carries a **per-app namespace** —
+`notechondria.editor.*` / `notechondria.planner.*` /
+`notechondria.portal.*`. On GitHub Pages (and any single-domain
+deploy) the three apps share one browser origin, and web
+`SharedPreferences` is origin-scoped localStorage, so the previous
+app-agnostic `notechondria.*` keys let the apps overwrite each
+other's settings, drafts, and session state. `_migrateLegacyKeys`
+copies any old unprefixed value into the app's namespace once
+(copy, not move — each app migrates independently; the stale legacy
+keys are left behind for now). The shared OAuth handoff keys
+(`oauth_redirect_uri` / `oauth_invitation_code` / `oauth_intent` in
+`app_shell_oauth_mixin.dart`) carry the same prefix.
+
+Seven JSON blobs per app, plus the session record (key names below
+shown for the editor; substitute the app id):
 
 | Key | Type | Default factory | What it holds |
 | --- | --- | --- | --- |
-| `notechondria.local_settings` | `Map<String, dynamic>` | `defaultSettings()` | Local mirror of `/api/v1/settings/`: `theme_preset`, `theme_mode`, `api_base_url`, `updated_at`, `log_preferences`. |
-| `notechondria.local_drafts` | `List<Map<String, dynamic>>` | `[]` | Notes the user typed while offline; sync flow pushes them to `/api/v1/notes/` after login. |
-| `notechondria.local_courses` | `List<Map<String, dynamic>>` | `[]` | Locally created courses (pre-sync) plus the cached list of remote courses. The Inbox is created locally if no session exists. |
-| `notechondria.local_stats` | `Map<String, dynamic>` | `defaultStats()` | Counters: `local_drafts_created`, `local_drafts_synced`, `local_courses_created`, `local_courses_synced`, `avatar_updates`, `settings_saves`, `logs_copied`, `cache_clears`, `local_data_clears`, `sync_failures`, `last_sync_at`. |
-| `notechondria.local_cache` | `Map<String, dynamic>` | `defaultCache()` | Last-seen server payloads for offline render: `front_page` (cached `/api/v1/front-page/` response), `courses` (cached `/api/v1/courses/`), `activity` (cached planner data), `updated_at`. |
-| `notechondria.local_logs` | `List<String>` | `[]` | UI log lines surfaced in the debug drawer. |
-| `notechondria.session` | `Map<String, dynamic>?` | `null` | After login: `{token, user, saved_at}`. Cleared on logout. The DRF token is plaintext — same security posture as any web app's localStorage token. |
+| `notechondria.editor.local_settings` | `Map<String, dynamic>` | `defaultSettings()` | Local mirror of `/api/v1/settings/`: `theme_preset`, `theme_mode`, `api_base_url`, `updated_at`, `log_preferences`. |
+| `notechondria.editor.local_drafts` | `List<Map<String, dynamic>>` | `[]` | Notes the user typed while offline; sync flow pushes them to `/api/v1/notes/` after login. |
+| `notechondria.editor.local_courses` | `List<Map<String, dynamic>>` | `[]` | Locally created courses (pre-sync) plus the cached list of remote courses. The Inbox is created locally if no session exists. |
+| `notechondria.editor.local_stats` | `Map<String, dynamic>` | `defaultStats()` | Counters: `local_drafts_created`, `local_drafts_synced`, `local_courses_created`, `local_courses_synced`, `avatar_updates`, `settings_saves`, `logs_copied`, `cache_clears`, `local_data_clears`, `sync_failures`, `last_sync_at`. Since 0.1.127 also `last_seen_version` (What's-New overlay stamp). |
+| `notechondria.editor.local_cache` | `Map<String, dynamic>` | `defaultCache()` | Last-seen server payloads for offline render: `front_page` (cached `/api/v1/front-page/` response), `courses` (cached `/api/v1/courses/`), `activity` (cached planner data), `updated_at`. |
+| `notechondria.editor.local_logs` | `List<String>` | `[]` | UI log lines surfaced in the debug drawer. |
+| `notechondria.editor.session` | `Map<String, dynamic>?` | `null` | After login: `{token, user, saved_at}`. Cleared on logout. The token is plaintext — same security posture as any web app's localStorage token. Editor-only; planner/portal don't persist the token. |
 
 All values are JSON-serialized via `dart:convert`. Decoding tolerates
 malformed values by falling back to the defaults (see
