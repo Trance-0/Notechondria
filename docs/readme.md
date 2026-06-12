@@ -148,6 +148,10 @@ via `client_draft_id`).
 - [`deployment/`](deployment/) — one file per deploy target.
 - [`development/ai_integration.md`](development/ai_integration.md) —
   current AI stub state and the future HTTP-microservice plan.
+- [`development/cross_platform_plan.md`](development/cross_platform_plan.md)
+  — progress snapshot, mobile-web findings (incl. the same-origin
+  storage collision behind the multi-app auth corruption), tutorials
+  design, and the phased cross-platform roadmap.
 - [`operations/postgres_migration.md`](operations/postgres_migration.md)
   — backup/restore runbook.
 - [`operations/local_backup_restore.md`](operations/local_backup_restore.md)

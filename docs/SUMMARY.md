@@ -38,6 +38,7 @@
 - [Python Environments](development/python_environments.md)
 - [AI Integration (stub status and forward plan)](development/ai_integration.md)
 - [Storage model (Django + frontend offline)](development/storage_model.md)
+- [Cross-platform reliability and tutorials plan](development/cross_platform_plan.md)
 - [Canvas-like Calendar Product Concept](development/canvas_like_calendar_mvp.md)
 
 # Integrations
@@ -62,6 +63,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.126 - cross-platform survey: mobile web gaps, auth-corruption root cause, tutorials plan](versions/0.1.126.md)
 - [0.1.125 - editor deep links, debug log filters, and Inbox migration](versions/0.1.125.md)
 - [0.1.124 - main-branch direct-work rule](versions/0.1.124.md)
 - [0.1.123 - editor private subscriptions + Apple Journal ZIP import](versions/0.1.123.md)
