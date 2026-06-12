@@ -1,20 +1,17 @@
-import 'dart:math' as math;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'splash_painter.dart';
 
-/// Splash screen showing an animated Citric acid cycle (Krebs cycle).
+import '../reaction_simulator/reaction_view.dart';
+
+/// Splash screen backed by the reaction-simulator animation (TCA-cycle
+/// molecules drifting, colliding, and reacting on a toroidal world).
 ///
-/// The cycle axis is at the left center of the screen. It rotates to bring
-/// each metabolite to the screen center. Each metabolite's structural
-/// formula is anchored to its node and freely moves out of screen as the
-/// cycle rotates - no English names are drawn next to the nodes. The
-/// background is dotted with tiny rotating structural formulas of small
-/// molecules that commonly accompany the cycle (H2O, CO2, NAD+, pyruvate
-/// fragments, etc.). The version string in the bottom-left is supplied by
-/// the host app via [appVersion] so each app can show its own
-/// build-time-injected `--dart-define=APP_VERSION=...` value.
+/// Replaced the hand-drawn rotating Krebs-cycle painter in 0.1.128 with
+/// a Dart port of the owner's `index` repo reaction simulator
+/// (https://index.trance-0.com/utils/reaction_simulator); see
+/// `../reaction_simulator/`. The version string in the bottom-left is
+/// supplied by the host app via [appVersion] so each app can show its
+/// own build-time-injected `--dart-define=APP_VERSION=...` value.
 ///
 /// The detailed loading-status line under the title is driven by
 /// [loadingStatus]. The host app typically wires a `ValueNotifier<String>`
@@ -48,67 +45,20 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
-  late final AnimationController _cycleController;
   late final AnimationController _fadeController;
   bool _dismissed = false;
-
-  static const _metabolites = [
-    'Citrate',
-    'Isocitrate',
-    '\u03b1-Ketoglutarate',
-    'Succinyl-CoA',
-    'Succinate',
-    'Fumarate',
-    'Malate',
-    'Oxaloacetate',
-  ];
-
-  static const _byproducts = <int, List<String>>{
-    0: ['NADH'],
-    2: ['CO\u2082', 'NADH'],
-    3: ['CO\u2082', 'NADH'],
-    4: ['GTP'],
-    5: ['FADH\u2082'],
-    7: ['NADH'],
-  };
-
-  late final List<SplashParticle> _particles;
 
   @override
   void initState() {
     super.initState();
-    _cycleController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 16000),
-    )..repeat();
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..forward();
-    final rng = math.Random(42);
-    _particles = List.generate(30, (_) {
-      return SplashParticle(
-        seedX: rng.nextDouble(),
-        seedY: rng.nextDouble(),
-        velocityX: (rng.nextDouble() - 0.5) * 0.6,
-        velocityY: (rng.nextDouble() - 0.5) * 0.45,
-        // Uniform size across all particles — the owner wanted every
-        // particle (background + cycle-attached) to look the same
-        // size, only the alpha should differ. A fixed scale of ~1.0x
-        // reads about the same as the old 0.75–1.5 mid-range once
-        // the alpha pulse takes effect in the painter.
-        size: 1.0,
-        rotation: rng.nextDouble() * 2 * math.pi,
-        rotationSpeed: (rng.nextDouble() - 0.5) * 0.9,
-        moleculeType: rng.nextInt(8),
-        phase: rng.nextDouble() * 2 * math.pi,
-      );
-    });
   }
 
   @override
   void dispose() {
-    _cycleController.dispose();
     _fadeController.dispose();
     super.dispose();
   }
@@ -136,8 +86,6 @@ class _SplashScreenState extends State<SplashScreen>
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF0f172a) : const Color(0xFFF8FAFC);
-    final ringColor = theme.colorScheme.primary.withValues(alpha: 0.18);
-    final nodeColor = theme.colorScheme.primary;
     final textColor = theme.colorScheme.onSurface;
     final subtleColor = theme.colorScheme.onSurface.withValues(alpha: 0.5);
 
@@ -149,25 +97,8 @@ class _SplashScreenState extends State<SplashScreen>
           builder: (context, constraints) {
             return Stack(
               children: [
-                Positioned.fill(
-                  child: AnimatedBuilder(
-                    animation: _cycleController,
-                    builder: (context, _) {
-                      return CustomPaint(
-                        painter: KrebsCyclePainter(
-                          progress: _cycleController.value,
-                          metabolites: _metabolites,
-                          byproducts: _byproducts,
-                          particles: _particles,
-                          nodeColor: nodeColor,
-                          ringColor: ringColor,
-                          textColor: textColor,
-                          subtleColor: subtleColor,
-                          isDark: isDark,
-                        ),
-                      );
-                    },
-                  ),
+                const Positioned.fill(
+                  child: ReactionSimulatorView(),
                 ),
                 Positioned(
                   right: constraints.maxWidth * 0.08,
@@ -307,4 +238,3 @@ class _LoadingStatusText extends StatelessWidget {
     );
   }
 }
-

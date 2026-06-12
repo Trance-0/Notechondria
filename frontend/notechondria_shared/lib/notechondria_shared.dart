@@ -62,6 +62,12 @@ export 'src/http/http_client_internals_mixin.dart'
 export 'src/components/phased_status.dart' show PhasedStatusIndicator;
 export 'src/components/splash_screen.dart' show SplashScreen;
 
+export 'src/reaction_simulator/reaction_defs.dart'
+    show ReactionSimOptions, kTcaDefs;
+export 'src/reaction_simulator/reaction_simulator.dart'
+    show ReactionSimulator, SimParticle;
+export 'src/reaction_simulator/reaction_view.dart' show ReactionSimulatorView;
+
 export 'src/settings/app_preferences_card.dart'
     show AppPreferencesCard, kEditorModes, kThemePresetEntries;
 
