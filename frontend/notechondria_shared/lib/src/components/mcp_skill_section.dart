@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../app_shell/url_strategy.dart'
-    if (dart.library.html) '../app_shell/url_strategy_web.dart'
-    as url_strategy;
+    if (dart.library.html) '../app_shell/url_strategy_web.dart' as url_strategy;
 import '../models/action_feedback.dart';
 
 /// Editable text area for the user's MCP `skill.md`. Surfaced to MCP-
@@ -92,8 +91,8 @@ class _McpSkillSectionState extends State<McpSkillSection> {
       children: [
         Text(
           'Agent skill (skill.md)',
-          style: theme.textTheme.labelLarge
-              ?.copyWith(fontWeight: FontWeight.w700),
+          style:
+              theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 6),
         Text(
@@ -183,8 +182,16 @@ class GithubSyncExperimentalCard extends StatefulWidget {
     this.onConnect,
     this.onPushNow,
     this.onDisconnect,
+    this.appId = '',
     super.key,
   });
+
+  /// Originating app id (`editor` / `planner` / `portal`). Appended
+  /// to the GitHub App install URL as `state=app_<appId>` so the
+  /// backend `oauth_callback` can route the same-tab fallback back to
+  /// the launching app instead of the historical editor default
+  /// (0.1.128). Empty = no state appended (legacy behavior).
+  final String appId;
 
   /// `GET /api/v1/integrations/github/status/`. Returns the raw
   /// payload (`connected`, `install_url`, `repo_full_name`, etc.).
@@ -338,7 +345,9 @@ class _GithubSyncExperimentalCardState
       if (!mounted) return;
       setState(() => _lastCommitSha = sha);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Pushed to GitHub (sha ${sha.substring(0, sha.length < 8 ? sha.length : 8)}).')),
+        SnackBar(
+            content: Text(
+                'Pushed to GitHub (sha ${sha.substring(0, sha.length < 8 ? sha.length : 8)}).')),
       );
       await _refreshStatus();
     } catch (error) {
@@ -368,7 +377,7 @@ class _GithubSyncExperimentalCardState
   }
 
   void _openInstallUrl() {
-    final url = _installUrl;
+    var url = _installUrl;
     if (url.isEmpty) {
       _snackError(
         'Cannot install GitHub App',
@@ -380,9 +389,19 @@ class _GithubSyncExperimentalCardState
     if (uri == null || uri.scheme.isEmpty || uri.host.isEmpty) {
       _snackError(
         'Cannot install GitHub App',
-        Exception('Frontend.GithubSync/install — install_url is not a valid http(s) URL.'),
+        Exception(
+            'Frontend.GithubSync/install — install_url is not a valid http(s) URL.'),
       );
       return;
+    }
+    // Carry the originating app through GitHub's state round-trip so
+    // the backend's same-tab fallback redirect lands back here
+    // instead of the editor default (see oauth_callback, 0.1.128).
+    if (widget.appId.isNotEmpty) {
+      url = uri.replace(queryParameters: {
+        ...uri.queryParameters,
+        'state': 'app_${widget.appId}',
+      }).toString();
     }
     // 0.1.120: popup-based install. The pre-refactor full-page
     // redirect was costing the user their session — a long round
@@ -534,9 +553,8 @@ class _GithubSyncExperimentalCardState
           contentPadding: EdgeInsets.zero,
           dense: true,
           value: _includeAssets,
-          onChanged: _busy
-              ? null
-              : (value) => setState(() => _includeAssets = value),
+          onChanged:
+              _busy ? null : (value) => setState(() => _includeAssets = value),
           title: const Text('Include assets'),
           subtitle: Text(
             _includeAssets
@@ -633,8 +651,7 @@ class _GithubSyncExperimentalCardState
             ),
             const SizedBox(height: 10),
             if (!_hasCallbacks)
-              const _DisabledHint(
-                  text: 'Sign in to enable GitHub Sync.')
+              const _DisabledHint(text: 'Sign in to enable GitHub Sync.')
             else if (_loading)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 4),

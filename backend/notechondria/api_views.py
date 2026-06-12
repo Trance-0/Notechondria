@@ -393,8 +393,19 @@ def oauth_callback(request, provider):
     # Determine the frontend origin to redirect to.
     frontend_origin = os.getenv("FRONTEND_ORIGIN", "").rstrip("/")
 
-    # Default frontend path is the editor app.
+    # 0.1.128: route the same-tab fallback back to the app that
+    # started the flow. The SPA appends `_editor` / `_planner` /
+    # `_portal` to `state` (mirroring the `_bind` suffix convention);
+    # GitHub App installs round-trip `state` to this callback. Flows
+    # that predate the suffix (or strip it) keep the historical
+    # editor default. The popup path posts back to `window.opener`
+    # and never navigates, so this only matters when the popup was
+    # blocked or a legacy same-tab flow is in use.
     frontend_path = "/Notechondria/editor/"
+    for app_key in ("editor", "planner", "portal"):
+        if state.endswith(f"_{app_key}"):
+            frontend_path = f"/Notechondria/{app_key}/"
+            break
     if frontend_origin:
         redirect_target = f"{frontend_origin}{frontend_path}"
     else:

@@ -58,3 +58,37 @@ class HandshakeEndpointTests(TestCase):
         self.assertIn("version", payload)
         self.assertIn("capabilities", payload)
         self.assertIn("auth", payload["capabilities"])
+
+
+class OauthCallbackAppRoutingTests(TestCase):
+    """0.1.128: `oauth_callback` routes its same-tab fallback redirect
+    to the app named by the `state` suffix (`_editor` / `_planner` /
+    `_portal`), defaulting to the editor for legacy states."""
+
+    def _get(self, state):
+        from django.test import RequestFactory
+        from . import api_views
+        request = RequestFactory().get(
+            '/auth/github/callback',
+            {'code': 'test-code', 'state': state},
+        )
+        response = api_views.oauth_callback(request, provider='github')
+        self.assertEqual(response.status_code, 200)
+        return response.content.decode()
+
+    def test_planner_suffix_routes_to_planner(self):
+        body = self._get('app_planner')
+        self.assertIn('/Notechondria/planner/', body)
+        self.assertNotIn('/Notechondria/editor/', body)
+
+    def test_portal_suffix_routes_to_portal(self):
+        body = self._get('github_portal')
+        self.assertIn('/Notechondria/portal/', body)
+
+    def test_legacy_state_defaults_to_editor(self):
+        body = self._get('github')
+        self.assertIn('/Notechondria/editor/', body)
+
+    def test_editor_suffix_routes_to_editor(self):
+        body = self._get('app_editor')
+        self.assertIn('/Notechondria/editor/', body)

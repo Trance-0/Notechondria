@@ -634,7 +634,7 @@ class _ApiSettingsPage extends StatelessWidget {
           ],
           const SizedBox(height: 16),
           p.widget.githubSyncCardBuilder?.call() ??
-              const GithubSyncExperimentalCard(),
+              const GithubSyncExperimentalCard(appId: 'editor'),
         ],
       ),
     );

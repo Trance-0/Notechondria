@@ -670,6 +670,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
               : null,
           githubSyncCardBuilder: _token != null
               ? () => GithubSyncExperimentalCard(
+                    appId: 'editor',
                     onLoadStatus: () => widget.client.githubSyncStatus(_token!),
                     onListRepos: () => widget.client.githubSyncRepos(_token!),
                     onConnect: ({

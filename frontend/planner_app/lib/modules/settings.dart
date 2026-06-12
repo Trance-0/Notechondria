@@ -59,6 +59,7 @@ class _SettingsPage extends StatefulWidget {
   ) onSave;
   final Future<void> Function() onLogout;
   final Future<ActionFeedback> Function(String email, String password) onLogin;
+
   /// Triggers Casdoor SSO. Null in shadow mode (no `CASDOOR_*` env
   /// vars). See `docs/integrations/casdoor-migration.md`.
   final VoidCallback? onCasdoorLogin;
@@ -142,7 +143,8 @@ class _SettingsPageState extends State<_SettingsPage> {
   bool _uploadingAvatar = false;
   String? _socialLinkError;
 
-  bool get _isAuthenticated => widget.profile != null && widget.settings != null;
+  bool get _isAuthenticated =>
+      widget.profile != null && widget.settings != null;
 
   bool get _isAdmin =>
       widget.profile?['is_superuser'] == true ||
@@ -161,8 +163,8 @@ class _SettingsPageState extends State<_SettingsPage> {
           widget.profile?['email']?.toString() ??
           '',
     );
-    _mottoController =
-        TextEditingController(text: widget.settings?['motto']?.toString() ?? '');
+    _mottoController = TextEditingController(
+        text: widget.settings?['motto']?.toString() ?? '');
     _socialController = TextEditingController(
       text: widget.settings?['social_link']?.toString() ?? '',
     );
@@ -175,7 +177,8 @@ class _SettingsPageState extends State<_SettingsPage> {
       text: (widget.localSettings['deadline_time_weight'] ?? 1.0).toString(),
     );
     _deadlineImportanceWeightController = TextEditingController(
-      text: (widget.localSettings['deadline_importance_weight'] ?? 1.0).toString(),
+      text: (widget.localSettings['deadline_importance_weight'] ?? 1.0)
+          .toString(),
     );
     _editorMode = widget.settings?['editor_mode']?.toString() ?? 'P';
     _themePreset = widget.localSettings['theme_preset']?.toString() ?? 'teal';
@@ -185,7 +188,8 @@ class _SettingsPageState extends State<_SettingsPage> {
   @override
   void didUpdateWidget(covariant _SettingsPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.settings != widget.settings || oldWidget.profile != widget.profile) {
+    if (oldWidget.settings != widget.settings ||
+        oldWidget.profile != widget.profile) {
       _usernameController.text = widget.settings?['username']?.toString() ??
           widget.profile?['username']?.toString() ??
           '';
@@ -193,17 +197,20 @@ class _SettingsPageState extends State<_SettingsPage> {
           widget.profile?['email']?.toString() ??
           '';
       _mottoController.text = widget.settings?['motto']?.toString() ?? '';
-      _socialController.text = widget.settings?['social_link']?.toString() ?? '';
+      _socialController.text =
+          widget.settings?['social_link']?.toString() ?? '';
       _editorMode = widget.settings?['editor_mode']?.toString() ?? _editorMode;
     }
     if (oldWidget.localSettings != widget.localSettings) {
-      _apiBaseController.text = widget.localSettings['api_base_url']?.toString() ??
-          widget.apiBaseUrl ??
-          _defaultApiBaseUrl();
+      _apiBaseController.text =
+          widget.localSettings['api_base_url']?.toString() ??
+              widget.apiBaseUrl ??
+              _defaultApiBaseUrl();
       _deadlineTimeWeightController.text =
           (widget.localSettings['deadline_time_weight'] ?? 1.0).toString();
       _deadlineImportanceWeightController.text =
-          (widget.localSettings['deadline_importance_weight'] ?? 1.0).toString();
+          (widget.localSettings['deadline_importance_weight'] ?? 1.0)
+              .toString();
       _themePreset = widget.localSettings['theme_preset']?.toString() ?? 'teal';
       _themeMode = widget.localSettings['theme_mode']?.toString() ?? 'S';
     }
@@ -223,7 +230,9 @@ class _SettingsPageState extends State<_SettingsPage> {
 
   bool _isValidUrl(String value) {
     final uri = Uri.tryParse(value);
-    return uri != null && uri.hasScheme && (uri.scheme == 'http' || uri.scheme == 'https');
+    return uri != null &&
+        uri.hasScheme &&
+        (uri.scheme == 'http' || uri.scheme == 'https');
   }
 
   Future<void> _submitSettings() async {
@@ -424,15 +433,15 @@ class _SettingsPageState extends State<_SettingsPage> {
                         label: const Text('Push local → cloud'),
                       ),
                       OutlinedButton.icon(
-                        onPressed: () => _runMaintenanceAction(widget.onPullCloudData),
+                        onPressed: () =>
+                            _runMaintenanceAction(widget.onPullCloudData),
                         icon: const Icon(Icons.download_for_offline_outlined),
                         label: const Text('Pull cloud → local'),
                       ),
                       if (widget.onOpenLocalRecycleBin != null)
                         OutlinedButton.icon(
                           onPressed: widget.onOpenLocalRecycleBin,
-                          icon: const Icon(
-                              Icons.restore_from_trash_outlined),
+                          icon: const Icon(Icons.restore_from_trash_outlined),
                           label: Text(
                             'Synced drafts (recoverable) '
                             '(${widget.localTrashedDraftCount + widget.localTrashedCourseCount})',
@@ -460,8 +469,7 @@ class _SettingsPageState extends State<_SettingsPage> {
                   _ConnectedAccountsSection(
                     onBindCasdoor: widget.onBindCasdoor,
                     onUnlinkCasdoor: widget.onUnlinkCasdoor,
-                    casdoorLinked:
-                        widget.settings?['casdoor_linked'] == true,
+                    casdoorLinked: widget.settings?['casdoor_linked'] == true,
                     casdoorOrgLoginUrl: widget.casdoorOrgLoginUrl,
                   ),
                   // 0.1.119: Agent Skill (McpSkillSection) moved out
@@ -480,7 +488,7 @@ class _SettingsPageState extends State<_SettingsPage> {
         if (widget.onSaveMcpSkill != null) ...[
           const SizedBox(height: 16),
           widget.githubSyncCardBuilder?.call() ??
-              const GithubSyncExperimentalCard(),
+              const GithubSyncExperimentalCard(appId: 'planner'),
           const SizedBox(height: 16),
           Card(
             child: Padding(
@@ -533,7 +541,9 @@ class _SettingsPageState extends State<_SettingsPage> {
                           Expanded(
                             child: TextField(
                               controller: _deadlineTimeWeightController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
                               decoration: const InputDecoration(
                                 labelText: 'Deadline time weight (a)',
                                 border: OutlineInputBorder(),
@@ -544,7 +554,9 @@ class _SettingsPageState extends State<_SettingsPage> {
                           Expanded(
                             child: TextField(
                               controller: _deadlineImportanceWeightController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
                               decoration: const InputDecoration(
                                 labelText: 'Deadline importance weight (b)',
                                 border: OutlineInputBorder(),
@@ -616,7 +628,8 @@ class _SettingsPageState extends State<_SettingsPage> {
                   SizedBox(
                     height: 260,
                     child: widget.uiLogs.isEmpty
-                        ? const Center(child: Text('No frontend logs captured yet.'))
+                        ? const Center(
+                            child: Text('No frontend logs captured yet.'))
                         : ListView.builder(
                             padding: EdgeInsets.zero,
                             itemCount: widget.uiLogs.length,
@@ -639,7 +652,6 @@ class _SettingsPageState extends State<_SettingsPage> {
       ],
     );
   }
-
 }
 
 class _StatChip extends StatelessWidget {
@@ -676,7 +688,6 @@ class _StatChip extends StatelessWidget {
     );
   }
 }
-
 
 // _ConnectedAccountsSection (planner copy) — Casdoor is now the only
 // connected-account row; per-provider Google / GitHub bindings were

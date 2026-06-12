@@ -297,7 +297,9 @@ class _AppShellState extends State<AppShell>
     final visible = widget.visibleIndices
         .where((index) => index >= 0 && index < _titles.length)
         .toList(growable: false);
-    return visible.isEmpty ? List<int>.generate(_titles.length, (i) => i) : visible;
+    return visible.isEmpty
+        ? List<int>.generate(_titles.length, (i) => i)
+        : visible;
   }
 
   int get _selectedNavIndex {
@@ -324,7 +326,8 @@ class _AppShellState extends State<AppShell>
   void initState() {
     super.initState();
     final clamped = widget.initialIndex.clamp(0, _titles.length - 1);
-    _selectedIndex = _visibleIndices.contains(clamped) ? clamped : _visibleIndices.first;
+    _selectedIndex =
+        _visibleIndices.contains(clamped) ? clamped : _visibleIndices.first;
     // Route the HTTP client's per-request DEBUG logs into the shared
     // DebugLogController so every request/response pair is visible in
     // the Debug log card.
@@ -337,7 +340,11 @@ class _AppShellState extends State<AppShell>
 
   Future<void> _bootstrapApp() async {
     _splashTimer = Timer(const Duration(seconds: 10), () {
-      if (mounted) setState(() { _isLoading = false; _showSplash = false; });
+      if (mounted)
+        setState(() {
+          _isLoading = false;
+          _showSplash = false;
+        });
     });
     _splashStatus.value = 'Loading local planner data';
     await _loadLocalState();
@@ -359,13 +366,11 @@ class _AppShellState extends State<AppShell>
     super.dispose();
   }
 
-
   // `_snapshotLocalStore` lives in `core/snapshot.dart`.
 
   // `_loadLocalState` lives in `core/load_local_state.dart`.
 
   // `_persistLocal*` helpers live in `core/local_persist.dart`.
-
 
   // Planner builders live in `core/planner_builders.dart`.
 
@@ -376,20 +381,22 @@ class _AppShellState extends State<AppShell>
   List<Map<String, dynamic>> _localNotesForCourse(Map<String, dynamic> course) {
     final localId = (course['id'] as num?)?.toInt();
     final syncedId = (course['synced_course_id'] as num?)?.toInt();
-    return _localDrafts.where((draft) {
-      final metadata =
-          _decodeNoteMetadata(draft['metadata_json']?.toString() ?? '{}');
-      final courseId = (metadata['course_id'] as num?)?.toInt() ??
-          (draft['course_id'] as num?)?.toInt();
-      return courseId == localId || (syncedId != null && courseId == syncedId);
-    }).map((item) => Map<String, dynamic>.from(item)).toList(growable: false);
+    return _localDrafts
+        .where((draft) {
+          final metadata =
+              _decodeNoteMetadata(draft['metadata_json']?.toString() ?? '{}');
+          final courseId = (metadata['course_id'] as num?)?.toInt() ??
+              (draft['course_id'] as num?)?.toInt();
+          return courseId == localId ||
+              (syncedId != null && courseId == syncedId);
+        })
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList(growable: false);
   }
 
   // `_loadInitialData` lives in `core/initial_data.dart`.
 
   // Draft helpers live in `core/draft_helpers.dart`.
-
-
 
   // Note loading lives in `core/note_loading.dart`.
 
@@ -439,7 +446,10 @@ class _AppShellState extends State<AppShell>
               loadingStatus: _splashStatus,
               apiBaseUrl: _localSettings['api_base_url']?.toString(),
               onFinished: () {
-                setState(() { _showSplash = false; if (_isLoading) _isLoading = false; });
+                setState(() {
+                  _showSplash = false;
+                  if (_isLoading) _isLoading = false;
+                });
               },
             ),
           ),
@@ -462,7 +472,9 @@ class _AppShellState extends State<AppShell>
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedNavIndex,
         onDestinationSelected: _handleVisibleDestinationSelected,
-        destinations: _visibleIndices.map((index) => _destinations[index]).toList(growable: false),
+        destinations: _visibleIndices
+            .map((index) => _destinations[index])
+            .toList(growable: false),
       ),
     );
   }
@@ -520,14 +532,16 @@ class _AppShellState extends State<AppShell>
                           // the bottom of the sidebar below. Planner_app has
                           // only 4 modules (0=Learner, 1=Course, 2=Activity,
                           // 3=Settings).
-                          for (final index in _visibleIndices.where((index) => index != 3))
+                          for (final index
+                              in _visibleIndices.where((index) => index != 3))
                             SidebarItem(
                               icon: (_destinations[index].icon as Icon).icon!,
                               label: _titles[index],
                               selected: _selectedIndex == index,
                               onTap: () => _selectActualIndex(index),
                             ),
-                          if (subscribedCourses.isNotEmpty && _visibleIndices.contains(1)) ...[
+                          if (subscribedCourses.isNotEmpty &&
+                              _visibleIndices.contains(1)) ...[
                             const SizedBox(height: 12),
                             Flexible(
                               child: _WideCourseSidebarSection(
@@ -537,7 +551,8 @@ class _AppShellState extends State<AppShell>
                                     (_selectedCourse?['id'] as num?)?.toInt(),
                                 onToggleExpanded: () {
                                   setState(() {
-                                    _coursePanelExpanded = !_coursePanelExpanded;
+                                    _coursePanelExpanded =
+                                        !_coursePanelExpanded;
                                   });
                                 },
                                 onSelectCourse: (course) {
@@ -575,12 +590,10 @@ class _AppShellState extends State<AppShell>
                       padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
                       child: Text(
                         _titles[_selectedIndex],
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineSmall
-                            ?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                        style:
+                            Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
                       ),
                     ),
                   Expanded(child: _buildBody()),
@@ -600,75 +613,71 @@ class _AppShellState extends State<AppShell>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-                  if (_isLoading)
-                    const LinearProgressIndicator(minHeight: 2),
-                  if (_errorMessage != null)
-                    Material(
-                      color: Theme.of(context).colorScheme.errorContainer,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.cloud_off_outlined,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onErrorContainer,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                _errorMessage!,
-                                style: TextStyle(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onErrorContainer,
-                                ),
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: _loadInitialData,
-                              child: const Text('Retry'),
-                            ),
-                            IconButton(
-                              onPressed: () {
-                                setState(() {
-                                  _errorMessage = null;
-                                });
-                              },
-                              icon: const Icon(Icons.close),
-                              tooltip: 'Dismiss',
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  Expanded(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      switchInCurve: Curves.easeOut,
-                      switchOutCurve: Curves.easeIn,
-                      transitionBuilder: (child, animation) {
-                        return FadeTransition(
-                          opacity: animation,
-                          child: SlideTransition(
-                            position: Tween<Offset>(
-                              begin: const Offset(0.03, 0),
-                              end: Offset.zero,
-                            ).animate(animation),
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: KeyedSubtree(
-                        key: ValueKey<int>(_selectedIndex),
-                        child: _buildPage(),
-                      ),
-                    ),
+            if (_isLoading) const LinearProgressIndicator(minHeight: 2),
+            if (_errorMessage != null)
+              Material(
+                color: Theme.of(context).colorScheme.errorContainer,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
                   ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.cloud_off_outlined,
+                        color: Theme.of(context).colorScheme.onErrorContainer,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _errorMessage!,
+                          style: TextStyle(
+                            color:
+                                Theme.of(context).colorScheme.onErrorContainer,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _loadInitialData,
+                        child: const Text('Retry'),
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          setState(() {
+                            _errorMessage = null;
+                          });
+                        },
+                        icon: const Icon(Icons.close),
+                        tooltip: 'Dismiss',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                transitionBuilder: (child, animation) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0.03, 0),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  );
+                },
+                child: KeyedSubtree(
+                  key: ValueKey<int>(_selectedIndex),
+                  child: _buildPage(),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -719,8 +728,7 @@ class _AppShellState extends State<AppShell>
                   widget.client.uploadNoteCoverImage(_token!, noteId, file)
               : null,
           onDeleteCover: _token != null
-              ? (noteId) =>
-                  widget.client.deleteNoteCoverImage(_token!, noteId)
+              ? (noteId) => widget.client.deleteNoteCoverImage(_token!, noteId)
               : null,
           offlineMode: _localSettings['offline_mode'] == true,
           onLoadPublicNotes: () => _loadLearnerNotes(),
@@ -830,11 +838,9 @@ class _AppShellState extends State<AppShell>
                       message: 'Agent skill saved.',
                     );
                   } catch (e) {
-                    final msg =
-                        e.toString().replaceFirst('Exception: ', '');
+                    final msg = e.toString().replaceFirst('Exception: ', '');
                     return ActionFeedback(
-                      message:
-                          'Agent skill not saved: '
+                      message: 'Agent skill not saved: '
                           'Planner.Settings/skill.save — $msg.',
                       isError: true,
                     );
@@ -843,10 +849,9 @@ class _AppShellState extends State<AppShell>
               : null,
           githubSyncCardBuilder: _token != null
               ? () => GithubSyncExperimentalCard(
-                    onLoadStatus: () =>
-                        widget.client.githubSyncStatus(_token!),
-                    onListRepos: () =>
-                        widget.client.githubSyncRepos(_token!),
+                    appId: 'planner',
+                    onLoadStatus: () => widget.client.githubSyncStatus(_token!),
+                    onListRepos: () => widget.client.githubSyncRepos(_token!),
                     onConnect: ({
                       required String installationId,
                       String? accountLogin,
