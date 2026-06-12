@@ -105,6 +105,10 @@ backend/static/monaco-editor/esm/
 !frontend/planner_app/lib/**
 !frontend/portal_app/lib/
 !frontend/portal_app/lib/**
+!frontend/notechondria_shared/lib/
+!frontend/notechondria_shared/lib/**
+!frontend/notechondria_shared/test/
+!frontend/notechondria_shared/test/**
 
 # Claude
 .claude/

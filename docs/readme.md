@@ -134,6 +134,26 @@ CLI at
 (`--dry-run` and `--include-assets` supported; reruns are idempotent
 via `client_draft_id`).
 
+## Installing on a phone (web channel)
+
+The web build is the only mobile delivery channel right now (the
+release workflow's iOS archives are unsigned and need a Mac to
+install). The supported path is **Add to Home Screen**:
+
+- **iPhone (Safari)**: open the app URL, tap Share, then
+  "Add to Home Screen". The installed app gets a standalone window,
+  its own icon/name, and its storage is exempt from Safari's 7-day
+  script-writable-storage eviction — a plain bookmark is not, so
+  local-only drafts in a bookmark can be evicted after a week of
+  inactivity. Signing in (cloud sync) is the durable option either
+  way.
+- **Android (Chrome)**: open the app URL and accept the install
+  prompt (or menu > "Add to Home screen").
+
+Since 0.1.127 the Pages builds ship a service worker, so an installed
+app launches offline after its first online load; an in-app toast
+offers a one-tap reload when a new version is deployed.
+
 ## Where to go next
 
 - [`index.md`](index.md) — project-local agent rules (§0),

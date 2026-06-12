@@ -45,7 +45,6 @@ frontend/notechondria_shared/
         │   ├── error_state.dart
         │   ├── navigation.dart
         │   ├── phased_status.dart
-        │   ├── splash_painter.dart
         │   └── splash_screen.dart
         ├── models/
         │   ├── action_feedback.dart
@@ -98,7 +97,7 @@ in 0.1.67 relies on this pair.
 | `error_state.dart` | `ErrorStatePanel` | "Something went wrong" screen with API base URL context. |
 | `navigation.dart` | Navigation rail / bottom-bar helpers. |
 | `phased_status.dart` | `PhasedStatusIndicator` — replaces a bare spinner with a labelled "Sending request to backend → Waiting for backend response → Applying response" line. Used by `EmailPasswordDialog._submit`. |
-| `splash_painter.dart`, `splash_screen.dart` | `_SplashScreen`, `_KrebsCyclePainter`, `SplashParticle` | Krebs-cycle animated splash. 0.1.66 unified particle sizes (byproducts + Acetyl-CoA wrapped in `canvas.scale(0.5)` so every splash particle shares a final pixel size); 0.1.67 removed the outer `activePos.dx > -30` gate so narrow (mobile) layouts no longer show a blank moment when the active node slips off the left edge. |
+| `splash_screen.dart` | `SplashScreen` | Splash screen backed by `src/reaction_simulator/` since 0.1.128 — a Dart port of the owner's `index` repo reaction simulator (TCA-cycle particles colliding and reacting on a toroidal world; hardcoded 128-particle target, spawn energy ~ N(250000, 60000)). Replaced the hand-drawn `splash_painter.dart` Krebs-cycle painter (deleted). |
 
 ## `src/models/`
 

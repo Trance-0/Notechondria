@@ -35,13 +35,14 @@ icons), and the F4 service-worker decision landed in 0.1.127 — see
   only tellable apart by name. Produce distinct editor / planner /
   portal icons (a colored letter glyph is enough) at 192/512 +
   maskable + favicon + apple-touch sizes.
-- [ ] **Add-to-Home-Screen guidance + durability notice.** Add a short
-  "Install on iPhone/Android" section to `docs/readme.md` and a
-  one-time dismissible hint card on mobile-browser visits; show a
-  "local-only data can be evicted by the browser — sign in to keep
-  it" notice when local drafts exist without a session (Safari ITP
-  evicts script-writable storage after 7 days of inactivity;
-  home-screen installs are exempt).
+- [ ] **In-app install hint + durability notice.** The docs side
+  landed in 0.1.128 (`docs/readme.md` "Installing on a phone").
+  Remaining in-app work: a one-time dismissible "Add to Home Screen"
+  hint card on mobile-browser visits (`display-mode: browser` +
+  mobile UA), and a "local-only data can be evicted by the browser —
+  sign in to keep it" notice when local drafts exist without a
+  session (Safari ITP evicts script-writable storage after 7 days of
+  inactivity; home-screen installs are exempt).
 - [ ] **Legacy storage-key cleanup.** The 0.1.127 namespacing copies
   old `notechondria.local_*` values into per-app namespaces and
   leaves the legacy keys behind. After all three deployed apps have
@@ -129,14 +130,6 @@ one-to-two-sentence description, icon) to the affected app's
   dormant; it activates automatically if a Casdoor upgrade starts
   emitting the hash. Until then the ROPC grant at fallback-login
   time covers the sync. Re-test after Casdoor upgrades.
-- [ ] **OAuth callback app routing (cross_platform_plan F5).**
-  `backend/notechondria/api_views.py` `oauth_callback` redirects every
-  same-tab flow to a single `FRONTEND_ORIGIN` plus a hardcoded
-  `/Notechondria/editor/` path, so GitHub App installs and legacy
-  provider flows started from planner / portal land in the editor.
-  Carry the originating app through the `state` parameter (suffix
-  `_editor` / `_planner` / `_portal`, mirroring the `_bind`
-  convention) and map it back to the right app path on return.
 - [ ] **Document the final Casdoor redirect-URI list.** The owner
   completed the app config on `auth.trance-0.com` (0.1.127). Record
   the registered redirect URIs and token-format settings (JWT-Custom,
