@@ -513,6 +513,34 @@ CASDOOR_CLAIM_GROUPS = os.getenv("CASDOOR_CLAIM_GROUPS", "groups")
 # (see _sync_creator_from_claims in creators/casdoor_auth.py). Empty
 # leaves the SPA falling back to the locally-uploaded Creator.image.
 CASDOOR_CLAIM_AVATAR = os.getenv("CASDOOR_CLAIM_AVATAR", "avatar")
+# Credential-hash claims (Casdoor application Token Format: JWT-Custom
+# with the Password / Password salt / Password type token fields).
+# Mirrored into User.password by creators/casdoor_password.py so the
+# email/password fallback login accepts the user's current Casdoor
+# password during Casdoor outages. Current Casdoor builds scrub the
+# `password` claim value server-side, so the claims path stays dormant
+# until the IdP emits it; the ROPC grant in LoginSerializer covers the
+# gap at fallback-login time.
+CASDOOR_CLAIM_PASSWORD = os.getenv("CASDOOR_CLAIM_PASSWORD", "password")
+CASDOOR_CLAIM_PASSWORD_SALT = os.getenv(
+    "CASDOOR_CLAIM_PASSWORD_SALT", "passwordSalt"
+)
+CASDOOR_CLAIM_PASSWORD_TYPE = os.getenv(
+    "CASDOOR_CLAIM_PASSWORD_TYPE", "passwordType"
+)
+
+# Django's default hasher list plus the plain-bcrypt verifier, which
+# is NOT in the defaults. Needed so a `bcrypt$<hash>` value mirrored
+# verbatim from a Casdoor bcrypt credential (passwordType=bcrypt)
+# verifies on the fallback login path. PBKDF2 stays first so
+# set_password keeps producing the Django-default format.
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+    "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
+    "django.contrib.auth.hashers.BCryptPasswordHasher",
+    "django.contrib.auth.hashers.ScryptPasswordHasher",
+]
 
 # Group-based ACL. Comma-separated list of group names that must
 # include at least one of the user's `groups` claim values for the

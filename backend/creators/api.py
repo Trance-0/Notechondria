@@ -147,6 +147,7 @@ def auth_payload(user: User, *, token: str, request=None):
                 creator.casdoor_profile_synced_at.isoformat()
                 if creator.casdoor_profile_synced_at
                 else None,
+            "last_seen_versions": creator.last_seen_versions or {},
         },
     }
 
@@ -202,6 +203,16 @@ class LoginSerializer(serializers.Serializer):
             )
         user = authenticate(username=matched.username, password=attrs["password"])
         if user is None:
+            # The local hash may be stale: the account's source of
+            # truth for credentials is Casdoor (the user may have
+            # changed the password there since the last sync). Ask
+            # Casdoor directly via the ROPC grant; on success the
+            # verified plaintext is stored locally so the next outage
+            # can be served from the local hash alone.
+            user = self._casdoor_password_sync(
+                matched, identifier, attrs["password"]
+            )
+        if user is None:
             raise serializers.ValidationError(
                 "Sign-in rejected: "
                 "Backend.Creators.Auth/login — "
@@ -216,6 +227,58 @@ class LoginSerializer(serializers.Serializer):
             )
         attrs["user"] = user
         return attrs
+
+    @staticmethod
+    def _casdoor_password_sync(matched, identifier, password):
+        """Validate the submitted credentials against Casdoor (ROPC
+        grant) and, on success, store the verified plaintext locally
+        via ``set_password`` so the fallback keeps working offline.
+
+        Only runs for accounts already linked to a Casdoor identity
+        (``Creator.casdoor_sub`` set) and only accepts the grant when
+        the returned JWT's ``sub`` matches that link — no auto-bind,
+        consistent with the 0.1.118 link-challenge policy. Returns
+        the authenticated ``User`` or ``None``.
+        """
+        from .casdoor_auth import _claim_str
+        from .casdoor_password import GRANT_OK, GRANT_REJECTED, password_grant
+        from .models import Creator
+
+        creator = Creator.objects.filter(user_id=matched).first()
+        if creator is None or not creator.casdoor_sub:
+            return None
+        status_, claims = password_grant(identifier, password)
+        if (
+            status_ == GRANT_REJECTED
+            and matched.username
+            and matched.username.lower() != identifier.lower()
+        ):
+            # The user may sign in to Casdoor under a different name
+            # than the local username (or typed their email). One
+            # retry with the linked account's username.
+            status_, claims = password_grant(matched.username, password)
+        if status_ != GRANT_OK or not isinstance(claims, dict):
+            return None
+        sub = _claim_str(claims, "CASDOOR_CLAIM_SUB")
+        if not sub or sub != creator.casdoor_sub:
+            logger.info(
+                "Password fallback not synced: "
+                "Backend.Creators.Auth/login.casdoor_sync — Casdoor "
+                "accepted the credentials but the token sub does not "
+                "match the linked account (username=%s).",
+                matched.username,
+            )
+            return None
+        if not matched.is_active:
+            return None
+        matched.set_password(password)
+        matched.save(update_fields=["password"])
+        logger.info(
+            "Password fallback synced from Casdoor ROPC grant: "
+            "Backend.Creators.Auth/login.casdoor_sync — username=%s.",
+            matched.username,
+        )
+        return matched
 
 
 class LoginApiView(APIView):
@@ -274,6 +337,11 @@ class SettingsSerializer(serializers.Serializer):
     )
     app_settings = serializers.JSONField(required=False)
     app_settings_updated_at = serializers.DateTimeField(required=False, allow_null=True)
+    # 0.1.127: per-app What's-New tracking. Map of app id -> newest
+    # app version whose feature-update overlay the user has seen or
+    # skipped. PATCHing merges keys instead of replacing the map so
+    # the editor stamping "editor" can't erase planner's entry.
+    last_seen_versions = serializers.JSONField(required=False)
     editor_mode = serializers.ChoiceField(
         choices=[
             ("G", "gfm"),
@@ -338,6 +406,7 @@ class SettingsSerializer(serializers.Serializer):
             "app_settings_updated_at": instance.app_settings_updated_at.isoformat()
             if instance.app_settings_updated_at
             else None,
+            "last_seen_versions": instance.last_seen_versions or {},
         }
 
     def validate_username(self, value):
@@ -363,6 +432,40 @@ class SettingsSerializer(serializers.Serializer):
                 "this email is already in use by another account."
             )
         return value.lower()
+
+    def validate_last_seen_versions(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError(
+                "Settings not saved: "
+                "Backend.Creators.Settings/update.validate_last_seen_versions"
+                " — value must be a JSON object mapping app id to version "
+                "string."
+            )
+        cleaned = {}
+        for key, version in value.items():
+            if (
+                not isinstance(key, str)
+                or not isinstance(version, str)
+                or not key.strip()
+                or not version.strip()
+                or len(key) > 32
+                or len(version) > 32
+            ):
+                raise serializers.ValidationError(
+                    "Settings not saved: "
+                    "Backend.Creators.Settings/update."
+                    "validate_last_seen_versions — each entry must map a "
+                    "non-empty app id (<=32 chars) to a non-empty version "
+                    "string (<=32 chars)."
+                )
+            cleaned[key.strip()] = version.strip()
+        if len(cleaned) > 16:
+            raise serializers.ValidationError(
+                "Settings not saved: "
+                "Backend.Creators.Settings/update.validate_last_seen_versions"
+                " — at most 16 app entries are accepted."
+            )
+        return cleaned
 
     def validate_api_base_url(self, value):
         normalized = value.strip()
@@ -413,6 +516,10 @@ class SettingsSerializer(serializers.Serializer):
             instance.uncategorized_folder_name = (label or "Inbox")[:120]
         if "avatar" in validated_data:
             instance.image = validated_data["avatar"]
+        if "last_seen_versions" in validated_data:
+            merged = dict(instance.last_seen_versions or {})
+            merged.update(validated_data["last_seen_versions"])
+            instance.last_seen_versions = merged
         app_settings = creator_app_settings_payload(instance)
         if "app_settings" in validated_data and isinstance(validated_data["app_settings"], dict):
             app_settings.update(validated_data["app_settings"])

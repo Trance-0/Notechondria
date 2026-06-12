@@ -45,3 +45,4 @@ whitenoise==6.5.0
 django-storages[s3]==1.14.4
 boto3==1.35.0
 casdoor>=1.41,<2
+bcrypt>=4,<5

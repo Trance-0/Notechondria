@@ -278,6 +278,16 @@ def _sync_creator_from_claims(creator, claims: dict) -> None:
     if avatar and avatar[:512] != creator.avatar_url:
         creator.avatar_url = avatar[:512]
         creator_dirty.append("avatar_url")
+    # Mirror the credential-hash claims (Casdoor JWT-Custom token
+    # fields Password / Password salt / Password type) into
+    # User.password so the email/password fallback login keeps
+    # accepting the user's current Casdoor password during outages.
+    # No-op while the IdP scrubs the `password` claim — see
+    # creators/casdoor_password.py for the verified behavior.
+    from .casdoor_password import sync_password_from_claims
+
+    sync_password_from_claims(user, claims)
+
     creator.casdoor_profile_synced_at = now_utc
     creator_dirty.append("casdoor_profile_synced_at")
     try:

@@ -465,8 +465,11 @@ class CasdoorAuthTests(TestCase):
         self.assertTrue(body['configured'])
         self.assertEqual(body['client_id'], 'client-abc')
         self.assertEqual(body['organization'], 'notechondria')
+        # 0.1.109/0.1.116: signin_url points at the org-themed login
+        # page (endpoint + /login/ + org name), not the raw OAuth
+        # authorize endpoint.
         self.assertEqual(
-            body['signin_url'], 'https://auth.example/login/oauth/authorize',
+            body['signin_url'], 'https://auth.example/login/notechondria',
         )
 
     def test_exchange_endpoint_returns_503_in_shadow_mode(self):
@@ -527,10 +530,13 @@ class CasdoorAuthTests(TestCase):
             )
             self.assertIsNone(CasdoorJWTAuthentication().authenticate(req))
 
-    def test_resolve_user_links_existing_account_by_email(self):
-        """An existing legacy account (no `casdoor_sub`) should adopt
-        the link automatically when its email matches the JWT claim,
-        instead of getting a duplicate."""
+    def test_resolve_user_no_longer_auto_links_by_email(self):
+        """0.1.118 retired automatic email adoption: a matching email
+        with no `casdoor_sub` link must resolve to None so the
+        exchange view mints a LinkChallenge and the user explicitly
+        chooses bind-vs-create. (This test asserted the opposite
+        before 0.1.127; it had been failing since the 0.1.118
+        behavior change.)"""
         from creators.casdoor_auth import _resolve_user
         existing = User.objects.create_user(
             username='legacy', email='legacy@example.com', password='pw',
@@ -541,12 +547,13 @@ class CasdoorAuthTests(TestCase):
             'email': 'legacy@example.com',
             'name': 'legacy-from-casdoor',
         })
-        self.assertEqual(resolved.pk, existing.pk)
-        # Backfill must persist so the second call hits the fast path.
+        self.assertIsNone(resolved)
         creator = Creator.objects.get(user_id=existing)
-        self.assertEqual(creator.casdoor_sub, 'casdoor-uid-1')
+        self.assertEqual(creator.casdoor_sub, '')
 
-    def test_resolve_user_auto_provisions_when_no_match(self):
+    def test_resolve_user_no_longer_auto_provisions(self):
+        """0.1.118 retired auto-provisioning: an unknown sub resolves
+        to None (LinkChallenge path) instead of creating a User row."""
         from creators.casdoor_auth import _resolve_user
         before = User.objects.count()
         resolved = _resolve_user({
@@ -556,12 +563,18 @@ class CasdoorAuthTests(TestCase):
             'firstName': 'Fresh',
             'lastName': 'User',
         })
+        self.assertIsNone(resolved)
+        self.assertEqual(User.objects.count(), before)
+
+    def test_resolve_user_fast_path_matches_linked_sub(self):
+        from creators.casdoor_auth import _resolve_user
+        linked = User.objects.create_user(
+            username='linked', email='linked@example.com', password='pw',
+        )
+        Creator.objects.create(user_id=linked, casdoor_sub='casdoor-uid-3')
+        resolved = _resolve_user({'id': 'casdoor-uid-3'})
         self.assertIsNotNone(resolved)
-        self.assertEqual(User.objects.count(), before + 1)
-        self.assertEqual(resolved.email, 'fresh@example.com')
-        self.assertEqual(resolved.first_name, 'Fresh')
-        creator = Creator.objects.get(user_id=resolved)
-        self.assertEqual(creator.casdoor_sub, 'casdoor-uid-2')
+        self.assertEqual(resolved.pk, linked.pk)
 
     def test_resolve_user_returns_none_without_sub(self):
         from creators.casdoor_auth import _resolve_user
@@ -703,3 +716,202 @@ class CasdoorAuthTests(TestCase):
         c.save(update_fields=['casdoor_sub'])
         body = SettingsSerializer(c).to_representation(c)
         self.assertFalse(body['casdoor_linked'])
+
+
+class CasdoorPasswordClaimsSyncTests(TestCase):
+    """Coverage for `creators.casdoor_password.sync_password_from_claims`
+    — mirroring Casdoor JWT-Custom credential-hash claims into
+    `User.password` for the email/password fallback."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='claims-user',
+            email='claims@example.com',
+            password='old-local-password',
+            is_active=True,
+        )
+
+    def test_plain_password_type_sets_local_password(self):
+        from creators.casdoor_password import sync_password_from_claims
+        changed = sync_password_from_claims(self.user, {
+            'password': 'fresh-plaintext',
+            'passwordType': 'plain',
+        })
+        self.assertTrue(changed)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('fresh-plaintext'))
+        self.assertFalse(self.user.check_password('old-local-password'))
+
+    def test_bcrypt_password_type_stores_verifiable_hash(self):
+        import bcrypt as bcrypt_lib
+        from creators.casdoor_password import sync_password_from_claims
+        raw_hash = bcrypt_lib.hashpw(
+            b'casdoor-bcrypt-pass', bcrypt_lib.gensalt(rounds=4),
+        ).decode()
+        changed = sync_password_from_claims(self.user, {
+            'password': raw_hash,
+            'passwordSalt': 'org-salt-ignored-for-bcrypt',
+            'passwordType': 'bcrypt',
+        })
+        self.assertTrue(changed)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.password, 'bcrypt$' + raw_hash)
+        self.assertTrue(self.user.check_password('casdoor-bcrypt-pass'))
+
+    def test_empty_password_claim_is_dormant(self):
+        """Current Casdoor builds scrub the `password` claim value
+        (verified against auth.trance-0.com): the sync must be a
+        silent no-op, keeping the previously stored local hash."""
+        from creators.casdoor_password import sync_password_from_claims
+        before = self.user.password
+        changed = sync_password_from_claims(self.user, {
+            'password': '',
+            'passwordSalt': 'org-salt',
+            'passwordType': 'bcrypt',
+        })
+        self.assertFalse(changed)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.password, before)
+        self.assertTrue(self.user.check_password('old-local-password'))
+
+    def test_unsupported_password_type_is_skipped(self):
+        from creators.casdoor_password import sync_password_from_claims
+        before = self.user.password
+        changed = sync_password_from_claims(self.user, {
+            'password': 'deadbeef',
+            'passwordType': 'argon2id',
+        })
+        self.assertFalse(changed)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.password, before)
+
+
+class LoginCasdoorRopcSyncTests(TestCase):
+    """Coverage for the fallback login's Casdoor ROPC resync path
+    (`LoginSerializer._casdoor_password_sync`)."""
+
+    def setUp(self):
+        self.client_api = APIClient()
+        self.user = User.objects.create_user(
+            username='ropc-user',
+            email='ropc@example.com',
+            password='stale-local-password',
+            is_active=True,
+        )
+        self.creator = Creator.objects.create(
+            user_id=self.user, casdoor_sub='sub-1234',
+        )
+
+    def _login(self, password, identifier='ropc@example.com'):
+        return self.client_api.post(
+            '/api/v1/auth/login/',
+            {'email': identifier, 'password': password},
+            format='json',
+        )
+
+    def test_local_hash_still_wins_without_casdoor(self):
+        """Outage shape: ROPC disabled/unreachable — the locally
+        stored hash keeps authenticating."""
+        resp = self._login('stale-local-password')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['user']['username'], 'ropc-user')
+
+    def test_ropc_success_resyncs_local_password(self):
+        from unittest.mock import patch
+        with patch(
+            'creators.casdoor_password.password_grant',
+            return_value=('ok', {'sub': 'sub-1234'}),
+        ) as grant:
+            resp = self._login('new-casdoor-password')
+        self.assertEqual(resp.status_code, 200)
+        grant.assert_called()
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('new-casdoor-password'))
+        # And the resynced hash now works offline (no mock needed).
+        resp2 = self._login('new-casdoor-password')
+        self.assertEqual(resp2.status_code, 200)
+
+    def test_ropc_sub_mismatch_is_rejected(self):
+        from unittest.mock import patch
+        with patch(
+            'creators.casdoor_password.password_grant',
+            return_value=('ok', {'sub': 'someone-else'}),
+        ):
+            resp = self._login('new-casdoor-password')
+        self.assertEqual(resp.status_code, 400)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('stale-local-password'))
+
+    def test_ropc_unreachable_rejects_unknown_password(self):
+        from unittest.mock import patch
+        with patch(
+            'creators.casdoor_password.password_grant',
+            return_value=('unreachable', None),
+        ):
+            resp = self._login('new-casdoor-password')
+        self.assertEqual(resp.status_code, 400)
+
+    def test_unlinked_account_never_calls_casdoor(self):
+        from unittest.mock import patch
+        self.creator.casdoor_sub = ''
+        self.creator.save(update_fields=['casdoor_sub'])
+        with patch(
+            'creators.casdoor_password.password_grant',
+        ) as grant:
+            resp = self._login('wrong-password')
+        self.assertEqual(resp.status_code, 400)
+        grant.assert_not_called()
+
+
+class LastSeenVersionsTests(TestCase):
+    """Coverage for the per-app What's-New tracking field
+    (`Creator.last_seen_versions`) on the settings endpoint."""
+
+    def setUp(self):
+        self.client_api = APIClient()
+        self.user = User.objects.create_user(
+            username='versions-user',
+            email='versions@example.com',
+            password='pw',
+            is_active=True,
+        )
+        self.token = Token.objects.create(user=self.user)
+
+    def _patch(self, payload):
+        return self.client_api.patch(
+            '/api/v1/settings/',
+            payload,
+            format='json',
+            HTTP_AUTHORIZATION=f'Token {self.token.key}',
+        )
+
+    def test_settings_get_defaults_to_empty_map(self):
+        resp = self.client_api.get(
+            '/api/v1/settings/',
+            HTTP_AUTHORIZATION=f'Token {self.token.key}',
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['last_seen_versions'], {})
+
+    def test_patch_merges_per_app_entries(self):
+        resp = self._patch({'last_seen_versions': {'editor': '0.1.127'}})
+        self.assertEqual(resp.status_code, 200)
+        resp2 = self._patch({'last_seen_versions': {'planner': '0.1.126'}})
+        self.assertEqual(resp2.status_code, 200)
+        self.assertEqual(
+            resp2.json()['last_seen_versions'],
+            {'editor': '0.1.127', 'planner': '0.1.126'},
+        )
+        creator = Creator.objects.get(user_id=self.user)
+        self.assertEqual(
+            creator.last_seen_versions,
+            {'editor': '0.1.127', 'planner': '0.1.126'},
+        )
+
+    def test_patch_rejects_non_dict_and_oversized_entries(self):
+        resp = self._patch({'last_seen_versions': ['0.1.127']})
+        self.assertEqual(resp.status_code, 400)
+        resp2 = self._patch({'last_seen_versions': {'x' * 40: '0.1.127'}})
+        self.assertEqual(resp2.status_code, 400)
+        resp3 = self._patch({'last_seen_versions': {'editor': ''}})
+        self.assertEqual(resp3.status_code, 400)

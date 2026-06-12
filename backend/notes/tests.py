@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.test import Client, RequestFactory, TestCase
 from django.contrib.messages.storage.fallback import FallbackStorage
 from rest_framework.authtoken.models import Token
+from rest_framework.test import APIClient
 
 from creators.models import Creator
 from notechondria.utils import check_is_creator, generate_unique_id, get_object_or_None
@@ -1175,7 +1176,23 @@ class NoteAttachmentByUuidApiTests(TestCase):
             title="Other Note",
         )
         self.other_note_uuid = str(self.other_note.uuid)
-        self.client.login(username="alice", password="pw")
+        # SessionAuthentication left the DRF chain during the Casdoor
+        # cutover; these endpoints authenticate via tokens now.
+        self.alice_token = Token.objects.create(user=self.user)
+        self.bob_token = Token.objects.create(user=self.other_user)
+        self.client = APIClient()
+        self._as_alice()
+
+    def _as_alice(self):
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Token {self.alice_token.key}")
+
+    def _as_bob(self):
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Token {self.bob_token.key}")
+
+    def _sign_out(self):
+        self.client.credentials()
 
     def _list_url(self, note_uuid=None):
         return f"/api/v1/notes/uuid/{(note_uuid or self.note_uuid)}/attachments/"
@@ -1212,9 +1229,9 @@ class NoteAttachmentByUuidApiTests(TestCase):
         self.assertEqual(data[0]["original_filename"], "test.txt")
 
     def test_list_requires_auth(self):
-        self.client.logout()
+        self._sign_out()
         resp = self.client.get(self._list_url())
-        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(resp.status_code, 401)
 
     # ------------------------------------------------------------------
     # POST — upload
@@ -1244,20 +1261,25 @@ class NoteAttachmentByUuidApiTests(TestCase):
         self.assertIn("exceeds maximum size", resp.json()["detail"])
 
     def test_upload_non_owner_returns_403(self):
-        self.client.login(username="bob", password="pw")
+        # Public note: the UUID access check passes for bob and the
+        # owner-only upload guard is what rejects him. (On a private
+        # note the access check fires first with 400.)
+        self.note.is_public = True
+        self.note.save(update_fields=["is_public"])
+        self._as_bob()
         uploaded = self._make_file()
         resp = self.client.post(self._list_url(note_uuid=self.note_uuid), {"file": uploaded})
         self.assertEqual(resp.status_code, 403)
 
     def test_upload_requires_auth(self):
-        self.client.logout()
+        self._sign_out()
         uploaded = self._make_file()
         resp = self.client.post(self._list_url(), {"file": uploaded})
-        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(resp.status_code, 401)
 
     def test_upload_to_own_note_allowed(self):
         """User can upload to their own note via UUID endpoint."""
-        self.client.login(username="bob", password="pw")
+        self._as_bob()
         uploaded = self._make_file()
         resp = self.client.post(
             self._list_url(note_uuid=self.other_note_uuid),
@@ -1288,7 +1310,9 @@ class NoteAttachmentByUuidApiTests(TestCase):
         resp = self.client.post(self._list_url(), {"file": uploaded})
         attachment_id = resp.json()["id"]
 
-        self.client.login(username="bob", password="pw")
+        self.note.is_public = True
+        self.note.save(update_fields=["is_public"])
+        self._as_bob()
         resp2 = self.client.delete(self._detail_url(attachment_id))
         self.assertEqual(resp2.status_code, 403)
 
@@ -1297,9 +1321,9 @@ class NoteAttachmentByUuidApiTests(TestCase):
         resp = self.client.post(self._list_url(), {"file": uploaded})
         attachment_id = resp.json()["id"]
 
-        self.client.logout()
+        self._sign_out()
         resp2 = self.client.delete(self._detail_url(attachment_id))
-        self.assertEqual(resp2.status_code, 403)
+        self.assertEqual(resp2.status_code, 401)
 
     def test_delete_nonexistent_returns_404(self):
         resp = self.client.delete(self._detail_url(99999))
@@ -1314,7 +1338,8 @@ class NoteAttachmentByUuidApiTests(TestCase):
         resp = self.client.post(self._list_url(), {"file": uploaded})
         self.assertEqual(resp.status_code, 201)
         data = resp.json()
-        # The file URL should contain the note UUID
-        self.assertIn(self.note_uuid, data["url"])
+        # The file URL embeds the dashless uuid.hex form
+        # (user_upload/.../note_<uuid.hex>/...).
+        self.assertIn(self.note.uuid.hex, data["url"])
         # The file URL should NOT contain the integer note id
         self.assertNotIn(f"note_{self.note.id}", data["url"])
