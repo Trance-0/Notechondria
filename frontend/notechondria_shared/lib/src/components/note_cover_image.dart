@@ -53,8 +53,7 @@ class NoteCoverImage extends StatelessWidget {
             ? Image.network(
                 imageUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    _BarcodeCover(
+                errorBuilder: (context, error, stackTrace) => _BarcodeCover(
                   seed: seed,
                   caption: caption,
                   showCaption: showCaption,
@@ -109,10 +108,10 @@ class _BarcodeCover extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    letterSpacing: 1.2,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
+                color: scheme.onSurfaceVariant,
+                letterSpacing: 1.2,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
           ],
         ],

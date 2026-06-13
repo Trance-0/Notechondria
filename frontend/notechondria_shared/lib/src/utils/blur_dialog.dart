@@ -19,7 +19,8 @@ Future<T?> showBlurDialog<T>({
         children: [
           Positioned.fill(
             child: GestureDetector(
-              onTap: barrierDismissible ? () => Navigator.of(context).pop() : null,
+              onTap:
+                  barrierDismissible ? () => Navigator.of(context).pop() : null,
               behavior: HitTestBehavior.opaque,
               child: BackdropFilter(
                 filter: ui.ImageFilter.blur(sigmaX: 6, sigmaY: 6),

@@ -54,8 +54,7 @@ void Function() openPopupInstall({
   final screenH = html.window.screen?.available.height ?? height;
   final left = ((screenW - width) / 2).round();
   final top = ((screenH - height) / 2).round();
-  final features =
-      'popup=yes,width=$width,height=$height,left=$left,top=$top,'
+  final features = 'popup=yes,width=$width,height=$height,left=$left,top=$top,'
       'resizable=yes,scrollbars=yes,status=no';
   final popup = html.window.open(url, name, features);
 
@@ -74,7 +73,8 @@ void Function() openPopupInstall({
       if (v == null) return;
       params[k.toString()] = v.toString();
     });
-    if (params['installation_id'] == null || params['installation_id']!.isEmpty) {
+    if (params['installation_id'] == null ||
+        params['installation_id']!.isEmpty) {
       // No install id ⇒ user cancelled or the popup closed before
       // GitHub could redirect. Caller treats this as a no-op.
       return;

@@ -52,6 +52,7 @@ export 'src/components/mcp_skill_section.dart'
     show GithubSyncExperimentalCard, McpSkillSection;
 export 'src/components/note_cover_image.dart' show NoteCoverImage;
 export 'src/components/install_banner.dart' show maybeShowInstallBanner;
+export 'src/components/onboarding_tour.dart' show TourStep, showOnboardingTour;
 export 'src/components/whats_new_overlay.dart'
     show
         FeatureUpdate,

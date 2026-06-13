@@ -22,8 +22,8 @@ const _storeName = 'entries';
 /// size, creation time — see [LocalAttachment.toMetadata]).
 Future<LocalAttachmentBackend> openLocalAttachmentBackend() async {
   final factory = idb.idbFactoryNative;
-  final db = await factory.open(_dbName, version: _dbVersion,
-      onUpgradeNeeded: (ev) {
+  final db =
+      await factory.open(_dbName, version: _dbVersion, onUpgradeNeeded: (ev) {
     final database = ev.database;
     if (!database.objectStoreNames.contains(_storeName)) {
       database.createObjectStore(_storeName, keyPath: 'key');
@@ -37,7 +37,8 @@ class _WebLocalAttachmentBackend implements LocalAttachmentBackend {
 
   _WebLocalAttachmentBackend(this._db);
 
-  String _key(String noteUuid, String filename) => 'local://$noteUuid/$filename';
+  String _key(String noteUuid, String filename) =>
+      'local://$noteUuid/$filename';
 
   @override
   Future<void> write(String noteUuid, String filename, Uint8List bytes) async {

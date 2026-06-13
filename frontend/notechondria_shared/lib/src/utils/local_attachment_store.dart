@@ -3,8 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'local_attachment_store_io.dart'
-    if (dart.library.html) 'local_attachment_store_web.dart'
-    as backend;
+    if (dart.library.html) 'local_attachment_store_web.dart' as backend;
 
 /// A single record in the attachment store. Returned from [LocalAttachmentStore.get]
 /// and [LocalAttachmentStore.list].
@@ -132,7 +131,8 @@ class LocalAttachmentStore {
     String? noteUuid,
     String? filename,
   }) async {
-    final resolved = _resolve(localUrl: localUrl, noteUuid: noteUuid, filename: filename);
+    final resolved =
+        _resolve(localUrl: localUrl, noteUuid: noteUuid, filename: filename);
     final bytes = await _backend.read(resolved.$1, resolved.$2);
     if (bytes == null) {
       throw LocalAttachmentStoreException(
@@ -152,7 +152,8 @@ class LocalAttachmentStore {
     String? noteUuid,
     String? filename,
   }) async {
-    final resolved = _resolve(localUrl: localUrl, noteUuid: noteUuid, filename: filename);
+    final resolved =
+        _resolve(localUrl: localUrl, noteUuid: noteUuid, filename: filename);
     final raw = await _backend.readMetadata(resolved.$1, resolved.$2);
     if (raw == null) return null;
     try {
@@ -163,9 +164,8 @@ class LocalAttachmentStore {
         contentType:
             decoded['content_type']?.toString() ?? 'application/octet-stream',
         sizeBytes: (decoded['size_bytes'] as num?)?.toInt() ?? 0,
-        createdAt:
-            DateTime.tryParse(decoded['created_at']?.toString() ?? '') ??
-                DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+        createdAt: DateTime.tryParse(decoded['created_at']?.toString() ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
       );
     } catch (_) {
       return null;
@@ -194,7 +194,8 @@ class LocalAttachmentStore {
     String? noteUuid,
     String? filename,
   }) async {
-    final resolved = _resolve(localUrl: localUrl, noteUuid: noteUuid, filename: filename);
+    final resolved =
+        _resolve(localUrl: localUrl, noteUuid: noteUuid, filename: filename);
     await _backend.delete(resolved.$1, resolved.$2);
   }
 

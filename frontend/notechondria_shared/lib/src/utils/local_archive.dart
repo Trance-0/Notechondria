@@ -229,23 +229,16 @@ Uint8List writeLocalArchive(LocalArchiveInput input) {
   // Optional app-specific files. Always emit when the caller has
   // non-empty data so a planner export carries its events regardless
   // of which app imports it later.
-  if (input.plannerEvents.isNotEmpty ||
-      input.app == LocalArchiveApp.planner) {
-    _addFile(archive, 'planner_events.json',
-        jsonEncode(input.plannerEvents));
+  if (input.plannerEvents.isNotEmpty || input.app == LocalArchiveApp.planner) {
+    _addFile(archive, 'planner_events.json', jsonEncode(input.plannerEvents));
   }
-  if (input.calendarFeeds.isNotEmpty ||
-      input.app == LocalArchiveApp.planner) {
-    _addFile(archive, 'calendar_feeds.json',
-        jsonEncode(input.calendarFeeds));
+  if (input.calendarFeeds.isNotEmpty || input.app == LocalArchiveApp.planner) {
+    _addFile(archive, 'calendar_feeds.json', jsonEncode(input.calendarFeeds));
   }
-  if (input.activityWeek.isNotEmpty ||
-      input.app == LocalArchiveApp.planner) {
-    _addFile(archive, 'activity_week.json',
-        jsonEncode(input.activityWeek));
+  if (input.activityWeek.isNotEmpty || input.app == LocalArchiveApp.planner) {
+    _addFile(archive, 'activity_week.json', jsonEncode(input.activityWeek));
   }
-  if (input.frontPage.isNotEmpty ||
-      input.app == LocalArchiveApp.portal) {
+  if (input.frontPage.isNotEmpty || input.app == LocalArchiveApp.portal) {
     _addFile(archive, 'front_page.json', jsonEncode(input.frontPage));
   }
 
@@ -288,8 +281,7 @@ LocalArchiveOutput readLocalArchive(Uint8List bytes) {
       'no VERSION file at archive root (expected "1").',
     );
   }
-  final versionStr =
-      utf8.decode(versionFile.content as List<int>).trim();
+  final versionStr = utf8.decode(versionFile.content as List<int>).trim();
   final parsedVersion = int.tryParse(versionStr);
   if (parsedVersion == null) {
     return _errorOutput(
@@ -368,8 +360,7 @@ LocalArchiveOutput readLocalArchive(Uint8List bytes) {
       }
       final rebuilt = Map<String, dynamic>.from(entry);
       rebuilt.remove('path');
-      rebuilt['bytes_base64'] =
-          base64Encode(file.content as List<int>);
+      rebuilt['bytes_base64'] = base64Encode(file.content as List<int>);
       rehydratedQueued.add(rebuilt);
     }
     metadata['queued_attachments'] = rehydratedQueued;
@@ -424,8 +415,7 @@ Map<String, String>? tryReadLegacyEnvConfig(Uint8List bytes) {
   }
   if (out.isEmpty) return null;
   // At minimum a legacy file carries API_BASE_URL or API_KEY_PREFIX.
-  if (!(out.containsKey('API_BASE_URL') ||
-      out.containsKey('API_KEY_PREFIX'))) {
+  if (!(out.containsKey('API_BASE_URL') || out.containsKey('API_KEY_PREFIX'))) {
     return null;
   }
   return out;

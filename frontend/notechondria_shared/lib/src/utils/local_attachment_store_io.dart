@@ -21,9 +21,8 @@ Future<LocalAttachmentBackend> openLocalAttachmentBackend() async {
   } catch (_) {
     base = await Directory.systemTemp.createTemp('notechondria_attachments_');
   }
-  final root =
-      Directory('${base.path}${Platform.pathSeparator}notechondria'
-          '${Platform.pathSeparator}attachments');
+  final root = Directory('${base.path}${Platform.pathSeparator}notechondria'
+      '${Platform.pathSeparator}attachments');
   if (!await root.exists()) {
     await root.create(recursive: true);
   }

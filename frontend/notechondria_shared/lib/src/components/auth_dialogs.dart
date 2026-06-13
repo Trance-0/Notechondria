@@ -297,8 +297,8 @@ class _EmailPasswordDialogState extends State<EmailPasswordDialog> {
     });
     final ActionFeedback feedback;
     try {
-      feedback =
-          await widget.onSubmit(_emailController.text, _passwordController.text);
+      feedback = await widget.onSubmit(
+          _emailController.text, _passwordController.text);
     } finally {
       _phaseFallback?.cancel();
       _phaseFallback = null;

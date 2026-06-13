@@ -160,9 +160,7 @@ class _CustomMetaListEditorState extends State<CustomMetaListEditor> {
               child: Row(
                 children: [
                   Icon(
-                    controller.expanded
-                        ? Icons.expand_less
-                        : Icons.expand_more,
+                    controller.expanded ? Icons.expand_less : Icons.expand_more,
                     size: 20,
                   ),
                   const SizedBox(width: 6),

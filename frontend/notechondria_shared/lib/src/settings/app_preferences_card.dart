@@ -49,6 +49,7 @@ class AppPreferencesCard extends StatelessWidget {
     this.apiBaseHintText,
     this.apiBaseHelperText,
     this.extrasBuilder,
+    this.onReplayTour,
   });
 
   final String editorMode;
@@ -78,6 +79,10 @@ class AppPreferencesCard extends StatelessWidget {
   /// App-specific rows rendered between the theme row and the API base
   /// URL field. Planner uses this for deadline-weight TextFields.
   final WidgetBuilder? extrasBuilder;
+
+  /// When non-null, renders a "View tutorial" row that replays the
+  /// first-run onboarding tour. Null hides the row.
+  final VoidCallback? onReplayTour;
 
   @override
   Widget build(BuildContext context) {
@@ -159,6 +164,16 @@ class AppPreferencesCard extends StatelessWidget {
           const SizedBox(height: 12),
           extrasBuilder!(context),
         ],
+        if (onReplayTour != null) ...[
+          const SizedBox(height: 4),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.school_outlined),
+            title: const Text('View tutorial'),
+            subtitle: const Text('Replay the quick intro tour.'),
+            onTap: onReplayTour,
+          ),
+        ],
         const SizedBox(height: 12),
         Tooltip(
           message: isAuthenticated
@@ -174,8 +189,8 @@ class AppPreferencesCard extends StatelessWidget {
               // the scheme and the required `/api/v1` suffix. Callers
               // can override via `apiBaseHintText` if they ship a
               // host-specific default.
-              hintText: apiBaseHintText ??
-                  'https://your-backend.example.com/api/v1',
+              hintText:
+                  apiBaseHintText ?? 'https://your-backend.example.com/api/v1',
               helperText: isAuthenticated
                   ? 'Locked while signed in. Log out to change.'
                   : (apiBaseHelperText ??

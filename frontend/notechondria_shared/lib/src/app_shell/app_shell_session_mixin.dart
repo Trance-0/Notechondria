@@ -188,7 +188,7 @@ mixin AppShellSessionMixin<W extends StatefulWidget> on State<W> {
     // scheme apart and correlate against backend logs.
     final tokenLen = token.length;
     final tokenPreview = tokenLen <= 18
-        ? token  // short DRF hex - safe to log in full
+        ? token // short DRF hex - safe to log in full
         : '${token.substring(0, 12)}…${token.substring(tokenLen - 6)}';
     final tokenScheme = token.startsWith('eyJ')
         ? 'JWT (Bearer)'
@@ -221,8 +221,7 @@ mixin AppShellSessionMixin<W extends StatefulWidget> on State<W> {
     log(
       level: DebugLogLevel.debug,
       source: '$logAppTag.Auth/applyAuthPayload.captured',
-      message:
-          'Auth payload received: '
+      message: 'Auth payload received: '
           '$logAppTag.Auth/applyAuthPayload.captured — '
           'token=$tokenPreview (len=$tokenLen, scheme=$tokenScheme); '
           'payload keys=[${payloadKeys.join(", ")}]; '
@@ -233,8 +232,8 @@ mixin AppShellSessionMixin<W extends StatefulWidget> on State<W> {
       serverSettings = await authClient.getSettings(token);
       final localUpdated =
           _parseUpdatedAt(localSettings['updated_at']?.toString());
-      final serverUpdated =
-          _parseUpdatedAt(serverSettings['app_settings_updated_at']?.toString());
+      final serverUpdated = _parseUpdatedAt(
+          serverSettings['app_settings_updated_at']?.toString());
       if (localUpdated.isAfter(serverUpdated)) {
         // Local app-settings are newer — push them up so the
         // server's copy reflects the user's most recent client-side
@@ -264,9 +263,8 @@ mixin AppShellSessionMixin<W extends StatefulWidget> on State<W> {
         )..['api_base_url'] = localSettings['api_base_url'];
         await applyLocalAppSettings({
           ...serverAppSettings,
-          'updated_at':
-              serverSettings['app_settings_updated_at']?.toString() ??
-                  DateTime.now().toUtc().toIso8601String(),
+          'updated_at': serverSettings['app_settings_updated_at']?.toString() ??
+              DateTime.now().toUtc().toIso8601String(),
         });
       }
     } catch (error) {
@@ -286,8 +284,7 @@ mixin AppShellSessionMixin<W extends StatefulWidget> on State<W> {
       log(
         level: DebugLogLevel.warning,
         source: '$logAppTag.Sync.Settings/bootstrap',
-        message:
-            'Remote settings unavailable right after login: '
+        message: 'Remote settings unavailable right after login: '
             '$logAppTag.Sync.Settings/bootstrap — '
             '${error.toString().replaceFirst('Exception: ', '')}. '
             'Using cached local settings.',
@@ -327,16 +324,14 @@ mixin AppShellSessionMixin<W extends StatefulWidget> on State<W> {
       log(
         level: DebugLogLevel.warning,
         source: '$logAppTag.Sync.Notes/push_all',
-        message:
-            'Local push after login failed: '
+        message: 'Local push after login failed: '
             '$logAppTag.Sync.Notes/push_all — '
             '${error.toString().replaceFirst('Exception: ', '')}. '
             'Will retry on next manual sync.',
       );
     }
-    final displayName = user['username']?.toString() ??
-        user['email']?.toString() ??
-        'user';
+    final displayName =
+        user['username']?.toString() ?? user['email']?.toString() ?? 'user';
     log(
       level: DebugLogLevel.info,
       source: '$logAppTag.Auth/applyAuthPayload',

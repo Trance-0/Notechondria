@@ -156,8 +156,7 @@ class _CasdoorLinkChallengeDialogState
         ),
         const SizedBox(height: 12),
         FilledButton.tonalIcon(
-          onPressed: () =>
-              setState(() => _stage = _DialogStage.bind),
+          onPressed: () => setState(() => _stage = _DialogStage.bind),
           icon: const Icon(Icons.link),
           label: const Padding(
             padding: EdgeInsets.symmetric(vertical: 4),
@@ -174,8 +173,7 @@ class _CasdoorLinkChallengeDialogState
         ),
         const SizedBox(height: 12),
         FilledButton.tonalIcon(
-          onPressed: () =>
-              setState(() => _stage = _DialogStage.create),
+          onPressed: () => setState(() => _stage = _DialogStage.create),
           icon: const Icon(Icons.person_add_alt_outlined),
           label: const Padding(
             padding: EdgeInsets.symmetric(vertical: 4),
@@ -324,14 +322,13 @@ class _CasdoorLinkChallengeDialogState
       final pw = _password.text;
       final cf = _confirmPassword.text;
       if (pw.length < 8) {
-        setState(() => _formError =
-            'Pick a password of 8 characters or more.');
+        setState(() => _formError = 'Pick a password of 8 characters or more.');
         return;
       }
       if (pw != cf) {
         setState(() => _formError =
             'Passwords do not match. Re-type the same password in both '
-            'fields.');
+                'fields.');
         return;
       }
       Navigator.of(context).pop(

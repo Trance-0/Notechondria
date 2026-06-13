@@ -147,8 +147,8 @@ mixin AppShellDraftHelpersMixin<W extends StatefulWidget> on State<W> {
     final existingIndex = sourceId == null
         ? -1
         : localDrafts.indexWhere((item) {
-            final metadata = decodeNoteMetadata(
-                item['metadata_json']?.toString() ?? '{}');
+            final metadata =
+                decodeNoteMetadata(item['metadata_json']?.toString() ?? '{}');
             return (metadata['offline_source_note_id'] as num?)?.toInt() ==
                 sourceId;
           });

@@ -81,11 +81,21 @@ user-visible feature, append a `FeatureUpdate` entry (version, title,
 one-to-two-sentence description, icon) to the affected app's
 `lib/core/whats_new.dart` registry in the same commit as the feature.
 
-- [ ] **First-run guided tour (deferred).** The overlay covers
-  version-to-version migration. A step-by-step guided tour for brand
-  new users (anchored coach marks) is deferred until the responsive
-  layouts are stable — every anchored step must be authored twice
-  around the 960 px drawer/sidebar breakpoint.
+First-run onboarding tour landed in 0.1.130 — see
+[`versions/0.1.130.md`](versions/0.1.130.md). It is a **layout-agnostic
+paged intro** (concept cards, not anchored coach marks): the same
+content renders identically on the mobile drawer layout and the
+desktop sidebar layout, sidestepping the double-authoring/fragility
+that had deferred it. Shows once on first run (tracked by an
+`onboarding_seen` local-stats flag), is skippable, and is re-openable
+from each app's Settings ("View tutorial"). On a brand-new user's
+first boot it takes priority over the What's-New / install nudges.
+
+- [ ] **Optional: anchored coach marks (still deferred).** If a future
+  round wants step-by-step pointers at specific controls, that remains
+  deferred until the responsive layouts are stable — each anchored
+  step would need authoring twice around the 960 px breakpoint. The
+  paged tour covers onboarding without it.
 
 ## Backend
 

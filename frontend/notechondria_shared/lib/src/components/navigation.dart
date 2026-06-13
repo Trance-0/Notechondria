@@ -65,7 +65,9 @@ class _ConfirmWithDelayDialogState extends State<ConfirmWithDelayDialog> {
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
           child: Text(
-            enabled ? widget.confirmLabel : '${widget.confirmLabel} ($_remaining)',
+            enabled
+                ? widget.confirmLabel
+                : '${widget.confirmLabel} ($_remaining)',
           ),
         ),
       ],

@@ -35,9 +35,9 @@ Future<PingResult> pingBackend(String? apiBaseUrl) async {
   final uri = Uri.parse('$base/ping/');
   final started = DateTime.now();
   try {
-    final response = await http
-        .get(uri, headers: {'Accept': 'application/json'})
-        .timeout(const Duration(seconds: 10));
+    final response = await http.get(uri, headers: {
+      'Accept': 'application/json'
+    }).timeout(const Duration(seconds: 10));
     final latency = DateTime.now().difference(started).inMilliseconds;
     if (response.statusCode != 200) {
       return PingResult(

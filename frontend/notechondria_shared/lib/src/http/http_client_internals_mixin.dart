@@ -65,8 +65,7 @@ mixin HttpClientInternalsMixin {
   /// Optional debug-log sink. When non-null, `send` emits one
   /// DEBUG line on request dispatch and one INFO/WARNING line on
   /// response (level depends on status code).
-  void Function(DebugLogLevel level, String source, String message)?
-      get logger;
+  void Function(DebugLogLevel level, String source, String message)? get logger;
 
   /// Latest API call snapshot. Updated on every `decode` and on
   /// `send` failure. Each app's `HttpNotechondriaClient` exposes
