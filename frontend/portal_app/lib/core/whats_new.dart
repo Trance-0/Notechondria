@@ -26,6 +26,14 @@ const _kFeatureUpdates = <FeatureUpdate>[
         'overlay once. Skipping marks them as seen.',
     icon: Icons.new_releases_outlined,
   ),
+  FeatureUpdate(
+    version: '0.1.129',
+    title: 'Add to your Home Screen',
+    description: 'Each app now has its own icon and, on phones, suggests '
+        'adding it to your Home Screen — an app-like window plus storage '
+        'the browser won’t evict.',
+    icon: Icons.add_to_home_screen,
+  ),
 ];
 
 extension _AppShellWhatsNewX on _AppShellState {
@@ -110,5 +118,25 @@ extension _AppShellWhatsNewX on _AppShellState {
             're-show on this device (local stamp succeeded).',
       );
     }
+  }
+
+  /// Post-boot Add-to-Home-Screen / data-durability nudge for
+  /// mobile-web visitors. No-op on native builds, installed PWAs,
+  /// desktop, and after one dismissal. See `maybeShowInstallBanner`.
+  void _maybeShowInstallBanner() {
+    if (!mounted || _localStats['install_hint_dismissed'] == true) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      maybeShowInstallBanner(
+        context,
+        dismissed: _localStats['install_hint_dismissed'] == true,
+        isSignedIn: (_token ?? '').isNotEmpty,
+        hasLocalDrafts: _localDrafts.isNotEmpty,
+        onDismiss: () async {
+          _localStats = {..._localStats, 'install_hint_dismissed': true};
+          await persistLocalStats();
+        },
+      );
+    });
   }
 }

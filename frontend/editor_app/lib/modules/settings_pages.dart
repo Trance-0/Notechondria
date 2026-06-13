@@ -434,6 +434,22 @@ class _DeveloperSettingsPage extends StatelessWidget {
                   onTap: p.widget.onImportAppleJournal,
                 ),
               ],
+              if (p.widget.onClearLegacyStorage != null) ...[
+                const Divider(height: 0, indent: 16, endIndent: 16),
+                ListTile(
+                  leading: const Icon(Icons.cleaning_services_outlined),
+                  title: const Text('Clear legacy shared storage'),
+                  subtitle: const Text(
+                    'Removes the pre-0.1.127 unprefixed browser-storage '
+                    'keys left behind when the apps moved to per-app '
+                    'namespaces. Shared across editor / planner / portal; '
+                    'your current notes and settings are unaffected.',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () =>
+                      p._runMaintenanceAction(p.widget.onClearLegacyStorage!),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 4),

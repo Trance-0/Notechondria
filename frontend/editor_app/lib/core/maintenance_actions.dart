@@ -21,8 +21,7 @@ extension _AppShellMaintenanceX on _AppShellState {
       log(
         level: DebugLogLevel.info,
         source: 'Editor.Sync.Notes/delete_local',
-        message:
-            "Local draft deleted: "
+        message: "Local draft deleted: "
             "Editor.Sync.Notes/delete_local \u2014 "
             "'${note['title']}' removed from offline store.",
       );
@@ -43,8 +42,7 @@ extension _AppShellMaintenanceX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Editor.Sync.Notes/delete',
-      message:
-          "Note moved to recycle bin: "
+      message: "Note moved to recycle bin: "
           "Editor.Sync.Notes/delete \u2014 "
           "'${note['title']}' soft-deleted on server.",
     );
@@ -68,8 +66,7 @@ extension _AppShellMaintenanceX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Editor.Sync.Notes/restore',
-      message:
-          "Note restored: Editor.Sync.Notes/restore \u2014 "
+      message: "Note restored: Editor.Sync.Notes/restore \u2014 "
           "'${note['title']}' removed from the recycle bin.",
     );
   }
@@ -90,8 +87,7 @@ extension _AppShellMaintenanceX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Editor.Sync.Notes/empty_trash',
-      message:
-          'Recycle bin emptied: Editor.Sync.Notes/empty_trash \u2014 '
+      message: 'Recycle bin emptied: Editor.Sync.Notes/empty_trash \u2014 '
           'all soft-deleted notes purged on the server.',
     );
   }
@@ -160,8 +156,7 @@ extension _AppShellMaintenanceX on _AppShellState {
     if (mounted) refreshState();
   }
 
-  Future<ActionFeedback> _syncAllLocalData(
-      {bool announce = true}) async {
+  Future<ActionFeedback> _syncAllLocalData({bool announce = true}) async {
     final token = _token;
     if (token == null || token.isEmpty) {
       return const ActionFeedback(
@@ -240,8 +235,7 @@ extension _AppShellMaintenanceX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Editor.LocalStore/clear',
-      message:
-          'Local data cleared: Editor.LocalStore/clear \u2014 '
+      message: 'Local data cleared: Editor.LocalStore/clear \u2014 '
           'all drafts/courses/stats/cache wiped and a fresh Inbox seeded.',
     );
     return const ActionFeedback(
@@ -252,11 +246,10 @@ extension _AppShellMaintenanceX on _AppShellState {
   Future<void> _copyFrontendLogs() async {
     final content = uiLogs.join('\n');
     await Clipboard.setData(ClipboardData(text: content));
-      _localStats = {
-        ..._localStats,
-        'logs_copied':
-            ((_localStats['logs_copied'] as num?)?.toInt() ?? 0) + 1,
-      };
+    _localStats = {
+      ..._localStats,
+      'logs_copied': ((_localStats['logs_copied'] as num?)?.toInt() ?? 0) + 1,
+    };
     refreshState();
     await persistLocalStats();
     showMessage(
@@ -319,6 +312,41 @@ extension _AppShellMaintenanceX on _AppShellState {
           message: 'Starter inbox not restored: '
               'Editor.LocalStore/restore_local_starter — $cause.',
           isError: true);
+    }
+  }
+
+  /// Manual cleanup of the pre-0.1.127 unprefixed shared-storage keys
+  /// left behind by the namespacing migration. Global to the browser
+  /// origin, so this clears them for editor / planner / portal at
+  /// once. No-op (0 removed) after the keys are already gone.
+  Future<ActionFeedback> _clearLegacySharedStorage() async {
+    try {
+      final removed = await _LocalAppStore.clearLegacyKeys();
+      final message = removed == 0
+          ? 'No legacy storage to clear: '
+              'Editor.LocalStore/clear_legacy — the pre-0.1.127 '
+              'unprefixed keys were already removed.'
+          : 'Legacy storage cleared: Editor.LocalStore/clear_legacy — '
+              'removed $removed unprefixed pre-0.1.127 '
+              'key${removed == 1 ? '' : 's'} shared across the apps. '
+              'Your current data is unaffected.';
+      log(
+        level: DebugLogLevel.info,
+        source: 'Editor.LocalStore/clear_legacy',
+        message: message,
+      );
+      showMessage(message);
+      return ActionFeedback(message: message);
+    } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      final message = 'Legacy storage not cleared: '
+          'Editor.LocalStore/clear_legacy — $cause.';
+      log(
+        level: DebugLogLevel.error,
+        source: 'Editor.LocalStore/clear_legacy',
+        message: message,
+      );
+      return ActionFeedback(message: message, isError: true);
     }
   }
 

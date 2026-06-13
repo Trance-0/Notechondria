@@ -305,6 +305,7 @@ extension _AppShellInitialDataX on _AppShellState {
     );
     if (!sessionRejected) {
       unawaited(_maybeShowWhatsNew());
+      _maybeShowInstallBanner();
     }
   }
 }

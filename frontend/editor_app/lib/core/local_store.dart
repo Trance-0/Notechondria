@@ -70,6 +70,36 @@ class _LocalAppStore {
     _legacyKeysMigrated = true;
   }
 
+  /// Bare pre-0.1.127 OAuth handoff keys (now namespaced per app).
+  /// Transient — cleared on every callback — but included in the
+  /// manual cleanup for completeness.
+  static const List<String> _legacyOauthKeys = [
+    'oauth_redirect_uri',
+    'oauth_invitation_code',
+    'oauth_intent',
+  ];
+
+  /// User-triggered cleanup of the unprefixed pre-0.1.127 keys the
+  /// migration deliberately leaves behind (it copies, never moves, so
+  /// each app can migrate independently). Safe to run once every app
+  /// has booted on >= 0.1.127 and re-keyed its own namespace. Returns
+  /// the number of keys removed. Only deletes the exact legacy keys —
+  /// the `notechondria.<app>.*` namespaced keys are untouched.
+  static Future<int> clearLegacyKeys() async {
+    final prefs = await SharedPreferences.getInstance();
+    var removed = 0;
+    for (final key in [
+      for (final s in _migratableKeySuffixes) '$_legacyKeyPrefix$s',
+      ..._legacyOauthKeys,
+    ]) {
+      if (prefs.containsKey(key)) {
+        await prefs.remove(key);
+        removed++;
+      }
+    }
+    return removed;
+  }
+
   static const String _settingsKey = 'notechondria.editor.local_settings';
   static const String _draftsKey = 'notechondria.editor.local_drafts';
   static const String _coursesKey = 'notechondria.editor.local_courses';

@@ -34,6 +34,7 @@ class _SettingsPage extends StatefulWidget {
     this.onExportLocalData,
     this.onRestoreFromLocalImport,
     this.onImportAppleJournal,
+    this.onClearLegacyStorage,
     this.onOpenLocalRecycleBin,
     this.localTrashedDraftCount = 0,
     this.localTrashedCourseCount = 0,
@@ -131,6 +132,11 @@ class _SettingsPage extends StatefulWidget {
   /// and drafts. Cloud sync stays paused until the user manually
   /// pushes local data.
   final Future<void> Function()? onImportAppleJournal;
+
+  /// Removes the pre-0.1.127 unprefixed shared-storage keys left
+  /// behind by the per-app namespacing migration. Surfaced in the
+  /// Developer subpage. Null hides the row.
+  final Future<ActionFeedback> Function()? onClearLegacyStorage;
 
   /// Opens the local recycle-bin browser where the user can restore
   /// drafts / categories that were moved to the client-side trash
