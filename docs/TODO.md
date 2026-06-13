@@ -26,32 +26,19 @@ file and add a round-log entry to the new version doc.
 
 Survey + full design in
 [`docs/development/cross_platform_plan.md`](development/cross_platform_plan.md).
-F1 (storage namespacing), F2 (viewport meta), F3 (web identity, minus
-icons), and the F4 service-worker decision landed in 0.1.127 — see
-[`versions/0.1.127.md`](versions/0.1.127.md). Remaining:
+F1 (storage namespacing), F2 (viewport meta), F3 (web identity), the
+F4 service-worker decision, per-app icons, the in-app install hint /
+durability notice, and the legacy storage-key cleanup action landed
+across 0.1.127–0.1.129 — see
+[`versions/0.1.127.md`](versions/0.1.127.md),
+[`0.1.128.md`](versions/0.1.128.md), and
+[`0.1.129.md`](versions/0.1.129.md). Remaining:
 
-- [ ] **Per-app icons.** The three apps still ship the stock Flutter
-  icon set (`web/icons/`, `favicon.png`), so home-screen installs are
-  only tellable apart by name. Produce distinct editor / planner /
-  portal icons (a colored letter glyph is enough) at 192/512 +
-  maskable + favicon + apple-touch sizes.
-- [ ] **In-app install hint + durability notice.** The docs side
-  landed in 0.1.128 (`docs/readme.md` "Installing on a phone").
-  Remaining in-app work: a one-time dismissible "Add to Home Screen"
-  hint card on mobile-browser visits (`display-mode: browser` +
-  mobile UA), and a "local-only data can be evicted by the browser —
-  sign in to keep it" notice when local drafts exist without a
-  session (Safari ITP evicts script-writable storage after 7 days of
-  inactivity; home-screen installs are exempt).
-- [ ] **Legacy storage-key cleanup.** The 0.1.127 namespacing copies
-  old `notechondria.local_*` values into per-app namespaces and
-  leaves the legacy keys behind. After all three deployed apps have
-  been on >= 0.1.127 for a while, add a maintenance action (Settings >
-  Developer) that deletes the unprefixed keys.
 - [ ] **Storage-isolation regression test.** Script the F1 acceptance
   test (load editor then planner under one origin, assert neither
   mutates the other's namespaced keys) — Playwright against the built
-  web bundles, or a `flutter drive` web run.
+  web bundles, or a `flutter drive` web run. Needs a browser-driver
+  toolchain not currently set up in this environment.
 
 ### Login and account info
 
