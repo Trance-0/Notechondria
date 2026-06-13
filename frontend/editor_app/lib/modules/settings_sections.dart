@@ -32,7 +32,8 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
   @override
   void didUpdateWidget(covariant _ApiKeySection oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.apiKeyPrefix != widget.apiKeyPrefix && _plaintextKey == null) {
+    if (oldWidget.apiKeyPrefix != widget.apiKeyPrefix &&
+        _plaintextKey == null) {
       setState(() => _currentPrefix = widget.apiKeyPrefix);
     }
   }
@@ -131,7 +132,8 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
           children: [
             Expanded(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
                   border: Border.all(
                     color: theme.colorScheme.outline.withValues(alpha: 0.4),
@@ -371,4 +373,3 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
 
 // _McpSkillSection moved to notechondria_shared/lib/src/components/
 // mcp_skill_section.dart so editor / planner / portal share one UI.
-

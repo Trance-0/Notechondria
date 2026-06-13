@@ -94,10 +94,8 @@ class _MarkdownHighlightingController extends TextEditingController {
       } else {
         final headerMatch = RegExp(r'^(#{1,6})(\s+.*)$').firstMatch(line);
         final quoteMatch = RegExp(r'^(\s*>+\s*)(.*)$').firstMatch(line);
-        final bulletMatch =
-            RegExp(r'^(\s*[-*+]\s+)(.*)$').firstMatch(line);
-        final orderedMatch =
-            RegExp(r'^(\s*\d+\.\s+)(.*)$').firstMatch(line);
+        final bulletMatch = RegExp(r'^(\s*[-*+]\s+)(.*)$').firstMatch(line);
+        final orderedMatch = RegExp(r'^(\s*\d+\.\s+)(.*)$').firstMatch(line);
         if (headerMatch != null) {
           final hashes = headerMatch.group(1)!;
           final rest = headerMatch.group(2)!;
@@ -336,4 +334,3 @@ class _AttachmentSheetRow extends StatelessWidget {
     );
   }
 }
-

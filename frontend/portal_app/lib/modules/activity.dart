@@ -364,4 +364,3 @@ class _DeadlineBadge extends StatelessWidget {
     );
   }
 }
-

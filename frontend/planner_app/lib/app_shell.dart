@@ -777,6 +777,7 @@ class _AppShellState extends State<AppShell>
           onSave: _updateSettings,
           onLogout: logout,
           onLogin: login,
+          onReplayTour: _replayOnboarding,
           casdoorOrgLoginUrl: _casdoorOrgLoginUrl,
           onCasdoorLogin: () => launchOAuth('casdoor', intent: 'login'),
           onBindCasdoor: (_casdoorConfigured && _token != null)

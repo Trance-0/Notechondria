@@ -20,11 +20,13 @@ class _NoteMetadataDialog extends StatefulWidget {
   final Future<List<Map<String, dynamic>>> Function(int noteId) onGetHistory;
   final Future<Map<String, dynamic>> Function(int noteId, int versionId)
       onRestoreVersion;
+
   /// Multipart upload, returns updated note summary including the
   /// new `cover_image_url`. Null when offline / signed-out / local
   /// draft (id <= 0); the dialog then hides the upload buttons and
   /// shows the read-only barcode placeholder.
   final Future<Map<String, dynamic>> Function(XFile file)? onUploadCover;
+
   /// Clear the cover; returns updated note summary.
   final Future<Map<String, dynamic>> Function()? onDeleteCover;
 
@@ -183,7 +185,8 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
         Row(
           children: [
             FilledButton.tonalIcon(
-              onPressed: (canUpload && !_coverBusy) ? _pickAndUploadCover : null,
+              onPressed:
+                  (canUpload && !_coverBusy) ? _pickAndUploadCover : null,
               icon: const Icon(Icons.image_outlined, size: 18),
               label: Text(hasCover ? 'Replace' : 'Upload'),
             ),
@@ -321,7 +324,8 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
                                       'section': _sectionController.text,
                                       'course_id': _courseId,
                                       'is_public': _isPublic,
-                                      'custom_meta': _customMetaController.serialize(),
+                                      'custom_meta':
+                                          _customMetaController.serialize(),
                                     },
                                     'restored_note': restored,
                                   });

@@ -38,15 +38,14 @@ extension _AppShellNoteCrudX on _AppShellState {
       };
       await persistLocalDrafts();
       await persistLocalStats();
-        _selectedNote = draft;
-        _selectedIndex = 1;
+      _selectedNote = draft;
+      _selectedIndex = 1;
       refreshState();
       return draft;
     }
     final payload = <String, dynamic>{
       'title': title ?? _extractTitleFromMarkdown(initialMarkdown),
-      'description':
-          description ?? _excerptFromMarkdown(initialMarkdown),
+      'description': description ?? _excerptFromMarkdown(initialMarkdown),
       'content': initialMarkdown,
       'editor_mode': mode,
       'metadata_json': jsonEncode({'section': '', 'autosave': false}),
@@ -55,8 +54,8 @@ extension _AppShellNoteCrudX on _AppShellState {
     try {
       final created = await widget.client.createNote(token, payload);
       await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
-        _selectedNote = created;
-        _selectedIndex = 1;
+      _selectedNote = created;
+      _selectedIndex = 1;
       refreshState();
       final uuid = created['uuid']?.toString();
       if (uuid != null) _pushNoteUrl(uuid);
@@ -69,14 +68,13 @@ extension _AppShellNoteCrudX on _AppShellState {
       await persistLocalDrafts();
       await persistLocalStats();
       final cause = error.toString().replaceFirst('Exception: ', '');
-        _selectedNote = draft;
-        _selectedIndex = 1;
+      _selectedNote = draft;
+      _selectedIndex = 1;
       refreshState();
       log(
         level: DebugLogLevel.warning,
         source: 'Editor.Sync.Notes/create',
-        message:
-            'Note saved locally, cloud create deferred: '
+        message: 'Note saved locally, cloud create deferred: '
             'Editor.Sync.Notes/create \u2014 $cause.',
       );
       showMessage(
@@ -152,8 +150,7 @@ extension _AppShellNoteCrudX on _AppShellState {
       log(
         level: DebugLogLevel.warning,
         source: 'Editor.Sync.Notes/save',
-        message:
-            'Note save deferred to local draft: '
+        message: 'Note save deferred to local draft: '
             'Editor.Sync.Notes/save \u2014 $cause.',
       );
       showMessage(
@@ -223,8 +220,7 @@ extension _AppShellNoteCrudX on _AppShellState {
           log(
             level: DebugLogLevel.warning,
             source: 'Editor.Sync.Notes/attachment.promote',
-            message:
-                'Queued attachment not uploaded: '
+            message: 'Queued attachment not uploaded: '
                 'Editor.Sync.Notes/attachment.promote \u2014 '
                 '"$filename" missing from local store '
                 '(${error.toString().replaceFirst('Exception: ', '')}).',
@@ -242,8 +238,8 @@ extension _AppShellNoteCrudX on _AppShellState {
       }
 
       try {
-        final xfile = XFile.fromData(bytes,
-            name: filename, mimeType: contentType);
+        final xfile =
+            XFile.fromData(bytes, name: filename, mimeType: contentType);
         final attachment =
             await widget.client.uploadNoteAttachment(token, noteId, xfile);
         final url = attachment['url']?.toString() ?? '';
@@ -260,8 +256,7 @@ extension _AppShellNoteCrudX on _AppShellState {
         log(
           level: DebugLogLevel.warning,
           source: 'Editor.Sync.Notes/attachment.promote',
-          message:
-              'Queued attachment not uploaded: '
+          message: 'Queued attachment not uploaded: '
               'Editor.Sync.Notes/attachment.promote \u2014 '
               '"$filename" dropped after upload failure '
               '(${error.toString().replaceFirst('Exception: ', '')}).',
@@ -291,8 +286,7 @@ extension _AppShellNoteCrudX on _AppShellState {
         log(
           level: DebugLogLevel.info,
           source: 'Editor.Sync.Notes/attachment.promote',
-          message:
-              'Queued attachments promoted: '
+          message: 'Queued attachments promoted: '
               'Editor.Sync.Notes/attachment.promote \u2014 '
               '${queued.length} queued item(s) replaced with server URLs '
               'on note $noteId.',
@@ -405,9 +399,7 @@ extension _AppShellNoteCrudX on _AppShellState {
           markdown: parsed.body,
           title: parsed.title ??
               (derivedTitle == 'Untitled note'
-                  ? (fallbackTitle.isEmpty
-                      ? 'Imported note'
-                      : fallbackTitle)
+                  ? (fallbackTitle.isEmpty ? 'Imported note' : fallbackTitle)
                   : derivedTitle),
           description: parsed.description ?? '',
         );
@@ -416,8 +408,7 @@ extension _AppShellNoteCrudX on _AppShellState {
         log(
           level: DebugLogLevel.warning,
           source: 'Editor.LocalStore/import_zip',
-          message:
-              'Archive entry skipped: '
+          message: 'Archive entry skipped: '
               'Editor.LocalStore/import_zip \u2014 '
               '"${entry.name}": '
               '${error.toString().replaceFirst('Exception: ', '')}.',
@@ -509,14 +500,16 @@ extension _AppShellNoteCrudX on _AppShellState {
       // them apart on disk even with identical titles.
       String baseName;
       if (options.recursive) {
-        final slug =
-            _slugifyLocalText(categoryTitle, fallback: 'category');
+        final slug = _slugifyLocalText(categoryTitle, fallback: 'category');
         baseName = '$slug-$stamp';
       } else {
         final rawUuid = detail['uuid']?.toString() ?? '';
         final uuidPrefix = rawUuid.isNotEmpty
             ? rawUuid.replaceAll('-', '').substring(
-                0, rawUuid.replaceAll('-', '').length >= 6 ? 6 : rawUuid.replaceAll('-', '').length)
+                0,
+                rawUuid.replaceAll('-', '').length >= 6
+                    ? 6
+                    : rawUuid.replaceAll('-', '').length)
             : 'local';
         baseName = 'note-$uuidPrefix-$stamp';
       }
@@ -550,7 +543,8 @@ extension _AppShellNoteCrudX on _AppShellState {
     }
     final local = _localDrafts
         .where((d) =>
-            (Map<String, dynamic>.from(d['course'] as Map? ?? const {}))['id'] ==
+            (Map<String, dynamic>.from(
+                d['course'] as Map? ?? const {}))['id'] ==
             courseId)
         .map((d) => Map<String, dynamic>.from(d))
         .toList();
@@ -651,8 +645,8 @@ extension _AppShellNoteCrudX on _AppShellState {
       }
     }
     final bytes = Uint8List.fromList(utf8.encode(buffer.toString()));
-    final file = XFile.fromData(bytes,
-        name: '$baseName.md', mimeType: 'text/markdown');
+    final file =
+        XFile.fromData(bytes, name: '$baseName.md', mimeType: 'text/markdown');
     await file.saveTo(location.path);
     showMessage('Exported ${notes.length} note(s) to ${location.path}.');
   }

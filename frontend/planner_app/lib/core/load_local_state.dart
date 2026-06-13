@@ -23,9 +23,10 @@ extension _AppShellLoadLocalStateX on _AppShellState {
     _localTrashedCourses = snapshot.trashedCourses;
     _localStats = snapshot.stats;
     _localCache = snapshot.cache;
-    _plannerEvents = (snapshot.cache['planner_events'] as List<dynamic>? ?? const [])
-        .map((item) => Map<String, dynamic>.from(item as Map))
-        .toList(growable: false);
+    _plannerEvents =
+        (snapshot.cache['planner_events'] as List<dynamic>? ?? const [])
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList(growable: false);
     _activityWeek = Map<String, dynamic>.from(
       snapshot.cache['activity_week'] as Map? ?? const {},
     );
@@ -37,7 +38,8 @@ extension _AppShellLoadLocalStateX on _AppShellState {
     );
     logController.bindCacheProvider(_snapshotLocalStore);
     _courses = (snapshot.cache['courses'] as List<dynamic>? ?? const [])
-        .map((item) => decorateRemoteCourse(Map<String, dynamic>.from(item as Map)))
+        .map((item) =>
+            decorateRemoteCourse(Map<String, dynamic>.from(item as Map)))
         .toList(growable: false);
     _activity = (snapshot.cache['activity'] as List<dynamic>? ?? const [])
         .map((item) => Map<String, dynamic>.from(item as Map))

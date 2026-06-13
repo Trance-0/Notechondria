@@ -18,8 +18,7 @@ extension _AppShellNoteSessionsX on _AppShellState {
       log(
         level: DebugLogLevel.info,
         source: 'Portal.UI/note_session.start',
-        message:
-            'Note session started: '
+        message: 'Note session started: '
             'Portal.UI/note_session.start \u2014 '
             'tracking edits to "$title".',
       );
@@ -29,8 +28,7 @@ extension _AppShellNoteSessionsX on _AppShellState {
       log(
         level: DebugLogLevel.error,
         source: 'Portal.UI/note_session.start',
-        message:
-            'Note session not started: '
+        message: 'Note session not started: '
             'Portal.UI/note_session.start \u2014 $cause.',
       );
       return null;
@@ -53,8 +51,7 @@ extension _AppShellNoteSessionsX on _AppShellState {
       log(
         level: DebugLogLevel.info,
         source: 'Portal.UI/note_session.finish',
-        message:
-            'Note session finished: '
+        message: 'Note session finished: '
             'Portal.UI/note_session.finish \u2014 '
             'session $sessionId closed on server.',
       );
@@ -63,8 +60,7 @@ extension _AppShellNoteSessionsX on _AppShellState {
       log(
         level: DebugLogLevel.warning,
         source: 'Portal.UI/note_session.finish',
-        message:
-            'Note session not closed: '
+        message: 'Note session not closed: '
             'Portal.UI/note_session.finish \u2014 $cause.',
       );
     }

@@ -35,6 +35,7 @@ class _SettingsPage extends StatefulWidget {
     this.onRestoreFromLocalImport,
     this.onImportAppleJournal,
     this.onClearLegacyStorage,
+    this.onReplayTour,
     this.onOpenLocalRecycleBin,
     this.localTrashedDraftCount = 0,
     this.localTrashedCourseCount = 0,
@@ -137,6 +138,10 @@ class _SettingsPage extends StatefulWidget {
   /// behind by the per-app namespacing migration. Surfaced in the
   /// Developer subpage. Null hides the row.
   final Future<ActionFeedback> Function()? onClearLegacyStorage;
+
+  /// Replays the first-run onboarding tour from the settings menu.
+  /// Null hides the row.
+  final VoidCallback? onReplayTour;
 
   /// Opens the local recycle-bin browser where the user can restore
   /// drafts / categories that were moved to the client-side trash
@@ -708,6 +713,15 @@ class _SettingsPageState extends State<_SettingsPage> {
               );
             },
           ),
+          if (widget.onReplayTour != null) ...[
+            const Divider(height: 0, indent: 16, endIndent: 16),
+            ListTile(
+              leading: const Icon(Icons.school_outlined),
+              title: const Text('View tutorial'),
+              subtitle: const Text('Replay the quick intro tour.'),
+              onTap: widget.onReplayTour,
+            ),
+          ],
           const Divider(height: 0, indent: 16, endIndent: 16),
           ListTile(
             leading: const Icon(Icons.cloud_outlined),

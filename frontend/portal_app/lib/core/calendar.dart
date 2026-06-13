@@ -12,14 +12,13 @@ extension _AppShellCalendarX on _AppShellState {
       token,
       startDate: _activityWeekStart.toIso8601String().split('T').first,
     );
-      _calendarFeeds = feeds;
-      _activityWeek = week;
+    _calendarFeeds = feeds;
+    _activityWeek = week;
     refreshState();
     log(
       level: DebugLogLevel.debug,
       source: 'Portal.Sync.Calendar/refresh',
-      message:
-          'Calendar state refreshed: '
+      message: 'Calendar state refreshed: '
           'Portal.Sync.Calendar/refresh \u2014 '
           'feeds and activity week re-pulled.',
     );
@@ -45,8 +44,7 @@ extension _AppShellCalendarX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Portal.Sync.Calendar/import',
-      message:
-          'Calendar imported: Portal.Sync.Calendar/import \u2014 '
+      message: 'Calendar imported: Portal.Sync.Calendar/import \u2014 '
           '"$title" iCal feed added.',
     );
   }
@@ -71,8 +69,7 @@ extension _AppShellCalendarX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Portal.Sync.Calendar/subscribe',
-      message:
-          'Calendar subscribed: '
+      message: 'Calendar subscribed: '
           'Portal.Sync.Calendar/subscribe \u2014 '
           '"$title" feed URL registered.',
     );
@@ -90,8 +87,7 @@ extension _AppShellCalendarX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Portal.Sync.Calendar/toggle',
-      message:
-          'Calendar feed ${enabled ? "enabled" : "disabled"}: '
+      message: 'Calendar feed ${enabled ? "enabled" : "disabled"}: '
           'Portal.Sync.Calendar/toggle \u2014 '
           '"${feed['title']}" now ${enabled ? "visible" : "hidden"}.',
     );
@@ -107,8 +103,7 @@ extension _AppShellCalendarX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Portal.Sync.Calendar/delete',
-      message:
-          'Calendar feed deleted: '
+      message: 'Calendar feed deleted: '
           'Portal.Sync.Calendar/delete \u2014 '
           '"${feed['title']}" removed from the portal.',
     );

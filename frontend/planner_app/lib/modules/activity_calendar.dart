@@ -176,8 +176,8 @@ Future<void> _showCreatePlannerEventDialog(
                           context: context,
                           initialDate: selectedDate,
                           firstDate: _dateOnly(DateTime.now()),
-                          lastDate:
-                              _dateOnly(DateTime.now()).add(const Duration(days: 365)),
+                          lastDate: _dateOnly(DateTime.now())
+                              .add(const Duration(days: 365)),
                         );
                         if (picked != null) {
                           setState(() => selectedDate = _dateOnly(picked));
@@ -464,7 +464,8 @@ Future<void> _showImportCalendarDialog(
     if (rawIcal == null) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No .ics file found inside the archive.')),
+          const SnackBar(
+              content: Text('No .ics file found inside the archive.')),
         );
       }
       return;
@@ -507,7 +508,8 @@ Future<void> _showImportCalendarDialog(
                       .titleMedium
                       ?.copyWith(fontWeight: FontWeight.w700),
                 ),
-                if (preview.firstStart != null && preview.lastStart != null) ...[
+                if (preview.firstStart != null &&
+                    preview.lastStart != null) ...[
                   const SizedBox(height: 4),
                   Text(
                     'Date range: '

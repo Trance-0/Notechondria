@@ -84,18 +84,22 @@ class _CoursePageState extends State<_CoursePage> {
 
   List<Map<String, dynamic>> _localNotesForCourse(Map<String, dynamic> course) {
     final courseId = (course['id'] as num?)?.toInt();
-    return widget.localNotes.where((note) {
-      final metadata =
-          _decodeNoteMetadata(note['metadata_json']?.toString() ?? '{}');
-      final assignedId = (metadata['course_id'] as num?)?.toInt() ??
-          (note['course_id'] as num?)?.toInt();
-      return assignedId == courseId;
-    }).map((item) => Map<String, dynamic>.from(item)).toList(growable: false);
+    return widget.localNotes
+        .where((note) {
+          final metadata =
+              _decodeNoteMetadata(note['metadata_json']?.toString() ?? '{}');
+          final assignedId = (metadata['course_id'] as num?)?.toInt() ??
+              (note['course_id'] as num?)?.toInt();
+          return assignedId == courseId;
+        })
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList(growable: false);
   }
 
   List<Map<String, dynamic>> _visibleCourses() {
-    final subscribed =
-        widget.courses.where((course) => course['is_subscribed'] == true).toList();
+    final subscribed = widget.courses
+        .where((course) => course['is_subscribed'] == true)
+        .toList();
     final mine = [
       ...widget.localCourses,
       ...widget.courses.where((course) => course['is_owned'] == true),
@@ -180,7 +184,8 @@ class _CoursePageState extends State<_CoursePage> {
     widget.onCourseChanged(course);
   }
 
-  Map<String, dynamic>? _activeCourse(List<Map<String, dynamic>> visibleCourses) {
+  Map<String, dynamic>? _activeCourse(
+      List<Map<String, dynamic>> visibleCourses) {
     if (_openedCourse == null) {
       return null;
     }
@@ -217,7 +222,8 @@ class _CoursePageState extends State<_CoursePage> {
         .toList(growable: false);
   }
 
-  List<Map<String, dynamic>> _modulesFromNotes(List<Map<String, dynamic>> notes) {
+  List<Map<String, dynamic>> _modulesFromNotes(
+      List<Map<String, dynamic>> notes) {
     if (notes.isEmpty) {
       return const [];
     }
@@ -230,7 +236,8 @@ class _CoursePageState extends State<_CoursePage> {
           metadata['section']?.toString() ??
           note['title']?.toString() ??
           'Module ${index + 1}';
-      final title = rawTitle.trim().isEmpty ? 'Module ${index + 1}' : rawTitle.trim();
+      final title =
+          rawTitle.trim().isEmpty ? 'Module ${index + 1}' : rawTitle.trim();
       final key = title.toLowerCase();
       final module = modules.putIfAbsent(
         key,
@@ -363,7 +370,8 @@ class _CoursePageState extends State<_CoursePage> {
     );
   }
 
-  Widget _courseImage(Map<String, dynamic> course, {double? width, double? height}) {
+  Widget _courseImage(Map<String, dynamic> course,
+      {double? width, double? height}) {
     final coverUrl = _resolveRemoteUrl(
       course['cover_image_url']?.toString() ?? '',
       apiBaseUrl: widget.apiBaseUrl,
@@ -396,8 +404,9 @@ class _CoursePageState extends State<_CoursePage> {
   Widget build(BuildContext context) {
     final visibleCourses = _visibleCourses();
     final activeCourse = _activeCourse(visibleCourses);
-    final activeNotes =
-        activeCourse == null ? const <Map<String, dynamic>>[] : _courseNotes(activeCourse);
+    final activeNotes = activeCourse == null
+        ? const <Map<String, dynamic>>[]
+        : _courseNotes(activeCourse);
     final modules = _modulesFromNotes(activeNotes);
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -449,7 +458,8 @@ class _CoursePageState extends State<_CoursePage> {
                                       style: Theme.of(context)
                                           .textTheme
                                           .titleLarge
-                                          ?.copyWith(fontWeight: FontWeight.w700),
+                                          ?.copyWith(
+                                              fontWeight: FontWeight.w700),
                                     ),
                                   ),
                                   TextButton(
@@ -548,7 +558,8 @@ class _CoursePageState extends State<_CoursePage> {
                   ),
                   const SizedBox(height: 6),
                   for (final item
-                      in (_openedModule!['objectives'] as List<dynamic>? ?? const []))
+                      in (_openedModule!['objectives'] as List<dynamic>? ??
+                          const []))
                     Text('• ${item.toString()}'),
                   const SizedBox(height: 16),
                   Text(
@@ -560,7 +571,8 @@ class _CoursePageState extends State<_CoursePage> {
                   ),
                   const SizedBox(height: 6),
                   for (final item
-                      in (_openedModule!['assignments'] as List<dynamic>? ?? const []))
+                      in (_openedModule!['assignments'] as List<dynamic>? ??
+                          const []))
                     Text('• ${item.toString()}'),
                 ],
               ),
@@ -643,7 +655,8 @@ class _CoursePageState extends State<_CoursePage> {
                               ),
                             if (activeCourse['is_subscribed'] != true)
                               FilledButton(
-                                onPressed: () => widget.onSubscribe(activeCourse),
+                                onPressed: () =>
+                                    widget.onSubscribe(activeCourse),
                                 child: const Text('Subscribe'),
                               ),
                           ],
@@ -756,8 +769,8 @@ class _CourseScopeSelector extends StatelessWidget {
       if (isAuthenticated)
         {'value': 'subscribed', 'label': 'Subscribed courses'},
     ];
-    final current =
-        options.firstWhere((item) => item['value'] == scope, orElse: () => options.first);
+    final current = options.firstWhere((item) => item['value'] == scope,
+        orElse: () => options.first);
     return PopupMenuButton<String>(
       onSelected: onChanged,
       itemBuilder: (context) => [
@@ -851,7 +864,8 @@ class _DiscussionBoard extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Card(
                   child: ListTile(
-                    title: Text(visible[i]['title']?.toString() ?? 'Untitled note'),
+                    title: Text(
+                        visible[i]['title']?.toString() ?? 'Untitled note'),
                     subtitle: Text(
                       visible[i]['description']?.toString() ??
                           visible[i]['excerpt']?.toString() ??

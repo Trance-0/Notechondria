@@ -30,8 +30,8 @@ extension _AppShellNoteCrudX on _AppShellState {
       };
       await persistLocalDrafts();
       await persistLocalStats();
-        _selectedNote = draft;
-        _selectedIndex = 1;
+      _selectedNote = draft;
+      _selectedIndex = 1;
       refreshState();
       return draft;
     }
@@ -47,8 +47,8 @@ extension _AppShellNoteCrudX on _AppShellState {
     try {
       final created = await widget.client.createNote(token, payload);
       await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
-        _selectedNote = created;
-        _selectedIndex = 1;
+      _selectedNote = created;
+      _selectedIndex = 1;
       refreshState();
       return created;
     } catch (error) {
@@ -59,14 +59,13 @@ extension _AppShellNoteCrudX on _AppShellState {
       await persistLocalDrafts();
       await persistLocalStats();
       final cause = error.toString().replaceFirst('Exception: ', '');
-        _selectedNote = draft;
-        _selectedIndex = 1;
+      _selectedNote = draft;
+      _selectedIndex = 1;
       refreshState();
       log(
         level: DebugLogLevel.warning,
         source: 'Planner.Sync.Notes/create',
-        message:
-            'Note saved locally, cloud create deferred: '
+        message: 'Note saved locally, cloud create deferred: '
             'Planner.Sync.Notes/create \u2014 $cause.',
       );
       showMessage(
@@ -93,23 +92,29 @@ extension _AppShellNoteCrudX on _AppShellState {
       }
       final updated = _buildLocalDraft(
         id: noteId,
-        title: payload['title']?.toString() ?? existing['title']?.toString() ?? 'Untitled note',
-        description:
-            payload['description']?.toString() ?? existing['description']?.toString() ?? '',
-        content: payload['content']?.toString() ?? existing['content']?.toString() ?? '',
+        title: payload['title']?.toString() ??
+            existing['title']?.toString() ??
+            'Untitled note',
+        description: payload['description']?.toString() ??
+            existing['description']?.toString() ??
+            '',
+        content: payload['content']?.toString() ??
+            existing['content']?.toString() ??
+            '',
         editorMode: payload['editor_mode']?.toString() ??
             existing['editor_mode']?.toString() ??
             'P',
         clientDraftId: existing['client_draft_id']?.toString(),
         createdAt: existing['date_created']?.toString(),
-        metadataJson:
-            payload['metadata_json']?.toString() ?? existing['metadata_json']?.toString() ?? '{}',
+        metadataJson: payload['metadata_json']?.toString() ??
+            existing['metadata_json']?.toString() ??
+            '{}',
       );
       _localDrafts = _localDrafts
           .map((item) => item['id'] == noteId ? updated : item)
           .toList(growable: false);
       await persistLocalDrafts();
-        _selectedNote = updated;
+      _selectedNote = updated;
       refreshState();
       return updated;
     }
@@ -124,7 +129,7 @@ extension _AppShellNoteCrudX on _AppShellState {
     try {
       final updated = await widget.client.updateNote(token, noteId, payload);
       await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
-        _selectedNote = updated;
+      _selectedNote = updated;
       refreshState();
       return updated;
     } catch (error) {
@@ -139,13 +144,12 @@ extension _AppShellNoteCrudX on _AppShellState {
       );
       await persistLocalDrafts();
       final cause = error.toString().replaceFirst('Exception: ', '');
-        _selectedNote = fallbackDraft;
+      _selectedNote = fallbackDraft;
       refreshState();
       log(
         level: DebugLogLevel.warning,
         source: 'Planner.Sync.Notes/save',
-        message:
-            'Note save deferred to local draft: '
+        message: 'Note save deferred to local draft: '
             'Planner.Sync.Notes/save \u2014 $cause.',
       );
       showMessage(
@@ -182,7 +186,7 @@ extension _AppShellNoteCrudX on _AppShellState {
     final restored =
         await widget.client.restoreNoteVersion(token, noteId, versionId);
     await _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
-      _selectedNote = restored;
+    _selectedNote = restored;
     refreshState();
     return restored;
   }

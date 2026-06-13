@@ -8,7 +8,8 @@ abstract class NotechondriaClient implements AuthClient {
     Map<String, dynamic> payload,
   );
   Future<Map<String, dynamic>> getCourseDetail(int courseId, {String? token});
-  Future<List<Map<String, dynamic>>> getCourseNotes(int courseId, {String? token});
+  Future<List<Map<String, dynamic>>> getCourseNotes(int courseId,
+      {String? token});
   Future<Map<String, dynamic>> getNoteDetail(int noteId, {String? token});
   Future<Map<String, dynamic>> listNotes({
     String? token,
@@ -93,6 +94,7 @@ abstract class NotechondriaClient implements AuthClient {
   Future<void> githubSyncDisconnect(String token);
 
   Future<Map<String, dynamic>> uploadAvatar(String token, XFile file);
+
   /// Upload a cover image for the given note. Backend returns the
   /// updated note summary including the new `cover_image_url`. Owner-
   /// only on the backend (403 from non-owners).
@@ -101,6 +103,7 @@ abstract class NotechondriaClient implements AuthClient {
     int noteId,
     XFile file,
   );
+
   /// Clear the cover image for the given note. Returns the updated
   /// note summary (now with `cover_image_url == ''`).
   Future<Map<String, dynamic>> deleteNoteCoverImage(
@@ -214,9 +217,9 @@ class HttpNotechondriaClient
     final normalized = _normalizeBaseUrl(rawCandidateBaseUrl);
     final target = Uri.parse('$normalized/handshake/');
     try {
-      final response = await _httpClient
-          .get(target, headers: {'Accept': 'application/json'})
-          .timeout(const Duration(seconds: 8));
+      final response = await _httpClient.get(target, headers: {
+        'Accept': 'application/json'
+      }).timeout(const Duration(seconds: 8));
       if (response.statusCode != 200) {
         return HandshakeResult.failure(
           'Handshake got HTTP ${response.statusCode} from $target. '
@@ -252,7 +255,8 @@ class HttpNotechondriaClient
             : const <String, dynamic>{},
       );
     } on TimeoutException {
-      return HandshakeResult.failure('Handshake timed out after 8s hitting $target.');
+      return HandshakeResult.failure(
+          'Handshake timed out after 8s hitting $target.');
     } catch (error) {
       return HandshakeResult.failure('Handshake request failed: $error');
     }
@@ -287,7 +291,6 @@ class HttpNotechondriaClient
   // `core/http_client_internals.dart` as an extension on
   // `HttpNotechondriaClient` so this file stays closer to the
   // AGENTS.md \u00a71.5 1000-line cap.
-
 
   @override
   Future<List<Map<String, dynamic>>> getCourses({String? token}) async {
@@ -331,7 +334,8 @@ class HttpNotechondriaClient
   }
 
   @override
-  Future<Map<String, dynamic>> getNoteDetail(int noteId, {String? token}) async {
+  Future<Map<String, dynamic>> getNoteDetail(int noteId,
+      {String? token}) async {
     final uri = _uri('/notes/$noteId/');
     final response = await _get(uri, token: token);
     return Map<String, dynamic>.from(
@@ -388,7 +392,8 @@ class HttpNotechondriaClient
   }
 
   @override
-  Future<Map<String, dynamic>> restoreDeletedNote(String token, int noteId) async {
+  Future<Map<String, dynamic>> restoreDeletedNote(
+      String token, int noteId) async {
     final uri = _uri('/notes/$noteId/restore/');
     final response = await _post(uri, token: token);
     return Map<String, dynamic>.from(
@@ -552,7 +557,8 @@ class HttpNotechondriaClient
   }
 
   @override
-  Future<Map<String, dynamic>> subscribeCourse(String token, int courseId) async {
+  Future<Map<String, dynamic>> subscribeCourse(
+      String token, int courseId) async {
     final uri = _uri('/courses/$courseId/subscribe/');
     final response = await _post(uri, token: token);
     return Map<String, dynamic>.from(
@@ -782,7 +788,8 @@ class HttpNotechondriaClient
           filename: file.name,
         ),
       );
-    final streamed = await send('PATCH', uri, () => request.send().then(http.Response.fromStream));
+    final streamed = await send(
+        'PATCH', uri, () => request.send().then(http.Response.fromStream));
     return Map<String, dynamic>.from(
       await decode(streamed, uri: uri, method: 'PATCH'),
     );

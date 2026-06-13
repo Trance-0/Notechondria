@@ -11,7 +11,8 @@ extension _AppShellStarterX on _AppShellState {
     }
     final starterCourse = _buildLocalCourse(
       title: 'Starter planning course',
-      description: 'Offline planning workspace with module discussion and calendar items.',
+      description:
+          'Offline planning workspace with module discussion and calendar items.',
     );
     final draftA = _buildLocalDraft(
       title: 'Module 1: Kickoff discussion',
@@ -26,9 +27,13 @@ Add leaf notes as comments or follow-ups.''',
         'course_id': starterCourse['id'],
         'module_id': 'module-1',
         'module_title': 'Kickoff module',
-        'module_description': 'Discussion board and planning seed for the first module.',
+        'module_description':
+            'Discussion board and planning seed for the first module.',
         'objectives': ['Define scope', 'Map first milestone'],
-        'assignments': ['Review the discussion board', 'Schedule first work block'],
+        'assignments': [
+          'Review the discussion board',
+          'Schedule first work block'
+        ],
       }),
     );
     final draftB = _buildLocalDraft(
@@ -42,7 +47,8 @@ Capture deadlines, sequencing, and blockers here.''',
         'course_id': starterCourse['id'],
         'module_id': 'module-2',
         'module_title': 'Scheduling module',
-        'module_description': 'Planning and scheduling discussion for the second module.',
+        'module_description':
+            'Planning and scheduling discussion for the second module.',
         'objectives': ['Set deadlines', 'Track blockers'],
         'assignments': ['Draft the weekly calendar', 'Review dependencies'],
       }),
@@ -53,14 +59,16 @@ Capture deadlines, sequencing, and blockers here.''',
     _plannerEvents = [
       _buildLocalPlannerEvent(
         title: 'Draft weekly study block',
-        eventDate: now.add(const Duration(days: 1)).add(const Duration(hours: 10)),
+        eventDate:
+            now.add(const Duration(days: 1)).add(const Duration(hours: 10)),
         difficultyWeight: 2,
         description: 'Turn the module plan into a real calendar slot.',
         courseId: starterCourse['id'] as int,
       ),
       _buildLocalPlannerEvent(
         title: 'Review module discussion',
-        eventDate: now.add(const Duration(days: 2)).add(const Duration(hours: 14)),
+        eventDate:
+            now.add(const Duration(days: 2)).add(const Duration(hours: 14)),
         difficultyWeight: 1,
         description: 'Summarize the local discussion notes and next actions.',
         courseId: starterCourse['id'] as int,
@@ -81,8 +89,7 @@ Capture deadlines, sequencing, and blockers here.''',
     log(
       level: DebugLogLevel.info,
       source: 'Planner.LocalStore/seed_starter',
-      message:
-          'Starter workspace seeded: '
+      message: 'Starter workspace seeded: '
           'Planner.LocalStore/seed_starter \u2014 '
           'first-run offline course + 2 planning drafts + 2 events created.',
     );

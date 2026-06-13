@@ -10,7 +10,8 @@ extension _AppShellLocalCourseBuildersX on _AppShellState {
     int? id,
   }) {
     final nowIso = DateTime.now().toUtc().toIso8601String();
-    final effectiveTitle = title.trim().isEmpty ? 'Untitled course' : title.trim();
+    final effectiveTitle =
+        title.trim().isEmpty ? 'Untitled course' : title.trim();
     final ownerLabel = _profile?['username']?.toString() ?? 'Local';
     return {
       'id': id ?? -DateTime.now().microsecondsSinceEpoch,
@@ -49,15 +50,14 @@ extension _AppShellLocalCourseBuildersX on _AppShellState {
     };
     await persistLocalCourses();
     await persistLocalStats();
-      _selectedCourse = course;
-      _selectedIndex = 2;
-      _courseNotes = _localNotesForCourse(course);
+    _selectedCourse = course;
+    _selectedIndex = 2;
+    _courseNotes = _localNotesForCourse(course);
     refreshState();
     log(
       level: DebugLogLevel.info,
       source: 'Planner.Sync.Courses/create_local',
-      message:
-          "Local course created: "
+      message: "Local course created: "
           "Planner.Sync.Courses/create_local \u2014 "
           "'${course['title']}' queued for sync on next sign-in.",
     );
@@ -89,7 +89,8 @@ extension _AppShellLocalCourseBuildersX on _AppShellState {
     };
   }
 
-  Future<Map<String, dynamic>> _syncLocalCourse(Map<String, dynamic> course) async {
+  Future<Map<String, dynamic>> _syncLocalCourse(
+      Map<String, dynamic> course) async {
     final token = _token;
     if (token == null || token.isEmpty) {
       throw Exception(
@@ -138,8 +139,7 @@ extension _AppShellLocalCourseBuildersX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Planner.Sync.Courses/push',
-      message:
-          "Local course synced: Planner.Sync.Courses/push \u2014 "
+      message: "Local course synced: Planner.Sync.Courses/push \u2014 "
           "'${course['title']}' created on server; local ID remapped; "
           'local copy moved to client-side recycle bin.',
     );
@@ -157,8 +157,9 @@ extension _AppShellLocalCourseBuildersX on _AppShellState {
     String metadataJson = '{}',
   }) {
     final nowIso = DateTime.now().toUtc().toIso8601String();
-    final effectiveTitle =
-        title.trim().isEmpty ? _extractTitleFromMarkdown(content) : title.trim();
+    final effectiveTitle = title.trim().isEmpty
+        ? _extractTitleFromMarkdown(content)
+        : title.trim();
     final body = _bodyWithoutTitle(content);
     return {
       'id': id ?? -DateTime.now().microsecondsSinceEpoch,
@@ -188,7 +189,8 @@ extension _AppShellLocalCourseBuildersX on _AppShellState {
     };
   }
 
-  Future<Map<String, dynamic>> _syncLocalDraft(Map<String, dynamic> draft) async {
+  Future<Map<String, dynamic>> _syncLocalDraft(
+      Map<String, dynamic> draft) async {
     final token = _token;
     if (token == null || token.isEmpty) {
       throw Exception(
@@ -225,10 +227,11 @@ extension _AppShellLocalCourseBuildersX on _AppShellState {
         (metadata['pulled_from_cloud_note_id'] as num?)?.toInt();
     final pulledFromAccount =
         metadata['pulled_from_account']?.toString().trim().toLowerCase() ?? '';
-    final currentAccount = (_profile?['username']?.toString().trim().isNotEmpty == true
-            ? _profile!['username'].toString().trim()
-            : _profile?['email']?.toString().trim() ?? '')
-        .toLowerCase();
+    final currentAccount =
+        (_profile?['username']?.toString().trim().isNotEmpty == true
+                ? _profile!['username'].toString().trim()
+                : _profile?['email']?.toString().trim() ?? '')
+            .toLowerCase();
     if (pulledFromNoteId != null &&
         pulledFromNoteId > 0 &&
         pulledFromAccount.isNotEmpty &&
@@ -269,8 +272,7 @@ extension _AppShellLocalCourseBuildersX on _AppShellState {
       log(
         level: DebugLogLevel.info,
         source: 'Planner.Sync.Notes/push',
-        message:
-            "Local cloud-copy draft synced: "
+        message: "Local cloud-copy draft synced: "
             "Planner.Sync.Notes/push \u2014 "
             "'${draft['title']}' upstream note updated in place.",
       );
@@ -312,8 +314,7 @@ extension _AppShellLocalCourseBuildersX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Planner.Sync.Notes/push',
-      message:
-          "Local draft synced: Planner.Sync.Notes/push \u2014 "
+      message: "Local draft synced: Planner.Sync.Notes/push \u2014 "
           "'${draft['title']}' created on server; local draft moved to "
           'client-side recycle bin (restore from Settings).',
     );

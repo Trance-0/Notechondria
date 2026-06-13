@@ -16,8 +16,7 @@ extension _AppShellMaintenanceX on _AppShellState {
       log(
         level: DebugLogLevel.info,
         source: 'Portal.Sync.Notes/delete_local',
-        message:
-            "Local draft deleted: "
+        message: "Local draft deleted: "
             "Portal.Sync.Notes/delete_local \u2014 "
             "'${note['title']}' removed from offline store.",
       );
@@ -39,8 +38,7 @@ extension _AppShellMaintenanceX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Portal.Sync.Notes/delete',
-      message:
-          "Note moved to recycle bin: "
+      message: "Note moved to recycle bin: "
           "Portal.Sync.Notes/delete \u2014 "
           "'${note['title']}' soft-deleted on server.",
     );
@@ -66,8 +64,7 @@ extension _AppShellMaintenanceX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Portal.Sync.Notes/restore',
-      message:
-          "Note restored: Portal.Sync.Notes/restore \u2014 "
+      message: "Note restored: Portal.Sync.Notes/restore \u2014 "
           "'${note['title']}' removed from the recycle bin.",
     );
   }
@@ -82,13 +79,12 @@ extension _AppShellMaintenanceX on _AppShellState {
       );
     }
     await widget.client.emptyDeletedNotes(token);
-      _deletedNotes = const [];
+    _deletedNotes = const [];
     refreshState();
     log(
       level: DebugLogLevel.info,
       source: 'Portal.Sync.Notes/empty_trash',
-      message:
-          'Recycle bin emptied: Portal.Sync.Notes/empty_trash \u2014 '
+      message: 'Recycle bin emptied: Portal.Sync.Notes/empty_trash \u2014 '
           'all soft-deleted notes purged on the server.',
     );
   }
@@ -180,7 +176,8 @@ extension _AppShellMaintenanceX on _AppShellState {
     } catch (error) {
       _localStats = {
         ..._localStats,
-        'sync_failures': ((_localStats['sync_failures'] as num?)?.toInt() ?? 0) + 1,
+        'sync_failures':
+            ((_localStats['sync_failures'] as num?)?.toInt() ?? 0) + 1,
       };
       await persistLocalStats();
       final cause = error.toString().replaceFirst('Exception: ', '');
@@ -232,8 +229,7 @@ extension _AppShellMaintenanceX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Portal.LocalStore/clear_cache',
-      message:
-          'Cached remote data cleared: '
+      message: 'Cached remote data cleared: '
           'Portal.LocalStore/clear_cache \u2014 '
           'front-page/courses/activity wiped; local drafts untouched.',
     );
@@ -275,8 +271,7 @@ extension _AppShellMaintenanceX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Portal.LocalStore/clear',
-      message:
-          'Local data cleared: Portal.LocalStore/clear \u2014 '
+      message: 'Local data cleared: Portal.LocalStore/clear \u2014 '
           'local drafts and local courses wiped.',
     );
     return const ActionFeedback(
@@ -297,19 +292,17 @@ extension _AppShellMaintenanceX on _AppShellState {
     }
     await widget.client.updatePlannerEvent(token, event['id'] as int, {
       'is_completed': completed,
-      'completed_at': completed
-          ? DateTime.now().toUtc().toIso8601String()
-          : null,
+      'completed_at':
+          completed ? DateTime.now().toUtc().toIso8601String() : null,
     });
     await _loadActivityWeek(startDate: _activityWeekStart);
     final refreshedEvents = await widget.client.getPlannerEvents(token);
-      _plannerEvents = refreshedEvents;
+    _plannerEvents = refreshedEvents;
     refreshState();
     log(
       level: DebugLogLevel.info,
       source: 'Portal.Sync.Events/toggle',
-      message:
-          'Planner event ${completed ? "completed" : "reopened"}: '
+      message: 'Planner event ${completed ? "completed" : "reopened"}: '
           'Portal.Sync.Events/toggle \u2014 '
           '"${event['title']}" state updated on server.',
     );
@@ -344,10 +337,10 @@ extension _AppShellMaintenanceX on _AppShellState {
   Future<void> _copyFrontendLogs() async {
     final content = uiLogs.join('\n');
     await Clipboard.setData(ClipboardData(text: content));
-      _localStats = {
-        ..._localStats,
-        'logs_copied': ((_localStats['logs_copied'] as num?)?.toInt() ?? 0) + 1,
-      };
+    _localStats = {
+      ..._localStats,
+      'logs_copied': ((_localStats['logs_copied'] as num?)?.toInt() ?? 0) + 1,
+    };
     refreshState();
     await persistLocalStats();
     showMessage(

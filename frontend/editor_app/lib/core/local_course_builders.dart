@@ -123,8 +123,7 @@ extension _AppShellLocalCourseBuildersX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Editor.Sync.Courses/push',
-      message:
-          "Local category synced: Editor.Sync.Courses/push \u2014 "
+      message: "Local category synced: Editor.Sync.Courses/push \u2014 "
           "'${course['title']}' created on server; local ID remapped; "
           "local copy moved to client-side recycle bin (restore from Settings).",
     );
@@ -142,8 +141,9 @@ extension _AppShellLocalCourseBuildersX on _AppShellState {
     String metadataJson = '{}',
   }) {
     final nowIso = DateTime.now().toUtc().toIso8601String();
-    final effectiveTitle =
-        title.trim().isEmpty ? _extractTitleFromMarkdown(content) : title.trim();
+    final effectiveTitle = title.trim().isEmpty
+        ? _extractTitleFromMarkdown(content)
+        : title.trim();
     final body = _bodyWithoutTitle(content);
     return {
       'id': id ?? -DateTime.now().microsecondsSinceEpoch,

@@ -50,6 +50,7 @@ part 'core/note_sessions.dart';
 part 'core/settings_actions.dart';
 part 'core/settings_helpers.dart';
 part 'core/whats_new.dart';
+part 'core/onboarding.dart';
 part 'components/avatar.dart';
 part 'components/note_viewer.dart';
 part 'modules/learner.dart';

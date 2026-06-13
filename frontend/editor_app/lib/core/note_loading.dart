@@ -39,8 +39,7 @@ extension _AppShellNoteLoadingX on _AppShellState {
     // category. Same goes for `scope == 'local'` — the user explicitly
     // asked to see only local drafts. Either way, clear the cloud
     // result list and skip the listNotes call.
-    final isLocalCourseSelected =
-        activeCourseId != null && activeCourseId < 0;
+    final isLocalCourseSelected = activeCourseId != null && activeCourseId < 0;
     if (isLocalCourseSelected || effectiveScope == 'local') {
       _learnerNotes = const [];
       _hasMoreLearnerNotes = false;
@@ -57,8 +56,9 @@ extension _AppShellNoteLoadingX on _AppShellState {
         query: effectiveQuery,
         offset: nextOffset,
         limit: 20,
-        courseId:
-            (activeCourseId != null && activeCourseId > 0) ? activeCourseId : null,
+        courseId: (activeCourseId != null && activeCourseId > 0)
+            ? activeCourseId
+            : null,
         scope: effectiveScope,
       );
       final rows = (page['results'] as List<dynamic>? ?? const [])
@@ -77,8 +77,7 @@ extension _AppShellNoteLoadingX on _AppShellState {
       log(
         level: DebugLogLevel.error,
         source: 'Editor.Sync.Notes/list',
-        message:
-            'Notes list load failed: '
+        message: 'Notes list load failed: '
             'Editor.Sync.Notes/list \u2014 $cause.',
       );
     }
@@ -95,8 +94,7 @@ extension _AppShellNoteLoadingX on _AppShellState {
     log(
       level: DebugLogLevel.debug,
       source: 'Editor.UI/open_course',
-      message:
-          'Opened category: Editor.UI/open_course \u2014 '
+      message: 'Opened category: Editor.UI/open_course \u2014 '
           '${isLocalCourse(course) ? 'local ' : ''}'
           "'${course['title']}' selected in learner view.",
     );
@@ -122,8 +120,7 @@ extension _AppShellNoteLoadingX on _AppShellState {
       log(
         level: DebugLogLevel.error,
         source: 'Editor.UI/open_note',
-        message:
-            'Note not opened: Editor.UI/open_note \u2014 $cause.',
+        message: 'Note not opened: Editor.UI/open_note \u2014 $cause.',
       );
     }
   }

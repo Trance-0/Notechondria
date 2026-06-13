@@ -20,16 +20,17 @@ class _FrontPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final greetingName =
-        profile?['username']?.toString() ?? profile?['email']?.toString() ?? 'guest';
-    final carouselCourses = (frontPage['carousel_courses'] as List<dynamic>? ??
-            const <dynamic>[])
-        .map((item) => Map<String, dynamic>.from(item as Map))
-        .toList(growable: false);
-    final recentNotes = (frontPage['recent_notes'] as List<dynamic>? ??
-            const <dynamic>[])
-        .map((item) => Map<String, dynamic>.from(item as Map))
-        .toList(growable: false);
+    final greetingName = profile?['username']?.toString() ??
+        profile?['email']?.toString() ??
+        'guest';
+    final carouselCourses =
+        (frontPage['carousel_courses'] as List<dynamic>? ?? const <dynamic>[])
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList(growable: false);
+    final recentNotes =
+        (frontPage['recent_notes'] as List<dynamic>? ?? const <dynamic>[])
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList(growable: false);
     final heatmap = Map<String, dynamic>.from(
         frontPage['heatmap'] as Map? ?? const <String, dynamic>{});
 
@@ -162,8 +163,7 @@ class _PublicCoursesSection extends StatelessWidget {
                                 height: 108,
                                 child: coverUrl.isEmpty
                                     ? Container(
-                                        color: theme
-                                            .colorScheme.surfaceVariant,
+                                        color: theme.colorScheme.surfaceVariant,
                                         alignment: Alignment.center,
                                         child: const Icon(
                                           Icons.menu_book_outlined,
@@ -174,8 +174,8 @@ class _PublicCoursesSection extends StatelessWidget {
                                         imageUrl: coverUrl,
                                         fit: BoxFit.cover,
                                         fallback: Container(
-                                          color: theme
-                                              .colorScheme.surfaceVariant,
+                                          color:
+                                              theme.colorScheme.surfaceVariant,
                                           alignment: Alignment.center,
                                           child: const Icon(
                                             Icons.menu_book_outlined,
@@ -192,8 +192,7 @@ class _PublicCoursesSection extends StatelessWidget {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        course['title']?.toString() ??
-                                            'Course',
+                                        course['title']?.toString() ?? 'Course',
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: theme.textTheme.titleMedium
@@ -204,8 +203,7 @@ class _PublicCoursesSection extends StatelessWidget {
                                       const SizedBox(height: 4),
                                       Expanded(
                                         child: Text(
-                                          course['description']
-                                                  ?.toString() ??
+                                          course['description']?.toString() ??
                                               '',
                                           maxLines: 3,
                                           overflow: TextOverflow.ellipsis,
@@ -385,8 +383,7 @@ class _RecentPublicNotesSection extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.article_outlined,
-                    color: theme.colorScheme.primary),
+                Icon(Icons.article_outlined, color: theme.colorScheme.primary),
                 const SizedBox(width: 10),
                 Text(
                   'Recent public notes',
@@ -422,4 +419,3 @@ class _RecentPublicNotesSection extends StatelessWidget {
     );
   }
 }
-

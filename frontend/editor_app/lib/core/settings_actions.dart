@@ -42,8 +42,7 @@ extension _AppShellSettingsActionsX on _AppShellState {
     // touching the server.
     String uncategorizedFolderName = '',
   }) async {
-    final currentSettings =
-        Map<String, dynamic>.from(_settings ?? const {});
+    final currentSettings = Map<String, dynamic>.from(_settings ?? const {});
     final currentProfile = Map<String, dynamic>.from(_profile ?? const {});
     final currentUsername = currentSettings['username']?.toString() ??
         currentProfile['username']?.toString() ??
@@ -52,14 +51,11 @@ extension _AppShellSettingsActionsX on _AppShellState {
         currentProfile['email']?.toString() ??
         '';
     final currentMotto = currentSettings['motto']?.toString() ?? '';
-    final currentSocialLink =
-        currentSettings['social_link']?.toString() ?? '';
-    final currentEditorMode =
-        currentSettings['editor_mode']?.toString() ?? 'P';
+    final currentSocialLink = currentSettings['social_link']?.toString() ?? '';
+    final currentEditorMode = currentSettings['editor_mode']?.toString() ?? 'P';
     final currentThemePreset =
         _localSettings['theme_preset']?.toString() ?? 'teal';
-    final currentThemeMode =
-        _localSettings['theme_mode']?.toString() ?? 'S';
+    final currentThemeMode = _localSettings['theme_mode']?.toString() ?? 'S';
     final currentApiBase =
         _localSettings['api_base_url']?.toString() ?? _defaultApiBaseUrl();
     final nextApiBase =
@@ -178,18 +174,17 @@ extension _AppShellSettingsActionsX on _AppShellState {
       final updated = await widget.client.updateSettings(token, {
         ...remotePayload,
       });
-        _settings = updated;
-        _profile = {
-          ...?_profile,
-          'username': updated['username'],
-          'email': updated['email'],
-          'motto': updated['motto'],
-          'social_link': updated['social_link'],
-          'image_url': updated['image_url'],
-          'is_staff': updated['is_staff'] ?? _profile?['is_staff'],
-          'is_superuser':
-              updated['is_superuser'] ?? _profile?['is_superuser'],
-        };
+      _settings = updated;
+      _profile = {
+        ...?_profile,
+        'username': updated['username'],
+        'email': updated['email'],
+        'motto': updated['motto'],
+        'social_link': updated['social_link'],
+        'image_url': updated['image_url'],
+        'is_staff': updated['is_staff'] ?? _profile?['is_staff'],
+        'is_superuser': updated['is_superuser'] ?? _profile?['is_superuser'],
+      };
       refreshState();
       final summary = _summarizeChangedFields(changedFields);
       showMessage(
@@ -198,8 +193,7 @@ extension _AppShellSettingsActionsX on _AppShellState {
       log(
         level: DebugLogLevel.info,
         source: 'Editor.Sync.Settings/save',
-        message:
-            'Settings saved: Editor.Sync.Settings/save \u2014 '
+        message: 'Settings saved: Editor.Sync.Settings/save \u2014 '
             '$summary pushed to cloud.',
       );
       return ActionFeedback(
@@ -209,42 +203,37 @@ extension _AppShellSettingsActionsX on _AppShellState {
       final detail = error.toString().replaceFirst('Exception: ', '');
       final fallbackUsername = _profile?['username'];
       final fallbackEmail = _profile?['email'];
-        _settings = {
-          ...?_settings,
-          if (remotePayload.containsKey('username')) 'username': username,
-          if (remotePayload.containsKey('email')) 'email': email,
-          if (remotePayload.containsKey('motto')) 'motto': motto,
-          if (remotePayload.containsKey('social_link'))
-            'social_link': socialLink,
-          if (remotePayload.containsKey('editor_mode'))
-            'editor_mode': editorMode,
-          if (localSettingsChanged) 'theme_preset': themePreset,
-          if (localSettingsChanged) 'theme_mode': themeMode,
-          if (localSettingsChanged) 'api_base_url': nextApiBase,
-        };
-        _profile = {
-          ...?_profile,
-          'username':
-              remotePayload.containsKey('username') && username.isNotEmpty
-                  ? username
-                  : fallbackUsername,
-          'email': remotePayload.containsKey('email') && email.isNotEmpty
-              ? email
-              : fallbackEmail,
-          'motto': remotePayload.containsKey('motto')
-              ? motto
-              : _profile?['motto'],
-          'social_link': remotePayload.containsKey('social_link')
-              ? socialLink
-              : _profile?['social_link'],
-        };
+      _settings = {
+        ...?_settings,
+        if (remotePayload.containsKey('username')) 'username': username,
+        if (remotePayload.containsKey('email')) 'email': email,
+        if (remotePayload.containsKey('motto')) 'motto': motto,
+        if (remotePayload.containsKey('social_link')) 'social_link': socialLink,
+        if (remotePayload.containsKey('editor_mode')) 'editor_mode': editorMode,
+        if (localSettingsChanged) 'theme_preset': themePreset,
+        if (localSettingsChanged) 'theme_mode': themeMode,
+        if (localSettingsChanged) 'api_base_url': nextApiBase,
+      };
+      _profile = {
+        ...?_profile,
+        'username': remotePayload.containsKey('username') && username.isNotEmpty
+            ? username
+            : fallbackUsername,
+        'email': remotePayload.containsKey('email') && email.isNotEmpty
+            ? email
+            : fallbackEmail,
+        'motto':
+            remotePayload.containsKey('motto') ? motto : _profile?['motto'],
+        'social_link': remotePayload.containsKey('social_link')
+            ? socialLink
+            : _profile?['social_link'],
+      };
       refreshState();
       final summary = _summarizeChangedFields(changedFields);
       log(
         level: DebugLogLevel.warning,
         source: 'Editor.Sync.Settings/save',
-        message:
-            'Settings saved locally, cloud push deferred: '
+        message: 'Settings saved locally, cloud push deferred: '
             'Editor.Sync.Settings/save \u2014 '
             'remote update for $summary failed ($detail).',
       );
@@ -308,22 +297,20 @@ extension _AppShellSettingsActionsX on _AppShellState {
           : rawUrl;
       imageCache.clear();
       imageCache.clearLiveImages();
-        _settings = {...updated, 'image_url': bustUrl};
-        _profile = {
-          ...?_profile,
-          'image_url': bustUrl,
-          'username': updated['username'] ?? _profile?['username'],
-          'email': updated['email'] ?? _profile?['email'],
-          'is_staff': updated['is_staff'] ?? _profile?['is_staff'],
-          'is_superuser':
-              updated['is_superuser'] ?? _profile?['is_superuser'],
-        };
+      _settings = {...updated, 'image_url': bustUrl};
+      _profile = {
+        ...?_profile,
+        'image_url': bustUrl,
+        'username': updated['username'] ?? _profile?['username'],
+        'email': updated['email'] ?? _profile?['email'],
+        'is_staff': updated['is_staff'] ?? _profile?['is_staff'],
+        'is_superuser': updated['is_superuser'] ?? _profile?['is_superuser'],
+      };
       refreshState();
       log(
         level: DebugLogLevel.info,
         source: 'Editor.Sync.Settings/avatar.upload',
-        message:
-            'Avatar updated: Editor.Sync.Settings/avatar.upload \u2014 '
+        message: 'Avatar updated: Editor.Sync.Settings/avatar.upload \u2014 '
             'server accepted new image.',
       );
       return const ActionFeedback(

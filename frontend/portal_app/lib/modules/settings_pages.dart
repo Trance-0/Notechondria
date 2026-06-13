@@ -151,9 +151,7 @@ class _ApiSettingsPageState extends State<_ApiSettingsPage> {
                         child: Icon(
                           Icons.info_outline,
                           size: 16,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -194,8 +192,7 @@ class _ApiSettingsPageState extends State<_ApiSettingsPage> {
                   padding: const EdgeInsets.all(16),
                   child: _ApiKeySection(
                     apiKeyPrefix:
-                        p.widget.settings?['api_key_prefix']?.toString() ??
-                            '',
+                        p.widget.settings?['api_key_prefix']?.toString() ?? '',
                     apiBaseUrl: p.widget.apiBaseUrl ?? '',
                     onRotate: p.widget.onRotateApiKey,
                   ),
@@ -311,7 +308,8 @@ class _PortalPreferencesPageState extends State<_PortalPreferencesPage> {
                   subtitle: Text(_editorModeLabel(p._editorMode)),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () async {
-                    final picked = await _pickEditorMode(context, p._editorMode);
+                    final picked =
+                        await _pickEditorMode(context, p._editorMode);
                     if (picked != null) {
                       setState(() => p._editorMode = picked);
                       p.refreshState();
@@ -395,8 +393,7 @@ class _PortalPreferencesPageState extends State<_PortalPreferencesPage> {
         for (final entry in kEditorModes)
           _PickerOption(value: entry.key, label: entry.value),
       ],
-      tooltip:
-          'Picks how new notes open by default. You can still switch '
+      tooltip: 'Picks how new notes open by default. You can still switch '
           'modes per note from the editor toolbar.',
     );
   }

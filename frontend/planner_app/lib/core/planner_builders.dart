@@ -15,7 +15,8 @@ extension _AppShellPlannerBuildersX on _AppShellState {
       'title': title,
       'event_date': _dateOnly(eventDate).toIso8601String().split('T').first,
       'starts_at': eventDate.toUtc().toIso8601String(),
-      'ends_at': eventDate.toUtc().add(const Duration(hours: 1)).toIso8601String(),
+      'ends_at':
+          eventDate.toUtc().add(const Duration(hours: 1)).toIso8601String(),
       'difficulty_weight': difficultyWeight,
       'description': description,
       'course_id': courseId,
@@ -34,17 +35,22 @@ extension _AppShellPlannerBuildersX on _AppShellState {
       (_localSettings['deadline_importance_weight'] as num?)?.toDouble() ?? 1.0;
 
   double _deadlineUrgencyScore(Map<String, dynamic> event) {
-    final raw = event['starts_at']?.toString() ?? event['event_date']?.toString() ?? '';
+    final raw =
+        event['starts_at']?.toString() ?? event['event_date']?.toString() ?? '';
     DateTime due;
     try {
       due = DateTime.parse(raw);
     } catch (_) {
       due = DateTime.now().toUtc();
     }
-    final hoursRemaining = due.difference(DateTime.now().toUtc()).inMinutes / 60.0;
-    final timePressure = hoursRemaining <= 0 ? 24.0 : 1 / (hoursRemaining / 24.0).clamp(0.25, 365.0);
+    final hoursRemaining =
+        due.difference(DateTime.now().toUtc()).inMinutes / 60.0;
+    final timePressure = hoursRemaining <= 0
+        ? 24.0
+        : 1 / (hoursRemaining / 24.0).clamp(0.25, 365.0);
     final importance = (event['difficulty_weight'] as num?)?.toDouble() ?? 1.0;
-    return (_deadlineTimeWeight() * timePressure) * (_deadlineImportanceWeight() * importance);
+    return (_deadlineTimeWeight() * timePressure) *
+        (_deadlineImportanceWeight() * importance);
   }
 
   Map<String, dynamic> _buildOfflineActivityWeek() {
@@ -56,15 +62,17 @@ extension _AppShellPlannerBuildersX on _AppShellState {
         'events': const <Map<String, dynamic>>[],
       };
     });
-    final deadlines = _plannerEvents.map((event) => {
-      'title': event['title'],
-      'event_date': event['event_date'],
-      'starts_at': event['starts_at'],
-      'difficulty_weight': event['difficulty_weight'] ?? 1,
-      'description': event['description'] ?? '',
-      'is_completed': event['is_completed'] ?? false,
-      'urgency_score': _deadlineUrgencyScore(event),
-    }).toList(growable: false)
+    final deadlines = _plannerEvents
+        .map((event) => {
+              'title': event['title'],
+              'event_date': event['event_date'],
+              'starts_at': event['starts_at'],
+              'difficulty_weight': event['difficulty_weight'] ?? 1,
+              'description': event['description'] ?? '',
+              'is_completed': event['is_completed'] ?? false,
+              'urgency_score': _deadlineUrgencyScore(event),
+            })
+        .toList(growable: false)
       ..sort((a, b) => ((b['urgency_score'] as num?)?.toDouble() ?? 0)
           .compareTo((a['urgency_score'] as num?)?.toDouble() ?? 0));
     return {

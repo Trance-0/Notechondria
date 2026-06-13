@@ -86,14 +86,12 @@ extension _AppShellLocalTrashX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Editor.LocalStore/restore_trashed_draft',
-      message:
-          'Draft restored from local recycle bin: '
+      message: 'Draft restored from local recycle bin: '
           'Editor.LocalStore/restore_trashed_draft \u2014 '
           "'$title' re-added as a local draft; cloud copy left untouched.",
     );
     return ActionFeedback(
-      message:
-          'Draft restored: Editor.LocalStore/restore_trashed_draft \u2014 '
+      message: 'Draft restored: Editor.LocalStore/restore_trashed_draft \u2014 '
           "'$title' is back under Drafts. The cloud copy was not touched.",
     );
   }
@@ -125,8 +123,7 @@ extension _AppShellLocalTrashX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Editor.LocalStore/restore_trashed_course',
-      message:
-          'Category restored from local recycle bin: '
+      message: 'Category restored from local recycle bin: '
           'Editor.LocalStore/restore_trashed_course \u2014 '
           "'$title' re-added as a local category; cloud copy left untouched.",
     );
@@ -149,8 +146,7 @@ extension _AppShellLocalTrashX on _AppShellState {
       builder: (ctx) {
         return StatefulBuilder(builder: (ctx, rebuild) {
           final drafts = List<Map<String, dynamic>>.from(_localTrashedDrafts);
-          final courses =
-              List<Map<String, dynamic>>.from(_localTrashedCourses);
+          final courses = List<Map<String, dynamic>>.from(_localTrashedCourses);
           return SafeArea(
             child: ConstrainedBox(
               constraints: BoxConstraints(
@@ -196,9 +192,7 @@ extension _AppShellLocalTrashX on _AppShellState {
                           ListTile(
                             leading: const Icon(Icons.description_outlined),
                             title: Text(
-                              (entry['draft']
-                                          as Map?)?['title']
-                                      ?.toString() ??
+                              (entry['draft'] as Map?)?['title']?.toString() ??
                                   'Untitled draft',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -223,9 +217,7 @@ extension _AppShellLocalTrashX on _AppShellState {
                           ListTile(
                             leading: const Icon(Icons.folder_outlined),
                             title: Text(
-                              (entry['course']
-                                          as Map?)?['title']
-                                      ?.toString() ??
+                              (entry['course'] as Map?)?['title']?.toString() ??
                                   'Untitled category',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

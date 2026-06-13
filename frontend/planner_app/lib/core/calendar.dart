@@ -12,14 +12,13 @@ extension _AppShellCalendarX on _AppShellState {
       token,
       startDate: _activityWeekStart.toIso8601String().split('T').first,
     );
-      _calendarFeeds = feeds;
-      _activityWeek = week;
+    _calendarFeeds = feeds;
+    _activityWeek = week;
     refreshState();
     log(
       level: DebugLogLevel.debug,
       source: 'Planner.Sync.Calendar/refresh',
-      message:
-          'Calendar state refreshed: '
+      message: 'Calendar state refreshed: '
           'Planner.Sync.Calendar/refresh \u2014 '
           'feeds and activity week re-pulled.',
     );
@@ -45,8 +44,7 @@ extension _AppShellCalendarX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Planner.Sync.Calendar/import',
-      message:
-          'Calendar imported: Planner.Sync.Calendar/import \u2014 '
+      message: 'Calendar imported: Planner.Sync.Calendar/import \u2014 '
           '"$title" iCal feed added.',
     );
   }
@@ -71,8 +69,7 @@ extension _AppShellCalendarX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Planner.Sync.Calendar/subscribe',
-      message:
-          'Calendar subscribed: '
+      message: 'Calendar subscribed: '
           'Planner.Sync.Calendar/subscribe \u2014 '
           '"$title" feed URL registered.',
     );
@@ -90,8 +87,7 @@ extension _AppShellCalendarX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Planner.Sync.Calendar/toggle',
-      message:
-          'Calendar feed ${enabled ? "enabled" : "disabled"}: '
+      message: 'Calendar feed ${enabled ? "enabled" : "disabled"}: '
           'Planner.Sync.Calendar/toggle \u2014 '
           '"${feed['title']}" now ${enabled ? "visible" : "hidden"}.',
     );
@@ -107,8 +103,7 @@ extension _AppShellCalendarX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Planner.Sync.Calendar/delete',
-      message:
-          'Calendar feed deleted: '
+      message: 'Calendar feed deleted: '
           'Planner.Sync.Calendar/delete \u2014 '
           '"${feed['title']}" removed from the planner.',
     );

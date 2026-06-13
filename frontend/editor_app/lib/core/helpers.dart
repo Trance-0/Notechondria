@@ -136,12 +136,14 @@ const _kDefaultApiUrl = String.fromEnvironment('DEFAULT_API_URL',
 /// debug surface report the same version as the Docker image tag. The
 /// default tracks the value committed to the repo's ./VERSION file at the
 /// time of writing — bump both together.
-const _kAppVersion = String.fromEnvironment('APP_VERSION', defaultValue: '0.1.21');
+const _kAppVersion =
+    String.fromEnvironment('APP_VERSION', defaultValue: '0.1.21');
 
 String _defaultApiBaseUrl() {
   if (kIsWeb) {
     final base = Uri.base;
-    final origin = '${base.scheme}://${base.host}${base.hasPort ? ':${base.port}' : ''}';
+    final origin =
+        '${base.scheme}://${base.host}${base.hasPort ? ':${base.port}' : ''}';
     if (base.host == 'localhost' || base.host == '127.0.0.1') {
       return '$origin/api/v1';
     }
@@ -166,11 +168,15 @@ String _slugifyLocalText(String value, {String fallback = 'item'}) {
 String _apiOrigin(String? baseUrl) {
   final candidate = (baseUrl ?? '').trim();
   if (candidate.isEmpty) {
-    return Uri.base.hasScheme && Uri.base.host.isNotEmpty ? Uri.base.origin : '';
+    return Uri.base.hasScheme && Uri.base.host.isNotEmpty
+        ? Uri.base.origin
+        : '';
   }
   final parsed = Uri.tryParse(candidate);
   if (parsed == null) {
-    return Uri.base.hasScheme && Uri.base.host.isNotEmpty ? Uri.base.origin : '';
+    return Uri.base.hasScheme && Uri.base.host.isNotEmpty
+        ? Uri.base.origin
+        : '';
   }
   if (!parsed.hasScheme || parsed.host.isEmpty) {
     return candidate.startsWith('/') &&
@@ -179,7 +185,10 @@ String _apiOrigin(String? baseUrl) {
         ? Uri.base.origin
         : '';
   }
-  return parsed.replace(path: '', query: '', fragment: '').toString().replaceAll(RegExp(r'/$'), '');
+  return parsed
+      .replace(path: '', query: '', fragment: '')
+      .toString()
+      .replaceAll(RegExp(r'/$'), '');
 }
 
 String _resolveRemoteUrl(String raw, {String? apiBaseUrl}) {
@@ -609,7 +618,8 @@ Future<T?> _showSlideInDialog<T>({
           // Blurred + tinted backdrop.
           Positioned.fill(
             child: GestureDetector(
-              onTap: barrierDismissible ? () => Navigator.of(context).pop() : null,
+              onTap:
+                  barrierDismissible ? () => Navigator.of(context).pop() : null,
               behavior: HitTestBehavior.opaque,
               child: BackdropFilter(
                 filter: ui.ImageFilter.blur(sigmaX: 6, sigmaY: 6),
@@ -679,7 +689,8 @@ final Map<int, IconData> _kCodePointToIcon = {
 };
 
 /// Resolves a codePoint integer to its constant IconData, with a fallback.
-IconData _iconFromCodePoint(int? codePoint, {IconData fallback = Icons.school_outlined}) {
+IconData _iconFromCodePoint(int? codePoint,
+    {IconData fallback = Icons.school_outlined}) {
   if (codePoint == null) return fallback;
   return _kCodePointToIcon[codePoint] ?? fallback;
 }
@@ -698,7 +709,8 @@ IconData _courseIcon(Map<String, dynamic> course) {
 /// Shows a grid dialog for picking a course icon. Returns the selected
 /// codePoint, or `null` if cancelled. Pass [currentCodePoint] to highlight
 /// the currently selected icon.
-Future<int?> _showIconPickerDialog(BuildContext context, {int? currentCodePoint}) {
+Future<int?> _showIconPickerDialog(BuildContext context,
+    {int? currentCodePoint}) {
   return showDialog<int>(
     context: context,
     builder: (ctx) {
@@ -843,9 +855,7 @@ class _DetailsBlockSyntax extends md.BlockSyntax {
       final match = summaryRegex.firstMatch(line);
       if (match != null && summary == 'Details') {
         summary = match.group(1)?.trim() ?? summary;
-        final remaining = line
-            .replaceFirst(summaryRegex, '')
-            .trim();
+        final remaining = line.replaceFirst(summaryRegex, '').trim();
         if (remaining.isNotEmpty) bodyLines.add(remaining);
       } else {
         bodyLines.add(line);

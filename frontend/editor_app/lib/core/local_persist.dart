@@ -73,8 +73,7 @@ extension _AppShellLocalPersistX on _AppShellState {
       log(
         level: DebugLogLevel.info,
         source: 'Editor.LocalStore/attachment_store_migrate',
-        message:
-            'Attachment store migration complete: '
+        message: 'Attachment store migration complete: '
             'Editor.LocalStore/attachment_store_migrate \u2014 '
             'legacy base64 queued_attachments moved to '
             'LocalAttachmentStore; drafts rewritten to local:// URLs.',
@@ -83,8 +82,7 @@ extension _AppShellLocalPersistX on _AppShellState {
       log(
         level: DebugLogLevel.warning,
         source: 'Editor.LocalStore/attachment_store_migrate',
-        message:
-            'Attachment store migration deferred: '
+        message: 'Attachment store migration deferred: '
             'Editor.LocalStore/attachment_store_migrate \u2014 '
             '${error.toString().replaceFirst('Exception: ', '')}.',
       );

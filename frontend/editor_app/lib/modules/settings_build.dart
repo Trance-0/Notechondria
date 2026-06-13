@@ -26,8 +26,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
   Widget _buildSignedInAccount(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final username = widget.profile?['username']?.toString() ?? 'User';
-    final displayName =
-        widget.profile?['display_name']?.toString() ?? username;
+    final displayName = widget.profile?['display_name']?.toString() ?? username;
     final email = widget.profile?['email']?.toString() ?? '';
     final avatarUrl = widget.profile?['image_url']?.toString() ??
         widget.settings?['image_url']?.toString();
@@ -378,15 +377,13 @@ extension _SettingsPageBuildX on _SettingsPageState {
   }
 }
 
-
 /// Small tile showing local attachment storage usage. Loads
 /// stats asynchronously from [LocalAttachmentStore] and displays
 /// total bytes. Shows nothing when the store is empty or not
 /// yet initialized.
 class _AttachmentStorageTile extends StatefulWidget {
   @override
-  State<_AttachmentStorageTile> createState() =>
-      _AttachmentStorageTileState();
+  State<_AttachmentStorageTile> createState() => _AttachmentStorageTileState();
 }
 
 class _AttachmentStorageTileState extends State<_AttachmentStorageTile> {
@@ -439,8 +436,7 @@ class _AttachmentStorageTileState extends State<_AttachmentStorageTile> {
           if (overLimit) ...[
             const SizedBox(width: 8),
             Tooltip(
-              message:
-                  'Attachments exceed 500 MB — sync to free up space.',
+              message: 'Attachments exceed 500 MB — sync to free up space.',
               child: Icon(Icons.warning_amber_rounded,
                   size: 14, color: colorScheme.error),
             ),

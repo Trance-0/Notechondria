@@ -53,7 +53,8 @@ class _AvatarPreviewDialog extends StatelessWidget {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('This image will be cropped to a circle for your profile.'),
+          const Text(
+              'This image will be cropped to a circle for your profile.'),
           const SizedBox(height: 20),
           ClipOval(
             child: SizedBox(
@@ -114,7 +115,8 @@ class _RemoteAvatar extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: fallbackLabel.trim().isEmpty
-          ? Icon(fallbackIcon, size: radius, color: colorScheme.onSurfaceVariant)
+          ? Icon(fallbackIcon,
+              size: radius, color: colorScheme.onSurfaceVariant)
           : Text(
               fallbackLabel.trim().substring(0, 1).toUpperCase(),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(

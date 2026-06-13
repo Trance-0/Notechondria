@@ -43,7 +43,8 @@ class _ActivityPage extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isHorizontal = MediaQuery.of(context).size.width >= 960;
-        final hasOfflinePlannerData = plannerEvents.isNotEmpty || deadlines.isNotEmpty;
+        final hasOfflinePlannerData =
+            plannerEvents.isNotEmpty || deadlines.isNotEmpty;
         return Padding(
           padding: const EdgeInsets.all(20),
           child: Stack(
@@ -71,31 +72,31 @@ class _ActivityPage extends StatelessWidget {
                                 onTogglePlannerEventCompletion,
                           )
                         : isHorizontal
-                        ? (weekDays.isEmpty
-                            ? const _ActivityFillCard(
-                                child: Center(
-                                  child: Padding(
-                                    padding: EdgeInsets.all(20),
-                                    child: Text(
-                                      'No weekly events are available for the current view.',
-                                      textAlign: TextAlign.center,
+                            ? (weekDays.isEmpty
+                                ? const _ActivityFillCard(
+                                    child: Center(
+                                      child: Padding(
+                                        padding: EdgeInsets.all(20),
+                                        child: Text(
+                                          'No weekly events are available for the current view.',
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ),
-                              )
-                            : _WideWeekCalendar(
+                                  )
+                                : _WideWeekCalendar(
+                                    days: weekDays,
+                                    onNavigateWeek: onNavigateWeek,
+                                    onShiftStartDay: onShiftStartDay,
+                                  ))
+                            : _VerticalWeekBoard(
                                 days: weekDays,
+                                deadlines: deadlines,
+                                plannerEvents: plannerEvents,
                                 onNavigateWeek: onNavigateWeek,
-                                onShiftStartDay: onShiftStartDay,
-                              ))
-                        : _VerticalWeekBoard(
-                            days: weekDays,
-                            deadlines: deadlines,
-                            plannerEvents: plannerEvents,
-                            onNavigateWeek: onNavigateWeek,
-                            onTogglePlannerEventCompletion:
-                                onTogglePlannerEventCompletion,
-                          ),
+                                onTogglePlannerEventCompletion:
+                                    onTogglePlannerEventCompletion,
+                              ),
               ),
               Positioned(
                 right: 20,
@@ -373,4 +374,3 @@ class _DeadlineBadge extends StatelessWidget {
     );
   }
 }
-

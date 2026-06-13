@@ -288,8 +288,10 @@ extension _AppShellInitialDataX on _AppShellState {
                   'Planner.Sync.Planner/bootstrap \u2014 ${errors.first}.',
     );
     if (!sessionRejected) {
-      unawaited(_maybeShowWhatsNew());
-      _maybeShowInstallBanner();
+      if (!_maybeShowOnboarding()) {
+        unawaited(_maybeShowWhatsNew());
+        _maybeShowInstallBanner();
+      }
     }
   }
 }

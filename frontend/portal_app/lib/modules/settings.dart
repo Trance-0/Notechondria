@@ -47,6 +47,7 @@ class _SettingsPage extends StatefulWidget {
     this.githubSyncCardBuilder,
     this.onExportLocalData,
     this.onRestoreFromLocalImport,
+    this.onReplayTour,
   });
 
   final Map<String, dynamic>? profile;
@@ -66,6 +67,10 @@ class _SettingsPage extends StatefulWidget {
   ) onSave;
   final Future<void> Function() onLogout;
   final Future<ActionFeedback> Function(String email, String password) onLogin;
+
+  /// Replays the first-run onboarding tour from the settings menu.
+  /// Null hides the row.
+  final VoidCallback? onReplayTour;
 
   /// Triggers Casdoor SSO. Null in shadow mode (no `CASDOOR_*` env
   /// vars). See `docs/integrations/casdoor-migration.md`.
@@ -174,8 +179,8 @@ class _SettingsPageState extends State<_SettingsPage> {
           widget.profile?['email']?.toString() ??
           '',
     );
-    _mottoController =
-        TextEditingController(text: widget.settings?['motto']?.toString() ?? '');
+    _mottoController = TextEditingController(
+        text: widget.settings?['motto']?.toString() ?? '');
     _socialController = TextEditingController(
       text: widget.settings?['social_link']?.toString() ?? '',
     );
@@ -201,7 +206,8 @@ class _SettingsPageState extends State<_SettingsPage> {
           widget.profile?['email']?.toString() ??
           '';
       _mottoController.text = widget.settings?['motto']?.toString() ?? '';
-      _socialController.text = widget.settings?['social_link']?.toString() ?? '';
+      _socialController.text =
+          widget.settings?['social_link']?.toString() ?? '';
       _editorMode = widget.settings?['editor_mode']?.toString() ?? _editorMode;
     }
     if (oldWidget.localSettings != widget.localSettings) {
@@ -428,8 +434,7 @@ class _SettingsPageState extends State<_SettingsPage> {
   /// card so the surface degrades gracefully.
   Widget _buildInlineDebugCard(BuildContext context) {
     final controller = widget.debugLogController;
-    final summary =
-        '${widget.localDraftCount} local draft(s), '
+    final summary = '${widget.localDraftCount} local draft(s), '
         '${widget.localCourseCount} local course(s).';
     if (controller != null) {
       return DebugLogCard(
@@ -522,6 +527,15 @@ class _SettingsPageState extends State<_SettingsPage> {
               );
             },
           ),
+          if (widget.onReplayTour != null) ...[
+            const Divider(height: 0, indent: 16, endIndent: 16),
+            ListTile(
+              leading: const Icon(Icons.school_outlined),
+              title: const Text('View tutorial'),
+              subtitle: const Text('Replay the quick intro tour.'),
+              onTap: widget.onReplayTour,
+            ),
+          ],
           const Divider(height: 0, indent: 16, endIndent: 16),
           ListTile(
             leading: const Icon(Icons.cloud_outlined),
@@ -618,7 +632,6 @@ class _SettingsPageState extends State<_SettingsPage> {
     );
   }
 }
-
 
 /// Casdoor-only "Connected accounts" card. Per-provider Google /
 /// GitHub bindings were retired in favor of letting Casdoor itself

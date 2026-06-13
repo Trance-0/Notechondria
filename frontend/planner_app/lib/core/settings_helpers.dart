@@ -7,11 +7,12 @@ extension _AppShellSettingsHelpersX on _AppShellState {
     String? themeMode,
     String? apiBaseUrl,
   }) {
-    final existingLogPrefs =
-        Map<String, dynamic>.from(_localSettings['log_preferences'] as Map? ?? {});
-    final effectiveApiBase = (apiBaseUrl ?? _localSettings['api_base_url'] ?? _defaultApiBaseUrl())
-        .toString()
-        .trim();
+    final existingLogPrefs = Map<String, dynamic>.from(
+        _localSettings['log_preferences'] as Map? ?? {});
+    final effectiveApiBase =
+        (apiBaseUrl ?? _localSettings['api_base_url'] ?? _defaultApiBaseUrl())
+            .toString()
+            .trim();
     return {
       'theme_preset': themePreset ?? _localSettings['theme_preset'] ?? 'teal',
       'theme_mode': themeMode ?? _localSettings['theme_mode'] ?? 'S',

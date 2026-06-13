@@ -32,8 +32,10 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
   Widget build(BuildContext context) {
     final note = widget.note;
     final content = note['content']?.toString() ?? _noteToMarkdown(note);
-    final author = Map<String, dynamic>.from(note['author'] as Map? ?? const {});
-    final course = Map<String, dynamic>.from(note['course'] as Map? ?? const {});
+    final author =
+        Map<String, dynamic>.from(note['author'] as Map? ?? const {});
+    final course =
+        Map<String, dynamic>.from(note['course'] as Map? ?? const {});
     final subtitleParts = <String>[
       if ((author['username']?.toString() ?? '').isNotEmpty)
         author['username'].toString(),
@@ -104,10 +106,13 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
                             if (uuid != null) {
                               final base = Uri.base.removeFragment();
                               final link = '$base#/notes/$uuid';
-                              await Clipboard.setData(ClipboardData(text: link));
+                              await Clipboard.setData(
+                                  ClipboardData(text: link));
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Link copied to clipboard')),
+                                  const SnackBar(
+                                      content:
+                                          Text('Link copied to clipboard')),
                                 );
                               }
                             }
@@ -123,8 +128,7 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
                                 value: 'edit', child: Text('Edit')),
                           if (note['uuid'] != null)
                             const PopupMenuItem(
-                                value: 'copy_link',
-                                child: Text('Copy link')),
+                                value: 'copy_link', child: Text('Copy link')),
                           if (widget.onExport != null)
                             const PopupMenuItem(
                                 value: 'export',
@@ -162,11 +166,8 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               NoteCoverImage(
-                                seed: uuid.isNotEmpty
-                                    ? uuid
-                                    : 'note-$title',
-                                imageUrl:
-                                    coverUrl.isNotEmpty ? coverUrl : null,
+                                seed: uuid.isNotEmpty ? uuid : 'note-$title',
+                                imageUrl: coverUrl.isNotEmpty ? coverUrl : null,
                                 caption: title,
                                 showCaption: coverUrl.isEmpty,
                               ),
@@ -175,8 +176,7 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
                                 data: content,
                                 selectable: true,
                                 builders: _markdownBuilders(),
-                                sizedImageBuilder:
-                                    _localAttachmentImageBuilder,
+                                sizedImageBuilder: _localAttachmentImageBuilder,
                                 inlineSyntaxes: _markdownInlineSyntaxes(),
                                 blockSyntaxes: _markdownBlockSyntaxes(),
                                 styleSheet: _markdownStyleSheet(context),
@@ -281,8 +281,7 @@ class _ExportOptionsDialogState extends State<_ExportOptionsDialog> {
               contentPadding: EdgeInsets.zero,
               value: 'md',
               groupValue: _format,
-              onChanged: (value) =>
-                  setState(() => _format = value ?? 'md'),
+              onChanged: (value) => setState(() => _format = value ?? 'md'),
               title: const Text('Markdown (.md)'),
               subtitle: Text(_recursive
                   ? 'All notes combined into one file with separators.'
@@ -292,10 +291,10 @@ class _ExportOptionsDialogState extends State<_ExportOptionsDialog> {
               contentPadding: EdgeInsets.zero,
               value: 'zip',
               groupValue: _format,
-              onChanged: (value) =>
-                  setState(() => _format = value ?? 'zip'),
+              onChanged: (value) => setState(() => _format = value ?? 'zip'),
               title: const Text('Zip archive (.zip)'),
-              subtitle: const Text('Each note as a separate .md file inside a zip.'),
+              subtitle:
+                  const Text('Each note as a separate .md file inside a zip.'),
             ),
           ],
         ),

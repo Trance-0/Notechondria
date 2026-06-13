@@ -35,9 +35,8 @@ extension _AppShellDraftSyncX on _AppShellState {
       createdAt: existingDraft?['date_created']?.toString() ??
           note['date_created']?.toString(),
       title: note['title']?.toString() ?? 'Untitled note',
-      description: note['description']?.toString() ??
-          note['excerpt']?.toString() ??
-          '',
+      description:
+          note['description']?.toString() ?? note['excerpt']?.toString() ?? '',
       content: note['content']?.toString() ?? _noteToMarkdown(note),
       editorMode: note['editor_mode']?.toString() ??
           existingDraft?['editor_mode']?.toString() ??
@@ -138,10 +137,9 @@ extension _AppShellDraftSyncX on _AppShellState {
           final detail =
               await widget.client.getNoteDetail(noteId, token: token);
           final pulledIndex = pulledDrafts.indexWhere((draft) {
-            final metadata = _decodeNoteMetadata(
-                draft['metadata_json']?.toString() ?? '{}');
-            return (metadata['pulled_from_cloud_note_id'] as num?)
-                    ?.toInt() ==
+            final metadata =
+                _decodeNoteMetadata(draft['metadata_json']?.toString() ?? '{}');
+            return (metadata['pulled_from_cloud_note_id'] as num?)?.toInt() ==
                 noteId;
           });
           if (pulledIndex >= 0) {
@@ -150,12 +148,11 @@ extension _AppShellDraftSyncX on _AppShellState {
             updated += 1;
             continue;
           }
-          final conflictIndex = pulledDrafts
-              .indexWhere((draft) => _sameNoteTitle(draft, detail));
+          final conflictIndex =
+              pulledDrafts.indexWhere((draft) => _sameNoteTitle(draft, detail));
           if (conflictIndex >= 0) {
             final decision = await _showPullConflictDialog(
-                localDraft: pulledDrafts[conflictIndex],
-                remoteNote: detail);
+                localDraft: pulledDrafts[conflictIndex], remoteNote: detail);
             if (!mounted) {
               return const ActionFeedback(
                   message: 'Cloud notes pull cancelled: '
@@ -200,8 +197,7 @@ extension _AppShellDraftSyncX on _AppShellState {
       log(
         level: DebugLogLevel.info,
         source: 'Editor.Sync.Notes/pull',
-        message:
-            'Cloud notes pulled: Editor.Sync.Notes/pull \u2014 $summary.',
+        message: 'Cloud notes pulled: Editor.Sync.Notes/pull \u2014 $summary.',
       );
       return ActionFeedback(
           message: 'Cloud notes pulled: '
@@ -252,8 +248,7 @@ extension _AppShellDraftSyncX on _AppShellState {
     final pulledFromNoteId =
         (metadata['pulled_from_cloud_note_id'] as num?)?.toInt();
     final pulledFromAccount =
-        metadata['pulled_from_account']?.toString().trim().toLowerCase() ??
-            '';
+        metadata['pulled_from_account']?.toString().trim().toLowerCase() ?? '';
     final currentAccount =
         (_profile?['username']?.toString().trim().isNotEmpty == true
                 ? _profile!['username'].toString().trim()
@@ -263,8 +258,7 @@ extension _AppShellDraftSyncX on _AppShellState {
         pulledFromNoteId > 0 &&
         pulledFromAccount.isNotEmpty &&
         pulledFromAccount == currentAccount) {
-      final updated =
-          await widget.client.updateNote(token, pulledFromNoteId, {
+      final updated = await widget.client.updateNote(token, pulledFromNoteId, {
         'title': draft['title'],
         'description': draft['description'] ?? '',
         'content': draft['content'] ?? '',
@@ -298,8 +292,7 @@ extension _AppShellDraftSyncX on _AppShellState {
       log(
         level: DebugLogLevel.info,
         source: 'Editor.Sync.Notes/push',
-        message:
-            "Local cloud-copy draft synced: "
+        message: "Local cloud-copy draft synced: "
             "Editor.Sync.Notes/push \u2014 "
             "'${draft['title']}' upstream note updated in place.",
       );
@@ -343,8 +336,7 @@ extension _AppShellDraftSyncX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Editor.Sync.Notes/push',
-      message:
-          "Local draft synced: Editor.Sync.Notes/push \u2014 "
+      message: "Local draft synced: Editor.Sync.Notes/push \u2014 "
           "'${draft['title']}' created on server; local draft moved to "
           "client-side recycle bin (restore from Settings).",
     );

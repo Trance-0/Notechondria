@@ -33,10 +33,12 @@ extension _AppShellSettingsActionsX on _AppShellState {
     final currentDeadlineTimeWeight =
         (_localSettings['deadline_time_weight'] as num?)?.toDouble() ?? 1.0;
     final currentDeadlineImportanceWeight =
-        (_localSettings['deadline_importance_weight'] as num?)?.toDouble() ?? 1.0;
-    final nextApiBase = apiBaseUrl.trim().isEmpty || apiBaseUrl.trim().startsWith('/')
-        ? _defaultApiBaseUrl()
-        : apiBaseUrl.trim();
+        (_localSettings['deadline_importance_weight'] as num?)?.toDouble() ??
+            1.0;
+    final nextApiBase =
+        apiBaseUrl.trim().isEmpty || apiBaseUrl.trim().startsWith('/')
+            ? _defaultApiBaseUrl()
+            : apiBaseUrl.trim();
     final changedFields = <String>[];
     final remotePayload = <String, dynamic>{};
     if (!_sameTrimmedValue(username, currentUsername)) {
@@ -102,8 +104,8 @@ extension _AppShellSettingsActionsX on _AppShellState {
     _activityWeek = _buildOfflineActivityWeek();
     _localStats = {
       ..._localStats,
-      'settings_saves': ((_localStats['settings_saves'] as num?)?.toInt() ?? 0) +
-          1,
+      'settings_saves':
+          ((_localStats['settings_saves'] as num?)?.toInt() ?? 0) + 1,
     };
     await persistLocalStats();
     if (remotePayload.isEmpty && !localSettingsChanged) {
@@ -140,18 +142,17 @@ extension _AppShellSettingsActionsX on _AppShellState {
       final updated = await widget.client.updateSettings(token, {
         ...remotePayload,
       });
-        _settings = updated;
-        _profile = {
-          ...?_profile,
-          'username': updated['username'],
-          'email': updated['email'],
-          'motto': updated['motto'],
-          'social_link': updated['social_link'],
-          'image_url': updated['image_url'],
-          'is_staff': updated['is_staff'] ?? _profile?['is_staff'],
-          'is_superuser':
-              updated['is_superuser'] ?? _profile?['is_superuser'],
-        };
+      _settings = updated;
+      _profile = {
+        ...?_profile,
+        'username': updated['username'],
+        'email': updated['email'],
+        'motto': updated['motto'],
+        'social_link': updated['social_link'],
+        'image_url': updated['image_url'],
+        'is_staff': updated['is_staff'] ?? _profile?['is_staff'],
+        'is_superuser': updated['is_superuser'] ?? _profile?['is_superuser'],
+      };
       refreshState();
       final summary = _summarizeChangedFields(changedFields);
       showMessage(
@@ -160,8 +161,7 @@ extension _AppShellSettingsActionsX on _AppShellState {
       log(
         level: DebugLogLevel.info,
         source: 'Planner.Sync.Settings/save',
-        message:
-            'Settings saved: Planner.Sync.Settings/save \u2014 '
+        message: 'Settings saved: Planner.Sync.Settings/save \u2014 '
             '$summary pushed to cloud.',
       );
       return ActionFeedback(
@@ -171,40 +171,40 @@ extension _AppShellSettingsActionsX on _AppShellState {
       final detail = error.toString().replaceFirst('Exception: ', '');
       final fallbackUsername = _profile?['username'];
       final fallbackEmail = _profile?['email'];
-        _settings = {
-          ...?_settings,
-          if (remotePayload.containsKey('username')) 'username': username,
-          if (remotePayload.containsKey('email')) 'email': email,
-          if (remotePayload.containsKey('motto')) 'motto': motto,
-          if (remotePayload.containsKey('social_link'))
-            'social_link': socialLink,
-          if (remotePayload.containsKey('editor_mode')) 'editor_mode': editorMode,
-          if (localSettingsChanged) 'theme_preset': themePreset,
-          if (localSettingsChanged) 'theme_mode': themeMode,
-          if (localSettingsChanged) 'api_base_url': nextApiBase,
-          if (localSettingsChanged) 'deadline_time_weight': deadlineTimeWeight,
-          if (localSettingsChanged) 'deadline_importance_weight': deadlineImportanceWeight,
-        };
-        _profile = {
-          ...?_profile,
-          'username': remotePayload.containsKey('username') && username.isNotEmpty
-              ? username
-              : fallbackUsername,
-          'email': remotePayload.containsKey('email') && email.isNotEmpty
-              ? email
-              : fallbackEmail,
-          'motto': remotePayload.containsKey('motto') ? motto : _profile?['motto'],
-          'social_link': remotePayload.containsKey('social_link')
-              ? socialLink
-              : _profile?['social_link'],
-        };
+      _settings = {
+        ...?_settings,
+        if (remotePayload.containsKey('username')) 'username': username,
+        if (remotePayload.containsKey('email')) 'email': email,
+        if (remotePayload.containsKey('motto')) 'motto': motto,
+        if (remotePayload.containsKey('social_link')) 'social_link': socialLink,
+        if (remotePayload.containsKey('editor_mode')) 'editor_mode': editorMode,
+        if (localSettingsChanged) 'theme_preset': themePreset,
+        if (localSettingsChanged) 'theme_mode': themeMode,
+        if (localSettingsChanged) 'api_base_url': nextApiBase,
+        if (localSettingsChanged) 'deadline_time_weight': deadlineTimeWeight,
+        if (localSettingsChanged)
+          'deadline_importance_weight': deadlineImportanceWeight,
+      };
+      _profile = {
+        ...?_profile,
+        'username': remotePayload.containsKey('username') && username.isNotEmpty
+            ? username
+            : fallbackUsername,
+        'email': remotePayload.containsKey('email') && email.isNotEmpty
+            ? email
+            : fallbackEmail,
+        'motto':
+            remotePayload.containsKey('motto') ? motto : _profile?['motto'],
+        'social_link': remotePayload.containsKey('social_link')
+            ? socialLink
+            : _profile?['social_link'],
+      };
       refreshState();
       final summary = _summarizeChangedFields(changedFields);
       log(
         level: DebugLogLevel.warning,
         source: 'Planner.Sync.Settings/save',
-        message:
-            'Settings saved locally, cloud push deferred: '
+        message: 'Settings saved locally, cloud push deferred: '
             'Planner.Sync.Settings/save \u2014 '
             'remote update for $summary failed ($detail).',
       );
@@ -231,15 +231,14 @@ extension _AppShellSettingsActionsX on _AppShellState {
         description: description,
         courseId: (_selectedCourse?['id'] as num?)?.toInt(),
       );
-        _plannerEvents = [event, ..._plannerEvents];
-        _activityWeek = _buildOfflineActivityWeek();
+      _plannerEvents = [event, ..._plannerEvents];
+      _activityWeek = _buildOfflineActivityWeek();
       refreshState();
       await _persistLocalCache();
       log(
         level: DebugLogLevel.info,
         source: 'Planner.Sync.Events/create_local',
-        message:
-            "Local planner event created: "
+        message: "Local planner event created: "
             "Planner.Sync.Events/create_local \u2014 "
             "'${event['title']}' queued for sync on next sign-in.",
       );
@@ -286,7 +285,8 @@ extension _AppShellSettingsActionsX on _AppShellState {
     try {
       final file = await openFile(
         acceptedTypeGroups: const [
-          XTypeGroup(label: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp']),
+          XTypeGroup(
+              label: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp']),
         ],
       );
       if (file == null) {
@@ -302,22 +302,20 @@ extension _AppShellSettingsActionsX on _AppShellState {
             ((_localStats['avatar_updates'] as num?)?.toInt() ?? 0) + 1,
       };
       await persistLocalStats();
-        _settings = updated;
-        _profile = {
-          ...?_profile,
-          'image_url': updated['image_url'],
-          'username': updated['username'] ?? _profile?['username'],
-          'email': updated['email'] ?? _profile?['email'],
-          'is_staff': updated['is_staff'] ?? _profile?['is_staff'],
-          'is_superuser':
-              updated['is_superuser'] ?? _profile?['is_superuser'],
-        };
+      _settings = updated;
+      _profile = {
+        ...?_profile,
+        'image_url': updated['image_url'],
+        'username': updated['username'] ?? _profile?['username'],
+        'email': updated['email'] ?? _profile?['email'],
+        'is_staff': updated['is_staff'] ?? _profile?['is_staff'],
+        'is_superuser': updated['is_superuser'] ?? _profile?['is_superuser'],
+      };
       refreshState();
       log(
         level: DebugLogLevel.info,
         source: 'Planner.Sync.Settings/avatar.upload',
-        message:
-            'Avatar updated: Planner.Sync.Settings/avatar.upload \u2014 '
+        message: 'Avatar updated: Planner.Sync.Settings/avatar.upload \u2014 '
             'server accepted new image.',
       );
       return const ActionFeedback(
@@ -350,21 +348,20 @@ extension _AppShellSettingsActionsX on _AppShellState {
         token,
         startDate: effectiveStart.toIso8601String().split('T').first,
       );
-        _activityWeekStart = effectiveStart;
-        _activityWeek = week;
+      _activityWeekStart = effectiveStart;
+      _activityWeek = week;
       refreshState();
       log(
         level: DebugLogLevel.debug,
         source: 'Planner.Sync.Activity/load_week',
-        message:
-            'Activity week loaded: '
+        message: 'Activity week loaded: '
             'Planner.Sync.Activity/load_week \u2014 '
             'week starting ${effectiveStart.toIso8601String().split('T').first} '
             'pulled from server.',
       );
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
-        _errorMessage = cause;
+      _errorMessage = cause;
       refreshState();
       log(
         level: DebugLogLevel.error,

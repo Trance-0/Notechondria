@@ -28,8 +28,7 @@ extension _AppShellCourseHelpersX on _AppShellState {
         }
       }
     }
-    final defaultCourse =
-        frontPage?['default_course'] as Map<String, dynamic>?;
+    final defaultCourse = frontPage?['default_course'] as Map<String, dynamic>?;
     if (defaultCourse != null && defaultCourse.isNotEmpty) {
       final defaultId = (defaultCourse['id'] as num?)?.toInt();
       for (final course in [...localCourses, ...remoteCourses]) {
@@ -48,16 +47,19 @@ extension _AppShellCourseHelpersX on _AppShellState {
     return null;
   }
 
-  List<Map<String, dynamic>> _localNotesForCourse(
-      Map<String, dynamic> course) {
+  List<Map<String, dynamic>> _localNotesForCourse(Map<String, dynamic> course) {
     final localId = (course['id'] as num?)?.toInt();
     final syncedId = (course['synced_course_id'] as num?)?.toInt();
-    return _localDrafts.where((draft) {
-      final metadata =
-          _decodeNoteMetadata(draft['metadata_json']?.toString() ?? '{}');
-      final courseId = (metadata['course_id'] as num?)?.toInt() ??
-          (draft['course_id'] as num?)?.toInt();
-      return courseId == localId || (syncedId != null && courseId == syncedId);
-    }).map((item) => Map<String, dynamic>.from(item)).toList(growable: false);
+    return _localDrafts
+        .where((draft) {
+          final metadata =
+              _decodeNoteMetadata(draft['metadata_json']?.toString() ?? '{}');
+          final courseId = (metadata['course_id'] as num?)?.toInt() ??
+              (draft['course_id'] as num?)?.toInt();
+          return courseId == localId ||
+              (syncedId != null && courseId == syncedId);
+        })
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList(growable: false);
   }
 }

@@ -21,8 +21,8 @@ extension _AppShellLocalStarterX on _AppShellState {
   /// uncategorized bucket. Idempotent and additive.
   Future<void> _ensureStarterWorkspace() async {
     final hasAnyDraft = _localDrafts.isNotEmpty;
-    final hasAnyCloudNote = _courses
-        .any((c) => (c['recent_notes'] as List?)?.isNotEmpty == true);
+    final hasAnyCloudNote =
+        _courses.any((c) => (c['recent_notes'] as List?)?.isNotEmpty == true);
     if (hasAnyDraft || hasAnyCloudNote) return;
     await _seedStarterWelcomeDraft();
   }
@@ -69,8 +69,7 @@ Use this draft as a starting point and edit / delete it freely.''',
     log(
       level: DebugLogLevel.info,
       source: 'Editor.LocalStore/restore_local_starter',
-      message:
-          'Starter welcome draft seeded into uncategorized bucket: '
+      message: 'Starter welcome draft seeded into uncategorized bucket: '
           'Editor.LocalStore/restore_local_starter — '
           'no prior notes detected; one draft inserted with no course_id.',
     );

@@ -62,7 +62,8 @@ class _RemoteAvatar extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: fallbackLabel.trim().isEmpty
-          ? Icon(fallbackIcon, size: radius, color: colorScheme.onSurfaceVariant)
+          ? Icon(fallbackIcon,
+              size: radius, color: colorScheme.onSurfaceVariant)
           : Text(
               fallbackLabel.trim().substring(0, 1).toUpperCase(),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(

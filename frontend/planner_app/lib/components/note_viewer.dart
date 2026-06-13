@@ -25,8 +25,10 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
     final content = note['content']?.toString() ?? _noteToMarkdown(note);
     final coverUrl = note['cover_image_url']?.toString() ?? '';
     final uuid = note['uuid']?.toString() ?? '';
-    final author = Map<String, dynamic>.from(note['author'] as Map? ?? const {});
-    final course = Map<String, dynamic>.from(note['course'] as Map? ?? const {});
+    final author =
+        Map<String, dynamic>.from(note['author'] as Map? ?? const {});
+    final course =
+        Map<String, dynamic>.from(note['course'] as Map? ?? const {});
     final subtitleParts = <String>[
       if ((author['username']?.toString() ?? '').isNotEmpty)
         author['username'].toString(),

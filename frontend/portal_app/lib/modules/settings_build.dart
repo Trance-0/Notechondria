@@ -112,9 +112,8 @@ Future<T?> _pickFromList<T>(
                       child: Icon(
                         Icons.info_outline,
                         size: 18,
-                        color: Theme.of(sheetContext)
-                            .colorScheme
-                            .onSurfaceVariant,
+                        color:
+                            Theme.of(sheetContext).colorScheme.onSurfaceVariant,
                       ),
                     ),
                 ],
@@ -123,9 +122,8 @@ Future<T?> _pickFromList<T>(
             for (final option in options)
               ListTile(
                 title: Text(option.label),
-                trailing: option.value == current
-                    ? const Icon(Icons.check)
-                    : null,
+                trailing:
+                    option.value == current ? const Icon(Icons.check) : null,
                 onTap: () => Navigator.of(sheetContext).pop(option.value),
               ),
             const SizedBox(height: 8),
@@ -169,8 +167,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
   /// API settings, and Connected accounts.
   Widget _buildSignedInAccount(BuildContext context) {
     final username = widget.profile?['username']?.toString() ?? 'User';
-    final displayName =
-        widget.profile?['display_name']?.toString() ?? username;
+    final displayName = widget.profile?['display_name']?.toString() ?? username;
     final email = widget.profile?['email']?.toString() ?? '';
     final avatarUrl = widget.profile?['image_url']?.toString() ??
         widget.settings?['image_url']?.toString();

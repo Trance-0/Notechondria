@@ -217,8 +217,7 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                               _transitioning ? null : () => _handleDragCancel(),
                           onHorizontalDragEnd: _transitioning
                               ? null
-                              : (details) =>
-                                  _handleDragEnd(details, bodyWidth),
+                              : (details) => _handleDragEnd(details, bodyWidth),
                           child: Transform.translate(
                             offset: Offset(_dragOffset, 0),
                             child: Scrollbar(
@@ -298,7 +297,8 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                                                                     _hourHeight,
                                                                 decoration:
                                                                     BoxDecoration(
-                                                                  border: Border(
+                                                                  border:
+                                                                      Border(
                                                                     bottom:
                                                                         BorderSide(
                                                                       color:
@@ -314,11 +314,9 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                                                                       dynamic>? ??
                                                               const []))
                                                             _CalendarEventTile(
-                                                              event: Map<
-                                                                      String,
+                                                              event: Map<String,
                                                                       dynamic>.from(
-                                                                  event
-                                                                      as Map),
+                                                                  event as Map),
                                                               vertical: true,
                                                               slotExtent:
                                                                   _hourHeight,
@@ -404,4 +402,3 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
     );
   }
 }
-

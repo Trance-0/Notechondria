@@ -83,7 +83,8 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
     );
     _blockDrafts = _buildInitialBlockDrafts(_note);
     final noteEditorMode = _note['editor_mode']?.toString() ?? '';
-    _editorMode = noteEditorMode.isNotEmpty ? noteEditorMode : widget.editorMode;
+    _editorMode =
+        noteEditorMode.isNotEmpty ? noteEditorMode : widget.editorMode;
     _titleController.addListener(_handleChanged);
     _bodyController.addListener(_handleChanged);
     for (final block in _blockDrafts) {
@@ -150,8 +151,7 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
       _editorMode = updated['editor_mode']?.toString() ?? _editorMode;
       _dirty = false;
       _lastSavedAt = DateTime.now();
-      widget.onLogEvent(
-          "Note saved from editor: Planner.UI/editor.save \u2014 "
+      widget.onLogEvent("Note saved from editor: Planner.UI/editor.save \u2014 "
           "'${_note['title']?.toString() ?? 'Untitled note'}' persisted via $reason.");
       if (reason == 'autosave' && autosaveLabel != null) {
         await widget.onSnapshot(_note['id'] as int, reason: autosaveLabel);
@@ -309,15 +309,15 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
       _bodyController.text = _bodyWithoutTitle(_composeBlockMarkdown());
     } else if (_editorMode != 'B' && mode == 'B') {
       _replaceBlockDrafts({
-        'content': _composeMarkdown(_titleController.text, _bodyController.text),
+        'content':
+            _composeMarkdown(_titleController.text, _bodyController.text),
         'blocks': const [],
       });
     }
     setState(() {
       _editorMode = mode;
     });
-    widget.onLogEvent(
-        'Editor mode switched: Planner.UI/editor.mode \u2014 '
+    widget.onLogEvent('Editor mode switched: Planner.UI/editor.mode \u2014 '
         'active mode set to $mode.');
     _handleChanged();
   }

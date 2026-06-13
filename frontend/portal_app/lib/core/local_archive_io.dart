@@ -14,7 +14,8 @@ extension _AppShellLocalArchiveX on _AppShellState {
           app: LocalArchiveApp.portal,
           appVersion: _kAppVersion,
           profile: {
-            if (_profile?['username'] != null) 'username': _profile!['username'],
+            if (_profile?['username'] != null)
+              'username': _profile!['username'],
             if (_profile?['email'] != null) 'email': _profile!['email'],
             if (_profile?['first_name'] != null)
               'first_name': _profile!['first_name'],
@@ -54,8 +55,7 @@ extension _AppShellLocalArchiveX on _AppShellState {
       log(
         level: DebugLogLevel.info,
         source: 'Portal.LocalStore/export_zip',
-        message:
-            'Local data exported: '
+        message: 'Local data exported: '
             'Portal.LocalStore/export_zip — '
             'wrote $suggestedName to disk '
             '(${archiveBytes.length} bytes, '
@@ -92,8 +92,7 @@ extension _AppShellLocalArchiveX on _AppShellState {
       if (legacy != null) {
         final proceed = await _confirmRestore(
           title: 'Restore from legacy config?',
-          message:
-              'Legacy .env config detected. Only API_BASE_URL / '
+          message: 'Legacy .env config detected. Only API_BASE_URL / '
               'API_KEY_PREFIX will be applied; local drafts, categories, '
               'and cache stay as they are. Continue?',
           confirmLabel: 'Import',
@@ -106,8 +105,7 @@ extension _AppShellLocalArchiveX on _AppShellState {
         log(
           level: DebugLogLevel.info,
           source: 'Portal.LocalStore/restore_from_import',
-          message:
-              'Legacy .env imported: '
+          message: 'Legacy .env imported: '
               'Portal.LocalStore/restore_from_import — '
               '${legacy.length} key(s) applied from config file.',
         );
@@ -142,8 +140,7 @@ extension _AppShellLocalArchiveX on _AppShellState {
       final exportedAt = parsed.exportedAt?.toLocal().toIso8601String() ?? '';
       final proceed = await _confirmRestore(
         title: 'Restore local data?',
-        message:
-            'Archive produced by $exporterApp app ($exportedAt) '
+        message: 'Archive produced by $exporterApp app ($exportedAt) '
             'contains: $summary. '
             'Continuing will REPLACE your current local drafts, '
             'categories, and cached data with the archive contents.',
@@ -184,8 +181,7 @@ extension _AppShellLocalArchiveX on _AppShellState {
       log(
         level: DebugLogLevel.info,
         source: 'Portal.LocalStore/restore_from_import',
-        message:
-            'Local data restored: '
+        message: 'Local data restored: '
             'Portal.LocalStore/restore_from_import — '
             'archive from $exporterApp applied ($summary).',
       );
@@ -205,8 +201,7 @@ extension _AppShellLocalArchiveX on _AppShellState {
       log(
         level: DebugLogLevel.error,
         source: 'Portal.LocalStore/restore_from_import',
-        message:
-            'Local data not restored: '
+        message: 'Local data not restored: '
             'Portal.LocalStore/restore_from_import — $cause.',
       );
     }

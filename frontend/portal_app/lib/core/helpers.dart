@@ -117,12 +117,14 @@ const _kDefaultApiUrl = String.fromEnvironment('DEFAULT_API_URL',
 /// debug surface report the same version as the Docker image tag. The
 /// default tracks the value committed to the repo's ./VERSION file at the
 /// time of writing — bump both together.
-const _kAppVersion = String.fromEnvironment('APP_VERSION', defaultValue: '0.1.21');
+const _kAppVersion =
+    String.fromEnvironment('APP_VERSION', defaultValue: '0.1.21');
 
 String _defaultApiBaseUrl() {
   if (kIsWeb) {
     final base = Uri.base;
-    final origin = '${base.scheme}://${base.host}${base.hasPort ? ':${base.port}' : ''}';
+    final origin =
+        '${base.scheme}://${base.host}${base.hasPort ? ':${base.port}' : ''}';
     if (base.host == 'localhost' || base.host == '127.0.0.1') {
       return '$origin/api/v1';
     }
@@ -147,11 +149,15 @@ String _slugifyLocalText(String value, {String fallback = 'item'}) {
 String _apiOrigin(String? baseUrl) {
   final candidate = (baseUrl ?? '').trim();
   if (candidate.isEmpty) {
-    return Uri.base.hasScheme && Uri.base.host.isNotEmpty ? Uri.base.origin : '';
+    return Uri.base.hasScheme && Uri.base.host.isNotEmpty
+        ? Uri.base.origin
+        : '';
   }
   final parsed = Uri.tryParse(candidate);
   if (parsed == null) {
-    return Uri.base.hasScheme && Uri.base.host.isNotEmpty ? Uri.base.origin : '';
+    return Uri.base.hasScheme && Uri.base.host.isNotEmpty
+        ? Uri.base.origin
+        : '';
   }
   if (!parsed.hasScheme || parsed.host.isEmpty) {
     return candidate.startsWith('/') &&
@@ -160,7 +166,10 @@ String _apiOrigin(String? baseUrl) {
         ? Uri.base.origin
         : '';
   }
-  return parsed.replace(path: '', query: '', fragment: '').toString().replaceAll(RegExp(r'/$'), '');
+  return parsed
+      .replace(path: '', query: '', fragment: '')
+      .toString()
+      .replaceAll(RegExp(r'/$'), '');
 }
 
 String _resolveRemoteUrl(String raw, {String? apiBaseUrl}) {

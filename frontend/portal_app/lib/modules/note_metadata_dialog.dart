@@ -18,6 +18,7 @@ class _NoteMetadataDialog extends StatefulWidget {
   final List<Map<String, dynamic>> courses;
   final Map<String, dynamic> metadata;
   final bool allowPublicToggle;
+
   /// 0.1.120: per-account display label for the synthetic
   /// uncategorized bucket (notes with `course_id == null`). Replaces
   /// the old "No assigned course" placeholder. Defaults to "Inbox" so
@@ -181,7 +182,8 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
         Row(
           children: [
             FilledButton.tonalIcon(
-              onPressed: (canUpload && !_coverBusy) ? _pickAndUploadCover : null,
+              onPressed:
+                  (canUpload && !_coverBusy) ? _pickAndUploadCover : null,
               icon: const Icon(Icons.image_outlined, size: 18),
               label: Text(hasCover ? 'Replace' : 'Upload'),
             ),

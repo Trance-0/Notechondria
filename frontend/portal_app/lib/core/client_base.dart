@@ -9,8 +9,8 @@ abstract class NotechondriaClient implements AuthClient {
     Map<String, dynamic> payload,
   );
   Future<Map<String, dynamic>> getCourseDetail(int courseId, {String? token});
-  Future<List<Map<String, dynamic>>> getCourseNotes(
-      int courseId, {String? token});
+  Future<List<Map<String, dynamic>>> getCourseNotes(int courseId,
+      {String? token});
   Future<Map<String, dynamic>> getNoteDetail(int noteId, {String? token});
   Future<Map<String, dynamic>> listNotes({
     String? token,

@@ -23,8 +23,7 @@ extension _AppShellStarterX on _AppShellState {
     log(
       level: DebugLogLevel.info,
       source: 'Portal.LocalStore/seed_starter',
-      message:
-          'Portal shell starter state seeded: '
+      message: 'Portal shell starter state seeded: '
           'Portal.LocalStore/seed_starter \u2014 '
           'first-run offline front-page shell created.',
     );

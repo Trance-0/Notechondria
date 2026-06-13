@@ -38,6 +38,7 @@ class _SettingsPage extends StatefulWidget {
     this.onRestoreFromLocalImport,
     this.onSaveMcpSkill,
     this.githubSyncCardBuilder,
+    this.onReplayTour,
   });
 
   final Map<String, dynamic>? profile;
@@ -59,6 +60,10 @@ class _SettingsPage extends StatefulWidget {
   ) onSave;
   final Future<void> Function() onLogout;
   final Future<ActionFeedback> Function(String email, String password) onLogin;
+
+  /// Replays the first-run onboarding tour from the App preferences
+  /// card. Null hides the row.
+  final VoidCallback? onReplayTour;
 
   /// Triggers Casdoor SSO. Null in shadow mode (no `CASDOOR_*` env
   /// vars). See `docs/integrations/casdoor-migration.md`.
@@ -525,6 +530,7 @@ class _SettingsPageState extends State<_SettingsPage> {
                   onEditorModeChanged: (v) => setState(() => _editorMode = v),
                   onThemePresetChanged: (v) => setState(() => _themePreset = v),
                   onThemeModeChanged: (v) => setState(() => _themeMode = v),
+                  onReplayTour: widget.onReplayTour,
                   offlineMode: widget.onOfflineModeChanged == null
                       ? null
                       : widget.localSettings['offline_mode'] == true,

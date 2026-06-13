@@ -73,7 +73,8 @@ class _LearnerPage extends StatefulWidget {
       onSyncLocalDraft;
   final Future<void> Function() onSyncAllLocalDrafts;
   final ValueChanged<String> onLogEvent;
-  final Future<Map<String, dynamic>> Function(int noteId, XFile file)? onUploadCover;
+  final Future<Map<String, dynamic>> Function(int noteId, XFile file)?
+      onUploadCover;
   final Future<Map<String, dynamic>> Function(int noteId)? onDeleteCover;
   final bool offlineMode;
   final VoidCallback? onLoadPublicNotes;
@@ -154,8 +155,7 @@ class _LearnerPageState extends State<_LearnerPage> {
     if (!mounted) {
       return;
     }
-    widget.onLogEvent(
-        "Note editor opened: Portal.UI/open_editor \u2014 "
+    widget.onLogEvent("Note editor opened: Portal.UI/open_editor \u2014 "
         "'${detail['title']?.toString() ?? 'Untitled note'}' loaded into dialog.");
     final sessionId = await widget.onStartNoteSession(
       detail['id'] as int,
@@ -208,8 +208,7 @@ class _LearnerPageState extends State<_LearnerPage> {
     if (!mounted) {
       return;
     }
-    widget.onLogEvent(
-        'Note shell created: Portal.UI/create_note \u2014 '
+    widget.onLogEvent('Note shell created: Portal.UI/create_note \u2014 '
         'server issued note id ${created['id']}; editor about to open.');
     await _openEditor(created);
   }
@@ -320,7 +319,9 @@ class _LearnerPageState extends State<_LearnerPage> {
                   ),
                 ),
               ),
-            if (widget.offlineMode && widget.notes.isEmpty && widget.isAuthenticated)
+            if (widget.offlineMode &&
+                widget.notes.isEmpty &&
+                widget.isAuthenticated)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: OutlinedButton.icon(
@@ -354,7 +355,8 @@ class _LearnerPageState extends State<_LearnerPage> {
                 ),
             if (widget.isAuthenticated && localDrafts.isNotEmpty) ...[
               const SizedBox(height: 20),
-              Text('Local drafts', style: Theme.of(context).textTheme.titleLarge),
+              Text('Local drafts',
+                  style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 12),
               for (final draft in localDrafts)
                 _LearnerNoteCard(
@@ -449,10 +451,13 @@ class _LearnerNoteCard extends StatelessWidget {
     final uuid = note['uuid']?.toString() ?? '';
     final noteTitle = note['title']?.toString() ?? '';
     final isPublic = note['is_public'] == true;
-    final author = Map<String, dynamic>.from(note['author'] as Map? ?? const {});
-    final course = Map<String, dynamic>.from(note['course'] as Map? ?? const {});
+    final author =
+        Map<String, dynamic>.from(note['author'] as Map? ?? const {});
+    final course =
+        Map<String, dynamic>.from(note['course'] as Map? ?? const {});
     final authorName = author['username']?.toString() ?? '';
-    final avatarFallback = authorName.isEmpty ? 'L' : authorName.substring(0, 1);
+    final avatarFallback =
+        authorName.isEmpty ? 'L' : authorName.substring(0, 1);
     final avatarUrl = _resolveRemoteUrl(
       author['image_url']?.toString() ?? '',
       apiBaseUrl: apiBaseUrl,
@@ -520,18 +525,21 @@ class _LearnerNoteCard extends StatelessWidget {
                                   'Public'
                                 else
                                   'Private',
-                                if ((course['title']?.toString() ?? '').isNotEmpty)
+                                if ((course['title']?.toString() ?? '')
+                                    .isNotEmpty)
                                   course['title'].toString(),
                                 formatCompactTimestamp(
                                   note['last_edit']?.toString() ?? '',
                                 ),
                               ].join(' | '),
-                              style:
-                                  Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurfaceVariant,
-                                      ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
                             ),
                           ],
                         ),
@@ -550,9 +558,11 @@ class _LearnerNoteCard extends StatelessWidget {
                         },
                         itemBuilder: (context) => [
                           if (canEdit)
-                            const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                            const PopupMenuItem(
+                                value: 'edit', child: Text('Edit')),
                           if (canSync)
-                            const PopupMenuItem(value: 'sync', child: Text('Sync to cloud')),
+                            const PopupMenuItem(
+                                value: 'sync', child: Text('Sync to cloud')),
                           const PopupMenuItem(
                               value: 'export', child: Text('Export markdown')),
                           const PopupMenuItem(
@@ -569,7 +579,8 @@ class _LearnerNoteCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             fontStyle: FontStyle.italic,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                     ),
                   ],
@@ -587,11 +598,10 @@ class _LearnerNoteCard extends StatelessWidget {
                       alignment: Alignment.bottomRight,
                       child: Text(
                         'Course metadata stays editable from the editor details panel',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                             ),
                       ),
                     ),
@@ -605,4 +615,3 @@ class _LearnerNoteCard extends StatelessWidget {
     );
   }
 }
-

@@ -304,8 +304,10 @@ extension _AppShellInitialDataX on _AppShellState {
                   'Portal.Sync.FrontPage/bootstrap \u2014 ${errors.first}.',
     );
     if (!sessionRejected) {
-      unawaited(_maybeShowWhatsNew());
-      _maybeShowInstallBanner();
+      if (!_maybeShowOnboarding()) {
+        unawaited(_maybeShowWhatsNew());
+        _maybeShowInstallBanner();
+      }
     }
   }
 }

@@ -12,9 +12,10 @@ extension _AppShellDraftSyncX on _AppShellState {
     Map<String, dynamic> note, {
     Map<String, dynamic>? existingDraft,
   }) {
-    final sourceAccount = _profile?['username']?.toString().trim().isNotEmpty == true
-        ? _profile!['username'].toString().trim()
-        : _profile?['email']?.toString().trim() ?? '';
+    final sourceAccount =
+        _profile?['username']?.toString().trim().isNotEmpty == true
+            ? _profile!['username'].toString().trim()
+            : _profile?['email']?.toString().trim() ?? '';
     final metadata = {
       ..._decodeNoteMetadata(note['metadata_json']?.toString() ?? '{}'),
       'pulled_from_cloud_note_id': note['id'],
@@ -28,9 +29,8 @@ extension _AppShellDraftSyncX on _AppShellState {
       createdAt: existingDraft?['date_created']?.toString() ??
           note['date_created']?.toString(),
       title: note['title']?.toString() ?? 'Untitled note',
-      description: note['description']?.toString() ??
-          note['excerpt']?.toString() ??
-          '',
+      description:
+          note['description']?.toString() ?? note['excerpt']?.toString() ?? '',
       content: note['content']?.toString() ?? _noteToMarkdown(note),
       editorMode: note['editor_mode']?.toString() ??
           existingDraft?['editor_mode']?.toString() ??
@@ -143,7 +143,8 @@ extension _AppShellDraftSyncX on _AppShellState {
           if (noteId == null) {
             continue;
           }
-          final detail = await widget.client.getNoteDetail(noteId, token: token);
+          final detail =
+              await widget.client.getNoteDetail(noteId, token: token);
           final pulledIndex = pulledDrafts.indexWhere((draft) {
             final metadata =
                 _decodeNoteMetadata(draft['metadata_json']?.toString() ?? '{}');
@@ -218,8 +219,7 @@ extension _AppShellDraftSyncX on _AppShellState {
       log(
         level: DebugLogLevel.info,
         source: 'Portal.Sync.Notes/pull',
-        message:
-            'Cloud notes pulled: Portal.Sync.Notes/pull \u2014 $summary.',
+        message: 'Cloud notes pulled: Portal.Sync.Notes/pull \u2014 $summary.',
       );
       return ActionFeedback(
           message: 'Cloud notes pulled: '
