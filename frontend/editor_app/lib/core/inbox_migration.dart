@@ -1,33 +1,29 @@
 part of notechondria_frontend;
 
-class _InboxMigrationDecision {
-  const _InboxMigrationDecision.moveToCategory(this.title)
-      : removeCategory = false;
-
-  const _InboxMigrationDecision.removeCategory()
-      : title = '',
-        removeCategory = true;
-
-  final String title;
-  final bool removeCategory;
-}
-
 extension _AppShellInboxMigrationX on _AppShellState {
-  Future<void> _maybePromptInboxMigration() async {
+  /// Auto-merge any legacy owned "Inbox" category into the synthetic
+  /// uncategorized bucket. Pre-0.1.120 builds created a real "Inbox"
+  /// `Course`; 0.1.120 made the uncategorized bucket a client-only
+  /// render of `course_id == null` notes, so a leftover "Inbox"
+  /// category renders as a confusing duplicate next to it.
+  ///
+  /// 0.1.131: this used to pop a dismissable prompt offering
+  /// remove-vs-rename. Users dismissed it and lived with the duplicate
+  /// indefinitely (the reported bug), so we now migrate silently —
+  /// reparent the category's notes to uncategorized and delete the
+  /// category — and surface the result as a SnackBar. The backend
+  /// `cleanup_inbox_courses` management command does the same sweep
+  /// server-side for existing databases. Runs once per session; after
+  /// a successful pass there are no candidates left, and a failed pass
+  /// (offline) retries next boot.
+  Future<void> _autoMigrateLegacyInbox() async {
     if (_inboxMigrationPromptShown || !mounted) return;
     final token = _token;
     if (token == null || token.isEmpty) return;
     final candidates = _ownedInboxMigrationCandidates();
     if (candidates.isEmpty) return;
     _inboxMigrationPromptShown = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      unawaited(() async {
-        final decision = await _chooseInboxMigration(candidates.length);
-        if (decision == null) return;
-        await _runInboxMigration(candidates, decision);
-      }());
-    });
+    await _mergeInboxIntoUncategorized(candidates);
   }
 
   List<Map<String, dynamic>> _ownedInboxMigrationCandidates() {
@@ -49,64 +45,13 @@ extension _AppShellInboxMigrationX on _AppShellState {
         .toList();
   }
 
-  Future<_InboxMigrationDecision?> _chooseInboxMigration(int count) {
-    final titleController = TextEditingController(text: 'Migrated Inbox');
-    return showDialog<_InboxMigrationDecision>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Migrate legacy Inbox'),
-        content: SizedBox(
-          width: 420,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '$count owned Inbox categor${count == 1 ? 'y' : 'ies'} '
-                'were found. The editor now uses the uncategorized bucket '
-                'for inbox-style notes, so these old categories can create '
-                'duplicate Inbox rows.',
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(
-                  labelText: 'New category name',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Not now'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(
-              const _InboxMigrationDecision.removeCategory(),
-            ),
-            child: const Text('Remove category'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final title = titleController.text.trim();
-              if (title.isEmpty) return;
-              Navigator.of(ctx).pop(
-                _InboxMigrationDecision.moveToCategory(title),
-              );
-            },
-            child: const Text('Move notes'),
-          ),
-        ],
-      ),
-    ).whenComplete(titleController.dispose);
-  }
-
-  Future<void> _runInboxMigration(
+  /// Reparent every note under the given legacy "Inbox" categories to
+  /// the uncategorized bucket (`course_id == null`) and delete the
+  /// categories. Cloud categories are removed via `deleteCourse`; the
+  /// backend's `Note.course_id = SET_NULL` reparents their notes, so
+  /// the client only has to delete the category and re-fetch.
+  Future<void> _mergeInboxIntoUncategorized(
     List<Map<String, dynamic>> candidates,
-    _InboxMigrationDecision decision,
   ) async {
     const source = 'Editor.DataMigration/inbox';
     final token = _token;
@@ -117,7 +62,7 @@ extension _AppShellInboxMigrationX on _AppShellState {
         source: source,
         message:
             'Inbox migration started: $source - ${candidates.length} legacy '
-            'Inbox categor${candidates.length == 1 ? 'y' : 'ies'} selected.',
+            'Inbox categor${candidates.length == 1 ? 'y' : 'ies'} found.',
       );
       final localIds = candidates
           .where(isLocalCourse)
@@ -130,47 +75,16 @@ extension _AppShellInboxMigrationX on _AppShellState {
           .whereType<int>()
           .toList(growable: false);
 
-      int? targetCloudCourseId;
-      Map<String, dynamic>? targetLocalCourse;
-      if (!decision.removeCategory) {
-        if (cloudIds.isNotEmpty) {
-          final title = _uniqueInboxMigrationTitle(decision.title);
-          final created = await timed(
-            '$source.createCourse',
-            () => widget.client.createCourse(token, {
-              'title': title,
-              'description': 'Migrated from legacy Inbox categories.',
-            }),
-          );
-          final decorated = decorateRemoteCourse(created);
-          targetCloudCourseId = (decorated['id'] as num?)?.toInt();
-          _courses = [decorated, ..._courses];
-          _selectedCourse = decorated;
-        } else {
-          targetLocalCourse = _buildLocalCourse(
-            title: _uniqueInboxMigrationTitle(decision.title),
-            description: 'Migrated from legacy Inbox categories.',
-          );
-          _localCourses = [targetLocalCourse, ..._localCourses];
-          _selectedCourse = targetLocalCourse;
-        }
-      }
-
       if (localIds.isNotEmpty) {
         _localDrafts = _localDrafts.map((draft) {
           final courseId = _draftCourseId(draft);
           if (courseId == null || !localIds.contains(courseId)) return draft;
           final metadata =
               _decodeNoteMetadata(draft['metadata_json']?.toString() ?? '{}');
-          if (decision.removeCategory) {
-            metadata.remove('course_id');
-          } else {
-            metadata['course_id'] =
-                targetCloudCourseId ?? targetLocalCourse?['id'];
-          }
+          metadata.remove('course_id');
           return {
             ...draft,
-            'course_id': metadata['course_id'],
+            'course_id': null,
             'metadata_json': jsonEncode(metadata),
           };
         }).toList(growable: false);
@@ -183,24 +97,8 @@ extension _AppShellInboxMigrationX on _AppShellState {
       }
 
       for (final courseId in cloudIds) {
-        final notes = await timed(
-          '$source.getCourseNotes.$courseId',
-          () => widget.client.getCourseNotes(courseId, token: token),
-        );
-        if (!decision.removeCategory && targetCloudCourseId != null) {
-          for (final note in notes) {
-            final noteId = (note['id'] as num?)?.toInt();
-            if (noteId == null) continue;
-            await timed(
-              '$source.updateNote.$noteId',
-              () => widget.client.updateNote(
-                token,
-                noteId,
-                {'course_id': targetCloudCourseId},
-              ),
-            );
-          }
-        }
+        // Deleting the cloud category triggers Note.course_id=SET_NULL
+        // server-side, dropping its notes into the uncategorized bucket.
         await timed(
           '$source.deleteCourse.$courseId',
           () => widget.client.deleteCourse(token, courseId),
@@ -211,17 +109,12 @@ extension _AppShellInboxMigrationX on _AppShellState {
           .where(
               (course) => !cloudIds.contains((course['id'] as num?)?.toInt()))
           .toList(growable: false);
-      if (decision.removeCategory) {
-        _selectedCourse = null;
-        _selectedCategoryId = null;
-      }
+      _selectedCourse = null;
+      _selectedCategoryId = null;
       await _persistLocalCache();
       await _loadInitialData();
-      final message = decision.removeCategory
-          ? 'Inbox migration complete: old Inbox categories were removed; '
-              'their notes now live in the uncategorized bucket.'
-          : 'Inbox migration complete: old Inbox notes were moved to '
-              '"${decision.title}" and the old Inbox categories were removed.';
+      const message = 'Legacy Inbox merged: old Inbox categories were '
+          'removed; their notes now live in the uncategorized bucket.';
       log(level: DebugLogLevel.info, source: source, message: message);
       showMessage(message);
     } catch (error) {
@@ -230,18 +123,5 @@ extension _AppShellInboxMigrationX on _AppShellState {
       log(level: DebugLogLevel.error, source: source, message: message);
       showMessage(message);
     }
-  }
-
-  String _uniqueInboxMigrationTitle(String raw) {
-    final base = raw.trim().isEmpty ? 'Migrated Inbox' : raw.trim();
-    final existing = [..._localCourses, ..._courses]
-        .map((course) => course['title']?.toString().trim().toLowerCase() ?? '')
-        .toSet();
-    if (!existing.contains(base.toLowerCase())) return base;
-    for (var i = 2; i < 100; i++) {
-      final candidate = '$base $i';
-      if (!existing.contains(candidate.toLowerCase())) return candidate;
-    }
-    return '$base ${DateTime.now().millisecondsSinceEpoch}';
   }
 }

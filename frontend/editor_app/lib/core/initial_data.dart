@@ -302,7 +302,7 @@ extension _AppShellInitialDataX on _AppShellState {
               : 'Initial load used offline fallback: ${errors.first}',
     );
     if (!sessionRejected && errors.isEmpty) {
-      unawaited(_maybePromptInboxMigration());
+      unawaited(_autoMigrateLegacyInbox());
     }
     if (!sessionRejected) {
       if (!_maybeShowOnboarding()) {
