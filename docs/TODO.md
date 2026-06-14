@@ -54,6 +54,28 @@ across 0.1.127–0.1.129 — see
 
 ### Editor Settings
 
+## Internationalization (i18n)
+
+Full plan + architecture in
+[`docs/development/i18n_plan.md`](development/i18n_plan.md). Goal:
+English (US) + Chinese (Simplified), a Language setting in each app
+(shared widget), system-language default on first run. Phased:
+
+- [ ] **Phase 1 — scaffold + editor (in progress).** Add
+  `flutter_localizations` + `intl`, shared ARB catalog in
+  `notechondria_shared/lib/l10n/`, per-app gen-l10n wiring, a Language
+  dropdown in the shared `AppPreferencesCard`, `locale` persisted in
+  `app_settings` (mirrors `theme_preset`), system-locale default, and
+  the editor app's user-facing strings translated first.
+- [ ] **Phase 2 — planner strings.** Translate planner UI; reuse the
+  shared catalog for common strings.
+- [ ] **Phase 3 — portal strings.** Translate portal UI.
+- [ ] **Phase 4 — shared-widget + dialog sweep.** Ensure every shared
+  component (auth dialogs, onboarding tour, what's-new, install
+  banner, debug log, error state) is fully localized, and audit
+  SnackBar/dialog strings. Keep AGENTS.md §1.8 diagnostic strings
+  English for greppability; localize the user-facing consequence text.
+
 ## Planner
 
 - [ ] Planner starter workspace currently seeds a single "Starter

@@ -39,6 +39,7 @@
 - [AI Integration (stub status and forward plan)](development/ai_integration.md)
 - [Storage model (Django + frontend offline)](development/storage_model.md)
 - [Cross-platform reliability and tutorials plan](development/cross_platform_plan.md)
+- [Internationalization (i18n) plan](development/i18n_plan.md)
 - [Canvas-like Calendar Product Concept](development/canvas_like_calendar_mvp.md)
 
 # Integrations
@@ -63,6 +64,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.132 - i18n plan + architecture doc](versions/0.1.132.md)
 - [0.1.131 - remove legacy "Inbox" categories (duplicate-Inbox bug)](versions/0.1.131.md)
 - [0.1.130 - first-run onboarding tour](versions/0.1.130.md)
 - [0.1.129 - per-app icons, in-app install nudge, legacy storage cleanup](versions/0.1.129.md)
