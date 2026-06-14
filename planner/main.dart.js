@@ -35510,7 +35510,7 @@ a1=a6.fr
 a2=a6.fx
 a3=a6.fy
 if(a3==null)a3=B.bT
-k=A.bIA(new A.auV(B.kR,"0.1.130",l,f,d,c,b,a,a0,a6.d,a1,a2,a3))
+k=A.bIA(new A.auV(B.kR,"0.1.133",l,f,d,c,b,a,a0,a6.d,a1,a2,a3))
 s=7
 return A.l(A.b6H(A.b([B.b6f],t.es),m),$async$a6n)
 case 7:j=a8
@@ -37552,15 +37552,15 @@ p=n}else p=o
 s=p.length===0?3:4
 break
 case 3:s=5
-return A.l(A.Eg(a,"0.1.130"),$async$a6B)
+return A.l(A.Eg(a,"0.1.133"),$async$a6B)
 case 5:s=1
 break
-case 4:if(A.aiR(p,"0.1.130")>=0){s=1
-break}m=A.bI3("0.1.130",p,B.aCR)
+case 4:if(A.aiR(p,"0.1.133")>=0){s=1
+break}m=A.bI3("0.1.133",p,B.aCR)
 s=m.length===0?6:7
 break
 case 6:s=8
-return A.l(A.Eg(a,"0.1.130"),$async$a6B)
+return A.l(A.Eg(a,"0.1.133"),$async$a6B)
 case 8:s=1
 break
 case 7:a.p3=!0
@@ -127531,7 +127531,7 @@ G(a){var s,r,q=this,p=A.ic(new A.aMR(q))
 if(q.w){s=q.a.f
 r=q.k1.h(0,"api_base_url")
 r=r==null?null:J.y(r)
-return A.hx(B.c_,A.b([p,A.L0(0,new A.N5(s,"0.1.130",new A.aMS(q),q.RG,r,null))],t.p),B.x,B.bC,null)}return p},
+return A.hx(B.c_,A.b([p,A.L0(0,new A.N5(s,"0.1.133",new A.aMS(q),q.RG,r,null))],t.p),B.x,B.bC,null)}return p},
 anA(){var s,r,q,p,o,n=this,m=null,l=n.f
 l=l!==2?A.a2(B.tt[l],m,m,m,m,m,m,m,m):m
 s=n.Z0()
@@ -129411,12 +129411,12 @@ m=n.c
 m.toString
 p=q.c
 s=2
-return A.l(A.b7I(m,"Notechondria Planner","0.1.130",p),$async$$0)
+return A.l(A.b7I(m,"Notechondria Planner","0.1.133",p),$async$$0)
 case 2:o=b
 s=3
-return A.l(A.Eg(n,"0.1.130"),$async$$0)
+return A.l(A.Eg(n,"0.1.133"),$async$$0)
 case 3:m=o?"acknowledged":"skipped"
-n.bg(B.ai,"Feature updates "+m+": Planner.UI/whats_new \u2014 "+p.length+" update(s) since "+q.a.a+" marked seen at 0.1.130.","Planner.UI")
+n.bg(B.ai,"Feature updates "+m+": Planner.UI/whats_new \u2014 "+p.length+" update(s) since "+q.a.a+" marked seen at 0.1.133.","Planner.UI")
 return A.v(null,r)}})
 return A.w($async$$0,r)},
 $S:163}
