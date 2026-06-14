@@ -27,6 +27,12 @@ class _EditorSettingsPage extends StatefulWidget {
 }
 
 class _EditorSettingsPageState extends State<_EditorSettingsPage> {
+  /// Optimistic local echo of the just-picked locale so the row
+  /// subtitle updates immediately (the parent settings widget is
+  /// rebuilt with a fresh `currentLocale` only on the next app-shell
+  /// rebuild).
+  String? _localeOverride;
+
   @override
   Widget build(BuildContext context) {
     final p = widget.parent;
@@ -83,6 +89,27 @@ class _EditorSettingsPageState extends State<_EditorSettingsPage> {
                   }
                 },
               ),
+              if (p.widget.onSetLocale != null) ...[
+                const Divider(height: 0, indent: 16, endIndent: 16),
+                ListTile(
+                  leading: const Icon(Icons.language_outlined),
+                  title: Text(AppLocalizations.of(context).settingsLanguage),
+                  subtitle: Text(_localeLabel(
+                    context,
+                    _localeOverride ?? p.widget.currentLocale ?? 'system',
+                  )),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () async {
+                    final current =
+                        _localeOverride ?? p.widget.currentLocale ?? 'system';
+                    final picked = await _pickLocale(context, current);
+                    if (picked != null) {
+                      await p.widget.onSetLocale!(picked);
+                      if (mounted) setState(() => _localeOverride = picked);
+                    }
+                  },
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 12),
@@ -165,6 +192,34 @@ class _EditorSettingsPageState extends State<_EditorSettingsPage> {
       ],
       tooltip: 'Match system follows the device-level Light/Dark '
           'toggle. Light and Dark override the system choice.',
+    );
+  }
+
+  String _localeLabel(BuildContext context, String value) {
+    if (value == 'system') {
+      return AppLocalizations.of(context).settingsLanguageSystem;
+    }
+    for (final opt in kLocaleOptions) {
+      if (opt.value == value) return opt.label;
+    }
+    return value;
+  }
+
+  Future<String?> _pickLocale(BuildContext context, String current) {
+    final l10n = AppLocalizations.of(context);
+    return _pickFromList<String>(
+      context,
+      title: l10n.settingsLanguage,
+      current: current,
+      options: [
+        for (final opt in kLocaleOptions)
+          _PickerOption(
+            value: opt.value,
+            label: opt.value == 'system'
+                ? l10n.settingsLanguageSystem
+                : opt.label,
+          ),
+      ],
     );
   }
 }

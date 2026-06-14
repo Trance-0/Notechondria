@@ -15,6 +15,9 @@ dependencies:
   idb_shim: ^2.6.0
   path_provider: ^2.1.0
   shared_preferences: ^2.5.3
+  intl: any
+  flutter_localizations:
+    sdk: flutter
 
 dev_dependencies:
   flutter_test:
@@ -23,3 +26,4 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  generate: true

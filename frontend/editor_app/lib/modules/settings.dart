@@ -36,6 +36,8 @@ class _SettingsPage extends StatefulWidget {
     this.onImportAppleJournal,
     this.onClearLegacyStorage,
     this.onReplayTour,
+    this.onSetLocale,
+    this.currentLocale,
     this.onOpenLocalRecycleBin,
     this.localTrashedDraftCount = 0,
     this.localTrashedCourseCount = 0,
@@ -142,6 +144,14 @@ class _SettingsPage extends StatefulWidget {
   /// Replays the first-run onboarding tour from the settings menu.
   /// Null hides the row.
   final VoidCallback? onReplayTour;
+
+  /// Applies + persists a Language change immediately (`system` | `en`
+  /// | `zh`). Mirrors the offline-mode toggle; null hides the row.
+  final Future<void> Function(String locale)? onSetLocale;
+
+  /// The currently persisted `app_settings['locale']` value, for
+  /// preselecting the Language dropdown.
+  final String? currentLocale;
 
   /// Opens the local recycle-bin browser where the user can restore
   /// drafts / categories that were moved to the client-side trash

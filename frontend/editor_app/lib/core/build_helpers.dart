@@ -712,6 +712,8 @@ extension _AppShellBuildHelpersX on _AppShellState {
           onImportAppleJournal: _importAppleJournalArchive,
           onClearLegacyStorage: _clearLegacySharedStorage,
           onReplayTour: _replayOnboarding,
+          onSetLocale: _setLocale,
+          currentLocale: _localSettings['locale']?.toString() ?? 'system',
           onOpenLocalRecycleBin: _openLocalRecycleBinDialog,
           localTrashedDraftCount: _localTrashedDrafts.length,
           localTrashedCourseCount: _localTrashedCourses.length,

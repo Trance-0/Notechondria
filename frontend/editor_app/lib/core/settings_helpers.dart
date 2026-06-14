@@ -15,6 +15,7 @@ extension _AppShellSettingsHelpersX on _AppShellState {
     String? themePreset,
     String? themeMode,
     String? apiBaseUrl,
+    String? locale,
   }) {
     final existingLogPrefs = Map<String, dynamic>.from(
         _localSettings['log_preferences'] as Map? ?? {});
@@ -25,6 +26,7 @@ extension _AppShellSettingsHelpersX on _AppShellState {
     return {
       'theme_preset': themePreset ?? _localSettings['theme_preset'] ?? 'teal',
       'theme_mode': themeMode ?? _localSettings['theme_mode'] ?? 'S',
+      'locale': locale ?? _localSettings['locale'] ?? 'system',
       'api_base_url': effectiveApiBase.startsWith('/')
           ? _defaultApiBaseUrl()
           : effectiveApiBase,
@@ -52,7 +54,23 @@ extension _AppShellSettingsHelpersX on _AppShellState {
       _localSettings['theme_preset']?.toString() ?? 'teal',
       _localSettings['theme_mode']?.toString() ?? 'S',
     );
+    widget.onLocaleChanged?.call(
+      _localSettings['locale']?.toString() ?? 'system',
+    );
     if (persist) await persistLocalSettings();
+  }
+
+  /// Apply + persist a Language change immediately (mirrors
+  /// `_setOfflineMode`). `_applyLocalAppSettings` fires
+  /// `onLocaleChanged`, rebuilding `MaterialApp` with the new locale.
+  Future<void> _setLocale(String locale) async {
+    await _applyLocalAppSettings({'locale': locale});
+    log(
+      level: DebugLogLevel.info,
+      source: 'Editor.Sync.Settings/locale',
+      message: 'Language changed: Editor.Sync.Settings/locale — '
+          'app locale set to "$locale".',
+    );
   }
 
   /// Toggles the offline-mode flag. Persists via

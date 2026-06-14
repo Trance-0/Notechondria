@@ -30,6 +30,12 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
   String _themePreset = 'teal';
   ThemeMode _themeMode = ThemeMode.system;
 
+  /// Resolved app locale. `null` follows the device locale (the
+  /// `system` setting); a non-null value is the user's explicit
+  /// Language choice. Driven from `_localSettings['locale']` via
+  /// `onLocaleChanged`, mirroring the theme plumbing.
+  Locale? _locale;
+
   /// The single NotechondriaClient for this app instance. Must be
   /// constructed in `initState` — NOT re-created on every `build()`.
   ///
@@ -53,12 +59,21 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
     });
   }
 
+  void _handleLocaleChanged(String locale) {
+    setState(() {
+      _locale = resolveLocale(locale);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final seedColor = _themeSeed(_themePreset);
     return MaterialApp(
       title: widget.title,
       debugShowCheckedModeBanner: false,
+      locale: _locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       themeMode: _themeMode,
       theme: ThemeData(
         useMaterial3: true,
@@ -78,6 +93,7 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
       home: AppShell(
         client: _client,
         onThemeChanged: _handleThemeChanged,
+        onLocaleChanged: _handleLocaleChanged,
         initialIndex: widget.initialIndex,
         appTitle: widget.title,
         visibleIndices: widget.visibleIndices,
@@ -92,6 +108,7 @@ class AppShell extends StatefulWidget {
     super.key,
     required this.client,
     this.onThemeChanged,
+    this.onLocaleChanged,
     this.initialIndex = 0,
     this.appTitle = 'Notechondria',
     this.visibleIndices = const <int>[0, 1, 2, 3, 4],
@@ -99,6 +116,12 @@ class AppShell extends StatefulWidget {
 
   final NotechondriaClient client;
   final void Function(String preset, String mode)? onThemeChanged;
+
+  /// Called with the persisted `app_settings['locale']` value
+  /// (`system` | `en` | `zh`) whenever the resolved locale should
+  /// change — on boot (from saved settings) and when the user picks a
+  /// language. Mirrors [onThemeChanged].
+  final void Function(String locale)? onLocaleChanged;
   final int initialIndex;
   final String appTitle;
   final List<int> visibleIndices;

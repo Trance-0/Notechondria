@@ -64,6 +64,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.133 - i18n Phase 1: infrastructure + editor language switcher](versions/0.1.133.md)
 - [0.1.132 - i18n plan + architecture doc](versions/0.1.132.md)
 - [0.1.131 - remove legacy "Inbox" categories (duplicate-Inbox bug)](versions/0.1.131.md)
 - [0.1.130 - first-run onboarding tour](versions/0.1.130.md)

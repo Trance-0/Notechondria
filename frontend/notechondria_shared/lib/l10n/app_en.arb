@@ -1,0 +1,9 @@
+{
+  "@@locale": "en",
+  "languageName": "English",
+  "settingsLanguage": "Language",
+  "settingsLanguageSystem": "System default",
+  "commonSkip": "Skip",
+  "commonClose": "Close",
+  "commonDone": "Done"
+}

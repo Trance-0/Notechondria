@@ -61,12 +61,19 @@ Full plan + architecture in
 English (US) + Chinese (Simplified), a Language setting in each app
 (shared widget), system-language default on first run. Phased:
 
-- [ ] **Phase 1 — scaffold + editor (in progress).** Add
-  `flutter_localizations` + `intl`, shared ARB catalog in
-  `notechondria_shared/lib/l10n/`, per-app gen-l10n wiring, a Language
-  dropdown in the shared `AppPreferencesCard`, `locale` persisted in
-  `app_settings` (mirrors `theme_preset`), system-locale default, and
-  the editor app's user-facing strings translated first.
+- [x] **Phase 1 — scaffold + editor language switcher (0.1.133).**
+  Shared ARB catalog + generated `AppLocalizations` in
+  `notechondria_shared`, editor `MaterialApp` wired with delegates +
+  `supportedLocales` + `locale`, `locale` persisted in `app_settings`
+  (mirrors `theme_preset`), system-locale default, and a working
+  Language row in the editor settings (System / English / 简体中文).
+  Only a demonstrative string set is translated so far — the bulk of
+  the editor's strings still need migrating to ARB keys (carry into a
+  Phase 1b or fold into Phase 4).
+- [ ] **Phase 1b — migrate the editor's remaining strings to ARB.**
+  ~130 editor `Text('...')` / label / dialog strings still hardcoded
+  English. Replace with `AppLocalizations.of(context)` keys + zh
+  translations, screen by screen.
 - [ ] **Phase 2 — planner strings.** Translate planner UI; reuse the
   shared catalog for common strings.
 - [ ] **Phase 3 — portal strings.** Translate portal UI.

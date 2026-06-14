@@ -53,6 +53,9 @@ export 'src/components/mcp_skill_section.dart'
 export 'src/components/note_cover_image.dart' show NoteCoverImage;
 export 'src/components/install_banner.dart' show maybeShowInstallBanner;
 export 'src/components/onboarding_tour.dart' show TourStep, showOnboardingTour;
+export 'src/l10n/app_localizations.dart' show AppLocalizations;
+export 'src/utils/locale_options.dart'
+    show LocaleOption, kLocaleOptions, resolveLocale;
 export 'src/components/whats_new_overlay.dart'
     show
         FeatureUpdate,
