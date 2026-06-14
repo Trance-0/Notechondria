@@ -1,12 +1,12 @@
 {
-    "name": "frontend",
-    "short_name": "frontend",
+    "name": "Notechondria Planner",
+    "short_name": "Planner",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#4338CA",
+    "theme_color": "#4338CA",
+    "description": "Course planner with calendars, deadlines, and activity tracking for the Notechondria platform.",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {
