@@ -73,11 +73,20 @@ class UnimolRule {
   final String pictogram;
 }
 
-/// Hardcoded simulation tuning (owner spec, 0.1.128): 128 particles,
-/// spawn kinetic energy ~ N(250000, 60000). The upstream library
-/// exposes these as runtime config; the splash does not.
+/// Hardcoded simulation tuning (owner spec, 0.1.128): spawn kinetic
+/// energy ~ N(250000, 60000). The upstream library exposes these as
+/// runtime config; the splash does not.
+///
+/// 0.1.139: the particle target now scales with the viewport AREA so
+/// the field is neither dense on phones nor sparse on large monitors.
+/// [referenceParticles] is calibrated for a [referenceArea]
+/// (1920×1080) screen; [ReactionSimulator.targetParticles] interpolates
+/// by area and clamps to [minParticles] / [maxParticlesCap].
 class ReactionSimOptions {
-  static const int maxParticles = 128;
+  static const int referenceParticles = 128;
+  static const double referenceArea = 1920.0 * 1080.0;
+  static const int minParticles = 24;
+  static const int maxParticlesCap = 320;
   static const double energyMean = 250000;
   static const double energyStd = 60000;
   static const double spawnFadeIn = 0.8;

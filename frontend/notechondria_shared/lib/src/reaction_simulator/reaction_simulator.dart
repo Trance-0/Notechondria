@@ -364,16 +364,35 @@ class ReactionSimulator {
     }
   }
 
-  /// Re-balance population toward [ReactionSimOptions.maxParticles]:
-  /// spawn the most reactive kinds while undersized; mark the least
-  /// reactive particle stale-soon while oversized so it fades out.
+  /// Particle target for the current viewport, scaled by area so
+  /// density is constant across screen sizes (calibrated to
+  /// [ReactionSimOptions.referenceParticles] at
+  /// [ReactionSimOptions.referenceArea]), clamped to
+  /// `minParticles..maxParticlesCap`. Falls back to the reference
+  /// count before the first `setSize`.
+  int get targetParticles {
+    if (width <= 0 || height <= 0) {
+      return ReactionSimOptions.referenceParticles;
+    }
+    final perParticle = ReactionSimOptions.referenceArea /
+        ReactionSimOptions.referenceParticles;
+    final raw = (width * height / perParticle).round();
+    return raw.clamp(
+      ReactionSimOptions.minParticles,
+      ReactionSimOptions.maxParticlesCap,
+    );
+  }
+
+  /// Re-balance population toward [targetParticles]: spawn the most
+  /// reactive kinds while undersized; mark the least reactive particle
+  /// stale-soon while oversized so it fades out.
   void populationTick() {
     if (spawnable.isEmpty) return;
     final counts = <String, int>{};
     for (final p in particles) {
       counts[p.kind] = (counts[p.kind] ?? 0) + 1;
     }
-    const target = ReactionSimOptions.maxParticles;
+    final target = targetParticles;
     final minC = (target * 0.6).floor();
     final n = particles.length;
 
