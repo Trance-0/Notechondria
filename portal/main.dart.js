@@ -35485,7 +35485,7 @@ J.bt(l,"social_link",J.K(f,"social_link"))}f=a.z
 if((f==null?null:f.h(0,"image_url"))!=null)J.bt(l,"image_url",a.z.h(0,"image_url"))
 f=a.Q
 if(f==null)f=B.b0
-k=A.bJo(new A.av9(B.tx,"0.1.136",l,f,a.k2,a.k3,a.k4,a.ch,a.cy,a.d))
+k=A.bJo(new A.av9(B.tx,"0.1.138",l,f,a.k2,a.k3,a.k4,a.ch,a.cy,a.d))
 s=7
 return A.k(A.b7n(A.b([B.b7g],t.es),m),$async$a6r)
 case 7:j=a0
@@ -37516,15 +37516,15 @@ p=n}else p=o
 s=p.length===0?3:4
 break
 case 3:s=5
-return A.k(A.En(a,"0.1.136"),$async$a6H)
+return A.k(A.En(a,"0.1.138"),$async$a6H)
 case 5:s=1
 break
-case 4:if(A.aj3(p,"0.1.136")>=0){s=1
-break}m=A.bIS("0.1.136",p,B.aB2)
+case 4:if(A.aj3(p,"0.1.138")>=0){s=1
+break}m=A.bIS("0.1.138",p,B.aB2)
 s=m.length===0?6:7
 break
 case 6:s=8
-return A.k(A.En(a,"0.1.136"),$async$a6H)
+return A.k(A.En(a,"0.1.138"),$async$a6H)
 case 8:s=1
 break
 case 7:a.p4=!0
@@ -127253,7 +127253,7 @@ G(a){var s,r,q=this,p=A.id(new A.aNd(q))
 if(q.w){s=q.a.f
 r=q.k2.h(0,"api_base_url")
 r=r==null?null:J.y(r)
-return A.hz(B.c0,A.b([p,A.L7(0,new A.Nb(s,"0.1.136",new A.aNe(q),q.RG,r,null))],t.p),B.y,B.bG,null)}return p},
+return A.hz(B.c0,A.b([p,A.L7(0,new A.Nb(s,"0.1.138",new A.aNe(q),q.RG,r,null))],t.p),B.y,B.bG,null)}return p},
 any(){var s,r,q,p,o,n=this,m=null,l=n.f
 l=A.rN(B.J,0,l!==3?A.X(B.to[l],m,m,m,m,m,m,m,m):m)
 s=n.Z1()
@@ -129213,12 +129213,12 @@ m=n.c
 m.toString
 p=q.c
 s=2
-return A.k(A.b8o(m,"Notechondria Portal","0.1.136",p),$async$$0)
+return A.k(A.b8o(m,"Notechondria Portal","0.1.138",p),$async$$0)
 case 2:o=b
 s=3
-return A.k(A.En(n,"0.1.136"),$async$$0)
+return A.k(A.En(n,"0.1.138"),$async$$0)
 case 3:m=o?"acknowledged":"skipped"
-n.bc(B.aj,"Feature updates "+m+": Portal.UI/whats_new \u2014 "+p.length+" update(s) since "+q.a.a+" marked seen at 0.1.136.","Portal.UI")
+n.bc(B.aj,"Feature updates "+m+": Portal.UI/whats_new \u2014 "+p.length+" update(s) since "+q.a.a+" marked seen at 0.1.138.","Portal.UI")
 return A.v(null,r)}})
 return A.w($async$$0,r)},
 $S:166}
