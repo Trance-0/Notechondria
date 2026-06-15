@@ -714,6 +714,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
           onReplayTour: _replayOnboarding,
           onSetLocale: _setLocale,
           currentLocale: _localSettings['locale']?.toString() ?? 'system',
+          onProbeStorageArch: _probeStorageArch,
           onOpenLocalRecycleBin: _openLocalRecycleBinDialog,
           localTrashedDraftCount: _localTrashedDrafts.length,
           localTrashedCourseCount: _localTrashedCourses.length,

@@ -93,6 +93,22 @@ extension _AppShellSettingsHelpersX on _AppShellState {
     await _loadInitialData();
   }
 
+  /// Probe the current backend's handshake for its media-storage
+  /// architecture label (e.g. "Cloudflare R2" / "Local disk"). Returns
+  /// null when offline or when the backend predates the `storage`
+  /// handshake field. Used by the Local-data storage-usage card.
+  Future<String?> _probeStorageArch() async {
+    final url =
+        _localSettings['api_base_url']?.toString() ?? _defaultApiBaseUrl();
+    try {
+      final result = await widget.client.verifyHandshake(url);
+      if (!result.ok) return null;
+      return result.storageLabel.isEmpty ? null : result.storageLabel;
+    } catch (_) {
+      return null;
+    }
+  }
+
   DateTime _parseUpdatedAt(String? raw) {
     return DateTime.tryParse(raw ?? '')?.toUtc() ??
         DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);

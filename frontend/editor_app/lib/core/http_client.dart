@@ -85,6 +85,7 @@ class HttpNotechondriaClient
           'Backend api_version="$apiVersion" — this client only supports v1.',
         );
       }
+      final storageMap = parsed['storage'];
       return HandshakeResult.success(
         service: service,
         apiVersion: apiVersion,
@@ -92,6 +93,8 @@ class HttpNotechondriaClient
         capabilities: parsed['capabilities'] is Map<String, dynamic>
             ? Map<String, dynamic>.from(parsed['capabilities'] as Map)
             : const <String, dynamic>{},
+        storageLabel:
+            storageMap is Map ? (storageMap['label']?.toString() ?? '') : '',
       );
     } on TimeoutException {
       return HandshakeResult.failure(

@@ -219,6 +219,22 @@ def ping(request):
     )
 
 
+def _storage_info() -> dict:
+    """Report the media-file storage backend so clients can show where
+    attachments/avatars actually live. R2 (S3-compatible object store)
+    when `STORAGES['default']` is the s3boto3 backend; otherwise the
+    local disk. `label` is human-facing; `backend` is a stable token."""
+    backend = ""
+    try:
+        backend = settings.STORAGES["default"]["BACKEND"]
+    except Exception:  # noqa: BLE001 — STORAGES shape varies by config
+        backend = getattr(settings, "DEFAULT_FILE_STORAGE", "") or ""
+    lowered = backend.lower()
+    if "s3" in lowered or "boto3" in lowered:
+        return {"backend": "cloudflare-r2", "label": "Cloudflare R2"}
+    return {"backend": "local-disk", "label": "Local disk"}
+
+
 @require_GET
 def handshake(request):
     """Identify this backend to a client that just pointed at a new API URL.
@@ -238,6 +254,7 @@ def handshake(request):
             "version": _read_backend_version(),
             "capabilities": HANDSHAKE_CAPABILITIES,
             "build": _build_metadata(),
+            "storage": _storage_info(),
         }
     )
 

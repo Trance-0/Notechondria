@@ -59,6 +59,43 @@ class HandshakeEndpointTests(TestCase):
         self.assertIn("capabilities", payload)
         self.assertIn("auth", payload["capabilities"])
 
+    def test_handshake_reports_storage_backend_shape(self):
+        # The ambient default depends on whether R2 env vars are set, so
+        # only assert the field shape here; the branches are pinned below.
+        response = self.client.get("/api/v1/handshake/")
+        storage = json.loads(response.content).get("storage")
+        self.assertIsInstance(storage, dict)
+        self.assertIn(storage.get("backend"), {"cloudflare-r2", "local-disk"})
+        self.assertIn("label", storage)
+
+    def test_handshake_reports_local_disk_storage(self):
+        from django.test import override_settings
+        with override_settings(STORAGES={
+            "default": {
+                "BACKEND":
+                    "django.core.files.storage.FileSystemStorage"},
+            "staticfiles": {
+                "BACKEND":
+                    "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+        }):
+            response = self.client.get("/api/v1/handshake/")
+        storage = json.loads(response.content)["storage"]
+        self.assertEqual(storage["backend"], "local-disk")
+        self.assertEqual(storage["label"], "Local disk")
+
+    def test_handshake_reports_r2_when_s3_storage(self):
+        from django.test import override_settings
+        with override_settings(STORAGES={
+            "default": {
+                "BACKEND": "storages.backends.s3boto3.S3Boto3Storage"},
+            "staticfiles": {
+                "BACKEND": "storages.backends.s3boto3.S3Boto3Storage"},
+        }):
+            response = self.client.get("/api/v1/handshake/")
+        self.assertEqual(
+            json.loads(response.content)["storage"]["backend"],
+            "cloudflare-r2")
+
 
 class OauthCallbackAppRoutingTests(TestCase):
     """0.1.128: `oauth_callback` routes its same-tab fallback redirect

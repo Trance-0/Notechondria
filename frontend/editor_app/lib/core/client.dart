@@ -4,6 +4,11 @@ part of notechondria_frontend;
 /// Implements `AuthClient` so the shared `AppShellAuthActionsMixin`
 /// and `AppShellOAuthMixin` can drive the auth endpoints.
 abstract class NotechondriaClient implements AuthClient {
+  /// Probe a candidate backend's `/handshake/` to confirm it is a
+  /// Notechondria backend and read its metadata (version,
+  /// capabilities, storage architecture).
+  Future<HandshakeResult> verifyHandshake(String rawCandidateBaseUrl);
+
   Future<Map<String, dynamic>> getFrontPage({String? token});
   Future<List<Map<String, dynamic>>> getCourses({String? token});
   Future<Map<String, dynamic>> createCourse(
@@ -204,6 +209,7 @@ class HandshakeResult {
     required this.apiVersion,
     required this.version,
     required this.capabilities,
+    this.storageLabel = '',
   });
 
   factory HandshakeResult.success({
@@ -211,6 +217,7 @@ class HandshakeResult {
     required String apiVersion,
     required String version,
     required Map<String, dynamic> capabilities,
+    String storageLabel = '',
   }) =>
       HandshakeResult._(
         ok: true,
@@ -219,6 +226,7 @@ class HandshakeResult {
         apiVersion: apiVersion,
         version: version,
         capabilities: capabilities,
+        storageLabel: storageLabel,
       );
 
   factory HandshakeResult.failure(String message) => HandshakeResult._(
@@ -236,4 +244,9 @@ class HandshakeResult {
   final String apiVersion;
   final String version;
   final Map<String, dynamic> capabilities;
+
+  /// Human label for the backend's media-storage architecture
+  /// (e.g. "Cloudflare R2" / "Local disk"), from the handshake
+  /// `storage.label` field. Empty when the backend predates it.
+  final String storageLabel;
 }

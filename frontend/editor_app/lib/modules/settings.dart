@@ -38,6 +38,7 @@ class _SettingsPage extends StatefulWidget {
     this.onReplayTour,
     this.onSetLocale,
     this.currentLocale,
+    this.onProbeStorageArch,
     this.onOpenLocalRecycleBin,
     this.localTrashedDraftCount = 0,
     this.localTrashedCourseCount = 0,
@@ -152,6 +153,12 @@ class _SettingsPage extends StatefulWidget {
   /// The currently persisted `app_settings['locale']` value, for
   /// preselecting the Language dropdown.
   final String? currentLocale;
+
+  /// Probes the backend handshake and returns its media-storage
+  /// architecture label (e.g. "Cloudflare R2"), or null when offline /
+  /// unavailable. Surfaced by the storage-usage card. Null hides the
+  /// "Backend storage" line.
+  final Future<String?> Function()? onProbeStorageArch;
 
   /// Opens the local recycle-bin browser where the user can restore
   /// drafts / categories that were moved to the client-side trash

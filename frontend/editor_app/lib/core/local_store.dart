@@ -85,6 +85,23 @@ class _LocalAppStore {
   /// has booted on >= 0.1.127 and re-keyed its own namespace. Returns
   /// the number of keys removed. Only deletes the exact legacy keys —
   /// the `notechondria.<app>.*` namespaced keys are untouched.
+  /// Measure the persisted byte size of each local bucket (UTF-8 of
+  /// the stored JSON string) for the storage-usage visualization. The
+  /// session key is excluded (it holds the token; never surfaced).
+  static Future<Map<String, int>> bucketSizes() async {
+    final prefs = await SharedPreferences.getInstance();
+    int sz(String key) => utf8.encode(prefs.getString(key) ?? '').length;
+    return {
+      'Notes (drafts)': sz(_draftsKey),
+      'Categories': sz(_coursesKey),
+      'Cached server data': sz(_cacheKey),
+      'Recycle bin': sz(_trashedDraftsKey) + sz(_trashedCoursesKey),
+      'Debug logs': sz(_logsKey),
+      'Settings': sz(_settingsKey),
+      'Stats': sz(_statsKey),
+    };
+  }
+
   static Future<int> clearLegacyKeys() async {
     final prefs = await SharedPreferences.getInstance();
     var removed = 0;

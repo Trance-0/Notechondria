@@ -215,9 +215,8 @@ class _EditorSettingsPageState extends State<_EditorSettingsPage> {
         for (final opt in kLocaleOptions)
           _PickerOption(
             value: opt.value,
-            label: opt.value == 'system'
-                ? l10n.settingsLanguageSystem
-                : opt.label,
+            label:
+                opt.value == 'system' ? l10n.settingsLanguageSystem : opt.label,
           ),
       ],
     );
@@ -338,6 +337,86 @@ class _BackendSettingsPageState extends State<_BackendSettingsPage> {
 /// Subpage 3 — local data. Download (export `.nchron`) and restore
 /// (import `.nchron`). The two actions are stacked rather than side-
 /// by-side so the labels can stay readable on a phone.
+/// Compact host extracted from an API base URL, for the storage card.
+String _hostOf(Object? rawApiUrl) {
+  final raw = rawApiUrl?.toString().trim() ?? '';
+  if (raw.isEmpty) return '';
+  final uri = Uri.tryParse(raw);
+  return (uri == null || uri.host.isEmpty) ? raw : uri.host;
+}
+
+/// Gathers the async storage inputs (per-bucket sizes, attachment
+/// bytes, backend storage arch) and renders the shared
+/// [StorageUsageCard]. Shown at the top of the Local data subpage.
+class _StorageUsageSection extends StatefulWidget {
+  const _StorageUsageSection({
+    required this.backendHost,
+    this.onProbeStorageArch,
+  });
+
+  final String backendHost;
+  final Future<String?> Function()? onProbeStorageArch;
+
+  @override
+  State<_StorageUsageSection> createState() => _StorageUsageSectionState();
+}
+
+class _StorageUsageSectionState extends State<_StorageUsageSection> {
+  Map<String, int>? _buckets;
+  int _attachmentBytes = 0;
+  String _storageArch = '';
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _gather();
+  }
+
+  Future<void> _gather() async {
+    final buckets = await _LocalAppStore.bucketSizes();
+    var attachmentBytes = 0;
+    try {
+      final store = await LocalAttachmentStore.open();
+      attachmentBytes = await store.totalBytes();
+    } catch (_) {
+      attachmentBytes = 0;
+    }
+    final arch = (await widget.onProbeStorageArch?.call()) ?? '';
+    if (!mounted) return;
+    setState(() {
+      _buckets = buckets;
+      _attachmentBytes = attachmentBytes;
+      _storageArch = arch;
+      _loaded = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Center(
+            child: SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        ),
+      );
+    }
+    return StorageUsageCard(
+      backendHost: widget.backendHost,
+      storageArchLabel: _storageArch,
+      bucketSizes: _buckets ?? const {},
+      attachmentBytes: _attachmentBytes,
+    );
+  }
+}
+
 class _LocalDataPage extends StatelessWidget {
   const _LocalDataPage({required this.parent});
 
@@ -352,6 +431,13 @@ class _LocalDataPage extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           _FeedbackBanner(parent: p),
+          _StorageUsageSection(
+            backendHost: _hostOf(
+              p.widget.apiBaseUrl ?? p.widget.localSettings['api_base_url'],
+            ),
+            onProbeStorageArch: p.widget.onProbeStorageArch,
+          ),
+          const SizedBox(height: 12),
           _SettingsGroupCard(
             children: [
               if (p.widget.onExportLocalData != null)
