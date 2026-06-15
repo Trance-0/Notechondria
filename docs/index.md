@@ -64,6 +64,14 @@ docs.
   `python:3.9.18-bullseye`, so do NOT use PEP 604 unions (`X | Y`) in
   runtime annotations — use `typing.Optional` / `typing.Union`. This
   overrides `AGENTS.md/AGENTS.md` §4.1's "target 3.11+" default.
+- **MCP ⇄ CLI parity (agent-oriented).** There are two MCP servers:
+  the in-backend `/mcp/` ([`backend/mcp/`](../backend/mcp/)) and the
+  standalone CLI ([`cli/`](../cli/)). Every new agent-facing tool or
+  behavior must be implemented in **both** `backend/mcp/tools.py` and
+  `cli/notechondria_mcp/tools.py`, with matching names + input schemas,
+  so the two servers stay interchangeable. They share auth (the `ntc_`
+  API key, one per user). See
+  [`integrations/mcp-cli-migration.md`](integrations/mcp-cli-migration.md).
 ---
 
 ## 1. Repository map

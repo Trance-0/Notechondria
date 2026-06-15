@@ -4,8 +4,27 @@ Proposal to move the Model Context Protocol (MCP) server out of the
 Django backend and into a standalone CLI app that talks to the backend
 over the public `/api/v1/` HTTP surface. Written at 0.1.135.
 
-Status: **proposal only** — no code moved yet. The in-backend
-`/mcp/` endpoint keeps working unchanged until a cutover round.
+Status: **Phase 2 skeleton landed (0.1.138)** — a runnable CLI lives in
+[`cli/`](../../cli/). The in-backend `/mcp/` endpoint keeps working
+unchanged; both servers stay in parity.
+
+## Owner decisions (locked 0.1.138)
+
+- **Keep both.** `/mcp/` (HTTP, in-backend) and the CLI (stdio) both
+  stay — separate endpoints/transports, **shared authentication** (the
+  `ntc_` API key). One API key per user (already the case —
+  `Creator.api_key_hash` is a single field).
+- **Location:** the CLI lives in this repo's [`cli/`](../../cli/)
+  directory for now but is an **independent program** (own
+  `pyproject.toml`, no imports from `backend/`); it may move to its own
+  repo later.
+- **Language:** **Python**.
+- **Cadence:** keep `/mcp/` until further notice (no cutover/deletion
+  yet).
+- **Parity rule (agent-oriented development):** every new tool or
+  behavior is implemented in **both** `backend/mcp/tools.py` and
+  `cli/notechondria_mcp/tools.py`. The two servers must stay
+  interchangeable.
 
 ## 1. Why move it
 
@@ -123,14 +142,20 @@ live until the final cutover.
 1. **Phase 1 — API gap audit.** Map every MCP tool to its `/api/v1/`
    endpoint; add the missing endpoints + the `mcp-skill` read endpoint.
    Backend-only, fully tested. No MCP change.
-2. **Phase 2 — CLI skeleton.** New `notechondria-mcp` package
-   (separate repo or a `cli/` subdir) using the Python `mcp` SDK:
-   config loading, backend client, `initialize` (fetches skill.md),
-   `tools/list`, and a handful of high-value tools (list/get/create/
-   update notes) ported to API calls. Integration-tested against a
-   running backend.
-3. **Phase 3 — full tool parity.** Port the remaining tools; match the
-   existing input schemas so connected agents see no behavior change.
+2. **Phase 2 — CLI skeleton (DONE, 0.1.138).** `notechondria-mcp` in
+   [`cli/`](../../cli/): config loading (env / `~/.notechondria/
+   config.json`), a `requests`-based backend client, a stdio
+   JSON-RPC 2.0 server (`initialize` fetching skill.md, `tools/list`,
+   `tools/call`, `ping`), and a representative tool subset
+   (notes CRUD, courses, planner events) calling `/api/v1/`. Unit-tested
+   without network or an MCP SDK (`python -m unittest discover tests`).
+   The transport is hand-rolled for now (no SDK dependency); it can
+   adopt the official Python `mcp` SDK later without changing the tool
+   layer.
+3. **Phase 3 — full tool parity.** Port the remaining ~33 tools from
+   `backend/mcp/tools.py`; match the existing input schemas so connected
+   agents see no behavior change. (Per the parity rule, future tools
+   land in both servers together.)
 4. **Phase 4 — distribute.** Publish to PyPI (`pip install
    notechondria-mcp`) with a `notechondria-mcp` entry point; document
    the agent-side config (stdio command + env). Optionally ship a
@@ -151,14 +176,13 @@ live until the final cutover.
 - **Distribution surface.** A pip package is a new artifact to release
   and secure; offset by decoupling MCP from the backend deploy.
 
-## 7. Open questions for the owner
+## 7. Open questions — resolved
 
-- Separate repo for `notechondria-mcp`, or a `cli/` subdirectory in
-  this repo?
-- Python (matches backend) or TypeScript (matches the broader MCP
-  ecosystem) for the CLI?
-- Keep `/mcp/` indefinitely as a hosted option, or fully cut over to
-  the CLI?
+All resolved 0.1.138; see "Owner decisions (locked)" at the top:
+`cli/` subdirectory (independent program), Python, both servers kept
+(no cutover yet), shared `ntc_` auth (one key per user), parity rule in
+force. Remaining Phase-1 backend audit + Phase-3 tool parity are tracked
+in `docs/TODO.md`.
 
 ## 8. Related docs
 
