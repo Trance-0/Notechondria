@@ -1,6 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../l10n/app_localizations.dart';
+
+/// Localized display name for a log level (used in the filter chips +
+/// empty states). The log ROWS keep `level.label` (English) so the
+/// structured log line stays greppable.
+String _localizedLevel(AppLocalizations l10n, DebugLogLevel level) {
+  switch (level) {
+    case DebugLogLevel.error:
+      return l10n.logLevelError;
+    case DebugLogLevel.warning:
+      return l10n.logLevelWarning;
+    case DebugLogLevel.info:
+      return l10n.logLevelInfo;
+    case DebugLogLevel.debug:
+      return l10n.logLevelDebug;
+  }
+}
+
 /// Severity label attached to a debug log entry. The splash / settings UI
 /// renders each level with a distinct chip color; the terminal filter chip
 /// row lets the user narrow to a single level.
@@ -479,6 +497,7 @@ class _DebugLogCardState extends State<DebugLogCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final sources = widget.controller.entries
         .map((e) => e.source)
         .where((source) => source.isNotEmpty)
@@ -491,8 +510,8 @@ class _DebugLogCardState extends State<DebugLogCard> {
     final entries =
         widget.controller.entries.where(_passesFilter).toList(growable: false);
     final filterSummary = _sourceFilter == null
-        ? '${_minLevel.label}+ / All sources'
-        : '${_minLevel.label}+ / ${_sourceLabel(_sourceFilter!)}';
+        ? '${_localizedLevel(l10n, _minLevel)}+ / ${l10n.debugAllSources}'
+        : '${_localizedLevel(l10n, _minLevel)}+ / ${_sourceLabel(_sourceFilter!)}';
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -511,7 +530,7 @@ class _DebugLogCardState extends State<DebugLogCard> {
                 TextButton.icon(
                   onPressed: _copyAll,
                   icon: const Icon(Icons.copy_all_outlined),
-                  label: const Text('Copy logs'),
+                  label: Text(l10n.debugCopyLogs),
                 ),
               ],
             ),
@@ -535,7 +554,7 @@ class _DebugLogCardState extends State<DebugLogCard> {
                         ),
                       ),
                     ),
-                    const Text('Filters'),
+                    Text(l10n.debugFilters),
                   ],
                 ),
               ),
@@ -548,7 +567,7 @@ class _DebugLogCardState extends State<DebugLogCard> {
                 children: [
                   for (final level in DebugLogLevel.values)
                     ChoiceChip(
-                      label: Text(level.label),
+                      label: Text(_localizedLevel(l10n, level)),
                       selected: _minLevel == level,
                       onSelected: (_) => setState(() => _minLevel = level),
                       labelStyle: TextStyle(color: _levelColor(theme, level)),
@@ -562,7 +581,7 @@ class _DebugLogCardState extends State<DebugLogCard> {
                   runSpacing: 6,
                   children: [
                     ChoiceChip(
-                      label: const Text('All sources'),
+                      label: Text(l10n.debugAllSources),
                       selected: _sourceFilter == null,
                       onSelected: (_) => setState(() => _sourceFilter = null),
                     ),
@@ -584,8 +603,9 @@ class _DebugLogCardState extends State<DebugLogCard> {
                   ? Center(
                       child: Text(
                         widget.controller.entries.isEmpty
-                            ? 'No frontend logs captured yet.'
-                            : 'No entries at ${_minLevel.label} or above.',
+                            ? l10n.debugNoLogs
+                            : l10n.debugNoEntriesAtLevel(
+                                _localizedLevel(l10n, _minLevel)),
                       ),
                     )
                   : ListView.builder(

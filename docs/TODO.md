@@ -80,10 +80,21 @@ English (US) + Chinese (Simplified), a Language setting in each app
   Only a demonstrative string set is translated so far — the bulk of
   the editor's strings still need migrating to ARB keys (carry into a
   Phase 1b or fold into Phase 4).
-- [ ] **Phase 1b — migrate the editor's remaining strings to ARB.**
-  ~130 editor `Text('...')` / label / dialog strings still hardcoded
-  English. Replace with `AppLocalizations.of(context)` keys + zh
-  translations, screen by screen.
+- [~] **Phase 1b — editor strings → ARB (in progress).** 0.1.140
+  translated the editor settings surface (menu tiles + subpage titles +
+  rows + caption), the shared debug-log **menu** chrome, and added the
+  `AppLocalizations` delegate to planner/portal so shared widgets
+  localize. Remaining editor strings (note editor, learner view,
+  dialogs/snackbars) still need migrating screen by screen.
+- [ ] **Phase 2/3 — planner + portal strings + Language setting.**
+  planner/portal currently follow the device locale only (no in-app
+  Language picker). Add the Language row (via the shared
+  `AppPreferencesCard`, which itself still has hardcoded "Language" /
+  "View tutorial" strings to localize) and translate their app strings.
+- [ ] **Phase 4 — remaining shared widgets.** Localize onboarding tour,
+  what's-new overlay, install banner, auth dialogs, error state,
+  mcp-skill section. (Log OUTPUT lines + terminal command I/O stay
+  English by design — greppable per AGENTS.md §1.8.)
 - [ ] **Phase 2 — planner strings.** Translate planner UI; reuse the
   shared catalog for common strings.
 - [ ] **Phase 3 — portal strings.** Translate portal UI.

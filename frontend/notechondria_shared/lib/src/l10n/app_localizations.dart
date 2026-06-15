@@ -133,6 +133,192 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Done'**
   String get commonDone;
+
+  /// No description provided for @commonCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get commonCancel;
+
+  /// No description provided for @commonBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get commonBack;
+
+  /// No description provided for @commonNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get commonNext;
+
+  /// No description provided for @settingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsTitle;
+
+  /// No description provided for @settingsEditorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Editor settings'**
+  String get settingsEditorTitle;
+
+  /// No description provided for @settingsEditorSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Default editor mode, theme preset, theme mode.'**
+  String get settingsEditorSubtitle;
+
+  /// No description provided for @settingsViewTutorial.
+  ///
+  /// In en, this message translates to:
+  /// **'View tutorial'**
+  String get settingsViewTutorial;
+
+  /// No description provided for @settingsViewTutorialSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Replay the quick intro tour.'**
+  String get settingsViewTutorialSubtitle;
+
+  /// No description provided for @settingsBackendTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Backend settings'**
+  String get settingsBackendTitle;
+
+  /// No description provided for @settingsLocalDataTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Local data'**
+  String get settingsLocalDataTitle;
+
+  /// No description provided for @settingsLocalDataSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Download or restore the local archive, reset the starter categories.'**
+  String get settingsLocalDataSubtitle;
+
+  /// No description provided for @settingsRecycleBinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recycle bin'**
+  String get settingsRecycleBinTitle;
+
+  /// No description provided for @settingsDeveloperTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Developer'**
+  String get settingsDeveloperTitle;
+
+  /// No description provided for @settingsDeveloperSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin-only actions: restore the remote three-course template catalog.'**
+  String get settingsDeveloperSubtitle;
+
+  /// No description provided for @settingsPersonalInfoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal information'**
+  String get settingsPersonalInfoTitle;
+
+  /// No description provided for @settingsSecurityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in & security'**
+  String get settingsSecurityTitle;
+
+  /// No description provided for @settingsApiTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'API settings'**
+  String get settingsApiTitle;
+
+  /// No description provided for @settingsImmediateSaveCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'Each change is saved and persisted immediately — no Save button needed in this menu.'**
+  String get settingsImmediateSaveCaption;
+
+  /// No description provided for @settingsDefaultEditorMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Default editor mode'**
+  String get settingsDefaultEditorMode;
+
+  /// No description provided for @settingsThemePreset.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme preset'**
+  String get settingsThemePreset;
+
+  /// No description provided for @settingsThemeMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme mode'**
+  String get settingsThemeMode;
+
+  /// No description provided for @debugLogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Debug log'**
+  String get debugLogTitle;
+
+  /// No description provided for @debugCopyLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy logs'**
+  String get debugCopyLogs;
+
+  /// No description provided for @debugFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Filters'**
+  String get debugFilters;
+
+  /// No description provided for @debugAllSources.
+  ///
+  /// In en, this message translates to:
+  /// **'All sources'**
+  String get debugAllSources;
+
+  /// No description provided for @debugNoLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'No frontend logs captured yet.'**
+  String get debugNoLogs;
+
+  /// No description provided for @debugNoEntriesAtLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'No entries at {level} or above.'**
+  String debugNoEntriesAtLevel(String level);
+
+  /// No description provided for @logLevelError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error'**
+  String get logLevelError;
+
+  /// No description provided for @logLevelWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Warning'**
+  String get logLevelWarning;
+
+  /// No description provided for @logLevelInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Info'**
+  String get logLevelInfo;
+
+  /// No description provided for @logLevelDebug.
+  ///
+  /// In en, this message translates to:
+  /// **'Debug'**
+  String get logLevelDebug;
 }
 
 class _AppLocalizationsDelegate

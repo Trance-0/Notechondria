@@ -1,9 +1,45 @@
 {
   "@@locale": "zh",
   "languageName": "简体中文",
+
   "settingsLanguage": "语言",
   "settingsLanguageSystem": "跟随系统",
+
   "commonSkip": "跳过",
   "commonClose": "关闭",
-  "commonDone": "完成"
+  "commonDone": "完成",
+  "commonCancel": "取消",
+  "commonBack": "返回",
+  "commonNext": "下一步",
+
+  "settingsTitle": "设置",
+  "settingsEditorTitle": "编辑器设置",
+  "settingsEditorSubtitle": "默认编辑模式、主题配色、主题模式。",
+  "settingsViewTutorial": "查看教程",
+  "settingsViewTutorialSubtitle": "重新播放快速入门导览。",
+  "settingsBackendTitle": "后端设置",
+  "settingsLocalDataTitle": "本地数据",
+  "settingsLocalDataSubtitle": "下载或恢复本地存档，重置初始分类。",
+  "settingsRecycleBinTitle": "回收站",
+  "settingsDeveloperTitle": "开发者",
+  "settingsDeveloperSubtitle": "仅管理员操作：恢复远端三门课程的模板目录。",
+  "settingsPersonalInfoTitle": "个人信息",
+  "settingsSecurityTitle": "登录与安全",
+  "settingsApiTitle": "API 设置",
+  "settingsImmediateSaveCaption": "每项更改都会立即保存——此菜单无需保存按钮。",
+  "settingsDefaultEditorMode": "默认编辑模式",
+  "settingsThemePreset": "主题配色",
+  "settingsThemeMode": "主题模式",
+
+  "debugLogTitle": "调试日志",
+  "debugCopyLogs": "复制日志",
+  "debugFilters": "筛选",
+  "debugAllSources": "全部来源",
+  "debugNoLogs": "尚未捕获前端日志。",
+  "debugNoEntriesAtLevel": "没有 {level} 及以上级别的条目。",
+
+  "logLevelError": "错误",
+  "logLevelWarning": "警告",
+  "logLevelInfo": "信息",
+  "logLevelDebug": "调试"
 }

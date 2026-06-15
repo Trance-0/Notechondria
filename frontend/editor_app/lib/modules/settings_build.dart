@@ -314,7 +314,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
         children: [
           DebugLogCard(
             controller: controller,
-            title: 'Debug log',
+            title: AppLocalizations.of(context).debugLogTitle,
             summary: summary,
             onCopyLogs: widget.onCopyLogs,
             onPing: () => pingBackend(widget.apiBaseUrl),
@@ -331,7 +331,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Debug log',
+              AppLocalizations.of(context).debugLogTitle,
               style: Theme.of(context)
                   .textTheme
                   .titleMedium

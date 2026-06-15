@@ -1,9 +1,48 @@
 {
   "@@locale": "en",
   "languageName": "English",
+
   "settingsLanguage": "Language",
   "settingsLanguageSystem": "System default",
+
   "commonSkip": "Skip",
   "commonClose": "Close",
-  "commonDone": "Done"
+  "commonDone": "Done",
+  "commonCancel": "Cancel",
+  "commonBack": "Back",
+  "commonNext": "Next",
+
+  "settingsTitle": "Settings",
+  "settingsEditorTitle": "Editor settings",
+  "settingsEditorSubtitle": "Default editor mode, theme preset, theme mode.",
+  "settingsViewTutorial": "View tutorial",
+  "settingsViewTutorialSubtitle": "Replay the quick intro tour.",
+  "settingsBackendTitle": "Backend settings",
+  "settingsLocalDataTitle": "Local data",
+  "settingsLocalDataSubtitle": "Download or restore the local archive, reset the starter categories.",
+  "settingsRecycleBinTitle": "Recycle bin",
+  "settingsDeveloperTitle": "Developer",
+  "settingsDeveloperSubtitle": "Admin-only actions: restore the remote three-course template catalog.",
+  "settingsPersonalInfoTitle": "Personal information",
+  "settingsSecurityTitle": "Sign in & security",
+  "settingsApiTitle": "API settings",
+  "settingsImmediateSaveCaption": "Each change is saved and persisted immediately — no Save button needed in this menu.",
+  "settingsDefaultEditorMode": "Default editor mode",
+  "settingsThemePreset": "Theme preset",
+  "settingsThemeMode": "Theme mode",
+
+  "debugLogTitle": "Debug log",
+  "debugCopyLogs": "Copy logs",
+  "debugFilters": "Filters",
+  "debugAllSources": "All sources",
+  "debugNoLogs": "No frontend logs captured yet.",
+  "debugNoEntriesAtLevel": "No entries at {level} or above.",
+  "@debugNoEntriesAtLevel": {
+    "placeholders": { "level": { "type": "String" } }
+  },
+
+  "logLevelError": "Error",
+  "logLevelWarning": "Warning",
+  "logLevelInfo": "Info",
+  "logLevelDebug": "Debug"
 }

@@ -45,6 +45,11 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
     return MaterialApp(
       title: widget.title,
       debugShowCheckedModeBanner: false,
+      // 0.1.140: shared widgets (debug log, etc.) localize via
+      // AppLocalizations. Planner follows the device locale for now;
+      // a Language setting comes in a later i18n phase.
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       themeMode: _themeMode,
       theme: ThemeData(
         useMaterial3: true,

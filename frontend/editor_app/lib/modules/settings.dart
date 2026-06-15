@@ -709,6 +709,7 @@ class _SettingsPageState extends State<_SettingsPage> {
   /// destructive and shouldn't sit one extra tap away.
   Widget _buildSettingsMenu(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
     final recoverableCount =
         widget.localTrashedDraftCount + widget.localTrashedCourseCount;
     return Card(
@@ -717,10 +718,8 @@ class _SettingsPageState extends State<_SettingsPage> {
         children: [
           ListTile(
             leading: const Icon(Icons.edit_outlined),
-            title: const Text('Editor settings'),
-            subtitle: const Text(
-              'Default editor mode, theme preset, theme mode.',
-            ),
+            title: Text(l10n.settingsEditorTitle),
+            subtitle: Text(l10n.settingsEditorSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
               Navigator.of(context).push(
@@ -734,15 +733,15 @@ class _SettingsPageState extends State<_SettingsPage> {
             const Divider(height: 0, indent: 16, endIndent: 16),
             ListTile(
               leading: const Icon(Icons.school_outlined),
-              title: const Text('View tutorial'),
-              subtitle: const Text('Replay the quick intro tour.'),
+              title: Text(l10n.settingsViewTutorial),
+              subtitle: Text(l10n.settingsViewTutorialSubtitle),
               onTap: widget.onReplayTour,
             ),
           ],
           const Divider(height: 0, indent: 16, endIndent: 16),
           ListTile(
             leading: const Icon(Icons.cloud_outlined),
-            title: const Text('Backend settings'),
+            title: Text(l10n.settingsBackendTitle),
             subtitle: Text(
               widget.localSettings['offline_mode'] == true
                   ? 'Offline mode is on. API URL: '
@@ -763,11 +762,8 @@ class _SettingsPageState extends State<_SettingsPage> {
           const Divider(height: 0, indent: 16, endIndent: 16),
           ListTile(
             leading: const Icon(Icons.folder_outlined),
-            title: const Text('Local data'),
-            subtitle: const Text(
-              'Download or restore the local archive, reset the '
-              'starter categories.',
-            ),
+            title: Text(l10n.settingsLocalDataTitle),
+            subtitle: Text(l10n.settingsLocalDataSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
               Navigator.of(context).push(
@@ -780,7 +776,7 @@ class _SettingsPageState extends State<_SettingsPage> {
           const Divider(height: 0, indent: 16, endIndent: 16),
           ListTile(
             leading: const Icon(Icons.delete_outline),
-            title: const Text('Recycle bin'),
+            title: Text(l10n.settingsRecycleBinTitle),
             subtitle: Text(
               '$recoverableCount synced draft(s) recoverable, '
               '${widget.deletedNotes.length} cloud note(s) trashed.',
@@ -800,11 +796,8 @@ class _SettingsPageState extends State<_SettingsPage> {
               Icons.science_outlined,
               color: Theme.of(context).colorScheme.tertiary,
             ),
-            title: const Text('Developer'),
-            subtitle: const Text(
-              'Admin-only actions: restore the remote three-course '
-              'template catalog.',
-            ),
+            title: Text(l10n.settingsDeveloperTitle),
+            subtitle: Text(l10n.settingsDeveloperSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
               Navigator.of(context).push(
