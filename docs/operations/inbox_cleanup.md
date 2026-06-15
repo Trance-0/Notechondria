@@ -14,8 +14,11 @@ root-cause writeup.
 `backend/courses/management/commands/cleanup_inbox_courses.py`:
 
 - Targets every `Course` titled "Inbox" (case-insensitive) with a
-  non-null `creator_id`. Ownerless / public-catalog rows are never
-  touched.
+  non-null `creator_id`. Ownerless / public-catalog rows are skipped
+  by default; pass `--include-ownerless` to also remove orphaned
+  `creator_id IS NULL` "Inbox" rows (a placeholder left behind when
+  its creator was deleted via `SET_NULL` can still carry subscriptions
+  and render as a duplicate Inbox for subscribers).
 - Re-parents each course's notes to `course_id = NULL` (so they land
   in the uncategorized bucket — no note is lost; `Note.course_id` is
   `on_delete=SET_NULL`), then deletes the course.
@@ -31,8 +34,15 @@ root-cause writeup.
 # From backend/ with the Django env active (DJANGO_SETTINGS_MODULE set):
 python manage.py cleanup_inbox_courses --dry-run    # report only, no changes
 python manage.py cleanup_inbox_courses --limit 100  # process at most 100
-python manage.py cleanup_inbox_courses              # full sweep
+python manage.py cleanup_inbox_courses              # full sweep (owned only)
+python manage.py cleanup_inbox_courses --include-ownerless  # + orphan rows
 ```
+
+To run from a local machine against a remote database, point
+`DATABASE_URL` (repo-root `.env`, auto-loaded by `settings.py`) at the
+remote Postgres and use `DJANGO_SETTINGS_MODULE=notechondria.settings`.
+On 2026-06-14 this removed one orphaned ownerless `Inbox` row
+(`slug=inbox-7`, 0 notes, 1 subscription) from the live database.
 
 Output reports the number of notes re-parented and courses removed.
 

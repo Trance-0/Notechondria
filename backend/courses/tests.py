@@ -76,13 +76,22 @@ class CleanupInboxCoursesCommandTests(TestCase):
         self.assertEqual(
             Course.objects.filter(title__iexact="inbox").count(), 0)
 
-    def test_ignores_ownerless_inbox(self):
-        # A public-catalog row with no creator must be left alone.
+    def test_ignores_ownerless_inbox_by_default(self):
+        # A row with no creator must be left alone unless opted in.
         ownerless = Course.objects.create(
             creator_id=None, slug="public-inbox", title="Inbox",
         )
         call_command("cleanup_inbox_courses")
         self.assertTrue(Course.objects.filter(pk=ownerless.pk).exists())
+
+    def test_include_ownerless_removes_orphan_inbox(self):
+        ownerless = Course.objects.create(
+            creator_id=None, slug="orphan-inbox", title="Inbox",
+        )
+        owned = self._course("Inbox", "alice-inbox")
+        call_command("cleanup_inbox_courses", "--include-ownerless")
+        self.assertFalse(Course.objects.filter(pk=ownerless.pk).exists())
+        self.assertFalse(Course.objects.filter(pk=owned.pk).exists())
 
     def test_limit_caps_deletions(self):
         for i in range(3):

@@ -18,7 +18,11 @@ Behaviour
 ---------
 * Targets every ``Course`` whose title is "Inbox" (case-insensitive)
   **and** that belongs to a creator (``creator_id IS NOT NULL``). It
-  never touches ownerless / public-catalog rows.
+  never touches ownerless / public-catalog rows — unless
+  ``--include-ownerless`` is passed, which also sweeps orphaned
+  ``creator_id IS NULL`` "Inbox" rows (e.g. a placeholder left behind
+  when its creator was deleted via ``SET_NULL``; such a row can still
+  carry subscriptions and render as a duplicate Inbox for subscribers).
 * Notes attached to a deleted Inbox course are first re-parented to
   ``course_id = NULL`` (explicit ``UPDATE`` so the moved count is
   exact and the data move does not depend on the cascade), then the
@@ -68,15 +72,24 @@ class Command(BaseCommand):
             default=0,
             help="Process at most N Inbox courses (0 = no limit).",
         )
+        parser.add_argument(
+            "--include-ownerless",
+            action="store_true",
+            help=(
+                "Also remove orphaned creator_id IS NULL 'Inbox' rows "
+                "(default: owned rows only)."
+            ),
+        )
 
     def handle(self, *args, **options):
         dry_run = options["dry_run"]
         limit = options["limit"] or 0
+        include_ownerless = options["include_ownerless"]
 
-        qs = Course.objects.filter(
-            title__iexact="inbox",
-            creator_id__isnull=False,
-        ).select_related("creator_id__user_id").order_by("id")
+        qs = Course.objects.filter(title__iexact="inbox")
+        if not include_ownerless:
+            qs = qs.filter(creator_id__isnull=False)
+        qs = qs.select_related("creator_id__user_id").order_by("id")
         if limit > 0:
             qs = qs[:limit]
 
