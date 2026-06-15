@@ -169,6 +169,17 @@ first boot it takes priority over the What's-New / install nudges.
 
 ### MCP
 
+- [ ] **Migrate MCP to a standalone CLI app.** Proposal landed in
+  [`docs/integrations/mcp-cli-migration.md`](integrations/mcp-cli-migration.md)
+  (0.1.135). Move the `/mcp/` server out of Django into a
+  `notechondria-mcp` CLI that calls `/api/v1/` with the `ntc_` key.
+  Five phases: (1) API gap audit + expose `mcp_skill_md` over the API
+  + fix the stale auth header in `docs/server/mcp.md`; (2) CLI
+  skeleton (Python `mcp` SDK); (3) full tool parity; (4) PyPI
+  distribute; (5) cutover + delete `backend/mcp/`. Owner decisions
+  open: separate repo vs `cli/`, Python vs TypeScript, keep `/mcp/`
+  hosted or fully cut over.
+
 ### GitHub Sync
 
 - [ ] **Push-side conflict resolution.** The Contents API PUTs in

@@ -47,6 +47,7 @@
 - [GitHub App Integration](integrations/github_app_integration.md)
 - [GitHub Sync (experimental)](integrations/github-sync.md)
 - [Casdoor migration plan](integrations/casdoor-migration.md)
+- [MCP → CLI migration proposal](integrations/mcp-cli-migration.md)
 - [Casdoor login setup runbook](integrations/casdoor-setup.md)
 
 # Operations
@@ -64,6 +65,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.135 - MCP → standalone CLI migration proposal](versions/0.1.135.md)
 - [0.1.134 - planner Activity view works offline (no sign-in required)](versions/0.1.134.md)
 - [0.1.133 - i18n Phase 1: infrastructure + editor language switcher](versions/0.1.133.md)
 - [0.1.132 - i18n plan + architecture doc](versions/0.1.132.md)
