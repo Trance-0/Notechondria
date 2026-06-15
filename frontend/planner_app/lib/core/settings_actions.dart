@@ -339,10 +339,17 @@ extension _AppShellSettingsActionsX on _AppShellState {
 
   Future<void> _loadActivityWeek({DateTime? startDate}) async {
     final token = _token;
+    final effectiveStart = _dateOnly(startDate ?? _activityWeekStart);
     if (token == null || token.isEmpty) {
+      // Signed out: there is no per-week server data, so render the
+      // offline activity board built from local planner events instead
+      // of no-op'ing (which left the Activity view blank when navigating
+      // weeks offline).
+      _activityWeekStart = effectiveStart;
+      _activityWeek = _buildOfflineActivityWeek();
+      refreshState();
       return;
     }
-    final effectiveStart = _dateOnly(startDate ?? _activityWeekStart);
     try {
       final week = await widget.client.getActivityWeek(
         token,

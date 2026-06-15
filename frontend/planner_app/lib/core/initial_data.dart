@@ -220,9 +220,16 @@ extension _AppShellInitialDataX on _AppShellState {
         errors.add(error.toString().replaceFirst('Exception: ', ''));
       }
     } else {
-      plannerEvents = const [];
+      // Signed out: planner events live locally (seeded on first run +
+      // created offline), so KEEP them — `plannerEvents` is already the
+      // locally-loaded list — and render the activity board from them
+      // offline-first instead of blanking it. Earlier builds set
+      // `plannerEvents = const []` and `activityWeek = null` here, which
+      // wiped the cache loaded at boot and made the Activity view
+      // sign-in-only. Cloud-only data (calendar feeds, server recycle
+      // bin, cloud notes) has no local equivalent and is still cleared.
       calendarFeeds = const [];
-      activityWeek = null;
+      activityWeek = _buildOfflineActivityWeek();
       deletedNotes = const [];
       learnerNotes = const [];
       notePage = const {
