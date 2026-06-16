@@ -11,13 +11,14 @@ part of notechondria_frontend;
 extension _AppShellBuildHelpersX on _AppShellState {
   /// Compact (mobile/narrow) layout with a hamburger drawer for navigation.
   Widget _buildCompactScaffold(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     // Show current folder/category name instead of app title.
     String compactTitle;
     if (_selectedIndex == 1) {
       if (_selectedCategoryId != null) {
         compactTitle = _selectedCourse?['title']?.toString() ?? 'Category';
       } else {
-        compactTitle = 'All Notes';
+        compactTitle = l10n.navAllNotes;
       }
     } else {
       compactTitle = widget.appTitle;
@@ -30,7 +31,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
         leading: Builder(
           builder: (ctx) => IconButton(
             icon: const Icon(Icons.menu),
-            tooltip: 'Navigation',
+            tooltip: l10n.navNavigation,
             onPressed: () => Scaffold.of(ctx).openDrawer(),
           ),
         ),
@@ -46,7 +47,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: SidebarItem(
                   icon: Icons.menu_book_outlined,
-                  label: 'All Notes',
+                  label: l10n.navAllNotes,
                   selected: _selectedIndex == 1 && _selectedCategoryId == null,
                   onTap: () {
                     Navigator.of(context).pop(); // close drawer
@@ -74,7 +75,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
                         children: [
                           Expanded(
                             child: Text(
-                              'Categories',
+                              l10n.navCategories,
                               style: Theme.of(context)
                                   .textTheme
                                   .titleSmall
@@ -160,7 +161,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
                             padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
                             child: SidebarItem(
                               icon: Icons.add_circle_outline,
-                              label: 'New category',
+                              label: l10n.navNewCategory,
                               selected: false,
                               onTap: () {
                                 Navigator.of(context).pop();
@@ -180,7 +181,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: SidebarItem(
                     icon: Icons.add_circle_outline,
-                    label: 'New category',
+                    label: l10n.navNewCategory,
                     selected: false,
                     onTap: () {
                       Navigator.of(context).pop();
@@ -195,7 +196,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
                 child: SidebarItem(
                   icon: Icons.settings_outlined,
-                  label: 'Settings',
+                  label: l10n.navSettings,
                   selected: _selectedIndex == 4,
                   onTap: () {
                     Navigator.of(context).pop();
@@ -237,6 +238,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
 
   /// Wide (horizontal) layout with category sidebar.
   Widget _buildWideScaffold(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       body: SafeArea(
@@ -259,7 +261,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: SidebarItem(
                       icon: Icons.menu_book_outlined,
-                      label: 'All Notes',
+                      label: l10n.navAllNotes,
                       selected:
                           _selectedIndex == 1 && _selectedCategoryId == null,
                       onTap: () {
@@ -288,7 +290,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
                             children: [
                               Expanded(
                                 child: Text(
-                                  'Categories',
+                                  l10n.navCategories,
                                   style: Theme.of(context)
                                       .textTheme
                                       .titleSmall
@@ -385,7 +387,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
                                     const EdgeInsets.fromLTRB(12, 4, 12, 8),
                                 child: SidebarItem(
                                   icon: Icons.add_circle_outline,
-                                  label: 'New category',
+                                  label: l10n.navNewCategory,
                                   selected: false,
                                   onTap: _promptCreateCategory,
                                 ),
@@ -402,7 +404,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: SidebarItem(
                         icon: Icons.add_circle_outline,
-                        label: 'New category',
+                        label: l10n.navNewCategory,
                         selected: false,
                         onTap: _promptCreateCategory,
                       ),
@@ -414,7 +416,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
                     child: SidebarItem(
                       icon: Icons.settings_outlined,
-                      label: 'Settings',
+                      label: l10n.navSettings,
                       selected: _selectedIndex == 4,
                       onTap: () => _selectActualIndex(4),
                     ),
@@ -449,6 +451,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
   }
 
   Widget _buildBody() {
+    final l10n = AppLocalizations.of(context);
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 250),
       child: SelectionArea(
@@ -477,14 +480,14 @@ extension _AppShellBuildHelpersX on _AppShellState {
                       ),
                       TextButton(
                           onPressed: _loadInitialData,
-                          child: const Text('Retry')),
+                          child: Text(l10n.commonRetry)),
                       IconButton(
                         onPressed: () {
                           _errorMessage = null;
                           refreshState();
                         },
                         icon: const Icon(Icons.close),
-                        tooltip: 'Dismiss',
+                        tooltip: l10n.commonDismiss,
                       ),
                     ],
                   ),

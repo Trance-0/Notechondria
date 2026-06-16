@@ -264,46 +264,51 @@ class _LearnerPageState extends State<_LearnerPage> {
   }
 
   String _searchHint(String scope) {
+    final l10n = AppLocalizations.of(context);
     if (!widget.isAuthenticated) {
-      return 'Search local drafts';
+      return l10n.feedSearchLocalDrafts;
     }
     switch (scope) {
       case 'local':
-        return 'Search local drafts';
+        return l10n.feedSearchLocalDrafts;
       case 'private':
-        return 'Search your private notes';
+        return l10n.feedSearchPrivate;
       case 'public':
-        return 'Search your public notes';
+        return l10n.feedSearchPublic;
       case 'personal':
       default:
-        return 'Search your notes';
+        return l10n.feedSearchNotes;
     }
   }
 
   String _cloudSectionLabel(String scope) {
+    final l10n = AppLocalizations.of(context);
     switch (scope) {
       case 'private':
-        return 'Your private notes';
+        return l10n.feedYourPrivateNotes;
       case 'public':
-        return 'Your public notes';
+        return l10n.feedYourPublicNotes;
       case 'personal':
       default:
-        return widget.isAuthenticated ? 'Recent notes' : 'Public notes';
+        return widget.isAuthenticated
+            ? l10n.feedRecentNotes
+            : l10n.feedPublicNotes;
     }
   }
 
   String _emptyCloudCopy(String scope) {
+    final l10n = AppLocalizations.of(context);
     if (!widget.isAuthenticated) {
-      return 'No notes yet. Use the add button to create a local draft.';
+      return l10n.feedEmptyAnon;
     }
     switch (scope) {
       case 'private':
-        return 'No private notes yet.';
+        return l10n.feedEmptyPrivate;
       case 'public':
-        return 'No public notes yet.';
+        return l10n.feedEmptyPublic;
       case 'personal':
       default:
-        return 'No cloud notes yet. Use the add button to create one.';
+        return l10n.feedEmptyPersonal;
     }
   }
 
@@ -313,17 +318,19 @@ class _LearnerPageState extends State<_LearnerPage> {
   /// see "Public notes" + "Local drafts only" because personal /
   /// private require a signed-in identity.
   List<DropdownMenuItem<String>> _buildScopeItems() {
+    final l10n = AppLocalizations.of(context);
     if (widget.isAuthenticated) {
-      return const [
-        DropdownMenuItem(value: 'personal', child: Text('Personal notes')),
-        DropdownMenuItem(value: 'private', child: Text('Private notes')),
-        DropdownMenuItem(value: 'public', child: Text('Public notes')),
-        DropdownMenuItem(value: 'local', child: Text('Local drafts only')),
+      return [
+        DropdownMenuItem(
+            value: 'personal', child: Text(l10n.feedScopePersonal)),
+        DropdownMenuItem(value: 'private', child: Text(l10n.feedScopePrivate)),
+        DropdownMenuItem(value: 'public', child: Text(l10n.feedScopePublic)),
+        DropdownMenuItem(value: 'local', child: Text(l10n.feedScopeLocalOnly)),
       ];
     }
-    return const [
-      DropdownMenuItem(value: 'all', child: Text('Public notes')),
-      DropdownMenuItem(value: 'local', child: Text('Local drafts only')),
+    return [
+      DropdownMenuItem(value: 'all', child: Text(l10n.feedScopePublic)),
+      DropdownMenuItem(value: 'local', child: Text(l10n.feedScopeLocalOnly)),
     ];
   }
 
@@ -338,9 +345,12 @@ class _LearnerPageState extends State<_LearnerPage> {
         ),
         Offset.zero & overlay.size,
       ),
-      items: const [
-        PopupMenuItem(value: 'new', child: Text('Create note')),
-        PopupMenuItem(value: 'import', child: Text('Import markdown or zip')),
+      items: [
+        PopupMenuItem(
+            value: 'new', child: Text(AppLocalizations.of(context).feedComposerCreate)),
+        PopupMenuItem(
+            value: 'import',
+            child: Text(AppLocalizations.of(context).feedComposerImport)),
       ],
     );
     if (selected == 'import') {
@@ -352,6 +362,7 @@ class _LearnerPageState extends State<_LearnerPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final localDrafts = _visibleLocalDrafts();
     // When the user opens a locally-created category, public/personal
     // cloud notes are unrelated to it, so we force the filter to
@@ -387,7 +398,7 @@ class _LearnerPageState extends State<_LearnerPage> {
               child: Row(
                 children: [
                   Text(
-                    'Show:',
+                    l10n.feedShowLabel,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   const SizedBox(width: 12),
@@ -414,8 +425,7 @@ class _LearnerPageState extends State<_LearnerPage> {
                   if (widget.isLocalCourseSelected) ...[
                     const SizedBox(width: 8),
                     Tooltip(
-                      message: 'Local categories only contain local drafts. '
-                          'Switch to a synced category to filter cloud notes.',
+                      message: l10n.feedLocalCategoryWarning,
                       child: Icon(
                         Icons.info_outline,
                         size: 18,
@@ -440,7 +450,7 @@ class _LearnerPageState extends State<_LearnerPage> {
                         children: [
                           Expanded(
                             child: Text(
-                              'Unsynced local drafts',
+                              l10n.feedUnsyncedDrafts,
                               style: Theme.of(context)
                                   .textTheme
                                   .titleMedium
@@ -452,14 +462,12 @@ class _LearnerPageState extends State<_LearnerPage> {
                               widget.onSyncAllLocalDrafts();
                             },
                             icon: const Icon(Icons.cloud_upload_outlined),
-                            label: const Text('Sync all'),
+                            label: Text(l10n.feedSyncAll),
                           ),
                         ],
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'Local drafts stay private by default. Sync uploads them as private cloud notes.',
-                      ),
+                      Text(l10n.feedSyncHelp),
                     ],
                   ),
                 ),
@@ -471,7 +479,7 @@ class _LearnerPageState extends State<_LearnerPage> {
                     effectiveScope == 'local' ||
                     effectiveScope == 'personal')) ...[
               Text(
-                'Local drafts',
+                l10n.feedLocalDrafts,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 12),
@@ -509,13 +517,10 @@ class _LearnerPageState extends State<_LearnerPage> {
               if (widget.notes.isEmpty &&
                   localDrafts.isNotEmpty &&
                   widget.isAuthenticated)
-                const Card(
+                Card(
                   child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text(
-                      'No matching cloud notes yet. Sync a local draft or '
-                      'create a new note.',
-                    ),
+                    padding: const EdgeInsets.all(16),
+                    child: Text(l10n.feedEmptyCloudMatch),
                   ),
                 ),
               if (widget.offlineMode && widget.notes.isEmpty)
@@ -524,7 +529,7 @@ class _LearnerPageState extends State<_LearnerPage> {
                   child: OutlinedButton.icon(
                     onPressed: widget.onLoadPublicNotes,
                     icon: const Icon(Icons.cloud_download_outlined),
-                    label: const Text('Load public notes'),
+                    label: Text(l10n.feedLoadPublicNotes),
                   ),
                 ),
               for (var i = 0; i < widget.notes.length; i++)
@@ -546,10 +551,8 @@ class _LearnerPageState extends State<_LearnerPage> {
                   padding: const EdgeInsets.all(16),
                   child: Text(
                     widget.isLocalCourseSelected
-                        ? 'No local drafts in this offline category yet. '
-                            'Use the add button to create one.'
-                        : 'No local drafts yet. Use the add button to '
-                            'create one.',
+                        ? l10n.feedEmptyLocalCategory
+                        : l10n.feedEmptyLocal,
                   ),
                 ),
               ),
@@ -560,8 +563,8 @@ class _LearnerPageState extends State<_LearnerPage> {
           bottom: 24,
           child: Tooltip(
             message: widget.isAuthenticated
-                ? 'Create note. Long press to import markdown.'
-                : 'Create a local draft. Long press to import markdown.',
+                ? l10n.feedFabImport
+                : l10n.feedFabImportLocal,
             child: GestureDetector(
               onLongPress: () {
                 widget.onImportMarkdown();

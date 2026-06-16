@@ -65,6 +65,8 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.141 - i18n Phase 1c: navigation + home feed translated](versions/0.1.141.md)
+- [0.1.140 - i18n Phase 1b: editor settings + debug-log menu translated](versions/0.1.140.md)
 - [0.1.139 - splash particle density scales with screen size](versions/0.1.139.md)
 - [0.1.138 - standalone MCP CLI skeleton (cli/) — Phase 2](versions/0.1.138.md)
 - [0.1.137 - cleanup_inbox_courses --include-ownerless + live DB sweep](versions/0.1.137.md)

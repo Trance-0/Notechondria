@@ -152,6 +152,324 @@ abstract class AppLocalizations {
   /// **'Next'**
   String get commonNext;
 
+  /// No description provided for @commonSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get commonSave;
+
+  /// No description provided for @commonCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get commonCreate;
+
+  /// No description provided for @commonDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get commonDelete;
+
+  /// No description provided for @commonRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get commonRetry;
+
+  /// No description provided for @commonDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get commonDismiss;
+
+  /// No description provided for @commonEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get commonEdit;
+
+  /// No description provided for @commonExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get commonExport;
+
+  /// No description provided for @commonRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get commonRestore;
+
+  /// No description provided for @commonRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get commonRemove;
+
+  /// No description provided for @commonChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get commonChange;
+
+  /// No description provided for @commonChoose.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose'**
+  String get commonChoose;
+
+  /// No description provided for @navNavigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Navigation'**
+  String get navNavigation;
+
+  /// No description provided for @navAllNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'All Notes'**
+  String get navAllNotes;
+
+  /// No description provided for @navCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'Categories'**
+  String get navCategories;
+
+  /// No description provided for @navNewCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'New category'**
+  String get navNewCategory;
+
+  /// No description provided for @navSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get navSettings;
+
+  /// No description provided for @categoryUnsubscribe.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsubscribe'**
+  String get categoryUnsubscribe;
+
+  /// No description provided for @categoryEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit category'**
+  String get categoryEditTitle;
+
+  /// No description provided for @categorySubscribedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribed category'**
+  String get categorySubscribedTitle;
+
+  /// No description provided for @categoryNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Category name'**
+  String get categoryNameLabel;
+
+  /// No description provided for @categoryIconLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Icon:'**
+  String get categoryIconLabel;
+
+  /// No description provided for @categoryDeleteHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleting moves all notes to the default category.'**
+  String get categoryDeleteHelp;
+
+  /// No description provided for @categorySubscribedHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'This category is published by another user. Renaming, icon changes and deletion are only available to the owner. You can still unsubscribe to remove it from your sidebar.'**
+  String get categorySubscribedHelp;
+
+  /// No description provided for @feedSearchLocalDrafts.
+  ///
+  /// In en, this message translates to:
+  /// **'Search local drafts'**
+  String get feedSearchLocalDrafts;
+
+  /// No description provided for @feedSearchPrivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Search your private notes'**
+  String get feedSearchPrivate;
+
+  /// No description provided for @feedSearchPublic.
+  ///
+  /// In en, this message translates to:
+  /// **'Search your public notes'**
+  String get feedSearchPublic;
+
+  /// No description provided for @feedSearchNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Search your notes'**
+  String get feedSearchNotes;
+
+  /// No description provided for @feedYourPrivateNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Your private notes'**
+  String get feedYourPrivateNotes;
+
+  /// No description provided for @feedYourPublicNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Your public notes'**
+  String get feedYourPublicNotes;
+
+  /// No description provided for @feedRecentNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent notes'**
+  String get feedRecentNotes;
+
+  /// No description provided for @feedPublicNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Public notes'**
+  String get feedPublicNotes;
+
+  /// No description provided for @feedEmptyAnon.
+  ///
+  /// In en, this message translates to:
+  /// **'No notes yet. Use the add button to create a local draft.'**
+  String get feedEmptyAnon;
+
+  /// No description provided for @feedEmptyPrivate.
+  ///
+  /// In en, this message translates to:
+  /// **'No private notes yet.'**
+  String get feedEmptyPrivate;
+
+  /// No description provided for @feedEmptyPublic.
+  ///
+  /// In en, this message translates to:
+  /// **'No public notes yet.'**
+  String get feedEmptyPublic;
+
+  /// No description provided for @feedEmptyPersonal.
+  ///
+  /// In en, this message translates to:
+  /// **'No cloud notes yet. Use the add button to create one.'**
+  String get feedEmptyPersonal;
+
+  /// No description provided for @feedScopePersonal.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal notes'**
+  String get feedScopePersonal;
+
+  /// No description provided for @feedScopePrivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Private notes'**
+  String get feedScopePrivate;
+
+  /// No description provided for @feedScopePublic.
+  ///
+  /// In en, this message translates to:
+  /// **'Public notes'**
+  String get feedScopePublic;
+
+  /// No description provided for @feedScopeLocalOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Local drafts only'**
+  String get feedScopeLocalOnly;
+
+  /// No description provided for @feedComposerCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create note'**
+  String get feedComposerCreate;
+
+  /// No description provided for @feedComposerImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import markdown or zip'**
+  String get feedComposerImport;
+
+  /// No description provided for @feedShowLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Show:'**
+  String get feedShowLabel;
+
+  /// No description provided for @feedLocalCategoryWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Local categories only contain local drafts. Switch to a synced category to filter cloud notes.'**
+  String get feedLocalCategoryWarning;
+
+  /// No description provided for @feedUnsyncedDrafts.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsynced local drafts'**
+  String get feedUnsyncedDrafts;
+
+  /// No description provided for @feedSyncAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync all'**
+  String get feedSyncAll;
+
+  /// No description provided for @feedSyncHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Local drafts stay private by default. Sync uploads them as private cloud notes.'**
+  String get feedSyncHelp;
+
+  /// No description provided for @feedLocalDrafts.
+  ///
+  /// In en, this message translates to:
+  /// **'Local drafts'**
+  String get feedLocalDrafts;
+
+  /// No description provided for @feedEmptyCloudMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching cloud notes yet. Sync a local draft or create a new note.'**
+  String get feedEmptyCloudMatch;
+
+  /// No description provided for @feedLoadPublicNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Load public notes'**
+  String get feedLoadPublicNotes;
+
+  /// No description provided for @feedEmptyLocalCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'No local drafts in this offline category yet. Use the add button to create one.'**
+  String get feedEmptyLocalCategory;
+
+  /// No description provided for @feedEmptyLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'No local drafts yet. Use the add button to create one.'**
+  String get feedEmptyLocal;
+
+  /// No description provided for @feedFabImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Create note. Long press to import markdown.'**
+  String get feedFabImport;
+
+  /// No description provided for @feedFabImportLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a local draft. Long press to import markdown.'**
+  String get feedFabImportLocal;
+
   /// No description provided for @settingsTitle.
   ///
   /// In en, this message translates to:

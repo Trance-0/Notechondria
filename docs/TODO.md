@@ -80,12 +80,19 @@ English (US) + Chinese (Simplified), a Language setting in each app
   Only a demonstrative string set is translated so far — the bulk of
   the editor's strings still need migrating to ARB keys (carry into a
   Phase 1b or fold into Phase 4).
-- [~] **Phase 1b — editor strings → ARB (in progress).** 0.1.140
+- [~] **Phase 1b/1c — editor strings → ARB (in progress).** 0.1.140
   translated the editor settings surface (menu tiles + subpage titles +
   rows + caption), the shared debug-log **menu** chrome, and added the
   `AppLocalizations` delegate to planner/portal so shared widgets
-  localize. Remaining editor strings (note editor, learner view,
-  dialogs/snackbars) still need migrating screen by screen.
+  localize. 0.1.141 translated the always-visible surfaces — the
+  navigation/shell (drawer + rail labels, error bar, category dialogs)
+  and the home/notes feed (`learner.dart`: search hints, section
+  headers, empty states, scope dropdown, composer menu, sync card, FAB
+  tooltips) — and added `editor_app/test/locale_switch_test.dart`
+  proving the switch renders Chinese at runtime (the mechanism was
+  always sound; the gap was coverage). Remaining editor strings (note
+  editor toolbar/menus/hints, note viewer + metadata/export dialogs,
+  auth dialogs, snackbars) still need migrating screen by screen.
 - [ ] **Phase 2/3 — planner + portal strings + Language setting.**
   planner/portal currently follow the device locale only (no in-app
   Language picker). Add the Language row (via the shared

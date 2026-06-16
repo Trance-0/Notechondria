@@ -548,24 +548,26 @@ class _CreateCategoryDialogState extends State<_CreateCategoryDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AlertDialog(
-      title: const Text('New category'),
+      title: Text(l10n.navNewCategory),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           TextField(
             controller: widget.controller,
             autofocus: true,
-            decoration: const InputDecoration(
-              labelText: 'Category name',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: l10n.categoryNameLabel,
+              border: const OutlineInputBorder(),
             ),
             onSubmitted: (_) => _submit(),
           ),
           const SizedBox(height: 16),
           Row(
             children: [
-              Text('Icon:', style: Theme.of(context).textTheme.bodyMedium),
+              Text(l10n.categoryIconLabel,
+                  style: Theme.of(context).textTheme.bodyMedium),
               const SizedBox(width: 12),
               ActionChip(
                 avatar: Icon(
@@ -574,7 +576,9 @@ class _CreateCategoryDialogState extends State<_CreateCategoryDialog> {
                       : Icons.folder_outlined,
                   size: 20,
                 ),
-                label: Text(_selectedIcon != null ? 'Change' : 'Choose'),
+                label: Text(_selectedIcon != null
+                    ? l10n.commonChange
+                    : l10n.commonChoose),
                 onPressed: () async {
                   final picked = await _showIconPickerDialog(
                     context,
@@ -590,11 +594,11 @@ class _CreateCategoryDialogState extends State<_CreateCategoryDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(l10n.commonCancel),
         ),
         FilledButton(
           onPressed: _submit,
-          child: const Text('Create'),
+          child: Text(l10n.commonCreate),
         ),
       ],
     );
@@ -638,9 +642,11 @@ class _EditCategoryDialogState extends State<_EditCategoryDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final isOwned = widget.isOwned;
     return AlertDialog(
-      title: Text(isOwned ? 'Edit category' : 'Subscribed category'),
+      title: Text(
+          isOwned ? l10n.categoryEditTitle : l10n.categorySubscribedTitle),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -649,16 +655,17 @@ class _EditCategoryDialogState extends State<_EditCategoryDialog> {
             TextField(
               controller: widget.controller,
               autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Category name',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.categoryNameLabel,
+                border: const OutlineInputBorder(),
               ),
               onSubmitted: (_) => _save(),
             ),
             const SizedBox(height: 16),
             Row(
               children: [
-                Text('Icon:', style: Theme.of(context).textTheme.bodyMedium),
+                Text(l10n.categoryIconLabel,
+                    style: Theme.of(context).textTheme.bodyMedium),
                 const SizedBox(width: 12),
                 ActionChip(
                   avatar: Icon(
@@ -667,7 +674,9 @@ class _EditCategoryDialogState extends State<_EditCategoryDialog> {
                         : Icons.school_outlined,
                     size: 20,
                   ),
-                  label: Text(_selectedIcon != null ? 'Change' : 'Choose'),
+                  label: Text(_selectedIcon != null
+                      ? l10n.commonChange
+                      : l10n.commonChoose),
                   onPressed: () async {
                     final picked = await _showIconPickerDialog(
                       context,
@@ -682,7 +691,7 @@ class _EditCategoryDialogState extends State<_EditCategoryDialog> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Deleting moves all notes to the default category.',
+              l10n.categoryDeleteHelp,
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ] else ...[
@@ -692,9 +701,7 @@ class _EditCategoryDialogState extends State<_EditCategoryDialog> {
             ),
             const SizedBox(height: 12),
             Text(
-              'This category is published by another user. Renaming, '
-              'icon changes and deletion are only available to the owner. '
-              'You can still unsubscribe to remove it from your sidebar.',
+              l10n.categorySubscribedHelp,
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -703,7 +710,7 @@ class _EditCategoryDialogState extends State<_EditCategoryDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(l10n.commonCancel),
         ),
         if (isOwned)
           TextButton(
@@ -711,7 +718,7 @@ class _EditCategoryDialogState extends State<_EditCategoryDialog> {
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(context).colorScheme.error,
             ),
-            child: const Text('Delete'),
+            child: Text(l10n.commonDelete),
           )
         else
           TextButton(
@@ -720,12 +727,12 @@ class _EditCategoryDialogState extends State<_EditCategoryDialog> {
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(context).colorScheme.error,
             ),
-            child: const Text('Unsubscribe'),
+            child: Text(l10n.categoryUnsubscribe),
           ),
         if (isOwned)
           FilledButton(
             onPressed: _save,
-            child: const Text('Save'),
+            child: Text(l10n.commonSave),
           ),
       ],
     );
