@@ -77,6 +77,7 @@ class _LocalAppStore {
     return {
       'theme_preset': 'teal',
       'theme_mode': 'S',
+      'locale': 'system',
       'api_base_url': _defaultApiBaseUrl(),
       'offline_mode': false,
       'updated_at': DateTime.now().toUtc().toIso8601String(),

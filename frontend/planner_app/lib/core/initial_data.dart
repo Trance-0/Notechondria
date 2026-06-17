@@ -14,6 +14,9 @@ extension _AppShellInitialDataX on _AppShellState {
       _localSettings['theme_preset']?.toString() ?? 'teal',
       _localSettings['theme_mode']?.toString() ?? 'S',
     );
+    widget.onLocaleChanged?.call(
+      _localSettings['locale']?.toString() ?? 'system',
+    );
 
     var courses = List<Map<String, dynamic>>.from(_courses);
     var activity = List<Map<String, dynamic>>.from(_activity);

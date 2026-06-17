@@ -43,9 +43,25 @@ extension _AppShellSettingsHelpersX on _AppShellState {
       _localSettings['theme_preset']?.toString() ?? 'teal',
       _localSettings['theme_mode']?.toString() ?? 'S',
     );
+    widget.onLocaleChanged?.call(
+      _localSettings['locale']?.toString() ?? 'system',
+    );
     if (persist) {
       await persistLocalSettings();
     }
+  }
+
+  /// Apply + persist a Language change immediately (mirrors the editor's
+  /// `_setLocale`). `_applyLocalAppSettings` fires `onLocaleChanged`,
+  /// rebuilding `MaterialApp` with the new locale.
+  Future<void> _setLocale(String locale) async {
+    await _applyLocalAppSettings({'locale': locale});
+    log(
+      level: DebugLogLevel.info,
+      source: 'Portal.Sync.Settings/locale',
+      message: 'Language changed: Portal.Sync.Settings/locale — '
+          'app locale set to "$locale".',
+    );
   }
 
   /// Toggles the offline-mode flag. Persists via

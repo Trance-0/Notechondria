@@ -290,6 +290,11 @@ class _PortalPreferencesPage extends StatefulWidget {
 }
 
 class _PortalPreferencesPageState extends State<_PortalPreferencesPage> {
+  /// Local echo of the picked Language so the row updates immediately;
+  /// the parent's `currentLocale` only refreshes on the next app-shell
+  /// rebuild. Mirrors the editor's `_localeOverride`.
+  String? _localeOverride;
+
   @override
   Widget build(BuildContext context) {
     final p = widget.parent;
@@ -348,6 +353,30 @@ class _PortalPreferencesPageState extends State<_PortalPreferencesPage> {
                     }
                   },
                 ),
+                if (p.widget.onSetLocale != null) ...[
+                  const Divider(height: 0, indent: 16, endIndent: 16),
+                  ListTile(
+                    leading: const Icon(Icons.language_outlined),
+                    title: Text(AppLocalizations.of(context).prefsLanguage),
+                    subtitle: Text(_localeLabel(
+                      context,
+                      _localeOverride ?? p.widget.currentLocale ?? 'system',
+                    )),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () async {
+                      final current = _localeOverride ??
+                          p.widget.currentLocale ??
+                          'system';
+                      final picked = await _pickLocale(context, current);
+                      if (picked != null) {
+                        await p.widget.onSetLocale!(picked);
+                        if (mounted) {
+                          setState(() => _localeOverride = picked);
+                        }
+                      }
+                    },
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 12),
@@ -424,6 +453,33 @@ class _PortalPreferencesPageState extends State<_PortalPreferencesPage> {
       ],
       tooltip: 'Match system follows the device-level Light/Dark '
           'toggle. Light and Dark override the system choice.',
+    );
+  }
+
+  String _localeLabel(BuildContext context, String value) {
+    if (value == 'system') {
+      return AppLocalizations.of(context).settingsLanguageSystem;
+    }
+    for (final opt in kLocaleOptions) {
+      if (opt.value == value) return opt.label;
+    }
+    return value;
+  }
+
+  Future<String?> _pickLocale(BuildContext context, String current) {
+    final l10n = AppLocalizations.of(context);
+    return _pickFromList<String>(
+      context,
+      title: l10n.prefsLanguage,
+      current: current,
+      options: [
+        for (final opt in kLocaleOptions)
+          _PickerOption(
+            value: opt.value,
+            label:
+                opt.value == 'system' ? l10n.settingsLanguageSystem : opt.label,
+          ),
+      ],
     );
   }
 }

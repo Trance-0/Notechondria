@@ -65,6 +65,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.143 - i18n Phase 2/3: Language setting in planner + portal](versions/0.1.143.md)
 - [0.1.142 - share-link deep-link fix + i18n note viewer/editor menus](versions/0.1.142.md)
 - [0.1.141 - i18n Phase 1c: navigation + home feed translated](versions/0.1.141.md)
 - [0.1.140 - i18n Phase 1b: editor settings + debug-log menu translated](versions/0.1.140.md)

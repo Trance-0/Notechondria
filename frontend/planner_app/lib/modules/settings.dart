@@ -39,6 +39,8 @@ class _SettingsPage extends StatefulWidget {
     this.onSaveMcpSkill,
     this.githubSyncCardBuilder,
     this.onReplayTour,
+    this.currentLocale,
+    this.onSetLocale,
   });
 
   final Map<String, dynamic>? profile;
@@ -64,6 +66,14 @@ class _SettingsPage extends StatefulWidget {
   /// Replays the first-run onboarding tour from the App preferences
   /// card. Null hides the row.
   final VoidCallback? onReplayTour;
+
+  /// Persisted Language value ('system' | 'en' | 'zh') and the
+  /// apply-immediately callback. When both are non-null the App
+  /// preferences card renders a Language dropdown; picking a value
+  /// fires `onSetLocale`, which persists `locale` and rebuilds the
+  /// `MaterialApp` with the new locale (mirrors the editor).
+  final String? currentLocale;
+  final Future<void> Function(String locale)? onSetLocale;
 
   /// Triggers Casdoor SSO. Null in shadow mode (no `CASDOOR_*` env
   /// vars). See `docs/integrations/casdoor-migration.md`.
@@ -530,6 +540,13 @@ class _SettingsPageState extends State<_SettingsPage> {
                   onEditorModeChanged: (v) => setState(() => _editorMode = v),
                   onThemePresetChanged: (v) => setState(() => _themePreset = v),
                   onThemeModeChanged: (v) => setState(() => _themeMode = v),
+                  currentLocale: widget.onSetLocale == null
+                      ? null
+                      : (widget.localSettings['locale']?.toString() ??
+                          'system'),
+                  onLocaleChanged: widget.onSetLocale == null
+                      ? null
+                      : (v) => widget.onSetLocale!(v),
                   onReplayTour: widget.onReplayTour,
                   offlineMode: widget.onOfflineModeChanged == null
                       ? null

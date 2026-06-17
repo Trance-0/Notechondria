@@ -264,6 +264,60 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get prefsDefaultEditor => 'Default editor';
+
+  @override
+  String get prefsEditorPlain => 'Plain text editor';
+
+  @override
+  String get prefsEditorMarkdown => 'Live markdown editor';
+
+  @override
+  String get prefsThemePreset => 'Theme preset';
+
+  @override
+  String get prefsThemeMode => 'Theme mode';
+
+  @override
+  String get prefsThemeModeSystem => 'System';
+
+  @override
+  String get prefsThemeModeLight => 'Light';
+
+  @override
+  String get prefsThemeModeDark => 'Dark';
+
+  @override
+  String get prefsLanguage => 'Language';
+
+  @override
+  String get prefsOfflineMode => 'Offline mode';
+
+  @override
+  String get prefsOfflineModeSubtitle =>
+      'Skip remote fetches at startup. The app renders from the local cache only — sign-in and explicit cloud pulls still work on demand.';
+
+  @override
+  String get prefsViewTutorial => 'View tutorial';
+
+  @override
+  String get prefsViewTutorialSubtitle => 'Replay the quick intro tour.';
+
+  @override
+  String get prefsApiBaseUrl => 'API base URL';
+
+  @override
+  String get prefsApiBaseLockTooltip =>
+      'Log out before changing the API base URL. A logged-in token is only valid against its issuing backend.';
+
+  @override
+  String get prefsApiBaseLocked => 'Locked while signed in. Log out to change.';
+
+  @override
+  String get prefsApiBaseHelper =>
+      'Include the `/api/v1` suffix. The app will auto-append it if missing, but pasting the full URL is safer.';
+
+  @override
   String get settingsTitle => 'Settings';
 
   @override

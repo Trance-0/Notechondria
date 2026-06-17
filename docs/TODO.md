@@ -95,11 +95,15 @@ English (US) + Chinese (Simplified), a Language setting in each app
   hints, and the private-note/load-error dialogs. Remaining editor
   strings (note metadata/export dialog, live-markdown paragraph
   placeholders, misc snackbars) still need migrating screen by screen.
-- [ ] **Phase 2/3 — planner + portal strings + Language setting.**
-  planner/portal currently follow the device locale only (no in-app
-  Language picker). Add the Language row (via the shared
-  `AppPreferencesCard`, which itself still has hardcoded "Language" /
-  "View tutorial" strings to localize) and translate their app strings.
+- [~] **Phase 2/3 — planner + portal Language setting (0.1.143).**
+  Both apps now have a working in-app Language picker (System / English
+  / 简体中文): locale state + persistence + `MaterialApp.locale` +
+  apply-immediately `_setLocale` mirror the editor; planner via the
+  shared `AppPreferencesCard` (now fully localized + a new Language
+  row), portal via a Language row in its preferences subpage. Locale
+  tests added for both. **Remaining:** translate the rest of the planner
+  / portal app strings (nav, screens, dialogs) — only the shared
+  settings/preferences surface is localized so far.
 - [ ] **Phase 4 — remaining shared widgets.** Localize onboarding tour,
   what's-new overlay, install banner, auth dialogs, error state,
   mcp-skill section. (Log OUTPUT lines + terminal command I/O stay

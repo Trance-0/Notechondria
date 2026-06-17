@@ -255,6 +255,58 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get prefsDefaultEditor => '默认编辑器';
+
+  @override
+  String get prefsEditorPlain => '纯文本编辑器';
+
+  @override
+  String get prefsEditorMarkdown => '实时 Markdown 编辑器';
+
+  @override
+  String get prefsThemePreset => '主题配色';
+
+  @override
+  String get prefsThemeMode => '主题模式';
+
+  @override
+  String get prefsThemeModeSystem => '跟随系统';
+
+  @override
+  String get prefsThemeModeLight => '浅色';
+
+  @override
+  String get prefsThemeModeDark => '深色';
+
+  @override
+  String get prefsLanguage => '语言';
+
+  @override
+  String get prefsOfflineMode => '离线模式';
+
+  @override
+  String get prefsOfflineModeSubtitle =>
+      '启动时跳过远程获取。应用仅从本地缓存渲染——登录和手动云端拉取仍可按需使用。';
+
+  @override
+  String get prefsViewTutorial => '查看教程';
+
+  @override
+  String get prefsViewTutorialSubtitle => '重新播放快速入门导览。';
+
+  @override
+  String get prefsApiBaseUrl => 'API 基础地址';
+
+  @override
+  String get prefsApiBaseLockTooltip => '更改 API 基础地址前请先登出。已登录的令牌只对其签发的后端有效。';
+
+  @override
+  String get prefsApiBaseLocked => '登录期间已锁定。登出后可更改。';
+
+  @override
+  String get prefsApiBaseHelper => '请包含 `/api/v1` 后缀。应用会在缺失时自动追加，但直接粘贴完整地址更稳妥。';
+
+  @override
   String get settingsTitle => '设置';
 
   @override

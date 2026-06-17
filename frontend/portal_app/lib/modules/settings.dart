@@ -48,6 +48,8 @@ class _SettingsPage extends StatefulWidget {
     this.onExportLocalData,
     this.onRestoreFromLocalImport,
     this.onReplayTour,
+    this.currentLocale,
+    this.onSetLocale,
   });
 
   final Map<String, dynamic>? profile;
@@ -71,6 +73,14 @@ class _SettingsPage extends StatefulWidget {
   /// Replays the first-run onboarding tour from the settings menu.
   /// Null hides the row.
   final VoidCallback? onReplayTour;
+
+  /// Persisted Language value ('system' | 'en' | 'zh') and the
+  /// apply-immediately callback. When both are non-null the Portal
+  /// preferences subpage renders a Language row; picking a value fires
+  /// `onSetLocale`, which persists `locale` and rebuilds the
+  /// `MaterialApp` with the new locale (mirrors the editor).
+  final String? currentLocale;
+  final Future<void> Function(String locale)? onSetLocale;
 
   /// Triggers Casdoor SSO. Null in shadow mode (no `CASDOOR_*` env
   /// vars). See `docs/integrations/casdoor-migration.md`.

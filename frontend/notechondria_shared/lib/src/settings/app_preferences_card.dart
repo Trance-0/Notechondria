@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
+import '../utils/locale_options.dart';
+
 /// Shared theme-preset catalog. Keys are persisted; values are display
 /// labels surfaced in the preset dropdown.
 const Map<String, String> kThemePresetEntries = {
@@ -50,6 +53,8 @@ class AppPreferencesCard extends StatelessWidget {
     this.apiBaseHelperText,
     this.extrasBuilder,
     this.onReplayTour,
+    this.currentLocale,
+    this.onLocaleChanged,
   });
 
   final String editorMode;
@@ -84,8 +89,16 @@ class AppPreferencesCard extends StatelessWidget {
   /// first-run onboarding tour. Null hides the row.
   final VoidCallback? onReplayTour;
 
+  /// Persisted Language value ('system' | 'en' | 'zh'). When both this
+  /// and [onLocaleChanged] are non-null, a Language dropdown is rendered
+  /// after the theme row. Apps that don't expose an in-app Language
+  /// picker (and just follow the device locale) leave both null.
+  final String? currentLocale;
+  final ValueChanged<String>? onLocaleChanged;
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -94,15 +107,17 @@ class AppPreferencesCard extends StatelessWidget {
           items: kEditorModes
               .map((entry) => DropdownMenuItem<String>(
                     value: entry.key,
-                    child: Text(entry.value),
+                    child: Text(entry.key == 'P'
+                        ? l10n.prefsEditorPlain
+                        : l10n.prefsEditorMarkdown),
                   ))
               .toList(),
           onChanged: (value) {
             if (value != null) onEditorModeChanged(value);
           },
-          decoration: const InputDecoration(
-            labelText: 'Default editor',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.prefsDefaultEditor,
+            border: const OutlineInputBorder(),
           ),
         ),
         const SizedBox(height: 12),
@@ -120,9 +135,9 @@ class AppPreferencesCard extends StatelessWidget {
                 onChanged: (value) {
                   if (value != null) onThemePresetChanged(value);
                 },
-                decoration: const InputDecoration(
-                  labelText: 'Theme preset',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.prefsThemePreset,
+                  border: const OutlineInputBorder(),
                 ),
               ),
             ),
@@ -130,33 +145,56 @@ class AppPreferencesCard extends StatelessWidget {
             Expanded(
               child: DropdownButtonFormField<String>(
                 initialValue: themeMode,
-                items: const [
-                  DropdownMenuItem(value: 'S', child: Text('System')),
-                  DropdownMenuItem(value: 'L', child: Text('Light')),
-                  DropdownMenuItem(value: 'D', child: Text('Dark')),
+                items: [
+                  DropdownMenuItem(
+                      value: 'S', child: Text(l10n.prefsThemeModeSystem)),
+                  DropdownMenuItem(
+                      value: 'L', child: Text(l10n.prefsThemeModeLight)),
+                  DropdownMenuItem(
+                      value: 'D', child: Text(l10n.prefsThemeModeDark)),
                 ],
                 onChanged: (value) {
                   if (value != null) onThemeModeChanged(value);
                 },
-                decoration: const InputDecoration(
-                  labelText: 'Theme mode',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.prefsThemeMode,
+                  border: const OutlineInputBorder(),
                 ),
               ),
             ),
           ],
         ),
+        if (currentLocale != null && onLocaleChanged != null) ...[
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            initialValue: kLocaleOptions.any((o) => o.value == currentLocale)
+                ? currentLocale
+                : 'system',
+            items: [
+              for (final opt in kLocaleOptions)
+                DropdownMenuItem<String>(
+                  value: opt.value,
+                  child: Text(opt.value == 'system'
+                      ? l10n.settingsLanguageSystem
+                      : opt.label),
+                ),
+            ],
+            onChanged: (value) {
+              if (value != null) onLocaleChanged!(value);
+            },
+            decoration: InputDecoration(
+              labelText: l10n.prefsLanguage,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+        ],
         if (offlineMode != null && onOfflineModeChanged != null) ...[
           const SizedBox(height: 12),
           SwitchListTile.adaptive(
             value: offlineMode!,
             onChanged: onOfflineModeChanged,
-            title: const Text('Offline mode'),
-            subtitle: const Text(
-              'Skip remote fetches at startup. The app renders from the '
-              'local cache only — sign-in and explicit cloud pulls still '
-              'work on demand.',
-            ),
+            title: Text(l10n.prefsOfflineMode),
+            subtitle: Text(l10n.prefsOfflineModeSubtitle),
             contentPadding: EdgeInsets.zero,
           ),
         ],
@@ -169,22 +207,19 @@ class AppPreferencesCard extends StatelessWidget {
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.school_outlined),
-            title: const Text('View tutorial'),
-            subtitle: const Text('Replay the quick intro tour.'),
+            title: Text(l10n.prefsViewTutorial),
+            subtitle: Text(l10n.prefsViewTutorialSubtitle),
             onTap: onReplayTour,
           ),
         ],
         const SizedBox(height: 12),
         Tooltip(
-          message: isAuthenticated
-              ? 'Log out before changing the API base URL. A logged-in '
-                  'token is only valid against its issuing backend.'
-              : '',
+          message: isAuthenticated ? l10n.prefsApiBaseLockTooltip : '',
           child: TextField(
             controller: apiBaseController,
             enabled: !isAuthenticated,
             decoration: InputDecoration(
-              labelText: 'API base URL',
+              labelText: l10n.prefsApiBaseUrl,
               // Default hint shows a full example so users know both
               // the scheme and the required `/api/v1` suffix. Callers
               // can override via `apiBaseHintText` if they ship a
@@ -192,11 +227,8 @@ class AppPreferencesCard extends StatelessWidget {
               hintText:
                   apiBaseHintText ?? 'https://your-backend.example.com/api/v1',
               helperText: isAuthenticated
-                  ? 'Locked while signed in. Log out to change.'
-                  : (apiBaseHelperText ??
-                      'Include the `/api/v1` suffix. The app will '
-                          'auto-append it if missing, but pasting the '
-                          'full URL is safer.'),
+                  ? l10n.prefsApiBaseLocked
+                  : (apiBaseHelperText ?? l10n.prefsApiBaseHelper),
               border: const OutlineInputBorder(),
             ),
           ),

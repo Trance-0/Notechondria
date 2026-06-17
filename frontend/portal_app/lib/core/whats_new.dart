@@ -34,6 +34,13 @@ const _kFeatureUpdates = <FeatureUpdate>[
         'the browser won’t evict.',
     icon: Icons.add_to_home_screen,
   ),
+  FeatureUpdate(
+    version: '0.1.143',
+    title: 'Choose your language',
+    description: 'Settings now has a Language row — switch the portal '
+        'between English and 简体中文, or follow your device default.',
+    icon: Icons.language_outlined,
+  ),
 ];
 
 extension _AppShellWhatsNewX on _AppShellState {

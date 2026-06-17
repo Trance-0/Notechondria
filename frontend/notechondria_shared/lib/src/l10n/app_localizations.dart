@@ -578,6 +578,108 @@ abstract class AppLocalizations {
   /// **'Could not load note: {reason}'**
   String noteLoadError(String reason);
 
+  /// No description provided for @prefsDefaultEditor.
+  ///
+  /// In en, this message translates to:
+  /// **'Default editor'**
+  String get prefsDefaultEditor;
+
+  /// No description provided for @prefsEditorPlain.
+  ///
+  /// In en, this message translates to:
+  /// **'Plain text editor'**
+  String get prefsEditorPlain;
+
+  /// No description provided for @prefsEditorMarkdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Live markdown editor'**
+  String get prefsEditorMarkdown;
+
+  /// No description provided for @prefsThemePreset.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme preset'**
+  String get prefsThemePreset;
+
+  /// No description provided for @prefsThemeMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme mode'**
+  String get prefsThemeMode;
+
+  /// No description provided for @prefsThemeModeSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get prefsThemeModeSystem;
+
+  /// No description provided for @prefsThemeModeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get prefsThemeModeLight;
+
+  /// No description provided for @prefsThemeModeDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get prefsThemeModeDark;
+
+  /// No description provided for @prefsLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get prefsLanguage;
+
+  /// No description provided for @prefsOfflineMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline mode'**
+  String get prefsOfflineMode;
+
+  /// No description provided for @prefsOfflineModeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip remote fetches at startup. The app renders from the local cache only — sign-in and explicit cloud pulls still work on demand.'**
+  String get prefsOfflineModeSubtitle;
+
+  /// No description provided for @prefsViewTutorial.
+  ///
+  /// In en, this message translates to:
+  /// **'View tutorial'**
+  String get prefsViewTutorial;
+
+  /// No description provided for @prefsViewTutorialSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Replay the quick intro tour.'**
+  String get prefsViewTutorialSubtitle;
+
+  /// No description provided for @prefsApiBaseUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'API base URL'**
+  String get prefsApiBaseUrl;
+
+  /// No description provided for @prefsApiBaseLockTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Log out before changing the API base URL. A logged-in token is only valid against its issuing backend.'**
+  String get prefsApiBaseLockTooltip;
+
+  /// No description provided for @prefsApiBaseLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Locked while signed in. Log out to change.'**
+  String get prefsApiBaseLocked;
+
+  /// No description provided for @prefsApiBaseHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Include the `/api/v1` suffix. The app will auto-append it if missing, but pasting the full URL is safer.'**
+  String get prefsApiBaseHelper;
+
   /// No description provided for @settingsTitle.
   ///
   /// In en, this message translates to:

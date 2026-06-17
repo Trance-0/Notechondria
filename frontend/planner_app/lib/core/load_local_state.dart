@@ -58,6 +58,9 @@ extension _AppShellLoadLocalStateX on _AppShellState {
       _localSettings['theme_preset']?.toString() ?? 'teal',
       _localSettings['theme_mode']?.toString() ?? 'S',
     );
+    widget.onLocaleChanged?.call(
+      _localSettings['locale']?.toString() ?? 'system',
+    );
     if (mounted) {
       refreshState();
     }

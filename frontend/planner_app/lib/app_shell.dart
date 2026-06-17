@@ -23,6 +23,12 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
   String _themePreset = 'teal';
   ThemeMode _themeMode = ThemeMode.system;
 
+  /// Resolved app locale. `null` follows the device locale (the
+  /// `system` setting); a non-null value is the user's explicit
+  /// Language choice. Driven from `_localSettings['locale']` via
+  /// `onLocaleChanged`, mirroring the theme plumbing.
+  Locale? _locale;
+
   /// See editor_app/lib/app_shell.dart for the full write-up. Short
   /// version: constructing `HttpNotechondriaClient()` inline in
   /// `build()` makes every `setState` (e.g. theme change) replace the
@@ -39,15 +45,21 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
     });
   }
 
+  void _handleLocaleChanged(String locale) {
+    setState(() {
+      _locale = resolveLocale(locale);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final seedColor = _themeSeed(_themePreset);
     return MaterialApp(
       title: widget.title,
       debugShowCheckedModeBanner: false,
-      // 0.1.140: shared widgets (debug log, etc.) localize via
-      // AppLocalizations. Planner follows the device locale for now;
-      // a Language setting comes in a later i18n phase.
+      // Shared widgets localize via AppLocalizations. `_locale` is the
+      // user's Language choice (null = follow device).
+      locale: _locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       themeMode: _themeMode,
@@ -69,6 +81,7 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
       home: AppShell(
         client: _client,
         onThemeChanged: _handleThemeChanged,
+        onLocaleChanged: _handleLocaleChanged,
         initialIndex: widget.initialIndex,
         appTitle: widget.title,
         visibleIndices: widget.visibleIndices,
@@ -83,6 +96,7 @@ class AppShell extends StatefulWidget {
     super.key,
     required this.client,
     this.onThemeChanged,
+    this.onLocaleChanged,
     this.initialIndex = 0,
     this.appTitle = 'Notechondria',
     this.visibleIndices = const <int>[0, 1, 2, 3, 4],
@@ -90,6 +104,10 @@ class AppShell extends StatefulWidget {
 
   final NotechondriaClient client;
   final void Function(String preset, String mode)? onThemeChanged;
+
+  /// Called with the persisted `app_settings['locale']` value so the
+  /// root `MaterialApp` can rebuild with the chosen locale.
+  final void Function(String locale)? onLocaleChanged;
   final int initialIndex;
   final String appTitle;
   final List<int> visibleIndices;
@@ -783,6 +801,8 @@ class _AppShellState extends State<AppShell>
           onLogout: logout,
           onLogin: login,
           onReplayTour: _replayOnboarding,
+          currentLocale: _localSettings['locale']?.toString() ?? 'system',
+          onSetLocale: _setLocale,
           casdoorOrgLoginUrl: _casdoorOrgLoginUrl,
           onCasdoorLogin: () => launchOAuth('casdoor', intent: 'login'),
           onBindCasdoor: (_casdoorConfigured && _token != null)
