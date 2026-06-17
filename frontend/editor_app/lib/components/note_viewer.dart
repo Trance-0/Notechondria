@@ -30,6 +30,7 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final note = widget.note;
     final content = note['content']?.toString() ?? _noteToMarkdown(note);
     final author =
@@ -57,7 +58,7 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
                       icon: const Icon(Icons.arrow_back),
-                      tooltip: 'Back',
+                      tooltip: l10n.commonBack,
                     ),
                     const SizedBox(width: 4),
                     Expanded(
@@ -65,7 +66,7 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            note['title']?.toString() ?? 'Untitled note',
+                            note['title']?.toString() ?? l10n.noteUntitled,
                             style: Theme.of(context)
                                 .textTheme
                                 .titleLarge
@@ -93,7 +94,7 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
                         widget.onDelete != null)
                       PopupMenuButton<String>(
                         icon: const Icon(Icons.more_vert),
-                        tooltip: 'Options',
+                        tooltip: l10n.noteOptions,
                         onSelected: (value) async {
                           if (value == 'edit' && widget.onEdit != null) {
                             Navigator.of(context).pop();
@@ -110,9 +111,8 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
                                   ClipboardData(text: link));
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content:
-                                          Text('Link copied to clipboard')),
+                                  SnackBar(
+                                      content: Text(l10n.noteLinkCopied)),
                                 );
                               }
                             }
@@ -124,18 +124,19 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
                         },
                         itemBuilder: (context) => [
                           if (widget.onEdit != null)
-                            const PopupMenuItem(
-                                value: 'edit', child: Text('Edit')),
+                            PopupMenuItem(
+                                value: 'edit', child: Text(l10n.commonEdit)),
                           if (note['uuid'] != null)
-                            const PopupMenuItem(
-                                value: 'copy_link', child: Text('Copy link')),
+                            PopupMenuItem(
+                                value: 'copy_link',
+                                child: Text(l10n.noteCopyLink)),
                           if (widget.onExport != null)
-                            const PopupMenuItem(
+                            PopupMenuItem(
                                 value: 'export',
-                                child: Text('Export markdown')),
+                                child: Text(l10n.noteExportMarkdown)),
                           if (widget.onDelete != null)
-                            const PopupMenuItem(
-                                value: 'delete', child: Text('Delete')),
+                            PopupMenuItem(
+                                value: 'delete', child: Text(l10n.commonDelete)),
                         ],
                       ),
                   ],

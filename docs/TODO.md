@@ -90,9 +90,11 @@ English (US) + Chinese (Simplified), a Language setting in each app
   headers, empty states, scope dropdown, composer menu, sync card, FAB
   tooltips) — and added `editor_app/test/locale_switch_test.dart`
   proving the switch renders Chinese at runtime (the mechanism was
-  always sound; the gap was coverage). Remaining editor strings (note
-  editor toolbar/menus/hints, note viewer + metadata/export dialogs,
-  auth dialogs, snackbars) still need migrating screen by screen.
+  always sound; the gap was coverage). 0.1.142 translated the note
+  viewer (the share-link preview), the note editor "More actions" menu +
+  hints, and the private-note/load-error dialogs. Remaining editor
+  strings (note metadata/export dialog, live-markdown paragraph
+  placeholders, misc snackbars) still need migrating screen by screen.
 - [ ] **Phase 2/3 — planner + portal strings + Language setting.**
   planner/portal currently follow the device locale only (no in-app
   Language picker). Add the Language row (via the shared

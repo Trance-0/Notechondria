@@ -573,6 +573,7 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final outerL10n = AppLocalizations.of(context);
     final isLiveMarkdown = _editorMode == 'G';
     final specWarnings = _validateMarkdownSpec(_bodyController.text);
     // Hoisted so it can be referenced both in the top bar LayoutBuilder
@@ -588,14 +589,15 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
           children: [
             LayoutBuilder(builder: (context, constraints) {
               final isNarrow = constraints.maxWidth < 600;
+              final l10n = AppLocalizations.of(context);
               final titleField = TextField(
                 controller: _titleController,
                 style: Theme.of(context)
                     .textTheme
                     .headlineSmall
                     ?.copyWith(fontWeight: FontWeight.w700),
-                decoration: const InputDecoration(
-                    border: InputBorder.none, hintText: 'Title'),
+                decoration: InputDecoration(
+                    border: InputBorder.none, hintText: l10n.noteTitleHint),
               );
               final warningWidget = specWarnings.isNotEmpty
                   ? Padding(
@@ -616,7 +618,7 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
               // width on desktop.
               final hasAttachments = widget.onUploadAttachment != null;
               final detailsButton = PopupMenuButton<String>(
-                tooltip: 'More actions',
+                tooltip: l10n.noteMoreActions,
                 icon: const Icon(Icons.more_horiz),
                 onSelected: (value) {
                   switch (value) {
@@ -635,35 +637,35 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                   }
                 },
                 itemBuilder: (context) => <PopupMenuEntry<String>>[
-                  const PopupMenuItem<String>(
+                  PopupMenuItem<String>(
                     value: 'meta',
                     child: ListTile(
                       dense: true,
                       contentPadding: EdgeInsets.zero,
-                      leading: Icon(Icons.tune),
-                      title: Text('Edit note meta'),
+                      leading: const Icon(Icons.tune),
+                      title: Text(l10n.noteEditMeta),
                     ),
                   ),
                   const PopupMenuDivider(),
                   CheckedPopupMenuItem<String>(
                     value: 'editor_plain',
                     checked: _editorMode == 'P',
-                    child: const Text('Switch editor: Plain text'),
+                    child: Text(l10n.noteSwitchPlainText),
                   ),
                   CheckedPopupMenuItem<String>(
                     value: 'editor_gfm',
                     checked: _editorMode == 'G',
-                    child: const Text('Switch editor: Live markdown'),
+                    child: Text(l10n.noteSwitchLiveMarkdown),
                   ),
                   if (hasAttachments) const PopupMenuDivider(),
                   if (hasAttachments)
-                    const PopupMenuItem<String>(
+                    PopupMenuItem<String>(
                       value: 'attachments',
                       child: ListTile(
                         dense: true,
                         contentPadding: EdgeInsets.zero,
-                        leading: Icon(Icons.attachment_outlined),
-                        title: Text('View attachments'),
+                        leading: const Icon(Icons.attachment_outlined),
+                        title: Text(l10n.noteViewAttachments),
                       ),
                     ),
                 ],
@@ -677,13 +679,12 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                         await Clipboard.setData(ClipboardData(text: link));
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Link copied to clipboard')),
+                            SnackBar(content: Text(l10n.noteLinkCopied)),
                           );
                         }
                       },
                       icon: const Icon(Icons.link),
-                      tooltip: 'Copy link',
+                      tooltip: l10n.noteCopyLink,
                     )
                   : const SizedBox.shrink();
               final closeButton = IconButton(
@@ -765,8 +766,8 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                             maxLines: null,
                             expands: true,
                             textAlignVertical: TextAlignVertical.top,
-                            decoration: const InputDecoration(
-                              hintText: 'Write your note...',
+                            decoration: InputDecoration(
+                              hintText: outerL10n.noteWriteHint,
                               border: InputBorder.none,
                               alignLabelWithHint: true,
                             ),
@@ -782,7 +783,7 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                         child: FloatingActionButton.small(
                           heroTag: 'editor-attach-file',
                           onPressed: _pickAndUploadAttachment,
-                          tooltip: 'Attach file',
+                          tooltip: outerL10n.noteAttachFile,
                           child: const Icon(Icons.attach_file),
                         ),
                       ),

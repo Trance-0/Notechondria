@@ -63,7 +63,21 @@ part 'modules/settings_build.dart';
 part 'modules/settings_pages.dart';
 part 'modules/settings_sections.dart';
 
+/// The URL fragment captured at process start, before `runApp` and
+/// before Flutter's web router can normalize it. With the default hash
+/// URL strategy and a `MaterialApp(home:)` (no `/notes/<uuid>` route
+/// table), Flutter rewrites an unmatched initial route like
+/// `#/notes/<uuid>` back to `#/` during the first frame — which lands
+/// well before `_bootstrapApp` reads `Uri.base.fragment` after the
+/// multi-second `_loadInitialData()`. Capturing here preserves the
+/// share-link deep link; `_parseNoteUuidFromUrl` reads this first and
+/// only falls back to the (possibly-clobbered) live `Uri.base`.
+String bootInitialFragment = '';
+
 void main() {
+  // Snapshot the pristine launch URL fragment synchronously, before
+  // Flutter's router gets a chance to rewrite it (see the field doc).
+  bootInitialFragment = Uri.base.fragment;
   runApp(
     const NotechondriaApp(
       initialIndex: 1,

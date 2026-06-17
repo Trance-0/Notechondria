@@ -196,6 +196,65 @@ class AppLocalizationsZh extends AppLocalizations {
   String get feedFabImportLocal => '新建本地草稿。长按可导入 Markdown。';
 
   @override
+  String get noteUntitled => '无标题笔记';
+
+  @override
+  String get noteOptions => '选项';
+
+  @override
+  String get noteCopyLink => '复制链接';
+
+  @override
+  String get noteLinkCopied => '链接已复制到剪贴板';
+
+  @override
+  String get noteExportMarkdown => '导出 Markdown';
+
+  @override
+  String get noteMoreActions => '更多操作';
+
+  @override
+  String get noteEditMeta => '编辑笔记信息';
+
+  @override
+  String get noteSwitchPlainText => '切换编辑器：纯文本';
+
+  @override
+  String get noteSwitchLiveMarkdown => '切换编辑器：实时 Markdown';
+
+  @override
+  String get noteViewAttachments => '查看附件';
+
+  @override
+  String get noteTitleHint => '标题';
+
+  @override
+  String get noteWriteHint => '撰写你的笔记……';
+
+  @override
+  String get noteAttachFile => '添加附件';
+
+  @override
+  String get privateNoteTitle => '私密笔记';
+
+  @override
+  String privateNoteBody(String link) {
+    return '这篇共享笔记是私密的。请在「设置 > 账户」中登录，然后重新打开此链接：\n\n$link';
+  }
+
+  @override
+  String get privateNoteSignInError =>
+      '这篇笔记是私密的。登录后才能查看——打开「设置 → 账户」登录，链接随后即可加载。';
+
+  @override
+  String get privateNoteOpenSettings => '打开设置';
+
+  @override
+  String noteLoadError(String reason) {
+    return '无法加载笔记：$reason';
+  }
+
+  @override
   String get settingsTitle => '设置';
 
   @override

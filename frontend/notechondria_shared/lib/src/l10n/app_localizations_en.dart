@@ -205,6 +205,65 @@ class AppLocalizationsEn extends AppLocalizations {
       'Create a local draft. Long press to import markdown.';
 
   @override
+  String get noteUntitled => 'Untitled note';
+
+  @override
+  String get noteOptions => 'Options';
+
+  @override
+  String get noteCopyLink => 'Copy link';
+
+  @override
+  String get noteLinkCopied => 'Link copied to clipboard';
+
+  @override
+  String get noteExportMarkdown => 'Export markdown';
+
+  @override
+  String get noteMoreActions => 'More actions';
+
+  @override
+  String get noteEditMeta => 'Edit note meta';
+
+  @override
+  String get noteSwitchPlainText => 'Switch editor: Plain text';
+
+  @override
+  String get noteSwitchLiveMarkdown => 'Switch editor: Live markdown';
+
+  @override
+  String get noteViewAttachments => 'View attachments';
+
+  @override
+  String get noteTitleHint => 'Title';
+
+  @override
+  String get noteWriteHint => 'Write your note...';
+
+  @override
+  String get noteAttachFile => 'Attach file';
+
+  @override
+  String get privateNoteTitle => 'Private note';
+
+  @override
+  String privateNoteBody(String link) {
+    return 'This shared note is private. Sign in from Settings > Account, then reopen this link:\n\n$link';
+  }
+
+  @override
+  String get privateNoteSignInError =>
+      'This note is private. Sign in to view it — open Settings → Account to log in, then the link will load.';
+
+  @override
+  String get privateNoteOpenSettings => 'Open settings';
+
+  @override
+  String noteLoadError(String reason) {
+    return 'Could not load note: $reason';
+  }
+
+  @override
   String get settingsTitle => 'Settings';
 
   @override

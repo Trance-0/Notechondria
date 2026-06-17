@@ -382,8 +382,16 @@ class _AppShellState extends State<AppShell>
   // URL routing helpers (web only)
   // ---------------------------------------------------------------------------
 
-  String? _parseNoteUuidFromUrl() =>
-      parseNoteUuidFromFragment(Uri.base.fragment);
+  String? _parseNoteUuidFromUrl() {
+    // Prefer the fragment snapshotted in `main()` before Flutter's
+    // web router could normalize `#/notes/<uuid>` away to `#/`. Fall
+    // back to the live `Uri.base` for in-app navigation cases where no
+    // boot fragment was captured (e.g. non-web, or a fragment set
+    // after launch).
+    final fromBoot = parseNoteUuidFromFragment(bootInitialFragment);
+    if (fromBoot != null) return fromBoot;
+    return parseNoteUuidFromFragment(Uri.base.fragment);
+  }
 
   void _pushNoteUrl(String? noteUuid) {
     final base = Uri.base.removeFragment();

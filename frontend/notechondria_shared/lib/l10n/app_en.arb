@@ -67,6 +67,32 @@
   "feedFabImport": "Create note. Long press to import markdown.",
   "feedFabImportLocal": "Create a local draft. Long press to import markdown.",
 
+  "noteUntitled": "Untitled note",
+  "noteOptions": "Options",
+  "noteCopyLink": "Copy link",
+  "noteLinkCopied": "Link copied to clipboard",
+  "noteExportMarkdown": "Export markdown",
+  "noteMoreActions": "More actions",
+  "noteEditMeta": "Edit note meta",
+  "noteSwitchPlainText": "Switch editor: Plain text",
+  "noteSwitchLiveMarkdown": "Switch editor: Live markdown",
+  "noteViewAttachments": "View attachments",
+  "noteTitleHint": "Title",
+  "noteWriteHint": "Write your note...",
+  "noteAttachFile": "Attach file",
+
+  "privateNoteTitle": "Private note",
+  "privateNoteBody": "This shared note is private. Sign in from Settings > Account, then reopen this link:\n\n{link}",
+  "@privateNoteBody": {
+    "placeholders": { "link": { "type": "String" } }
+  },
+  "privateNoteSignInError": "This note is private. Sign in to view it — open Settings → Account to log in, then the link will load.",
+  "privateNoteOpenSettings": "Open settings",
+  "noteLoadError": "Could not load note: {reason}",
+  "@noteLoadError": {
+    "placeholders": { "reason": { "type": "String" } }
+  },
+
   "settingsTitle": "Settings",
   "settingsEditorTitle": "Editor settings",
   "settingsEditorSubtitle": "Default editor mode, theme preset, theme mode.",

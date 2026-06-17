@@ -37,6 +37,7 @@ String? parseNoteUuidFromFragment(String fragment) {
 extension _AppShellAuthFlowsX on _AppShellState {
   /// Fetch a note by UUID and open it in the viewer/editor.
   Future<void> _openNoteByUuid(String uuid) async {
+    final l10n = AppLocalizations.of(context);
     _isLoading = true;
     refreshState();
     try {
@@ -67,9 +68,7 @@ extension _AppShellAuthFlowsX on _AppShellState {
           raw.contains(' 403 ') ||
           raw.contains('403:');
       if (needsAuth && (_token == null || _token!.isEmpty)) {
-        _errorMessage =
-            'This note is private. Sign in to view it — open Settings → '
-            'Account to log in, then the link will load.';
+        _errorMessage = l10n.privateNoteSignInError;
         if (mounted) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
@@ -77,7 +76,7 @@ extension _AppShellAuthFlowsX on _AppShellState {
           });
         }
       } else {
-        _errorMessage = 'Could not load note: $raw';
+        _errorMessage = l10n.noteLoadError(raw);
       }
       _isLoading = false;
       refreshState();
@@ -85,18 +84,16 @@ extension _AppShellAuthFlowsX on _AppShellState {
   }
 
   void _showPrivateNotePrompt(String uuid) {
+    final l10n = AppLocalizations.of(context);
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Private note'),
-        content: Text(
-          'This shared note is private. Sign in from Settings > Account, '
-          'then reopen this link:\n\n#/notes/$uuid',
-        ),
+        title: Text(l10n.privateNoteTitle),
+        content: Text(l10n.privateNoteBody('#/notes/$uuid')),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
+            child: Text(l10n.commonClose),
           ),
           FilledButton(
             onPressed: () {
@@ -104,7 +101,7 @@ extension _AppShellAuthFlowsX on _AppShellState {
               _selectedIndex = 4;
               refreshState();
             },
-            child: const Text('Open settings'),
+            child: Text(l10n.privateNoteOpenSettings),
           ),
         ],
       ),

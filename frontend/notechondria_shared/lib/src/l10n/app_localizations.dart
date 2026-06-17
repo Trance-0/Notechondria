@@ -470,6 +470,114 @@ abstract class AppLocalizations {
   /// **'Create a local draft. Long press to import markdown.'**
   String get feedFabImportLocal;
 
+  /// No description provided for @noteUntitled.
+  ///
+  /// In en, this message translates to:
+  /// **'Untitled note'**
+  String get noteUntitled;
+
+  /// No description provided for @noteOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Options'**
+  String get noteOptions;
+
+  /// No description provided for @noteCopyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get noteCopyLink;
+
+  /// No description provided for @noteLinkCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied to clipboard'**
+  String get noteLinkCopied;
+
+  /// No description provided for @noteExportMarkdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Export markdown'**
+  String get noteExportMarkdown;
+
+  /// No description provided for @noteMoreActions.
+  ///
+  /// In en, this message translates to:
+  /// **'More actions'**
+  String get noteMoreActions;
+
+  /// No description provided for @noteEditMeta.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit note meta'**
+  String get noteEditMeta;
+
+  /// No description provided for @noteSwitchPlainText.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch editor: Plain text'**
+  String get noteSwitchPlainText;
+
+  /// No description provided for @noteSwitchLiveMarkdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch editor: Live markdown'**
+  String get noteSwitchLiveMarkdown;
+
+  /// No description provided for @noteViewAttachments.
+  ///
+  /// In en, this message translates to:
+  /// **'View attachments'**
+  String get noteViewAttachments;
+
+  /// No description provided for @noteTitleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get noteTitleHint;
+
+  /// No description provided for @noteWriteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write your note...'**
+  String get noteWriteHint;
+
+  /// No description provided for @noteAttachFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach file'**
+  String get noteAttachFile;
+
+  /// No description provided for @privateNoteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Private note'**
+  String get privateNoteTitle;
+
+  /// No description provided for @privateNoteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This shared note is private. Sign in from Settings > Account, then reopen this link:\n\n{link}'**
+  String privateNoteBody(String link);
+
+  /// No description provided for @privateNoteSignInError.
+  ///
+  /// In en, this message translates to:
+  /// **'This note is private. Sign in to view it — open Settings → Account to log in, then the link will load.'**
+  String get privateNoteSignInError;
+
+  /// No description provided for @privateNoteOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get privateNoteOpenSettings;
+
+  /// No description provided for @noteLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load note: {reason}'**
+  String noteLoadError(String reason);
+
   /// No description provided for @settingsTitle.
   ///
   /// In en, this message translates to:
