@@ -4,9 +4,12 @@ Proposal to move the Model Context Protocol (MCP) server out of the
 Django backend and into a standalone CLI app that talks to the backend
 over the public `/api/v1/` HTTP surface. Written at 0.1.135.
 
-Status: **Phase 2 skeleton landed (0.1.138)** — a runnable CLI lives in
-[`cli/`](../../cli/). The in-backend `/mcp/` endpoint keeps working
-unchanged; both servers stay in parity.
+Status: **Phases 1–3 done (through 0.1.146)** — the audit confirmed
+every MCP tool maps to `/api/v1/` (one missing `note-sessions` GET added
+in 0.1.146), and the CLI in [`cli/`](../../cli/) now implements all 41
+tools at parity with `backend/mcp/tools.py`. The in-backend `/mcp/`
+endpoint keeps working unchanged. Remaining: Phase 4 (PyPI) + Phase 5
+(deferred cutover).
 
 ## Owner decisions (locked 0.1.138)
 
@@ -139,9 +142,12 @@ No database migration is needed.
 Each phase is independently shippable; the in-backend `/mcp/` stays
 live until the final cutover.
 
-1. **Phase 1 — API gap audit.** Map every MCP tool to its `/api/v1/`
-   endpoint; add the missing endpoints + the `mcp-skill` read endpoint.
-   Backend-only, fully tested. No MCP change.
+1. **Phase 1 — API gap audit (DONE, 0.1.145–0.1.146).** Mapped all 41
+   MCP tools to `/api/v1/`. Every tool had a REST equivalent except
+   `list_note_sessions` (the `note-sessions/` view was POST-only); a
+   filtered `GET` was added + tested in 0.1.146. Doc corrected in
+   [`docs/server/mcp.md`](../server/mcp.md) (auth header, 41-tool list,
+   coverage table). Backend-only, fully tested. No MCP-protocol change.
 2. **Phase 2 — CLI skeleton (DONE, 0.1.138).** `notechondria-mcp` in
    [`cli/`](../../cli/): config loading (env / `~/.notechondria/
    config.json`), a `requests`-based backend client, a stdio
@@ -152,10 +158,13 @@ live until the final cutover.
    The transport is hand-rolled for now (no SDK dependency); it can
    adopt the official Python `mcp` SDK later without changing the tool
    layer.
-3. **Phase 3 — full tool parity.** Port the remaining ~33 tools from
-   `backend/mcp/tools.py`; match the existing input schemas so connected
-   agents see no behavior change. (Per the parity rule, future tools
-   land in both servers together.)
+3. **Phase 3 — full tool parity (DONE, 0.1.146).** All 41 tools from
+   `backend/mcp/tools.py` are now implemented in
+   `cli/notechondria_mcp/tools.py` with matching names + input schemas,
+   so connected agents see no behavior change between servers. A
+   name-set diff (backend vs CLI) is asserted identical; CLI dispatch is
+   unit-tested without network. (Per the parity rule, future tools land
+   in both servers together.)
 4. **Phase 4 — distribute.** Publish to PyPI (`pip install
    notechondria-mcp`) with a `notechondria-mcp` entry point; document
    the agent-side config (stdio command + env). Optionally ship a
@@ -181,8 +190,8 @@ live until the final cutover.
 All resolved 0.1.138; see "Owner decisions (locked)" at the top:
 `cli/` subdirectory (independent program), Python, both servers kept
 (no cutover yet), shared `ntc_` auth (one key per user), parity rule in
-force. Remaining Phase-1 backend audit + Phase-3 tool parity are tracked
-in `docs/TODO.md`.
+force. Phases 1–3 are now done (0.1.145–0.1.146); only Phase 4 (PyPI)
+and the deferred Phase 5 (cutover) remain — tracked in `docs/TODO.md`.
 
 ## 8. Related docs
 

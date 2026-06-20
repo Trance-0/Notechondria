@@ -98,12 +98,16 @@ offer identical functionality. Representative mapping:
 | `get_heatmap` | `GET heatmap/` |
 | `get_recent_activity` / `get_activity` | `GET activity/` |
 | `get_activity_week` | `GET activity/week/` |
-| note sessions | `note-sessions/[<id>/]` |
+| `list_note_sessions` | `GET note-sessions/?note_id=&limit=` |
+| `create_note_session` / `end_note_session` | `POST` / `PATCH` `note-sessions/[<id>/]` |
 | planner events | `planner-events/[<id>/]` |
 | calendar feeds | `calendar-feeds/[<id>/]` |
 
-Result: no `/api/v1/` gaps — every MCP tool has a REST equivalent, so
-no new endpoints were needed for the CLI.
+Result: one gap found and filled. The `list_note_sessions` tool had no
+REST list endpoint (`NoteSessionListCreateApiView` was POST-only); a
+`GET` (with `?note_id=` + `?limit=` filters) was added in 0.1.146. Every
+other tool already had a REST equivalent. The standalone CLI
+(`cli/notechondria_mcp/`) is at **full 41-tool parity** as of 0.1.146.
 
 ## Tests
 

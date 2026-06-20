@@ -215,8 +215,11 @@ in both `backend/mcp/tools.py` and `cli/notechondria_mcp/tools.py`.**
   tool count to 41 (was 21) with an accurate categorized list + a
   tool→endpoint coverage table, the test count to 51 (was 39), and
   added the MCP⇄CLI parity rule.
-- [ ] **Phase 3 — full tool parity.** Port the remaining ~33 tools
-  from `backend/mcp/tools.py` into the CLI with matching schemas.
+- [x] **Phase 3 — full tool parity (0.1.146).** All 41 tools from
+  `backend/mcp/tools.py` are now in `cli/notechondria_mcp/tools.py` with
+  matching names + schemas (name-set diff asserted identical). Filled
+  the one audit gap: added a filtered `GET` to `note-sessions/` (was
+  POST-only) so `list_note_sessions` works over REST.
 - [ ] **Phase 4 — distribute.** Publish `notechondria-mcp` to PyPI;
   document agent-host config.
 - [ ] **Phase 5 (deferred).** Cutover/deletion of `backend/mcp/` —

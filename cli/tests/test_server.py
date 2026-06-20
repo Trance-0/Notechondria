@@ -77,6 +77,76 @@ class ToolRegistryTests(unittest.TestCase):
         with self.assertRaises(KeyError):
             call_tool(FakeClient(), "no_such_tool", {})
 
+    def test_full_parity_tool_count(self):
+        # CLI is at full parity with backend/mcp/tools.py (41 tools).
+        names = {s["name"] for s in tool_specs()}
+        self.assertEqual(len(names), 41)
+        # spot-check a few that were ported in Phase 3
+        for name in ("update_profile", "search_notes", "get_note_by_uuid",
+                     "subscribe_course", "unsubscribe_course",
+                     "list_note_versions", "empty_recycle_bin",
+                     "list_note_sessions", "list_calendar_feeds",
+                     "get_activity_week"):
+            self.assertIn(name, names)
+
+    def test_every_tool_has_unique_handler(self):
+        for spec in tool_specs():
+            self.assertEqual(spec["inputSchema"]["type"], "object")
+            self.assertIsInstance(spec["description"], str)
+
+    def test_update_profile_patches_settings(self):
+        fake = FakeClient()
+        call_tool(fake, "update_profile", {"motto": "hi", "editor_mode": "G"})
+        method, path, body = fake.calls[-1]
+        self.assertEqual((method, path), ("PATCH", "settings/"))
+        self.assertEqual(body["motto"], "hi")
+
+    def test_search_notes_uses_query_and_scope(self):
+        fake = FakeClient()
+        call_tool(fake, "search_notes", {"query": "calc", "scope": "all"})
+        method, path, params = fake.calls[-1]
+        self.assertEqual((method, path), ("GET", "notes/"))
+        self.assertEqual(params, {"q": "calc", "scope": "all"})
+
+    def test_subscribe_and_unsubscribe_course(self):
+        fake = FakeClient()
+        call_tool(fake, "subscribe_course", {"course_id": 7})
+        self.assertEqual(fake.calls[-1][:2], ("POST", "courses/7/subscribe/"))
+        call_tool(fake, "unsubscribe_course", {"course_id": 7})
+        self.assertEqual(fake.calls[-1][:2], ("DELETE", "courses/7/subscribe/"))
+
+    def test_empty_recycle_bin_is_delete(self):
+        fake = FakeClient()
+        call_tool(fake, "empty_recycle_bin", {})
+        self.assertEqual(fake.calls[-1][:2], ("DELETE", "notes/deleted/empty/"))
+
+    def test_restore_note_version_path(self):
+        fake = FakeClient()
+        call_tool(fake, "restore_note_version", {"note_id": 3, "version_id": 9})
+        self.assertEqual(fake.calls[-1][:2], ("POST", "notes/3/restore/9/"))
+
+    def test_reorder_courses_sends_id_list(self):
+        fake = FakeClient()
+        call_tool(fake, "reorder_courses", {"course_ids": [3, 1, 2]})
+        method, path, body = fake.calls[-1]
+        self.assertEqual((method, path), ("POST", "courses/reorder/"))
+        self.assertEqual(body, {"course_ids": [3, 1, 2]})
+
+    def test_end_note_session_defaults_ended_at(self):
+        fake = FakeClient()
+        call_tool(fake, "end_note_session", {"session_id": 4})
+        method, path, body = fake.calls[-1]
+        self.assertEqual((method, path), ("PATCH", "note-sessions/4/"))
+        self.assertIn("ended_at", body)
+        self.assertTrue(body["ended_at"])  # non-empty ISO timestamp
+
+    def test_list_note_sessions_filters_by_note(self):
+        fake = FakeClient()
+        call_tool(fake, "list_note_sessions", {"note_id": 8, "limit": 5})
+        method, path, params = fake.calls[-1]
+        self.assertEqual((method, path), ("GET", "note-sessions/"))
+        self.assertEqual(params, {"note_id": 8, "limit": 5})
+
 
 class ServerDispatchTests(unittest.TestCase):
     def test_initialize_includes_skill_instructions(self):

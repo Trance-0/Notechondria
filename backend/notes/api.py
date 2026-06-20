@@ -1777,6 +1777,21 @@ class PlannerEventDetailApiView(APIView):
 class NoteSessionListCreateApiView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    def get(self, request):
+        creator = ensure_creator(request.user)
+        sessions = NoteActivitySession.objects.filter(creator_id=creator)
+        note_id = request.query_params.get("note_id")
+        if note_id:
+            sessions = sessions.filter(note_id_id=note_id)
+        sessions = sessions.order_by("-started_at", "-id")
+        try:
+            limit = min(int(request.query_params.get("limit", 50)), 200)
+        except (TypeError, ValueError):
+            limit = 50
+        return Response(
+            [note_session_payload(session) for session in sessions[:limit]]
+        )
+
     def post(self, request):
         creator = ensure_creator(request.user)
         serializer = NoteSessionWriteSerializer(data=request.data)

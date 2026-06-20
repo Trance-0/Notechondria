@@ -341,6 +341,43 @@ class HeatmapApiTests(TestCase):
         events = [event for day in week_response.json()['days'] for event in day['events']]
         self.assertTrue(any(event['kind'] == 'note_session' for event in events))
 
+    def test_note_session_list_get(self):
+        # GET /note-sessions/ lists the user's sessions (newest first) and
+        # supports a ?note_id= filter — backs the MCP/CLI list_note_sessions
+        # tool, which previously had no REST equivalent.
+        other_note = Note.objects.create(
+            creator_id=self.creator,
+            course_id=self.course,
+            sharing_id='sess-other',
+            title='Other session note',
+            content='x',
+        )
+        now = timezone.now()
+        NoteActivitySession.objects.create(
+            creator_id=self.creator, note_id=self.note,
+            title='S1', started_at=now - timedelta(hours=2),
+        )
+        NoteActivitySession.objects.create(
+            creator_id=self.creator, note_id=other_note,
+            title='S2', started_at=now - timedelta(hours=1),
+        )
+
+        resp = self.client.get('/api/v1/note-sessions/', **self._auth_headers())
+        self.assertEqual(resp.status_code, 200)
+        rows = resp.json()
+        self.assertEqual(len(rows), 2)
+        # newest started_at first
+        self.assertEqual(rows[0]['title'], 'S2')
+
+        filtered = self.client.get(
+            f'/api/v1/note-sessions/?note_id={self.note.id}',
+            **self._auth_headers(),
+        )
+        self.assertEqual(filtered.status_code, 200)
+        filtered_rows = filtered.json()
+        self.assertEqual(len(filtered_rows), 1)
+        self.assertEqual(filtered_rows[0]['title'], 'S1')
+
     def test_front_page_recommendations_only_return_public_notes(self):
         Note.objects.create(
             creator_id=self.creator,
