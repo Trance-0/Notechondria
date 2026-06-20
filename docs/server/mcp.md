@@ -1,11 +1,17 @@
 # `mcp` app
 
 Path: [`backend/mcp/`](../../backend/mcp/).
-Responsibility: Model-Context-Protocol server. 21 tools that wrap
+Responsibility: Model-Context-Protocol server. 41 tools that wrap
 the [`creators`](creators.md) and [`notes`](notes.md) APIs so an
 external LLM client can read and mutate a user's workspace.
 
 Index: [`server/backend.md`](backend.md).
+
+> **Parity rule.** Every MCP tool must exist in **both**
+> `backend/mcp/tools.py` (this in-backend server) **and**
+> `cli/notechondria_mcp/tools.py` (the standalone stdio CLI). When you
+> add or change a tool, change it in both. See
+> [`docs/integrations/mcp-cli-migration.md`](../integrations/mcp-cli-migration.md).
 
 ## Mounting
 
@@ -17,48 +23,93 @@ protocol surface).
 ## Authentication
 
 `ApiKeyAuthentication` from
-[`creators/authentication.py`](creators.md#authentication). Header:
+[`creators/authentication.py`](creators.md#authentication). The key
+prefix is `ntc_` and the scheme keyword is `Bearer`:
 
 ```http
-Authorization: ApiKey nch_live_<secret>
+Authorization: Bearer ntc_<secret>
 ```
 
-Calls without a valid API key return `401`.
+Calls without a valid API key return `401`. The same
+`ApiKeyAuthentication` is in `DEFAULT_AUTHENTICATION_CLASSES`, so an
+`ntc_` key authenticates every `/api/v1/` endpoint too — the CLI uses
+exactly this to talk to the REST API.
 
 The frontend Settings UI mints API keys via
 `POST /api/v1/auth/rotate-api-key/` (see
 [`creators` app — Password / email / identity](creators.md#password--email--identity))
 and shows the user the resulting MCP endpoint URL plus the
 plaintext key (once). The `mcp_endpoint` field in the rotation
-response is the absolute URL clients should configure.
+response is the absolute URL clients should configure. One key per
+user; rotating issues a new key and invalidates the old one.
 
 ## Tools (`mcp/tools.py`)
 
-21 tools, each importing lazily from `notes.services` /
-`creators.api` to keep startup cheap. Categories:
+41 tools, registered at import time via `register_tool(name, description,
+input_schema, fn)`. Each `fn` has signature `(user, creator, params) ->
+dict` and delegates to the same `notes.services` / model logic the REST
+views use — the MCP layer adds no business rules of its own, so if the
+underlying API would 401/403/404 the tool returns the same error.
 
-- **Discovery**: `list_courses`, `get_course`, `list_notes`,
-  `get_note`, `search_notes`.
-- **Mutation**: `create_note`, `update_note`, `delete_note`,
-  `restore_note`, `create_course`, `update_course`,
-  `delete_course`.
-- **Blocks**: `list_blocks`, `create_block`, `update_block`,
-  `delete_block`, `reorder_blocks`.
-- **Planner**: `list_planner_events`, `create_planner_event`,
-  `complete_planner_event`.
-- **Account**: `whoami` (returns the current creator's profile +
-  API-key hash prefix).
+- **Profile / account**: `get_profile`, `update_profile`.
+- **Notes**: `list_notes`, `get_note`, `get_note_by_uuid`,
+  `create_note`, `update_note`, `delete_note`, `search_notes`.
+- **Note versions**: `list_note_versions`, `snapshot_note`,
+  `restore_note_version`.
+- **Attachments**: `list_attachments`, `delete_attachment`.
+- **Recycle bin**: `list_deleted_notes`, `restore_deleted_note`,
+  `empty_recycle_bin`.
+- **Courses**: `list_courses`, `get_course`, `create_course`,
+  `update_course`, `delete_course`, `list_course_notes`,
+  `reorder_courses`, `subscribe_course`, `unsubscribe_course`.
+- **Activity / heatmap**: `get_heatmap`, `get_recent_activity`,
+  `get_activity`, `get_activity_week`.
+- **Note sessions**: `list_note_sessions`, `create_note_session`,
+  `end_note_session`.
+- **Planner events**: `list_events`, `create_event`, `update_event`,
+  `delete_event`.
+- **Calendar feeds**: `list_calendar_feeds`, `create_calendar_feed`,
+  `update_calendar_feed`, `delete_calendar_feed`.
 
-Each tool resolves the calling user from the API key, then
-delegates to the existing services / view logic. The MCP layer
-adds no business rules of its own — if the underlying API would
-401/403/404, the tool returns the same error.
+## REST coverage (Phase 1 audit, 0.1.145)
+
+Every tool operation above is also reachable over `/api/v1/`, so the
+standalone CLI (which speaks plain REST with the same `ntc_` key) can
+offer identical functionality. Representative mapping:
+
+| Tool(s) | `/api/v1/` endpoint |
+| --- | --- |
+| `get_profile` / `update_profile` | `GET` / `PATCH` `settings/` |
+| `list_notes` / `create_note` | `GET` / `POST` `notes/` |
+| `get_note` / `update_note` / `delete_note` | `GET` / `PATCH` / `DELETE` `notes/<id>/` |
+| `search_notes` | `GET notes/?q=&scope=` |
+| `get_note_by_uuid` | `GET notes/uuid/<uuid>/` |
+| `list_note_versions` | `GET notes/<id>/history/` |
+| `snapshot_note` | `POST notes/<id>/snapshot/` |
+| `restore_note_version` | `POST notes/<id>/restore/<version_id>/` |
+| `list_attachments` / `delete_attachment` | `notes/<id>/attachments/[<aid>/]` |
+| `list_deleted_notes` | `GET notes/deleted/` |
+| `restore_deleted_note` | `POST notes/<id>/restore/` |
+| `empty_recycle_bin` | `notes/deleted/empty/` |
+| courses CRUD | `courses/[<id>/]` |
+| `list_course_notes` | `GET courses/<id>/notes/` |
+| `reorder_courses` | `POST courses/reorder/` |
+| `subscribe_course` / `unsubscribe_course` | `POST` / `DELETE` `courses/<id>/subscribe/` |
+| `get_heatmap` | `GET heatmap/` |
+| `get_recent_activity` / `get_activity` | `GET activity/` |
+| `get_activity_week` | `GET activity/week/` |
+| note sessions | `note-sessions/[<id>/]` |
+| planner events | `planner-events/[<id>/]` |
+| calendar feeds | `calendar-feeds/[<id>/]` |
+
+Result: no `/api/v1/` gaps — every MCP tool has a REST equivalent, so
+no new endpoints were needed for the CLI.
 
 ## Tests
 
-`mcp/tests.py` — 39 tests covering: API-key auth happy-path and
-failure modes, every tool's request/response shape, and the
-"tool found via discovery" handshake.
+`mcp/tests.py` — 51 tests across 4 `TestCase` classes covering:
+API-key auth happy-path and failure modes, every tool's
+request/response shape, and the tool-discovery handshake.
 
 Run:
 

@@ -205,11 +205,16 @@ in both `backend/mcp/tools.py` and `cli/notechondria_mcp/tools.py`.**
 - [x] **Phase 2 — CLI skeleton (0.1.138).** Runnable `cli/`
   program: config, backend client, stdio JSON-RPC server, a
   representative tool subset, unit tests.
-- [ ] **Phase 1 — backend API gap audit.** Confirm `/api/v1/` covers
-  every MCP tool operation (note versions/sessions, heatmap,
-  activity-week, calendar feeds); add any missing endpoints. Fix the
-  stale `ApiKey nch_live_…` auth-header example in
-  `docs/server/mcp.md` (real header is `Bearer ntc_…`).
+- [x] **Phase 1 — backend API gap audit (0.1.145).** Audited all 41
+  MCP tools in `backend/mcp/tools.py` against `/api/v1/`: every tool
+  operation (incl. the flagged note versions/sessions, heatmap,
+  activity-week, calendar feeds, and course unsubscribe) has a REST
+  equivalent — **no gaps, no new endpoints needed.** Rewrote
+  `docs/server/mcp.md`: corrected the auth header to
+  `Authorization: Bearer ntc_<secret>` (was `ApiKey nch_live_…`), the
+  tool count to 41 (was 21) with an accurate categorized list + a
+  tool→endpoint coverage table, the test count to 51 (was 39), and
+  added the MCP⇄CLI parity rule.
 - [ ] **Phase 3 — full tool parity.** Port the remaining ~33 tools
   from `backend/mcp/tools.py` into the CLI with matching schemas.
 - [ ] **Phase 4 — distribute.** Publish `notechondria-mcp` to PyPI;
