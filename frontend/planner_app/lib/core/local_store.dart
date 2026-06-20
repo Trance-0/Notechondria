@@ -80,6 +80,23 @@ class _LocalAppStore {
   /// before load-time auto-prune. See editor_app version for rationale.
   static const int _trashTtlDays = 30;
 
+  /// Per-bucket byte sizes of the planner's persisted SharedPreferences
+  /// blobs, for the shared `StorageUsageCard` "Local data" breakdown.
+  /// Mirrors the editor's `bucketSizes()`.
+  static Future<Map<String, int>> bucketSizes() async {
+    final prefs = await SharedPreferences.getInstance();
+    int sz(String key) => utf8.encode(prefs.getString(key) ?? '').length;
+    return {
+      'Drafts': sz(_draftsKey),
+      'Categories': sz(_coursesKey),
+      'Cached server data': sz(_cacheKey),
+      'Recycle bin': sz(_trashedDraftsKey) + sz(_trashedCoursesKey),
+      'Debug logs': sz(_logsKey),
+      'Settings': sz(_settingsKey),
+      'Stats': sz(_statsKey),
+    };
+  }
+
   static Map<String, dynamic> defaultSettings() {
     return {
       'theme_preset': 'teal',

@@ -2,6 +2,10 @@ part of notechondria_frontend;
 
 /// Defines the frontend contract for all Notechondria REST operations.
 abstract class NotechondriaClient implements AuthClient {
+  /// Probe a candidate backend's `/handshake/` to confirm it is a
+  /// Notechondria backend and read its metadata (including the
+  /// media-storage architecture label shown on the storage card).
+  Future<HandshakeResult> verifyHandshake(String rawCandidateBaseUrl);
   Future<List<Map<String, dynamic>>> getCourses({String? token});
   Future<Map<String, dynamic>> createCourse(
     String token,
@@ -132,6 +136,7 @@ class HandshakeResult {
     required this.apiVersion,
     required this.version,
     required this.capabilities,
+    this.storageLabel = '',
   });
 
   factory HandshakeResult.success({
@@ -139,6 +144,7 @@ class HandshakeResult {
     required String apiVersion,
     required String version,
     required Map<String, dynamic> capabilities,
+    String storageLabel = '',
   }) =>
       HandshakeResult._(
         ok: true,
@@ -147,6 +153,7 @@ class HandshakeResult {
         apiVersion: apiVersion,
         version: version,
         capabilities: capabilities,
+        storageLabel: storageLabel,
       );
 
   factory HandshakeResult.failure(String message) => HandshakeResult._(
@@ -164,6 +171,11 @@ class HandshakeResult {
   final String apiVersion;
   final String version;
   final Map<String, dynamic> capabilities;
+
+  /// Human label for the backend's media-storage architecture
+  /// (e.g. "Cloudflare R2" / "Local disk"), from the handshake
+  /// `storage.label` field. Empty when the backend predates it.
+  final String storageLabel;
 }
 
 /// Default HTTP implementation of the Notechondria REST client.
@@ -213,6 +225,7 @@ class HttpNotechondriaClient
   /// should use this before persisting a user-entered API base URL in
   /// Settings, so a typo or a foreign server doesn't silently strand the
   /// user offline. Does NOT mutate `_baseUrl`.
+  @override
   Future<HandshakeResult> verifyHandshake(String rawCandidateBaseUrl) async {
     final normalized = _normalizeBaseUrl(rawCandidateBaseUrl);
     final target = Uri.parse('$normalized/handshake/');
@@ -246,6 +259,7 @@ class HttpNotechondriaClient
           'Backend api_version="$apiVersion" — this client only supports v1.',
         );
       }
+      final storageMap = parsed['storage'];
       return HandshakeResult.success(
         service: service,
         apiVersion: apiVersion,
@@ -253,6 +267,8 @@ class HttpNotechondriaClient
         capabilities: parsed['capabilities'] is Map<String, dynamic>
             ? Map<String, dynamic>.from(parsed['capabilities'] as Map)
             : const <String, dynamic>{},
+        storageLabel:
+            storageMap is Map ? (storageMap['label']?.toString() ?? '') : '',
       );
     } on TimeoutException {
       return HandshakeResult.failure(

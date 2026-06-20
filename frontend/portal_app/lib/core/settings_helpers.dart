@@ -81,4 +81,20 @@ extension _AppShellSettingsHelpersX on _AppShellState {
     );
     await _loadInitialData();
   }
+
+  /// Probes the configured backend's handshake for its media-storage
+  /// architecture label (e.g. "Cloudflare R2"), shown on the storage
+  /// card. Returns null on any failure (offline, old backend). Mirrors
+  /// the editor's `_probeStorageArch`.
+  Future<String?> _probeStorageArch() async {
+    final url =
+        _localSettings['api_base_url']?.toString() ?? _defaultApiBaseUrl();
+    try {
+      final result = await widget.client.verifyHandshake(url);
+      if (!result.ok) return null;
+      return result.storageLabel.isEmpty ? null : result.storageLabel;
+    } catch (_) {
+      return null;
+    }
+  }
 }

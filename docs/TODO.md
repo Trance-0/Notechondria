@@ -44,14 +44,6 @@ across 0.1.127–0.1.129 — see
 
 ### Local data / storage
 
-- [ ] **Storage-usage card in planner + portal.** The shared
-  `StorageUsageCard` (backend host, storage arch, per-bucket
-  decomposition, browser quota/free, low-storage suggestions) landed
-  in the editor's Local data subpage in 0.1.136. Wire the same card
-  into planner (inline settings) and portal (Local data subpage),
-  computing each app's `bucketSizes()` + attachment bytes + the
-  handshake storage-arch probe.
-
 ### App preferences
 
 ### Debug log window

@@ -803,6 +803,7 @@ class _AppShellState extends State<AppShell>
           onReplayTour: _replayOnboarding,
           currentLocale: _localSettings['locale']?.toString() ?? 'system',
           onSetLocale: _setLocale,
+          onProbeStorageArch: _probeStorageArch,
           casdoorOrgLoginUrl: _casdoorOrgLoginUrl,
           onCasdoorLogin: () => launchOAuth('casdoor', intent: 'login'),
           onBindCasdoor: (_casdoorConfigured && _token != null)

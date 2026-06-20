@@ -561,6 +561,86 @@ class _BackendSettingsPageState extends State<_BackendSettingsPage> {
   }
 }
 
+/// Compact host extracted from an API base URL, for the storage card.
+String _hostOf(Object? rawApiUrl) {
+  final raw = rawApiUrl?.toString().trim() ?? '';
+  if (raw.isEmpty) return '';
+  final uri = Uri.tryParse(raw);
+  return (uri == null || uri.host.isEmpty) ? raw : uri.host;
+}
+
+/// Gathers the async storage inputs (per-bucket sizes, attachment
+/// bytes, backend storage arch) and renders the shared
+/// [StorageUsageCard]. Mirrors the editor's `_StorageUsageSection`.
+class _StorageUsageSection extends StatefulWidget {
+  const _StorageUsageSection({
+    required this.backendHost,
+    this.onProbeStorageArch,
+  });
+
+  final String backendHost;
+  final Future<String?> Function()? onProbeStorageArch;
+
+  @override
+  State<_StorageUsageSection> createState() => _StorageUsageSectionState();
+}
+
+class _StorageUsageSectionState extends State<_StorageUsageSection> {
+  Map<String, int>? _buckets;
+  int _attachmentBytes = 0;
+  String _storageArch = '';
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _gather();
+  }
+
+  Future<void> _gather() async {
+    final buckets = await _LocalAppStore.bucketSizes();
+    var attachmentBytes = 0;
+    try {
+      final store = await LocalAttachmentStore.open();
+      attachmentBytes = await store.totalBytes();
+    } catch (_) {
+      attachmentBytes = 0;
+    }
+    final arch = (await widget.onProbeStorageArch?.call()) ?? '';
+    if (!mounted) return;
+    setState(() {
+      _buckets = buckets;
+      _attachmentBytes = attachmentBytes;
+      _storageArch = arch;
+      _loaded = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Center(
+            child: SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        ),
+      );
+    }
+    return StorageUsageCard(
+      backendHost: widget.backendHost,
+      storageArchLabel: _storageArch,
+      bucketSizes: _buckets ?? const {},
+      attachmentBytes: _attachmentBytes,
+    );
+  }
+}
+
 /// Subpage 7 — Local data. Sync, pull, clear cache, clear data,
 /// export, import, restore templates. Mirrors the editor's
 /// `_LocalDataPage` but keeps portal's `onClearLocalCache` row
@@ -582,6 +662,14 @@ class _LocalDataPage extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           children: [
             _FeedbackBanner(parent: p),
+            // Storage usage — local-data breakdown + browser quota.
+            _StorageUsageSection(
+              backendHost: _hostOf(
+                p.widget.apiBaseUrl ?? p.widget.localSettings['api_base_url'],
+              ),
+              onProbeStorageArch: p.widget.onProbeStorageArch,
+            ),
+            const SizedBox(height: 12),
             Card(
               clipBehavior: Clip.antiAlias,
               margin: EdgeInsets.zero,

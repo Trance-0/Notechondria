@@ -50,6 +50,7 @@ class _SettingsPage extends StatefulWidget {
     this.onReplayTour,
     this.currentLocale,
     this.onSetLocale,
+    this.onProbeStorageArch,
   });
 
   final Map<String, dynamic>? profile;
@@ -81,6 +82,10 @@ class _SettingsPage extends StatefulWidget {
   /// `MaterialApp` with the new locale (mirrors the editor).
   final String? currentLocale;
   final Future<void> Function(String locale)? onSetLocale;
+
+  /// Probes the backend handshake for its media-storage architecture
+  /// label, shown on the shared `StorageUsageCard`. Null hides the line.
+  final Future<String?> Function()? onProbeStorageArch;
 
   /// Triggers Casdoor SSO. Null in shadow mode (no `CASDOOR_*` env
   /// vars). See `docs/integrations/casdoor-migration.md`.

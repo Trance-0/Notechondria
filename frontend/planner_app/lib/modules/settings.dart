@@ -41,6 +41,7 @@ class _SettingsPage extends StatefulWidget {
     this.onReplayTour,
     this.currentLocale,
     this.onSetLocale,
+    this.onProbeStorageArch,
   });
 
   final Map<String, dynamic>? profile;
@@ -74,6 +75,10 @@ class _SettingsPage extends StatefulWidget {
   /// `MaterialApp` with the new locale (mirrors the editor).
   final String? currentLocale;
   final Future<void> Function(String locale)? onSetLocale;
+
+  /// Probes the backend handshake for its media-storage architecture
+  /// label, shown on the shared `StorageUsageCard`. Null hides the line.
+  final Future<String?> Function()? onProbeStorageArch;
 
   /// Triggers Casdoor SSO. Null in shadow mode (no `CASDOOR_*` env
   /// vars). See `docs/integrations/casdoor-migration.md`.
@@ -406,6 +411,16 @@ class _SettingsPageState extends State<_SettingsPage> {
           'This app keeps planner-focused controls only: login/sync, deadline-ordering preferences, and debug output.',
         ),
         const SizedBox(height: 20),
+        // Storage usage — local-data breakdown + browser quota. The
+        // shared card is fed the planner's bucket sizes, attachment
+        // bytes, and the backend storage-arch probe.
+        _StorageUsageSection(
+          backendHost: _hostOf(
+            widget.apiBaseUrl ?? widget.localSettings['api_base_url'],
+          ),
+          onProbeStorageArch: widget.onProbeStorageArch,
+        ),
+        const SizedBox(height: 16),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -673,6 +688,86 @@ class _SettingsPageState extends State<_SettingsPage> {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Compact host extracted from an API base URL, for the storage card.
+String _hostOf(Object? rawApiUrl) {
+  final raw = rawApiUrl?.toString().trim() ?? '';
+  if (raw.isEmpty) return '';
+  final uri = Uri.tryParse(raw);
+  return (uri == null || uri.host.isEmpty) ? raw : uri.host;
+}
+
+/// Gathers the async storage inputs (per-bucket sizes, attachment
+/// bytes, backend storage arch) and renders the shared
+/// [StorageUsageCard]. Mirrors the editor's `_StorageUsageSection`.
+class _StorageUsageSection extends StatefulWidget {
+  const _StorageUsageSection({
+    required this.backendHost,
+    this.onProbeStorageArch,
+  });
+
+  final String backendHost;
+  final Future<String?> Function()? onProbeStorageArch;
+
+  @override
+  State<_StorageUsageSection> createState() => _StorageUsageSectionState();
+}
+
+class _StorageUsageSectionState extends State<_StorageUsageSection> {
+  Map<String, int>? _buckets;
+  int _attachmentBytes = 0;
+  String _storageArch = '';
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _gather();
+  }
+
+  Future<void> _gather() async {
+    final buckets = await _LocalAppStore.bucketSizes();
+    var attachmentBytes = 0;
+    try {
+      final store = await LocalAttachmentStore.open();
+      attachmentBytes = await store.totalBytes();
+    } catch (_) {
+      attachmentBytes = 0;
+    }
+    final arch = (await widget.onProbeStorageArch?.call()) ?? '';
+    if (!mounted) return;
+    setState(() {
+      _buckets = buckets;
+      _attachmentBytes = attachmentBytes;
+      _storageArch = arch;
+      _loaded = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Center(
+            child: SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        ),
+      );
+    }
+    return StorageUsageCard(
+      backendHost: widget.backendHost,
+      storageArchLabel: _storageArch,
+      bucketSizes: _buckets ?? const {},
+      attachmentBytes: _attachmentBytes,
     );
   }
 }
