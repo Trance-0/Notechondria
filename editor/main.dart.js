@@ -11061,7 +11061,7 @@ J.b2(l,"social_link",J.D(f,"social_link"))}f=a.z
 if((f==null?null:f.h(0,"image_url"))!=null)J.b2(l,"image_url",a.z.h(0,"image_url"))
 f=a.Q
 if(f==null)f=B.b4
-k=A.bRi(new A.aAO(B.Kr,"0.1.145",l,f,a.fy,a.go,a.id,a.ch,a.cy,a.d))
+k=A.bRi(new A.aAO(B.Kr,"0.1.146",l,f,a.fy,a.go,a.id,a.ch,a.cy,a.d))
 s=7
 return A.k(A.ap5(A.b([B.bmT],t.es),m),$async$ach)
 case 7:j=a0
@@ -13391,15 +13391,15 @@ p=n}else p=o
 s=p.length===0?3:4
 break
 case 3:s=5
-return A.k(A.EM(a,"0.1.145"),$async$acy)
+return A.k(A.EM(a,"0.1.146"),$async$acy)
 case 5:s=1
 break
-case 4:if(A.aoZ(p,"0.1.145")>=0){s=1
-break}m=A.bQK("0.1.145",p,B.aPP)
+case 4:if(A.aoZ(p,"0.1.146")>=0){s=1
+break}m=A.bQK("0.1.146",p,B.aPP)
 s=m.length===0?6:7
 break
 case 6:s=8
-return A.k(A.EM(a,"0.1.145"),$async$acy)
+return A.k(A.EM(a,"0.1.146"),$async$acy)
 case 8:s=1
 break
 case 7:a.ok=!0
@@ -65661,7 +65661,7 @@ I(a){var s,r,q=this,p=null,o=A.lF(new A.aUo(q))
 if(q.w){s=q.a.r
 r=q.fy.h(0,"api_base_url")
 r=r==null?p:J.n(r)
-return new A.eR(B.cB,p,B.cj,B.K,A.b([o,A.aGw(0,new A.NS(s,"0.1.145",new A.aUp(q),q.p4,r,p))],t.p),p)}return o}}
+return new A.eR(B.cB,p,B.cj,B.K,A.b([o,A.aGw(0,new A.NS(s,"0.1.146",new A.aUp(q),q.p4,r,p))],t.p),p)}return o}}
 A.aUm.prototype={
 $1(a){return a>=0&&a<5},
 $S:59}
@@ -68137,12 +68137,12 @@ m=n.c
 m.toString
 p=q.c
 s=2
-return A.k(A.bdU(m,"Notechondria Editor","0.1.145",p),$async$$0)
+return A.k(A.bdU(m,"Notechondria Editor","0.1.146",p),$async$$0)
 case 2:o=b
 s=3
-return A.k(A.EM(n,"0.1.145"),$async$$0)
+return A.k(A.EM(n,"0.1.146"),$async$$0)
 case 3:m=o?"acknowledged":"skipped"
-n.b7(B.R,"Feature updates "+m+": Editor.UI/whats_new \u2014 "+p.length+" update(s) since "+q.a.a+" marked seen at 0.1.145.","Editor.UI")
+n.b7(B.R,"Feature updates "+m+": Editor.UI/whats_new \u2014 "+p.length+" update(s) since "+q.a.a+" marked seen at 0.1.146.","Editor.UI")
 return A.v(null,r)}})
 return A.w($async$$0,r)},
 $S:140}
