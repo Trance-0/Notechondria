@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/api_debug_snapshot.dart';
 import 'debug_widgets.dart';
 
@@ -36,7 +37,7 @@ class ErrorStateView extends StatelessWidget {
             const SizedBox(height: 12),
             FilledButton(
               onPressed: onRetry,
-              child: const Text('Retry'),
+              child: Text(AppLocalizations.of(context).commonRetry),
             ),
           ],
         ),

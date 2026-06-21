@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../utils/blur_dialog.dart';
 
 /// One page of the first-run onboarding tour. Deliberately
@@ -68,6 +69,7 @@ class _OnboardingTourDialogState extends State<_OnboardingTourDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final isLast = _index == widget.steps.length - 1;
     return Dialog(
       child: ConstrainedBox(
@@ -89,7 +91,7 @@ class _OnboardingTourDialogState extends State<_OnboardingTourDialog> {
                   ),
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: Text(isLast ? 'Close' : 'Skip'),
+                    child: Text(isLast ? l10n.commonClose : l10n.commonSkip),
                   ),
                 ],
               ),
@@ -155,7 +157,7 @@ class _OnboardingTourDialogState extends State<_OnboardingTourDialog> {
                 children: [
                   TextButton(
                     onPressed: _index == 0 ? null : () => _go(_index - 1),
-                    child: const Text('Back'),
+                    child: Text(l10n.commonBack),
                   ),
                   const Spacer(),
                   FilledButton(
@@ -166,7 +168,7 @@ class _OnboardingTourDialogState extends State<_OnboardingTourDialog> {
                         _go(_index + 1);
                       }
                     },
-                    child: Text(isLast ? 'Done' : 'Next'),
+                    child: Text(isLast ? l10n.commonDone : l10n.commonNext),
                   ),
                 ],
               ),

@@ -96,10 +96,17 @@ English (US) + Chinese (Simplified), a Language setting in each app
   tests added for both. **Remaining:** translate the rest of the planner
   / portal app strings (nav, screens, dialogs) — only the shared
   settings/preferences surface is localized so far.
-- [ ] **Phase 4 — remaining shared widgets.** Localize onboarding tour,
-  what's-new overlay, install banner, auth dialogs, error state,
-  mcp-skill section. (Log OUTPUT lines + terminal command I/O stay
-  English by design — greppable per AGENTS.md §1.8.)
+- [~] **Phase 4 — remaining shared widgets (in progress).** 0.1.147
+  localized the StorageUsageCard (incl. its byte-quota + suggestion
+  strings), the ErrorStateView retry, the install banner (both copy
+  variants + "Got it"), the onboarding-tour chrome
+  (Close/Skip/Back/Next/Done), and the what's-new overlay
+  (title + Skip/Got it). **Remaining:** auth dialogs
+  (`auth_dialogs.dart`, `casdoor_link_challenge_dialog.dart`) and the
+  `mcp_skill_section.dart`. (Log OUTPUT lines + terminal command I/O
+  stay English by design — greppable per AGENTS.md §1.8. The per-app
+  What's-New / onboarding *content* registries also stay English for
+  now — only the shared chrome is localized.)
 - [ ] **Phase 2 — planner strings.** Translate planner UI; reuse the
   shared catalog for common strings.
 - [ ] **Phase 3 — portal strings.** Translate portal UI.

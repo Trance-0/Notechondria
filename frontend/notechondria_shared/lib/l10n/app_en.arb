@@ -22,6 +22,7 @@
   "commonRemove": "Remove",
   "commonChange": "Change",
   "commonChoose": "Choose",
+  "commonGotIt": "Got it",
 
   "navNavigation": "Navigation",
   "navAllNotes": "All Notes",
@@ -143,5 +144,46 @@
   "logLevelError": "Error",
   "logLevelWarning": "Warning",
   "logLevelInfo": "Info",
-  "logLevelDebug": "Debug"
+  "logLevelDebug": "Debug",
+
+  "storageUsageTitle": "Storage usage",
+  "storageBackend": "Backend",
+  "storageBackendStorage": "Backend storage",
+  "storageLocalDataUsed": "Local data used",
+  "storageBrowserStorage": "Browser storage",
+  "storageSpaceLeft": "Space left",
+  "storageNotReported": "not reported by this platform",
+  "storageBreakdown": "Breakdown",
+  "storageNoLocalData": "No local data stored yet.",
+  "storageSuggestions": "Suggestions",
+  "storageAttachments": "Attachments",
+  "storageOffline": "offline",
+  "storageQuotaUsed": "{used} of {quota} used",
+  "@storageQuotaUsed": {
+    "placeholders": { "used": { "type": "String" }, "quota": { "type": "String" } }
+  },
+  "storageFree": "{amount} free",
+  "@storageFree": {
+    "placeholders": { "amount": { "type": "String" } }
+  },
+  "storageSuggestQuota": "You are using {percent}% of this browser's storage for this site. Free space by clearing the cache or exporting and removing old local notes.",
+  "@storageSuggestQuota": {
+    "placeholders": { "percent": { "type": "int" } }
+  },
+  "storageSuggestAttachments": "Attachments take up {size}. Sign in and push to the cloud, then clear local data to reclaim space, or export a backup first.",
+  "@storageSuggestAttachments": {
+    "placeholders": { "size": { "type": "String" } }
+  },
+  "storageSuggestLocalTotal": "Local data is {size}. Consider exporting a backup and clearing data you have already synced to the cloud.",
+  "@storageSuggestLocalTotal": {
+    "placeholders": { "size": { "type": "String" } }
+  },
+
+  "installBannerAtRisk": "Your notes are saved only in this browser and can be cleared after about a week of inactivity. Sign in to back them up, or add Notechondria to your Home Screen for durable storage.",
+  "installBannerTip": "Tip: add Notechondria to your Home Screen for an app-like experience and storage the browser won’t evict. On iPhone: Share → Add to Home Screen.",
+
+  "whatsNewTitle": "What's new in {appTitle}",
+  "@whatsNewTitle": {
+    "placeholders": { "appTitle": { "type": "String" } }
+  }
 }

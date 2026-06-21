@@ -218,6 +218,12 @@ abstract class AppLocalizations {
   /// **'Choose'**
   String get commonChoose;
 
+  /// No description provided for @commonGotIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Got it'**
+  String get commonGotIt;
+
   /// No description provided for @navNavigation.
   ///
   /// In en, this message translates to:
@@ -847,6 +853,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Debug'**
   String get logLevelDebug;
+
+  /// No description provided for @storageUsageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage usage'**
+  String get storageUsageTitle;
+
+  /// No description provided for @storageBackend.
+  ///
+  /// In en, this message translates to:
+  /// **'Backend'**
+  String get storageBackend;
+
+  /// No description provided for @storageBackendStorage.
+  ///
+  /// In en, this message translates to:
+  /// **'Backend storage'**
+  String get storageBackendStorage;
+
+  /// No description provided for @storageLocalDataUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Local data used'**
+  String get storageLocalDataUsed;
+
+  /// No description provided for @storageBrowserStorage.
+  ///
+  /// In en, this message translates to:
+  /// **'Browser storage'**
+  String get storageBrowserStorage;
+
+  /// No description provided for @storageSpaceLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Space left'**
+  String get storageSpaceLeft;
+
+  /// No description provided for @storageNotReported.
+  ///
+  /// In en, this message translates to:
+  /// **'not reported by this platform'**
+  String get storageNotReported;
+
+  /// No description provided for @storageBreakdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Breakdown'**
+  String get storageBreakdown;
+
+  /// No description provided for @storageNoLocalData.
+  ///
+  /// In en, this message translates to:
+  /// **'No local data stored yet.'**
+  String get storageNoLocalData;
+
+  /// No description provided for @storageSuggestions.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestions'**
+  String get storageSuggestions;
+
+  /// No description provided for @storageAttachments.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachments'**
+  String get storageAttachments;
+
+  /// No description provided for @storageOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'offline'**
+  String get storageOffline;
+
+  /// No description provided for @storageQuotaUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'{used} of {quota} used'**
+  String storageQuotaUsed(String used, String quota);
+
+  /// No description provided for @storageFree.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} free'**
+  String storageFree(String amount);
+
+  /// No description provided for @storageSuggestQuota.
+  ///
+  /// In en, this message translates to:
+  /// **'You are using {percent}% of this browser\'s storage for this site. Free space by clearing the cache or exporting and removing old local notes.'**
+  String storageSuggestQuota(int percent);
+
+  /// No description provided for @storageSuggestAttachments.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachments take up {size}. Sign in and push to the cloud, then clear local data to reclaim space, or export a backup first.'**
+  String storageSuggestAttachments(String size);
+
+  /// No description provided for @storageSuggestLocalTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Local data is {size}. Consider exporting a backup and clearing data you have already synced to the cloud.'**
+  String storageSuggestLocalTotal(String size);
+
+  /// No description provided for @installBannerAtRisk.
+  ///
+  /// In en, this message translates to:
+  /// **'Your notes are saved only in this browser and can be cleared after about a week of inactivity. Sign in to back them up, or add Notechondria to your Home Screen for durable storage.'**
+  String get installBannerAtRisk;
+
+  /// No description provided for @installBannerTip.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip: add Notechondria to your Home Screen for an app-like experience and storage the browser won’t evict. On iPhone: Share → Add to Home Screen.'**
+  String get installBannerTip;
+
+  /// No description provided for @whatsNewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s new in {appTitle}'**
+  String whatsNewTitle(String appTitle);
 }
 
 class _AppLocalizationsDelegate

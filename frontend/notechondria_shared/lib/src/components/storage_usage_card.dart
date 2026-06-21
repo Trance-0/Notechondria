@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../utils/format_bytes.dart';
 import '../utils/storage_estimate.dart'
     if (dart.library.html) '../utils/storage_estimate_web.dart';
@@ -72,11 +73,11 @@ class _StorageUsageCardState extends State<StorageUsageCard> {
   }
 
   /// Ordered, non-empty buckets plus attachments, largest first.
-  List<MapEntry<String, int>> get _entries {
+  List<MapEntry<String, int>> _entriesFor(String attachmentsLabel) {
     final entries = <MapEntry<String, int>>[
       ...widget.bucketSizes.entries.where((e) => e.value > 0),
       if (widget.attachmentBytes > 0)
-        MapEntry('Attachments', widget.attachmentBytes),
+        MapEntry(attachmentsLabel, widget.attachmentBytes),
     ]..sort((a, b) => b.value.compareTo(a.value));
     return entries;
   }
@@ -89,22 +90,18 @@ class _StorageUsageCardState extends State<StorageUsageCard> {
     return (usage / quota).clamp(0.0, 1.0);
   }
 
-  List<String> get _suggestions {
+  List<String> _suggestionsFor(AppLocalizations l10n) {
     final out = <String>[];
     final frac = _quotaFraction;
     if (frac != null && frac >= 0.8) {
-      out.add('You are using ${(frac * 100).round()}% of this browser\'s '
-          'storage for this site. Free space by clearing the cache or '
-          'exporting and removing old local notes.');
+      out.add(l10n.storageSuggestQuota((frac * 100).round()));
     }
     if (widget.attachmentBytes > 200 * 1024 * 1024) {
-      out.add('Attachments take up ${formatBytes(widget.attachmentBytes)}. '
-          'Sign in and push to the cloud, then clear local data to reclaim '
-          'space, or export a backup first.');
+      out.add(l10n.storageSuggestAttachments(
+          formatBytes(widget.attachmentBytes)));
     }
     if (out.isEmpty && frac == null && _localTotal > 300 * 1024 * 1024) {
-      out.add('Local data is ${formatBytes(_localTotal)}. Consider exporting '
-          'a backup and clearing data you have already synced to the cloud.');
+      out.add(l10n.storageSuggestLocalTotal(formatBytes(_localTotal)));
     }
     return out;
   }
@@ -112,9 +109,11 @@ class _StorageUsageCardState extends State<StorageUsageCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final total = _localTotal;
     final frac = _quotaFraction;
-    final suggestions = _suggestions;
+    final entries = _entriesFor(l10n.storageAttachments);
+    final suggestions = _suggestionsFor(l10n);
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -128,23 +127,27 @@ class _StorageUsageCardState extends State<StorageUsageCard> {
                 Icon(Icons.storage_outlined,
                     color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text('Storage usage',
+                Text(l10n.storageUsageTitle,
                     style: theme.textTheme.titleSmall
                         ?.copyWith(fontWeight: FontWeight.w700)),
               ],
             ),
             const SizedBox(height: 10),
-            _kv(theme, 'Backend',
-                widget.backendHost.isEmpty ? 'offline' : widget.backendHost),
+            _kv(theme, l10n.storageBackend,
+                widget.backendHost.isEmpty
+                    ? l10n.storageOffline
+                    : widget.backendHost),
             if (widget.storageArchLabel.isNotEmpty)
-              _kv(theme, 'Backend storage', widget.storageArchLabel),
-            _kv(theme, 'Local data used', formatBytes(total)),
+              _kv(theme, l10n.storageBackendStorage, widget.storageArchLabel),
+            _kv(theme, l10n.storageLocalDataUsed, formatBytes(total)),
             if (frac != null && _quotaBytes != null) ...[
               _kv(
                 theme,
-                'Browser storage',
-                '${formatBytes(_quotaUsageBytes ?? 0)} of '
-                    '${formatBytes(_quotaBytes!)} used',
+                l10n.storageBrowserStorage,
+                l10n.storageQuotaUsed(
+                  formatBytes(_quotaUsageBytes ?? 0),
+                  formatBytes(_quotaBytes!),
+                ),
               ),
               const SizedBox(height: 6),
               ClipRRect(
@@ -160,25 +163,27 @@ class _StorageUsageCardState extends State<StorageUsageCard> {
               ),
               const SizedBox(height: 2),
               Text(
-                '${formatBytes((_quotaBytes! - (_quotaUsageBytes ?? 0)).clamp(0, _quotaBytes!))} free',
+                l10n.storageFree(formatBytes(
+                    (_quotaBytes! - (_quotaUsageBytes ?? 0))
+                        .clamp(0, _quotaBytes!))),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             ] else if (_estimateLoaded) ...[
-              _kv(theme, 'Space left', 'not reported by this platform'),
+              _kv(theme, l10n.storageSpaceLeft, l10n.storageNotReported),
             ],
             const SizedBox(height: 12),
-            Text('Breakdown',
+            Text(l10n.storageBreakdown,
                 style: theme.textTheme.labelMedium
                     ?.copyWith(fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
-            if (_entries.isEmpty)
-              Text('No local data stored yet.',
+            if (entries.isEmpty)
+              Text(l10n.storageNoLocalData,
                   style: theme.textTheme.bodySmall
                       ?.copyWith(color: theme.colorScheme.onSurfaceVariant))
             else
-              for (final entry in _entries)
+              for (final entry in entries)
                 _breakdownRow(theme, entry.key, entry.value, total),
             if (suggestions.isNotEmpty) ...[
               const SizedBox(height: 12),
@@ -196,7 +201,7 @@ class _StorageUsageCardState extends State<StorageUsageCard> {
                         Icon(Icons.lightbulb_outline,
                             size: 16, color: theme.colorScheme.tertiary),
                         const SizedBox(width: 6),
-                        Text('Suggestions',
+                        Text(l10n.storageSuggestions,
                             style: theme.textTheme.labelMedium
                                 ?.copyWith(fontWeight: FontWeight.w600)),
                       ],

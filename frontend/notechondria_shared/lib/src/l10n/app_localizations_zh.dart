@@ -69,6 +69,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commonChoose => '选择';
 
   @override
+  String get commonGotIt => '知道了';
+
+  @override
   String get navNavigation => '导航';
 
   @override
@@ -391,4 +394,78 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get logLevelDebug => '调试';
+
+  @override
+  String get storageUsageTitle => '存储用量';
+
+  @override
+  String get storageBackend => '后端';
+
+  @override
+  String get storageBackendStorage => '后端存储';
+
+  @override
+  String get storageLocalDataUsed => '本地数据用量';
+
+  @override
+  String get storageBrowserStorage => '浏览器存储';
+
+  @override
+  String get storageSpaceLeft => '剩余空间';
+
+  @override
+  String get storageNotReported => '此平台未提供';
+
+  @override
+  String get storageBreakdown => '明细';
+
+  @override
+  String get storageNoLocalData => '尚未存储任何本地数据。';
+
+  @override
+  String get storageSuggestions => '建议';
+
+  @override
+  String get storageAttachments => '附件';
+
+  @override
+  String get storageOffline => '离线';
+
+  @override
+  String storageQuotaUsed(String used, String quota) {
+    return '已用 $used / $quota';
+  }
+
+  @override
+  String storageFree(String amount) {
+    return '剩余 $amount';
+  }
+
+  @override
+  String storageSuggestQuota(int percent) {
+    return '你已使用本站点在此浏览器中 $percent% 的存储空间。可清理缓存，或导出并删除旧的本地笔记来释放空间。';
+  }
+
+  @override
+  String storageSuggestAttachments(String size) {
+    return '附件占用了 $size。登录并推送到云端后，可清除本地数据以回收空间，或先导出一份备份。';
+  }
+
+  @override
+  String storageSuggestLocalTotal(String size) {
+    return '本地数据为 $size。建议导出一份备份，并清理已同步到云端的数据。';
+  }
+
+  @override
+  String get installBannerAtRisk =>
+      '你的笔记仅保存在此浏览器中，约一周不活动后可能被清除。请登录以备份，或将 Notechondria 添加到主屏幕以获得持久存储。';
+
+  @override
+  String get installBannerTip =>
+      '提示：将 Notechondria 添加到主屏幕，可获得类似应用的体验和不会被浏览器清除的存储。在 iPhone 上：分享 → 添加到主屏幕。';
+
+  @override
+  String whatsNewTitle(String appTitle) {
+    return '$appTitle 新功能';
+  }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../utils/web_install_env.dart'
     if (dart.library.html) '../utils/web_install_env_web.dart';
 
@@ -32,6 +33,7 @@ bool maybeShowInstallBanner(
   final messenger = ScaffoldMessenger.of(context);
   final atRisk = !isSignedIn && hasLocalDrafts;
   final theme = Theme.of(context);
+  final l10n = AppLocalizations.of(context);
 
   Future<void> dismiss() async {
     messenger.hideCurrentMaterialBanner();
@@ -45,18 +47,12 @@ bool maybeShowInstallBanner(
         color: atRisk ? theme.colorScheme.error : theme.colorScheme.primary,
       ),
       content: Text(
-        atRisk
-            ? 'Your notes are saved only in this browser and can be cleared '
-                'after about a week of inactivity. Sign in to back them up, '
-                'or add Notechondria to your Home Screen for durable storage.'
-            : 'Tip: add Notechondria to your Home Screen for an app-like '
-                'experience and storage the browser won’t evict. On '
-                'iPhone: Share → Add to Home Screen.',
+        atRisk ? l10n.installBannerAtRisk : l10n.installBannerTip,
       ),
       actions: [
         TextButton(
           onPressed: dismiss,
-          child: const Text('Got it'),
+          child: Text(l10n.commonGotIt),
         ),
       ],
     ),

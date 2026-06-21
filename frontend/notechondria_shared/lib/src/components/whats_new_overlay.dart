@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../utils/blur_dialog.dart';
 
 /// One user-visible feature shipped in an app version, rendered as a
@@ -73,8 +74,9 @@ Future<bool> showWhatsNewOverlay(
     context: context,
     child: Builder(builder: (ctx) {
       final theme = Theme.of(ctx);
+      final l10n = AppLocalizations.of(ctx);
       return AlertDialog(
-        title: Text("What's new in $appTitle"),
+        title: Text(l10n.whatsNewTitle(appTitle)),
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480, maxHeight: 420),
           child: SizedBox(
@@ -136,11 +138,11 @@ Future<bool> showWhatsNewOverlay(
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Skip'),
+            child: Text(l10n.commonSkip),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Got it'),
+            child: Text(l10n.commonGotIt),
           ),
         ],
       );

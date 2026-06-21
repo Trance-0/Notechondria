@@ -22,6 +22,7 @@
   "commonRemove": "移除",
   "commonChange": "更换",
   "commonChoose": "选择",
+  "commonGotIt": "知道了",
 
   "navNavigation": "导航",
   "navAllNotes": "全部笔记",
@@ -134,5 +135,28 @@
   "logLevelError": "错误",
   "logLevelWarning": "警告",
   "logLevelInfo": "信息",
-  "logLevelDebug": "调试"
+  "logLevelDebug": "调试",
+
+  "storageUsageTitle": "存储用量",
+  "storageBackend": "后端",
+  "storageBackendStorage": "后端存储",
+  "storageLocalDataUsed": "本地数据用量",
+  "storageBrowserStorage": "浏览器存储",
+  "storageSpaceLeft": "剩余空间",
+  "storageNotReported": "此平台未提供",
+  "storageBreakdown": "明细",
+  "storageNoLocalData": "尚未存储任何本地数据。",
+  "storageSuggestions": "建议",
+  "storageAttachments": "附件",
+  "storageOffline": "离线",
+  "storageQuotaUsed": "已用 {used} / {quota}",
+  "storageFree": "剩余 {amount}",
+  "storageSuggestQuota": "你已使用本站点在此浏览器中 {percent}% 的存储空间。可清理缓存，或导出并删除旧的本地笔记来释放空间。",
+  "storageSuggestAttachments": "附件占用了 {size}。登录并推送到云端后，可清除本地数据以回收空间，或先导出一份备份。",
+  "storageSuggestLocalTotal": "本地数据为 {size}。建议导出一份备份，并清理已同步到云端的数据。",
+
+  "installBannerAtRisk": "你的笔记仅保存在此浏览器中，约一周不活动后可能被清除。请登录以备份，或将 Notechondria 添加到主屏幕以获得持久存储。",
+  "installBannerTip": "提示：将 Notechondria 添加到主屏幕，可获得类似应用的体验和不会被浏览器清除的存储。在 iPhone 上：分享 → 添加到主屏幕。",
+
+  "whatsNewTitle": "{appTitle} 新功能"
 }

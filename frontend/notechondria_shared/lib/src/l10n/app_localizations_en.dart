@@ -69,6 +69,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonChoose => 'Choose';
 
   @override
+  String get commonGotIt => 'Got it';
+
+  @override
   String get navNavigation => 'Navigation';
 
   @override
@@ -406,4 +409,78 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get logLevelDebug => 'Debug';
+
+  @override
+  String get storageUsageTitle => 'Storage usage';
+
+  @override
+  String get storageBackend => 'Backend';
+
+  @override
+  String get storageBackendStorage => 'Backend storage';
+
+  @override
+  String get storageLocalDataUsed => 'Local data used';
+
+  @override
+  String get storageBrowserStorage => 'Browser storage';
+
+  @override
+  String get storageSpaceLeft => 'Space left';
+
+  @override
+  String get storageNotReported => 'not reported by this platform';
+
+  @override
+  String get storageBreakdown => 'Breakdown';
+
+  @override
+  String get storageNoLocalData => 'No local data stored yet.';
+
+  @override
+  String get storageSuggestions => 'Suggestions';
+
+  @override
+  String get storageAttachments => 'Attachments';
+
+  @override
+  String get storageOffline => 'offline';
+
+  @override
+  String storageQuotaUsed(String used, String quota) {
+    return '$used of $quota used';
+  }
+
+  @override
+  String storageFree(String amount) {
+    return '$amount free';
+  }
+
+  @override
+  String storageSuggestQuota(int percent) {
+    return 'You are using $percent% of this browser\'s storage for this site. Free space by clearing the cache or exporting and removing old local notes.';
+  }
+
+  @override
+  String storageSuggestAttachments(String size) {
+    return 'Attachments take up $size. Sign in and push to the cloud, then clear local data to reclaim space, or export a backup first.';
+  }
+
+  @override
+  String storageSuggestLocalTotal(String size) {
+    return 'Local data is $size. Consider exporting a backup and clearing data you have already synced to the cloud.';
+  }
+
+  @override
+  String get installBannerAtRisk =>
+      'Your notes are saved only in this browser and can be cleared after about a week of inactivity. Sign in to back them up, or add Notechondria to your Home Screen for durable storage.';
+
+  @override
+  String get installBannerTip =>
+      'Tip: add Notechondria to your Home Screen for an app-like experience and storage the browser won’t evict. On iPhone: Share → Add to Home Screen.';
+
+  @override
+  String whatsNewTitle(String appTitle) {
+    return 'What\'s new in $appTitle';
+  }
 }
