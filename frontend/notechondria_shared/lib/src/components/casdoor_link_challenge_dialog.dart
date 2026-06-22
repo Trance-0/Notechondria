@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
+
 /// Result of the gitea-style Casdoor link-challenge dialog (since
 /// 0.1.118). Returned via `Navigator.pop` so the caller in
 /// `_AppShellState.onCasdoorLinkChallenge` can dispatch the right
@@ -91,12 +93,13 @@ class _CasdoorLinkChallengeDialogState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AlertDialog(
-      title: const Row(
+      title: Row(
         children: [
-          Icon(Icons.shield_outlined),
-          SizedBox(width: 8),
-          Text('Link Casdoor identity'),
+          const Icon(Icons.shield_outlined),
+          const SizedBox(width: 8),
+          Text(l10n.linkTitle),
         ],
       ),
       content: SingleChildScrollView(
@@ -105,7 +108,7 @@ class _CasdoorLinkChallengeDialogState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Casdoor signed you in as:',
+              l10n.linkSignedInAs,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 6),
@@ -147,45 +150,37 @@ class _CasdoorLinkChallengeDialogState
   }
 
   Widget _buildChoosePane(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'This Casdoor identity is not yet linked to a Notechondria '
-          'account. Choose how you want to proceed:',
-        ),
+        Text(l10n.linkChooseIntro),
         const SizedBox(height: 12),
         FilledButton.tonalIcon(
           onPressed: () => setState(() => _stage = _DialogStage.bind),
           icon: const Icon(Icons.link),
-          label: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 4),
-            child: Text('Bind to my existing account'),
+          label: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Text(l10n.linkBindButton),
           ),
         ),
         const SizedBox(height: 6),
         Text(
-          'You already have a Notechondria account. Sign in once with '
-          'your legacy username/email + password to link this Casdoor '
-          'identity to it. After linking, future Casdoor sign-ins '
-          'land on the same account.',
+          l10n.linkBindDesc,
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 12),
         FilledButton.tonalIcon(
           onPressed: () => setState(() => _stage = _DialogStage.create),
           icon: const Icon(Icons.person_add_alt_outlined),
-          label: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 4),
-            child: Text('Create a new Notechondria account'),
+          label: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Text(l10n.linkCreateButton),
           ),
         ),
         const SizedBox(height: 6),
         Text(
-          'No prior Notechondria account. Pick a password — your new '
-          'account will be created with the username and email shown '
-          'above. The same password works for the email/password '
-          'fallback path when Casdoor is unreachable.',
+          l10n.linkCreateDesc,
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],
@@ -193,31 +188,30 @@ class _CasdoorLinkChallengeDialogState
   }
 
   Widget _buildBindPane(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Sign in to your existing Notechondria account once so we '
-          'can link it to this Casdoor identity. Username or email + '
-          'the password you set previously.',
+          l10n.linkBindPaneDesc,
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 12),
         TextField(
           controller: _identifier,
           autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Notechondria username or email',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.linkUsernameOrEmailLabel,
+            border: const OutlineInputBorder(),
           ),
         ),
         const SizedBox(height: 8),
         TextField(
           controller: _password,
           obscureText: true,
-          decoration: const InputDecoration(
-            labelText: 'Notechondria password',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.linkPasswordLabel,
+            border: const OutlineInputBorder(),
           ),
           onSubmitted: (_) => _submit(),
         ),
@@ -233,14 +227,12 @@ class _CasdoorLinkChallengeDialogState
   }
 
   Widget _buildCreatePane(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Pick a password for your new Notechondria account. Casdoor '
-          'will keep handling SSO; the password is for the legacy '
-          'email/password fallback (when auth.trance-0.com is '
-          'unreachable).',
+          l10n.linkCreatePaneDesc,
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 12),
@@ -248,18 +240,18 @@ class _CasdoorLinkChallengeDialogState
           controller: _password,
           obscureText: true,
           autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'New password',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.linkNewPasswordLabel,
+            border: const OutlineInputBorder(),
           ),
         ),
         const SizedBox(height: 8),
         TextField(
           controller: _confirmPassword,
           obscureText: true,
-          decoration: const InputDecoration(
-            labelText: 'Confirm password',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.linkConfirmPasswordLabel,
+            border: const OutlineInputBorder(),
           ),
           onSubmitted: (_) => _submit(),
         ),
@@ -275,11 +267,12 @@ class _CasdoorLinkChallengeDialogState
   }
 
   List<Widget> _buildActions(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (_stage == _DialogStage.choose) {
       return [
         TextButton(
           onPressed: () => Navigator.of(context).pop(null),
-          child: const Text('Cancel'),
+          child: Text(l10n.commonCancel),
         ),
       ];
     }
@@ -289,28 +282,30 @@ class _CasdoorLinkChallengeDialogState
           _stage = _DialogStage.choose;
           _formError = null;
         }),
-        child: const Text('Back'),
+        child: Text(l10n.commonBack),
       ),
       TextButton(
         onPressed: () => Navigator.of(context).pop(null),
-        child: const Text('Cancel'),
+        child: Text(l10n.commonCancel),
       ),
       FilledButton(
         onPressed: _submit,
         child: Text(
-          _stage == _DialogStage.bind ? 'Bind account' : 'Create account',
+          _stage == _DialogStage.bind
+              ? l10n.linkBindAction
+              : l10n.linkCreateAction,
         ),
       ),
     ];
   }
 
   void _submit() {
+    final l10n = AppLocalizations.of(context);
     if (_stage == _DialogStage.bind) {
       final id = _identifier.text.trim();
       final pw = _password.text;
       if (id.isEmpty || pw.isEmpty) {
-        setState(() => _formError =
-            'Both username/email and password are required to bind.');
+        setState(() => _formError = l10n.linkErrBindRequired);
         return;
       }
       Navigator.of(context).pop(
@@ -322,13 +317,11 @@ class _CasdoorLinkChallengeDialogState
       final pw = _password.text;
       final cf = _confirmPassword.text;
       if (pw.length < 8) {
-        setState(() => _formError = 'Pick a password of 8 characters or more.');
+        setState(() => _formError = l10n.linkErrPasswordShort);
         return;
       }
       if (pw != cf) {
-        setState(() => _formError =
-            'Passwords do not match. Re-type the same password in both '
-                'fields.');
+        setState(() => _formError = l10n.linkErrPasswordMismatch);
         return;
       }
       Navigator.of(context).pop(

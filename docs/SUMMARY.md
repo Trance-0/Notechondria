@@ -65,6 +65,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.148 - i18n Phase 4 (part 2): auth dialogs localized](versions/0.1.148.md)
 - [0.1.147 - i18n Phase 4 (part 1): shared-widget chrome localized](versions/0.1.147.md)
 - [0.1.146 - MCP Phase 3: full CLI tool parity (41/41) + note-sessions GET](versions/0.1.146.md)
 - [0.1.145 - MCP Phase 1: API gap audit + docs/server/mcp.md fix](versions/0.1.145.md)

@@ -101,12 +101,20 @@ English (US) + Chinese (Simplified), a Language setting in each app
   strings), the ErrorStateView retry, the install banner (both copy
   variants + "Got it"), the onboarding-tour chrome
   (Close/Skip/Back/Next/Done), and the what's-new overlay
-  (title + Skip/Got it). **Remaining:** auth dialogs
-  (`auth_dialogs.dart`, `casdoor_link_challenge_dialog.dart`) and the
-  `mcp_skill_section.dart`. (Log OUTPUT lines + terminal command I/O
-  stay English by design — greppable per AGENTS.md §1.8. The per-app
-  What's-New / onboarding *content* registries also stay English for
-  now — only the shared chrome is localized.)
+  (title + Skip/Got it). 0.1.148 localized the **auth surface**: the
+  AuthHub (`auth_dialogs.dart` — Account, the SSO descriptions, the
+  Casdoor/sign-up CTAs, the email/password expander + login dialog
+  incl. its phased-status lines) and the
+  `casdoor_link_challenge_dialog.dart` bind/create flow (all panes,
+  field labels, actions, and form-validation errors). Also replaced a
+  fragile `title == 'Login'` check in `EmailPasswordDialog` with an
+  explicit `finishAutofillOnSuccess` flag so the title can localize.
+  **Remaining:** `mcp_skill_section.dart` (the user-facing skill.md +
+  GitHub-sync card chrome; keep its operator/diagnostic snackbar
+  strings English per AGENTS.md §1.8). (Log OUTPUT lines + terminal
+  command I/O stay English by design. The per-app What's-New /
+  onboarding *content* registries also stay English for now — only the
+  shared chrome is localized.)
 - [ ] **Phase 2 — planner strings.** Translate planner UI; reuse the
   shared catalog for common strings.
 - [ ] **Phase 3 — portal strings.** Translate portal UI.

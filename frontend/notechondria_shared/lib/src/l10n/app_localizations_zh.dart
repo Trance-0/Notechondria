@@ -468,4 +468,117 @@ class AppLocalizationsZh extends AppLocalizations {
   String whatsNewTitle(String appTitle) {
     return '$appTitle 新功能';
   }
+
+  @override
+  String get authAccount => '账户';
+
+  @override
+  String get authDescPrimary =>
+      '通过 Notechondria SSO 登录。账户创建和密码重置由 Casdoor 端处理；可使用下方链接注册，若需要重置密码请联系管理员。';
+
+  @override
+  String get authDescFallback =>
+      '使用你现有的账户登录。账户创建和密码重置已迁移到 Casdoor SSO；如无法登录请联系管理员。';
+
+  @override
+  String get authContinueCasdoor => '使用 Casdoor SSO 继续';
+
+  @override
+  String get authSignUpCasdoor => '还没有账户？通过 Casdoor 注册';
+
+  @override
+  String get authHideFallback => '隐藏邮箱 / 密码备用登录';
+
+  @override
+  String get authUseEmailPassword => '改用邮箱 / 密码登录';
+
+  @override
+  String get authLogin => '登录';
+
+  @override
+  String get authForgotPassword => '忘记密码？请联系管理员重置。对于已迁移的账户，自助密码重置已迁移到 Casdoor。';
+
+  @override
+  String get authEmailOrUsername => '邮箱或用户名';
+
+  @override
+  String get authEmailLabel => '邮箱';
+
+  @override
+  String get authPasswordLabel => '密码';
+
+  @override
+  String authSigningInTo(String host) {
+    return '正在登录到 $host';
+  }
+
+  @override
+  String get authWorking => '处理中……';
+
+  @override
+  String get authPhaseSending => '正在向后端发送请求';
+
+  @override
+  String get authPhaseWaiting => '正在等待后端响应';
+
+  @override
+  String get authPhaseApplying => '正在应用响应';
+
+  @override
+  String get linkTitle => '关联 Casdoor 身份';
+
+  @override
+  String get linkSignedInAs => 'Casdoor 已将你登录为：';
+
+  @override
+  String get linkChooseIntro => '此 Casdoor 身份尚未关联到 Notechondria 账户。请选择如何继续：';
+
+  @override
+  String get linkBindButton => '绑定到我已有的账户';
+
+  @override
+  String get linkBindDesc =>
+      '你已经有一个 Notechondria 账户。使用你原有的用户名/邮箱 + 密码登录一次，即可将此 Casdoor 身份关联到它。关联后，今后的 Casdoor 登录都会进入同一个账户。';
+
+  @override
+  String get linkCreateButton => '创建新的 Notechondria 账户';
+
+  @override
+  String get linkCreateDesc =>
+      '没有已有的 Notechondria 账户。设置一个密码——将使用上方显示的用户名和邮箱创建你的新账户。当 Casdoor 不可用时，同一密码可用于邮箱/密码备用登录。';
+
+  @override
+  String get linkBindPaneDesc =>
+      '请使用你已有的 Notechondria 账户登录一次，以便我们将其关联到此 Casdoor 身份。用户名或邮箱 + 你之前设置的密码。';
+
+  @override
+  String get linkUsernameOrEmailLabel => 'Notechondria 用户名或邮箱';
+
+  @override
+  String get linkPasswordLabel => 'Notechondria 密码';
+
+  @override
+  String get linkCreatePaneDesc =>
+      '为你的新 Notechondria 账户设置一个密码。Casdoor 仍负责 SSO；此密码用于旧的邮箱/密码备用登录（当 auth.trance-0.com 不可用时）。';
+
+  @override
+  String get linkNewPasswordLabel => '新密码';
+
+  @override
+  String get linkConfirmPasswordLabel => '确认密码';
+
+  @override
+  String get linkBindAction => '绑定账户';
+
+  @override
+  String get linkCreateAction => '创建账户';
+
+  @override
+  String get linkErrBindRequired => '绑定需要同时填写用户名/邮箱和密码。';
+
+  @override
+  String get linkErrPasswordShort => '请设置至少 8 个字符的密码。';
+
+  @override
+  String get linkErrPasswordMismatch => '两次输入的密码不一致。请在两个字段中输入相同的密码。';
 }

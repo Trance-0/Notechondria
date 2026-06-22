@@ -53,4 +53,15 @@ void main() {
     expect(find.text('重试'), findsOneWidget); // Retry
     expect(find.text('Retry'), findsNothing);
   });
+
+  testWidgets('AuthHub localizes its chrome to zh', (tester) async {
+    await tester.pumpWidget(_host(
+      const Locale('zh'),
+      AuthHub(onLogin: (_, __) async => const ActionFeedback(message: 'ok')),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('账户'), findsOneWidget); // Account
+    expect(find.text('改用邮箱 / 密码登录'), findsOneWidget); // Use email/password
+    expect(find.text('Account'), findsNothing);
+  });
 }

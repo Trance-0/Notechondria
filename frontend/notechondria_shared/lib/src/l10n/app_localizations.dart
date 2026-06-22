@@ -973,6 +973,216 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'What\'s new in {appTitle}'**
   String whatsNewTitle(String appTitle);
+
+  /// No description provided for @authAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get authAccount;
+
+  /// No description provided for @authDescPrimary.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in via the Notechondria SSO. Account creation and password reset are handled on the Casdoor side; use the link below to register or contact the administrator if your password needs to be reset.'**
+  String get authDescPrimary;
+
+  /// No description provided for @authDescFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with your existing account. Account creation and password resets have moved to the Casdoor SSO; contact the administrator if you cannot sign in.'**
+  String get authDescFallback;
+
+  /// No description provided for @authContinueCasdoor.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Casdoor SSO'**
+  String get authContinueCasdoor;
+
+  /// No description provided for @authSignUpCasdoor.
+  ///
+  /// In en, this message translates to:
+  /// **'No account? Sign up via Casdoor'**
+  String get authSignUpCasdoor;
+
+  /// No description provided for @authHideFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide email / password fallback'**
+  String get authHideFallback;
+
+  /// No description provided for @authUseEmailPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Use email / password instead'**
+  String get authUseEmailPassword;
+
+  /// No description provided for @authLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Login'**
+  String get authLogin;
+
+  /// No description provided for @authForgotPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot password? Contact the administrator to reset it. Self-service password reset has moved to Casdoor for accounts that have been migrated.'**
+  String get authForgotPassword;
+
+  /// No description provided for @authEmailOrUsername.
+  ///
+  /// In en, this message translates to:
+  /// **'Email or username'**
+  String get authEmailOrUsername;
+
+  /// No description provided for @authEmailLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get authEmailLabel;
+
+  /// No description provided for @authPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get authPasswordLabel;
+
+  /// No description provided for @authSigningInTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing in to {host}'**
+  String authSigningInTo(String host);
+
+  /// No description provided for @authWorking.
+  ///
+  /// In en, this message translates to:
+  /// **'Working...'**
+  String get authWorking;
+
+  /// No description provided for @authPhaseSending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending request to backend'**
+  String get authPhaseSending;
+
+  /// No description provided for @authPhaseWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for backend response'**
+  String get authPhaseWaiting;
+
+  /// No description provided for @authPhaseApplying.
+  ///
+  /// In en, this message translates to:
+  /// **'Applying response'**
+  String get authPhaseApplying;
+
+  /// No description provided for @linkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Link Casdoor identity'**
+  String get linkTitle;
+
+  /// No description provided for @linkSignedInAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Casdoor signed you in as:'**
+  String get linkSignedInAs;
+
+  /// No description provided for @linkChooseIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'This Casdoor identity is not yet linked to a Notechondria account. Choose how you want to proceed:'**
+  String get linkChooseIntro;
+
+  /// No description provided for @linkBindButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Bind to my existing account'**
+  String get linkBindButton;
+
+  /// No description provided for @linkBindDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'You already have a Notechondria account. Sign in once with your legacy username/email + password to link this Casdoor identity to it. After linking, future Casdoor sign-ins land on the same account.'**
+  String get linkBindDesc;
+
+  /// No description provided for @linkCreateButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a new Notechondria account'**
+  String get linkCreateButton;
+
+  /// No description provided for @linkCreateDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'No prior Notechondria account. Pick a password — your new account will be created with the username and email shown above. The same password works for the email/password fallback path when Casdoor is unreachable.'**
+  String get linkCreateDesc;
+
+  /// No description provided for @linkBindPaneDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to your existing Notechondria account once so we can link it to this Casdoor identity. Username or email + the password you set previously.'**
+  String get linkBindPaneDesc;
+
+  /// No description provided for @linkUsernameOrEmailLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Notechondria username or email'**
+  String get linkUsernameOrEmailLabel;
+
+  /// No description provided for @linkPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Notechondria password'**
+  String get linkPasswordLabel;
+
+  /// No description provided for @linkCreatePaneDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a password for your new Notechondria account. Casdoor will keep handling SSO; the password is for the legacy email/password fallback (when auth.trance-0.com is unreachable).'**
+  String get linkCreatePaneDesc;
+
+  /// No description provided for @linkNewPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'New password'**
+  String get linkNewPasswordLabel;
+
+  /// No description provided for @linkConfirmPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm password'**
+  String get linkConfirmPasswordLabel;
+
+  /// No description provided for @linkBindAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Bind account'**
+  String get linkBindAction;
+
+  /// No description provided for @linkCreateAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Create account'**
+  String get linkCreateAction;
+
+  /// No description provided for @linkErrBindRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Both username/email and password are required to bind.'**
+  String get linkErrBindRequired;
+
+  /// No description provided for @linkErrPasswordShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a password of 8 characters or more.'**
+  String get linkErrPasswordShort;
+
+  /// No description provided for @linkErrPasswordMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords do not match. Re-type the same password in both fields.'**
+  String get linkErrPasswordMismatch;
 }
 
 class _AppLocalizationsDelegate

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../app_shell/url_strategy.dart'
     if (dart.library.html) '../app_shell/url_strategy_web.dart' as url_strategy;
+import '../l10n/app_localizations.dart';
 import '../models/action_feedback.dart';
 import '../utils/blur_dialog.dart';
 import 'phased_status.dart';
@@ -13,15 +14,15 @@ import 'phased_status.dart';
 /// `api_base_url` (may include `/api/v1`) and returns `Signing in to
 /// <host>` so the user can verify they're hitting the right backend
 /// before typing credentials.
-String _apiHostSubtitle(String? apiBaseUrl) {
+String _apiHostSubtitle(AppLocalizations l10n, String? apiBaseUrl) {
   final raw = (apiBaseUrl ?? '').trim();
   if (raw.isEmpty) return '';
   try {
     final parsed = Uri.parse(raw);
     final host = parsed.hasAuthority ? parsed.authority : raw;
-    return 'Signing in to $host';
+    return l10n.authSigningInTo(host);
   } catch (_) {
-    return 'Signing in to $raw';
+    return l10n.authSigningInTo(raw);
   }
 }
 
@@ -131,13 +132,15 @@ class _AuthHubBodyState extends State<_AuthHubBody> {
   bool _showLegacy = false;
 
   void _openLogin(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     widget.openDialog(
       context,
       EmailPasswordDialog(
-        title: 'Login',
-        description: _apiHostSubtitle(widget.apiBaseUrl),
-        submitLabel: 'Login',
-        emailLabel: 'Email or username',
+        title: l10n.authLogin,
+        description: _apiHostSubtitle(l10n, widget.apiBaseUrl),
+        submitLabel: l10n.authLogin,
+        emailLabel: l10n.authEmailOrUsername,
+        finishAutofillOnSuccess: true,
         onSubmit: widget.onLogin,
       ),
     );
@@ -152,23 +155,17 @@ class _AuthHubBodyState extends State<_AuthHubBody> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final casdoorPrimary = widget.onCasdoorLogin != null;
     final casdoorBrowserUrl = widget.casdoorOrgLoginUrl ?? '';
     final hasBrowserLogin = casdoorBrowserUrl.isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Account', style: theme.textTheme.titleLarge),
+        Text(l10n.authAccount, style: theme.textTheme.titleLarge),
         const SizedBox(height: 8),
         Text(
-          casdoorPrimary
-              ? 'Sign in via the Notechondria SSO. Account creation '
-                  'and password reset are handled on the Casdoor side; '
-                  'use the link below to register or contact the '
-                  'administrator if your password needs to be reset.'
-              : 'Sign in with your existing account. Account creation '
-                  'and password resets have moved to the Casdoor SSO; '
-                  'contact the administrator if you cannot sign in.',
+          casdoorPrimary ? l10n.authDescPrimary : l10n.authDescFallback,
         ),
         const SizedBox(height: 16),
         if (casdoorPrimary) ...[
@@ -177,9 +174,9 @@ class _AuthHubBodyState extends State<_AuthHubBody> {
             child: FilledButton.icon(
               onPressed: widget.onCasdoorLogin,
               icon: const Icon(Icons.shield_outlined, size: 20),
-              label: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 4),
-                child: Text('Continue with Casdoor SSO'),
+              label: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Text(l10n.authContinueCasdoor),
               ),
             ),
           ),
@@ -199,7 +196,7 @@ class _AuthHubBodyState extends State<_AuthHubBody> {
             child: TextButton.icon(
               onPressed: _openCasdoorBrowserLogin,
               icon: const Icon(Icons.person_add_alt_outlined, size: 18),
-              label: const Text('No account? Sign up via Casdoor'),
+              label: Text(l10n.authSignUpCasdoor),
             ),
           ),
         ],
@@ -213,9 +210,7 @@ class _AuthHubBodyState extends State<_AuthHubBody> {
               size: 18,
             ),
             label: Text(
-              _showLegacy
-                  ? 'Hide email / password fallback'
-                  : 'Use email / password instead',
+              _showLegacy ? l10n.authHideFallback : l10n.authUseEmailPassword,
             ),
           ),
         ),
@@ -223,13 +218,11 @@ class _AuthHubBodyState extends State<_AuthHubBody> {
           const Divider(),
           OutlinedButton(
             onPressed: () => _openLogin(context),
-            child: const Text('Login'),
+            child: Text(l10n.authLogin),
           ),
           const SizedBox(height: 6),
           Text(
-            'Forgot password? Contact the administrator to reset it. '
-            'Self-service password reset has moved to Casdoor for '
-            'accounts that have been migrated.',
+            l10n.authForgotPassword,
             style: theme.textTheme.bodySmall,
           ),
         ],
@@ -246,6 +239,7 @@ class EmailPasswordDialog extends StatefulWidget {
     required this.submitLabel,
     required this.onSubmit,
     this.emailLabel = 'Email',
+    this.finishAutofillOnSuccess = false,
   });
 
   final String title;
@@ -253,6 +247,13 @@ class EmailPasswordDialog extends StatefulWidget {
   final String submitLabel;
   final Future<ActionFeedback> Function(String email, String password) onSubmit;
   final String emailLabel;
+
+  /// When true, on a successful submit the dialog calls
+  /// `TextInput.finishAutofillContext()` and closes — letting the
+  /// browser's "Save password?" prompt fire. Set by the login caller.
+  /// Replaces a fragile `title == 'Login'` string check that broke once
+  /// the title became localizable.
+  final bool finishAutofillOnSuccess;
 
   @override
   State<EmailPasswordDialog> createState() => _EmailPasswordDialogState();
@@ -288,11 +289,12 @@ class _EmailPasswordDialogState extends State<EmailPasswordDialog> {
     // Seed the first phase synchronously so the user sees a label the
     // instant they tap the button. The second phase is scheduled for
     // ~2s in — if the network call returns sooner, we cancel the bump.
-    _phase.value = 'Sending request to backend';
+    final l10n = AppLocalizations.of(context);
+    _phase.value = l10n.authPhaseSending;
     _phaseFallback?.cancel();
     _phaseFallback = Timer(const Duration(seconds: 2), () {
       if (mounted && _submitting) {
-        _phase.value = 'Waiting for backend response';
+        _phase.value = l10n.authPhaseWaiting;
       }
     });
     final ActionFeedback feedback;
@@ -306,13 +308,13 @@ class _EmailPasswordDialogState extends State<EmailPasswordDialog> {
     if (!mounted) {
       return;
     }
-    _phase.value = 'Applying response';
+    _phase.value = l10n.authPhaseApplying;
     setState(() {
       _submitting = false;
       _feedback = feedback;
     });
     _phase.value = '';
-    if (!feedback.isError && widget.title == 'Login') {
+    if (!feedback.isError && widget.finishAutofillOnSuccess) {
       // Signal the browser that this autofill context finished successfully.
       // Chrome needs a brief delay between finishAutofillContext and the DOM
       // removal (dialog close) to capture the credentials and show the
@@ -326,6 +328,7 @@ class _EmailPasswordDialogState extends State<EmailPasswordDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AlertDialog(
       title: Text(widget.title),
       content: SizedBox(
@@ -359,9 +362,9 @@ class _EmailPasswordDialogState extends State<EmailPasswordDialog> {
                     autofillHints: const [AutofillHints.password],
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _submitting ? null : _submit(),
-                    decoration: const InputDecoration(
-                      labelText: 'Password',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: l10n.authPasswordLabel,
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                 ],
@@ -396,11 +399,11 @@ class _EmailPasswordDialogState extends State<EmailPasswordDialog> {
             _phaseFallback = null;
             Navigator.of(context).pop();
           },
-          child: Text(_submitting ? 'Cancel' : 'Close'),
+          child: Text(_submitting ? l10n.commonCancel : l10n.commonClose),
         ),
         FilledButton(
           onPressed: _submitting ? null : _submit,
-          child: Text(_submitting ? 'Working...' : widget.submitLabel),
+          child: Text(_submitting ? l10n.authWorking : widget.submitLabel),
         ),
       ],
     );

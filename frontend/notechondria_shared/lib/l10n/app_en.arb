@@ -185,5 +185,45 @@
   "whatsNewTitle": "What's new in {appTitle}",
   "@whatsNewTitle": {
     "placeholders": { "appTitle": { "type": "String" } }
-  }
+  },
+
+  "authAccount": "Account",
+  "authDescPrimary": "Sign in via the Notechondria SSO. Account creation and password reset are handled on the Casdoor side; use the link below to register or contact the administrator if your password needs to be reset.",
+  "authDescFallback": "Sign in with your existing account. Account creation and password resets have moved to the Casdoor SSO; contact the administrator if you cannot sign in.",
+  "authContinueCasdoor": "Continue with Casdoor SSO",
+  "authSignUpCasdoor": "No account? Sign up via Casdoor",
+  "authHideFallback": "Hide email / password fallback",
+  "authUseEmailPassword": "Use email / password instead",
+  "authLogin": "Login",
+  "authForgotPassword": "Forgot password? Contact the administrator to reset it. Self-service password reset has moved to Casdoor for accounts that have been migrated.",
+  "authEmailOrUsername": "Email or username",
+  "authEmailLabel": "Email",
+  "authPasswordLabel": "Password",
+  "authSigningInTo": "Signing in to {host}",
+  "@authSigningInTo": {
+    "placeholders": { "host": { "type": "String" } }
+  },
+  "authWorking": "Working...",
+  "authPhaseSending": "Sending request to backend",
+  "authPhaseWaiting": "Waiting for backend response",
+  "authPhaseApplying": "Applying response",
+
+  "linkTitle": "Link Casdoor identity",
+  "linkSignedInAs": "Casdoor signed you in as:",
+  "linkChooseIntro": "This Casdoor identity is not yet linked to a Notechondria account. Choose how you want to proceed:",
+  "linkBindButton": "Bind to my existing account",
+  "linkBindDesc": "You already have a Notechondria account. Sign in once with your legacy username/email + password to link this Casdoor identity to it. After linking, future Casdoor sign-ins land on the same account.",
+  "linkCreateButton": "Create a new Notechondria account",
+  "linkCreateDesc": "No prior Notechondria account. Pick a password — your new account will be created with the username and email shown above. The same password works for the email/password fallback path when Casdoor is unreachable.",
+  "linkBindPaneDesc": "Sign in to your existing Notechondria account once so we can link it to this Casdoor identity. Username or email + the password you set previously.",
+  "linkUsernameOrEmailLabel": "Notechondria username or email",
+  "linkPasswordLabel": "Notechondria password",
+  "linkCreatePaneDesc": "Pick a password for your new Notechondria account. Casdoor will keep handling SSO; the password is for the legacy email/password fallback (when auth.trance-0.com is unreachable).",
+  "linkNewPasswordLabel": "New password",
+  "linkConfirmPasswordLabel": "Confirm password",
+  "linkBindAction": "Bind account",
+  "linkCreateAction": "Create account",
+  "linkErrBindRequired": "Both username/email and password are required to bind.",
+  "linkErrPasswordShort": "Pick a password of 8 characters or more.",
+  "linkErrPasswordMismatch": "Passwords do not match. Re-type the same password in both fields."
 }
