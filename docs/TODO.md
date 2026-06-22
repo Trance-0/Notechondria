@@ -135,6 +135,14 @@ English (US) + Chinese (Simplified), a Language setting in each app
   the right default. Changing planner's starter default is a UX
   break, so gather feedback before touching.
 
+## i18n bug fixes (landed)
+
+- 0.1.149 fixed two reported i18n gaps: the editor's "Clear all local
+  data" tile + confirm dialog, and the onboarding tour **content**
+  (title/body) in all three apps — it was a `const` step list that
+  couldn't read `AppLocalizations`, so only the chrome (0.1.147) had
+  been localizing. Now built from `l10n`.
+
 ## Tutorials / What's New
 
 Owner decision (0.1.127): version-update tutorials are a **UI

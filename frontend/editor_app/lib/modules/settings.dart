@@ -563,14 +563,14 @@ class _SettingsPageState extends State<_SettingsPage> {
   /// Destructive confirmation for "Clear all local data" — blocks the confirm
   /// button for 3 seconds so the user cannot tap through reflexively.
   Future<void> _confirmClearAllLocalData() async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => const ConfirmWithDelayDialog(
-        title: 'Clear all local data?',
-        message:
-            'This removes every local draft and local category from this device. Notes already synced to the cloud are not affected.',
-        confirmLabel: 'Clear all',
+      builder: (ctx) => ConfirmWithDelayDialog(
+        title: l10n.clearAllLocalDataTitle,
+        message: l10n.clearAllLocalDataMessage,
+        confirmLabel: l10n.clearAllLocalDataConfirm,
         delaySeconds: 3,
       ),
     );
@@ -811,12 +811,11 @@ class _SettingsPageState extends State<_SettingsPage> {
           ListTile(
             leading: Icon(Icons.warning_amber_outlined, color: scheme.error),
             title: Text(
-              'Clear all local data',
+              AppLocalizations.of(context).clearAllLocalDataTile,
               style: TextStyle(color: scheme.error),
             ),
             subtitle: Text(
-              'Wipes drafts, categories, settings, and logs from this '
-              'device. Cloud copies are not touched.',
+              AppLocalizations.of(context).clearAllLocalDataTileSubtitle,
               style: TextStyle(color: scheme.error.withValues(alpha: 0.8)),
             ),
             onTap: _confirmClearAllLocalData,

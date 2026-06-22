@@ -600,4 +600,98 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get linkErrPasswordMismatch =>
       'Passwords do not match. Re-type the same password in both fields.';
+
+  @override
+  String get clearAllLocalDataTile => 'Clear all local data';
+
+  @override
+  String get clearAllLocalDataTileSubtitle =>
+      'Wipes drafts, categories, settings, and logs from this device. Cloud copies are not touched.';
+
+  @override
+  String get clearAllLocalDataTitle => 'Clear all local data?';
+
+  @override
+  String get clearAllLocalDataMessage =>
+      'This removes every local draft and local category from this device. Notes already synced to the cloud are not affected.';
+
+  @override
+  String get clearAllLocalDataConfirm => 'Clear all';
+
+  @override
+  String get tourEditorWelcomeTitle => 'Welcome to Notechondria Editor';
+
+  @override
+  String get tourEditorWelcomeBody =>
+      'Write markdown notes that work offline and sync to the cloud when you sign in.';
+
+  @override
+  String get tourEditorCategoriesTitle => 'Organize with categories';
+
+  @override
+  String get tourEditorCategoriesBody =>
+      'Group notes into categories from the sidebar. Notes without one stay in your Inbox.';
+
+  @override
+  String get tourEditorSyncTitle => 'Yours, on every device';
+
+  @override
+  String get tourEditorSyncBody =>
+      'Notes save on this device as you type. Sign in to back them up and sync across devices.';
+
+  @override
+  String get tourEditorToolsTitle => 'Settings & tools';
+
+  @override
+  String get tourEditorToolsBody =>
+      'Themes, sync, import/export, and the debug log live in Settings. On phones, open the menu from the top-left.';
+
+  @override
+  String get tourPlannerWelcomeTitle => 'Welcome to Notechondria Planner';
+
+  @override
+  String get tourPlannerWelcomeBody =>
+      'Track courses, deadlines, and your study activity in one place.';
+
+  @override
+  String get tourPlannerCoursesTitle => 'Courses & deadlines';
+
+  @override
+  String get tourPlannerCoursesBody =>
+      'Add courses and planner events; upcoming deadlines surface on your dashboard.';
+
+  @override
+  String get tourPlannerAnywhereTitle => 'Plan anywhere';
+
+  @override
+  String get tourPlannerAnywhereBody =>
+      'Works offline. Sign in to sync your plan across devices.';
+
+  @override
+  String get tourPlannerToolsTitle => 'Settings & tools';
+
+  @override
+  String get tourPlannerToolsBody =>
+      'Themes, sync, and tools live in Settings. On phones, open the menu from the top-left.';
+
+  @override
+  String get tourPortalWelcomeTitle => 'Welcome to Notechondria';
+
+  @override
+  String get tourPortalWelcomeBody =>
+      'Your hub for notes, planning, and public courses.';
+
+  @override
+  String get tourPortalExploreTitle => 'Explore public notes';
+
+  @override
+  String get tourPortalExploreBody =>
+      'Browse public courses and notes right from the front page.';
+
+  @override
+  String get tourPortalAppsTitle => 'Open the apps';
+
+  @override
+  String get tourPortalAppsBody =>
+      'Jump into the Editor or Planner anytime. Sign in to sync your own work.';
 }

@@ -3,33 +3,30 @@ part of notechondria_frontend;
 /// First-run onboarding tour steps for this app. Layout-agnostic
 /// (concept cards, not anchored coach marks) so the same content
 /// renders identically on the mobile drawer layout and the desktop
-/// sidebar layout. See `showOnboardingTour`.
-const _kOnboardingSteps = <TourStep>[
-  TourStep(
-    icon: Icons.edit_note,
-    title: 'Welcome to Notechondria Editor',
-    body:
-        'Write markdown notes that work offline and sync to the cloud when you sign in.',
-  ),
-  TourStep(
-    icon: Icons.folder_outlined,
-    title: 'Organize with categories',
-    body:
-        'Group notes into categories from the sidebar. Notes without one stay in your Inbox.',
-  ),
-  TourStep(
-    icon: Icons.cloud_sync_outlined,
-    title: 'Yours, on every device',
-    body:
-        'Notes save on this device as you type. Sign in to back them up and sync across devices.',
-  ),
-  TourStep(
-    icon: Icons.tune,
-    title: 'Settings & tools',
-    body:
-        'Themes, sync, import/export, and the debug log live in Settings. On phones, open the menu from the top-left.',
-  ),
-];
+/// sidebar layout. Built from `AppLocalizations` so the tour follows
+/// the app's Language setting. See `showOnboardingTour`.
+List<TourStep> _onboardingSteps(AppLocalizations l10n) => <TourStep>[
+      TourStep(
+        icon: Icons.edit_note,
+        title: l10n.tourEditorWelcomeTitle,
+        body: l10n.tourEditorWelcomeBody,
+      ),
+      TourStep(
+        icon: Icons.folder_outlined,
+        title: l10n.tourEditorCategoriesTitle,
+        body: l10n.tourEditorCategoriesBody,
+      ),
+      TourStep(
+        icon: Icons.cloud_sync_outlined,
+        title: l10n.tourEditorSyncTitle,
+        body: l10n.tourEditorSyncBody,
+      ),
+      TourStep(
+        icon: Icons.tune,
+        title: l10n.tourEditorToolsTitle,
+        body: l10n.tourEditorToolsBody,
+      ),
+    ];
 
 extension _AppShellOnboardingX on _AppShellState {
   /// Show the first-run tour once, tracked by the `onboarding_seen`
@@ -57,7 +54,7 @@ extension _AppShellOnboardingX on _AppShellState {
     await showOnboardingTour(
       context,
       appTitle: 'Notechondria Editor',
-      steps: _kOnboardingSteps,
+      steps: _onboardingSteps(AppLocalizations.of(context)),
     );
     if (stampSeen && mounted) {
       _localStats = {..._localStats, 'onboarding_seen': true};

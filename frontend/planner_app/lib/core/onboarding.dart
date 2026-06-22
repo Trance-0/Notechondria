@@ -4,30 +4,28 @@ part of notechondria_frontend;
 /// (concept cards, not anchored coach marks) so the same content
 /// renders identically on the mobile drawer layout and the desktop
 /// sidebar layout. See `showOnboardingTour`.
-const _kOnboardingSteps = <TourStep>[
-  TourStep(
-    icon: Icons.event_note,
-    title: 'Welcome to Notechondria Planner',
-    body: 'Track courses, deadlines, and your study activity in one place.',
-  ),
-  TourStep(
-    icon: Icons.calendar_month,
-    title: 'Courses & deadlines',
-    body:
-        'Add courses and planner events; upcoming deadlines surface on your dashboard.',
-  ),
-  TourStep(
-    icon: Icons.cloud_sync_outlined,
-    title: 'Plan anywhere',
-    body: 'Works offline. Sign in to sync your plan across devices.',
-  ),
-  TourStep(
-    icon: Icons.tune,
-    title: 'Settings & tools',
-    body:
-        'Themes, sync, and tools live in Settings. On phones, open the menu from the top-left.',
-  ),
-];
+List<TourStep> _onboardingSteps(AppLocalizations l10n) => <TourStep>[
+      TourStep(
+        icon: Icons.event_note,
+        title: l10n.tourPlannerWelcomeTitle,
+        body: l10n.tourPlannerWelcomeBody,
+      ),
+      TourStep(
+        icon: Icons.calendar_month,
+        title: l10n.tourPlannerCoursesTitle,
+        body: l10n.tourPlannerCoursesBody,
+      ),
+      TourStep(
+        icon: Icons.cloud_sync_outlined,
+        title: l10n.tourPlannerAnywhereTitle,
+        body: l10n.tourPlannerAnywhereBody,
+      ),
+      TourStep(
+        icon: Icons.tune,
+        title: l10n.tourPlannerToolsTitle,
+        body: l10n.tourPlannerToolsBody,
+      ),
+    ];
 
 extension _AppShellOnboardingX on _AppShellState {
   /// Show the first-run tour once, tracked by the `onboarding_seen`
@@ -55,7 +53,7 @@ extension _AppShellOnboardingX on _AppShellState {
     await showOnboardingTour(
       context,
       appTitle: 'Notechondria Planner',
-      steps: _kOnboardingSteps,
+      steps: _onboardingSteps(AppLocalizations.of(context)),
     );
     if (stampSeen && mounted) {
       _localStats = {..._localStats, 'onboarding_seen': true};

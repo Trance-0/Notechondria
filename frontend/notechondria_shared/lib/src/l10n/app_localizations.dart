@@ -1183,6 +1183,168 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Passwords do not match. Re-type the same password in both fields.'**
   String get linkErrPasswordMismatch;
+
+  /// No description provided for @clearAllLocalDataTile.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all local data'**
+  String get clearAllLocalDataTile;
+
+  /// No description provided for @clearAllLocalDataTileSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Wipes drafts, categories, settings, and logs from this device. Cloud copies are not touched.'**
+  String get clearAllLocalDataTileSubtitle;
+
+  /// No description provided for @clearAllLocalDataTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all local data?'**
+  String get clearAllLocalDataTitle;
+
+  /// No description provided for @clearAllLocalDataMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This removes every local draft and local category from this device. Notes already synced to the cloud are not affected.'**
+  String get clearAllLocalDataMessage;
+
+  /// No description provided for @clearAllLocalDataConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all'**
+  String get clearAllLocalDataConfirm;
+
+  /// No description provided for @tourEditorWelcomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome to Notechondria Editor'**
+  String get tourEditorWelcomeTitle;
+
+  /// No description provided for @tourEditorWelcomeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Write markdown notes that work offline and sync to the cloud when you sign in.'**
+  String get tourEditorWelcomeBody;
+
+  /// No description provided for @tourEditorCategoriesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Organize with categories'**
+  String get tourEditorCategoriesTitle;
+
+  /// No description provided for @tourEditorCategoriesBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Group notes into categories from the sidebar. Notes without one stay in your Inbox.'**
+  String get tourEditorCategoriesBody;
+
+  /// No description provided for @tourEditorSyncTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Yours, on every device'**
+  String get tourEditorSyncTitle;
+
+  /// No description provided for @tourEditorSyncBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes save on this device as you type. Sign in to back them up and sync across devices.'**
+  String get tourEditorSyncBody;
+
+  /// No description provided for @tourEditorToolsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings & tools'**
+  String get tourEditorToolsTitle;
+
+  /// No description provided for @tourEditorToolsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Themes, sync, import/export, and the debug log live in Settings. On phones, open the menu from the top-left.'**
+  String get tourEditorToolsBody;
+
+  /// No description provided for @tourPlannerWelcomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome to Notechondria Planner'**
+  String get tourPlannerWelcomeTitle;
+
+  /// No description provided for @tourPlannerWelcomeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Track courses, deadlines, and your study activity in one place.'**
+  String get tourPlannerWelcomeBody;
+
+  /// No description provided for @tourPlannerCoursesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Courses & deadlines'**
+  String get tourPlannerCoursesTitle;
+
+  /// No description provided for @tourPlannerCoursesBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Add courses and planner events; upcoming deadlines surface on your dashboard.'**
+  String get tourPlannerCoursesBody;
+
+  /// No description provided for @tourPlannerAnywhereTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan anywhere'**
+  String get tourPlannerAnywhereTitle;
+
+  /// No description provided for @tourPlannerAnywhereBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Works offline. Sign in to sync your plan across devices.'**
+  String get tourPlannerAnywhereBody;
+
+  /// No description provided for @tourPlannerToolsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings & tools'**
+  String get tourPlannerToolsTitle;
+
+  /// No description provided for @tourPlannerToolsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Themes, sync, and tools live in Settings. On phones, open the menu from the top-left.'**
+  String get tourPlannerToolsBody;
+
+  /// No description provided for @tourPortalWelcomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome to Notechondria'**
+  String get tourPortalWelcomeTitle;
+
+  /// No description provided for @tourPortalWelcomeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your hub for notes, planning, and public courses.'**
+  String get tourPortalWelcomeBody;
+
+  /// No description provided for @tourPortalExploreTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore public notes'**
+  String get tourPortalExploreTitle;
+
+  /// No description provided for @tourPortalExploreBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse public courses and notes right from the front page.'**
+  String get tourPortalExploreBody;
+
+  /// No description provided for @tourPortalAppsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the apps'**
+  String get tourPortalAppsTitle;
+
+  /// No description provided for @tourPortalAppsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Jump into the Editor or Planner anytime. Sign in to sync your own work.'**
+  String get tourPortalAppsBody;
 }
 
 class _AppLocalizationsDelegate

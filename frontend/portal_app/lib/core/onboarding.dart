@@ -4,24 +4,23 @@ part of notechondria_frontend;
 /// (concept cards, not anchored coach marks) so the same content
 /// renders identically on the mobile drawer layout and the desktop
 /// sidebar layout. See `showOnboardingTour`.
-const _kOnboardingSteps = <TourStep>[
-  TourStep(
-    icon: Icons.dashboard_customize_outlined,
-    title: 'Welcome to Notechondria',
-    body: 'Your hub for notes, planning, and public courses.',
-  ),
-  TourStep(
-    icon: Icons.explore_outlined,
-    title: 'Explore public notes',
-    body: 'Browse public courses and notes right from the front page.',
-  ),
-  TourStep(
-    icon: Icons.open_in_new,
-    title: 'Open the apps',
-    body:
-        'Jump into the Editor or Planner anytime. Sign in to sync your own work.',
-  ),
-];
+List<TourStep> _onboardingSteps(AppLocalizations l10n) => <TourStep>[
+      TourStep(
+        icon: Icons.dashboard_customize_outlined,
+        title: l10n.tourPortalWelcomeTitle,
+        body: l10n.tourPortalWelcomeBody,
+      ),
+      TourStep(
+        icon: Icons.explore_outlined,
+        title: l10n.tourPortalExploreTitle,
+        body: l10n.tourPortalExploreBody,
+      ),
+      TourStep(
+        icon: Icons.open_in_new,
+        title: l10n.tourPortalAppsTitle,
+        body: l10n.tourPortalAppsBody,
+      ),
+    ];
 
 extension _AppShellOnboardingX on _AppShellState {
   /// Show the first-run tour once, tracked by the `onboarding_seen`
@@ -49,7 +48,7 @@ extension _AppShellOnboardingX on _AppShellState {
     await showOnboardingTour(
       context,
       appTitle: 'Notechondria Portal',
-      steps: _kOnboardingSteps,
+      steps: _onboardingSteps(AppLocalizations.of(context)),
     );
     if (stampSeen && mounted) {
       _localStats = {..._localStats, 'onboarding_seen': true};

@@ -195,5 +195,36 @@
   "linkCreateAction": "创建账户",
   "linkErrBindRequired": "绑定需要同时填写用户名/邮箱和密码。",
   "linkErrPasswordShort": "请设置至少 8 个字符的密码。",
-  "linkErrPasswordMismatch": "两次输入的密码不一致。请在两个字段中输入相同的密码。"
+  "linkErrPasswordMismatch": "两次输入的密码不一致。请在两个字段中输入相同的密码。",
+
+  "clearAllLocalDataTile": "清除所有本地数据",
+  "clearAllLocalDataTileSubtitle": "从此设备清除草稿、分类、设置和日志。云端副本不受影响。",
+  "clearAllLocalDataTitle": "清除所有本地数据？",
+  "clearAllLocalDataMessage": "这将从此设备移除每一篇本地草稿和本地分类。已同步到云端的笔记不受影响。",
+  "clearAllLocalDataConfirm": "全部清除",
+
+  "tourEditorWelcomeTitle": "欢迎使用 Notechondria 编辑器",
+  "tourEditorWelcomeBody": "撰写支持离线的 Markdown 笔记，登录后即可同步到云端。",
+  "tourEditorCategoriesTitle": "用分类整理",
+  "tourEditorCategoriesBody": "在侧边栏中将笔记归入分类。没有分类的笔记会留在收件箱中。",
+  "tourEditorSyncTitle": "随身在每台设备",
+  "tourEditorSyncBody": "笔记会在你输入时保存到此设备。登录即可备份并在多台设备间同步。",
+  "tourEditorToolsTitle": "设置与工具",
+  "tourEditorToolsBody": "主题、同步、导入/导出和调试日志都在设置中。在手机上，从左上角打开菜单。",
+
+  "tourPlannerWelcomeTitle": "欢迎使用 Notechondria 规划器",
+  "tourPlannerWelcomeBody": "在一个地方追踪课程、截止日期和你的学习活动。",
+  "tourPlannerCoursesTitle": "课程与截止日期",
+  "tourPlannerCoursesBody": "添加课程和规划事件；即将到来的截止日期会显示在你的仪表盘上。",
+  "tourPlannerAnywhereTitle": "随处规划",
+  "tourPlannerAnywhereBody": "支持离线使用。登录即可在多台设备间同步你的计划。",
+  "tourPlannerToolsTitle": "设置与工具",
+  "tourPlannerToolsBody": "主题、同步和工具都在设置中。在手机上，从左上角打开菜单。",
+
+  "tourPortalWelcomeTitle": "欢迎使用 Notechondria",
+  "tourPortalWelcomeBody": "你的笔记、规划和公开课程中心。",
+  "tourPortalExploreTitle": "探索公开笔记",
+  "tourPortalExploreBody": "直接从首页浏览公开课程和笔记。",
+  "tourPortalAppsTitle": "打开各应用",
+  "tourPortalAppsBody": "随时进入编辑器或规划器。登录即可同步你自己的内容。"
 }

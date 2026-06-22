@@ -581,4 +581,85 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get linkErrPasswordMismatch => '两次输入的密码不一致。请在两个字段中输入相同的密码。';
+
+  @override
+  String get clearAllLocalDataTile => '清除所有本地数据';
+
+  @override
+  String get clearAllLocalDataTileSubtitle => '从此设备清除草稿、分类、设置和日志。云端副本不受影响。';
+
+  @override
+  String get clearAllLocalDataTitle => '清除所有本地数据？';
+
+  @override
+  String get clearAllLocalDataMessage => '这将从此设备移除每一篇本地草稿和本地分类。已同步到云端的笔记不受影响。';
+
+  @override
+  String get clearAllLocalDataConfirm => '全部清除';
+
+  @override
+  String get tourEditorWelcomeTitle => '欢迎使用 Notechondria 编辑器';
+
+  @override
+  String get tourEditorWelcomeBody => '撰写支持离线的 Markdown 笔记，登录后即可同步到云端。';
+
+  @override
+  String get tourEditorCategoriesTitle => '用分类整理';
+
+  @override
+  String get tourEditorCategoriesBody => '在侧边栏中将笔记归入分类。没有分类的笔记会留在收件箱中。';
+
+  @override
+  String get tourEditorSyncTitle => '随身在每台设备';
+
+  @override
+  String get tourEditorSyncBody => '笔记会在你输入时保存到此设备。登录即可备份并在多台设备间同步。';
+
+  @override
+  String get tourEditorToolsTitle => '设置与工具';
+
+  @override
+  String get tourEditorToolsBody => '主题、同步、导入/导出和调试日志都在设置中。在手机上，从左上角打开菜单。';
+
+  @override
+  String get tourPlannerWelcomeTitle => '欢迎使用 Notechondria 规划器';
+
+  @override
+  String get tourPlannerWelcomeBody => '在一个地方追踪课程、截止日期和你的学习活动。';
+
+  @override
+  String get tourPlannerCoursesTitle => '课程与截止日期';
+
+  @override
+  String get tourPlannerCoursesBody => '添加课程和规划事件；即将到来的截止日期会显示在你的仪表盘上。';
+
+  @override
+  String get tourPlannerAnywhereTitle => '随处规划';
+
+  @override
+  String get tourPlannerAnywhereBody => '支持离线使用。登录即可在多台设备间同步你的计划。';
+
+  @override
+  String get tourPlannerToolsTitle => '设置与工具';
+
+  @override
+  String get tourPlannerToolsBody => '主题、同步和工具都在设置中。在手机上，从左上角打开菜单。';
+
+  @override
+  String get tourPortalWelcomeTitle => '欢迎使用 Notechondria';
+
+  @override
+  String get tourPortalWelcomeBody => '你的笔记、规划和公开课程中心。';
+
+  @override
+  String get tourPortalExploreTitle => '探索公开笔记';
+
+  @override
+  String get tourPortalExploreBody => '直接从首页浏览公开课程和笔记。';
+
+  @override
+  String get tourPortalAppsTitle => '打开各应用';
+
+  @override
+  String get tourPortalAppsBody => '随时进入编辑器或规划器。登录即可同步你自己的内容。';
 }

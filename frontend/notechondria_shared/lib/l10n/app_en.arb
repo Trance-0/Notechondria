@@ -225,5 +225,36 @@
   "linkCreateAction": "Create account",
   "linkErrBindRequired": "Both username/email and password are required to bind.",
   "linkErrPasswordShort": "Pick a password of 8 characters or more.",
-  "linkErrPasswordMismatch": "Passwords do not match. Re-type the same password in both fields."
+  "linkErrPasswordMismatch": "Passwords do not match. Re-type the same password in both fields.",
+
+  "clearAllLocalDataTile": "Clear all local data",
+  "clearAllLocalDataTileSubtitle": "Wipes drafts, categories, settings, and logs from this device. Cloud copies are not touched.",
+  "clearAllLocalDataTitle": "Clear all local data?",
+  "clearAllLocalDataMessage": "This removes every local draft and local category from this device. Notes already synced to the cloud are not affected.",
+  "clearAllLocalDataConfirm": "Clear all",
+
+  "tourEditorWelcomeTitle": "Welcome to Notechondria Editor",
+  "tourEditorWelcomeBody": "Write markdown notes that work offline and sync to the cloud when you sign in.",
+  "tourEditorCategoriesTitle": "Organize with categories",
+  "tourEditorCategoriesBody": "Group notes into categories from the sidebar. Notes without one stay in your Inbox.",
+  "tourEditorSyncTitle": "Yours, on every device",
+  "tourEditorSyncBody": "Notes save on this device as you type. Sign in to back them up and sync across devices.",
+  "tourEditorToolsTitle": "Settings & tools",
+  "tourEditorToolsBody": "Themes, sync, import/export, and the debug log live in Settings. On phones, open the menu from the top-left.",
+
+  "tourPlannerWelcomeTitle": "Welcome to Notechondria Planner",
+  "tourPlannerWelcomeBody": "Track courses, deadlines, and your study activity in one place.",
+  "tourPlannerCoursesTitle": "Courses & deadlines",
+  "tourPlannerCoursesBody": "Add courses and planner events; upcoming deadlines surface on your dashboard.",
+  "tourPlannerAnywhereTitle": "Plan anywhere",
+  "tourPlannerAnywhereBody": "Works offline. Sign in to sync your plan across devices.",
+  "tourPlannerToolsTitle": "Settings & tools",
+  "tourPlannerToolsBody": "Themes, sync, and tools live in Settings. On phones, open the menu from the top-left.",
+
+  "tourPortalWelcomeTitle": "Welcome to Notechondria",
+  "tourPortalWelcomeBody": "Your hub for notes, planning, and public courses.",
+  "tourPortalExploreTitle": "Explore public notes",
+  "tourPortalExploreBody": "Browse public courses and notes right from the front page.",
+  "tourPortalAppsTitle": "Open the apps",
+  "tourPortalAppsBody": "Jump into the Editor or Planner anytime. Sign in to sync your own work."
 }
