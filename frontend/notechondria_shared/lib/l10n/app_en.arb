@@ -256,5 +256,9 @@
   "tourPortalExploreTitle": "Explore public notes",
   "tourPortalExploreBody": "Browse public courses and notes right from the front page.",
   "tourPortalAppsTitle": "Open the apps",
-  "tourPortalAppsBody": "Jump into the Editor or Planner anytime. Sign in to sync your own work."
+  "tourPortalAppsBody": "Jump into the Editor or Planner anytime. Sign in to sync your own work.",
+
+  "errorNetwork": "Couldn't reach the server. Check your connection and try again.",
+  "errorTimeout": "The server took too long to respond. Try again.",
+  "errorServer": "The server hit an error. Try again in a moment."
 }

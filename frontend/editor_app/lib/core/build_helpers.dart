@@ -472,7 +472,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
                               Theme.of(context).colorScheme.onErrorContainer),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Text(_errorMessage!,
+                        child: Text(friendlyError(l10n, _errorMessage!),
                             style: TextStyle(
                                 color: Theme.of(context)
                                     .colorScheme

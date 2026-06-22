@@ -662,4 +662,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get tourPortalAppsBody => '随时进入编辑器或规划器。登录即可同步你自己的内容。';
+
+  @override
+  String get errorNetwork => '无法连接到服务器。请检查你的网络连接后重试。';
+
+  @override
+  String get errorTimeout => '服务器响应超时。请重试。';
+
+  @override
+  String get errorServer => '服务器出错了。请稍后重试。';
 }

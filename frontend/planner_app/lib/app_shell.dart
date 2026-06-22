@@ -654,7 +654,8 @@ class _AppShellState extends State<AppShell>
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          _errorMessage!,
+                          friendlyError(
+                              AppLocalizations.of(context), _errorMessage!),
                           style: TextStyle(
                             color:
                                 Theme.of(context).colorScheme.onErrorContainer,
@@ -663,7 +664,7 @@ class _AppShellState extends State<AppShell>
                       ),
                       TextButton(
                         onPressed: _loadInitialData,
-                        child: const Text('Retry'),
+                        child: Text(AppLocalizations.of(context).commonRetry),
                       ),
                       IconButton(
                         onPressed: () {
@@ -672,7 +673,7 @@ class _AppShellState extends State<AppShell>
                           });
                         },
                         icon: const Icon(Icons.close),
-                        tooltip: 'Dismiss',
+                        tooltip: AppLocalizations.of(context).commonDismiss,
                       ),
                     ],
                   ),

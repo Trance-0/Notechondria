@@ -694,4 +694,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get tourPortalAppsBody =>
       'Jump into the Editor or Planner anytime. Sign in to sync your own work.';
+
+  @override
+  String get errorNetwork =>
+      'Couldn\'t reach the server. Check your connection and try again.';
+
+  @override
+  String get errorTimeout => 'The server took too long to respond. Try again.';
+
+  @override
+  String get errorServer => 'The server hit an error. Try again in a moment.';
 }

@@ -1345,6 +1345,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Jump into the Editor or Planner anytime. Sign in to sync your own work.'**
   String get tourPortalAppsBody;
+
+  /// No description provided for @errorNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reach the server. Check your connection and try again.'**
+  String get errorNetwork;
+
+  /// No description provided for @errorTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'The server took too long to respond. Try again.'**
+  String get errorTimeout;
+
+  /// No description provided for @errorServer.
+  ///
+  /// In en, this message translates to:
+  /// **'The server hit an error. Try again in a moment.'**
+  String get errorServer;
 }
 
 class _AppLocalizationsDelegate

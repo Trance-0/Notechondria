@@ -226,5 +226,9 @@
   "tourPortalExploreTitle": "探索公开笔记",
   "tourPortalExploreBody": "直接从首页浏览公开课程和笔记。",
   "tourPortalAppsTitle": "打开各应用",
-  "tourPortalAppsBody": "随时进入编辑器或规划器。登录即可同步你自己的内容。"
+  "tourPortalAppsBody": "随时进入编辑器或规划器。登录即可同步你自己的内容。",
+
+  "errorNetwork": "无法连接到服务器。请检查你的网络连接后重试。",
+  "errorTimeout": "服务器响应超时。请重试。",
+  "errorServer": "服务器出错了。请稍后重试。"
 }
