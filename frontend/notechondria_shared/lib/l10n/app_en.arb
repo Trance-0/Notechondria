@@ -183,6 +183,12 @@
   "settingsDefaultEditorMode": "Default editor mode",
   "settingsThemePreset": "Theme preset",
   "settingsThemeMode": "Theme mode",
+  "settingsPortalPreferences": "Portal preferences",
+  "settingsPortalPreferencesSubtitle": "Theme preset, theme mode, default editor.",
+  "settingsConnectedAccounts": "Connected accounts",
+  "settingsPersonalInfoSubtitle": "Avatar, username, motto, social link.",
+  "settingsSecuritySubtitle": "Active sessions, change email, change password, agent skill.",
+  "settingsApiSubtitle": "API base URL and MCP key.",
 
   "debugLogTitle": "Debug log",
   "debugCopyLogs": "Copy logs",

@@ -174,6 +174,12 @@
   "settingsDefaultEditorMode": "默认编辑模式",
   "settingsThemePreset": "主题配色",
   "settingsThemeMode": "主题模式",
+  "settingsPortalPreferences": "门户偏好设置",
+  "settingsPortalPreferencesSubtitle": "主题配色、主题模式、默认编辑器。",
+  "settingsConnectedAccounts": "已连接的账户",
+  "settingsPersonalInfoSubtitle": "头像、用户名、签名、社交链接。",
+  "settingsSecuritySubtitle": "活动会话、修改邮箱、修改密码、智能体技能。",
+  "settingsApiSubtitle": "API 基础地址和 MCP 密钥。",
 
   "debugLogTitle": "调试日志",
   "debugCopyLogs": "复制日志",

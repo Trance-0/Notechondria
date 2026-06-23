@@ -194,8 +194,9 @@ extension _SettingsPageBuildX on _SettingsPageState {
           const Divider(height: 0, indent: 16, endIndent: 16),
           ListTile(
             leading: const Icon(Icons.person_outline),
-            title: const Text('Personal information'),
-            subtitle: const Text('Avatar, username, motto, social link.'),
+            title: Text(AppLocalizations.of(context).settingsPersonalInfoTitle),
+            subtitle:
+                Text(AppLocalizations.of(context).settingsPersonalInfoSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
               Navigator.of(context).push(
@@ -208,10 +209,9 @@ extension _SettingsPageBuildX on _SettingsPageState {
           const Divider(height: 0, indent: 16, endIndent: 16),
           ListTile(
             leading: const Icon(Icons.shield_outlined),
-            title: const Text('Sign in & security'),
-            subtitle: const Text(
-              'Active sessions, change email, change password, agent skill.',
-            ),
+            title: Text(AppLocalizations.of(context).settingsSecurityTitle),
+            subtitle:
+                Text(AppLocalizations.of(context).settingsSecuritySubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
               Navigator.of(context).push(
@@ -224,8 +224,8 @@ extension _SettingsPageBuildX on _SettingsPageState {
           const Divider(height: 0, indent: 16, endIndent: 16),
           ListTile(
             leading: const Icon(Icons.key_outlined),
-            title: const Text('API settings'),
-            subtitle: const Text('API base URL and MCP key.'),
+            title: Text(AppLocalizations.of(context).settingsApiTitle),
+            subtitle: Text(AppLocalizations.of(context).settingsApiSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
               Navigator.of(context).push(
@@ -238,7 +238,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
           const Divider(height: 0, indent: 16, endIndent: 16),
           ListTile(
             leading: const Icon(Icons.link_outlined),
-            title: const Text('Connected accounts'),
+            title: Text(AppLocalizations.of(context).settingsConnectedAccounts),
             subtitle: Text(
               widget.settings?['casdoor_linked'] == true
                   ? 'Casdoor SSO linked.'

@@ -1094,6 +1094,42 @@ abstract class AppLocalizations {
   /// **'Theme mode'**
   String get settingsThemeMode;
 
+  /// No description provided for @settingsPortalPreferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Portal preferences'**
+  String get settingsPortalPreferences;
+
+  /// No description provided for @settingsPortalPreferencesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme preset, theme mode, default editor.'**
+  String get settingsPortalPreferencesSubtitle;
+
+  /// No description provided for @settingsConnectedAccounts.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected accounts'**
+  String get settingsConnectedAccounts;
+
+  /// No description provided for @settingsPersonalInfoSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Avatar, username, motto, social link.'**
+  String get settingsPersonalInfoSubtitle;
+
+  /// No description provided for @settingsSecuritySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Active sessions, change email, change password, agent skill.'**
+  String get settingsSecuritySubtitle;
+
+  /// No description provided for @settingsApiSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'API base URL and MCP key.'**
+  String get settingsApiSubtitle;
+
   /// No description provided for @debugLogTitle.
   ///
   /// In en, this message translates to:

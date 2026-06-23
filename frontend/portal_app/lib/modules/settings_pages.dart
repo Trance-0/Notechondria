@@ -30,7 +30,8 @@ class _PersonalInformationPageState extends State<_PersonalInformationPage> {
   Widget build(BuildContext context) {
     final p = widget.parent;
     return Scaffold(
-      appBar: AppBar(title: const Text('Personal information')),
+      appBar: AppBar(
+          title: Text(AppLocalizations.of(context).settingsPersonalInfoTitle)),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -72,7 +73,8 @@ class _SignInSecurityPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = parent;
     return Scaffold(
-      appBar: AppBar(title: const Text('Sign in & security')),
+      appBar: AppBar(
+          title: Text(AppLocalizations.of(context).settingsSecurityTitle)),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -120,7 +122,8 @@ class _ApiSettingsPageState extends State<_ApiSettingsPage> {
   Widget build(BuildContext context) {
     final p = widget.parent;
     return Scaffold(
-      appBar: AppBar(title: const Text('API settings')),
+      appBar:
+          AppBar(title: Text(AppLocalizations.of(context).settingsApiTitle)),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -243,7 +246,8 @@ class _ConnectedAccountsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = parent;
     return Scaffold(
-      appBar: AppBar(title: const Text('Connected accounts')),
+      appBar: AppBar(
+          title: Text(AppLocalizations.of(context).settingsConnectedAccounts)),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -299,7 +303,8 @@ class _PortalPreferencesPageState extends State<_PortalPreferencesPage> {
   Widget build(BuildContext context) {
     final p = widget.parent;
     return Scaffold(
-      appBar: AppBar(title: const Text('Portal preferences')),
+      appBar: AppBar(
+          title: Text(AppLocalizations.of(context).settingsPortalPreferences)),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -309,7 +314,8 @@ class _PortalPreferencesPageState extends State<_PortalPreferencesPage> {
               children: [
                 ListTile(
                   leading: const Icon(Icons.edit_note_outlined),
-                  title: const Text('Default editor mode'),
+                  title: Text(
+                      AppLocalizations.of(context).settingsDefaultEditorMode),
                   subtitle: Text(_editorModeLabel(p._editorMode)),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () async {
@@ -325,7 +331,7 @@ class _PortalPreferencesPageState extends State<_PortalPreferencesPage> {
                 const Divider(height: 0, indent: 16, endIndent: 16),
                 ListTile(
                   leading: const Icon(Icons.palette_outlined),
-                  title: const Text('Theme preset'),
+                  title: Text(AppLocalizations.of(context).settingsThemePreset),
                   subtitle: Text(_themePresetLabel(p._themePreset)),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () async {
@@ -341,7 +347,7 @@ class _PortalPreferencesPageState extends State<_PortalPreferencesPage> {
                 const Divider(height: 0, indent: 16, endIndent: 16),
                 ListTile(
                   leading: const Icon(Icons.brightness_6_outlined),
-                  title: const Text('Theme mode'),
+                  title: Text(AppLocalizations.of(context).settingsThemeMode),
                   subtitle: Text(_themeModeLabel(p._themeMode)),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () async {
@@ -380,9 +386,8 @@ class _PortalPreferencesPageState extends State<_PortalPreferencesPage> {
               ],
             ),
             const SizedBox(height: 12),
-            const _SettingsCaption(
-              text: 'Each change is saved and persisted immediately — '
-                  'no Save button needed in this menu.',
+            _SettingsCaption(
+              text: AppLocalizations.of(context).settingsImmediateSaveCaption,
             ),
           ],
         ),
@@ -505,7 +510,8 @@ class _BackendSettingsPageState extends State<_BackendSettingsPage> {
     final offlineMode = p.widget.localSettings['offline_mode'] == true;
     final canEditOffline = p.widget.onOfflineModeChanged != null;
     return Scaffold(
-      appBar: AppBar(title: const Text('Backend settings')),
+      appBar: AppBar(
+          title: Text(AppLocalizations.of(context).settingsBackendTitle)),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -693,7 +699,8 @@ class _LocalDataPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = parent;
     return Scaffold(
-      appBar: AppBar(title: const Text('Local data')),
+      appBar: AppBar(
+          title: Text(AppLocalizations.of(context).settingsLocalDataTitle)),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),

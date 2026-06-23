@@ -529,10 +529,9 @@ class _SettingsPageState extends State<_SettingsPage> {
         children: [
           ListTile(
             leading: const Icon(Icons.tune_outlined),
-            title: const Text('Portal preferences'),
-            subtitle: const Text(
-              'Theme preset, theme mode, default editor.',
-            ),
+            title: Text(AppLocalizations.of(context).settingsPortalPreferences),
+            subtitle: Text(AppLocalizations.of(context)
+                .settingsPortalPreferencesSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
               Navigator.of(context).push(
@@ -546,15 +545,16 @@ class _SettingsPageState extends State<_SettingsPage> {
             const Divider(height: 0, indent: 16, endIndent: 16),
             ListTile(
               leading: const Icon(Icons.school_outlined),
-              title: const Text('View tutorial'),
-              subtitle: const Text('Replay the quick intro tour.'),
+              title: Text(AppLocalizations.of(context).settingsViewTutorial),
+              subtitle: Text(
+                  AppLocalizations.of(context).settingsViewTutorialSubtitle),
               onTap: widget.onReplayTour,
             ),
           ],
           const Divider(height: 0, indent: 16, endIndent: 16),
           ListTile(
             leading: const Icon(Icons.cloud_outlined),
-            title: const Text('Backend settings'),
+            title: Text(AppLocalizations.of(context).settingsBackendTitle),
             subtitle: Text(
               widget.localSettings['offline_mode'] == true
                   ? 'Offline mode is on. API URL: '
@@ -575,7 +575,7 @@ class _SettingsPageState extends State<_SettingsPage> {
           const Divider(height: 0, indent: 16, endIndent: 16),
           ListTile(
             leading: const Icon(Icons.folder_outlined),
-            title: const Text('Local data'),
+            title: Text(AppLocalizations.of(context).settingsLocalDataTitle),
             subtitle: Text(
               '${widget.localDraftCount} draft(s), '
               '${widget.localCourseCount} course(s) on this device.',
@@ -594,7 +594,7 @@ class _SettingsPageState extends State<_SettingsPage> {
           const Divider(height: 0, indent: 16, endIndent: 16),
           ListTile(
             leading: const Icon(Icons.delete_outline),
-            title: const Text('Recycle bin'),
+            title: Text(AppLocalizations.of(context).settingsRecycleBinTitle),
             subtitle: Text(
               '$recoverableCount synced draft(s) recoverable, '
               '${widget.deletedNotes.length} cloud note(s) trashed.',

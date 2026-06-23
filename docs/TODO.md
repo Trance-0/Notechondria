@@ -123,6 +123,12 @@ English (US) + Chinese (Simplified), a Language setting in each app
   week-calendar surfaces (incl. event + iCal dialogs). **Remaining:** the
   portal `settings*.dart` chrome (subpage titles, backend/API/security/
   recycle-bin page strings) — shares the editor's settings pattern.
+  0.1.157 localized the settings **navigation** (menu tiles + all
+  subpage app-bar titles + the preferences rows). **Final remaining:**
+  the deeper settings subpage **body** strings — personal-info form
+  fields, the API-key section (`settings_sections.dart`), backend/
+  offline + local-data captions, recycle-bin dialog, Casdoor connected-
+  accounts copy — plus the shared `mcp_skill_section.dart`.
   (0.1.154 also fixed a functional gap: portal's API base URL is now
   editable from the always-reachable Backend settings page, so a
   signed-out user can repoint the backend.)

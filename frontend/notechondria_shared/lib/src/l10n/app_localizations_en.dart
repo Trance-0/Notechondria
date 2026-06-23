@@ -538,6 +538,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsThemeMode => 'Theme mode';
 
   @override
+  String get settingsPortalPreferences => 'Portal preferences';
+
+  @override
+  String get settingsPortalPreferencesSubtitle =>
+      'Theme preset, theme mode, default editor.';
+
+  @override
+  String get settingsConnectedAccounts => 'Connected accounts';
+
+  @override
+  String get settingsPersonalInfoSubtitle =>
+      'Avatar, username, motto, social link.';
+
+  @override
+  String get settingsSecuritySubtitle =>
+      'Active sessions, change email, change password, agent skill.';
+
+  @override
+  String get settingsApiSubtitle => 'API base URL and MCP key.';
+
+  @override
   String get debugLogTitle => 'Debug log';
 
   @override

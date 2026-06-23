@@ -516,6 +516,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsThemeMode => '主题模式';
 
   @override
+  String get settingsPortalPreferences => '门户偏好设置';
+
+  @override
+  String get settingsPortalPreferencesSubtitle => '主题配色、主题模式、默认编辑器。';
+
+  @override
+  String get settingsConnectedAccounts => '已连接的账户';
+
+  @override
+  String get settingsPersonalInfoSubtitle => '头像、用户名、签名、社交链接。';
+
+  @override
+  String get settingsSecuritySubtitle => '活动会话、修改邮箱、修改密码、智能体技能。';
+
+  @override
+  String get settingsApiSubtitle => 'API 基础地址和 MCP 密钥。';
+
+  @override
   String get debugLogTitle => '调试日志';
 
   @override
