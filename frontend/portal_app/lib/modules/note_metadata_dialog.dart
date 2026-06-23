@@ -150,6 +150,7 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
 
   Widget _buildCoverSection(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
     final hasCover = _coverUrl != null && _coverUrl!.isNotEmpty;
     final canUpload = widget.onUploadCover != null;
     final canDelete = widget.onDeleteCover != null;
@@ -157,16 +158,16 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Cover image',
+          l10n.noteMetaCoverImage,
           style: Theme.of(context).textTheme.titleSmall,
         ),
         const SizedBox(height: 6),
         Text(
           hasCover
-              ? 'Shown above the note in view mode.'
+              ? l10n.noteMetaCoverHasHelp
               : canUpload
-                  ? 'No cover yet — readers see a barcode generated from the note URL.'
-                  : 'Sync this note to the cloud before uploading a cover image.',
+                  ? l10n.noteMetaCoverNoneHelp
+                  : l10n.noteMetaCoverSyncFirst,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: scheme.onSurfaceVariant,
               ),
@@ -185,14 +186,15 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
               onPressed:
                   (canUpload && !_coverBusy) ? _pickAndUploadCover : null,
               icon: const Icon(Icons.image_outlined, size: 18),
-              label: Text(hasCover ? 'Replace' : 'Upload'),
+              label: Text(
+                  hasCover ? l10n.noteMetaReplace : l10n.noteMetaUpload),
             ),
             const SizedBox(width: 8),
             if (hasCover)
               TextButton.icon(
                 onPressed: (canDelete && !_coverBusy) ? _clearCover : null,
                 icon: const Icon(Icons.delete_outline, size: 18),
-                label: const Text('Remove'),
+                label: Text(AppLocalizations.of(context).commonRemove),
               ),
             if (_coverBusy) ...[
               const SizedBox(width: 12),
@@ -219,8 +221,9 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AlertDialog(
-      title: const Text('Note details'),
+      title: Text(l10n.noteMetaDetails),
       content: SizedBox(
         width: 500,
         child: SingleChildScrollView(
@@ -243,26 +246,26 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
                   ),
                 ],
                 onChanged: (value) => setState(() => _courseId = value),
-                decoration: const InputDecoration(
-                  labelText: 'Assigned course / plan',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.noteMetaAssignedCourse,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _sectionController,
-                decoration: const InputDecoration(
-                  labelText: 'Section',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.noteMetaSection,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _descriptionController,
                 maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Short description / comments',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.noteMetaDescription,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
@@ -272,11 +275,11 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
                     ? (value) => setState(() => _isPublic = value)
                     : null,
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Public note'),
+                title: Text(l10n.noteMetaPublicNote),
                 subtitle: Text(
                   widget.allowPublicToggle
-                      ? 'Public notes appear in the recommendation feed.'
-                      : 'Sync this note to the cloud before making it public.',
+                      ? l10n.noteMetaPublicHelp
+                      : l10n.noteMetaPublicSyncFirst,
                 ),
               ),
               if (widget.onUploadCover != null ||
@@ -289,7 +292,7 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
               CustomMetaListEditor(controller: _customMetaController),
               const SizedBox(height: 16),
               Text(
-                'Version history',
+                l10n.noteMetaVersionHistory,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 8),
@@ -300,7 +303,7 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
                   builder: (context, snapshot) {
                     final rows = snapshot.data ?? const [];
                     if (rows.isEmpty) {
-                      return const Text('No saved versions yet.');
+                      return Text(l10n.noteMetaNoVersions);
                     }
                     return ListView(
                       children: [
@@ -332,7 +335,7 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
                                   });
                                 }
                               },
-                              child: const Text('Restore'),
+                              child: Text(l10n.commonRestore),
                             ),
                           ),
                       ],
@@ -347,7 +350,7 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(l10n.commonCancel),
         ),
         FilledButton(
           onPressed: () => Navigator.of(context).pop({
@@ -357,7 +360,7 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
             'is_public': _isPublic,
             'custom_meta': _customMetaController.serialize(),
           }),
-          child: const Text('Save'),
+          child: Text(l10n.commonSave),
         ),
       ],
     );

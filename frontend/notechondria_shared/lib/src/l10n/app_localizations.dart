@@ -224,6 +224,12 @@ abstract class AppLocalizations {
   /// **'Got it'**
   String get commonGotIt;
 
+  /// No description provided for @commonLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading...'**
+  String get commonLoading;
+
   /// No description provided for @navNavigation.
   ///
   /// In en, this message translates to:
@@ -476,6 +482,66 @@ abstract class AppLocalizations {
   /// **'Create a local draft. Long press to import markdown.'**
   String get feedFabImportLocal;
 
+  /// No description provided for @feedImportMarkdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Import markdown'**
+  String get feedImportMarkdown;
+
+  /// No description provided for @feedSearchCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Search your cloud notes'**
+  String get feedSearchCloud;
+
+  /// No description provided for @feedSyncToCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync to cloud'**
+  String get feedSyncToCloud;
+
+  /// No description provided for @feedLoadNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Load notes'**
+  String get feedLoadNotes;
+
+  /// No description provided for @feedLocalDraftBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Local draft'**
+  String get feedLocalDraftBadge;
+
+  /// No description provided for @feedBadgePublic.
+  ///
+  /// In en, this message translates to:
+  /// **'Public'**
+  String get feedBadgePublic;
+
+  /// No description provided for @feedBadgePrivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Private'**
+  String get feedBadgePrivate;
+
+  /// No description provided for @feedEmptyCloudSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'No synced cloud notes yet. Sync a local draft or create a new note.'**
+  String get feedEmptyCloudSynced;
+
+  /// No description provided for @feedEmptyLocalLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'No local drafts yet. Use the add button to create one and sync later after login.'**
+  String get feedEmptyLocalLogin;
+
+  /// No description provided for @feedCourseMetaHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Course metadata stays editable from the editor details panel'**
+  String get feedCourseMetaHint;
+
   /// No description provided for @noteUntitled.
   ///
   /// In en, this message translates to:
@@ -553,6 +619,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Attach file'**
   String get noteAttachFile;
+
+  /// No description provided for @noteMetaCoverImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Cover image'**
+  String get noteMetaCoverImage;
+
+  /// No description provided for @noteMetaCoverHasHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Shown above the note in view mode.'**
+  String get noteMetaCoverHasHelp;
+
+  /// No description provided for @noteMetaCoverNoneHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'No cover yet — readers see a barcode generated from the note URL.'**
+  String get noteMetaCoverNoneHelp;
+
+  /// No description provided for @noteMetaCoverSyncFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync this note to the cloud before uploading a cover image.'**
+  String get noteMetaCoverSyncFirst;
+
+  /// No description provided for @noteMetaReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace'**
+  String get noteMetaReplace;
+
+  /// No description provided for @noteMetaUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload'**
+  String get noteMetaUpload;
+
+  /// No description provided for @noteMetaDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Note details'**
+  String get noteMetaDetails;
+
+  /// No description provided for @noteMetaNoCourse.
+  ///
+  /// In en, this message translates to:
+  /// **'No assigned course'**
+  String get noteMetaNoCourse;
+
+  /// No description provided for @noteMetaAssignedCourse.
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned course / plan'**
+  String get noteMetaAssignedCourse;
+
+  /// No description provided for @noteMetaSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Section'**
+  String get noteMetaSection;
+
+  /// No description provided for @noteMetaDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Short description / comments'**
+  String get noteMetaDescription;
+
+  /// No description provided for @noteMetaPublicNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Public note'**
+  String get noteMetaPublicNote;
+
+  /// No description provided for @noteMetaPublicHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Public notes appear in the recommendation feed.'**
+  String get noteMetaPublicHelp;
+
+  /// No description provided for @noteMetaPublicSyncFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync this note to the cloud before making it public.'**
+  String get noteMetaPublicSyncFirst;
+
+  /// No description provided for @noteMetaVersionHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Version history'**
+  String get noteMetaVersionHistory;
+
+  /// No description provided for @noteMetaNoVersions.
+  ///
+  /// In en, this message translates to:
+  /// **'No saved versions yet.'**
+  String get noteMetaNoVersions;
+
+  /// No description provided for @noteMetaSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving...'**
+  String get noteMetaSaving;
 
   /// No description provided for @privateNoteTitle.
   ///

@@ -72,6 +72,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonGotIt => 'Got it';
 
   @override
+  String get commonLoading => 'Loading...';
+
+  @override
   String get navNavigation => 'Navigation';
 
   @override
@@ -208,6 +211,39 @@ class AppLocalizationsEn extends AppLocalizations {
       'Create a local draft. Long press to import markdown.';
 
   @override
+  String get feedImportMarkdown => 'Import markdown';
+
+  @override
+  String get feedSearchCloud => 'Search your cloud notes';
+
+  @override
+  String get feedSyncToCloud => 'Sync to cloud';
+
+  @override
+  String get feedLoadNotes => 'Load notes';
+
+  @override
+  String get feedLocalDraftBadge => 'Local draft';
+
+  @override
+  String get feedBadgePublic => 'Public';
+
+  @override
+  String get feedBadgePrivate => 'Private';
+
+  @override
+  String get feedEmptyCloudSynced =>
+      'No synced cloud notes yet. Sync a local draft or create a new note.';
+
+  @override
+  String get feedEmptyLocalLogin =>
+      'No local drafts yet. Use the add button to create one and sync later after login.';
+
+  @override
+  String get feedCourseMetaHint =>
+      'Course metadata stays editable from the editor details panel';
+
+  @override
   String get noteUntitled => 'Untitled note';
 
   @override
@@ -245,6 +281,61 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noteAttachFile => 'Attach file';
+
+  @override
+  String get noteMetaCoverImage => 'Cover image';
+
+  @override
+  String get noteMetaCoverHasHelp => 'Shown above the note in view mode.';
+
+  @override
+  String get noteMetaCoverNoneHelp =>
+      'No cover yet — readers see a barcode generated from the note URL.';
+
+  @override
+  String get noteMetaCoverSyncFirst =>
+      'Sync this note to the cloud before uploading a cover image.';
+
+  @override
+  String get noteMetaReplace => 'Replace';
+
+  @override
+  String get noteMetaUpload => 'Upload';
+
+  @override
+  String get noteMetaDetails => 'Note details';
+
+  @override
+  String get noteMetaNoCourse => 'No assigned course';
+
+  @override
+  String get noteMetaAssignedCourse => 'Assigned course / plan';
+
+  @override
+  String get noteMetaSection => 'Section';
+
+  @override
+  String get noteMetaDescription => 'Short description / comments';
+
+  @override
+  String get noteMetaPublicNote => 'Public note';
+
+  @override
+  String get noteMetaPublicHelp =>
+      'Public notes appear in the recommendation feed.';
+
+  @override
+  String get noteMetaPublicSyncFirst =>
+      'Sync this note to the cloud before making it public.';
+
+  @override
+  String get noteMetaVersionHistory => 'Version history';
+
+  @override
+  String get noteMetaNoVersions => 'No saved versions yet.';
+
+  @override
+  String get noteMetaSaving => 'Saving...';
 
   @override
   String get privateNoteTitle => 'Private note';

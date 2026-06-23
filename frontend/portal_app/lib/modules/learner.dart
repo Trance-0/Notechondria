@@ -224,9 +224,13 @@ class _LearnerPageState extends State<_LearnerPage> {
         ),
         Offset.zero & overlay.size,
       ),
-      items: const [
-        PopupMenuItem(value: 'new', child: Text('Create note')),
-        PopupMenuItem(value: 'import', child: Text('Import markdown')),
+      items: [
+        PopupMenuItem(
+            value: 'new',
+            child: Text(AppLocalizations.of(context).feedComposerCreate)),
+        PopupMenuItem(
+            value: 'import',
+            child: Text(AppLocalizations.of(context).feedImportMarkdown)),
       ],
     );
     if (selected == 'import') {
@@ -238,6 +242,7 @@ class _LearnerPageState extends State<_LearnerPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final localDrafts = _visibleLocalDrafts();
     return Stack(
       children: [
@@ -250,8 +255,8 @@ class _LearnerPageState extends State<_LearnerPage> {
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.search),
                 hintText: widget.isAuthenticated
-                    ? 'Search your cloud notes'
-                    : 'Search local drafts',
+                    ? l10n.feedSearchCloud
+                    : l10n.feedSearchLocalDrafts,
                 border:
                     OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
               ),
@@ -268,7 +273,7 @@ class _LearnerPageState extends State<_LearnerPage> {
                         children: [
                           Expanded(
                             child: Text(
-                              'Unsynced local drafts',
+                              l10n.feedUnsyncedDrafts,
                               style: Theme.of(context)
                                   .textTheme
                                   .titleMedium
@@ -280,14 +285,12 @@ class _LearnerPageState extends State<_LearnerPage> {
                               widget.onSyncAllLocalDrafts();
                             },
                             icon: const Icon(Icons.cloud_upload_outlined),
-                            label: const Text('Sync all'),
+                            label: Text(l10n.feedSyncAll),
                           ),
                         ],
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'Local drafts stay private by default. Sync uploads them as private cloud notes.',
-                      ),
+                      Text(l10n.feedSyncHelp),
                     ],
                   ),
                 ),
@@ -295,7 +298,9 @@ class _LearnerPageState extends State<_LearnerPage> {
               const SizedBox(height: 16),
             ],
             Text(
-              widget.isAuthenticated ? 'Recent notes' : 'Local drafts',
+              widget.isAuthenticated
+                  ? l10n.feedRecentNotes
+                  : l10n.feedLocalDrafts,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 12),
@@ -305,18 +310,16 @@ class _LearnerPageState extends State<_LearnerPage> {
                   padding: const EdgeInsets.all(16),
                   child: Text(
                     localDrafts.isEmpty
-                        ? 'No cloud notes yet. Use the add button to create one.'
-                        : 'No synced cloud notes yet. Sync a local draft or create a new note.',
+                        ? l10n.feedEmptyPersonal
+                        : l10n.feedEmptyCloudSynced,
                   ),
                 ),
               ),
             if (!widget.isAuthenticated && localDrafts.isEmpty)
-              const Card(
+              Card(
                 child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text(
-                    'No local drafts yet. Use the add button to create one and sync later after login.',
-                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: Text(l10n.feedEmptyLocalLogin),
                 ),
               ),
             if (widget.offlineMode &&
@@ -327,7 +330,7 @@ class _LearnerPageState extends State<_LearnerPage> {
                 child: OutlinedButton.icon(
                   onPressed: widget.onLoadPublicNotes,
                   icon: const Icon(Icons.cloud_download_outlined),
-                  label: const Text('Load notes'),
+                  label: Text(l10n.feedLoadNotes),
                 ),
               ),
             if (!widget.isAuthenticated)
@@ -355,7 +358,7 @@ class _LearnerPageState extends State<_LearnerPage> {
                 ),
             if (widget.isAuthenticated && localDrafts.isNotEmpty) ...[
               const SizedBox(height: 20),
-              Text('Local drafts',
+              Text(l10n.feedLocalDrafts,
                   style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 12),
               for (final draft in localDrafts)
@@ -382,8 +385,9 @@ class _LearnerPageState extends State<_LearnerPage> {
                       : () {
                           widget.onLoadMore();
                         },
-                  child:
-                      Text(widget.isLoadingMore ? 'Loading...' : 'Load more'),
+                  child: Text(widget.isLoadingMore
+                      ? l10n.commonLoading
+                      : l10n.courseLoadMore),
                 ),
               ),
             ],
@@ -394,8 +398,8 @@ class _LearnerPageState extends State<_LearnerPage> {
           bottom: 24,
           child: Tooltip(
             message: widget.isAuthenticated
-                ? 'Create note. Long press to import markdown.'
-                : 'Create a local draft. Long press to import markdown.',
+                ? l10n.feedFabImport
+                : l10n.feedFabImportLocal,
             child: GestureDetector(
               onLongPress: () {
                 widget.onImportMarkdown();
@@ -510,7 +514,8 @@ class _LearnerNoteCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              note['title']?.toString() ?? 'Untitled note',
+                              note['title']?.toString() ??
+                                  AppLocalizations.of(context).noteUntitled,
                               style: Theme.of(context)
                                   .textTheme
                                   .titleMedium
@@ -520,11 +525,12 @@ class _LearnerNoteCard extends StatelessWidget {
                             Text(
                               [
                                 if (isLocalDraft)
-                                  'Local draft'
+                                  AppLocalizations.of(context)
+                                      .feedLocalDraftBadge
                                 else if (isPublic)
-                                  'Public'
+                                  AppLocalizations.of(context).feedBadgePublic
                                 else
-                                  'Private',
+                                  AppLocalizations.of(context).feedBadgePrivate,
                                 if ((course['title']?.toString() ?? '')
                                     .isNotEmpty)
                                   course['title'].toString(),
@@ -558,15 +564,23 @@ class _LearnerNoteCard extends StatelessWidget {
                         },
                         itemBuilder: (context) => [
                           if (canEdit)
-                            const PopupMenuItem(
-                                value: 'edit', child: Text('Edit')),
+                            PopupMenuItem(
+                                value: 'edit',
+                                child: Text(
+                                    AppLocalizations.of(context).commonEdit)),
                           if (canSync)
-                            const PopupMenuItem(
-                                value: 'sync', child: Text('Sync to cloud')),
-                          const PopupMenuItem(
-                              value: 'export', child: Text('Export markdown')),
-                          const PopupMenuItem(
-                              value: 'delete', child: Text('Delete')),
+                            PopupMenuItem(
+                                value: 'sync',
+                                child: Text(AppLocalizations.of(context)
+                                    .feedSyncToCloud)),
+                          PopupMenuItem(
+                              value: 'export',
+                              child: Text(AppLocalizations.of(context)
+                                  .noteExportMarkdown)),
+                          PopupMenuItem(
+                              value: 'delete',
+                              child: Text(
+                                  AppLocalizations.of(context).commonDelete)),
                         ],
                       ),
                     ],
@@ -597,7 +611,7 @@ class _LearnerNoteCard extends StatelessWidget {
                     Align(
                       alignment: Alignment.bottomRight,
                       child: Text(
-                        'Course metadata stays editable from the editor details panel',
+                        AppLocalizations.of(context).feedCourseMetaHint,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: Theme.of(context)
                                   .colorScheme

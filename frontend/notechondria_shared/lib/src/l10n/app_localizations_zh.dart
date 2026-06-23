@@ -72,6 +72,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commonGotIt => '知道了';
 
   @override
+  String get commonLoading => '加载中……';
+
+  @override
   String get navNavigation => '导航';
 
   @override
@@ -199,6 +202,36 @@ class AppLocalizationsZh extends AppLocalizations {
   String get feedFabImportLocal => '新建本地草稿。长按可导入 Markdown。';
 
   @override
+  String get feedImportMarkdown => '导入 Markdown';
+
+  @override
+  String get feedSearchCloud => '搜索你的云端笔记';
+
+  @override
+  String get feedSyncToCloud => '同步到云端';
+
+  @override
+  String get feedLoadNotes => '加载笔记';
+
+  @override
+  String get feedLocalDraftBadge => '本地草稿';
+
+  @override
+  String get feedBadgePublic => '公开';
+
+  @override
+  String get feedBadgePrivate => '私密';
+
+  @override
+  String get feedEmptyCloudSynced => '还没有已同步的云端笔记。同步一篇本地草稿或新建一篇笔记。';
+
+  @override
+  String get feedEmptyLocalLogin => '还没有本地草稿。点击添加按钮创建一篇，登录后再同步。';
+
+  @override
+  String get feedCourseMetaHint => '课程信息可在编辑器详情面板中编辑';
+
+  @override
   String get noteUntitled => '无标题笔记';
 
   @override
@@ -236,6 +269,57 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get noteAttachFile => '添加附件';
+
+  @override
+  String get noteMetaCoverImage => '封面图片';
+
+  @override
+  String get noteMetaCoverHasHelp => '在查看模式下显示在笔记上方。';
+
+  @override
+  String get noteMetaCoverNoneHelp => '尚无封面——读者会看到根据笔记 URL 生成的条形码。';
+
+  @override
+  String get noteMetaCoverSyncFirst => '上传封面图片前，请先将此笔记同步到云端。';
+
+  @override
+  String get noteMetaReplace => '替换';
+
+  @override
+  String get noteMetaUpload => '上传';
+
+  @override
+  String get noteMetaDetails => '笔记详情';
+
+  @override
+  String get noteMetaNoCourse => '未指定课程';
+
+  @override
+  String get noteMetaAssignedCourse => '所属课程 / 计划';
+
+  @override
+  String get noteMetaSection => '章节';
+
+  @override
+  String get noteMetaDescription => '简短描述 / 备注';
+
+  @override
+  String get noteMetaPublicNote => '公开笔记';
+
+  @override
+  String get noteMetaPublicHelp => '公开笔记会出现在推荐流中。';
+
+  @override
+  String get noteMetaPublicSyncFirst => '将此笔记设为公开前，请先同步到云端。';
+
+  @override
+  String get noteMetaVersionHistory => '版本历史';
+
+  @override
+  String get noteMetaNoVersions => '还没有已保存的版本。';
+
+  @override
+  String get noteMetaSaving => '正在保存……';
 
   @override
   String get privateNoteTitle => '私密笔记';
