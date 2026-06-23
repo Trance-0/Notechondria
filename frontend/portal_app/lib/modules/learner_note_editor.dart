@@ -345,6 +345,7 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
   }
 
   Future<void> _showBlockMenu(int index, TapDownDetails? details) async {
+    final l10n = AppLocalizations.of(context);
     final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final selected = await showMenu<String>(
       context: context,
@@ -355,15 +356,15 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
         ),
         Offset.zero & overlay.size,
       ),
-      items: const [
-        PopupMenuItem(value: 'N', child: Text('Paragraph')),
-        PopupMenuItem(value: 'S', child: Text('Heading')),
-        PopupMenuItem(value: 'L', child: Text('List')),
-        PopupMenuItem(value: 'C', child: Text('Code')),
-        PopupMenuItem(value: 'Q', child: Text('Quote')),
-        PopupMenuItem(value: 'U', child: Text('Link')),
-        PopupMenuItem(value: 'I', child: Text('Image')),
-        PopupMenuItem(value: 'delete', child: Text('Delete block')),
+      items: [
+        PopupMenuItem(value: 'N', child: Text(l10n.editorBlockParagraph)),
+        PopupMenuItem(value: 'S', child: Text(l10n.editorBlockHeading)),
+        PopupMenuItem(value: 'L', child: Text(l10n.editorBlockList)),
+        PopupMenuItem(value: 'C', child: Text(l10n.editorBlockCode)),
+        PopupMenuItem(value: 'Q', child: Text(l10n.editorBlockQuote)),
+        PopupMenuItem(value: 'U', child: Text(l10n.editorBlockLink)),
+        PopupMenuItem(value: 'I', child: Text(l10n.editorBlockImage)),
+        PopupMenuItem(value: 'delete', child: Text(l10n.editorBlockDelete)),
       ],
     );
     if (selected == null) {
@@ -399,6 +400,7 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
   }
 
   Widget _buildBlockEditor() {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         Wrap(
@@ -407,22 +409,22 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
           children: [
             OutlinedButton(
                 onPressed: () => _wrapActiveSelection('**', '**'),
-                child: const Text('Bold')),
+                child: Text(l10n.editorBold)),
             OutlinedButton(
                 onPressed: () => _wrapActiveSelection('_', '_'),
-                child: const Text('Italic')),
+                child: Text(l10n.editorItalic)),
             OutlinedButton(
                 onPressed: () => _wrapActiveSelection('~~', '~~'),
-                child: const Text('Strike')),
+                child: Text(l10n.editorStrike)),
             OutlinedButton(
                 onPressed: () => _addBlock(),
-                child: const Text('Add paragraph')),
+                child: Text(l10n.editorAddParagraph)),
             OutlinedButton(
                 onPressed: () => _addBlock(type: 'L'),
-                child: const Text('Add list')),
+                child: Text(l10n.editorAddList)),
             OutlinedButton(
                 onPressed: () => _addBlock(type: 'C'),
-                child: const Text('Add code')),
+                child: Text(l10n.editorAddCode)),
           ],
         ),
         const SizedBox(height: 12),
@@ -478,7 +480,7 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                                   setState(() => _activeBlockIndex = index),
                               decoration: InputDecoration(
                                 labelText: block.blockType == 'S'
-                                    ? 'Heading token (## or ###)'
+                                    ? l10n.editorHeadingTokenHint
                                     : block.blockType == 'C'
                                         ? 'Language'
                                         : 'URL',
@@ -491,9 +493,9 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                           onTap: () =>
                               setState(() => _activeBlockIndex = index),
                           maxLines: null,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            hintText: 'Write block content...',
+                          decoration: InputDecoration(
+                            border: const OutlineInputBorder(),
+                            hintText: l10n.editorBlockContentHint,
                           ),
                         ),
                       ],
@@ -541,6 +543,7 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final showPreview = _editorMode == 'G';
     final showBlockEditor = _editorMode == 'B';
     return Dialog.fullscreen(
@@ -559,8 +562,9 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                           .textTheme
                           .headlineSmall
                           ?.copyWith(fontWeight: FontWeight.w700),
-                      decoration: const InputDecoration(
-                          border: InputBorder.none, hintText: 'Title'),
+                      decoration: InputDecoration(
+                          border: InputBorder.none,
+                          hintText: l10n.noteTitleHint),
                     ),
                   ),
                   Expanded(
@@ -578,19 +582,22 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                     width: 190,
                     child: DropdownButtonFormField<String>(
                       value: _editorMode,
-                      items: const [
-                        DropdownMenuItem(value: 'P', child: Text('Plain')),
-                        DropdownMenuItem(value: 'G', child: Text('Preview')),
-                        DropdownMenuItem(value: 'B', child: Text('Blocks')),
+                      items: [
+                        DropdownMenuItem(
+                            value: 'P', child: Text(l10n.editorModePlain)),
+                        DropdownMenuItem(
+                            value: 'G', child: Text(l10n.editorModePreview)),
+                        DropdownMenuItem(
+                            value: 'B', child: Text(l10n.editorModeBlocks)),
                       ],
                       onChanged: (value) {
                         if (value != null) {
                           _setEditorMode(value);
                         }
                       },
-                      decoration: const InputDecoration(
-                        labelText: 'Editor mode',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: l10n.editorModeLabel,
+                        border: const OutlineInputBorder(),
                         isDense: true,
                       ),
                     ),
@@ -641,8 +648,8 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                               maxLines: null,
                               expands: true,
                               textAlignVertical: TextAlignVertical.top,
-                              decoration: const InputDecoration(
-                                hintText: 'Write your note...',
+                              decoration: InputDecoration(
+                                hintText: l10n.noteWriteHint,
                                 border: InputBorder.none,
                                 alignLabelWithHint: true,
                               ),
@@ -740,8 +747,9 @@ class _SaveStatus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (saving) {
-      return const Text('Saving...');
+      return Text(l10n.noteMetaSaving);
     }
     if (errorMessage != null && errorMessage!.isNotEmpty) {
       return Tooltip(
@@ -753,7 +761,9 @@ class _SaveStatus extends StatelessWidget {
       );
     }
     return Text(
-      lastSavedAt == null ? 'Not saved' : 'Saved ${_formatTime(lastSavedAt!)}',
+      lastSavedAt == null
+          ? l10n.editorNotSaved
+          : l10n.editorSavedAt(_formatTime(lastSavedAt!)),
       style: Theme.of(context).textTheme.bodySmall,
     );
   }

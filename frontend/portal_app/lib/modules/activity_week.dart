@@ -170,7 +170,7 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
     final theme = Theme.of(context);
     final borderColor = theme.colorScheme.outlineVariant;
     final rangeLabel = days.isEmpty
-        ? 'Week calendar'
+        ? AppLocalizations.of(context).activityWeekCalendar
         : '${_formatWeekDay(days.first['date']?.toString() ?? '')} - ${_formatWeekDay(days.last['date']?.toString() ?? '')}';
     return SizedBox.expand(
       child: Card(
@@ -372,7 +372,7 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                         _CalendarOverlayButton(
                           key: const Key('activity-calendar-previous-week'),
                           icon: Icons.chevron_left,
-                          tooltip: 'Previous week',
+                          tooltip: AppLocalizations.of(context).activityPrevWeek,
                           onPressed: _transitioning
                               ? null
                               : () {
@@ -383,7 +383,7 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                         _CalendarOverlayButton(
                           key: const Key('activity-calendar-next-week'),
                           icon: Icons.chevron_right,
-                          tooltip: 'Next week',
+                          tooltip: AppLocalizations.of(context).activityNextWeek,
                           onPressed: _transitioning
                               ? null
                               : () {
@@ -547,7 +547,7 @@ Future<void> _showCreatePlannerEventDialog(
     context: context,
     builder: (context) => StatefulBuilder(
       builder: (context, setState) => AlertDialog(
-        title: const Text('New event'),
+        title: Text(AppLocalizations.of(context).activityNewEvent),
         content: SizedBox(
           width: 420,
           child: Column(
@@ -555,18 +555,19 @@ Future<void> _showCreatePlannerEventDialog(
             children: [
               TextField(
                 controller: titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Event title',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context).activityEventTitle,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: descriptionController,
                 maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText:
+                      AppLocalizations.of(context).courseDescriptionLabel,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
@@ -615,7 +616,8 @@ Future<void> _showCreatePlannerEventDialog(
                   5,
                   (index) => DropdownMenuItem<int>(
                     value: index + 1,
-                    child: Text('Weight ${index + 1}'),
+                    child: Text(
+                        AppLocalizations.of(context).activityWeightN(index + 1)),
                   ),
                 ),
                 onChanged: (value) {
@@ -623,9 +625,9 @@ Future<void> _showCreatePlannerEventDialog(
                     setState(() => weight = value);
                   }
                 },
-                decoration: const InputDecoration(
-                  labelText: 'Difficulty',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context).activityDifficulty,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               if (feedback != null) ...[
@@ -638,7 +640,7 @@ Future<void> _showCreatePlannerEventDialog(
         actions: [
           TextButton(
             onPressed: submitting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context).commonCancel),
           ),
           FilledButton(
             onPressed: submitting
@@ -671,7 +673,9 @@ Future<void> _showCreatePlannerEventDialog(
                       Navigator.of(context).pop();
                     }
                   },
-            child: Text(submitting ? 'Saving...' : 'Create'),
+            child: Text(submitting
+                ? AppLocalizations.of(context).noteMetaSaving
+                : AppLocalizations.of(context).commonCreate),
           ),
         ],
       ),
@@ -712,7 +716,7 @@ Future<void> _showSubscribeCalendarDialog(
   await showDialog<void>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('Subscribe to calendar'),
+      title: Text(AppLocalizations.of(context).activitySubscribeToCalendar),
       content: SizedBox(
         width: 360,
         child: Column(
@@ -720,14 +724,16 @@ Future<void> _showSubscribeCalendarDialog(
           children: [
             TextField(
               controller: titleController,
-              decoration: const InputDecoration(
-                  labelText: 'Title', border: OutlineInputBorder()),
+              decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context).noteTitleHint,
+                  border: const OutlineInputBorder()),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: urlController,
-              decoration: const InputDecoration(
-                  labelText: 'iCal URL', border: OutlineInputBorder()),
+              decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context).activityIcalUrl,
+                  border: const OutlineInputBorder()),
             ),
           ],
         ),
@@ -735,13 +741,13 @@ Future<void> _showSubscribeCalendarDialog(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(AppLocalizations.of(context).commonCancel),
         ),
         FilledButton(
           onPressed: () async {
             await onSubscribe(
               titleController.text.trim().isEmpty
-                  ? 'Subscribed calendar'
+                  ? AppLocalizations.of(context).activitySubscribedCalendar
                   : titleController.text.trim(),
               urlController.text.trim(),
             );
@@ -749,7 +755,7 @@ Future<void> _showSubscribeCalendarDialog(
               Navigator.of(context).pop();
             }
           },
-          child: const Text('Subscribe'),
+          child: Text(AppLocalizations.of(context).courseSubscribe),
         ),
       ],
     ),

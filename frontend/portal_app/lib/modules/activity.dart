@@ -34,6 +34,7 @@ class _ActivityPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final weekDays = (activityWeek?['days'] as List<dynamic>? ?? const [])
         .map((item) => Map<String, dynamic>.from(item as Map))
         .toList();
@@ -49,12 +50,12 @@ class _ActivityPage extends StatelessWidget {
             children: [
               Positioned.fill(
                 child: !isAuthenticated
-                    ? const _ActivityFillCard(
+                    ? _ActivityFillCard(
                         child: Padding(
-                          padding: EdgeInsets.all(20),
+                          padding: const EdgeInsets.all(20),
                           child: Center(
                             child: Text(
-                              'Sign in to view your deadlines, synced study sessions, and weekly calendar.',
+                              l10n.activitySignInPrompt,
                               textAlign: TextAlign.center,
                             ),
                           ),
@@ -62,12 +63,12 @@ class _ActivityPage extends StatelessWidget {
                       )
                     : isHorizontal
                         ? (weekDays.isEmpty
-                            ? const _ActivityFillCard(
+                            ? _ActivityFillCard(
                                 child: Center(
                                   child: Padding(
-                                    padding: EdgeInsets.all(20),
+                                    padding: const EdgeInsets.all(20),
                                     child: Text(
-                                      'No weekly events are available for the current view.',
+                                      l10n.activityNoWeekEvents,
                                       textAlign: TextAlign.center,
                                     ),
                                   ),
@@ -139,9 +140,10 @@ class _VerticalWeekBoard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final borderColor = Theme.of(context).colorScheme.outlineVariant;
     final rangeLabel = days.isEmpty
-        ? 'This week'
+        ? l10n.activityThisWeek
         : '${_formatWeekDay(days.first['date']?.toString() ?? '')} - ${_formatWeekDay(days.last['date']?.toString() ?? '')}';
     return _ActivityFillCard(
       child: Column(
@@ -154,7 +156,7 @@ class _VerticalWeekBoard extends StatelessWidget {
             child: Row(
               children: [
                 IconButton(
-                  tooltip: 'Previous week',
+                  tooltip: l10n.activityPrevWeek,
                   onPressed: () => onNavigateWeek(-1),
                   icon: const Icon(Icons.chevron_left),
                 ),
@@ -169,7 +171,7 @@ class _VerticalWeekBoard extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Next week',
+                  tooltip: l10n.activityNextWeek,
                   onPressed: () => onNavigateWeek(1),
                   icon: const Icon(Icons.chevron_right),
                 ),
@@ -218,10 +220,17 @@ class _RoundActivityFab extends StatelessWidget {
         ),
         Offset.zero & overlay.size,
       ),
-      items: const [
-        PopupMenuItem(value: 'create', child: Text('Create event')),
-        PopupMenuItem(value: 'import', child: Text('Import iCal')),
-        PopupMenuItem(value: 'subscribe', child: Text('Subscribe calendar')),
+      items: [
+        PopupMenuItem(
+            value: 'create',
+            child: Text(AppLocalizations.of(context).activityCreateEvent)),
+        PopupMenuItem(
+            value: 'import',
+            child: Text(AppLocalizations.of(context).activityImportIcal)),
+        PopupMenuItem(
+            value: 'subscribe',
+            child:
+                Text(AppLocalizations.of(context).activitySubscribeCalendar)),
       ],
     );
     if (!context.mounted || selected == null) {
@@ -241,8 +250,7 @@ class _RoundActivityFab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message:
-          'Tap to create a new event. Long press or right click to import iCal or subscribe.',
+      message: AppLocalizations.of(context).activityFabHint,
       child: GestureDetector(
         onLongPressStart: (details) => _showMenu(
           context,
@@ -285,8 +293,8 @@ class _DeadlineList extends StatelessWidget {
             padding: const EdgeInsets.all(24),
             child: Text(
               plannerEvents.isEmpty
-                  ? 'No active deadlines yet. Use the add button to create one.'
-                  : 'No urgent deadlines remain in the current view.',
+                  ? AppLocalizations.of(context).activityNoDeadlines
+                  : AppLocalizations.of(context).activityNoUrgent,
               textAlign: TextAlign.center,
             ),
           ),

@@ -722,6 +722,138 @@ abstract class AppLocalizations {
   /// **'Saving...'**
   String get noteMetaSaving;
 
+  /// No description provided for @editorBlockParagraph.
+  ///
+  /// In en, this message translates to:
+  /// **'Paragraph'**
+  String get editorBlockParagraph;
+
+  /// No description provided for @editorBlockHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Heading'**
+  String get editorBlockHeading;
+
+  /// No description provided for @editorBlockList.
+  ///
+  /// In en, this message translates to:
+  /// **'List'**
+  String get editorBlockList;
+
+  /// No description provided for @editorBlockCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Code'**
+  String get editorBlockCode;
+
+  /// No description provided for @editorBlockQuote.
+  ///
+  /// In en, this message translates to:
+  /// **'Quote'**
+  String get editorBlockQuote;
+
+  /// No description provided for @editorBlockLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Link'**
+  String get editorBlockLink;
+
+  /// No description provided for @editorBlockImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Image'**
+  String get editorBlockImage;
+
+  /// No description provided for @editorBlockDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete block'**
+  String get editorBlockDelete;
+
+  /// No description provided for @editorBold.
+  ///
+  /// In en, this message translates to:
+  /// **'Bold'**
+  String get editorBold;
+
+  /// No description provided for @editorItalic.
+  ///
+  /// In en, this message translates to:
+  /// **'Italic'**
+  String get editorItalic;
+
+  /// No description provided for @editorStrike.
+  ///
+  /// In en, this message translates to:
+  /// **'Strike'**
+  String get editorStrike;
+
+  /// No description provided for @editorAddParagraph.
+  ///
+  /// In en, this message translates to:
+  /// **'Add paragraph'**
+  String get editorAddParagraph;
+
+  /// No description provided for @editorAddList.
+  ///
+  /// In en, this message translates to:
+  /// **'Add list'**
+  String get editorAddList;
+
+  /// No description provided for @editorAddCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Add code'**
+  String get editorAddCode;
+
+  /// No description provided for @editorHeadingTokenHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Heading token (## or ###)'**
+  String get editorHeadingTokenHint;
+
+  /// No description provided for @editorBlockContentHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write block content...'**
+  String get editorBlockContentHint;
+
+  /// No description provided for @editorModePlain.
+  ///
+  /// In en, this message translates to:
+  /// **'Plain'**
+  String get editorModePlain;
+
+  /// No description provided for @editorModePreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get editorModePreview;
+
+  /// No description provided for @editorModeBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocks'**
+  String get editorModeBlocks;
+
+  /// No description provided for @editorModeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Editor mode'**
+  String get editorModeLabel;
+
+  /// No description provided for @editorNotSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Not saved'**
+  String get editorNotSaved;
+
+  /// No description provided for @editorSavedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved {time}'**
+  String editorSavedAt(String time);
+
   /// No description provided for @privateNoteTitle.
   ///
   /// In en, this message translates to:
@@ -1693,6 +1825,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Load more'**
   String get courseLoadMore;
+
+  /// No description provided for @activitySignInPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to view your deadlines, synced study sessions, and weekly calendar.'**
+  String get activitySignInPrompt;
+
+  /// No description provided for @activityNoWeekEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'No weekly events are available for the current view.'**
+  String get activityNoWeekEvents;
+
+  /// No description provided for @activityThisWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'This week'**
+  String get activityThisWeek;
+
+  /// No description provided for @activityPrevWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous week'**
+  String get activityPrevWeek;
+
+  /// No description provided for @activityNextWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Next week'**
+  String get activityNextWeek;
+
+  /// No description provided for @activityCreateEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Create event'**
+  String get activityCreateEvent;
+
+  /// No description provided for @activityImportIcal.
+  ///
+  /// In en, this message translates to:
+  /// **'Import iCal'**
+  String get activityImportIcal;
+
+  /// No description provided for @activitySubscribeCalendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribe calendar'**
+  String get activitySubscribeCalendar;
+
+  /// No description provided for @activityFabHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to create a new event. Long press or right click to import iCal or subscribe.'**
+  String get activityFabHint;
+
+  /// No description provided for @activityNoDeadlines.
+  ///
+  /// In en, this message translates to:
+  /// **'No active deadlines yet. Use the add button to create one.'**
+  String get activityNoDeadlines;
+
+  /// No description provided for @activityNoUrgent.
+  ///
+  /// In en, this message translates to:
+  /// **'No urgent deadlines remain in the current view.'**
+  String get activityNoUrgent;
+
+  /// No description provided for @activityWeekCalendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Week calendar'**
+  String get activityWeekCalendar;
+
+  /// No description provided for @activityNewEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'New event'**
+  String get activityNewEvent;
+
+  /// No description provided for @activityEventTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Event title'**
+  String get activityEventTitle;
+
+  /// No description provided for @activityDifficulty.
+  ///
+  /// In en, this message translates to:
+  /// **'Difficulty'**
+  String get activityDifficulty;
+
+  /// No description provided for @activityWeightN.
+  ///
+  /// In en, this message translates to:
+  /// **'Weight {n}'**
+  String activityWeightN(int n);
+
+  /// No description provided for @activitySubscribeToCalendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribe to calendar'**
+  String get activitySubscribeToCalendar;
+
+  /// No description provided for @activityIcalUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'iCal URL'**
+  String get activityIcalUrl;
+
+  /// No description provided for @activitySubscribedCalendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribed calendar'**
+  String get activitySubscribedCalendar;
 
   /// No description provided for @courseObjectives.
   ///

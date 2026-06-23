@@ -117,11 +117,12 @@ English (US) + Chinese (Simplified), a Language setting in each app
   shared chrome is localized.)
 - [ ] **Phase 2 — planner strings.** Translate planner UI; reuse the
   shared catalog for common strings.
-- [~] **Phase 3 — portal strings (in progress).** 0.1.154 localized the
-  portal front page (`front.dart`) + course browser (`course.dart`).
-  Remaining: `activity.dart` / `activity_week.dart` (event/calendar
-  dialogs), `learner.dart` / `learner_note_editor.dart`,
-  `note_metadata_dialog.dart`, and the portal `settings*.dart` chrome.
+- [~] **Phase 3 — portal strings (nearly done).** Localized across
+  0.1.154–0.1.156: front page, course browser, learner feed,
+  note-metadata dialog, the block note editor, and the activity /
+  week-calendar surfaces (incl. event + iCal dialogs). **Remaining:** the
+  portal `settings*.dart` chrome (subpage titles, backend/API/security/
+  recycle-bin page strings) — shares the editor's settings pattern.
   (0.1.154 also fixed a functional gap: portal's API base URL is now
   editable from the always-reachable Backend settings page, so a
   signed-out user can repoint the backend.)

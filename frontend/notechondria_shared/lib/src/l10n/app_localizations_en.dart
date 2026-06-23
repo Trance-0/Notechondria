@@ -338,6 +338,74 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noteMetaSaving => 'Saving...';
 
   @override
+  String get editorBlockParagraph => 'Paragraph';
+
+  @override
+  String get editorBlockHeading => 'Heading';
+
+  @override
+  String get editorBlockList => 'List';
+
+  @override
+  String get editorBlockCode => 'Code';
+
+  @override
+  String get editorBlockQuote => 'Quote';
+
+  @override
+  String get editorBlockLink => 'Link';
+
+  @override
+  String get editorBlockImage => 'Image';
+
+  @override
+  String get editorBlockDelete => 'Delete block';
+
+  @override
+  String get editorBold => 'Bold';
+
+  @override
+  String get editorItalic => 'Italic';
+
+  @override
+  String get editorStrike => 'Strike';
+
+  @override
+  String get editorAddParagraph => 'Add paragraph';
+
+  @override
+  String get editorAddList => 'Add list';
+
+  @override
+  String get editorAddCode => 'Add code';
+
+  @override
+  String get editorHeadingTokenHint => 'Heading token (## or ###)';
+
+  @override
+  String get editorBlockContentHint => 'Write block content...';
+
+  @override
+  String get editorModePlain => 'Plain';
+
+  @override
+  String get editorModePreview => 'Preview';
+
+  @override
+  String get editorModeBlocks => 'Blocks';
+
+  @override
+  String get editorModeLabel => 'Editor mode';
+
+  @override
+  String get editorNotSaved => 'Not saved';
+
+  @override
+  String editorSavedAt(String time) {
+    return 'Saved $time';
+  }
+
+  @override
   String get privateNoteTitle => 'Private note';
 
   @override
@@ -887,6 +955,70 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get courseLoadMore => 'Load more';
+
+  @override
+  String get activitySignInPrompt =>
+      'Sign in to view your deadlines, synced study sessions, and weekly calendar.';
+
+  @override
+  String get activityNoWeekEvents =>
+      'No weekly events are available for the current view.';
+
+  @override
+  String get activityThisWeek => 'This week';
+
+  @override
+  String get activityPrevWeek => 'Previous week';
+
+  @override
+  String get activityNextWeek => 'Next week';
+
+  @override
+  String get activityCreateEvent => 'Create event';
+
+  @override
+  String get activityImportIcal => 'Import iCal';
+
+  @override
+  String get activitySubscribeCalendar => 'Subscribe calendar';
+
+  @override
+  String get activityFabHint =>
+      'Tap to create a new event. Long press or right click to import iCal or subscribe.';
+
+  @override
+  String get activityNoDeadlines =>
+      'No active deadlines yet. Use the add button to create one.';
+
+  @override
+  String get activityNoUrgent =>
+      'No urgent deadlines remain in the current view.';
+
+  @override
+  String get activityWeekCalendar => 'Week calendar';
+
+  @override
+  String get activityNewEvent => 'New event';
+
+  @override
+  String get activityEventTitle => 'Event title';
+
+  @override
+  String get activityDifficulty => 'Difficulty';
+
+  @override
+  String activityWeightN(int n) {
+    return 'Weight $n';
+  }
+
+  @override
+  String get activitySubscribeToCalendar => 'Subscribe to calendar';
+
+  @override
+  String get activityIcalUrl => 'iCal URL';
+
+  @override
+  String get activitySubscribedCalendar => 'Subscribed calendar';
 
   @override
   String get courseObjectives => 'Objectives';

@@ -65,6 +65,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.156 - portal i18n: block editor + activity/calendar](versions/0.1.156.md)
 - [0.1.155 - portal i18n: learner feed + note-metadata dialog](versions/0.1.155.md)
 - [0.1.154 - portal: editable API URL (signed-out) + front/course i18n](versions/0.1.154.md)
 - [0.1.153 - "Work offline" escape on the connection-error bar](versions/0.1.153.md)

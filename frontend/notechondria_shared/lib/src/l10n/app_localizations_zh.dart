@@ -322,6 +322,74 @@ class AppLocalizationsZh extends AppLocalizations {
   String get noteMetaSaving => '正在保存……';
 
   @override
+  String get editorBlockParagraph => '段落';
+
+  @override
+  String get editorBlockHeading => '标题';
+
+  @override
+  String get editorBlockList => '列表';
+
+  @override
+  String get editorBlockCode => '代码';
+
+  @override
+  String get editorBlockQuote => '引用';
+
+  @override
+  String get editorBlockLink => '链接';
+
+  @override
+  String get editorBlockImage => '图片';
+
+  @override
+  String get editorBlockDelete => '删除区块';
+
+  @override
+  String get editorBold => '加粗';
+
+  @override
+  String get editorItalic => '斜体';
+
+  @override
+  String get editorStrike => '删除线';
+
+  @override
+  String get editorAddParagraph => '添加段落';
+
+  @override
+  String get editorAddList => '添加列表';
+
+  @override
+  String get editorAddCode => '添加代码';
+
+  @override
+  String get editorHeadingTokenHint => '标题标记（## 或 ###）';
+
+  @override
+  String get editorBlockContentHint => '撰写区块内容……';
+
+  @override
+  String get editorModePlain => '纯文本';
+
+  @override
+  String get editorModePreview => '预览';
+
+  @override
+  String get editorModeBlocks => '区块';
+
+  @override
+  String get editorModeLabel => '编辑模式';
+
+  @override
+  String get editorNotSaved => '未保存';
+
+  @override
+  String editorSavedAt(String time) {
+    return '已于 $time 保存';
+  }
+
+  @override
   String get privateNoteTitle => '私密笔记';
 
   @override
@@ -840,6 +908,65 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get courseLoadMore => '加载更多';
+
+  @override
+  String get activitySignInPrompt => '登录以查看你的截止日期、已同步的学习时段和每周日历。';
+
+  @override
+  String get activityNoWeekEvents => '当前视图暂无每周事件。';
+
+  @override
+  String get activityThisWeek => '本周';
+
+  @override
+  String get activityPrevWeek => '上一周';
+
+  @override
+  String get activityNextWeek => '下一周';
+
+  @override
+  String get activityCreateEvent => '创建事件';
+
+  @override
+  String get activityImportIcal => '导入 iCal';
+
+  @override
+  String get activitySubscribeCalendar => '订阅日历';
+
+  @override
+  String get activityFabHint => '点击创建新事件。长按或右键点击可导入 iCal 或订阅。';
+
+  @override
+  String get activityNoDeadlines => '还没有有效的截止日期。点击添加按钮创建一个。';
+
+  @override
+  String get activityNoUrgent => '当前视图中没有紧急的截止日期。';
+
+  @override
+  String get activityWeekCalendar => '周历';
+
+  @override
+  String get activityNewEvent => '新建事件';
+
+  @override
+  String get activityEventTitle => '事件标题';
+
+  @override
+  String get activityDifficulty => '难度';
+
+  @override
+  String activityWeightN(int n) {
+    return '权重 $n';
+  }
+
+  @override
+  String get activitySubscribeToCalendar => '订阅日历';
+
+  @override
+  String get activityIcalUrl => 'iCal 网址';
+
+  @override
+  String get activitySubscribedCalendar => '已订阅的日历';
 
   @override
   String get courseObjectives => '学习目标';
