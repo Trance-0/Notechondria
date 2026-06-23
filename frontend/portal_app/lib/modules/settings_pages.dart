@@ -533,22 +533,59 @@ class _BackendSettingsPageState extends State<_BackendSettingsPage> {
             const SizedBox(height: 12),
             _SettingsGroupCard(
               children: [
-                ListTile(
-                  leading: const Icon(Icons.dns_outlined),
-                  title: const Text('Backend endpoint'),
-                  subtitle: Text(
-                    p.widget.apiBaseUrl ?? '—',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.dns_outlined),
+                      const SizedBox(width: 12),
+                      Text(
+                        'API base URL',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleSmall
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(width: 6),
+                      Tooltip(
+                        message: p._isAuthenticated
+                            ? 'Locked while signed in. Sign out to switch '
+                                'the backend the portal talks to.'
+                            : 'Points the portal at a different '
+                                'Notechondria backend.',
+                        child: Icon(
+                          Icons.info_outline,
+                          size: 16,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                  child: TextField(
+                    controller: p._apiBaseController,
+                    enabled: !p._isAuthenticated,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                      hintText: 'http://localhost:9060/api/v1',
+                    ),
+                    onChanged: (_) => p.refreshState(),
+                    // Pressing Enter commits the URL change immediately so a
+                    // signed-out user can repoint the backend without
+                    // hunting for a Save button.
+                    onSubmitted: (_) => p._autoSavePreferences(),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 4),
             const _SettingsCaption(
-              text: 'Edit the API base URL on the API settings page. '
-                  'A version / handshake readout will surface here once '
-                  'the backend exposes it.',
+              text: 'Press Enter to apply the URL change. Stored locally and '
+                  'mirrored to your profile on login. Locked while signed in '
+                  '— sign out to switch backends.',
             ),
             if (p.widget.githubSyncCardBuilder != null) ...[
               const SizedBox(height: 16),

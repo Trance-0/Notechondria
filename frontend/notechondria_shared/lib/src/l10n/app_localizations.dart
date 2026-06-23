@@ -1393,6 +1393,180 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Work offline'**
   String get errorWorkOffline;
+
+  /// No description provided for @frontWelcomeBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome back, {name}'**
+  String frontWelcomeBack(String name);
+
+  /// No description provided for @frontWelcomeGuest.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome to Notechondria'**
+  String get frontWelcomeGuest;
+
+  /// No description provided for @frontGreetingGuest.
+  ///
+  /// In en, this message translates to:
+  /// **'guest'**
+  String get frontGreetingGuest;
+
+  /// No description provided for @frontHeroAuth.
+  ///
+  /// In en, this message translates to:
+  /// **'Your notes, courses and schedule at a glance. Pick a course below or jump into the learner/planner workspaces.'**
+  String get frontHeroAuth;
+
+  /// No description provided for @frontHeroAnon.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover public courses and notes, or sign in to unlock your learner dashboard and heatmap.'**
+  String get frontHeroAnon;
+
+  /// No description provided for @frontRecentCourses.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent public courses'**
+  String get frontRecentCourses;
+
+  /// No description provided for @frontNoCourses.
+  ///
+  /// In en, this message translates to:
+  /// **'No public courses yet.'**
+  String get frontNoCourses;
+
+  /// No description provided for @frontActivityHeatmap.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity heatmap'**
+  String get frontActivityHeatmap;
+
+  /// No description provided for @frontHeatmapLegend.
+  ///
+  /// In en, this message translates to:
+  /// **'Past activity (blue) and upcoming planner load (teal).'**
+  String get frontHeatmapLegend;
+
+  /// No description provided for @frontRecentNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent public notes'**
+  String get frontRecentNotes;
+
+  /// No description provided for @courseCreateLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Create local course'**
+  String get courseCreateLocal;
+
+  /// No description provided for @courseTitleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Course title'**
+  String get courseTitleLabel;
+
+  /// No description provided for @courseDescriptionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get courseDescriptionLabel;
+
+  /// No description provided for @courseSyncLocalData.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync local data'**
+  String get courseSyncLocalData;
+
+  /// No description provided for @courseBackTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to {title}'**
+  String courseBackTo(String title);
+
+  /// No description provided for @courseModuleDiscussion.
+  ///
+  /// In en, this message translates to:
+  /// **'Module discussion'**
+  String get courseModuleDiscussion;
+
+  /// No description provided for @courseBackToResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to course results'**
+  String get courseBackToResults;
+
+  /// No description provided for @courseSubscribe.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribe'**
+  String get courseSubscribe;
+
+  /// No description provided for @courseNoModules.
+  ///
+  /// In en, this message translates to:
+  /// **'No modules have been mapped for this course yet.'**
+  String get courseNoModules;
+
+  /// No description provided for @courseDiscussion.
+  ///
+  /// In en, this message translates to:
+  /// **'Course discussion'**
+  String get courseDiscussion;
+
+  /// No description provided for @courseListTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Course list'**
+  String get courseListTitle;
+
+  /// No description provided for @courseLoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get courseLoadMore;
+
+  /// No description provided for @courseObjectives.
+  ///
+  /// In en, this message translates to:
+  /// **'Objectives'**
+  String get courseObjectives;
+
+  /// No description provided for @courseAssignments.
+  ///
+  /// In en, this message translates to:
+  /// **'Assignments'**
+  String get courseAssignments;
+
+  /// No description provided for @courseModule.
+  ///
+  /// In en, this message translates to:
+  /// **'Module'**
+  String get courseModule;
+
+  /// No description provided for @courseModulesHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Modules'**
+  String get courseModulesHeader;
+
+  /// No description provided for @courseModuleNoNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'No public notes are available for this module yet.'**
+  String get courseModuleNoNotes;
+
+  /// No description provided for @courseNoDiscussion.
+  ///
+  /// In en, this message translates to:
+  /// **'No public discussion notes are available for this course yet.'**
+  String get courseNoDiscussion;
+
+  /// No description provided for @courseNoteCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} note(s)'**
+  String courseNoteCount(int count);
 }
 
 class _AppLocalizationsDelegate

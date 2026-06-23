@@ -20,9 +20,10 @@ class _FrontPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final greetingName = profile?['username']?.toString() ??
         profile?['email']?.toString() ??
-        'guest';
+        l10n.frontGreetingGuest;
     final carouselCourses =
         (frontPage['carousel_courses'] as List<dynamic>? ?? const <dynamic>[])
             .map((item) => Map<String, dynamic>.from(item as Map))
@@ -48,8 +49,8 @@ class _FrontPage extends StatelessWidget {
                 children: [
                   Text(
                     _isAuthenticated
-                        ? 'Welcome back, $greetingName'
-                        : 'Welcome to Notechondria',
+                        ? l10n.frontWelcomeBack(greetingName)
+                        : l10n.frontWelcomeGuest,
                     style: Theme.of(context)
                         .textTheme
                         .headlineSmall
@@ -57,9 +58,7 @@ class _FrontPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    _isAuthenticated
-                        ? 'Your notes, courses and schedule at a glance. Pick a course below or jump into the learner/planner workspaces.'
-                        : 'Discover public courses and notes, or sign in to unlock your learner dashboard and heatmap.',
+                    _isAuthenticated ? l10n.frontHeroAuth : l10n.frontHeroAnon,
                   ),
                 ],
               ),
@@ -127,7 +126,7 @@ class _PublicCoursesSection extends StatelessWidget {
                     color: theme.colorScheme.primary),
                 const SizedBox(width: 10),
                 Text(
-                  'Recent public courses',
+                  AppLocalizations.of(context).frontRecentCourses,
                   style: theme.textTheme.titleLarge
                       ?.copyWith(fontWeight: FontWeight.w800),
                 ),
@@ -135,7 +134,7 @@ class _PublicCoursesSection extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             if (courses.isEmpty)
-              const Text('No public courses yet.')
+              Text(AppLocalizations.of(context).frontNoCourses)
             else
               SizedBox(
                 height: 220,
@@ -306,7 +305,7 @@ class _HeatmapSection extends StatelessWidget {
                     color: theme.colorScheme.primary),
                 const SizedBox(width: 10),
                 Text(
-                  'Activity heatmap',
+                  AppLocalizations.of(context).frontActivityHeatmap,
                   style: theme.textTheme.titleLarge
                       ?.copyWith(fontWeight: FontWeight.w800),
                 ),
@@ -319,7 +318,7 @@ class _HeatmapSection extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Past activity (blue) and upcoming planner load (teal).',
+              AppLocalizations.of(context).frontHeatmapLegend,
               style: theme.textTheme.bodySmall,
             ),
             const SizedBox(height: 12),
@@ -386,7 +385,7 @@ class _RecentPublicNotesSection extends StatelessWidget {
                 Icon(Icons.article_outlined, color: theme.colorScheme.primary),
                 const SizedBox(width: 10),
                 Text(
-                  'Recent public notes',
+                  AppLocalizations.of(context).frontRecentNotes,
                   style: theme.textTheme.titleLarge
                       ?.copyWith(fontWeight: FontWeight.w800),
                 ),
@@ -399,7 +398,8 @@ class _RecentPublicNotesSection extends StatelessWidget {
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.description_outlined),
                 title: Text(
-                  note['title']?.toString() ?? 'Untitled note',
+                  note['title']?.toString() ??
+                      AppLocalizations.of(context).noteUntitled,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),

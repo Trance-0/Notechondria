@@ -267,5 +267,45 @@
   "versionUnsupported": "This app version is no longer supported. Refresh to update.",
   "versionRefresh": "Refresh",
 
-  "errorWorkOffline": "Work offline"
+  "errorWorkOffline": "Work offline",
+
+  "frontWelcomeBack": "Welcome back, {name}",
+  "@frontWelcomeBack": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "frontWelcomeGuest": "Welcome to Notechondria",
+  "frontGreetingGuest": "guest",
+  "frontHeroAuth": "Your notes, courses and schedule at a glance. Pick a course below or jump into the learner/planner workspaces.",
+  "frontHeroAnon": "Discover public courses and notes, or sign in to unlock your learner dashboard and heatmap.",
+  "frontRecentCourses": "Recent public courses",
+  "frontNoCourses": "No public courses yet.",
+  "frontActivityHeatmap": "Activity heatmap",
+  "frontHeatmapLegend": "Past activity (blue) and upcoming planner load (teal).",
+  "frontRecentNotes": "Recent public notes",
+
+  "courseCreateLocal": "Create local course",
+  "courseTitleLabel": "Course title",
+  "courseDescriptionLabel": "Description",
+  "courseSyncLocalData": "Sync local data",
+  "courseBackTo": "Back to {title}",
+  "@courseBackTo": {
+    "placeholders": { "title": { "type": "String" } }
+  },
+  "courseModuleDiscussion": "Module discussion",
+  "courseBackToResults": "Back to course results",
+  "courseSubscribe": "Subscribe",
+  "courseNoModules": "No modules have been mapped for this course yet.",
+  "courseDiscussion": "Course discussion",
+  "courseListTitle": "Course list",
+  "courseLoadMore": "Load more",
+  "courseObjectives": "Objectives",
+  "courseAssignments": "Assignments",
+  "courseModule": "Module",
+  "courseModulesHeader": "Modules",
+  "courseModuleNoNotes": "No public notes are available for this module yet.",
+  "courseNoDiscussion": "No public discussion notes are available for this course yet.",
+  "courseNoteCount": "{count} note(s)",
+  "@courseNoteCount": {
+    "placeholders": { "count": { "type": "int" } }
+  }
 }

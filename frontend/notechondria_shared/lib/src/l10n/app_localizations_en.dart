@@ -722,4 +722,103 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errorWorkOffline => 'Work offline';
+
+  @override
+  String frontWelcomeBack(String name) {
+    return 'Welcome back, $name';
+  }
+
+  @override
+  String get frontWelcomeGuest => 'Welcome to Notechondria';
+
+  @override
+  String get frontGreetingGuest => 'guest';
+
+  @override
+  String get frontHeroAuth =>
+      'Your notes, courses and schedule at a glance. Pick a course below or jump into the learner/planner workspaces.';
+
+  @override
+  String get frontHeroAnon =>
+      'Discover public courses and notes, or sign in to unlock your learner dashboard and heatmap.';
+
+  @override
+  String get frontRecentCourses => 'Recent public courses';
+
+  @override
+  String get frontNoCourses => 'No public courses yet.';
+
+  @override
+  String get frontActivityHeatmap => 'Activity heatmap';
+
+  @override
+  String get frontHeatmapLegend =>
+      'Past activity (blue) and upcoming planner load (teal).';
+
+  @override
+  String get frontRecentNotes => 'Recent public notes';
+
+  @override
+  String get courseCreateLocal => 'Create local course';
+
+  @override
+  String get courseTitleLabel => 'Course title';
+
+  @override
+  String get courseDescriptionLabel => 'Description';
+
+  @override
+  String get courseSyncLocalData => 'Sync local data';
+
+  @override
+  String courseBackTo(String title) {
+    return 'Back to $title';
+  }
+
+  @override
+  String get courseModuleDiscussion => 'Module discussion';
+
+  @override
+  String get courseBackToResults => 'Back to course results';
+
+  @override
+  String get courseSubscribe => 'Subscribe';
+
+  @override
+  String get courseNoModules =>
+      'No modules have been mapped for this course yet.';
+
+  @override
+  String get courseDiscussion => 'Course discussion';
+
+  @override
+  String get courseListTitle => 'Course list';
+
+  @override
+  String get courseLoadMore => 'Load more';
+
+  @override
+  String get courseObjectives => 'Objectives';
+
+  @override
+  String get courseAssignments => 'Assignments';
+
+  @override
+  String get courseModule => 'Module';
+
+  @override
+  String get courseModulesHeader => 'Modules';
+
+  @override
+  String get courseModuleNoNotes =>
+      'No public notes are available for this module yet.';
+
+  @override
+  String get courseNoDiscussion =>
+      'No public discussion notes are available for this course yet.';
+
+  @override
+  String courseNoteCount(int count) {
+    return '$count note(s)';
+  }
 }

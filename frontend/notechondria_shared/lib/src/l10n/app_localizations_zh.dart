@@ -686,4 +686,97 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get errorWorkOffline => '离线使用';
+
+  @override
+  String frontWelcomeBack(String name) {
+    return '欢迎回来，$name';
+  }
+
+  @override
+  String get frontWelcomeGuest => '欢迎使用 Notechondria';
+
+  @override
+  String get frontGreetingGuest => '访客';
+
+  @override
+  String get frontHeroAuth => '一览你的笔记、课程和日程。在下方选择一门课程，或进入学习/规划工作区。';
+
+  @override
+  String get frontHeroAnon => '探索公开课程和笔记，或登录以解锁你的学习仪表盘和活动热力图。';
+
+  @override
+  String get frontRecentCourses => '最近的公开课程';
+
+  @override
+  String get frontNoCourses => '还没有公开课程。';
+
+  @override
+  String get frontActivityHeatmap => '活动热力图';
+
+  @override
+  String get frontHeatmapLegend => '过往活动（蓝色）与即将到来的规划负载（青色）。';
+
+  @override
+  String get frontRecentNotes => '最近的公开笔记';
+
+  @override
+  String get courseCreateLocal => '创建本地课程';
+
+  @override
+  String get courseTitleLabel => '课程标题';
+
+  @override
+  String get courseDescriptionLabel => '描述';
+
+  @override
+  String get courseSyncLocalData => '同步本地数据';
+
+  @override
+  String courseBackTo(String title) {
+    return '返回到 $title';
+  }
+
+  @override
+  String get courseModuleDiscussion => '模块讨论';
+
+  @override
+  String get courseBackToResults => '返回课程结果';
+
+  @override
+  String get courseSubscribe => '订阅';
+
+  @override
+  String get courseNoModules => '此课程尚未映射任何模块。';
+
+  @override
+  String get courseDiscussion => '课程讨论';
+
+  @override
+  String get courseListTitle => '课程列表';
+
+  @override
+  String get courseLoadMore => '加载更多';
+
+  @override
+  String get courseObjectives => '学习目标';
+
+  @override
+  String get courseAssignments => '作业';
+
+  @override
+  String get courseModule => '模块';
+
+  @override
+  String get courseModulesHeader => '模块';
+
+  @override
+  String get courseModuleNoNotes => '此模块暂无公开笔记。';
+
+  @override
+  String get courseNoDiscussion => '此课程暂无公开讨论笔记。';
+
+  @override
+  String courseNoteCount(int count) {
+    return '$count 篇笔记';
+  }
 }

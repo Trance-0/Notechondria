@@ -123,7 +123,7 @@ class _CoursePageState extends State<_CoursePage> {
       return await showDialog<Map<String, dynamic>>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Create local course'),
+          title: Text(AppLocalizations.of(context).courseCreateLocal),
           content: SizedBox(
             width: 420,
             child: Column(
@@ -131,18 +131,19 @@ class _CoursePageState extends State<_CoursePage> {
               children: [
                 TextField(
                   controller: titleController,
-                  decoration: const InputDecoration(
-                    labelText: 'Course title',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context).courseTitleLabel,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: descriptionController,
                   maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Description',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText:
+                        AppLocalizations.of(context).courseDescriptionLabel,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
               ],
@@ -151,7 +152,7 @@ class _CoursePageState extends State<_CoursePage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(AppLocalizations.of(context).commonCancel),
             ),
             FilledButton(
               onPressed: () async {
@@ -163,7 +164,7 @@ class _CoursePageState extends State<_CoursePage> {
                   Navigator.of(context).pop(created);
                 }
               },
-              child: const Text('Create'),
+              child: Text(AppLocalizations.of(context).commonCreate),
             ),
           ],
         ),
@@ -356,14 +357,14 @@ class _CoursePageState extends State<_CoursePage> {
                 }
               },
               icon: const Icon(Icons.add),
-              label: const Text('Create local course'),
+              label: Text(AppLocalizations.of(context).courseCreateLocal),
             ),
           if (widget.isAuthenticated &&
               (widget.localCourses.isNotEmpty || widget.localNotes.isNotEmpty))
             OutlinedButton.icon(
               onPressed: () => widget.onSyncLocalData(announce: true),
               icon: const Icon(Icons.cloud_upload_outlined),
-              label: const Text('Sync local data'),
+              label: Text(AppLocalizations.of(context).courseSyncLocalData),
             ),
         ],
       ),
@@ -526,7 +527,9 @@ class _CoursePageState extends State<_CoursePage> {
               });
             },
             icon: const Icon(Icons.arrow_back),
-            label: Text('Back to ${activeCourse['title'] ?? 'course'}'),
+            label: Text(AppLocalizations.of(context).courseBackTo(
+                activeCourse['title']?.toString() ??
+                    AppLocalizations.of(context).courseModule)),
           ),
           const SizedBox(height: 8),
           Card(
@@ -536,7 +539,8 @@ class _CoursePageState extends State<_CoursePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _openedModule!['title']?.toString() ?? 'Module',
+                    _openedModule!['title']?.toString() ??
+                        AppLocalizations.of(context).courseModule,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
@@ -545,7 +549,7 @@ class _CoursePageState extends State<_CoursePage> {
                   Text(_openedModule!['description']?.toString() ?? ''),
                   const SizedBox(height: 16),
                   Text(
-                    'Objectives',
+                    AppLocalizations.of(context).courseObjectives,
                     style: Theme.of(context)
                         .textTheme
                         .titleMedium
@@ -558,7 +562,7 @@ class _CoursePageState extends State<_CoursePage> {
                     Text('• ${item.toString()}'),
                   const SizedBox(height: 16),
                   Text(
-                    'Assignments',
+                    AppLocalizations.of(context).courseAssignments,
                     style: Theme.of(context)
                         .textTheme
                         .titleMedium
@@ -575,7 +579,7 @@ class _CoursePageState extends State<_CoursePage> {
           ),
           const SizedBox(height: 20),
           _DiscussionBoard(
-            title: 'Module discussion',
+            title: AppLocalizations.of(context).courseModuleDiscussion,
             notes: (_openedModule!['notes'] as List<dynamic>? ?? const [])
                 .map((item) => Map<String, dynamic>.from(item as Map))
                 .toList(growable: false),
@@ -586,7 +590,7 @@ class _CoursePageState extends State<_CoursePage> {
                 _moduleVisibleNotes += 4;
               });
             },
-            emptyMessage: 'No public notes are available for this module yet.',
+            emptyMessage: AppLocalizations.of(context).courseModuleNoNotes,
           ),
         ] else ...[
           TextButton.icon(
@@ -597,7 +601,7 @@ class _CoursePageState extends State<_CoursePage> {
               });
             },
             icon: const Icon(Icons.arrow_back),
-            label: const Text('Back to course results'),
+            label: Text(AppLocalizations.of(context).courseBackToResults),
           ),
           const SizedBox(height: 8),
           Card(
@@ -646,13 +650,15 @@ class _CoursePageState extends State<_CoursePage> {
                               OutlinedButton(
                                 onPressed: () =>
                                     widget.onUnsubscribe(activeCourse),
-                                child: const Text('Unsubscribe'),
+                                child: Text(AppLocalizations.of(context)
+                                    .categoryUnsubscribe),
                               ),
                             if (activeCourse['is_subscribed'] != true)
                               FilledButton(
                                 onPressed: () =>
                                     widget.onSubscribe(activeCourse),
-                                child: const Text('Subscribe'),
+                                child: Text(
+                                    AppLocalizations.of(context).courseSubscribe),
                               ),
                           ],
                         ),
@@ -683,7 +689,7 @@ class _CoursePageState extends State<_CoursePage> {
           ),
           const SizedBox(height: 20),
           Text(
-            'Modules',
+            AppLocalizations.of(context).courseModulesHeader,
             style: Theme.of(context)
                 .textTheme
                 .titleLarge
@@ -691,10 +697,10 @@ class _CoursePageState extends State<_CoursePage> {
           ),
           const SizedBox(height: 12),
           if (modules.isEmpty)
-            const Card(
+            Card(
               child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('No modules have been mapped for this course yet.'),
+                padding: const EdgeInsets.all(16),
+                child: Text(AppLocalizations.of(context).courseNoModules),
               ),
             ),
           for (final module in modules)
@@ -702,14 +708,16 @@ class _CoursePageState extends State<_CoursePage> {
               padding: const EdgeInsets.only(bottom: 12),
               child: Card(
                 child: ListTile(
-                  title: Text(module['title']?.toString() ?? 'Module'),
+                  title: Text(module['title']?.toString() ??
+                      AppLocalizations.of(context).courseModule),
                   subtitle: Text(
                     module['description']?.toString() ?? '',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   trailing: Text(
-                    '${(module['notes'] as List<dynamic>? ?? const []).length} note(s)',
+                    AppLocalizations.of(context).courseNoteCount(
+                        (module['notes'] as List<dynamic>? ?? const []).length),
                   ),
                   onTap: () {
                     setState(() {
@@ -722,7 +730,7 @@ class _CoursePageState extends State<_CoursePage> {
             ),
           const SizedBox(height: 20),
           _DiscussionBoard(
-            title: 'Course discussion',
+            title: AppLocalizations.of(context).courseDiscussion,
             notes: activeNotes,
             visibleCount: _courseVisibleNotes,
             onOpenNote: _openNote,
@@ -731,8 +739,7 @@ class _CoursePageState extends State<_CoursePage> {
                 _courseVisibleNotes += 4;
               });
             },
-            emptyMessage:
-                'No public discussion notes are available for this course yet.',
+            emptyMessage: AppLocalizations.of(context).courseNoDiscussion,
           ),
         ],
       ],
@@ -791,7 +798,7 @@ class _CourseScopeSelector extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Course list',
+                Text(AppLocalizations.of(context).courseListTitle,
                     style: Theme.of(context).textTheme.labelSmall),
                 Text(
                   current['label']!,
@@ -854,7 +861,8 @@ class _DiscussionBoard extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 12),
               child: Card(
                 child: ListTile(
-                  title: Text(note['title']?.toString() ?? 'Untitled note'),
+                  title: Text(note['title']?.toString() ??
+                      AppLocalizations.of(context).noteUntitled),
                   subtitle: Text(
                     note['description']?.toString() ??
                         note['excerpt']?.toString() ??
@@ -870,7 +878,7 @@ class _DiscussionBoard extends StatelessWidget {
           if (notes.length > visible.length)
             TextButton(
               onPressed: onLoadMore,
-              child: const Text('Load more'),
+              child: Text(AppLocalizations.of(context).courseLoadMore),
             ),
         ],
       ],
