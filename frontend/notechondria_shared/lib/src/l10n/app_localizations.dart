@@ -1363,6 +1363,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The server hit an error. Try again in a moment.'**
   String get errorServer;
+
+  /// No description provided for @versionUpdateAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'A new version is available. Refresh to update.'**
+  String get versionUpdateAvailable;
+
+  /// No description provided for @versionDeploying.
+  ///
+  /// In en, this message translates to:
+  /// **'A new version is rolling out — some features may be briefly unavailable.'**
+  String get versionDeploying;
+
+  /// No description provided for @versionUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This app version is no longer supported. Refresh to update.'**
+  String get versionUnsupported;
+
+  /// No description provided for @versionRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get versionRefresh;
 }
 
 class _AppLocalizationsDelegate

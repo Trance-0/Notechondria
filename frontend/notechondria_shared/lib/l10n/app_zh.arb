@@ -230,5 +230,10 @@
 
   "errorNetwork": "无法连接到服务器。请检查你的网络连接后重试。",
   "errorTimeout": "服务器响应超时。请重试。",
-  "errorServer": "服务器出错了。请稍后重试。"
+  "errorServer": "服务器出错了。请稍后重试。",
+
+  "versionUpdateAvailable": "有新版本可用。刷新以更新。",
+  "versionDeploying": "新版本正在发布——部分功能可能暂时不可用。",
+  "versionUnsupported": "此应用版本已不再受支持。请刷新以更新。",
+  "versionRefresh": "刷新"
 }

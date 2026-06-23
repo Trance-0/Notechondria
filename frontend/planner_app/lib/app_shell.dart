@@ -636,6 +636,10 @@ class _AppShellState extends State<AppShell>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            VersionUpdateBanner(
+              frontendVersion: _kAppVersion,
+              probe: _probeBackendVersion,
+            ),
             if (_isLoading) const LinearProgressIndicator(minHeight: 2),
             if (_errorMessage != null)
               Material(

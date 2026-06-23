@@ -260,5 +260,10 @@
 
   "errorNetwork": "Couldn't reach the server. Check your connection and try again.",
   "errorTimeout": "The server took too long to respond. Try again.",
-  "errorServer": "The server hit an error. Try again in a moment."
+  "errorServer": "The server hit an error. Try again in a moment.",
+
+  "versionUpdateAvailable": "A new version is available. Refresh to update.",
+  "versionDeploying": "A new version is rolling out — some features may be briefly unavailable.",
+  "versionUnsupported": "This app version is no longer supported. Refresh to update.",
+  "versionRefresh": "Refresh"
 }

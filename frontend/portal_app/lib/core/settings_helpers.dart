@@ -97,4 +97,22 @@ extension _AppShellSettingsHelpersX on _AppShellState {
       return null;
     }
   }
+
+  /// Probe the backend's running version + compat floor for the
+  /// version-update banner. Returns null when the backend is
+  /// unreachable (banner then shows nothing).
+  Future<BackendVersionInfo?> _probeBackendVersion() async {
+    final url =
+        _localSettings['api_base_url']?.toString() ?? _defaultApiBaseUrl();
+    try {
+      final result = await widget.client.verifyHandshake(url);
+      if (!result.ok || result.version.isEmpty) return null;
+      return BackendVersionInfo(
+        version: result.version,
+        minFrontendVersion: result.minFrontendVersion,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
 }

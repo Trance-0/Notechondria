@@ -16,6 +16,12 @@ void browserRedirect(String url) {
   html.window.location.href = url;
 }
 
+/// Hard-reload the page so the browser fetches the newest web bundle.
+/// Backs the "Refresh to update" action on the version-update banner.
+void browserReload() {
+  html.window.location.reload();
+}
+
 /// Open a popup window for the GitHub App install flow and listen for
 /// a `postMessage` reply carrying the install id.
 ///

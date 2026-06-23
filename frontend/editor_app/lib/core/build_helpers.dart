@@ -458,6 +458,10 @@ extension _AppShellBuildHelpersX on _AppShellState {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            VersionUpdateBanner(
+              frontendVersion: _kAppVersion,
+              probe: _probeBackendVersion,
+            ),
             if (_isLoading) const LinearProgressIndicator(minHeight: 2),
             if (_errorMessage != null)
               Material(

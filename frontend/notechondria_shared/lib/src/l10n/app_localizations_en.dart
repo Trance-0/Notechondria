@@ -704,4 +704,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errorServer => 'The server hit an error. Try again in a moment.';
+
+  @override
+  String get versionUpdateAvailable =>
+      'A new version is available. Refresh to update.';
+
+  @override
+  String get versionDeploying =>
+      'A new version is rolling out — some features may be briefly unavailable.';
+
+  @override
+  String get versionUnsupported =>
+      'This app version is no longer supported. Refresh to update.';
+
+  @override
+  String get versionRefresh => 'Refresh';
 }

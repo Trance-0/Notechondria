@@ -5,6 +5,7 @@
 void browserPushState(String url) {}
 void browserReplaceState(String url) {}
 void browserRedirect(String url) {}
+void browserReload() {}
 
 /// Stub for the popup-based GitHub install flow. On non-web targets
 /// the SPA never triggers GH App linking (the SDK isn't loaded), so

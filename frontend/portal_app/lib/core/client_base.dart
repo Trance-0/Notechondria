@@ -139,6 +139,7 @@ class HandshakeResult {
     required this.version,
     required this.capabilities,
     this.storageLabel = '',
+    this.minFrontendVersion = '',
   });
 
   factory HandshakeResult.success({
@@ -147,6 +148,7 @@ class HandshakeResult {
     required String version,
     required Map<String, dynamic> capabilities,
     String storageLabel = '',
+    String minFrontendVersion = '',
   }) =>
       HandshakeResult._(
         ok: true,
@@ -156,6 +158,7 @@ class HandshakeResult {
         version: version,
         capabilities: capabilities,
         storageLabel: storageLabel,
+        minFrontendVersion: minFrontendVersion,
       );
 
   factory HandshakeResult.failure(String message) => HandshakeResult._(
@@ -178,4 +181,8 @@ class HandshakeResult {
   /// (e.g. "Cloudflare R2" / "Local disk"), from the handshake
   /// `storage.label` field. Empty when the backend predates it.
   final String storageLabel;
+
+  /// Lowest frontend build the backend still supports, from the
+  /// handshake `min_frontend_version` field. Empty = no floor.
+  final String minFrontendVersion;
 }

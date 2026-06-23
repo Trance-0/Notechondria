@@ -135,6 +135,18 @@ English (US) + Chinese (Simplified), a Language setting in each app
   the right default. Changing planner's starter default is a UX
   break, so gather feedback before touching.
 
+## Version-update notification (landed 0.1.151–0.1.152)
+
+Owner-confirmed **handshake-compare** approach (no GitHub polling) + a
+`min_frontend_version` compat floor. Backend handshake exposes both
+`version` (already) and `min_frontend_version` (env `MIN_FRONTEND_VERSION`,
+empty = no floor). All three apps host a shared `VersionUpdateBanner`
+that probes on boot + every 15 min and compares the built `_kAppVersion`:
+backend newer → "new version available, refresh"; backend behind the
+served bundle → "rolling out"; below the floor → non-dismissible "no
+longer supported". Backs future mobile update prompts too. Optional
+GitHub-release `latest_version` signal remains a possible follow-up.
+
 ## i18n bug fixes (landed)
 
 - 0.1.149 fixed two reported i18n gaps: the editor's "Clear all local

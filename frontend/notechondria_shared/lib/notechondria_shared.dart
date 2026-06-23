@@ -13,6 +13,13 @@ export 'src/utils/blur_dialog.dart' show showBlurDialog;
 export 'src/utils/compact_timestamp.dart' show formatCompactTimestamp;
 export 'src/utils/format_bytes.dart' show formatBytes;
 export 'src/utils/friendly_error.dart' show friendlyError;
+export 'src/utils/version_status.dart'
+    show
+        AppVersionStatus,
+        BackendVersionInfo,
+        compareSemver,
+        computeVersionStatus;
+export 'src/components/version_update_banner.dart' show VersionUpdateBanner;
 export 'src/utils/ping_backend.dart' show pingBackend;
 export 'src/utils/local_archive.dart'
     show

@@ -91,6 +91,8 @@ class HttpNotechondriaClient
             : const <String, dynamic>{},
         storageLabel:
             storageMap is Map ? (storageMap['label']?.toString() ?? '') : '',
+        minFrontendVersion:
+            parsed['min_frontend_version']?.toString() ?? '',
       );
     } on TimeoutException {
       return HandshakeResult.failure(

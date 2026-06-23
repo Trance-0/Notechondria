@@ -671,4 +671,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get errorServer => '服务器出错了。请稍后重试。';
+
+  @override
+  String get versionUpdateAvailable => '有新版本可用。刷新以更新。';
+
+  @override
+  String get versionDeploying => '新版本正在发布——部分功能可能暂时不可用。';
+
+  @override
+  String get versionUnsupported => '此应用版本已不再受支持。请刷新以更新。';
+
+  @override
+  String get versionRefresh => '刷新';
 }
