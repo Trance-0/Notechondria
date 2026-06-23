@@ -666,6 +666,12 @@ class _AppShellState extends State<AppShell>
                           ),
                         ),
                       ),
+                      if (_localSettings['offline_mode'] != true)
+                        TextButton(
+                          onPressed: () => _setOfflineMode(true),
+                          child: Text(
+                              AppLocalizations.of(context).errorWorkOffline),
+                        ),
                       TextButton(
                         onPressed: _loadInitialData,
                         child: Text(AppLocalizations.of(context).commonRetry),

@@ -719,4 +719,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get versionRefresh => 'Refresh';
+
+  @override
+  String get errorWorkOffline => 'Work offline';
 }

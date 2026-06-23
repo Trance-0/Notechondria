@@ -683,4 +683,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get versionRefresh => '刷新';
+
+  @override
+  String get errorWorkOffline => '离线使用';
 }

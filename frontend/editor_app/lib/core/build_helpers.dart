@@ -482,6 +482,11 @@ extension _AppShellBuildHelpersX on _AppShellState {
                                     .colorScheme
                                     .onErrorContainer)),
                       ),
+                      if (_localSettings['offline_mode'] != true)
+                        TextButton(
+                          onPressed: () => _setOfflineMode(true),
+                          child: Text(l10n.errorWorkOffline),
+                        ),
                       TextButton(
                           onPressed: _loadInitialData,
                           child: Text(l10n.commonRetry)),

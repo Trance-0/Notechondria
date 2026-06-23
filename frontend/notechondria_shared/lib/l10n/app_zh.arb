@@ -235,5 +235,7 @@
   "versionUpdateAvailable": "有新版本可用。刷新以更新。",
   "versionDeploying": "新版本正在发布——部分功能可能暂时不可用。",
   "versionUnsupported": "此应用版本已不再受支持。请刷新以更新。",
-  "versionRefresh": "刷新"
+  "versionRefresh": "刷新",
+
+  "errorWorkOffline": "离线使用"
 }

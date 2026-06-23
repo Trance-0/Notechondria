@@ -1387,6 +1387,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Refresh'**
   String get versionRefresh;
+
+  /// No description provided for @errorWorkOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Work offline'**
+  String get errorWorkOffline;
 }
 
 class _AppLocalizationsDelegate
