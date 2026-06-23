@@ -38,6 +38,20 @@ HANDSHAKE_CAPABILITIES = {
     "mcp": 1,
 }
 
+
+def _min_frontend_version() -> str:
+    """The lowest frontend build the backend still considers compatible.
+
+    Returned in the handshake so a running web/mobile client can compare
+    its own built version against this floor and, if it's below, show a
+    stronger "please update" prompt (vs. the soft "new version available"
+    banner driven by comparing against the live `version`). Env-driven
+    (`MIN_FRONTEND_VERSION`) so it can be raised at deploy time without a
+    code change; empty string means "no floor — every client is
+    supported", which is the default.
+    """
+    return (os.getenv("MIN_FRONTEND_VERSION") or "").strip()
+
 _cached_backend_version: Optional[str] = None
 _cached_build_metadata: Optional[dict] = None
 
@@ -252,6 +266,7 @@ def handshake(request):
             "service": HANDSHAKE_SERVICE_ID,
             "api_version": HANDSHAKE_API_VERSION,
             "version": _read_backend_version(),
+            "min_frontend_version": _min_frontend_version(),
             "capabilities": HANDSHAKE_CAPABILITIES,
             "build": _build_metadata(),
             "storage": _storage_info(),

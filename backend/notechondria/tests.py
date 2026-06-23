@@ -58,6 +58,30 @@ class HandshakeEndpointTests(TestCase):
         self.assertIn("version", payload)
         self.assertIn("capabilities", payload)
         self.assertIn("auth", payload["capabilities"])
+        # min_frontend_version is always present; empty string = no floor.
+        self.assertIn("min_frontend_version", payload)
+        self.assertIsInstance(payload["min_frontend_version"], str)
+
+    def test_handshake_min_frontend_version_env_override(self):
+        import os
+        from unittest import mock
+        from notechondria import api_views
+
+        with mock.patch.dict(
+            os.environ, {"MIN_FRONTEND_VERSION": "0.1.140"}
+        ):
+            response = self.client.get("/api/v1/handshake/")
+        self.assertEqual(
+            json.loads(response.content)["min_frontend_version"], "0.1.140")
+        # Default (env unset) is an empty string — no floor.
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("MIN_FRONTEND_VERSION", None)
+            response = self.client.get("/api/v1/handshake/")
+        self.assertEqual(
+            json.loads(response.content)["min_frontend_version"], "")
+        # Reference the module so import-time wiring is exercised even if
+        # the constant is later cached.
+        self.assertTrue(hasattr(api_views, "_min_frontend_version"))
 
     def test_handshake_reports_storage_backend_shape(self):
         # The ambient default depends on whether R2 env vars are set, so
