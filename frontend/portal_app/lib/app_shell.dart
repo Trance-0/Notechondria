@@ -56,6 +56,7 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
     final seedColor = _themeSeed(_themePreset);
     return MaterialApp(
       title: widget.title,
+      onGenerateTitle: (context) => AppLocalizations.of(context).appNamePortal,
       debugShowCheckedModeBanner: false,
       // Shared widgets localize via AppLocalizations. `_locale` is the
       // user's Language choice (null = follow device).
@@ -447,13 +448,14 @@ class _AppShellState extends State<AppShell>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final scaffold = LayoutBuilder(
       builder: (context, constraints) {
         final isWideLayout = constraints.maxWidth >= 960;
         if (isWideLayout) {
           return _buildWideScaffold(context);
         }
-        return _buildCompactScaffold();
+        return _buildCompactScaffold(context);
       },
     );
     if (_showSplash) {
@@ -462,7 +464,7 @@ class _AppShellState extends State<AppShell>
           scaffold,
           Positioned.fill(
             child: SplashScreen(
-              appTitle: widget.appTitle,
+              appTitle: l10n.appNamePortal,
               appVersion: _kAppVersion,
               loadingStatus: _splashStatus,
               apiBaseUrl: _localSettings['api_base_url']?.toString(),
@@ -480,7 +482,7 @@ class _AppShellState extends State<AppShell>
     return scaffold;
   }
 
-  Widget _buildCompactScaffold() {
+  Widget _buildCompactScaffold(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
@@ -501,6 +503,7 @@ class _AppShellState extends State<AppShell>
   }
 
   Widget _buildWideScaffold(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final colorScheme = Theme.of(context).colorScheme;
     final subscribedCourses =
         _courses.where((course) => course['is_subscribed'] == true).toList();
@@ -525,7 +528,7 @@ class _AppShellState extends State<AppShell>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          widget.appTitle,
+                          l10n.appNamePortal,
                           style: Theme.of(context)
                               .textTheme
                               .headlineSmall

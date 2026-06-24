@@ -239,12 +239,12 @@ class _BackendSettingsPage extends StatefulWidget {
 class _BackendSettingsPageState extends State<_BackendSettingsPage> {
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final p = widget.parent;
     final offlineMode = p.widget.localSettings['offline_mode'] == true;
     final canEditOffline = p.widget.onOfflineModeChanged != null;
     return Scaffold(
-      appBar: AppBar(
-          title: Text(AppLocalizations.of(context).settingsBackendTitle)),
+      appBar: AppBar(title: Text(l10n.settingsBackendTitle)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -289,9 +289,7 @@ class _BackendSettingsPageState extends State<_BackendSettingsPage> {
                       message: p._isAuthenticated
                           ? 'Locked while signed in. Sign out to switch '
                               'the backend the editor talks to.'
-                          : 'Points the editor at a different '
-                              'Notechondria backend. The handshake probe '
-                              'verifies the URL before saving.',
+                          : l10n.settingsEditorApiBaseTooltip,
                       child: Icon(
                         Icons.info_outline,
                         size: 16,

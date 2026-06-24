@@ -836,6 +836,7 @@ class _ConnectedAccountsSection extends StatefulWidget {
 class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final shadowMode = widget.onBindCasdoor == null;
     final manageUrl = widget.casdoorOrgLoginUrl ?? '';
     if (shadowMode && manageUrl.isEmpty) {
@@ -845,7 +846,7 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Connected accounts',
+          l10n.connectedAccountsTitle,
           style: Theme.of(context)
               .textTheme
               .labelLarge
@@ -860,17 +861,16 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
             child: OutlinedButton.icon(
               onPressed: () => url_strategy.browserRedirect(manageUrl),
               icon: const Icon(Icons.open_in_new, size: 18),
-              label: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 4),
-                child: Text('Manage Casdoor account'),
+              label: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Text(l10n.connectedAccountsManageCasdoor),
               ),
             ),
           ),
         ],
         const SizedBox(height: 6),
         Text(
-          'If sign-in is unavailable, contact your Notechondria '
-          'admin (Casdoor backend may be off).',
+          l10n.connectedAccountsUnavailableHelp,
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],

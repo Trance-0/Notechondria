@@ -93,9 +93,10 @@ extension _AppShellWhatsNewX on _AppShellState {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       unawaited(() async {
+        final l10n = AppLocalizations.of(context);
         final acknowledged = await showWhatsNewOverlay(
           context,
-          appTitle: 'Notechondria Editor',
+          appTitle: l10n.appNameEditor,
           currentVersion: current,
           updates: missed,
         );

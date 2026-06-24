@@ -70,6 +70,7 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
     final seedColor = _themeSeed(_themePreset);
     return MaterialApp(
       title: widget.title,
+      onGenerateTitle: (context) => AppLocalizations.of(context).appNameEditor,
       debugShowCheckedModeBanner: false,
       locale: _locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -503,6 +504,7 @@ class _AppShellState extends State<AppShell>
   // ---------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final scaffold = LayoutBuilder(
       builder: (context, constraints) {
         final isWideLayout = constraints.maxWidth >= 960;
@@ -516,7 +518,7 @@ class _AppShellState extends State<AppShell>
           scaffold,
           Positioned.fill(
             child: SplashScreen(
-              appTitle: widget.appTitle,
+              appTitle: l10n.appNameEditor,
               appVersion: _kAppVersion,
               loadingStatus: _splashStatus,
               apiBaseUrl: _localSettings['api_base_url']?.toString(),

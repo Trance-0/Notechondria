@@ -12,6 +12,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get languageName => '简体中文';
 
   @override
+  String get appName => '记粒体';
+
+  @override
+  String get appNameEditor => '记粒体编辑器';
+
+  @override
+  String get appNamePlanner => '记粒体规划器';
+
+  @override
+  String get appNamePortal => '记粒体门户';
+
+  @override
   String get settingsLanguage => '语言';
 
   @override
@@ -73,6 +85,45 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get commonLoading => '加载中……';
+
+  @override
+  String get splashStartingEditor => '正在启动记粒体编辑器';
+
+  @override
+  String get splashStartingPlanner => '正在启动记粒体规划器';
+
+  @override
+  String get splashStartingPortal => '正在启动记粒体门户';
+
+  @override
+  String get splashLoadingLocalWorkspace => '正在加载本地工作区';
+
+  @override
+  String get splashLoadingLocalPlannerData => '正在加载本地规划数据';
+
+  @override
+  String get splashLoadingLocalState => '正在加载本地状态';
+
+  @override
+  String get splashRestoringSession => '正在恢复会话';
+
+  @override
+  String get splashCompletingSignIn => '正在完成登录';
+
+  @override
+  String get splashConnectingToServer => '正在连接服务器';
+
+  @override
+  String get splashLoadingPublicNotesData => '正在加载公开笔记数据';
+
+  @override
+  String get splashLoadingCategories => '正在加载分类';
+
+  @override
+  String get splashLoadingNotes => '正在加载笔记';
+
+  @override
+  String get localArchiveTypeLabel => '记粒体归档';
 
   @override
   String get commonCopy => '复制';
@@ -604,7 +655,11 @@ class AppLocalizationsZh extends AppLocalizations {
       '登录期间已锁定。退出登录后可切换门户连接的后端。';
 
   @override
-  String get settingsApiBaseTooltip => '将门户指向另一个 Notechondria 后端。';
+  String get settingsApiBaseTooltip => '将门户指向另一个记粒体后端。';
+
+  @override
+  String get settingsEditorApiBaseTooltip =>
+      '将编辑器指向另一个记粒体后端。握手探测会在保存前验证 URL。';
 
   @override
   String get settingsApiBaseApplyCaption =>
@@ -763,7 +818,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get connectedAccountsUnavailableHelp =>
-      '如果无法登录，请联系你的 Notechondria 管理员（Casdoor 后端可能已关闭）。';
+      '如果无法登录，请联系你的记粒体管理员（Casdoor 后端可能已关闭）。';
 
   @override
   String get connectedAccountsCasdoorSso => 'Casdoor SSO';
@@ -878,11 +933,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get installBannerAtRisk =>
-      '你的笔记仅保存在此浏览器中，约一周不活动后可能被清除。请登录以备份，或将 Notechondria 添加到主屏幕以获得持久存储。';
+      '你的笔记仅保存在此浏览器中，约一周不活动后可能被清除。请登录以备份，或将记粒体添加到主屏幕以获得持久存储。';
 
   @override
   String get installBannerTip =>
-      '提示：将 Notechondria 添加到主屏幕，可获得类似应用的体验和不会被浏览器清除的存储。在 iPhone 上：分享 → 添加到主屏幕。';
+      '提示：将记粒体添加到主屏幕，可获得类似应用的体验和不会被浏览器清除的存储。在 iPhone 上：分享 → 添加到主屏幕。';
 
   @override
   String whatsNewTitle(String appTitle) {
@@ -894,7 +949,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get authDescPrimary =>
-      '通过 Notechondria SSO 登录。账户创建和密码重置由 Casdoor 端处理；可使用下方链接注册，若需要重置密码请联系管理员。';
+      '通过记粒体 SSO 登录。账户创建和密码重置由 Casdoor 端处理；可使用下方链接注册，若需要重置密码请联系管理员。';
 
   @override
   String get authDescFallback =>
@@ -951,35 +1006,35 @@ class AppLocalizationsZh extends AppLocalizations {
   String get linkSignedInAs => 'Casdoor 已将你登录为：';
 
   @override
-  String get linkChooseIntro => '此 Casdoor 身份尚未关联到 Notechondria 账户。请选择如何继续：';
+  String get linkChooseIntro => '此 Casdoor 身份尚未关联到记粒体账户。请选择如何继续：';
 
   @override
   String get linkBindButton => '绑定到我已有的账户';
 
   @override
   String get linkBindDesc =>
-      '你已经有一个 Notechondria 账户。使用你原有的用户名/邮箱 + 密码登录一次，即可将此 Casdoor 身份关联到它。关联后，今后的 Casdoor 登录都会进入同一个账户。';
+      '你已经有一个记粒体账户。使用你原有的用户名/邮箱 + 密码登录一次，即可将此 Casdoor 身份关联到它。关联后，今后的 Casdoor 登录都会进入同一个账户。';
 
   @override
-  String get linkCreateButton => '创建新的 Notechondria 账户';
+  String get linkCreateButton => '创建新的记粒体账户';
 
   @override
   String get linkCreateDesc =>
-      '没有已有的 Notechondria 账户。设置一个密码——将使用上方显示的用户名和邮箱创建你的新账户。当 Casdoor 不可用时，同一密码可用于邮箱/密码备用登录。';
+      '没有已有的记粒体账户。设置一个密码——将使用上方显示的用户名和邮箱创建你的新账户。当 Casdoor 不可用时，同一密码可用于邮箱/密码备用登录。';
 
   @override
   String get linkBindPaneDesc =>
-      '请使用你已有的 Notechondria 账户登录一次，以便我们将其关联到此 Casdoor 身份。用户名或邮箱 + 你之前设置的密码。';
+      '请使用你已有的记粒体账户登录一次，以便我们将其关联到此 Casdoor 身份。用户名或邮箱 + 你之前设置的密码。';
 
   @override
-  String get linkUsernameOrEmailLabel => 'Notechondria 用户名或邮箱';
+  String get linkUsernameOrEmailLabel => '记粒体用户名或邮箱';
 
   @override
-  String get linkPasswordLabel => 'Notechondria 密码';
+  String get linkPasswordLabel => '记粒体密码';
 
   @override
   String get linkCreatePaneDesc =>
-      '为你的新 Notechondria 账户设置一个密码。Casdoor 仍负责 SSO；此密码用于旧的邮箱/密码备用登录（当 auth.trance-0.com 不可用时）。';
+      '为你的新记粒体账户设置一个密码。Casdoor 仍负责 SSO；此密码用于旧的邮箱/密码备用登录（当 auth.trance-0.com 不可用时）。';
 
   @override
   String get linkNewPasswordLabel => '新密码';
@@ -1018,7 +1073,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get clearAllLocalDataConfirm => '全部清除';
 
   @override
-  String get tourEditorWelcomeTitle => '欢迎使用 Notechondria 编辑器';
+  String get tourEditorWelcomeTitle => '欢迎使用记粒体编辑器';
 
   @override
   String get tourEditorWelcomeBody => '撰写支持离线的 Markdown 笔记，登录后即可同步到云端。';
@@ -1042,7 +1097,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get tourEditorToolsBody => '主题、同步、导入/导出和调试日志都在设置中。在手机上，从左上角打开菜单。';
 
   @override
-  String get tourPlannerWelcomeTitle => '欢迎使用 Notechondria 规划器';
+  String get tourPlannerWelcomeTitle => '欢迎使用记粒体规划器';
 
   @override
   String get tourPlannerWelcomeBody => '在一个地方追踪课程、截止日期和你的学习活动。';
@@ -1066,7 +1121,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get tourPlannerToolsBody => '主题、同步和工具都在设置中。在手机上，从左上角打开菜单。';
 
   @override
-  String get tourPortalWelcomeTitle => '欢迎使用 Notechondria';
+  String get tourPortalWelcomeTitle => '欢迎使用记粒体';
 
   @override
   String get tourPortalWelcomeBody => '你的笔记、规划和公开课程中心。';
@@ -1113,7 +1168,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get frontWelcomeGuest => '欢迎使用 Notechondria';
+  String get frontWelcomeGuest => '欢迎使用记粒体';
 
   @override
   String get frontGreetingGuest => '访客';
@@ -1261,7 +1316,7 @@ class AppLocalizationsZh extends AppLocalizations {
       '将你的完整账户（个人资料、设置、MCP 技能、课程、笔记、自定义元数据、规划事件）推送到你拥有的 GitHub 仓库，以便服务器数据丢失时恢复。我们托管的静态资源（头像、附件、封面图片）会以 URL 引用，不会提交到仓库。完整流程见 docs/integrations/github-sync.md。';
 
   @override
-  String get githubSyncInstall => '安装 Notechondria GitHub App';
+  String get githubSyncInstall => '安装记粒体 GitHub App';
 
   @override
   String get githubSyncInstallHelp =>
@@ -1277,7 +1332,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get githubSyncNoRepos =>
-      '此安装看不到任何仓库。请打开 GitHub 设置 → Applications → Notechondria data sync，并授予仓库访问权限。';
+      '此安装看不到任何仓库。请打开 GitHub 设置 → Applications → 记粒体 data sync，并授予仓库访问权限。';
 
   @override
   String get githubSyncTargetRepo => '同步目标仓库';

@@ -104,6 +104,14 @@ abstract class AppLocalizations {
   /// **'English'**
   String get languageName;
 
+  String get appName;
+
+  String get appNameEditor;
+
+  String get appNamePlanner;
+
+  String get appNamePortal;
+
   /// No description provided for @settingsLanguage.
   ///
   /// In en, this message translates to:
@@ -229,6 +237,32 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Loading...'**
   String get commonLoading;
+
+  String get splashStartingEditor;
+
+  String get splashStartingPlanner;
+
+  String get splashStartingPortal;
+
+  String get splashLoadingLocalWorkspace;
+
+  String get splashLoadingLocalPlannerData;
+
+  String get splashLoadingLocalState;
+
+  String get splashRestoringSession;
+
+  String get splashCompletingSignIn;
+
+  String get splashConnectingToServer;
+
+  String get splashLoadingPublicNotesData;
+
+  String get splashLoadingCategories;
+
+  String get splashLoadingNotes;
+
+  String get localArchiveTypeLabel;
 
   String get commonCopy;
 
@@ -1171,6 +1205,8 @@ abstract class AppLocalizations {
   String get settingsApiBaseLockedTooltip;
 
   String get settingsApiBaseTooltip;
+
+  String get settingsEditorApiBaseTooltip;
 
   String get settingsApiBaseApplyCaption;
 

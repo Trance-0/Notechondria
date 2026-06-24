@@ -42,8 +42,10 @@ extension _AppShellLocalArchiveX on _AppShellState {
       final location = await getSaveLocation(
         suggestedName: suggestedName,
         acceptedTypeGroups: [
-          const XTypeGroup(
-              label: 'Notechondria archive', extensions: ['nchron', 'zip']),
+          XTypeGroup(
+            label: AppLocalizations.of(context).localArchiveTypeLabel,
+            extensions: const ['nchron', 'zip'],
+          ),
         ],
       );
       if (location == null) return;
@@ -84,10 +86,11 @@ extension _AppShellLocalArchiveX on _AppShellState {
   /// Imports a `.nchron` archive, showing a confirmation dialog first.
   Future<void> _restoreFromLocalImport() async {
     try {
-      final picked = await openFile(acceptedTypeGroups: const [
+      final picked = await openFile(acceptedTypeGroups: [
         XTypeGroup(
-            label: 'Notechondria archive',
-            extensions: ['nchron', 'zip', 'env']),
+          label: AppLocalizations.of(context).localArchiveTypeLabel,
+          extensions: const ['nchron', 'zip', 'env'],
+        ),
       ]);
       if (picked == null) return;
       final bytes = await picked.readAsBytes();

@@ -45,10 +45,11 @@ extension _AppShellOnboardingX on _AppShellState {
   }
 
   Future<void> _runOnboarding({required bool stampSeen}) async {
+    final l10n = AppLocalizations.of(context);
     await showOnboardingTour(
       context,
-      appTitle: 'Notechondria Portal',
-      steps: _onboardingSteps(AppLocalizations.of(context)),
+      appTitle: l10n.appNamePortal,
+      steps: _onboardingSteps(l10n),
     );
     if (stampSeen && mounted) {
       _localStats = {..._localStats, 'onboarding_seen': true};

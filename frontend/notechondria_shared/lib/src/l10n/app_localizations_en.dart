@@ -12,6 +12,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get languageName => 'English';
 
   @override
+  String get appName => 'Notechondria';
+
+  @override
+  String get appNameEditor => 'Notechondria Editor';
+
+  @override
+  String get appNamePlanner => 'Notechondria Planner';
+
+  @override
+  String get appNamePortal => 'Notechondria Portal';
+
+  @override
   String get settingsLanguage => 'Language';
 
   @override
@@ -73,6 +85,45 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commonLoading => 'Loading...';
+
+  @override
+  String get splashStartingEditor => 'Starting Notechondria Editor';
+
+  @override
+  String get splashStartingPlanner => 'Starting Notechondria Planner';
+
+  @override
+  String get splashStartingPortal => 'Starting Notechondria Portal';
+
+  @override
+  String get splashLoadingLocalWorkspace => 'Loading local workspace';
+
+  @override
+  String get splashLoadingLocalPlannerData => 'Loading local planner data';
+
+  @override
+  String get splashLoadingLocalState => 'Loading local state';
+
+  @override
+  String get splashRestoringSession => 'Restoring session';
+
+  @override
+  String get splashCompletingSignIn => 'Completing sign-in';
+
+  @override
+  String get splashConnectingToServer => 'Connecting to server';
+
+  @override
+  String get splashLoadingPublicNotesData => 'Loading public notes data';
+
+  @override
+  String get splashLoadingCategories => 'Loading categories';
+
+  @override
+  String get splashLoadingNotes => 'Loading notes';
+
+  @override
+  String get localArchiveTypeLabel => 'Notechondria archive';
 
   @override
   String get commonCopy => 'Copy';
@@ -633,6 +684,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsApiBaseTooltip =>
       'Points the portal at a different Notechondria backend.';
+
+  @override
+  String get settingsEditorApiBaseTooltip =>
+      'Points the editor at a different Notechondria backend. The handshake probe verifies the URL before saving.';
 
   @override
   String get settingsApiBaseApplyCaption =>

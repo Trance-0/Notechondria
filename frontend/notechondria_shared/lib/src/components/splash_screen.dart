@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../reaction_simulator/reaction_view.dart';
 
 /// Splash screen backed by the reaction-simulator animation (TCA-cycle
@@ -15,9 +16,9 @@ import '../reaction_simulator/reaction_view.dart';
 ///
 /// The detailed loading-status line under the title is driven by
 /// [loadingStatus]. The host app typically wires a `ValueNotifier<String>`
-/// to it and pushes strings like `"Connecting to server"` or
-/// `"Loading public notes data"` as bootstrap progresses. When omitted the
-/// splash falls back to a static `"Loading..."` string.
+/// to it and pushes known bootstrap phase labels as startup progresses. The
+/// splash localizes those known labels at display time. When omitted the
+/// splash falls back to the localized common loading string.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({
     super.key,
@@ -73,8 +74,8 @@ class _SplashScreenState extends State<SplashScreen>
   /// to the version string. Empty / null / malformed URLs collapse to
   /// `offline`. Relative paths (`/api/v1`) are shown verbatim so an
   /// operator inspecting the splash can tell local-dev from remote-prod.
-  static String _formatBackendTag(String? raw) {
-    if (raw == null || raw.trim().isEmpty) return 'offline';
+  static String _formatBackendTag(String? raw, AppLocalizations l10n) {
+    if (raw == null || raw.trim().isEmpty) return l10n.storageOffline;
     final trimmed = raw.trim();
     final uri = Uri.tryParse(trimmed);
     if (uri == null || uri.host.isEmpty) return trimmed;
@@ -84,6 +85,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF0f172a) : const Color(0xFFF8FAFC);
     final textColor = theme.colorScheme.onSurface;
@@ -115,7 +117,7 @@ class _SplashScreenState extends State<SplashScreen>
                   left: constraints.maxWidth * 0.04,
                   bottom: constraints.maxHeight * 0.04,
                   child: Text(
-                    'v${widget.appVersion} \u00b7 ${_formatBackendTag(widget.apiBaseUrl)}',
+                    'v${widget.appVersion} \u00b7 ${_formatBackendTag(widget.apiBaseUrl, l10n)}',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: subtleColor,
                       fontFeatures: const [FontFeature.tabularFigures()],
@@ -207,13 +209,16 @@ class _LoadingStatusText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final defaultText = Text('Loading...', style: style);
+    final l10n = AppLocalizations.of(context);
+    final defaultLabel = l10n.commonLoading;
+    final defaultText = Text(defaultLabel, style: style);
     final source = listenable;
     if (source == null) return defaultText;
     return ValueListenableBuilder<String>(
       valueListenable: source,
       builder: (context, value, _) {
-        final display = value.isEmpty ? 'Loading...' : value;
+        final display =
+            value.isEmpty ? defaultLabel : _localizedStatus(value, l10n);
         return AnimatedSwitcher(
           duration: const Duration(milliseconds: 320),
           switchInCurve: Curves.easeOut,
@@ -236,5 +241,23 @@ class _LoadingStatusText extends StatelessWidget {
         );
       },
     );
+  }
+
+  static String _localizedStatus(String value, AppLocalizations l10n) {
+    return switch (value) {
+      'Starting editor' => l10n.splashStartingEditor,
+      'Starting planner' => l10n.splashStartingPlanner,
+      'Starting portal' => l10n.splashStartingPortal,
+      'Loading local workspace' => l10n.splashLoadingLocalWorkspace,
+      'Loading local planner data' => l10n.splashLoadingLocalPlannerData,
+      'Loading local state' => l10n.splashLoadingLocalState,
+      'Restoring session' => l10n.splashRestoringSession,
+      'Completing sign-in' => l10n.splashCompletingSignIn,
+      'Connecting to server' => l10n.splashConnectingToServer,
+      'Loading public notes data' => l10n.splashLoadingPublicNotesData,
+      'Loading categories' => l10n.splashLoadingCategories,
+      'Loading notes' => l10n.splashLoadingNotes,
+      _ => value,
+    };
   }
 }

@@ -21,7 +21,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
         compactTitle = l10n.navAllNotes;
       }
     } else {
-      compactTitle = widget.appTitle;
+      compactTitle = l10n.appNameEditor;
     }
     return Scaffold(
       appBar: AppBar(
