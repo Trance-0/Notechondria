@@ -290,6 +290,10 @@
   "apiKeySavedIt": "I have saved it",
   "apiKeyCopied": "API key copied to clipboard.",
   "apiKeyMcpEndpointCopied": "MCP endpoint copied to clipboard.",
+  "apiKeyRotateFailed": "Failed to rotate API key: Portal.Settings/api_key.rotate — {error}",
+  "@apiKeyRotateFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
   "apiKeyHelp": "Use this key with MCP clients (e.g. Claude Desktop) by setting the Authorization header to \"Bearer ntc_<key>\".",
   "apiKeyMcpEndpoint": "MCP endpoint:",
   "apiKeyCopyMcpEndpoint": "Copy MCP endpoint",
@@ -524,6 +528,33 @@
     "placeholders": { "time": { "type": "String" } }
   },
   "githubSyncSignIn": "Sign in to enable GitHub Sync.",
+  "githubSyncLoadStatusFailed": "Cannot load GitHub Sync status: Frontend.GithubSync/status — {error}",
+  "@githubSyncLoadStatusFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "githubSyncSelectRepositoryFailed": "Cannot select repository: Frontend.GithubSync/repository.select — {error}",
+  "@githubSyncSelectRepositoryFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "githubSyncPushFailed": "GitHub Sync push failed: Frontend.GithubSync/push — {error}",
+  "@githubSyncPushFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "githubSyncPushed": "Pushed to GitHub: Frontend.GithubSync/push — commit {sha}.",
+  "@githubSyncPushed": {
+    "placeholders": { "sha": { "type": "String" } }
+  },
+  "githubSyncDisconnectFailed": "Cannot disconnect GitHub Sync: Frontend.GithubSync/disconnect — {error}",
+  "@githubSyncDisconnectFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "githubSyncInstallMissingUrl": "Cannot install GitHub App: Frontend.GithubSync/install — no install_url configured.",
+  "githubSyncInstallInvalidUrl": "Cannot install GitHub App: Frontend.GithubSync/install — install_url is not a valid http(s) URL.",
+  "githubSyncInstallCompleteFailed": "Cannot complete GitHub App install: Frontend.GithubSync/install.callback — {error}",
+  "@githubSyncInstallCompleteFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "githubSyncInstallUrlMissingHelp": "Operator note: GITHUB_DATA_SYNC_APP_INSTALL_URL is not configured on this backend. See docs/integrations/github-sync.md for the env-var contract.",
   "courseObjectives": "Objectives",
   "courseAssignments": "Assignments",
   "courseModule": "Module",

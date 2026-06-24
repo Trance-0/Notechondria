@@ -296,7 +296,10 @@ class _GithubSyncExperimentalCardState
       setState(() {
         _loading = false;
       });
-      _snackError('Cannot load GitHub Sync status', error);
+      _snackError(
+        (l10n, cause) => l10n.githubSyncLoadStatusFailed(cause),
+        error,
+      );
     }
   }
 
@@ -325,7 +328,10 @@ class _GithubSyncExperimentalCardState
       setState(() => _selectedRepo = fullName);
       await _refreshStatus();
     } catch (error) {
-      _snackError('Cannot select repository', error);
+      _snackError(
+        (l10n, cause) => l10n.githubSyncSelectRepositoryFailed(cause),
+        error,
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -339,14 +345,18 @@ class _GithubSyncExperimentalCardState
       final sha = result['commit_sha']?.toString() ?? '';
       if (!mounted) return;
       setState(() => _lastCommitSha = sha);
+      final shortSha = sha.substring(0, sha.length < 8 ? sha.length : 8);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text(
-                'Pushed to GitHub (sha ${sha.substring(0, sha.length < 8 ? sha.length : 8)}).')),
+          content: Text(AppLocalizations.of(context).githubSyncPushed(shortSha)),
+        ),
       );
       await _refreshStatus();
     } catch (error) {
-      _snackError('GitHub Sync push failed', error);
+      _snackError(
+        (l10n, cause) => l10n.githubSyncPushFailed(cause),
+        error,
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -365,7 +375,10 @@ class _GithubSyncExperimentalCardState
         _lastCommitSha = null;
       });
     } catch (error) {
-      _snackError('Cannot disconnect GitHub Sync', error);
+      _snackError(
+        (l10n, cause) => l10n.githubSyncDisconnectFailed(cause),
+        error,
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -374,19 +387,12 @@ class _GithubSyncExperimentalCardState
   void _openInstallUrl() {
     var url = _installUrl;
     if (url.isEmpty) {
-      _snackError(
-        'Cannot install GitHub App',
-        Exception('Frontend.GithubSync/install — no install_url configured.'),
-      );
+      _snackMessage(AppLocalizations.of(context).githubSyncInstallMissingUrl);
       return;
     }
     final uri = Uri.tryParse(url);
     if (uri == null || uri.scheme.isEmpty || uri.host.isEmpty) {
-      _snackError(
-        'Cannot install GitHub App',
-        Exception(
-            'Frontend.GithubSync/install — install_url is not a valid http(s) URL.'),
-      );
+      _snackMessage(AppLocalizations.of(context).githubSyncInstallInvalidUrl);
       return;
     }
     // Carry the originating app through GitHub's state round-trip so
@@ -439,17 +445,29 @@ class _GithubSyncExperimentalCardState
       if (!mounted) return;
       await _refreshStatus();
     } catch (error) {
-      _snackError('Cannot complete GitHub App install', error);
+      _snackError(
+        (l10n, cause) => l10n.githubSyncInstallCompleteFailed(cause),
+        error,
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  void _snackError(String prefix, Object error) {
+  void _snackError(
+    String Function(AppLocalizations l10n, String cause) messageFor,
+    Object error,
+  ) {
     final msg = error.toString().replaceFirst('Exception: ', '');
     if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
+    _snackMessage(messageFor(l10n, msg));
+  }
+
+  void _snackMessage(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$prefix: $msg')),
+      SnackBar(content: Text(message)),
     );
   }
 
@@ -461,12 +479,7 @@ class _GithubSyncExperimentalCardState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (!hasInstallUrl)
-          const _DisabledHint(
-            text: 'Operator note: GITHUB_DATA_SYNC_APP_INSTALL_URL '
-                'is not configured on this backend. See '
-                'docs/integrations/github-sync.md for the env-var '
-                'contract.',
-          )
+          _DisabledHint(text: l10n.githubSyncInstallUrlMissingHelp)
         else ...[
           OutlinedButton.icon(
             onPressed: _busy ? null : _openInstallUrl,

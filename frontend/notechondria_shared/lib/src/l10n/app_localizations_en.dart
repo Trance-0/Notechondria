@@ -834,6 +834,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apiKeyMcpEndpointCopied => 'MCP endpoint copied to clipboard.';
 
   @override
+  String apiKeyRotateFailed(String error) {
+    return 'Failed to rotate API key: Portal.Settings/api_key.rotate — $error';
+  }
+
+  @override
   String get apiKeyHelp =>
       'Use this key with MCP clients (e.g. Claude Desktop) by setting the Authorization header to "Bearer ntc_<key>".';
 
@@ -1433,6 +1438,48 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get githubSyncSignIn => 'Sign in to enable GitHub Sync.';
+
+  @override
+  String githubSyncLoadStatusFailed(String error) {
+    return 'Cannot load GitHub Sync status: Frontend.GithubSync/status — $error';
+  }
+
+  @override
+  String githubSyncSelectRepositoryFailed(String error) {
+    return 'Cannot select repository: Frontend.GithubSync/repository.select — $error';
+  }
+
+  @override
+  String githubSyncPushFailed(String error) {
+    return 'GitHub Sync push failed: Frontend.GithubSync/push — $error';
+  }
+
+  @override
+  String githubSyncPushed(String sha) {
+    return 'Pushed to GitHub: Frontend.GithubSync/push — commit $sha.';
+  }
+
+  @override
+  String githubSyncDisconnectFailed(String error) {
+    return 'Cannot disconnect GitHub Sync: Frontend.GithubSync/disconnect — $error';
+  }
+
+  @override
+  String get githubSyncInstallMissingUrl =>
+      'Cannot install GitHub App: Frontend.GithubSync/install — no install_url configured.';
+
+  @override
+  String get githubSyncInstallInvalidUrl =>
+      'Cannot install GitHub App: Frontend.GithubSync/install — install_url is not a valid http(s) URL.';
+
+  @override
+  String githubSyncInstallCompleteFailed(String error) {
+    return 'Cannot complete GitHub App install: Frontend.GithubSync/install.callback — $error';
+  }
+
+  @override
+  String get githubSyncInstallUrlMissingHelp =>
+      'Operator note: GITHUB_DATA_SYNC_APP_INSTALL_URL is not configured on this backend. See docs/integrations/github-sync.md for the env-var contract.';
 
   @override
   String get courseObjectives => 'Objectives';

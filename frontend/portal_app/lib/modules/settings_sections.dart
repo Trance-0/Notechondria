@@ -69,7 +69,9 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Failed to rotate API key: ${error.toString().replaceFirst('Exception: ', '')}',
+            AppLocalizations.of(context).apiKeyRotateFailed(
+              error.toString().replaceFirst('Exception: ', ''),
+            ),
           ),
         ),
       );

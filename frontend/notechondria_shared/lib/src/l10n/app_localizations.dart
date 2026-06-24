@@ -1288,6 +1288,8 @@ abstract class AppLocalizations {
 
   String get apiKeyMcpEndpointCopied;
 
+  String apiKeyRotateFailed(String error);
+
   String get apiKeyHelp;
 
   String get apiKeyMcpEndpoint;
@@ -2201,6 +2203,24 @@ abstract class AppLocalizations {
   String githubSyncLastPushAt(String time);
 
   String get githubSyncSignIn;
+
+  String githubSyncLoadStatusFailed(String error);
+
+  String githubSyncSelectRepositoryFailed(String error);
+
+  String githubSyncPushFailed(String error);
+
+  String githubSyncPushed(String sha);
+
+  String githubSyncDisconnectFailed(String error);
+
+  String get githubSyncInstallMissingUrl;
+
+  String get githubSyncInstallInvalidUrl;
+
+  String githubSyncInstallCompleteFailed(String error);
+
+  String get githubSyncInstallUrlMissingHelp;
 
   /// No description provided for @courseObjectives.
   ///

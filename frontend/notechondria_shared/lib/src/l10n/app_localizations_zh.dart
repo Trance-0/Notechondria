@@ -798,6 +798,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get apiKeyMcpEndpointCopied => 'MCP 端点已复制到剪贴板。';
 
   @override
+  String apiKeyRotateFailed(String error) {
+    return '无法轮换 API 密钥：Portal.Settings/api_key.rotate — $error';
+  }
+
+  @override
   String get apiKeyHelp =>
       '在 MCP 客户端（例如 Claude Desktop）中使用此密钥，将 Authorization 请求头设为 "Bearer ntc_<key>"。';
 
@@ -1366,6 +1371,48 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get githubSyncSignIn => '登录以启用 GitHub 同步。';
+
+  @override
+  String githubSyncLoadStatusFailed(String error) {
+    return '无法加载 GitHub 同步状态：Frontend.GithubSync/status — $error';
+  }
+
+  @override
+  String githubSyncSelectRepositoryFailed(String error) {
+    return '无法选择仓库：Frontend.GithubSync/repository.select — $error';
+  }
+
+  @override
+  String githubSyncPushFailed(String error) {
+    return 'GitHub 同步推送失败：Frontend.GithubSync/push — $error';
+  }
+
+  @override
+  String githubSyncPushed(String sha) {
+    return '已推送到 GitHub：Frontend.GithubSync/push — 提交 $sha。';
+  }
+
+  @override
+  String githubSyncDisconnectFailed(String error) {
+    return '无法断开 GitHub 同步：Frontend.GithubSync/disconnect — $error';
+  }
+
+  @override
+  String get githubSyncInstallMissingUrl =>
+      '无法安装 GitHub App：Frontend.GithubSync/install — 未配置 install_url。';
+
+  @override
+  String get githubSyncInstallInvalidUrl =>
+      '无法安装 GitHub App：Frontend.GithubSync/install — install_url 不是有效的 http(s) URL。';
+
+  @override
+  String githubSyncInstallCompleteFailed(String error) {
+    return '无法完成 GitHub App 安装：Frontend.GithubSync/install.callback — $error';
+  }
+
+  @override
+  String get githubSyncInstallUrlMissingHelp =>
+      '运维提示：此后端未配置 GITHUB_DATA_SYNC_APP_INSTALL_URL。请参阅 docs/integrations/github-sync.md 中的环境变量约定。';
 
   @override
   String get courseObjectives => '学习目标';
