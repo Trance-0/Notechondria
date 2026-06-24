@@ -87,7 +87,7 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
     await Clipboard.setData(ClipboardData(text: _plaintextKey!));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('API key copied to clipboard.')),
+      SnackBar(content: Text(AppLocalizations.of(context).apiKeyCopied)),
     );
   }
 
@@ -97,13 +97,16 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
     await Clipboard.setData(ClipboardData(text: endpoint));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('MCP endpoint copied to clipboard.')),
+      SnackBar(
+        content: Text(AppLocalizations.of(context).apiKeyMcpEndpointCopied),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     if (widget.onRotate == null) return const SizedBox.shrink();
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final labelStyle =
         theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700);
@@ -117,13 +120,13 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
     );
     final displayPrefix = _currentPrefix.isNotEmpty
         ? '$_currentPrefix•••••••••••••••••••••••••'
-        : '(no API key — click Generate to create one)';
+        : l10n.apiKeyNoKey;
     final mcpEndpoint = _mcpEndpoint();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('API key', style: labelStyle),
+        Text(l10n.apiKeyTitle, style: labelStyle),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -151,7 +154,9 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
                     )
                   : const Icon(Icons.refresh, size: 18),
               label: Text(
-                _currentPrefix.isNotEmpty ? 'Rotate' : 'Generate',
+                _currentPrefix.isNotEmpty
+                    ? l10n.apiKeyRotate
+                    : l10n.apiKeyGenerate,
               ),
             ),
           ],
@@ -171,7 +176,7 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Copy this key now — it will NOT be shown again:',
+                  l10n.apiKeyCopyNow,
                   style: theme.textTheme.bodySmall
                       ?.copyWith(fontWeight: FontWeight.w600),
                 ),
@@ -183,11 +188,11 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
                     TextButton.icon(
                       onPressed: _copyPlaintext,
                       icon: const Icon(Icons.copy, size: 16),
-                      label: const Text('Copy'),
+                      label: Text(l10n.commonCopy),
                     ),
                     TextButton(
                       onPressed: _dismissPlaintext,
-                      child: const Text('I have saved it'),
+                      child: Text(l10n.apiKeySavedIt),
                     ),
                   ],
                 ),
@@ -197,8 +202,7 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
         ],
         const SizedBox(height: 8),
         Text(
-          'Use this key with MCP clients (e.g. Claude Desktop) by setting the '
-          'Authorization header to "Bearer ntc_<key>".',
+          l10n.apiKeyHelp,
           style: helperStyle,
         ),
         if (mcpEndpoint.isNotEmpty) ...[
@@ -210,7 +214,7 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
                   text: TextSpan(
                     style: helperStyle,
                     children: [
-                      const TextSpan(text: 'MCP endpoint: '),
+                      TextSpan(text: '${l10n.apiKeyMcpEndpoint} '),
                       TextSpan(
                         text: mcpEndpoint,
                         style: monoStyle.copyWith(
@@ -223,7 +227,7 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
                 ),
               ),
               IconButton(
-                tooltip: 'Copy MCP endpoint',
+                tooltip: l10n.apiKeyCopyMcpEndpoint,
                 visualDensity: VisualDensity.compact,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),

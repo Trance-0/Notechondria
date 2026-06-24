@@ -72,6 +72,7 @@ class _SignInSecurityPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = parent;
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
           title: Text(AppLocalizations.of(context).settingsSecurityTitle)),
@@ -92,10 +93,7 @@ class _SignInSecurityPage extends StatelessWidget {
             // placement. Sign-in & Security is now Casdoor-only.
             const SizedBox(height: 8),
             Text(
-              'Account creation, password change, email change, and '
-              'per-device session management live on the Casdoor user '
-              'portal. Casdoor bind / unlink controls are on the '
-              'Account page.',
+              l10n.settingsAccountCasdoorNotice,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ],
@@ -121,6 +119,7 @@ class _ApiSettingsPageState extends State<_ApiSettingsPage> {
   @override
   Widget build(BuildContext context) {
     final p = widget.parent;
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar:
           AppBar(title: Text(AppLocalizations.of(context).settingsApiTitle)),
@@ -138,7 +137,7 @@ class _ApiSettingsPageState extends State<_ApiSettingsPage> {
                       const Icon(Icons.dns_outlined),
                       const SizedBox(width: 12),
                       Text(
-                        'API base URL',
+                        l10n.prefsApiBaseUrl,
                         style: Theme.of(context)
                             .textTheme
                             .titleSmall
@@ -147,10 +146,8 @@ class _ApiSettingsPageState extends State<_ApiSettingsPage> {
                       const SizedBox(width: 6),
                       Tooltip(
                         message: p._isAuthenticated
-                            ? 'Locked while signed in. Sign out to switch '
-                                'the backend the portal talks to.'
-                            : 'Points the portal at a different '
-                                'Notechondria backend.',
+                            ? l10n.settingsApiBaseLockedTooltip
+                            : l10n.settingsApiBaseTooltip,
                         child: Icon(
                           Icons.info_outline,
                           size: 16,
@@ -182,9 +179,8 @@ class _ApiSettingsPageState extends State<_ApiSettingsPage> {
               ],
             ),
             const SizedBox(height: 12),
-            const _SettingsCaption(
-              text: 'Press Enter to apply the URL change. Stored locally '
-                  'and mirrored to the profile on login.',
+            _SettingsCaption(
+              text: l10n.settingsApiBaseApplyCaption,
             ),
             if (p.widget.onRotateApiKey != null) ...[
               const SizedBox(height: 16),
@@ -202,10 +198,8 @@ class _ApiSettingsPageState extends State<_ApiSettingsPage> {
                 ),
               ),
               const SizedBox(height: 4),
-              const _SettingsCaption(
-                text: 'The MCP key authenticates the backend Model '
-                    'Context Protocol bridge. Rotate it if you suspect '
-                    'leakage.',
+              _SettingsCaption(
+                text: l10n.settingsMcpKeyCaption,
               ),
             ],
             // 0.1.119: Agent Skill moved here from Sign-in &
@@ -245,6 +239,7 @@ class _ConnectedAccountsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = parent;
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
           title: Text(AppLocalizations.of(context).settingsConnectedAccounts)),
@@ -267,10 +262,8 @@ class _ConnectedAccountsPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-            const _SettingsCaption(
-              text: 'Casdoor proxies third-party identities (Google, '
-                  'GitHub, etc.) — configure them on the Casdoor '
-                  "application's Providers tab.",
+            _SettingsCaption(
+              text: l10n.settingsConnectedAccountsCaption,
             ),
           ],
         ),
@@ -316,7 +309,7 @@ class _PortalPreferencesPageState extends State<_PortalPreferencesPage> {
                   leading: const Icon(Icons.edit_note_outlined),
                   title: Text(
                       AppLocalizations.of(context).settingsDefaultEditorMode),
-                  subtitle: Text(_editorModeLabel(p._editorMode)),
+                  subtitle: Text(_editorModeLabel(context, p._editorMode)),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () async {
                     final picked =
@@ -348,7 +341,7 @@ class _PortalPreferencesPageState extends State<_PortalPreferencesPage> {
                 ListTile(
                   leading: const Icon(Icons.brightness_6_outlined),
                   title: Text(AppLocalizations.of(context).settingsThemeMode),
-                  subtitle: Text(_themeModeLabel(p._themeMode)),
+                  subtitle: Text(_themeModeLabel(context, p._themeMode)),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () async {
                     final picked = await _pickThemeMode(context, p._themeMode);
@@ -395,7 +388,10 @@ class _PortalPreferencesPageState extends State<_PortalPreferencesPage> {
     );
   }
 
-  static String _editorModeLabel(String code) {
+  static String _editorModeLabel(BuildContext context, String code) {
+    final l10n = AppLocalizations.of(context);
+    if (code == 'P') return l10n.prefsEditorPlain;
+    if (code == 'M') return l10n.prefsEditorMarkdown;
     for (final entry in kEditorModes) {
       if (entry.key == code) return entry.value;
     }
@@ -406,58 +402,62 @@ class _PortalPreferencesPageState extends State<_PortalPreferencesPage> {
     return kThemePresetEntries[code] ?? code;
   }
 
-  static String _themeModeLabel(String code) {
+  static String _themeModeLabel(BuildContext context, String code) {
+    final l10n = AppLocalizations.of(context);
     switch (code) {
       case 'L':
-        return 'Light';
+        return l10n.prefsThemeModeLight;
       case 'D':
-        return 'Dark';
+        return l10n.prefsThemeModeDark;
       case 'S':
       default:
-        return 'Match system';
+        return l10n.settingsThemeModeMatchSystem;
     }
   }
 
   Future<String?> _pickEditorMode(BuildContext context, String current) {
+    final l10n = AppLocalizations.of(context);
     return _pickFromList<String>(
       context,
-      title: 'Default editor mode',
+      title: l10n.prefsDefaultEditor,
       current: current,
       options: [
         for (final entry in kEditorModes)
-          _PickerOption(value: entry.key, label: entry.value),
+          _PickerOption(
+            value: entry.key,
+            label: _editorModeLabel(context, entry.key),
+          ),
       ],
-      tooltip: 'Picks how new notes open by default. You can still switch '
-          'modes per note from the editor toolbar.',
+      tooltip: l10n.settingsEditorModePickerHelp,
     );
   }
 
   Future<String?> _pickThemePreset(BuildContext context, String current) {
+    final l10n = AppLocalizations.of(context);
     return _pickFromList<String>(
       context,
-      title: 'Theme preset',
+      title: l10n.prefsThemePreset,
       current: current,
       options: [
         for (final entry in kThemePresetEntries.entries)
           _PickerOption(value: entry.key, label: entry.value),
       ],
-      tooltip: 'Each preset uses a different seed color for the '
-          'Material 3 ColorScheme.',
+      tooltip: l10n.settingsThemePresetPickerHelp,
     );
   }
 
   Future<String?> _pickThemeMode(BuildContext context, String current) {
+    final l10n = AppLocalizations.of(context);
     return _pickFromList<String>(
       context,
-      title: 'Theme mode',
+      title: l10n.prefsThemeMode,
       current: current,
-      options: const [
-        _PickerOption(value: 'S', label: 'Match system'),
-        _PickerOption(value: 'L', label: 'Light'),
-        _PickerOption(value: 'D', label: 'Dark'),
+      options: [
+        _PickerOption(value: 'S', label: l10n.settingsThemeModeMatchSystem),
+        _PickerOption(value: 'L', label: l10n.prefsThemeModeLight),
+        _PickerOption(value: 'D', label: l10n.prefsThemeModeDark),
       ],
-      tooltip: 'Match system follows the device-level Light/Dark '
-          'toggle. Light and Dark override the system choice.',
+      tooltip: l10n.settingsThemeModePickerHelp,
     );
   }
 
@@ -507,6 +507,7 @@ class _BackendSettingsPageState extends State<_BackendSettingsPage> {
   @override
   Widget build(BuildContext context) {
     final p = widget.parent;
+    final l10n = AppLocalizations.of(context);
     final offlineMode = p.widget.localSettings['offline_mode'] == true;
     final canEditOffline = p.widget.onOfflineModeChanged != null;
     return Scaffold(
@@ -521,11 +522,8 @@ class _BackendSettingsPageState extends State<_BackendSettingsPage> {
               children: [
                 SwitchListTile(
                   secondary: const Icon(Icons.cloud_off_outlined),
-                  title: const Text('Offline mode'),
-                  subtitle: const Text(
-                    'Skip every remote fetch on startup; render '
-                    'everything from the local cache.',
-                  ),
+                  title: Text(l10n.prefsOfflineMode),
+                  subtitle: Text(l10n.settingsOfflineModeSubtitleShort),
                   value: offlineMode,
                   onChanged: canEditOffline
                       ? (value) {
@@ -546,7 +544,7 @@ class _BackendSettingsPageState extends State<_BackendSettingsPage> {
                       const Icon(Icons.dns_outlined),
                       const SizedBox(width: 12),
                       Text(
-                        'API base URL',
+                        l10n.prefsApiBaseUrl,
                         style: Theme.of(context)
                             .textTheme
                             .titleSmall
@@ -555,10 +553,8 @@ class _BackendSettingsPageState extends State<_BackendSettingsPage> {
                       const SizedBox(width: 6),
                       Tooltip(
                         message: p._isAuthenticated
-                            ? 'Locked while signed in. Sign out to switch '
-                                'the backend the portal talks to.'
-                            : 'Points the portal at a different '
-                                'Notechondria backend.',
+                            ? l10n.settingsApiBaseLockedTooltip
+                            : l10n.settingsApiBaseTooltip,
                         child: Icon(
                           Icons.info_outline,
                           size: 16,
@@ -588,10 +584,8 @@ class _BackendSettingsPageState extends State<_BackendSettingsPage> {
               ],
             ),
             const SizedBox(height: 4),
-            const _SettingsCaption(
-              text: 'Press Enter to apply the URL change. Stored locally and '
-                  'mirrored to your profile on login. Locked while signed in '
-                  '— sign out to switch backends.',
+            _SettingsCaption(
+              text: l10n.settingsApiBaseApplyLockedCaption,
             ),
             if (p.widget.githubSyncCardBuilder != null) ...[
               const SizedBox(height: 16),
@@ -698,6 +692,7 @@ class _LocalDataPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = parent;
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
           title: Text(AppLocalizations.of(context).settingsLocalDataTitle)),
@@ -720,8 +715,10 @@ class _LocalDataPage extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
-                  '${p.widget.localDraftCount} local draft(s), '
-                  '${p.widget.localCourseCount} local course(s).',
+                  l10n.settingsLocalDataCounts(
+                    p.widget.localDraftCount,
+                    p.widget.localCourseCount,
+                  ),
                 ),
               ),
             ),
@@ -731,11 +728,8 @@ class _LocalDataPage extends StatelessWidget {
                 if (p.widget.onExportLocalData != null)
                   ListTile(
                     leading: const Icon(Icons.file_download_outlined),
-                    title: const Text('Download local data'),
-                    subtitle: const Text(
-                      'Exports drafts, courses, settings, and logs '
-                      'as a .nchron archive.',
-                    ),
+                    title: Text(l10n.settingsDownloadLocalData),
+                    subtitle: Text(l10n.settingsDownloadLocalDataSubtitle),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: p.widget.onExportLocalData,
                   ),
@@ -745,12 +739,8 @@ class _LocalDataPage extends StatelessWidget {
                 if (p.widget.onRestoreFromLocalImport != null)
                   ListTile(
                     leading: const Icon(Icons.file_upload_outlined),
-                    title: const Text('Restore from local archive'),
-                    subtitle: const Text(
-                      'Imports a previously-exported .nchron archive. '
-                      'Replaces existing local data after a confirm '
-                      'dialog.',
-                    ),
+                    title: Text(l10n.settingsRestoreLocalArchive),
+                    subtitle: Text(l10n.settingsRestoreLocalArchiveSubtitle),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: p.widget.onRestoreFromLocalImport,
                   ),
@@ -761,11 +751,8 @@ class _LocalDataPage extends StatelessWidget {
               children: [
                 ListTile(
                   leading: const Icon(Icons.cloud_upload_outlined),
-                  title: const Text('Push local → cloud'),
-                  subtitle: const Text(
-                    'Upload local drafts and courses to your cloud '
-                    'account. Requires sign-in.',
-                  ),
+                  title: Text(l10n.settingsPushLocalCloud),
+                  subtitle: Text(l10n.settingsPushLocalCloudSubtitle),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: p._isAuthenticated
                       ? () => p._runMaintenanceAction(
@@ -776,11 +763,8 @@ class _LocalDataPage extends StatelessWidget {
                 const Divider(height: 0, indent: 16, endIndent: 16),
                 ListTile(
                   leading: const Icon(Icons.download_for_offline_outlined),
-                  title: const Text('Pull cloud → local'),
-                  subtitle: const Text(
-                    'Download notes and courses from the cloud to '
-                    'this device.',
-                  ),
+                  title: Text(l10n.settingsPullCloudLocal),
+                  subtitle: Text(l10n.settingsPullCloudLocalSubtitle),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: p._isAuthenticated
                       ? () => p._runMaintenanceAction(p.widget.onPullCloudData)
@@ -793,11 +777,8 @@ class _LocalDataPage extends StatelessWidget {
               children: [
                 ListTile(
                   leading: const Icon(Icons.cleaning_services_outlined),
-                  title: const Text('Clear local cache'),
-                  subtitle: const Text(
-                    'Drops cached API responses but keeps drafts and '
-                    'courses on disk.',
-                  ),
+                  title: Text(l10n.settingsClearLocalCache),
+                  subtitle: Text(l10n.settingsClearLocalCacheSubtitle),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () =>
                       p._runMaintenanceAction(p.widget.onClearLocalCache),
@@ -809,14 +790,13 @@ class _LocalDataPage extends StatelessWidget {
                     color: Theme.of(context).colorScheme.error,
                   ),
                   title: Text(
-                    'Remove local data',
+                    l10n.settingsRemoveLocalData,
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.error,
                     ),
                   ),
                   subtitle: Text(
-                    'Wipes drafts, courses, settings, and logs from '
-                    'this device. Cloud copies are not touched.',
+                    l10n.settingsRemoveLocalDataSubtitle,
                     style: TextStyle(
                       color: Theme.of(context)
                           .colorScheme
@@ -842,11 +822,8 @@ class _LocalDataPage extends StatelessWidget {
                       Icons.science_outlined,
                       color: Theme.of(context).colorScheme.tertiary,
                     ),
-                    title: const Text('Restore template courses'),
-                    subtitle: const Text(
-                      'Admin-only. Re-seeds the three-course template '
-                      'catalog (Inbox / Examples / Templates).',
-                    ),
+                    title: Text(l10n.settingsRestoreTemplateCourses),
+                    subtitle: Text(l10n.settingsRestoreTemplateCoursesSubtitle),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => p._runMaintenanceAction(
                         p.widget.onRestoreTemplateCourses),
@@ -854,10 +831,8 @@ class _LocalDataPage extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 4),
-              const _SettingsCaption(
-                text: 'Requires a signed-in admin account. Non-admin '
-                    'sessions will see a server-side error in the '
-                    'banner above without changing any data.',
+              _SettingsCaption(
+                text: l10n.settingsRestoreTemplateCoursesCaption,
               ),
             ],
           ],
@@ -878,10 +853,11 @@ class _RecycleBinPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = parent;
+    final l10n = AppLocalizations.of(context);
     final recoverableCount =
         p.widget.localTrashedDraftCount + p.widget.localTrashedCourseCount;
     return Scaffold(
-      appBar: AppBar(title: const Text('Recycle bin')),
+      appBar: AppBar(title: Text(l10n.settingsRecycleBinTitle)),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -892,10 +868,9 @@ class _RecycleBinPage extends StatelessWidget {
                 if (p.widget.onOpenLocalRecycleBin != null)
                   ListTile(
                     leading: const Icon(Icons.restore_from_trash_outlined),
-                    title: const Text('Synced local drafts'),
+                    title: Text(l10n.settingsSyncedLocalDrafts),
                     subtitle: Text(
-                      '$recoverableCount item(s) waiting in the local '
-                      'recycle bin.',
+                      l10n.settingsLocalRecycleCount(recoverableCount),
                     ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: p.widget.onOpenLocalRecycleBin,
@@ -904,12 +879,13 @@ class _RecycleBinPage extends StatelessWidget {
                   const Divider(height: 0, indent: 16, endIndent: 16),
                 ListTile(
                   leading: const Icon(Icons.delete_sweep_outlined),
-                  title: const Text('Cloud recycle bin'),
+                  title: Text(l10n.settingsCloudRecycleBin),
                   subtitle: Text(
                     p._isAuthenticated
-                        ? '${p.widget.deletedNotes.length} soft-deleted '
-                            'note(s) on the server.'
-                        : 'Sign in to manage deleted cloud notes.',
+                        ? l10n.settingsCloudRecycleCount(
+                            p.widget.deletedNotes.length,
+                          )
+                        : l10n.settingsCloudRecycleSignIn,
                   ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: p._isAuthenticated ? p._openRecycleBinDialog : null,

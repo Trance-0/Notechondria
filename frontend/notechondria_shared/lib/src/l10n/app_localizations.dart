@@ -230,6 +230,14 @@ abstract class AppLocalizations {
   /// **'Loading...'**
   String get commonLoading;
 
+  String get commonCopy;
+
+  String get commonSaving;
+
+  String get commonUploading;
+
+  String get commonUnknown;
+
   /// No description provided for @navNavigation.
   ///
   /// In en, this message translates to:
@@ -1130,6 +1138,146 @@ abstract class AppLocalizations {
   /// **'API base URL and MCP key.'**
   String get settingsApiSubtitle;
 
+  String get settingsManageAccountPreferences;
+
+  String get settingsLocalOnlyPreferences;
+
+  String get settingsCasdoorLinked;
+
+  String get settingsNoThirdPartyLinked;
+
+  String settingsBackendOnlineSummary(String url);
+
+  String settingsBackendOfflineSummary(String url);
+
+  String settingsLocalDataSummary(int drafts, int courses);
+
+  String settingsRecycleBinSummary(int drafts, int notes);
+
+  String get settingsSignOut;
+
+  String get settingsChangeAvatar;
+
+  String get settingsUsername;
+
+  String get settingsMotto;
+
+  String get settingsSocialLink;
+
+  String get settingsSocialLinkInvalid;
+
+  String get settingsAccountCasdoorNotice;
+
+  String get settingsApiBaseLockedTooltip;
+
+  String get settingsApiBaseTooltip;
+
+  String get settingsApiBaseApplyCaption;
+
+  String get settingsApiBaseApplyLockedCaption;
+
+  String get settingsMcpKeyCaption;
+
+  String get settingsConnectedAccountsCaption;
+
+  String get settingsThemeModeMatchSystem;
+
+  String get settingsEditorModePickerHelp;
+
+  String get settingsThemePresetPickerHelp;
+
+  String get settingsThemeModePickerHelp;
+
+  String get settingsOfflineModeSubtitleShort;
+
+  String settingsLocalDataCounts(int drafts, int courses);
+
+  String get settingsDownloadLocalData;
+
+  String get settingsDownloadLocalDataSubtitle;
+
+  String get settingsRestoreLocalArchive;
+
+  String get settingsRestoreLocalArchiveSubtitle;
+
+  String get settingsPushLocalCloud;
+
+  String get settingsPushLocalCloudSubtitle;
+
+  String get settingsPullCloudLocal;
+
+  String get settingsPullCloudLocalSubtitle;
+
+  String get settingsClearLocalCache;
+
+  String get settingsClearLocalCacheSubtitle;
+
+  String get settingsRemoveLocalData;
+
+  String get settingsRemoveLocalDataSubtitle;
+
+  String get settingsRestoreTemplateCourses;
+
+  String get settingsRestoreTemplateCoursesSubtitle;
+
+  String get settingsRestoreTemplateCoursesCaption;
+
+  String get settingsSyncedLocalDrafts;
+
+  String settingsLocalRecycleCount(int count);
+
+  String get settingsCloudRecycleBin;
+
+  String settingsCloudRecycleCount(int count);
+
+  String get settingsCloudRecycleSignIn;
+
+  String get settingsRecycleBinEmpty;
+
+  String get settingsEmptyRecycleBin;
+
+  String get apiKeyTitle;
+
+  String get apiKeyNoKey;
+
+  String get apiKeyRotate;
+
+  String get apiKeyGenerate;
+
+  String get apiKeyCopyNow;
+
+  String get apiKeySavedIt;
+
+  String get apiKeyCopied;
+
+  String get apiKeyMcpEndpointCopied;
+
+  String get apiKeyHelp;
+
+  String get apiKeyMcpEndpoint;
+
+  String get apiKeyCopyMcpEndpoint;
+
+  String get connectedAccountsTitle;
+
+  String get connectedAccountsShadow;
+
+  String get connectedAccountsManageCasdoor;
+
+  String get connectedAccountsUnavailableHelp;
+
+  String get connectedAccountsCasdoorSso;
+
+  String get connectedAccountsLinked;
+
+  String get connectedAccountsNotLinked;
+
+  String get connectedAccountsSwitch;
+
+  String get connectedAccountsUnlink;
+
+  String get connectedAccountsLinkCasdoor;
+
   /// No description provided for @debugLogTitle.
   ///
   /// In en, this message translates to:
@@ -1975,6 +2123,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Subscribed calendar'**
   String get activitySubscribedCalendar;
+
+  String get mcpSkillCopied;
+
+  String get mcpSkillTitle;
+
+  String get mcpSkillDescription;
+
+  String get mcpSkillHint;
+
+  String get mcpSkillUnsavedChanges;
+
+  String get githubSyncTitle;
+
+  String get githubSyncDescription;
+
+  String get githubSyncInstall;
+
+  String get githubSyncInstallHelp;
+
+  String get githubSyncInstalled;
+
+  String githubSyncInstalledOn(String account);
+
+  String get githubSyncNoRepos;
+
+  String get githubSyncTargetRepo;
+
+  String get githubSyncIncludeAssets;
+
+  String get githubSyncIncludeAssetsOn;
+
+  String get githubSyncIncludeAssetsOff;
+
+  String get githubSyncPushNow;
+
+  String get githubSyncDisconnect;
+
+  String githubSyncLastPush(String sha);
+
+  String githubSyncLastPushAt(String time);
+
+  String get githubSyncSignIn;
 
   /// No description provided for @courseObjectives.
   ///

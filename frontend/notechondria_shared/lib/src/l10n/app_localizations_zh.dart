@@ -75,6 +75,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commonLoading => '加载中……';
 
   @override
+  String get commonCopy => '复制';
+
+  @override
+  String get commonSaving => '正在保存……';
+
+  @override
+  String get commonUploading => '正在上传……';
+
+  @override
+  String get commonUnknown => '未知';
+
+  @override
   String get navNavigation => '导航';
 
   @override
@@ -534,6 +546,244 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsApiSubtitle => 'API 基础地址和 MCP 密钥。';
 
   @override
+  String get settingsManageAccountPreferences => '管理你的账户、偏好设置和本地数据。';
+
+  @override
+  String get settingsLocalOnlyPreferences => '登录即可同步到云端，或继续使用下方的仅本地偏好设置。';
+
+  @override
+  String get settingsCasdoorLinked => 'Casdoor SSO 已关联。';
+
+  @override
+  String get settingsNoThirdPartyLinked => '尚未关联第三方账户。';
+
+  @override
+  String settingsBackendOnlineSummary(String url) {
+    return '在线。API 地址：$url';
+  }
+
+  @override
+  String settingsBackendOfflineSummary(String url) {
+    return '离线模式已开启。API 地址：$url';
+  }
+
+  @override
+  String settingsLocalDataSummary(int drafts, int courses) {
+    return '此设备上有 $drafts 篇草稿、$courses 门课程。';
+  }
+
+  @override
+  String settingsRecycleBinSummary(int drafts, int notes) {
+    return '$drafts 篇已同步草稿可恢复，$notes 篇云端笔记已移入回收站。';
+  }
+
+  @override
+  String get settingsSignOut => '退出登录';
+
+  @override
+  String get settingsChangeAvatar => '更换头像';
+
+  @override
+  String get settingsUsername => '用户名';
+
+  @override
+  String get settingsMotto => '签名';
+
+  @override
+  String get settingsSocialLink => '社交链接';
+
+  @override
+  String get settingsSocialLinkInvalid => '必须是有效网址（https://...）';
+
+  @override
+  String get settingsAccountCasdoorNotice =>
+      '账户创建、密码修改、邮箱修改和各设备会话管理都在 Casdoor 用户门户中完成。Casdoor 绑定 / 解绑控件位于账户页面。';
+
+  @override
+  String get settingsApiBaseLockedTooltip =>
+      '登录期间已锁定。退出登录后可切换门户连接的后端。';
+
+  @override
+  String get settingsApiBaseTooltip => '将门户指向另一个 Notechondria 后端。';
+
+  @override
+  String get settingsApiBaseApplyCaption =>
+      '按 Enter 应用 URL 更改。它会保存在本地，并在登录时同步到个人资料。';
+
+  @override
+  String get settingsApiBaseApplyLockedCaption =>
+      '按 Enter 应用 URL 更改。它会保存在本地，并在登录时同步到个人资料。登录期间已锁定——退出登录后可切换后端。';
+
+  @override
+  String get settingsMcpKeyCaption =>
+      'MCP 密钥用于认证后端 Model Context Protocol 桥接。如果怀疑泄露，请轮换它。';
+
+  @override
+  String get settingsConnectedAccountsCaption =>
+      'Casdoor 代理第三方身份（Google、GitHub 等）——请在 Casdoor 应用的 Providers 标签页中配置。';
+
+  @override
+  String get settingsThemeModeMatchSystem => '跟随系统';
+
+  @override
+  String get settingsEditorModePickerHelp =>
+      '选择新笔记默认打开的编辑模式。仍可在单篇笔记的编辑器工具栏中切换模式。';
+
+  @override
+  String get settingsThemePresetPickerHelp => '每个预设使用不同种子色生成 Material 3 配色。';
+
+  @override
+  String get settingsThemeModePickerHelp =>
+      '跟随系统会使用设备级浅色 / 深色设置。浅色和深色会覆盖系统选择。';
+
+  @override
+  String get settingsOfflineModeSubtitleShort => '启动时跳过所有远程获取；完全从本地缓存渲染。';
+
+  @override
+  String settingsLocalDataCounts(int drafts, int courses) {
+    return '$drafts 篇本地草稿，$courses 门本地课程。';
+  }
+
+  @override
+  String get settingsDownloadLocalData => '下载本地数据';
+
+  @override
+  String get settingsDownloadLocalDataSubtitle => '将草稿、课程、设置和日志导出为 .nchron 存档。';
+
+  @override
+  String get settingsRestoreLocalArchive => '从本地存档恢复';
+
+  @override
+  String get settingsRestoreLocalArchiveSubtitle =>
+      '导入之前导出的 .nchron 存档。确认后会替换现有本地数据。';
+
+  @override
+  String get settingsPushLocalCloud => '本地 → 云端';
+
+  @override
+  String get settingsPushLocalCloudSubtitle => '将本地草稿和课程上传到你的云端账户。需要登录。';
+
+  @override
+  String get settingsPullCloudLocal => '云端 → 本地';
+
+  @override
+  String get settingsPullCloudLocalSubtitle => '将云端笔记和课程下载到此设备。';
+
+  @override
+  String get settingsClearLocalCache => '清除本地缓存';
+
+  @override
+  String get settingsClearLocalCacheSubtitle => '删除缓存的 API 响应，但保留磁盘上的草稿和课程。';
+
+  @override
+  String get settingsRemoveLocalData => '移除本地数据';
+
+  @override
+  String get settingsRemoveLocalDataSubtitle =>
+      '从此设备清除草稿、课程、设置和日志。云端副本不受影响。';
+
+  @override
+  String get settingsRestoreTemplateCourses => '恢复模板课程';
+
+  @override
+  String get settingsRestoreTemplateCoursesSubtitle =>
+      '仅管理员可用。重新种入三门课程模板目录（收件箱 / 示例 / 模板）。';
+
+  @override
+  String get settingsRestoreTemplateCoursesCaption =>
+      '需要已登录的管理员账户。非管理员会在上方横幅中看到服务器端错误，不会更改任何数据。';
+
+  @override
+  String get settingsSyncedLocalDrafts => '已同步的本地草稿';
+
+  @override
+  String settingsLocalRecycleCount(int count) {
+    return '本地回收站中有 $count 项等待处理。';
+  }
+
+  @override
+  String get settingsCloudRecycleBin => '云端回收站';
+
+  @override
+  String settingsCloudRecycleCount(int count) {
+    return '服务器上有 $count 篇软删除笔记。';
+  }
+
+  @override
+  String get settingsCloudRecycleSignIn => '登录以管理已删除的云端笔记。';
+
+  @override
+  String get settingsRecycleBinEmpty => '回收站为空。';
+
+  @override
+  String get settingsEmptyRecycleBin => '清空回收站';
+
+  @override
+  String get apiKeyTitle => 'API 密钥';
+
+  @override
+  String get apiKeyNoKey => '（还没有 API 密钥——点击“生成”创建一个）';
+
+  @override
+  String get apiKeyRotate => '轮换';
+
+  @override
+  String get apiKeyGenerate => '生成';
+
+  @override
+  String get apiKeyCopyNow => '现在复制此密钥——之后不会再次显示：';
+
+  @override
+  String get apiKeySavedIt => '我已保存';
+
+  @override
+  String get apiKeyCopied => 'API 密钥已复制到剪贴板。';
+
+  @override
+  String get apiKeyMcpEndpointCopied => 'MCP 端点已复制到剪贴板。';
+
+  @override
+  String get apiKeyHelp =>
+      '在 MCP 客户端（例如 Claude Desktop）中使用此密钥，将 Authorization 请求头设为 "Bearer ntc_<key>"。';
+
+  @override
+  String get apiKeyMcpEndpoint => 'MCP 端点：';
+
+  @override
+  String get apiKeyCopyMcpEndpoint => '复制 MCP 端点';
+
+  @override
+  String get connectedAccountsTitle => '已连接的账户';
+
+  @override
+  String get connectedAccountsShadow => '此后端的 Casdoor 处于影子模式；无法关联第三方账户。';
+
+  @override
+  String get connectedAccountsManageCasdoor => '管理 Casdoor 账户';
+
+  @override
+  String get connectedAccountsUnavailableHelp =>
+      '如果无法登录，请联系你的 Notechondria 管理员（Casdoor 后端可能已关闭）。';
+
+  @override
+  String get connectedAccountsCasdoorSso => 'Casdoor SSO';
+
+  @override
+  String get connectedAccountsLinked => '已关联';
+
+  @override
+  String get connectedAccountsNotLinked => '未关联';
+
+  @override
+  String get connectedAccountsSwitch => '切换';
+
+  @override
+  String get connectedAccountsUnlink => '解绑';
+
+  @override
+  String get connectedAccountsLinkCasdoor => '关联 Casdoor';
+
+  @override
   String get debugLogTitle => '调试日志';
 
   @override
@@ -985,6 +1235,82 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get activitySubscribedCalendar => '已订阅的日历';
+
+  @override
+  String get mcpSkillCopied => 'skill.md 已复制到剪贴板。';
+
+  @override
+  String get mcpSkillTitle => '智能体技能（skill.md）';
+
+  @override
+  String get mcpSkillDescription =>
+      '供 MCP 连接的智能体使用的个人操作手册。可在这里说明从哪里拉取笔记（例如 notenextra.trance-0.com 等外部站点）、如何格式化导入、导出哪些文件，以及发布到哪里。它会原样作为 MCP initialize 响应中的 `instructions` 字段发送。';
+
+  @override
+  String get mcpSkillHint =>
+      '# 导入\n- 每天从 notenextra.trance-0.com 拉取一次笔记……\n\n# 导出\n- 以 YAML+Markdown 镜像到 GitHub Gist。\n\n# 格式\n- 用 \$...\$ 包裹数学公式。用 #deadline 标记截止日期。';
+
+  @override
+  String get mcpSkillUnsavedChanges => '有未保存的更改';
+
+  @override
+  String get githubSyncTitle => '实验功能 — GitHub 同步';
+
+  @override
+  String get githubSyncDescription =>
+      '将你的完整账户（个人资料、设置、MCP 技能、课程、笔记、自定义元数据、规划事件）推送到你拥有的 GitHub 仓库，以便服务器数据丢失时恢复。我们托管的静态资源（头像、附件、封面图片）会以 URL 引用，不会提交到仓库。完整流程见 docs/integrations/github-sync.md。';
+
+  @override
+  String get githubSyncInstall => '安装 Notechondria GitHub App';
+
+  @override
+  String get githubSyncInstallHelp =>
+      '批准安装后，GitHub 会重定向回这里，我们会自动保存你的安装 ID。应用会保持安装，直到你从 GitHub 设置中移除它。';
+
+  @override
+  String get githubSyncInstalled => 'GitHub App 已安装。';
+
+  @override
+  String githubSyncInstalledOn(String account) {
+    return 'GitHub App 已安装到 @$account。';
+  }
+
+  @override
+  String get githubSyncNoRepos =>
+      '此安装看不到任何仓库。请打开 GitHub 设置 → Applications → Notechondria data sync，并授予仓库访问权限。';
+
+  @override
+  String get githubSyncTargetRepo => '同步目标仓库';
+
+  @override
+  String get githubSyncIncludeAssets => '包含资源文件';
+
+  @override
+  String get githubSyncIncludeAssetsOn =>
+      '头像、封面图片和附件会内联到 assets/ 下。受单文件 50 MB、单次推送 200 MB 上限限制。';
+
+  @override
+  String get githubSyncIncludeAssetsOff =>
+      '静态资源仅保留 URL 引用。推送更快，但全新服务器无法恢复这些文件内容。';
+
+  @override
+  String get githubSyncPushNow => '立即推送';
+
+  @override
+  String get githubSyncDisconnect => '断开连接';
+
+  @override
+  String githubSyncLastPush(String sha) {
+    return '上次推送：$sha';
+  }
+
+  @override
+  String githubSyncLastPushAt(String time) {
+    return '上次推送时间：$time。';
+  }
+
+  @override
+  String get githubSyncSignIn => '登录以启用 GitHub 同步。';
 
   @override
   String get courseObjectives => '学习目标';

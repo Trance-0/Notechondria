@@ -75,6 +75,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonLoading => 'Loading...';
 
   @override
+  String get commonCopy => 'Copy';
+
+  @override
+  String get commonSaving => 'Saving...';
+
+  @override
+  String get commonUploading => 'Uploading...';
+
+  @override
+  String get commonUnknown => 'unknown';
+
+  @override
   String get navNavigation => 'Navigation';
 
   @override
@@ -559,6 +571,256 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsApiSubtitle => 'API base URL and MCP key.';
 
   @override
+  String get settingsManageAccountPreferences =>
+      'Manage your account, preferences, and local data.';
+
+  @override
+  String get settingsLocalOnlyPreferences =>
+      'Sign in to sync to the cloud, or keep using local-only preferences below.';
+
+  @override
+  String get settingsCasdoorLinked => 'Casdoor SSO linked.';
+
+  @override
+  String get settingsNoThirdPartyLinked => 'No third-party accounts linked.';
+
+  @override
+  String settingsBackendOnlineSummary(String url) {
+    return 'Online. API URL: $url';
+  }
+
+  @override
+  String settingsBackendOfflineSummary(String url) {
+    return 'Offline mode is on. API URL: $url';
+  }
+
+  @override
+  String settingsLocalDataSummary(int drafts, int courses) {
+    return '$drafts draft(s), $courses course(s) on this device.';
+  }
+
+  @override
+  String settingsRecycleBinSummary(int drafts, int notes) {
+    return '$drafts synced draft(s) recoverable, $notes cloud note(s) trashed.';
+  }
+
+  @override
+  String get settingsSignOut => 'Sign out';
+
+  @override
+  String get settingsChangeAvatar => 'Change avatar';
+
+  @override
+  String get settingsUsername => 'Username';
+
+  @override
+  String get settingsMotto => 'Motto';
+
+  @override
+  String get settingsSocialLink => 'Social link';
+
+  @override
+  String get settingsSocialLinkInvalid => 'Must be a valid URL (https://...)';
+
+  @override
+  String get settingsAccountCasdoorNotice =>
+      'Account creation, password change, email change, and per-device session management live on the Casdoor user portal. Casdoor bind / unlink controls are on the Account page.';
+
+  @override
+  String get settingsApiBaseLockedTooltip =>
+      'Locked while signed in. Sign out to switch the backend the portal talks to.';
+
+  @override
+  String get settingsApiBaseTooltip =>
+      'Points the portal at a different Notechondria backend.';
+
+  @override
+  String get settingsApiBaseApplyCaption =>
+      'Press Enter to apply the URL change. Stored locally and mirrored to the profile on login.';
+
+  @override
+  String get settingsApiBaseApplyLockedCaption =>
+      'Press Enter to apply the URL change. Stored locally and mirrored to your profile on login. Locked while signed in — sign out to switch backends.';
+
+  @override
+  String get settingsMcpKeyCaption =>
+      'The MCP key authenticates the backend Model Context Protocol bridge. Rotate it if you suspect leakage.';
+
+  @override
+  String get settingsConnectedAccountsCaption =>
+      'Casdoor proxies third-party identities (Google, GitHub, etc.) — configure them on the Casdoor application\'s Providers tab.';
+
+  @override
+  String get settingsThemeModeMatchSystem => 'Match system';
+
+  @override
+  String get settingsEditorModePickerHelp =>
+      'Picks how new notes open by default. You can still switch modes per note from the editor toolbar.';
+
+  @override
+  String get settingsThemePresetPickerHelp =>
+      'Each preset uses a different seed color for the Material 3 ColorScheme.';
+
+  @override
+  String get settingsThemeModePickerHelp =>
+      'Match system follows the device-level Light/Dark toggle. Light and Dark override the system choice.';
+
+  @override
+  String get settingsOfflineModeSubtitleShort =>
+      'Skip every remote fetch on startup; render everything from the local cache.';
+
+  @override
+  String settingsLocalDataCounts(int drafts, int courses) {
+    return '$drafts local draft(s), $courses local course(s).';
+  }
+
+  @override
+  String get settingsDownloadLocalData => 'Download local data';
+
+  @override
+  String get settingsDownloadLocalDataSubtitle =>
+      'Exports drafts, courses, settings, and logs as a .nchron archive.';
+
+  @override
+  String get settingsRestoreLocalArchive => 'Restore from local archive';
+
+  @override
+  String get settingsRestoreLocalArchiveSubtitle =>
+      'Imports a previously-exported .nchron archive. Replaces existing local data after a confirm dialog.';
+
+  @override
+  String get settingsPushLocalCloud => 'Push local → cloud';
+
+  @override
+  String get settingsPushLocalCloudSubtitle =>
+      'Upload local drafts and courses to your cloud account. Requires sign-in.';
+
+  @override
+  String get settingsPullCloudLocal => 'Pull cloud → local';
+
+  @override
+  String get settingsPullCloudLocalSubtitle =>
+      'Download notes and courses from the cloud to this device.';
+
+  @override
+  String get settingsClearLocalCache => 'Clear local cache';
+
+  @override
+  String get settingsClearLocalCacheSubtitle =>
+      'Drops cached API responses but keeps drafts and courses on disk.';
+
+  @override
+  String get settingsRemoveLocalData => 'Remove local data';
+
+  @override
+  String get settingsRemoveLocalDataSubtitle =>
+      'Wipes drafts, courses, settings, and logs from this device. Cloud copies are not touched.';
+
+  @override
+  String get settingsRestoreTemplateCourses => 'Restore template courses';
+
+  @override
+  String get settingsRestoreTemplateCoursesSubtitle =>
+      'Admin-only. Re-seeds the three-course template catalog (Inbox / Examples / Templates).';
+
+  @override
+  String get settingsRestoreTemplateCoursesCaption =>
+      'Requires a signed-in admin account. Non-admin sessions will see a server-side error in the banner above without changing any data.';
+
+  @override
+  String get settingsSyncedLocalDrafts => 'Synced local drafts';
+
+  @override
+  String settingsLocalRecycleCount(int count) {
+    return '$count item(s) waiting in the local recycle bin.';
+  }
+
+  @override
+  String get settingsCloudRecycleBin => 'Cloud recycle bin';
+
+  @override
+  String settingsCloudRecycleCount(int count) {
+    return '$count soft-deleted note(s) on the server.';
+  }
+
+  @override
+  String get settingsCloudRecycleSignIn =>
+      'Sign in to manage deleted cloud notes.';
+
+  @override
+  String get settingsRecycleBinEmpty => 'Recycle bin is empty.';
+
+  @override
+  String get settingsEmptyRecycleBin => 'Empty recycle bin';
+
+  @override
+  String get apiKeyTitle => 'API key';
+
+  @override
+  String get apiKeyNoKey => '(no API key — click Generate to create one)';
+
+  @override
+  String get apiKeyRotate => 'Rotate';
+
+  @override
+  String get apiKeyGenerate => 'Generate';
+
+  @override
+  String get apiKeyCopyNow =>
+      'Copy this key now — it will NOT be shown again:';
+
+  @override
+  String get apiKeySavedIt => 'I have saved it';
+
+  @override
+  String get apiKeyCopied => 'API key copied to clipboard.';
+
+  @override
+  String get apiKeyMcpEndpointCopied => 'MCP endpoint copied to clipboard.';
+
+  @override
+  String get apiKeyHelp =>
+      'Use this key with MCP clients (e.g. Claude Desktop) by setting the Authorization header to "Bearer ntc_<key>".';
+
+  @override
+  String get apiKeyMcpEndpoint => 'MCP endpoint:';
+
+  @override
+  String get apiKeyCopyMcpEndpoint => 'Copy MCP endpoint';
+
+  @override
+  String get connectedAccountsTitle => 'Connected accounts';
+
+  @override
+  String get connectedAccountsShadow =>
+      'Casdoor is in shadow mode on this backend; no third-party accounts can be linked.';
+
+  @override
+  String get connectedAccountsManageCasdoor => 'Manage Casdoor account';
+
+  @override
+  String get connectedAccountsUnavailableHelp =>
+      'If sign-in is unavailable, contact your Notechondria admin (Casdoor backend may be off).';
+
+  @override
+  String get connectedAccountsCasdoorSso => 'Casdoor SSO';
+
+  @override
+  String get connectedAccountsLinked => 'Linked';
+
+  @override
+  String get connectedAccountsNotLinked => 'Not linked';
+
+  @override
+  String get connectedAccountsSwitch => 'Switch';
+
+  @override
+  String get connectedAccountsUnlink => 'Unlink';
+
+  @override
+  String get connectedAccountsLinkCasdoor => 'Link Casdoor';
+
+  @override
   String get debugLogTitle => 'Debug log';
 
   @override
@@ -1040,6 +1302,82 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get activitySubscribedCalendar => 'Subscribed calendar';
+
+  @override
+  String get mcpSkillCopied => 'skill.md copied to clipboard.';
+
+  @override
+  String get mcpSkillTitle => 'Agent skill (skill.md)';
+
+  @override
+  String get mcpSkillDescription =>
+      'Personal playbook for MCP-connected agents. Use this to describe where to pull notes from (e.g. external sites like notenextra.trance-0.com), how to format imports, which files to export, and where to publish them. Sent verbatim as the `instructions` field of the MCP initialize response.';
+
+  @override
+  String get mcpSkillHint =>
+      '# Import\n- Pull notes from notenextra.trance-0.com once a day...\n\n# Export\n- Mirror to GitHub Gist as YAML+markdown.\n\n# Format\n- Wrap math in \$...\$. Tag deadlines with #deadline.';
+
+  @override
+  String get mcpSkillUnsavedChanges => 'unsaved changes';
+
+  @override
+  String get githubSyncTitle => 'Experimental — GitHub Sync';
+
+  @override
+  String get githubSyncDescription =>
+      'Push your full account (profile, settings, MCP skill, courses, notes, custom meta, planner events) to a GitHub repo you own so you can recover everything if our server is wiped. Static assets we host (avatars, attachments, cover images) are referenced by URL, not committed. See docs/integrations/github-sync.md for the full flow.';
+
+  @override
+  String get githubSyncInstall => 'Install Notechondria GitHub App';
+
+  @override
+  String get githubSyncInstallHelp =>
+      'After approving the install, GitHub redirects back here and we persist your installation id automatically. The app stays installed until you remove it from your GitHub settings.';
+
+  @override
+  String get githubSyncInstalled => 'GitHub App installed.';
+
+  @override
+  String githubSyncInstalledOn(String account) {
+    return 'GitHub App installed on @$account.';
+  }
+
+  @override
+  String get githubSyncNoRepos =>
+      'No repositories visible to this installation. Open GitHub settings → Applications → Notechondria data sync, and grant access to a repo.';
+
+  @override
+  String get githubSyncTargetRepo => 'Sync target repository';
+
+  @override
+  String get githubSyncIncludeAssets => 'Include assets';
+
+  @override
+  String get githubSyncIncludeAssetsOn =>
+      'Avatar, cover images, and attachments are inlined under assets/. Subject to per-file (50 MB) and per-push (200 MB) caps.';
+
+  @override
+  String get githubSyncIncludeAssetsOff =>
+      'Static assets stay referenced by URL only. Faster push, but a fresh server can\'t recover the bytes.';
+
+  @override
+  String get githubSyncPushNow => 'Push now';
+
+  @override
+  String get githubSyncDisconnect => 'Disconnect';
+
+  @override
+  String githubSyncLastPush(String sha) {
+    return 'Last push: $sha';
+  }
+
+  @override
+  String githubSyncLastPushAt(String time) {
+    return 'Last push at $time.';
+  }
+
+  @override
+  String get githubSyncSignIn => 'Sign in to enable GitHub Sync.';
 
   @override
   String get courseObjectives => 'Objectives';

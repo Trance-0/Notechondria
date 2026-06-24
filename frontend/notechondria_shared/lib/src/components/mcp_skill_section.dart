@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../app_shell/url_strategy.dart'
     if (dart.library.html) '../app_shell/url_strategy_web.dart' as url_strategy;
+import '../l10n/app_localizations.dart';
 import '../models/action_feedback.dart';
 
 /// Editable text area for the user's MCP `skill.md`. Surfaced to MCP-
@@ -78,29 +79,26 @@ class _McpSkillSectionState extends State<McpSkillSection> {
     await Clipboard.setData(ClipboardData(text: text));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('skill.md copied to clipboard.')),
+      SnackBar(content: Text(AppLocalizations.of(context).mcpSkillCopied)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final dirty = _controller.text != _lastSaved;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Agent skill (skill.md)',
+          l10n.mcpSkillTitle,
           style:
               theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 6),
         Text(
-          'Personal playbook for MCP-connected agents. Use this to '
-          'describe where to pull notes from (e.g. external sites like '
-          'notenextra.trance-0.com), how to format imports, which files '
-          'to export, and where to publish them. Sent verbatim as the '
-          '`instructions` field of the MCP initialize response.',
+          l10n.mcpSkillDescription,
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
           ),
@@ -111,13 +109,10 @@ class _McpSkillSectionState extends State<McpSkillSection> {
           minLines: 8,
           maxLines: 24,
           style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
             isDense: true,
-            hintText:
-                '# Import\n- Pull notes from notenextra.trance-0.com once a day...\n\n'
-                '# Export\n- Mirror to GitHub Gist as YAML+markdown.\n\n'
-                '# Format\n- Wrap math in \$...\$. Tag deadlines with \\#deadline.',
+            hintText: l10n.mcpSkillHint,
           ),
           onChanged: (_) => setState(() {}),
         ),
@@ -133,18 +128,18 @@ class _McpSkillSectionState extends State<McpSkillSection> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.save_outlined, size: 18),
-              label: const Text('Save'),
+              label: Text(l10n.commonSave),
             ),
             const SizedBox(width: 8),
             OutlinedButton.icon(
               onPressed: _controller.text.isEmpty ? null : _copy,
               icon: const Icon(Icons.copy, size: 18),
-              label: const Text('Copy'),
+              label: Text(l10n.commonCopy),
             ),
             const Spacer(),
             if (dirty)
               Text(
-                'unsaved changes',
+                l10n.mcpSkillUnsavedChanges,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.tertiary,
                 ),
@@ -459,6 +454,7 @@ class _GithubSyncExperimentalCardState
   }
 
   Widget _buildDisconnectedActions(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final hasInstallUrl = _installUrl.isNotEmpty;
     return Column(
@@ -475,14 +471,11 @@ class _GithubSyncExperimentalCardState
           OutlinedButton.icon(
             onPressed: _busy ? null : _openInstallUrl,
             icon: const Icon(Icons.link, size: 18),
-            label: const Text('Install Notechondria GitHub App'),
+            label: Text(l10n.githubSyncInstall),
           ),
           const SizedBox(height: 6),
           Text(
-            'After approving the install, GitHub redirects back here '
-            'and we persist your installation id automatically. The '
-            'app stays installed until you remove it from your GitHub '
-            'settings.',
+            l10n.githubSyncInstallHelp,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             ),
@@ -493,6 +486,7 @@ class _GithubSyncExperimentalCardState
   }
 
   Widget _buildConnectedActions(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final repos = _repos;
     final account = _status?['account_login']?.toString() ?? '';
@@ -508,8 +502,8 @@ class _GithubSyncExperimentalCardState
             Expanded(
               child: Text(
                 account.isEmpty
-                    ? 'GitHub App installed.'
-                    : 'GitHub App installed on @$account.',
+                    ? l10n.githubSyncInstalled
+                    : l10n.githubSyncInstalledOn(account),
                 style: theme.textTheme.bodySmall,
               ),
             ),
@@ -522,18 +516,16 @@ class _GithubSyncExperimentalCardState
             child: LinearProgressIndicator(minHeight: 2),
           )
         else if (repos.isEmpty)
-          const _DisabledHint(
-            text: 'No repositories visible to this installation. '
-                'Open GitHub settings → Applications → Notechondria '
-                'data sync, and grant access to a repo.',
+          _DisabledHint(
+            text: l10n.githubSyncNoRepos,
           )
         else
           DropdownButtonFormField<String>(
             initialValue: _selectedRepo,
             isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: 'Sync target repository',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: l10n.githubSyncTargetRepo,
+              border: const OutlineInputBorder(),
               isDense: true,
             ),
             items: [
@@ -541,7 +533,7 @@ class _GithubSyncExperimentalCardState
                 DropdownMenuItem<String>(
                   value: repo['full_name']?.toString(),
                   child: Text(
-                    repo['full_name']?.toString() ?? 'unknown',
+                    repo['full_name']?.toString() ?? l10n.commonUnknown,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -555,14 +547,11 @@ class _GithubSyncExperimentalCardState
           value: _includeAssets,
           onChanged:
               _busy ? null : (value) => setState(() => _includeAssets = value),
-          title: const Text('Include assets'),
+          title: Text(l10n.githubSyncIncludeAssets),
           subtitle: Text(
             _includeAssets
-                ? 'Avatar, cover images, and attachments are inlined '
-                    'under assets/. Subject to per-file (50 MB) and '
-                    'per-push (200 MB) caps.'
-                : 'Static assets stay referenced by URL only. Faster '
-                    'push, but a fresh server can\'t recover the bytes.',
+                ? l10n.githubSyncIncludeAssetsOn
+                : l10n.githubSyncIncludeAssetsOff,
             style: theme.textTheme.bodySmall,
           ),
         ),
@@ -578,26 +567,31 @@ class _GithubSyncExperimentalCardState
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.cloud_upload_outlined, size: 18),
-              label: const Text('Push now'),
+              label: Text(l10n.githubSyncPushNow),
             ),
             const SizedBox(width: 8),
             TextButton.icon(
               onPressed: _busy ? null : _disconnect,
               icon: const Icon(Icons.link_off, size: 18),
-              label: const Text('Disconnect'),
+              label: Text(l10n.githubSyncDisconnect),
             ),
           ],
         ),
         if (_lastCommitSha != null && _lastCommitSha!.isNotEmpty) ...[
           const SizedBox(height: 6),
           Text(
-            'Last push: ${_lastCommitSha!.substring(0, _lastCommitSha!.length < 8 ? _lastCommitSha!.length : 8)}',
+            l10n.githubSyncLastPush(
+              _lastCommitSha!.substring(
+                0,
+                _lastCommitSha!.length < 8 ? _lastCommitSha!.length : 8,
+              ),
+            ),
             style: theme.textTheme.bodySmall,
           ),
         ] else if (lastPushAt.isNotEmpty) ...[
           const SizedBox(height: 6),
           Text(
-            'Last push at $lastPushAt.',
+            l10n.githubSyncLastPushAt(lastPushAt),
             style: theme.textTheme.bodySmall,
           ),
         ],
@@ -616,6 +610,7 @@ class _GithubSyncExperimentalCardState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -633,25 +628,19 @@ class _GithubSyncExperimentalCardState
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  'Experimental — GitHub Sync',
+                  l10n.githubSyncTitle,
                   style: theme.textTheme.titleSmall,
                 ),
               ],
             ),
             const SizedBox(height: 8),
             Text(
-              'Push your full account (profile, settings, MCP skill, '
-              'courses, notes, custom meta, planner events) to a '
-              'GitHub repo you own so you can recover everything if '
-              'our server is wiped. Static assets we host (avatars, '
-              'attachments, cover images) are referenced by URL, not '
-              'committed. See docs/integrations/github-sync.md for '
-              'the full flow.',
+              l10n.githubSyncDescription,
               style: theme.textTheme.bodySmall,
             ),
             const SizedBox(height: 10),
             if (!_hasCallbacks)
-              const _DisabledHint(text: 'Sign in to enable GitHub Sync.')
+              _DisabledHint(text: l10n.githubSyncSignIn)
             else if (_loading)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 4),

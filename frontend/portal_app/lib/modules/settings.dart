@@ -265,7 +265,10 @@ class _SettingsPageState extends State<_SettingsPage> {
     if (_saving) return;
     final social = _socialController.text.trim();
     if (social.isNotEmpty && !_isValidUrl(social)) {
-      setState(() => _socialLinkError = 'Must be a valid URL (https://...)');
+      setState(() {
+        _socialLinkError =
+            AppLocalizations.of(context).settingsSocialLinkInvalid;
+      });
       return;
     }
     setState(() {
@@ -321,73 +324,77 @@ class _SettingsPageState extends State<_SettingsPage> {
   Future<void> _openRecycleBinDialog() async {
     await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Recycle bin'),
-        content: SizedBox(
-          width: 560,
-          child: widget.deletedNotes.isEmpty
-              ? const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  child: Text('Recycle bin is empty.'),
-                )
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () async {
-                          await widget.onEmptyDeletedNotes();
-                          if (context.mounted) {
-                            Navigator.of(context).pop();
-                          }
-                        },
-                        child: const Text('Empty recycle bin'),
+      builder: (context) {
+        final l10n = AppLocalizations.of(context);
+        return AlertDialog(
+          title: Text(l10n.settingsRecycleBinTitle),
+          content: SizedBox(
+            width: 560,
+            child: widget.deletedNotes.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(l10n.settingsRecycleBinEmpty),
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () async {
+                            await widget.onEmptyDeletedNotes();
+                            if (context.mounted) {
+                              Navigator.of(context).pop();
+                            }
+                          },
+                          child: Text(l10n.settingsEmptyRecycleBin),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      height: 320,
-                      child: ListView(
-                        shrinkWrap: true,
-                        children: [
-                          for (final note in widget.deletedNotes)
-                            Card(
-                              child: ListTile(
-                                title: Text(
-                                  note['title']?.toString() ?? 'Untitled note',
-                                ),
-                                subtitle: Text(
-                                  note['description']?.toString() ??
-                                      note['excerpt']?.toString() ??
-                                      '',
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                trailing: TextButton(
-                                  onPressed: () async {
-                                    await widget.onRestoreDeletedNote(note);
-                                    if (context.mounted) {
-                                      Navigator.of(context).pop();
-                                    }
-                                  },
-                                  child: const Text('Restore'),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 320,
+                        child: ListView(
+                          shrinkWrap: true,
+                          children: [
+                            for (final note in widget.deletedNotes)
+                              Card(
+                                child: ListTile(
+                                  title: Text(
+                                    note['title']?.toString() ??
+                                        l10n.noteUntitled,
+                                  ),
+                                  subtitle: Text(
+                                    note['description']?.toString() ??
+                                        note['excerpt']?.toString() ??
+                                        '',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  trailing: TextButton(
+                                    onPressed: () async {
+                                      await widget.onRestoreDeletedNote(note);
+                                      if (context.mounted) {
+                                        Navigator.of(context).pop();
+                                      }
+                                    },
+                                    child: Text(l10n.commonRestore),
+                                  ),
                                 ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
+                    ],
+                  ),
           ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(l10n.commonClose),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -397,7 +404,7 @@ class _SettingsPageState extends State<_SettingsPage> {
       padding: const EdgeInsets.all(20),
       children: [
         Text(
-          'Settings',
+          AppLocalizations.of(context).settingsTitle,
           style: Theme.of(context)
               .textTheme
               .headlineSmall
@@ -406,9 +413,8 @@ class _SettingsPageState extends State<_SettingsPage> {
         const SizedBox(height: 8),
         Text(
           _isAuthenticated
-              ? 'Manage your account, preferences, and local data.'
-              : 'Sign in to sync to the cloud, or keep using local-only '
-                  'preferences below.',
+              ? AppLocalizations.of(context).settingsManageAccountPreferences
+              : AppLocalizations.of(context).settingsLocalOnlyPreferences,
         ),
         const SizedBox(height: 16),
         ValueListenableBuilder<ActionFeedback?>(
@@ -448,13 +454,16 @@ class _SettingsPageState extends State<_SettingsPage> {
   /// `_DebugPage`. Otherwise fall back to a minimal frontend-log
   /// card so the surface degrades gracefully.
   Widget _buildInlineDebugCard(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final controller = widget.debugLogController;
-    final summary = '${widget.localDraftCount} local draft(s), '
-        '${widget.localCourseCount} local course(s).';
+    final summary = l10n.settingsLocalDataCounts(
+      widget.localDraftCount,
+      widget.localCourseCount,
+    );
     if (controller != null) {
       return DebugLogCard(
         controller: controller,
-        title: 'Debug log',
+        title: l10n.debugLogTitle,
         summary: summary,
         onCopyLogs: widget.onCopyLogs,
         onPing: () => pingBackend(widget.apiBaseUrl),
@@ -472,7 +481,7 @@ class _SettingsPageState extends State<_SettingsPage> {
               children: [
                 Expanded(
                   child: Text(
-                    'Debug log',
+                    l10n.debugLogTitle,
                     style: Theme.of(context)
                         .textTheme
                         .titleMedium
@@ -482,7 +491,7 @@ class _SettingsPageState extends State<_SettingsPage> {
                 TextButton.icon(
                   onPressed: widget.onCopyLogs,
                   icon: const Icon(Icons.copy_all_outlined),
-                  label: const Text('Copy logs'),
+                  label: Text(l10n.debugCopyLogs),
                 ),
               ],
             ),
@@ -492,8 +501,8 @@ class _SettingsPageState extends State<_SettingsPage> {
             SizedBox(
               height: 240,
               child: widget.uiLogs.isEmpty
-                  ? const Center(
-                      child: Text('No frontend logs captured yet.'),
+                  ? Center(
+                      child: Text(l10n.debugNoLogs),
                     )
                   : ListView.builder(
                       padding: EdgeInsets.zero,
@@ -520,6 +529,7 @@ class _SettingsPageState extends State<_SettingsPage> {
   /// backend, local data, recycle bin, and debug. Each row pushes a
   /// dedicated sub-page (see `settings_pages.dart`).
   Widget _buildSettingsMenu(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final recoverableCount =
         widget.localTrashedDraftCount + widget.localTrashedCourseCount;
     return Card(
@@ -529,9 +539,8 @@ class _SettingsPageState extends State<_SettingsPage> {
         children: [
           ListTile(
             leading: const Icon(Icons.tune_outlined),
-            title: Text(AppLocalizations.of(context).settingsPortalPreferences),
-            subtitle: Text(AppLocalizations.of(context)
-                .settingsPortalPreferencesSubtitle),
+            title: Text(l10n.settingsPortalPreferences),
+            subtitle: Text(l10n.settingsPortalPreferencesSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
               Navigator.of(context).push(
@@ -545,21 +554,23 @@ class _SettingsPageState extends State<_SettingsPage> {
             const Divider(height: 0, indent: 16, endIndent: 16),
             ListTile(
               leading: const Icon(Icons.school_outlined),
-              title: Text(AppLocalizations.of(context).settingsViewTutorial),
-              subtitle: Text(
-                  AppLocalizations.of(context).settingsViewTutorialSubtitle),
+              title: Text(l10n.settingsViewTutorial),
+              subtitle: Text(l10n.settingsViewTutorialSubtitle),
               onTap: widget.onReplayTour,
             ),
           ],
           const Divider(height: 0, indent: 16, endIndent: 16),
           ListTile(
             leading: const Icon(Icons.cloud_outlined),
-            title: Text(AppLocalizations.of(context).settingsBackendTitle),
+            title: Text(l10n.settingsBackendTitle),
             subtitle: Text(
               widget.localSettings['offline_mode'] == true
-                  ? 'Offline mode is on. API URL: '
-                      '${widget.apiBaseUrl ?? "—"}'
-                  : 'Online. API URL: ${widget.apiBaseUrl ?? "—"}',
+                  ? l10n.settingsBackendOfflineSummary(
+                      widget.apiBaseUrl ?? '—',
+                    )
+                  : l10n.settingsBackendOnlineSummary(
+                      widget.apiBaseUrl ?? '—',
+                    ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -575,10 +586,12 @@ class _SettingsPageState extends State<_SettingsPage> {
           const Divider(height: 0, indent: 16, endIndent: 16),
           ListTile(
             leading: const Icon(Icons.folder_outlined),
-            title: Text(AppLocalizations.of(context).settingsLocalDataTitle),
+            title: Text(l10n.settingsLocalDataTitle),
             subtitle: Text(
-              '${widget.localDraftCount} draft(s), '
-              '${widget.localCourseCount} course(s) on this device.',
+              l10n.settingsLocalDataSummary(
+                widget.localDraftCount,
+                widget.localCourseCount,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -594,10 +607,12 @@ class _SettingsPageState extends State<_SettingsPage> {
           const Divider(height: 0, indent: 16, endIndent: 16),
           ListTile(
             leading: const Icon(Icons.delete_outline),
-            title: Text(AppLocalizations.of(context).settingsRecycleBinTitle),
+            title: Text(l10n.settingsRecycleBinTitle),
             subtitle: Text(
-              '$recoverableCount synced draft(s) recoverable, '
-              '${widget.deletedNotes.length} cloud note(s) trashed.',
+              l10n.settingsRecycleBinSummary(
+                recoverableCount,
+                widget.deletedNotes.length,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -627,6 +642,7 @@ class _SettingsPageState extends State<_SettingsPage> {
   /// width, red text. Matches the iOS Settings convention of a
   /// destructive bottom action separated from the menu rows above.
   Widget _buildLogoutCard(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -634,7 +650,7 @@ class _SettingsPageState extends State<_SettingsPage> {
       child: ListTile(
         leading: Icon(Icons.logout, color: scheme.error),
         title: Text(
-          'Sign out',
+          l10n.settingsSignOut,
           style: TextStyle(
             color: scheme.error,
             fontWeight: FontWeight.w600,
@@ -678,13 +694,14 @@ class _ConnectedAccountsSection extends StatefulWidget {
 class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final shadowMode = widget.onBindCasdoor == null;
     final manageUrl = widget.casdoorOrgLoginUrl ?? '';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Connected accounts',
+          l10n.connectedAccountsTitle,
           style: Theme.of(context)
               .textTheme
               .labelLarge
@@ -692,10 +709,7 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
         ),
         const SizedBox(height: 8),
         if (shadowMode)
-          const Text(
-            'Casdoor is in shadow mode on this backend; no third-party '
-            'accounts can be linked.',
-          )
+          Text(l10n.connectedAccountsShadow)
         else
           _buildCasdoorRow(context),
         if (manageUrl.isNotEmpty) ...[
@@ -705,17 +719,16 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
             child: OutlinedButton.icon(
               onPressed: () => url_strategy.browserRedirect(manageUrl),
               icon: const Icon(Icons.open_in_new, size: 18),
-              label: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 4),
-                child: Text('Manage Casdoor account'),
+              label: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Text(l10n.connectedAccountsManageCasdoor),
               ),
             ),
           ),
         ],
         const SizedBox(height: 6),
         Text(
-          'If sign-in is unavailable, contact your Notechondria '
-          'admin (Casdoor backend may be off).',
+          l10n.connectedAccountsUnavailableHelp,
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],
@@ -723,12 +736,15 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
   }
 
   Widget _buildCasdoorRow(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final linked = widget.casdoorLinked;
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: const Icon(Icons.shield_outlined),
-      title: const Text('Casdoor SSO'),
-      subtitle: Text(linked ? 'Linked' : 'Not linked'),
+      title: Text(l10n.connectedAccountsCasdoorSso),
+      subtitle: Text(
+        linked ? l10n.connectedAccountsLinked : l10n.connectedAccountsNotLinked,
+      ),
       dense: true,
       trailing: linked
           ? Row(
@@ -737,7 +753,7 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
                 if (widget.onBindCasdoor != null)
                   TextButton(
                     onPressed: widget.onBindCasdoor,
-                    child: const Text('Switch'),
+                    child: Text(l10n.connectedAccountsSwitch),
                   ),
                 TextButton(
                   onPressed: widget.onUnlinkCasdoor == null
@@ -749,7 +765,7 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
                           if (mounted) setState(() {});
                         },
                   child: Text(
-                    'Unlink',
+                    l10n.connectedAccountsUnlink,
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.error,
                     ),
@@ -759,7 +775,7 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
             )
           : TextButton(
               onPressed: widget.onBindCasdoor,
-              child: const Text('Link Casdoor'),
+              child: Text(l10n.connectedAccountsLinkCasdoor),
             ),
     );
   }

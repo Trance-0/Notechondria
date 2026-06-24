@@ -166,6 +166,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
   /// followed by nav rows for Personal information, Sign in & security,
   /// API settings, and Connected accounts.
   Widget _buildSignedInAccount(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final username = widget.profile?['username']?.toString() ?? 'User';
     final displayName = widget.profile?['display_name']?.toString() ?? username;
     final email = widget.profile?['email']?.toString() ?? '';
@@ -241,8 +242,8 @@ extension _SettingsPageBuildX on _SettingsPageState {
             title: Text(AppLocalizations.of(context).settingsConnectedAccounts),
             subtitle: Text(
               widget.settings?['casdoor_linked'] == true
-                  ? 'Casdoor SSO linked.'
-                  : 'No third-party accounts linked.',
+                  ? l10n.settingsCasdoorLinked
+                  : l10n.settingsNoThirdPartyLinked,
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
@@ -263,6 +264,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
   /// not exposed here — verified change-email flow lives on the
   /// Sign-in & security page.
   Widget _buildProfileFields(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final avatarUrl = widget.profile?['image_url']?.toString() ??
         widget.settings?['image_url']?.toString();
     final resolvedAvatar = avatarUrl != null && avatarUrl.isNotEmpty
@@ -310,31 +312,35 @@ extension _SettingsPageBuildX on _SettingsPageState {
             TextButton.icon(
               onPressed: _uploadingAvatar ? null : _handleAvatarUpload,
               icon: const Icon(Icons.camera_alt_outlined, size: 18),
-              label: Text(_uploadingAvatar ? 'Uploading...' : 'Change avatar'),
+              label: Text(
+                _uploadingAvatar
+                    ? l10n.commonUploading
+                    : l10n.settingsChangeAvatar,
+              ),
             ),
           ],
         ),
         const SizedBox(height: 16),
         TextField(
           controller: _usernameController,
-          decoration: const InputDecoration(
-            labelText: 'Username',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.settingsUsername,
+            border: const OutlineInputBorder(),
           ),
         ),
         const SizedBox(height: 12),
         TextField(
           controller: _mottoController,
-          decoration: const InputDecoration(
-            labelText: 'Motto',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.settingsMotto,
+            border: const OutlineInputBorder(),
           ),
         ),
         const SizedBox(height: 12),
         TextField(
           controller: _socialController,
           decoration: InputDecoration(
-            labelText: 'Social link',
+            labelText: l10n.settingsSocialLink,
             hintText: 'https://...',
             border: const OutlineInputBorder(),
             errorText: _socialLinkError,
@@ -380,6 +386,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
     required bool hasChanges,
     required VoidCallback onCancel,
   }) {
+    final l10n = AppLocalizations.of(context);
     return Row(
       children: [
         Expanded(
@@ -393,7 +400,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
                         strokeWidth: 2, color: Colors.white),
                   )
                 : const Icon(Icons.save_outlined),
-            label: Text(_saving ? 'Saving...' : 'Save'),
+            label: Text(_saving ? l10n.commonSaving : l10n.commonSave),
           ),
         ),
         const SizedBox(width: 12),
@@ -404,7 +411,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
               foregroundColor:
                   hasChanges ? null : Theme.of(context).colorScheme.outline,
             ),
-            child: const Text('Cancel'),
+            child: Text(l10n.commonCancel),
           ),
         ),
       ],
@@ -456,7 +463,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
               padding: const EdgeInsets.only(bottom: 12),
               child: TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Close'),
+                child: Text(AppLocalizations.of(context).commonClose),
               ),
             ),
           ],
