@@ -167,7 +167,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
   /// API settings, and Connected accounts.
   Widget _buildSignedInAccount(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final username = widget.profile?['username']?.toString() ?? 'User';
+    final username = widget.profile?['username']?.toString() ?? l10n.commonUser;
     final displayName = widget.profile?['display_name']?.toString() ?? username;
     final email = widget.profile?['email']?.toString() ?? '';
     final avatarUrl = widget.profile?['image_url']?.toString() ??
@@ -270,7 +270,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
     final resolvedAvatar = avatarUrl != null && avatarUrl.isNotEmpty
         ? _resolveRemoteUrl(avatarUrl, apiBaseUrl: widget.apiBaseUrl)
         : '';
-    final username = widget.profile?['username']?.toString() ?? 'User';
+    final username = widget.profile?['username']?.toString() ?? l10n.commonUser;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

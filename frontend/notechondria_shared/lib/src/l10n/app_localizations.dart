@@ -272,6 +272,8 @@ abstract class AppLocalizations {
 
   String get commonUnknown;
 
+  String get commonUser;
+
   /// No description provided for @navNavigation.
   ///
   /// In en, this message translates to:

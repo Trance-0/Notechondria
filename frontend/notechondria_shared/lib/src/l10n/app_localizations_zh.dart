@@ -138,6 +138,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commonUnknown => '未知';
 
   @override
+  String get commonUser => '用户';
+
+  @override
   String get navNavigation => '导航';
 
   @override

@@ -138,6 +138,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonUnknown => 'unknown';
 
   @override
+  String get commonUser => 'User';
+
+  @override
   String get navNavigation => 'Navigation';
 
   @override
