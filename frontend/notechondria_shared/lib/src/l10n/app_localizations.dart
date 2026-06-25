@@ -1218,6 +1218,28 @@ abstract class AppLocalizations {
 
   String get settingsConnectedAccountsCaption;
 
+  String get plannerSettingsTitle;
+
+  String get plannerSettingsDescription;
+
+  String get plannerLoginSyncTitle;
+
+  String get plannerLoginSyncHelp;
+
+  String plannerSignedInAs(String identity);
+
+  String get plannerPreferencesTitle;
+
+  String get plannerDeadlineTimeWeight;
+
+  String get plannerDeadlineImportanceWeight;
+
+  String get plannerDeadlineSortHelp;
+
+  String get plannerSaveSettings;
+
+  String plannerDebugSummary(int notes, int courses);
+
   String get settingsThemeModeMatchSystem;
 
   String get settingsEditorModePickerHelp;

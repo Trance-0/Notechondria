@@ -709,6 +709,46 @@ class AppLocalizationsEn extends AppLocalizations {
       'Casdoor proxies third-party identities (Google, GitHub, etc.) — configure them on the Casdoor application\'s Providers tab.';
 
   @override
+  String get plannerSettingsTitle => 'Planner settings';
+
+  @override
+  String get plannerSettingsDescription =>
+      'This app keeps planner-focused controls only: login/sync, deadline-ordering preferences, and debug output.';
+
+  @override
+  String get plannerLoginSyncTitle => 'Login and sync';
+
+  @override
+  String get plannerLoginSyncHelp =>
+      'Sign in to sync course plans, module discussion roots, and planner deadlines. Local planner data remains usable while signed out.';
+
+  @override
+  String plannerSignedInAs(String identity) {
+    return 'Signed in as $identity.';
+  }
+
+  @override
+  String get plannerPreferencesTitle => 'Planner preferences';
+
+  @override
+  String get plannerDeadlineTimeWeight => 'Deadline time weight (a)';
+
+  @override
+  String get plannerDeadlineImportanceWeight => 'Deadline importance weight (b)';
+
+  @override
+  String get plannerDeadlineSortHelp =>
+      'Deadlines sort by (a × time pressure) × (b × importance). Importance uses the existing event weight.';
+
+  @override
+  String get plannerSaveSettings => 'Save planner settings';
+
+  @override
+  String plannerDebugSummary(int notes, int courses) {
+    return '$notes local note(s), $courses local course(s).';
+  }
+
+  @override
   String get settingsThemeModeMatchSystem => 'Match system';
 
   @override

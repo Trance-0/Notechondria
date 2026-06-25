@@ -245,6 +245,23 @@
   "settingsApiBaseApplyLockedCaption": "Press Enter to apply the URL change. Stored locally and mirrored to your profile on login. Locked while signed in — sign out to switch backends.",
   "settingsMcpKeyCaption": "The MCP key authenticates the backend Model Context Protocol bridge. Rotate it if you suspect leakage.",
   "settingsConnectedAccountsCaption": "Casdoor proxies third-party identities (Google, GitHub, etc.) — configure them on the Casdoor application's Providers tab.",
+  "plannerSettingsTitle": "Planner settings",
+  "plannerSettingsDescription": "This app keeps planner-focused controls only: login/sync, deadline-ordering preferences, and debug output.",
+  "plannerLoginSyncTitle": "Login and sync",
+  "plannerLoginSyncHelp": "Sign in to sync course plans, module discussion roots, and planner deadlines. Local planner data remains usable while signed out.",
+  "plannerSignedInAs": "Signed in as {identity}.",
+  "@plannerSignedInAs": {
+    "placeholders": { "identity": { "type": "String" } }
+  },
+  "plannerPreferencesTitle": "Planner preferences",
+  "plannerDeadlineTimeWeight": "Deadline time weight (a)",
+  "plannerDeadlineImportanceWeight": "Deadline importance weight (b)",
+  "plannerDeadlineSortHelp": "Deadlines sort by (a × time pressure) × (b × importance). Importance uses the existing event weight.",
+  "plannerSaveSettings": "Save planner settings",
+  "plannerDebugSummary": "{notes} local note(s), {courses} local course(s).",
+  "@plannerDebugSummary": {
+    "placeholders": { "notes": { "type": "int" }, "courses": { "type": "int" } }
+  },
   "settingsThemeModeMatchSystem": "Match system",
   "settingsEditorModePickerHelp": "Picks how new notes open by default. You can still switch modes per note from the editor toolbar.",
   "settingsThemePresetPickerHelp": "Each preset uses a different seed color for the Material 3 ColorScheme.",

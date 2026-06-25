@@ -681,6 +681,46 @@ class AppLocalizationsZh extends AppLocalizations {
       'Casdoor 代理第三方身份（Google、GitHub 等）——请在 Casdoor 应用的 Providers 标签页中配置。';
 
   @override
+  String get plannerSettingsTitle => '规划器设置';
+
+  @override
+  String get plannerSettingsDescription =>
+      '此应用仅保留规划相关控制：登录/同步、截止日期排序偏好和调试输出。';
+
+  @override
+  String get plannerLoginSyncTitle => '登录与同步';
+
+  @override
+  String get plannerLoginSyncHelp =>
+      '登录后可同步课程计划、模块讨论根节点和规划截止日期。退出登录时，本地规划数据仍可使用。';
+
+  @override
+  String plannerSignedInAs(String identity) {
+    return '已登录为 $identity。';
+  }
+
+  @override
+  String get plannerPreferencesTitle => '规划器偏好设置';
+
+  @override
+  String get plannerDeadlineTimeWeight => '截止日期时间权重（a）';
+
+  @override
+  String get plannerDeadlineImportanceWeight => '截止日期重要性权重（b）';
+
+  @override
+  String get plannerDeadlineSortHelp =>
+      '截止日期排序方式为（a × 时间压力）×（b × 重要性）。重要性使用现有事件权重。';
+
+  @override
+  String get plannerSaveSettings => '保存规划器设置';
+
+  @override
+  String plannerDebugSummary(int notes, int courses) {
+    return '$notes 篇本地笔记，$courses 门本地课程。';
+  }
+
+  @override
   String get settingsThemeModeMatchSystem => '跟随系统';
 
   @override

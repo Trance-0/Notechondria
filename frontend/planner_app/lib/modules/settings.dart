@@ -258,7 +258,10 @@ class _SettingsPageState extends State<_SettingsPage> {
   Future<void> _submitSettings() async {
     final social = _socialController.text.trim();
     if (social.isNotEmpty && !_isValidUrl(social)) {
-      setState(() => _socialLinkError = 'Must be a valid URL (https://...)');
+      setState(() {
+        _socialLinkError =
+            AppLocalizations.of(context).settingsSocialLinkInvalid;
+      });
       return;
     }
     setState(() {
@@ -322,16 +325,17 @@ class _SettingsPageState extends State<_SettingsPage> {
   }
 
   Future<void> _openRecycleBinDialog() async {
+    final l10n = AppLocalizations.of(context);
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Recycle bin'),
+        title: Text(l10n.settingsRecycleBinTitle),
         content: SizedBox(
           width: 560,
           child: widget.deletedNotes.isEmpty
-              ? const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  child: Text('Recycle bin is empty.'),
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(l10n.settingsRecycleBinEmpty),
                 )
               : Column(
                   mainAxisSize: MainAxisSize.min,
@@ -345,7 +349,7 @@ class _SettingsPageState extends State<_SettingsPage> {
                             Navigator.of(context).pop();
                           }
                         },
-                        child: const Text('Empty recycle bin'),
+                        child: Text(l10n.settingsEmptyRecycleBin),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -358,7 +362,8 @@ class _SettingsPageState extends State<_SettingsPage> {
                             Card(
                               child: ListTile(
                                 title: Text(
-                                  note['title']?.toString() ?? 'Untitled note',
+                                  note['title']?.toString() ??
+                                      l10n.noteUntitled,
                                 ),
                                 subtitle: Text(
                                   note['description']?.toString() ??
@@ -374,7 +379,7 @@ class _SettingsPageState extends State<_SettingsPage> {
                                       Navigator.of(context).pop();
                                     }
                                   },
-                                  child: const Text('Restore'),
+                                  child: Text(l10n.commonRestore),
                                 ),
                               ),
                             ),
@@ -387,7 +392,7 @@ class _SettingsPageState extends State<_SettingsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
+            child: Text(l10n.commonClose),
           ),
         ],
       ),
@@ -396,20 +401,19 @@ class _SettingsPageState extends State<_SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
         Text(
-          'Planner settings',
+          l10n.plannerSettingsTitle,
           style: Theme.of(context)
               .textTheme
               .headlineSmall
               ?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 8),
-        const Text(
-          'This app keeps planner-focused controls only: login/sync, deadline-ordering preferences, and debug output.',
-        ),
+        Text(l10n.plannerSettingsDescription),
         const SizedBox(height: 20),
         // Storage usage — local-data breakdown + browser quota. The
         // shared card is fed the planner's bucket sizes, attachment
@@ -428,7 +432,7 @@ class _SettingsPageState extends State<_SettingsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Login and sync',
+                  l10n.plannerLoginSyncTitle,
                   style: Theme.of(context)
                       .textTheme
                       .titleMedium
@@ -436,9 +440,7 @@ class _SettingsPageState extends State<_SettingsPage> {
                 ),
                 const SizedBox(height: 8),
                 if (!_isAuthenticated) ...[
-                  const Text(
-                    'Sign in to sync course plans, module discussion roots, and planner deadlines. Local planner data remains usable while signed out.',
-                  ),
+                  Text(l10n.plannerLoginSyncHelp),
                   const SizedBox(height: 12),
                   AuthHub(
                     onLogin: widget.onLogin,
@@ -448,7 +450,11 @@ class _SettingsPageState extends State<_SettingsPage> {
                   ),
                 ] else ...[
                   Text(
-                    'Signed in as ${widget.profile?['email']?.toString() ?? widget.profile?['username']?.toString() ?? 'user'}.',
+                    l10n.plannerSignedInAs(
+                      widget.profile?['email']?.toString() ??
+                          widget.profile?['username']?.toString() ??
+                          l10n.commonUser,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Wrap(
@@ -460,38 +466,40 @@ class _SettingsPageState extends State<_SettingsPage> {
                           () => widget.onSyncLocalData(announce: false),
                         ),
                         icon: const Icon(Icons.cloud_upload_outlined),
-                        label: const Text('Push local → cloud'),
+                        label: Text(l10n.settingsPushLocalCloud),
                       ),
                       OutlinedButton.icon(
                         onPressed: () =>
                             _runMaintenanceAction(widget.onPullCloudData),
                         icon: const Icon(Icons.download_for_offline_outlined),
-                        label: const Text('Pull cloud → local'),
+                        label: Text(l10n.settingsPullCloudLocal),
                       ),
                       if (widget.onOpenLocalRecycleBin != null)
                         OutlinedButton.icon(
                           onPressed: widget.onOpenLocalRecycleBin,
                           icon: const Icon(Icons.restore_from_trash_outlined),
                           label: Text(
-                            'Synced drafts (recoverable) '
-                            '(${widget.localTrashedDraftCount + widget.localTrashedCourseCount})',
+                            l10n.settingsLocalRecycleCount(
+                              widget.localTrashedDraftCount +
+                                  widget.localTrashedCourseCount,
+                            ),
                           ),
                         ),
                       if (widget.onExportLocalData != null)
                         OutlinedButton.icon(
                           onPressed: () => widget.onExportLocalData!(),
                           icon: const Icon(Icons.file_download_outlined),
-                          label: const Text('Download local data'),
+                          label: Text(l10n.settingsDownloadLocalData),
                         ),
                       if (widget.onRestoreFromLocalImport != null)
                         OutlinedButton.icon(
                           onPressed: () => widget.onRestoreFromLocalImport!(),
                           icon: const Icon(Icons.file_upload_outlined),
-                          label: const Text('Restore from local archive'),
+                          label: Text(l10n.settingsRestoreLocalArchive),
                         ),
                       OutlinedButton(
                         onPressed: widget.onLogout,
-                        child: const Text('Logout'),
+                        child: Text(l10n.settingsSignOut),
                       ),
                     ],
                   ),
@@ -539,7 +547,7 @@ class _SettingsPageState extends State<_SettingsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Planner preferences',
+                  l10n.plannerPreferencesTitle,
                   style: Theme.of(context)
                       .textTheme
                       .titleMedium
@@ -582,9 +590,9 @@ class _SettingsPageState extends State<_SettingsPage> {
                               keyboardType:
                                   const TextInputType.numberWithOptions(
                                       decimal: true),
-                              decoration: const InputDecoration(
-                                labelText: 'Deadline time weight (a)',
-                                border: OutlineInputBorder(),
+                              decoration: InputDecoration(
+                                labelText: l10n.plannerDeadlineTimeWeight,
+                                border: const OutlineInputBorder(),
                               ),
                             ),
                           ),
@@ -595,18 +603,17 @@ class _SettingsPageState extends State<_SettingsPage> {
                               keyboardType:
                                   const TextInputType.numberWithOptions(
                                       decimal: true),
-                              decoration: const InputDecoration(
-                                labelText: 'Deadline importance weight (b)',
-                                border: OutlineInputBorder(),
+                              decoration: InputDecoration(
+                                labelText:
+                                    l10n.plannerDeadlineImportanceWeight,
+                                border: const OutlineInputBorder(),
                               ),
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'Deadlines sort by (a × time pressure) × (b × importance). Importance uses the existing event weight.',
-                      ),
+                      Text(l10n.plannerDeadlineSortHelp),
                     ],
                   ),
                 ),
@@ -617,7 +624,9 @@ class _SettingsPageState extends State<_SettingsPage> {
                 ],
                 FilledButton(
                   onPressed: _saving ? null : _submitSettings,
-                  child: Text(_saving ? 'Saving...' : 'Save planner settings'),
+                  child: Text(
+                    _saving ? l10n.commonSaving : l10n.plannerSaveSettings,
+                  ),
                 ),
               ],
             ),
@@ -627,9 +636,11 @@ class _SettingsPageState extends State<_SettingsPage> {
         if (widget.debugLogController != null)
           DebugLogCard(
             controller: widget.debugLogController!,
-            title: 'Debug log',
-            summary:
-                '${widget.localDraftCount} local note(s), ${widget.localCourseCount} local course(s).',
+            title: l10n.debugLogTitle,
+            summary: l10n.plannerDebugSummary(
+              widget.localDraftCount,
+              widget.localCourseCount,
+            ),
             onCopyLogs: widget.onCopyLogs,
             onPing: () => pingBackend(widget.apiBaseUrl),
           )
@@ -641,7 +652,7 @@ class _SettingsPageState extends State<_SettingsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Debug log',
+                    l10n.debugLogTitle,
                     style: Theme.of(context)
                         .textTheme
                         .titleMedium
@@ -652,13 +663,16 @@ class _SettingsPageState extends State<_SettingsPage> {
                     children: [
                       Expanded(
                         child: Text(
-                          '${widget.localDraftCount} local note(s), ${widget.localCourseCount} local course(s).',
+                          l10n.plannerDebugSummary(
+                            widget.localDraftCount,
+                            widget.localCourseCount,
+                          ),
                         ),
                       ),
                       TextButton.icon(
                         onPressed: widget.onCopyLogs,
                         icon: const Icon(Icons.copy_all_outlined),
-                        label: const Text('Copy logs'),
+                        label: Text(l10n.debugCopyLogs),
                       ),
                     ],
                   ),
@@ -666,8 +680,7 @@ class _SettingsPageState extends State<_SettingsPage> {
                   SizedBox(
                     height: 260,
                     child: widget.uiLogs.isEmpty
-                        ? const Center(
-                            child: Text('No frontend logs captured yet.'))
+                        ? Center(child: Text(l10n.debugNoLogs))
                         : ListView.builder(
                             padding: EdgeInsets.zero,
                             itemCount: widget.uiLogs.length,
@@ -878,11 +891,14 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
   }
 
   Widget _buildCasdoorRow(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final linked = widget.casdoorLinked;
     return ListTile(
       leading: const Icon(Icons.shield_outlined),
-      title: const Text('Casdoor SSO'),
-      subtitle: Text(linked ? 'Linked' : 'Not linked'),
+      title: Text(l10n.connectedAccountsCasdoorSso),
+      subtitle: Text(
+        linked ? l10n.connectedAccountsLinked : l10n.connectedAccountsNotLinked,
+      ),
       dense: true,
       trailing: linked
           ? Row(
@@ -891,7 +907,7 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
                 if (widget.onBindCasdoor != null)
                   TextButton(
                     onPressed: widget.onBindCasdoor,
-                    child: const Text('Switch'),
+                    child: Text(l10n.connectedAccountsSwitch),
                   ),
                 TextButton(
                   onPressed: widget.onUnlinkCasdoor == null
@@ -903,7 +919,7 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
                           if (mounted) setState(() {});
                         },
                   child: Text(
-                    'Unlink',
+                    l10n.connectedAccountsUnlink,
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.error,
                     ),
@@ -913,7 +929,7 @@ class _ConnectedAccountsSectionState extends State<_ConnectedAccountsSection> {
             )
           : TextButton(
               onPressed: widget.onBindCasdoor,
-              child: const Text('Link Casdoor'),
+              child: Text(l10n.connectedAccountsLinkCasdoor),
             ),
     );
   }
