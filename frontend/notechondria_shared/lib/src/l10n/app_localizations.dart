@@ -1196,11 +1196,19 @@ abstract class AppLocalizations {
 
   String get settingsUsername;
 
+  String get settingsFirstName;
+
+  String get settingsLastName;
+
   String get settingsMotto;
 
   String get settingsSocialLink;
 
   String get settingsSocialLinkInvalid;
+
+  String get settingsUncategorizedFolderName;
+
+  String get settingsUncategorizedFolderHelp;
 
   String get settingsAccountCasdoorNotice;
 
@@ -1375,6 +1383,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No entries at {level} or above.'**
   String debugNoEntriesAtLevel(String level);
+
+  String editorDebugSummary(int drafts, int categories);
+
+  String editorLocalAttachments(String size);
+
+  String get editorAttachmentsOverLimit;
 
   /// No description provided for @logLevelError.
   ///

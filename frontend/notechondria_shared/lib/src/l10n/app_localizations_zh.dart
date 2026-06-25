@@ -641,6 +641,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsUsername => '用户名';
 
   @override
+  String get settingsFirstName => '名';
+
+  @override
+  String get settingsLastName => '姓';
+
+  @override
   String get settingsMotto => '签名';
 
   @override
@@ -648,6 +654,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsSocialLinkInvalid => '必须是有效网址（https://...）';
+
+  @override
+  String get settingsUncategorizedFolderName => '未分类文件夹名称';
+
+  @override
+  String get settingsUncategorizedFolderHelp =>
+      '用于显示没有分类的笔记归属桶。留空时回退为“收件箱”。';
 
   @override
   String get settingsAccountCasdoorNotice =>
@@ -905,6 +918,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String debugNoEntriesAtLevel(String level) {
     return '没有 $level 及以上级别的条目。';
   }
+
+  @override
+  String editorDebugSummary(int drafts, int categories) {
+    return '$drafts 篇本地草稿，$categories 个本地分类。';
+  }
+
+  @override
+  String editorLocalAttachments(String size) {
+    return '本地附件：$size';
+  }
+
+  @override
+  String get editorAttachmentsOverLimit => '附件超过 500 MB——同步以释放空间。';
 
   @override
   String get logLevelError => '错误';

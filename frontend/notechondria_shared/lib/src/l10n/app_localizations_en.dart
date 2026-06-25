@@ -668,6 +668,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsUsername => 'Username';
 
   @override
+  String get settingsFirstName => 'First name';
+
+  @override
+  String get settingsLastName => 'Last name';
+
+  @override
   String get settingsMotto => 'Motto';
 
   @override
@@ -675,6 +681,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSocialLinkInvalid => 'Must be a valid URL (https://...)';
+
+  @override
+  String get settingsUncategorizedFolderName => 'Uncategorized folder name';
+
+  @override
+  String get settingsUncategorizedFolderHelp =>
+      'Label for the bucket that holds notes with no category. Blank falls back to "Inbox".';
 
   @override
   String get settingsAccountCasdoorNotice =>
@@ -942,6 +955,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String debugNoEntriesAtLevel(String level) {
     return 'No entries at $level or above.';
   }
+
+  @override
+  String editorDebugSummary(int drafts, int categories) {
+    return '$drafts local draft(s), $categories local category(ies).';
+  }
+
+  @override
+  String editorLocalAttachments(String size) {
+    return 'Local attachments: $size';
+  }
+
+  @override
+  String get editorAttachmentsOverLimit =>
+      'Attachments exceed 500 MB — sync to free up space.';
 
   @override
   String get logLevelError => 'Error';

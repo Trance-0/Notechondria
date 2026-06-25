@@ -234,9 +234,13 @@
   "settingsSignOut": "Sign out",
   "settingsChangeAvatar": "Change avatar",
   "settingsUsername": "Username",
+  "settingsFirstName": "First name",
+  "settingsLastName": "Last name",
   "settingsMotto": "Motto",
   "settingsSocialLink": "Social link",
   "settingsSocialLinkInvalid": "Must be a valid URL (https://...)",
+  "settingsUncategorizedFolderName": "Uncategorized folder name",
+  "settingsUncategorizedFolderHelp": "Label for the bucket that holds notes with no category. Blank falls back to \"Inbox\".",
   "settingsAccountCasdoorNotice": "Account creation, password change, email change, and per-device session management live on the Casdoor user portal. Casdoor bind / unlink controls are on the Account page.",
   "settingsApiBaseLockedTooltip": "Locked while signed in. Sign out to switch the backend the portal talks to.",
   "settingsApiBaseTooltip": "Points the portal at a different Notechondria backend.",
@@ -336,6 +340,15 @@
   "@debugNoEntriesAtLevel": {
     "placeholders": { "level": { "type": "String" } }
   },
+  "editorDebugSummary": "{drafts} local draft(s), {categories} local category(ies).",
+  "@editorDebugSummary": {
+    "placeholders": { "drafts": { "type": "int" }, "categories": { "type": "int" } }
+  },
+  "editorLocalAttachments": "Local attachments: {size}",
+  "@editorLocalAttachments": {
+    "placeholders": { "size": { "type": "String" } }
+  },
+  "editorAttachmentsOverLimit": "Attachments exceed 500 MB — sync to free up space.",
 
   "logLevelError": "Error",
   "logLevelWarning": "Warning",

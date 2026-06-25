@@ -24,8 +24,9 @@ extension _SettingsPageBuildX on _SettingsPageState {
   /// GitHub"). Each OAuth button spans the full row so it's easy to
   /// hit on mobile and reads as a primary CTA.
   Widget _buildSignedInAccount(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
-    final username = widget.profile?['username']?.toString() ?? 'User';
+    final username = widget.profile?['username']?.toString() ?? l10n.commonUser;
     final displayName = widget.profile?['display_name']?.toString() ?? username;
     final email = widget.profile?['email']?.toString() ?? '';
     final avatarUrl = widget.profile?['image_url']?.toString() ??
@@ -54,8 +55,8 @@ extension _SettingsPageBuildX on _SettingsPageState {
               const Divider(height: 0, indent: 16, endIndent: 16),
               ListTile(
                 leading: const Icon(Icons.person_outline),
-                title: const Text('Personal information'),
-                subtitle: const Text('Avatar, name, motto, social link.'),
+                title: Text(l10n.settingsPersonalInfoTitle),
+                subtitle: Text(l10n.settingsPersonalInfoSubtitle),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.of(context).push(
@@ -68,10 +69,8 @@ extension _SettingsPageBuildX on _SettingsPageState {
               const Divider(height: 0, indent: 16, endIndent: 16),
               ListTile(
                 leading: const Icon(Icons.shield_outlined),
-                title: const Text('Sign in & security'),
-                subtitle: const Text(
-                  'Third-party accounts, email, password.',
-                ),
+                title: Text(l10n.settingsSecurityTitle),
+                subtitle: Text(l10n.settingsSecuritySubtitle),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.of(context).push(
@@ -84,8 +83,8 @@ extension _SettingsPageBuildX on _SettingsPageState {
               const Divider(height: 0, indent: 16, endIndent: 16),
               ListTile(
                 leading: const Icon(Icons.key_outlined),
-                title: const Text('API settings'),
-                subtitle: const Text('MCP API key + endpoint.'),
+                title: Text(l10n.settingsApiTitle),
+                subtitle: Text(l10n.settingsApiSubtitle),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.of(context).push(
@@ -107,7 +106,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
           child: ListTile(
             leading: Icon(Icons.logout, color: scheme.error),
             title: Text(
-              'Logout',
+              l10n.settingsSignOut,
               style: TextStyle(
                 color: scheme.error,
                 fontWeight: FontWeight.w600,
@@ -143,12 +142,13 @@ extension _SettingsPageBuildX on _SettingsPageState {
   // ignore: unused_element
 
   Widget _buildProfileFields(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final avatarUrl = widget.profile?['image_url']?.toString() ??
         widget.settings?['image_url']?.toString();
     final resolvedAvatar = avatarUrl != null && avatarUrl.isNotEmpty
         ? _resolveRemoteUrl(avatarUrl, apiBaseUrl: widget.apiBaseUrl)
         : '';
-    final username = widget.profile?['username']?.toString() ?? 'User';
+    final username = widget.profile?['username']?.toString() ?? l10n.commonUser;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -190,7 +190,11 @@ extension _SettingsPageBuildX on _SettingsPageState {
             TextButton.icon(
               onPressed: _uploadingAvatar ? null : _handleAvatarUpload,
               icon: const Icon(Icons.camera_alt_outlined, size: 18),
-              label: Text(_uploadingAvatar ? 'Uploading...' : 'Change avatar'),
+              label: Text(
+                _uploadingAvatar
+                    ? l10n.commonUploading
+                    : l10n.settingsChangeAvatar,
+              ),
             ),
           ],
         ),
@@ -200,9 +204,9 @@ extension _SettingsPageBuildX on _SettingsPageState {
             Expanded(
               child: TextField(
                 controller: _firstNameController,
-                decoration: const InputDecoration(
-                  labelText: 'First name',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.settingsFirstName,
+                  border: const OutlineInputBorder(),
                 ),
               ),
             ),
@@ -210,9 +214,9 @@ extension _SettingsPageBuildX on _SettingsPageState {
             Expanded(
               child: TextField(
                 controller: _lastNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Last name',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.settingsLastName,
+                  border: const OutlineInputBorder(),
                 ),
               ),
             ),
@@ -221,16 +225,16 @@ extension _SettingsPageBuildX on _SettingsPageState {
         const SizedBox(height: 12),
         TextField(
           controller: _mottoController,
-          decoration: const InputDecoration(
-            labelText: 'Motto',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.settingsMotto,
+            border: const OutlineInputBorder(),
           ),
         ),
         const SizedBox(height: 12),
         TextField(
           controller: _socialController,
           decoration: InputDecoration(
-            labelText: 'Social link',
+            labelText: l10n.settingsSocialLink,
             hintText: 'https://...',
             border: const OutlineInputBorder(),
             errorText: _socialLinkError,
@@ -249,12 +253,10 @@ extension _SettingsPageBuildX on _SettingsPageState {
         // when blank, matching the backend default.
         TextField(
           controller: _uncategorizedFolderNameController,
-          decoration: const InputDecoration(
-            labelText: 'Uncategorized folder name',
-            helperText:
-                'Label for the bucket that holds notes with no category. '
-                'Blank falls back to "Inbox".',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.settingsUncategorizedFolderName,
+            helperText: l10n.settingsUncategorizedFolderHelp,
+            border: const OutlineInputBorder(),
           ),
         ),
       ],
@@ -263,6 +265,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
 
   void _previewAvatar(String imageUrl, String username) {
     if (imageUrl.isEmpty) return;
+    final l10n = AppLocalizations.of(context);
     showDialog<void>(
       context: context,
       builder: (context) => Dialog(
@@ -295,7 +298,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
               padding: const EdgeInsets.only(bottom: 12),
               child: TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Close'),
+                child: Text(l10n.commonClose),
               ),
             ),
           ],
@@ -306,15 +309,18 @@ extension _SettingsPageBuildX on _SettingsPageState {
 
   /// Simplified debug log: local stats and recent UI logs with copy button.
   Widget _buildDebugSection(BuildContext context) {
-    final summary =
-        '${widget.localDraftCount} local draft(s), ${widget.localCourseCount} local category(ies).';
+    final l10n = AppLocalizations.of(context);
+    final summary = l10n.editorDebugSummary(
+      widget.localDraftCount,
+      widget.localCourseCount,
+    );
     final controller = widget.debugLogController;
     if (controller != null) {
       return Column(
         children: [
           DebugLogCard(
             controller: controller,
-            title: AppLocalizations.of(context).debugLogTitle,
+            title: l10n.debugLogTitle,
             summary: summary,
             onCopyLogs: widget.onCopyLogs,
             onPing: () => pingBackend(widget.apiBaseUrl),
@@ -331,7 +337,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              AppLocalizations.of(context).debugLogTitle,
+              l10n.debugLogTitle,
               style: Theme.of(context)
                   .textTheme
                   .titleMedium
@@ -344,7 +350,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
                 TextButton.icon(
                   onPressed: widget.onCopyLogs,
                   icon: const Icon(Icons.copy_all_outlined),
-                  label: const Text('Copy logs'),
+                  label: Text(l10n.debugCopyLogs),
                 ),
               ],
             ),
@@ -352,7 +358,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
             SizedBox(
               height: 260,
               child: widget.uiLogs.isEmpty
-                  ? const Center(child: Text('No frontend logs captured yet.'))
+                  ? Center(child: Text(l10n.debugNoLogs))
                   : ListView.builder(
                       padding: EdgeInsets.zero,
                       itemCount: widget.uiLogs.length,
@@ -418,6 +424,7 @@ class _AttachmentStorageTileState extends State<_AttachmentStorageTile> {
     if (!_loaded || _totalBytes == null || _totalBytes == 0) {
       return const SizedBox.shrink();
     }
+    final l10n = AppLocalizations.of(context);
     final colorScheme = Theme.of(context).colorScheme;
     final overLimit = _totalBytes! > 500 * 1024 * 1024;
     return Padding(
@@ -428,7 +435,7 @@ class _AttachmentStorageTileState extends State<_AttachmentStorageTile> {
               size: 14, color: colorScheme.onSurfaceVariant),
           const SizedBox(width: 6),
           Text(
-            'Local attachments: ${formatBytes(_totalBytes!)}',
+            l10n.editorLocalAttachments(formatBytes(_totalBytes!)),
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
@@ -436,7 +443,7 @@ class _AttachmentStorageTileState extends State<_AttachmentStorageTile> {
           if (overLimit) ...[
             const SizedBox(width: 8),
             Tooltip(
-              message: 'Attachments exceed 500 MB — sync to free up space.',
+              message: l10n.editorAttachmentsOverLimit,
               child: Icon(Icons.warning_amber_rounded,
                   size: 14, color: colorScheme.error),
             ),
