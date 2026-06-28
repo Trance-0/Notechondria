@@ -210,6 +210,7 @@ extension _AppShellInitialDataX on _AppShellState {
           () => widget.client.getActivityWeek(
             _token!,
             startDate: _activityWeekStart.toIso8601String().split('T').first,
+            days: _activityRangeDays,
           ),
         );
       } catch (error) {

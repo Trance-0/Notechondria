@@ -12,6 +12,10 @@ class _LearnerPage extends StatefulWidget {
     required this.isLoadingMore,
     required this.searchQuery,
     required this.isAuthenticated,
+    required this.feedScope,
+    required this.feedSort,
+    required this.feedWindow,
+    required this.onChangeFeedFilters,
     required this.apiBaseUrl,
     required this.onSearchChanged,
     required this.onLoadMore,
@@ -45,6 +49,11 @@ class _LearnerPage extends StatefulWidget {
   final bool isLoadingMore;
   final String searchQuery;
   final bool isAuthenticated;
+  final String feedScope;
+  final String feedSort;
+  final String feedWindow;
+  final void Function({String? scope, String? sort, String? window})
+      onChangeFeedFilters;
   final String? apiBaseUrl;
   final ValueChanged<String> onSearchChanged;
   final Future<void> Function() onLoadMore;
@@ -90,6 +99,15 @@ class _LearnerPageState extends State<_LearnerPage> {
   void initState() {
     super.initState();
     _searchController = TextEditingController(text: widget.searchQuery);
+    // Guests don't go through the authenticated boot load, so kick off the
+    // public-notes fetch the first time the learner tab is shown empty.
+    if (!widget.isAuthenticated &&
+        widget.notes.isEmpty &&
+        widget.onLoadPublicNotes != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.onLoadPublicNotes!();
+      });
+    }
   }
 
   @override
@@ -261,6 +279,14 @@ class _LearnerPageState extends State<_LearnerPage> {
                     OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
               ),
             ),
+            const SizedBox(height: 12),
+            _FeedFilterBar(
+              isAuthenticated: widget.isAuthenticated,
+              scope: widget.feedScope,
+              sort: widget.feedSort,
+              window: widget.feedWindow,
+              onChanged: widget.onChangeFeedFilters,
+            ),
             const SizedBox(height: 16),
             if (widget.isAuthenticated && localDrafts.isNotEmpty) ...[
               Card(
@@ -322,6 +348,8 @@ class _LearnerPageState extends State<_LearnerPage> {
                   child: Text(l10n.feedEmptyLocalLogin),
                 ),
               ),
+            if (!widget.isAuthenticated && localDrafts.isEmpty)
+              const SizedBox(height: 20),
             if (widget.offlineMode &&
                 widget.notes.isEmpty &&
                 widget.isAuthenticated)
@@ -345,6 +373,30 @@ class _LearnerPageState extends State<_LearnerPage> {
                   onExport: () => widget.onExportNote(note),
                   onDelete: () => widget.onDeleteNote(note),
                 ),
+            // Guests still browse the public note feed; the filter bar above
+            // drives the scope/sort/window the backend returns.
+            if (!widget.isAuthenticated) ...[
+              Text(l10n.feedPublicNotes,
+                  style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 12),
+              if (widget.notes.isEmpty && !widget.isLoadingMore)
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(l10n.feedEmptyPersonal),
+                  ),
+                ),
+              for (final note in widget.notes)
+                _LearnerNoteCard(
+                  note: note,
+                  apiBaseUrl: widget.apiBaseUrl,
+                  canEdit: false,
+                  onOpen: () => _openViewer(note),
+                  onEdit: () => _openEditor(note),
+                  onExport: () => widget.onExportNote(note),
+                  onDelete: () => widget.onDeleteNote(note),
+                ),
+            ],
             if (widget.isAuthenticated)
               for (final note in widget.notes)
                 _LearnerNoteCard(
@@ -413,6 +465,120 @@ class _LearnerPageState extends State<_LearnerPage> {
               ),
             ),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Single-row filter bar for the public-notes feed: scope (public / private /
+/// all — private+all are signed-in only), sort (newest / oldest / popular),
+/// and a recency window (3d / 1w / 1m / 1y / all). Wraps to multiple lines on
+/// narrow widths so it never overflows.
+class _FeedFilterBar extends StatelessWidget {
+  const _FeedFilterBar({
+    required this.isAuthenticated,
+    required this.scope,
+    required this.sort,
+    required this.window,
+    required this.onChanged,
+  });
+
+  final bool isAuthenticated;
+  final String scope;
+  final String sort;
+  final String window;
+  final void Function({String? scope, String? sort, String? window}) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Wrap(
+      spacing: 12,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        if (isAuthenticated)
+          _FilterDropdown(
+            label: l10n.feedFilterScope,
+            value: const {'public', 'private', 'all'}.contains(scope)
+                ? scope
+                : 'public',
+            items: {
+              'public': l10n.feedScopePublic,
+              'private': l10n.feedScopePrivate,
+              'all': l10n.feedScopeAll,
+            },
+            onChanged: (value) => onChanged(scope: value),
+          ),
+        _FilterDropdown(
+          label: l10n.feedFilterSort,
+          value: const {'newest', 'oldest', 'popular'}.contains(sort)
+              ? sort
+              : 'newest',
+          items: {
+            'newest': l10n.feedSortNewest,
+            'oldest': l10n.feedSortOldest,
+            'popular': l10n.feedSortPopular,
+          },
+          onChanged: (value) => onChanged(sort: value),
+        ),
+        _FilterDropdown(
+          label: l10n.feedFilterWindow,
+          value: const {'3', '7', '30', '365', 'all'}.contains(window)
+              ? window
+              : 'all',
+          items: {
+            '3': l10n.feedWindow3Days,
+            '7': l10n.feedWindow1Week,
+            '30': l10n.feedWindow1Month,
+            '365': l10n.feedWindow1Year,
+            'all': l10n.feedWindowAllTime,
+          },
+          onChanged: (value) => onChanged(window: value),
+        ),
+      ],
+    );
+  }
+}
+
+class _FilterDropdown extends StatelessWidget {
+  const _FilterDropdown({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String value;
+  final Map<String, String> items;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '$label:',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
+        const SizedBox(width: 6),
+        DropdownButton<String>(
+          value: value,
+          isDense: true,
+          underline: const SizedBox.shrink(),
+          borderRadius: BorderRadius.circular(12),
+          items: [
+            for (final entry in items.entries)
+              DropdownMenuItem(value: entry.key, child: Text(entry.value)),
+          ],
+          onChanged: (value) {
+            if (value != null) onChanged(value);
+          },
         ),
       ],
     );

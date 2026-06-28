@@ -104,12 +104,28 @@ abstract class AppLocalizations {
   /// **'English'**
   String get languageName;
 
+  /// No description provided for @appName.
+  ///
+  /// In en, this message translates to:
+  /// **'Notechondria'**
   String get appName;
 
+  /// No description provided for @appNameEditor.
+  ///
+  /// In en, this message translates to:
+  /// **'Notechondria Editor'**
   String get appNameEditor;
 
+  /// No description provided for @appNamePlanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Notechondria Planner'**
   String get appNamePlanner;
 
+  /// No description provided for @appNamePortal.
+  ///
+  /// In en, this message translates to:
+  /// **'Notechondria Portal'**
   String get appNamePortal;
 
   /// No description provided for @settingsLanguage.
@@ -238,40 +254,112 @@ abstract class AppLocalizations {
   /// **'Loading...'**
   String get commonLoading;
 
+  /// No description provided for @splashStartingEditor.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting Notechondria Editor'**
   String get splashStartingEditor;
 
+  /// No description provided for @splashStartingPlanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting Notechondria Planner'**
   String get splashStartingPlanner;
 
+  /// No description provided for @splashStartingPortal.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting Notechondria Portal'**
   String get splashStartingPortal;
 
+  /// No description provided for @splashLoadingLocalWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading local workspace'**
   String get splashLoadingLocalWorkspace;
 
+  /// No description provided for @splashLoadingLocalPlannerData.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading local planner data'**
   String get splashLoadingLocalPlannerData;
 
+  /// No description provided for @splashLoadingLocalState.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading local state'**
   String get splashLoadingLocalState;
 
+  /// No description provided for @splashRestoringSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Restoring session'**
   String get splashRestoringSession;
 
+  /// No description provided for @splashCompletingSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Completing sign-in'**
   String get splashCompletingSignIn;
 
+  /// No description provided for @splashConnectingToServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting to server'**
   String get splashConnectingToServer;
 
+  /// No description provided for @splashLoadingPublicNotesData.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading public notes data'**
   String get splashLoadingPublicNotesData;
 
+  /// No description provided for @splashLoadingCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading categories'**
   String get splashLoadingCategories;
 
+  /// No description provided for @splashLoadingNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading notes'**
   String get splashLoadingNotes;
 
+  /// No description provided for @localArchiveTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Notechondria archive'**
   String get localArchiveTypeLabel;
 
+  /// No description provided for @commonCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
   String get commonCopy;
 
+  /// No description provided for @commonSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving...'**
   String get commonSaving;
 
+  /// No description provided for @commonUploading.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading...'**
   String get commonUploading;
 
+  /// No description provided for @commonUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'unknown'**
   String get commonUnknown;
 
+  /// No description provided for @commonUser.
+  ///
+  /// In en, this message translates to:
+  /// **'User'**
   String get commonUser;
 
   /// No description provided for @navNavigation.
@@ -297,6 +385,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'New category'**
   String get navNewCategory;
+
+  /// No description provided for @navFrontPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Front page'**
+  String get navFrontPage;
+
+  /// No description provided for @navLearner.
+  ///
+  /// In en, this message translates to:
+  /// **'Learner'**
+  String get navLearner;
+
+  /// No description provided for @navCourse.
+  ///
+  /// In en, this message translates to:
+  /// **'Course'**
+  String get navCourse;
+
+  /// No description provided for @navActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get navActivity;
 
   /// No description provided for @navSettings.
   ///
@@ -427,13 +539,13 @@ abstract class AppLocalizations {
   /// No description provided for @feedScopePrivate.
   ///
   /// In en, this message translates to:
-  /// **'Private notes'**
+  /// **'Private'**
   String get feedScopePrivate;
 
   /// No description provided for @feedScopePublic.
   ///
   /// In en, this message translates to:
-  /// **'Public notes'**
+  /// **'Public'**
   String get feedScopePublic;
 
   /// No description provided for @feedScopeLocalOnly.
@@ -567,6 +679,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Private'**
   String get feedBadgePrivate;
+
+  /// No description provided for @feedScopeAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get feedScopeAll;
+
+  /// No description provided for @feedSortNewest.
+  ///
+  /// In en, this message translates to:
+  /// **'Newest'**
+  String get feedSortNewest;
+
+  /// No description provided for @feedSortOldest.
+  ///
+  /// In en, this message translates to:
+  /// **'Oldest'**
+  String get feedSortOldest;
+
+  /// No description provided for @feedSortPopular.
+  ///
+  /// In en, this message translates to:
+  /// **'Most popular'**
+  String get feedSortPopular;
+
+  /// No description provided for @feedWindow3Days.
+  ///
+  /// In en, this message translates to:
+  /// **'3 days'**
+  String get feedWindow3Days;
+
+  /// No description provided for @feedWindow1Week.
+  ///
+  /// In en, this message translates to:
+  /// **'1 week'**
+  String get feedWindow1Week;
+
+  /// No description provided for @feedWindow1Month.
+  ///
+  /// In en, this message translates to:
+  /// **'1 month'**
+  String get feedWindow1Month;
+
+  /// No description provided for @feedWindow1Year.
+  ///
+  /// In en, this message translates to:
+  /// **'1 year'**
+  String get feedWindow1Year;
+
+  /// No description provided for @feedWindowAllTime.
+  ///
+  /// In en, this message translates to:
+  /// **'All time'**
+  String get feedWindowAllTime;
+
+  /// No description provided for @feedFilterScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Show'**
+  String get feedFilterScope;
+
+  /// No description provided for @feedFilterSort.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort'**
+  String get feedFilterSort;
+
+  /// No description provided for @feedFilterWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Within'**
+  String get feedFilterWindow;
 
   /// No description provided for @feedEmptyCloudSynced.
   ///
@@ -1096,6 +1280,66 @@ abstract class AppLocalizations {
   /// **'Admin-only actions: restore the remote three-course template catalog.'**
   String get settingsDeveloperSubtitle;
 
+  /// No description provided for @settingsDevRestoreTemplatesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore remote template courses'**
+  String get settingsDevRestoreTemplatesTitle;
+
+  /// No description provided for @settingsDevRestoreTemplatesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin-only. Calls the backend to re-seed the three-course template catalog (Inbox / Examples / Templates) with a welcome note in each.'**
+  String get settingsDevRestoreTemplatesSubtitle;
+
+  /// No description provided for @settingsDevImportJournalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Apple Journal ZIP'**
+  String get settingsDevImportJournalTitle;
+
+  /// No description provided for @settingsDevImportJournalSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Experimental local-only import. Creates local drafts in a selected category; cloud sync waits for a manual push.'**
+  String get settingsDevImportJournalSubtitle;
+
+  /// No description provided for @settingsDevClearLegacyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear legacy shared storage'**
+  String get settingsDevClearLegacyTitle;
+
+  /// No description provided for @settingsDevClearLegacySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Removes the pre-0.1.127 unprefixed browser-storage keys left behind when the apps moved to per-app namespaces. Shared across editor / planner / portal; your current notes and settings are unaffected.'**
+  String get settingsDevClearLegacySubtitle;
+
+  /// No description provided for @settingsDevCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'Requires a signed-in admin account. Non-admin sessions will see a server-side error in the banner above without changing any data.'**
+  String get settingsDevCaption;
+
+  /// No description provided for @settingsRestoreStarterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore starter draft'**
+  String get settingsRestoreStarterTitle;
+
+  /// No description provided for @settingsRestoreStarterSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-seeds the welcome draft in the uncategorized bucket. Safe to run any time — only fires when no notes exist locally.'**
+  String get settingsRestoreStarterSubtitle;
+
+  /// No description provided for @settingsLegacyTemplateCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'The legacy three-course template restore (admin-only, requires a cloud session) is now in the Developer section of the main Settings page.'**
+  String get settingsLegacyTemplateCaption;
+
   /// No description provided for @settingsPersonalInfoTitle.
   ///
   /// In en, this message translates to:
@@ -1174,178 +1418,526 @@ abstract class AppLocalizations {
   /// **'API base URL and MCP key.'**
   String get settingsApiSubtitle;
 
+  /// No description provided for @settingsManageAccountPreferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage your account, preferences, and local data.'**
   String get settingsManageAccountPreferences;
 
+  /// No description provided for @settingsLocalOnlyPreferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to sync to the cloud, or keep using local-only preferences below.'**
   String get settingsLocalOnlyPreferences;
 
+  /// No description provided for @settingsCasdoorLinked.
+  ///
+  /// In en, this message translates to:
+  /// **'Casdoor SSO linked.'**
   String get settingsCasdoorLinked;
 
+  /// No description provided for @settingsNoThirdPartyLinked.
+  ///
+  /// In en, this message translates to:
+  /// **'No third-party accounts linked.'**
   String get settingsNoThirdPartyLinked;
 
+  /// No description provided for @settingsBackendOnlineSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Online. API URL: {url}'**
   String settingsBackendOnlineSummary(String url);
 
+  /// No description provided for @settingsBackendOfflineSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline mode is on. API URL: {url}'**
   String settingsBackendOfflineSummary(String url);
 
+  /// No description provided for @settingsLocalDataSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{drafts} draft(s), {courses} course(s) on this device.'**
   String settingsLocalDataSummary(int drafts, int courses);
 
+  /// No description provided for @settingsRecycleBinSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{drafts} synced draft(s) recoverable, {notes} cloud note(s) trashed.'**
   String settingsRecycleBinSummary(int drafts, int notes);
 
+  /// No description provided for @settingsSignOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
   String get settingsSignOut;
 
+  /// No description provided for @settingsChangeAvatar.
+  ///
+  /// In en, this message translates to:
+  /// **'Change avatar'**
   String get settingsChangeAvatar;
 
+  /// No description provided for @settingsUsername.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
   String get settingsUsername;
 
+  /// No description provided for @settingsFirstName.
+  ///
+  /// In en, this message translates to:
+  /// **'First name'**
   String get settingsFirstName;
 
+  /// No description provided for @settingsLastName.
+  ///
+  /// In en, this message translates to:
+  /// **'Last name'**
   String get settingsLastName;
 
+  /// No description provided for @settingsMotto.
+  ///
+  /// In en, this message translates to:
+  /// **'Motto'**
   String get settingsMotto;
 
+  /// No description provided for @settingsSocialLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Social link'**
   String get settingsSocialLink;
 
+  /// No description provided for @settingsSocialLinkInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Must be a valid URL (https://...)'**
   String get settingsSocialLinkInvalid;
 
+  /// No description provided for @settingsUncategorizedFolderName.
+  ///
+  /// In en, this message translates to:
+  /// **'Uncategorized folder name'**
   String get settingsUncategorizedFolderName;
 
+  /// No description provided for @settingsUncategorizedFolderHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Label for the bucket that holds notes with no category. Blank falls back to \"Inbox\".'**
   String get settingsUncategorizedFolderHelp;
 
+  /// No description provided for @settingsAccountCasdoorNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Account creation, password change, email change, and per-device session management live on the Casdoor user portal. Casdoor bind / unlink controls are on the Account page.'**
   String get settingsAccountCasdoorNotice;
 
+  /// No description provided for @settingsApiBaseLockedTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Locked while signed in. Sign out to switch the backend the portal talks to.'**
   String get settingsApiBaseLockedTooltip;
 
+  /// No description provided for @settingsApiBaseTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Points the portal at a different Notechondria backend.'**
   String get settingsApiBaseTooltip;
 
+  /// No description provided for @settingsEditorApiBaseTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Points the editor at a different Notechondria backend. The handshake probe verifies the URL before saving.'**
   String get settingsEditorApiBaseTooltip;
 
+  /// No description provided for @settingsApiBaseApplyCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'Press Enter to apply the URL change. Stored locally and mirrored to the profile on login.'**
   String get settingsApiBaseApplyCaption;
 
+  /// No description provided for @settingsApiBaseApplyLockedCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'Press Enter to apply the URL change. Stored locally and mirrored to your profile on login. Locked while signed in — sign out to switch backends.'**
   String get settingsApiBaseApplyLockedCaption;
 
+  /// No description provided for @settingsMcpKeyCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'The MCP key authenticates the backend Model Context Protocol bridge. Rotate it if you suspect leakage.'**
   String get settingsMcpKeyCaption;
 
+  /// No description provided for @settingsConnectedAccountsCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'Casdoor proxies third-party identities (Google, GitHub, etc.) — configure them on the Casdoor application\'s Providers tab.'**
   String get settingsConnectedAccountsCaption;
 
+  /// No description provided for @plannerSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Planner settings'**
   String get plannerSettingsTitle;
 
+  /// No description provided for @plannerSettingsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'This app keeps planner-focused controls only: login/sync, deadline-ordering preferences, and debug output.'**
   String get plannerSettingsDescription;
 
+  /// No description provided for @plannerLoginSyncTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Login and sync'**
   String get plannerLoginSyncTitle;
 
+  /// No description provided for @plannerLoginSyncHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to sync course plans, module discussion roots, and planner deadlines. Local planner data remains usable while signed out.'**
   String get plannerLoginSyncHelp;
 
+  /// No description provided for @plannerSignedInAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in as {identity}.'**
   String plannerSignedInAs(String identity);
 
+  /// No description provided for @plannerPreferencesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Planner preferences'**
   String get plannerPreferencesTitle;
 
+  /// No description provided for @plannerDeadlineTimeWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Deadline time weight (a)'**
   String get plannerDeadlineTimeWeight;
 
+  /// No description provided for @plannerDeadlineImportanceWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Deadline importance weight (b)'**
   String get plannerDeadlineImportanceWeight;
 
+  /// No description provided for @plannerDeadlineSortHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Deadlines sort by (a × time pressure) × (b × importance). Importance uses the existing event weight.'**
   String get plannerDeadlineSortHelp;
 
+  /// No description provided for @plannerSaveSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Save planner settings'**
   String get plannerSaveSettings;
 
+  /// No description provided for @plannerDebugSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{notes} local note(s), {courses} local course(s).'**
   String plannerDebugSummary(int notes, int courses);
 
+  /// No description provided for @settingsThemeModeMatchSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'Match system'**
   String get settingsThemeModeMatchSystem;
 
+  /// No description provided for @settingsEditorModePickerHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Picks how new notes open by default. You can still switch modes per note from the editor toolbar.'**
   String get settingsEditorModePickerHelp;
 
+  /// No description provided for @settingsThemePresetPickerHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Each preset uses a different seed color for the Material 3 ColorScheme.'**
   String get settingsThemePresetPickerHelp;
 
+  /// No description provided for @settingsThemeModePickerHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Match system follows the device-level Light/Dark toggle. Light and Dark override the system choice.'**
   String get settingsThemeModePickerHelp;
 
+  /// No description provided for @settingsOfflineModeSubtitleShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip every remote fetch on startup; render everything from the local cache.'**
   String get settingsOfflineModeSubtitleShort;
 
+  /// No description provided for @settingsLocalDataCounts.
+  ///
+  /// In en, this message translates to:
+  /// **'{drafts} local draft(s), {courses} local course(s).'**
   String settingsLocalDataCounts(int drafts, int courses);
 
+  /// No description provided for @settingsDownloadLocalData.
+  ///
+  /// In en, this message translates to:
+  /// **'Download local data'**
   String get settingsDownloadLocalData;
 
+  /// No description provided for @settingsDownloadLocalDataSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Exports drafts, courses, settings, and logs as a .nchron archive.'**
   String get settingsDownloadLocalDataSubtitle;
 
+  /// No description provided for @settingsRestoreLocalArchive.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore from local archive'**
   String get settingsRestoreLocalArchive;
 
+  /// No description provided for @settingsRestoreLocalArchiveSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Imports a previously-exported .nchron archive. Replaces existing local data after a confirm dialog.'**
   String get settingsRestoreLocalArchiveSubtitle;
 
+  /// No description provided for @settingsPushLocalCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Push local → cloud'**
   String get settingsPushLocalCloud;
 
+  /// No description provided for @settingsPushLocalCloudSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload local drafts and courses to your cloud account. Requires sign-in.'**
   String get settingsPushLocalCloudSubtitle;
 
+  /// No description provided for @settingsPullCloudLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull cloud → local'**
   String get settingsPullCloudLocal;
 
+  /// No description provided for @settingsPullCloudLocalSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Download notes and courses from the cloud to this device.'**
   String get settingsPullCloudLocalSubtitle;
 
+  /// No description provided for @settingsClearLocalCache.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear local cache'**
   String get settingsClearLocalCache;
 
+  /// No description provided for @settingsClearLocalCacheSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Drops cached API responses but keeps drafts and courses on disk.'**
   String get settingsClearLocalCacheSubtitle;
 
+  /// No description provided for @settingsRemoveLocalData.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove local data'**
   String get settingsRemoveLocalData;
 
+  /// No description provided for @settingsRemoveLocalDataSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Wipes drafts, courses, settings, and logs from this device. Cloud copies are not touched.'**
   String get settingsRemoveLocalDataSubtitle;
 
+  /// No description provided for @settingsRestoreTemplateCourses.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore template courses'**
   String get settingsRestoreTemplateCourses;
 
+  /// No description provided for @settingsRestoreTemplateCoursesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin-only. Re-seeds the three-course template catalog (Inbox / Examples / Templates).'**
   String get settingsRestoreTemplateCoursesSubtitle;
 
+  /// No description provided for @settingsRestoreTemplateCoursesCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'Requires a signed-in admin account. Non-admin sessions will see a server-side error in the banner above without changing any data.'**
   String get settingsRestoreTemplateCoursesCaption;
 
+  /// No description provided for @settingsSyncedLocalDrafts.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced local drafts'**
   String get settingsSyncedLocalDrafts;
 
+  /// No description provided for @settingsLocalRecycleCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} item(s) waiting in the local recycle bin.'**
   String settingsLocalRecycleCount(int count);
 
+  /// No description provided for @settingsCloudRecycleBin.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud recycle bin'**
   String get settingsCloudRecycleBin;
 
+  /// No description provided for @settingsCloudRecycleCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} soft-deleted note(s) on the server.'**
   String settingsCloudRecycleCount(int count);
 
+  /// No description provided for @settingsCloudRecycleSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to manage deleted cloud notes.'**
   String get settingsCloudRecycleSignIn;
 
+  /// No description provided for @settingsRecycleBinEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Recycle bin is empty.'**
   String get settingsRecycleBinEmpty;
 
+  /// No description provided for @settingsEmptyRecycleBin.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty recycle bin'**
   String get settingsEmptyRecycleBin;
 
+  /// No description provided for @apiKeyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'API key'**
   String get apiKeyTitle;
 
+  /// No description provided for @apiKeyNoKey.
+  ///
+  /// In en, this message translates to:
+  /// **'(no API key — click Generate to create one)'**
   String get apiKeyNoKey;
 
+  /// No description provided for @apiKeyRotate.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate'**
   String get apiKeyRotate;
 
+  /// No description provided for @apiKeyGenerate.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate'**
   String get apiKeyGenerate;
 
+  /// No description provided for @apiKeyCopyNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy this key now — it will NOT be shown again:'**
   String get apiKeyCopyNow;
 
+  /// No description provided for @apiKeySavedIt.
+  ///
+  /// In en, this message translates to:
+  /// **'I have saved it'**
   String get apiKeySavedIt;
 
+  /// No description provided for @apiKeyCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'API key copied to clipboard.'**
   String get apiKeyCopied;
 
+  /// No description provided for @apiKeyMcpEndpointCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP endpoint copied to clipboard.'**
   String get apiKeyMcpEndpointCopied;
 
+  /// No description provided for @apiKeyRotateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to rotate API key: Portal.Settings/api_key.rotate — {error}'**
   String apiKeyRotateFailed(String error);
 
+  /// No description provided for @apiKeyHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this key with MCP clients (e.g. Claude Desktop) by setting the Authorization header to \"Bearer ntc_<key>\".'**
   String get apiKeyHelp;
 
+  /// No description provided for @apiKeyMcpEndpoint.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP endpoint:'**
   String get apiKeyMcpEndpoint;
 
+  /// No description provided for @apiKeyCopyMcpEndpoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy MCP endpoint'**
   String get apiKeyCopyMcpEndpoint;
 
+  /// No description provided for @connectedAccountsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected accounts'**
   String get connectedAccountsTitle;
 
+  /// No description provided for @connectedAccountsShadow.
+  ///
+  /// In en, this message translates to:
+  /// **'Casdoor is in shadow mode on this backend; no third-party accounts can be linked.'**
   String get connectedAccountsShadow;
 
+  /// No description provided for @connectedAccountsManageCasdoor.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Casdoor account'**
   String get connectedAccountsManageCasdoor;
 
+  /// No description provided for @connectedAccountsUnavailableHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'If sign-in is unavailable, contact your Notechondria admin (Casdoor backend may be off).'**
   String get connectedAccountsUnavailableHelp;
 
+  /// No description provided for @connectedAccountsCasdoorSso.
+  ///
+  /// In en, this message translates to:
+  /// **'Casdoor SSO'**
   String get connectedAccountsCasdoorSso;
 
+  /// No description provided for @connectedAccountsLinked.
+  ///
+  /// In en, this message translates to:
+  /// **'Linked'**
   String get connectedAccountsLinked;
 
+  /// No description provided for @connectedAccountsNotLinked.
+  ///
+  /// In en, this message translates to:
+  /// **'Not linked'**
   String get connectedAccountsNotLinked;
 
+  /// No description provided for @connectedAccountsSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch'**
   String get connectedAccountsSwitch;
 
+  /// No description provided for @connectedAccountsUnlink.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlink'**
   String get connectedAccountsUnlink;
 
+  /// No description provided for @connectedAccountsLinkCasdoor.
+  ///
+  /// In en, this message translates to:
+  /// **'Link Casdoor'**
   String get connectedAccountsLinkCasdoor;
 
   /// No description provided for @debugLogTitle.
@@ -1384,10 +1976,22 @@ abstract class AppLocalizations {
   /// **'No entries at {level} or above.'**
   String debugNoEntriesAtLevel(String level);
 
+  /// No description provided for @editorDebugSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{drafts} local draft(s), {categories} local category(ies).'**
   String editorDebugSummary(int drafts, int categories);
 
+  /// No description provided for @editorLocalAttachments.
+  ///
+  /// In en, this message translates to:
+  /// **'Local attachments: {size}'**
   String editorLocalAttachments(String size);
 
+  /// No description provided for @editorAttachmentsOverLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachments exceed 500 MB — sync to free up space.'**
   String get editorAttachmentsOverLimit;
 
   /// No description provided for @logLevelError.
@@ -2116,6 +2720,36 @@ abstract class AppLocalizations {
   /// **'Next week'**
   String get activityNextWeek;
 
+  /// No description provided for @activityZoomIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom in'**
+  String get activityZoomIn;
+
+  /// No description provided for @activityZoomOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom out'**
+  String get activityZoomOut;
+
+  /// No description provided for @activityRange3Day.
+  ///
+  /// In en, this message translates to:
+  /// **'3 days'**
+  String get activityRange3Day;
+
+  /// No description provided for @activityRange1Week.
+  ///
+  /// In en, this message translates to:
+  /// **'1 week'**
+  String get activityRange1Week;
+
+  /// No description provided for @activityRange1Month.
+  ///
+  /// In en, this message translates to:
+  /// **'1 month'**
+  String get activityRange1Month;
+
   /// No description provided for @activityCreateEvent.
   ///
   /// In en, this message translates to:
@@ -2200,64 +2834,184 @@ abstract class AppLocalizations {
   /// **'Subscribed calendar'**
   String get activitySubscribedCalendar;
 
+  /// No description provided for @mcpSkillCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'skill.md copied to clipboard.'**
   String get mcpSkillCopied;
 
+  /// No description provided for @mcpSkillTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent skill (skill.md)'**
   String get mcpSkillTitle;
 
+  /// No description provided for @mcpSkillDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal playbook for MCP-connected agents. Use this to describe where to pull notes from (e.g. external sites like notenextra.trance-0.com), how to format imports, which files to export, and where to publish them. Sent verbatim as the `instructions` field of the MCP initialize response.'**
   String get mcpSkillDescription;
 
+  /// No description provided for @mcpSkillHint.
+  ///
+  /// In en, this message translates to:
+  /// **'# Import\n- Pull notes from notenextra.trance-0.com once a day...\n\n# Export\n- Mirror to GitHub Gist as YAML+markdown.\n\n# Format\n- Wrap math in \$...\$. Tag deadlines with #deadline.'**
   String get mcpSkillHint;
 
+  /// No description provided for @mcpSkillUnsavedChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'unsaved changes'**
   String get mcpSkillUnsavedChanges;
 
+  /// No description provided for @githubSyncTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Experimental — GitHub Sync'**
   String get githubSyncTitle;
 
+  /// No description provided for @githubSyncDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Push your full account (profile, settings, MCP skill, courses, notes, custom meta, planner events) to a GitHub repo you own so you can recover everything if our server is wiped. Static assets we host (avatars, attachments, cover images) are referenced by URL, not committed. See docs/integrations/github-sync.md for the full flow.'**
   String get githubSyncDescription;
 
+  /// No description provided for @githubSyncInstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Install Notechondria GitHub App'**
   String get githubSyncInstall;
 
+  /// No description provided for @githubSyncInstallHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'After approving the install, GitHub redirects back here and we persist your installation id automatically. The app stays installed until you remove it from your GitHub settings.'**
   String get githubSyncInstallHelp;
 
+  /// No description provided for @githubSyncInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub App installed.'**
   String get githubSyncInstalled;
 
+  /// No description provided for @githubSyncInstalledOn.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub App installed on @{account}.'**
   String githubSyncInstalledOn(String account);
 
+  /// No description provided for @githubSyncNoRepos.
+  ///
+  /// In en, this message translates to:
+  /// **'No repositories visible to this installation. Open GitHub settings → Applications → Notechondria data sync, and grant access to a repo.'**
   String get githubSyncNoRepos;
 
+  /// No description provided for @githubSyncTargetRepo.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync target repository'**
   String get githubSyncTargetRepo;
 
+  /// No description provided for @githubSyncIncludeAssets.
+  ///
+  /// In en, this message translates to:
+  /// **'Include assets'**
   String get githubSyncIncludeAssets;
 
+  /// No description provided for @githubSyncIncludeAssetsOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Avatar, cover images, and attachments are inlined under assets/. Subject to per-file (50 MB) and per-push (200 MB) caps.'**
   String get githubSyncIncludeAssetsOn;
 
+  /// No description provided for @githubSyncIncludeAssetsOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Static assets stay referenced by URL only. Faster push, but a fresh server can\'t recover the bytes.'**
   String get githubSyncIncludeAssetsOff;
 
+  /// No description provided for @githubSyncPushNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Push now'**
   String get githubSyncPushNow;
 
+  /// No description provided for @githubSyncDisconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect'**
   String get githubSyncDisconnect;
 
+  /// No description provided for @githubSyncLastPush.
+  ///
+  /// In en, this message translates to:
+  /// **'Last push: {sha}'**
   String githubSyncLastPush(String sha);
 
+  /// No description provided for @githubSyncLastPushAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Last push at {time}.'**
   String githubSyncLastPushAt(String time);
 
+  /// No description provided for @githubSyncSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to enable GitHub Sync.'**
   String get githubSyncSignIn;
 
+  /// No description provided for @githubSyncLoadStatusFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot load GitHub Sync status: Frontend.GithubSync/status — {error}'**
   String githubSyncLoadStatusFailed(String error);
 
+  /// No description provided for @githubSyncSelectRepositoryFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot select repository: Frontend.GithubSync/repository.select — {error}'**
   String githubSyncSelectRepositoryFailed(String error);
 
+  /// No description provided for @githubSyncPushFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub Sync push failed: Frontend.GithubSync/push — {error}'**
   String githubSyncPushFailed(String error);
 
+  /// No description provided for @githubSyncPushed.
+  ///
+  /// In en, this message translates to:
+  /// **'Pushed to GitHub: Frontend.GithubSync/push — commit {sha}.'**
   String githubSyncPushed(String sha);
 
+  /// No description provided for @githubSyncDisconnectFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot disconnect GitHub Sync: Frontend.GithubSync/disconnect — {error}'**
   String githubSyncDisconnectFailed(String error);
 
+  /// No description provided for @githubSyncInstallMissingUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot install GitHub App: Frontend.GithubSync/install — no install_url configured.'**
   String get githubSyncInstallMissingUrl;
 
+  /// No description provided for @githubSyncInstallInvalidUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot install GitHub App: Frontend.GithubSync/install — install_url is not a valid http(s) URL.'**
   String get githubSyncInstallInvalidUrl;
 
+  /// No description provided for @githubSyncInstallCompleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot complete GitHub App install: Frontend.GithubSync/install.callback — {error}'**
   String githubSyncInstallCompleteFailed(String error);
 
+  /// No description provided for @githubSyncInstallUrlMissingHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Operator note: GITHUB_DATA_SYNC_APP_INSTALL_URL is not configured on this backend. See docs/integrations/github-sync.md for the env-var contract.'**
   String get githubSyncInstallUrlMissingHelp;
 
   /// No description provided for @courseObjectives.

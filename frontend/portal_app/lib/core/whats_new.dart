@@ -41,6 +41,22 @@ const _kFeatureUpdates = <FeatureUpdate>[
         'between English and 简体中文, or follow your device default.',
     icon: Icons.language_outlined,
   ),
+  FeatureUpdate(
+    version: '0.1.158',
+    title: 'A richer Activity calendar',
+    description: 'Switch the calendar between 3 days, 1 week and 1 month, '
+        'zoom the timeline with Ctrl/⌘ + scroll, long-press-drag to create '
+        'an event, and tap an event to see its details.',
+    icon: Icons.calendar_view_week_outlined,
+  ),
+  FeatureUpdate(
+    version: '0.1.158',
+    title: 'Browse and sort public notes',
+    description: 'The Learner feed now shows public notes (even when signed '
+        'out) with filters for scope, newest / oldest / most popular, and a '
+        'time window.',
+    icon: Icons.sort_outlined,
+  ),
 ];
 
 extension _AppShellWhatsNewX on _AppShellState {

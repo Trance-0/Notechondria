@@ -33,15 +33,25 @@ extension _AppShellNoteLoadingX on _AppShellState {
     }
   }
 
+  /// Applies a learner-feed filter change (scope / sort / window) and
+  /// reloads the public-notes section from the first page.
+  Future<void> _setLearnerFilters({
+    String? scope,
+    String? sort,
+    String? window,
+  }) async {
+    _learnerScope = scope ?? _learnerScope;
+    _learnerSort = sort ?? _learnerSort;
+    _learnerWindow = window ?? _learnerWindow;
+    refreshState();
+    await _loadLearnerNotes(reset: true);
+  }
+
   Future<void> _loadLearnerNotes({bool reset = false, String? query}) async {
-    if (_token == null || _token!.isEmpty) {
-      _learnerSearchQuery = query ?? _learnerSearchQuery;
-      refreshState();
-      return;
-    }
     if (_isLoadingMoreNotes) {
       return;
     }
+    final signedIn = _token != null && _token!.isNotEmpty;
     final effectiveQuery = query ?? _learnerSearchQuery;
     final nextOffset = reset ? 0 : _learnerNotesOffset;
     _isLoadingMoreNotes = true;
@@ -50,11 +60,17 @@ extension _AppShellNoteLoadingX on _AppShellState {
     }
     refreshState();
     try {
+      // Signed-out visitors get the public feed (the backend forces
+      // is_public for anonymous requests regardless of scope), so the
+      // public note section is never empty for guests.
       final page = await widget.client.listNotes(
         token: _token,
         query: effectiveQuery,
         offset: nextOffset,
         limit: 20,
+        scope: signedIn ? _learnerScope : 'public',
+        sort: _learnerSort,
+        window: _learnerWindow,
       );
       final rows = (page['results'] as List<dynamic>? ?? const [])
           .map((item) => Map<String, dynamic>.from(item as Map))

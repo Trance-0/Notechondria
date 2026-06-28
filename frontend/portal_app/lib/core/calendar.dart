@@ -11,6 +11,7 @@ extension _AppShellCalendarX on _AppShellState {
     final week = await widget.client.getActivityWeek(
       token,
       startDate: _activityWeekStart.toIso8601String().split('T').first,
+      days: _activityRangeDays,
     );
     _calendarFeeds = feeds;
     _activityWeek = week;

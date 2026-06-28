@@ -320,6 +320,13 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                                                               vertical: true,
                                                               slotExtent:
                                                                   _hourHeight,
+                                                              onTap: () =>
+                                                                  _showCalendarEventDetails(
+                                                                context,
+                                                                Map<String,
+                                                                    dynamic>.from(
+                                                                    event),
+                                                              ),
                                                             ),
                                                         ],
                                                       ),

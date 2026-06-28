@@ -299,18 +299,21 @@ extension _AppShellSettingsActionsX on _AppShellState {
     }
   }
 
-  Future<void> _loadActivityWeek({DateTime? startDate}) async {
+  Future<void> _loadActivityWeek({DateTime? startDate, int? rangeDays}) async {
     final token = _token;
     if (token == null || token.isEmpty) {
       return;
     }
     final effectiveStart = _dateOnly(startDate ?? _activityWeekStart);
+    final effectiveRange = rangeDays ?? _activityRangeDays;
     try {
       final week = await widget.client.getActivityWeek(
         token,
         startDate: effectiveStart.toIso8601String().split('T').first,
+        days: effectiveRange,
       );
       _activityWeekStart = effectiveStart;
+      _activityRangeDays = effectiveRange;
       _activityWeek = week;
       refreshState();
       log(

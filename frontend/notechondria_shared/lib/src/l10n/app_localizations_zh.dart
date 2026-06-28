@@ -153,6 +153,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get navNewCategory => '新建分类';
 
   @override
+  String get navFrontPage => '首页';
+
+  @override
+  String get navLearner => '学习';
+
+  @override
+  String get navCourse => '课程';
+
+  @override
+  String get navActivity => '活动';
+
+  @override
   String get navSettings => '设置';
 
   @override
@@ -217,10 +229,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get feedScopePersonal => '个人笔记';
 
   @override
-  String get feedScopePrivate => '私密笔记';
+  String get feedScopePrivate => '私密';
 
   @override
-  String get feedScopePublic => '公开笔记';
+  String get feedScopePublic => '公开';
 
   @override
   String get feedScopeLocalOnly => '仅本地草稿';
@@ -287,6 +299,42 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get feedBadgePrivate => '私密';
+
+  @override
+  String get feedScopeAll => '全部';
+
+  @override
+  String get feedSortNewest => '最新';
+
+  @override
+  String get feedSortOldest => '最早';
+
+  @override
+  String get feedSortPopular => '最热门';
+
+  @override
+  String get feedWindow3Days => '3 天';
+
+  @override
+  String get feedWindow1Week => '1 周';
+
+  @override
+  String get feedWindow1Month => '1 个月';
+
+  @override
+  String get feedWindow1Year => '1 年';
+
+  @override
+  String get feedWindowAllTime => '全部时间';
+
+  @override
+  String get feedFilterScope => '显示';
+
+  @override
+  String get feedFilterSort => '排序';
+
+  @override
+  String get feedFilterWindow => '时间范围';
 
   @override
   String get feedEmptyCloudSynced => '还没有已同步的云端笔记。同步一篇本地草稿或新建一篇笔记。';
@@ -561,6 +609,41 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsDeveloperSubtitle => '仅管理员操作：恢复远端三门课程的模板目录。';
 
   @override
+  String get settingsDevRestoreTemplatesTitle => '恢复远端模板课程';
+
+  @override
+  String get settingsDevRestoreTemplatesSubtitle =>
+      '仅管理员。调用后端重新生成三门课程的模板目录（收件箱／示例／模板），并在每门课程中放入一条欢迎笔记。';
+
+  @override
+  String get settingsDevImportJournalTitle => '导入 Apple Journal ZIP';
+
+  @override
+  String get settingsDevImportJournalSubtitle =>
+      '实验性的本地导入。在所选分类中创建本地草稿；云端同步需手动推送。';
+
+  @override
+  String get settingsDevClearLegacyTitle => '清除旧版共享存储';
+
+  @override
+  String get settingsDevClearLegacySubtitle =>
+      '移除 0.1.127 之前未加前缀的浏览器存储键（在应用切换到各自命名空间后遗留）。在编辑器／规划器／门户之间共享；不会影响你当前的笔记和设置。';
+
+  @override
+  String get settingsDevCaption => '需要已登录的管理员账户。非管理员会话会在上方横幅看到服务端错误，但不会更改任何数据。';
+
+  @override
+  String get settingsRestoreStarterTitle => '恢复初始草稿';
+
+  @override
+  String get settingsRestoreStarterSubtitle =>
+      '在未分类区重新生成欢迎草稿。任何时候运行都安全——仅在本地没有任何笔记时触发。';
+
+  @override
+  String get settingsLegacyTemplateCaption =>
+      '旧版的三门课程模板恢复（仅管理员，需云端会话）现已移至主设置页的“开发者”部分。';
+
+  @override
   String get settingsPersonalInfoTitle => '个人信息';
 
   @override
@@ -659,23 +742,20 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsUncategorizedFolderName => '未分类文件夹名称';
 
   @override
-  String get settingsUncategorizedFolderHelp =>
-      '用于显示没有分类的笔记归属桶。留空时回退为“收件箱”。';
+  String get settingsUncategorizedFolderHelp => '用于显示没有分类的笔记归属桶。留空时回退为“收件箱”。';
 
   @override
   String get settingsAccountCasdoorNotice =>
       '账户创建、密码修改、邮箱修改和各设备会话管理都在 Casdoor 用户门户中完成。Casdoor 绑定 / 解绑控件位于账户页面。';
 
   @override
-  String get settingsApiBaseLockedTooltip =>
-      '登录期间已锁定。退出登录后可切换门户连接的后端。';
+  String get settingsApiBaseLockedTooltip => '登录期间已锁定。退出登录后可切换门户连接的后端。';
 
   @override
   String get settingsApiBaseTooltip => '将门户指向另一个记粒体后端。';
 
   @override
-  String get settingsEditorApiBaseTooltip =>
-      '将编辑器指向另一个记粒体后端。握手探测会在保存前验证 URL。';
+  String get settingsEditorApiBaseTooltip => '将编辑器指向另一个记粒体后端。握手探测会在保存前验证 URL。';
 
   @override
   String get settingsApiBaseApplyCaption =>
@@ -697,8 +777,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get plannerSettingsTitle => '规划器设置';
 
   @override
-  String get plannerSettingsDescription =>
-      '此应用仅保留规划相关控制：登录/同步、截止日期排序偏好和调试输出。';
+  String get plannerSettingsDescription => '此应用仅保留规划相关控制：登录/同步、截止日期排序偏好和调试输出。';
 
   @override
   String get plannerLoginSyncTitle => '登录与同步';
@@ -744,8 +823,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsThemePresetPickerHelp => '每个预设使用不同种子色生成 Material 3 配色。';
 
   @override
-  String get settingsThemeModePickerHelp =>
-      '跟随系统会使用设备级浅色 / 深色设置。浅色和深色会覆盖系统选择。';
+  String get settingsThemeModePickerHelp => '跟随系统会使用设备级浅色 / 深色设置。浅色和深色会覆盖系统选择。';
 
   @override
   String get settingsOfflineModeSubtitleShort => '启动时跳过所有远程获取；完全从本地缓存渲染。';
@@ -790,8 +868,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsRemoveLocalData => '移除本地数据';
 
   @override
-  String get settingsRemoveLocalDataSubtitle =>
-      '从此设备清除草稿、课程、设置和日志。云端副本不受影响。';
+  String get settingsRemoveLocalDataSubtitle => '从此设备清除草稿、课程、设置和日志。云端副本不受影响。';
 
   @override
   String get settingsRestoreTemplateCourses => '恢复模板课程';
@@ -860,7 +937,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get apiKeyHelp =>
-      '在 MCP 客户端（例如 Claude Desktop）中使用此密钥，将 Authorization 请求头设为 "Bearer ntc_<key>"。';
+      '在 MCP 客户端（例如 Claude Desktop）中使用此密钥，将 Authorization 请求头设为 \"Bearer ntc_<key>\"。';
 
   @override
   String get apiKeyMcpEndpoint => 'MCP 端点：';
@@ -1320,6 +1397,21 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get activityNextWeek => '下一周';
+
+  @override
+  String get activityZoomIn => '放大';
+
+  @override
+  String get activityZoomOut => '缩小';
+
+  @override
+  String get activityRange3Day => '3 天';
+
+  @override
+  String get activityRange1Week => '1 周';
+
+  @override
+  String get activityRange1Month => '1 个月';
 
   @override
   String get activityCreateEvent => '创建事件';

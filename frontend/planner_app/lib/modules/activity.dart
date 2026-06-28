@@ -310,18 +310,22 @@ class _DeadlineList extends StatelessWidget {
       itemBuilder: (context, index) {
         final event = deadlines[index];
         final urgency = (event['urgency_score'] as num?)?.toDouble() ?? 0;
+        final isCompleted = event['is_completed'] == true;
         return Card(
-          child: CheckboxListTile(
-            value: event['is_completed'] == true,
+          child: Opacity(
+            opacity: isCompleted ? 0.6 : 1,
+            child: CheckboxListTile(
+            value: isCompleted,
             onChanged: (value) =>
                 onTogglePlannerEventCompletion(event, value ?? false),
             controlAffinity: ListTileControlAffinity.leading,
             title: Text(
               event['title']?.toString() ?? 'Deadline',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    decoration:
+                        isCompleted ? TextDecoration.lineThrough : null,
+                  ),
             ),
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 6),
@@ -350,6 +354,7 @@ class _DeadlineList extends StatelessWidget {
                 ],
               ),
             ),
+          ),
           ),
         );
       },

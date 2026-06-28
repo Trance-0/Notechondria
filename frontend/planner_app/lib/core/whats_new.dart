@@ -48,6 +48,14 @@ const _kFeatureUpdates = <FeatureUpdate>[
         'between English and 简体中文, or follow your device default.',
     icon: Icons.language_outlined,
   ),
+  FeatureUpdate(
+    version: '0.1.158',
+    title: 'Completed events stay put',
+    description: 'Checking a deadline in the list now marks it complete in '
+        'place (struck-through) instead of making it disappear, and event '
+        'tiles are readable in dark mode and tappable for details.',
+    icon: Icons.task_alt_outlined,
+  ),
 ];
 
 extension _AppShellWhatsNewX on _AppShellState {

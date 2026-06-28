@@ -283,6 +283,17 @@ class _AppShellState extends State<AppShell>
   Map<String, dynamic> _localStats = _LocalAppStore.defaultStats();
   Map<String, dynamic> _localCache = _LocalAppStore.defaultCache();
   DateTime _activityWeekStart = _dateOnly(DateTime.now());
+  // Number of days the horizontal activity calendar pulls + renders. The
+  // 3-day / 1-week / 1-month range selector swaps this; the backend clamps
+  // it to {3, 7, 30}.
+  int _activityRangeDays = 7;
+  // Learner / public-notes feed filters. `_learnerScope` is one of
+  // public | private | all (signed-in only; guests are forced to public);
+  // `_learnerSort` is newest | oldest | popular; `_learnerWindow` is a
+  // recency bound 3 | 7 | 30 | 365 | all.
+  String _learnerScope = 'public';
+  String _learnerSort = 'newest';
+  String _learnerWindow = 'all';
   bool _hasMoreLearnerNotes = true;
   bool _isLoadingMoreNotes = false;
   bool _coursePanelExpanded = true;
@@ -316,6 +327,26 @@ class _AppShellState extends State<AppShell>
     NavigationDestination(
         icon: Icon(Icons.settings_outlined), label: 'Settings'),
   ];
+
+  // `_titles`/`_destinations` stay const for index math + icons; the
+  // human-visible labels are resolved per-locale here so the nav rail and
+  // bottom bar localize like the rest of the shell.
+  String _navTitle(AppLocalizations l10n, int index) {
+    switch (index) {
+      case 0:
+        return l10n.navFrontPage;
+      case 1:
+        return l10n.navLearner;
+      case 2:
+        return l10n.navCourse;
+      case 3:
+        return l10n.navActivity;
+      case 4:
+        return l10n.navSettings;
+      default:
+        return _titles[index];
+    }
+  }
 
   List<int> get _visibleIndices {
     final visible = widget.visibleIndices
@@ -483,11 +514,12 @@ class _AppShellState extends State<AppShell>
   }
 
   Widget _buildCompactScaffold(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
         title: _showCompactPageHeader(_selectedIndex)
-            ? Text(_titles[_selectedIndex])
+            ? Text(_navTitle(l10n, _selectedIndex))
             : null,
         backgroundColor: Colors.transparent,
       ),
@@ -496,7 +528,10 @@ class _AppShellState extends State<AppShell>
         selectedIndex: _selectedNavIndex,
         onDestinationSelected: _handleVisibleDestinationSelected,
         destinations: _visibleIndices
-            .map((index) => _destinations[index])
+            .map((index) => NavigationDestination(
+                  icon: _destinations[index].icon,
+                  label: _navTitle(l10n, index),
+                ))
             .toList(growable: false),
       ),
     );
@@ -536,14 +571,6 @@ class _AppShellState extends State<AppShell>
                                 fontWeight: FontWeight.w800,
                               ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Wide layout',
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
-                        ),
                       ],
                     ),
                   ),
@@ -556,7 +583,7 @@ class _AppShellState extends State<AppShell>
                               in _visibleIndices.where((index) => index != 4))
                             SidebarItem(
                               icon: (_destinations[index].icon as Icon).icon!,
-                              label: _titles[index],
+                              label: _navTitle(l10n, index),
                               selected: _selectedIndex == index,
                               onTap: () => _selectActualIndex(index),
                             ),
@@ -609,7 +636,7 @@ class _AppShellState extends State<AppShell>
                     Padding(
                       padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
                       child: Text(
-                        _titles[_selectedIndex],
+                        _navTitle(l10n, _selectedIndex),
                         style:
                             Theme.of(context).textTheme.headlineSmall?.copyWith(
                                   fontWeight: FontWeight.w700,
@@ -743,6 +770,11 @@ class _AppShellState extends State<AppShell>
           isLoadingMore: _isLoadingMoreNotes,
           searchQuery: _learnerSearchQuery,
           isAuthenticated: _token != null && _token!.isNotEmpty,
+          feedScope: _learnerScope,
+          feedSort: _learnerSort,
+          feedWindow: _learnerWindow,
+          onChangeFeedFilters: ({scope, sort, window}) =>
+              _setLearnerFilters(scope: scope, sort: sort, window: window),
           apiBaseUrl: _localSettings['api_base_url']?.toString() ??
               _httpClient?.baseUrl,
           onSearchChanged: (value) =>
@@ -796,15 +828,18 @@ class _AppShellState extends State<AppShell>
           activityWeek: _activityWeek,
           isAuthenticated: _token != null && _token!.isNotEmpty,
           plannerEvents: _plannerEvents,
+          rangeDays: _activityRangeDays,
           onCreatePlannerEvent: _createPlannerEvent,
           onImportCalendar: _importCalendarFeed,
           onSubscribeCalendar: _subscribeCalendarFeed,
           onNavigateWeek: (direction) => _loadActivityWeek(
-            startDate: _activityWeekStart.add(Duration(days: direction * 7)),
+            startDate:
+                _activityWeekStart.add(Duration(days: direction * _activityRangeDays)),
           ),
           onShiftStartDay: (dayDelta) => _loadActivityWeek(
             startDate: _activityWeekStart.add(Duration(days: dayDelta)),
           ),
+          onChangeRange: (days) => _loadActivityWeek(rangeDays: days),
           onTogglePlannerEventCompletion: _togglePlannerEventCompletion,
         );
       case 4:

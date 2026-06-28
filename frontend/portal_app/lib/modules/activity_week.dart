@@ -4,13 +4,24 @@ part of notechondria_frontend;
 class _WideWeekCalendar extends StatefulWidget {
   const _WideWeekCalendar({
     required this.days,
+    required this.rangeDays,
     required this.onNavigateWeek,
     required this.onShiftStartDay,
+    required this.onChangeRange,
+    required this.onCreatePlannerEvent,
   });
 
   final List<Map<String, dynamic>> days;
+  final int rangeDays;
   final Future<void> Function(int direction) onNavigateWeek;
   final Future<void> Function(int dayDelta) onShiftStartDay;
+  final Future<void> Function(int days) onChangeRange;
+  final Future<ActionFeedback> Function(
+    String title,
+    DateTime eventDate,
+    int difficultyWeight,
+    String description,
+  ) onCreatePlannerEvent;
 
   @override
   State<_WideWeekCalendar> createState() => _WideWeekCalendarState();
@@ -18,7 +29,9 @@ class _WideWeekCalendar extends StatefulWidget {
 
 class _WideWeekCalendarState extends State<_WideWeekCalendar>
     with SingleTickerProviderStateMixin {
-  static const double _hourHeight = 68.0;
+  static const double _defaultHourHeight = 68.0;
+  static const double _minHourHeight = 32.0;
+  static const double _maxHourHeight = 140.0;
   static const double _labelWidth = 72.0;
   static const Duration _settleDuration = Duration(milliseconds: 220);
 
@@ -27,6 +40,81 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
   Animation<double>? _offsetAnimation;
   double _dragOffset = 0;
   bool _transitioning = false;
+
+  // Scroll-to-zoom: hour row height, adjusted by Ctrl/⌘ + wheel and the
+  // zoom buttons. Kept in [_minHourHeight, _maxHourHeight].
+  double _hourHeight = _defaultHourHeight;
+
+  // Long-press-and-drag to create: while a press-drag is active on a day
+  // column we paint a selection band and, on release, open the create
+  // dialog prefilled with the dragged time range. Long-press (not an
+  // immediate drag) is used so it never fights the vertical scroll view.
+  int? _createDayIndex;
+  double? _createStartY;
+  double? _createEndY;
+
+  void _zoom(double delta) {
+    setState(() {
+      _hourHeight = (_hourHeight + delta).clamp(_minHourHeight, _maxHourHeight);
+    });
+  }
+
+  void _handlePointerSignal(PointerSignalEvent event) {
+    if (event is! PointerScrollEvent) {
+      return;
+    }
+    final keys = HardwareKeyboard.instance.logicalKeysPressed;
+    final zooming = keys.contains(LogicalKeyboardKey.controlLeft) ||
+        keys.contains(LogicalKeyboardKey.controlRight) ||
+        keys.contains(LogicalKeyboardKey.metaLeft) ||
+        keys.contains(LogicalKeyboardKey.metaRight);
+    if (!zooming) {
+      return; // let the vertical scroll view handle plain wheel scrolling
+    }
+    _zoom(event.scrollDelta.dy < 0 ? 8 : -8);
+  }
+
+  int _minutesFromLocalY(double localY) {
+    final minutes = ((localY / _hourHeight) * 60).round();
+    return minutes.clamp(0, 24 * 60 - 1);
+  }
+
+  Future<void> _commitCreateDrag(int dayIndex) async {
+    final startY = _createStartY;
+    final endY = _createEndY;
+    setState(() {
+      _createDayIndex = null;
+      _createStartY = null;
+      _createEndY = null;
+    });
+    if (startY == null || endY == null) {
+      return;
+    }
+    if (dayIndex < 0 || dayIndex >= widget.days.length) {
+      return;
+    }
+    final dateRaw = widget.days[dayIndex]['date']?.toString() ?? '';
+    final date = DateTime.tryParse(dateRaw);
+    if (date == null) {
+      return;
+    }
+    final startMinutes = _minutesFromLocalY(math.min(startY, endY));
+    final start = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      startMinutes ~/ 60,
+      startMinutes % 60,
+    );
+    if (!mounted) {
+      return;
+    }
+    await _showCreatePlannerEventDialog(
+      context,
+      widget.onCreatePlannerEvent,
+      initialDateTime: start,
+    );
+  }
 
   @override
   void initState() {
@@ -178,12 +266,14 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
         child: LayoutBuilder(
           builder: (context, constraints) {
             final bodyWidth = constraints.maxWidth;
-            return Stack(
+            return Listener(
+              onPointerSignal: _handlePointerSignal,
+              child: Stack(
               children: [
                 Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+                      padding: const EdgeInsets.fromLTRB(24, 12, 24, 10),
                       decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(color: borderColor),
@@ -191,6 +281,10 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                       ),
                       child: Row(
                         children: [
+                          _ActivityRangeSelector(
+                            rangeDays: widget.rangeDays,
+                            onChanged: _transitioning ? null : widget.onChangeRange,
+                          ),
                           Expanded(
                             child: Text(
                               rangeLabel,
@@ -200,6 +294,20 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                               ),
                               textAlign: TextAlign.center,
                             ),
+                          ),
+                          IconButton(
+                            tooltip: AppLocalizations.of(context).activityZoomOut,
+                            onPressed: _hourHeight <= _minHourHeight
+                                ? null
+                                : () => _zoom(-12),
+                            icon: const Icon(Icons.zoom_out),
+                          ),
+                          IconButton(
+                            tooltip: AppLocalizations.of(context).activityZoomIn,
+                            onPressed: _hourHeight >= _maxHourHeight
+                                ? null
+                                : () => _zoom(12),
+                            icon: const Icon(Icons.zoom_in),
                           ),
                         ],
                       ),
@@ -249,7 +357,9 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                                     Expanded(
                                       child: Row(
                                         children: [
-                                          for (final day in days)
+                                          for (var dayIndex = 0;
+                                              dayIndex < days.length;
+                                              dayIndex++)
                                             Expanded(
                                               child: Container(
                                                 decoration: BoxDecoration(
@@ -274,7 +384,7 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                                                       ),
                                                       child: Text(
                                                         _formatWeekDay(
-                                                          day['date']
+                                                          days[dayIndex]['date']
                                                                   ?.toString() ??
                                                               '',
                                                         ),
@@ -282,7 +392,37 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                                                     ),
                                                     SizedBox(
                                                       height: totalHeight,
-                                                      child: Stack(
+                                                      child: GestureDetector(
+                                                        behavior: HitTestBehavior
+                                                            .opaque,
+                                                        onLongPressStart:
+                                                            (details) {
+                                                          setState(() {
+                                                            _createDayIndex =
+                                                                dayIndex;
+                                                            _createStartY =
+                                                                details
+                                                                    .localPosition
+                                                                    .dy;
+                                                            _createEndY = details
+                                                                .localPosition.dy;
+                                                          });
+                                                        },
+                                                        onLongPressMoveUpdate:
+                                                            (details) {
+                                                          if (_createDayIndex !=
+                                                              dayIndex) {
+                                                            return;
+                                                          }
+                                                          setState(() {
+                                                            _createEndY = details
+                                                                .localPosition.dy;
+                                                          });
+                                                        },
+                                                        onLongPressEnd: (_) =>
+                                                            _commitCreateDrag(
+                                                                dayIndex),
+                                                        child: Stack(
                                                         children: [
                                                           for (var hour = 0;
                                                               hour < 24;
@@ -308,8 +448,46 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                                                                 ),
                                                               ),
                                                             ),
-                                                          for (final event in (day[
-                                                                      'events']
+                                                          if (_createDayIndex ==
+                                                                  dayIndex &&
+                                                              _createStartY !=
+                                                                  null &&
+                                                              _createEndY != null)
+                                                            Positioned(
+                                                              top: math.min(
+                                                                  _createStartY!,
+                                                                  _createEndY!),
+                                                              left: 2,
+                                                              right: 2,
+                                                              height: math.max(
+                                                                  8,
+                                                                  (_createEndY! -
+                                                                          _createStartY!)
+                                                                      .abs()),
+                                                              child: Container(
+                                                                decoration:
+                                                                    BoxDecoration(
+                                                                  color: theme
+                                                                      .colorScheme
+                                                                      .primary
+                                                                      .withOpacity(
+                                                                          0.25),
+                                                                  border: Border
+                                                                      .all(
+                                                                    color: theme
+                                                                        .colorScheme
+                                                                        .primary,
+                                                                  ),
+                                                                  borderRadius:
+                                                                      BorderRadius
+                                                                          .circular(
+                                                                              8),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          for (final event in (days[
+                                                                          dayIndex]
+                                                                      ['events']
                                                                   as List<
                                                                       dynamic>? ??
                                                               const []))
@@ -320,8 +498,16 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                                                               vertical: true,
                                                               slotExtent:
                                                                   _hourHeight,
+                                                              onTap: () =>
+                                                                  _showCalendarEventDetails(
+                                                                context,
+                                                                Map<String,
+                                                                    dynamic>.from(
+                                                                    event),
+                                                              ),
                                                             ),
                                                         ],
+                                                      ),
                                                       ),
                                                     ),
                                                   ],
@@ -395,12 +581,112 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                   ),
                 ),
               ],
+              ),
             );
           },
         ),
       ),
     );
   }
+}
+
+/// 3-day / 1-week / 1-month range selector for the horizontal calendar.
+class _ActivityRangeSelector extends StatelessWidget {
+  const _ActivityRangeSelector({
+    required this.rangeDays,
+    required this.onChanged,
+  });
+
+  final int rangeDays;
+  final Future<void> Function(int days)? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final selected = const {3, 7, 30}.contains(rangeDays) ? rangeDays : 7;
+    return SegmentedButton<int>(
+      key: const Key('activity-calendar-range-selector'),
+      showSelectedIcon: false,
+      segments: [
+        ButtonSegment(value: 3, label: Text(l10n.activityRange3Day)),
+        ButtonSegment(value: 7, label: Text(l10n.activityRange1Week)),
+        ButtonSegment(value: 30, label: Text(l10n.activityRange1Month)),
+      ],
+      selected: {selected},
+      onSelectionChanged: onChanged == null
+          ? null
+          : (values) {
+              if (values.isNotEmpty) {
+                onChanged!(values.first);
+              }
+            },
+    );
+  }
+}
+
+/// Shows the read-only detail popup for a tapped calendar event.
+Future<void> _showCalendarEventDetails(
+  BuildContext context,
+  Map<String, dynamic> event,
+) async {
+  final l10n = AppLocalizations.of(context);
+  final start = DateTime.tryParse(event['starts_at']?.toString() ?? '');
+  final end = DateTime.tryParse(event['ends_at']?.toString() ?? '');
+  final description = event['description']?.toString() ?? '';
+  final calendarTitle = event['calendar_title']?.toString() ?? '';
+  String timeRange() {
+    if (start == null) {
+      return '';
+    }
+    final local = start.toLocal();
+    final stamp = '${_formatWeekDay(local.toIso8601String())} '
+        '${_formatTime(local)}';
+    if (end == null) {
+      return stamp;
+    }
+    return '$stamp – ${_formatTime(end.toLocal())}';
+  }
+
+  await showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(event['title']?.toString() ?? l10n.activityEventTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (timeRange().isNotEmpty)
+            Row(
+              children: [
+                const Icon(Icons.schedule, size: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text(timeRange())),
+              ],
+            ),
+          if (calendarTitle.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.event, size: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text(calendarTitle)),
+              ],
+            ),
+          ],
+          if (description.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(description),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.commonClose),
+        ),
+      ],
+    ),
+  );
 }
 
 class _CalendarOverlayButton extends StatelessWidget {
@@ -443,11 +729,13 @@ class _CalendarEventTile extends StatelessWidget {
     required this.event,
     required this.vertical,
     required this.slotExtent,
+    this.onTap,
   });
 
   final Map<String, dynamic> event;
   final bool vertical;
   final double slotExtent;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -470,15 +758,25 @@ class _CalendarEventTile extends StatelessWidget {
         left: 6,
         right: 6,
         height: math.max(24, extent - 4),
-        child: Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-              color: color, borderRadius: BorderRadius.circular(10)),
-          child: Text(
-            event['title']?.toString() ?? 'Event',
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+                color: color, borderRadius: BorderRadius.circular(10)),
+            child: Text(
+              event['title']?.toString() ?? 'Event',
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              // Backgrounds are fixed light pastels, so pin the label to a
+              // dark ink color — the theme's onSurface goes white in dark
+              // mode and would be invisible on these tiles.
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: _kCalendarEventInk,
+              ),
+            ),
           ),
         ),
       );
@@ -487,6 +785,10 @@ class _CalendarEventTile extends StatelessWidget {
     return const SizedBox.shrink();
   }
 }
+
+/// Fixed dark ink for event tiles painted on light pastel backgrounds so the
+/// label stays legible in both light and dark themes.
+const Color _kCalendarEventInk = Color(0xFF1F2933);
 
 /// Returns the color used for each calendar event type.
 Color _calendarEventColor(String kind) {
@@ -533,12 +835,16 @@ Future<void> _showCreatePlannerEventDialog(
     DateTime eventDate,
     int difficultyWeight,
     String description,
-  ) onCreatePlannerEvent,
-) async {
+  ) onCreatePlannerEvent, {
+  DateTime? initialDateTime,
+}) async {
   final titleController = TextEditingController();
   final descriptionController = TextEditingController();
-  var selectedDate = _dateOnly(DateTime.now()).add(const Duration(days: 1));
-  var selectedTime = const TimeOfDay(hour: 14, minute: 0);
+  var selectedDate = _dateOnly(
+      initialDateTime ?? DateTime.now().add(const Duration(days: 1)));
+  var selectedTime = initialDateTime != null
+      ? TimeOfDay(hour: initialDateTime.hour, minute: initialDateTime.minute)
+      : const TimeOfDay(hour: 14, minute: 0);
   var weight = 1;
   ActionFeedback? feedback;
   var submitting = false;

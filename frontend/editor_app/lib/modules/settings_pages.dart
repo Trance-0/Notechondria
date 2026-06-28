@@ -502,12 +502,10 @@ class _LocalDataPage extends StatelessWidget {
             children: [
               ListTile(
                 leading: const Icon(Icons.restore_outlined),
-                title: const Text('Restore starter draft'),
-                subtitle: const Text(
-                  'Re-seeds the welcome draft in the uncategorized '
-                  'bucket. Safe to run any time — only fires when no '
-                  'notes exist locally.',
-                ),
+                title: Text(
+                    AppLocalizations.of(context).settingsRestoreStarterTitle),
+                subtitle: Text(AppLocalizations.of(context)
+                    .settingsRestoreStarterSubtitle),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => p._runMaintenanceAction(
                     p.widget.onRestoreLocalStarterTemplate),
@@ -515,10 +513,9 @@ class _LocalDataPage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          const _SettingsCaption(
-            text: 'The legacy three-course template restore (admin-'
-                'only, requires a cloud session) is now in the '
-                'Developer section of the main Settings page.',
+          _SettingsCaption(
+            text:
+                AppLocalizations.of(context).settingsLegacyTemplateCaption,
           ),
         ],
       ),
@@ -553,12 +550,10 @@ class _DeveloperSettingsPage extends StatelessWidget {
                   Icons.science_outlined,
                   color: Theme.of(context).colorScheme.tertiary,
                 ),
-                title: const Text('Restore remote template courses'),
-                subtitle: const Text(
-                  'Admin-only. Calls the backend to re-seed the '
-                  'three-course template catalog (Inbox / Examples / '
-                  'Templates) with a welcome note in each.',
-                ),
+                title: Text(AppLocalizations.of(context)
+                    .settingsDevRestoreTemplatesTitle),
+                subtitle: Text(AppLocalizations.of(context)
+                    .settingsDevRestoreTemplatesSubtitle),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () =>
                     p._runMaintenanceAction(p.widget.onRestoreTemplateCourses),
@@ -567,12 +562,10 @@ class _DeveloperSettingsPage extends StatelessWidget {
                 const Divider(height: 0, indent: 16, endIndent: 16),
                 ListTile(
                   leading: const Icon(Icons.auto_stories_outlined),
-                  title: const Text('Import Apple Journal ZIP'),
-                  subtitle: const Text(
-                    'Experimental local-only import. Creates local '
-                    'drafts in a selected category; cloud sync waits '
-                    'for a manual push.',
-                  ),
+                  title: Text(AppLocalizations.of(context)
+                      .settingsDevImportJournalTitle),
+                  subtitle: Text(AppLocalizations.of(context)
+                      .settingsDevImportJournalSubtitle),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: p.widget.onImportAppleJournal,
                 ),
@@ -581,13 +574,10 @@ class _DeveloperSettingsPage extends StatelessWidget {
                 const Divider(height: 0, indent: 16, endIndent: 16),
                 ListTile(
                   leading: const Icon(Icons.cleaning_services_outlined),
-                  title: const Text('Clear legacy shared storage'),
-                  subtitle: const Text(
-                    'Removes the pre-0.1.127 unprefixed browser-storage '
-                    'keys left behind when the apps moved to per-app '
-                    'namespaces. Shared across editor / planner / portal; '
-                    'your current notes and settings are unaffected.',
-                  ),
+                  title: Text(AppLocalizations.of(context)
+                      .settingsDevClearLegacyTitle),
+                  subtitle: Text(AppLocalizations.of(context)
+                      .settingsDevClearLegacySubtitle),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () =>
                       p._runMaintenanceAction(p.widget.onClearLegacyStorage!),
@@ -596,10 +586,8 @@ class _DeveloperSettingsPage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          const _SettingsCaption(
-            text: 'Requires a signed-in admin account. Non-admin '
-                'sessions will see a server-side error in the banner '
-                'above without changing any data.',
+          _SettingsCaption(
+            text: AppLocalizations.of(context).settingsDevCaption,
           ),
         ],
       ),

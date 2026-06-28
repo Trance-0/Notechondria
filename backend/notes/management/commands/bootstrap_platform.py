@@ -23,7 +23,28 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.bootstrap_admin()
-        self.bootstrap_sample_content()
+        # The 3 sample/template courses (Vibe Coding 101, etc.) were debug
+        # seed content. They are no longer instantiated by default — a fresh
+        # platform starts with only each user's uncategorized bucket. Set
+        # BOOTSTRAP_SAMPLE_CONTENT=1 (or pass --with-sample-content) to
+        # restore the demo catalog for development.
+        seed_samples = options.get("with_sample_content") or self.getenv(
+            "BOOTSTRAP_SAMPLE_CONTENT", ""
+        ).strip().lower() in {"1", "true", "yes", "on"}
+        if seed_samples:
+            self.bootstrap_sample_content()
+        else:
+            self.stdout.write(
+                "Skipping sample course catalog "
+                "(set BOOTSTRAP_SAMPLE_CONTENT=1 to seed the demo courses)."
+            )
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--with-sample-content",
+            action="store_true",
+            help="Seed the 3 demo/template courses (off by default).",
+        )
 
     def bootstrap_admin(self):
         username = self.getenv("DJANGO_SUPERUSER_USERNAME", "admin")

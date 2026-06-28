@@ -95,6 +95,10 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
           XTypeGroup(
             label: 'Cover image',
             extensions: ['png', 'jpg', 'jpeg', 'webp'],
+            // Web browsers (Safari/Firefox) filter the picker by MIME type,
+            // not extension; without these the image picker shows no
+            // selectable files and the upload appears broken.
+            mimeTypes: ['image/png', 'image/jpeg', 'image/webp'],
           ),
         ],
       );

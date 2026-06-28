@@ -259,6 +259,98 @@ class HeatmapApiTests(TestCase):
         self.assertEqual(len(payload['days']), 7)
         self.assertTrue(any(day['events'] for day in payload['days']))
 
+    def test_activity_week_honors_range_days(self):
+        start = timezone.localdate()
+        for days, expected in [('3', 3), ('30', 30), ('99', 7), ('', 7)]:
+            response = self.client.get(
+                f'/api/v1/activity/week/?start_date={start.isoformat()}&days={days}',
+                **self._auth_headers(),
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(len(response.json()['days']), expected)
+
+    def test_activity_week_keeps_completed_events_in_window(self):
+        # A completed event whose date is inside the visible window should
+        # stay in the deadlines list (marked complete), not vanish.
+        today = timezone.localdate()
+        PlannerEvent.objects.create(
+            creator_id=self.creator,
+            title='Completed in window',
+            event_date=today,
+            is_completed=True,
+            completed_at=timezone.now(),
+        )
+        response = self.client.get(
+            f'/api/v1/activity/week/?start_date={today.isoformat()}',
+            **self._auth_headers(),
+        )
+        self.assertEqual(response.status_code, 200)
+        deadlines = response.json()['deadlines']
+        match = [d for d in deadlines if d['title'] == 'Completed in window']
+        self.assertEqual(len(match), 1)
+        self.assertTrue(match[0]['is_completed'])
+
+    def test_note_cover_upload_and_clear(self):
+        import io
+
+        from PIL import Image
+
+        buf = io.BytesIO()
+        Image.new('RGB', (8, 8), (120, 80, 200)).save(buf, 'PNG')
+        upload = SimpleUploadedFile('cover.png', buf.getvalue(), content_type='image/png')
+
+        response = self.client.post(
+            f'/api/v1/notes/{self.note.id}/cover/',
+            data={'cover': upload},
+            **self._auth_headers(),
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertTrue(response.json()['cover_image_url'])
+        self.note.refresh_from_db()
+        self.assertTrue(self.note.cover_image)
+
+        clear = self.client.delete(
+            f'/api/v1/notes/{self.note.id}/cover/',
+            **self._auth_headers(),
+        )
+        self.assertEqual(clear.status_code, 200)
+        self.assertEqual(clear.json()['cover_image_url'], '')
+
+    def test_notes_list_sort_and_window(self):
+        old = Note.objects.create(
+            creator_id=self.creator, course_id=self.course,
+            sharing_id='srt-old', title='Old note', is_public=True,
+        )
+        Note.objects.filter(pk=old.pk).update(
+            date_created=timezone.now() - timedelta(days=400))
+        new = Note.objects.create(
+            creator_id=self.creator, course_id=self.course,
+            sharing_id='srt-new', title='New note', is_public=True,
+        )
+        # newest first
+        newest = self.client.get(
+            '/api/v1/notes/?scope=public&sort=newest&limit=50',
+            **self._auth_headers(),
+        ).json()['results']
+        order = [r['title'] for r in newest]
+        self.assertLess(order.index('New note'), order.index('Old note'))
+        # oldest first
+        oldest = self.client.get(
+            '/api/v1/notes/?scope=public&sort=oldest&limit=50',
+            **self._auth_headers(),
+        ).json()['results']
+        order = [r['title'] for r in oldest]
+        self.assertLess(order.index('Old note'), order.index('New note'))
+        # window=365 days excludes the 400-day-old note
+        windowed = self.client.get(
+            '/api/v1/notes/?scope=public&window=365&limit=50',
+            **self._auth_headers(),
+        ).json()['results']
+        titles = [r['title'] for r in windowed]
+        self.assertIn('New note', titles)
+        self.assertNotIn('Old note', titles)
+        _ = new
+
     def test_notes_list_anonymous_returns_public_only(self):
         Note.objects.create(
             creator_id=self.creator,
@@ -787,7 +879,11 @@ class HeatmapApiTests(TestCase):
         # Our own course should be the first custom-ordered entry (index 1).
         self.assertEqual(own_course.sort_order, 1)
 
-    def test_planner_completion_removes_event_from_active_week_payloads(self):
+    def test_planner_completion_keeps_event_in_window_deadlines(self):
+        # Completing an event marks it done in place: it leaves the active
+        # planner-events list and the calendar grid, but stays in the
+        # deadlines/todo list (struck-through) while its date is in view,
+        # instead of vanishing as if deleted.
         event = PlannerEvent.objects.create(
             creator_id=self.creator,
             course_id=self.course,
@@ -807,6 +903,7 @@ class HeatmapApiTests(TestCase):
         self.assertTrue(event.is_completed)
         self.assertIsNotNone(event.completed_at)
 
+        # The active list (incomplete only) drops it.
         planner_response = self.client.get(
             '/api/v1/planner-events/',
             **self._auth_headers(),
@@ -819,7 +916,19 @@ class HeatmapApiTests(TestCase):
             **self._auth_headers(),
         )
         self.assertEqual(week_response.status_code, 200)
-        self.assertEqual(week_response.json()['deadlines'], [])
+        payload = week_response.json()
+        # Still present in the todo list, marked complete...
+        deadlines = [d for d in payload['deadlines'] if d['title'] == 'Finish module']
+        self.assertEqual(len(deadlines), 1)
+        self.assertTrue(deadlines[0]['is_completed'])
+        # ...but no longer painted as a block on the calendar grid.
+        grid_titles = [
+            ev['title']
+            for day in payload['days']
+            for ev in day['events']
+            if ev.get('kind') == 'plan'
+        ]
+        self.assertNotIn('Finish module', grid_titles)
 
     def test_admin_can_restore_template_courses_into_partial_catalog(self):
         Course.objects.filter(id=self.course.id).delete()

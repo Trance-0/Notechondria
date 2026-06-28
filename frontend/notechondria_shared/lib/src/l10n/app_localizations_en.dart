@@ -153,6 +153,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navNewCategory => 'New category';
 
   @override
+  String get navFrontPage => 'Front page';
+
+  @override
+  String get navLearner => 'Learner';
+
+  @override
+  String get navCourse => 'Course';
+
+  @override
+  String get navActivity => 'Activity';
+
+  @override
   String get navSettings => 'Settings';
 
   @override
@@ -220,10 +232,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get feedScopePersonal => 'Personal notes';
 
   @override
-  String get feedScopePrivate => 'Private notes';
+  String get feedScopePrivate => 'Private';
 
   @override
-  String get feedScopePublic => 'Public notes';
+  String get feedScopePublic => 'Public';
 
   @override
   String get feedScopeLocalOnly => 'Local drafts only';
@@ -296,6 +308,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get feedBadgePrivate => 'Private';
+
+  @override
+  String get feedScopeAll => 'All';
+
+  @override
+  String get feedSortNewest => 'Newest';
+
+  @override
+  String get feedSortOldest => 'Oldest';
+
+  @override
+  String get feedSortPopular => 'Most popular';
+
+  @override
+  String get feedWindow3Days => '3 days';
+
+  @override
+  String get feedWindow1Week => '1 week';
+
+  @override
+  String get feedWindow1Month => '1 month';
+
+  @override
+  String get feedWindow1Year => '1 year';
+
+  @override
+  String get feedWindowAllTime => 'All time';
+
+  @override
+  String get feedFilterScope => 'Show';
+
+  @override
+  String get feedFilterSort => 'Sort';
+
+  @override
+  String get feedFilterWindow => 'Within';
 
   @override
   String get feedEmptyCloudSynced =>
@@ -582,6 +630,43 @@ class AppLocalizationsEn extends AppLocalizations {
       'Admin-only actions: restore the remote three-course template catalog.';
 
   @override
+  String get settingsDevRestoreTemplatesTitle =>
+      'Restore remote template courses';
+
+  @override
+  String get settingsDevRestoreTemplatesSubtitle =>
+      'Admin-only. Calls the backend to re-seed the three-course template catalog (Inbox / Examples / Templates) with a welcome note in each.';
+
+  @override
+  String get settingsDevImportJournalTitle => 'Import Apple Journal ZIP';
+
+  @override
+  String get settingsDevImportJournalSubtitle =>
+      'Experimental local-only import. Creates local drafts in a selected category; cloud sync waits for a manual push.';
+
+  @override
+  String get settingsDevClearLegacyTitle => 'Clear legacy shared storage';
+
+  @override
+  String get settingsDevClearLegacySubtitle =>
+      'Removes the pre-0.1.127 unprefixed browser-storage keys left behind when the apps moved to per-app namespaces. Shared across editor / planner / portal; your current notes and settings are unaffected.';
+
+  @override
+  String get settingsDevCaption =>
+      'Requires a signed-in admin account. Non-admin sessions will see a server-side error in the banner above without changing any data.';
+
+  @override
+  String get settingsRestoreStarterTitle => 'Restore starter draft';
+
+  @override
+  String get settingsRestoreStarterSubtitle =>
+      'Re-seeds the welcome draft in the uncategorized bucket. Safe to run any time — only fires when no notes exist locally.';
+
+  @override
+  String get settingsLegacyTemplateCaption =>
+      'The legacy three-course template restore (admin-only, requires a cloud session) is now in the Developer section of the main Settings page.';
+
+  @override
   String get settingsPersonalInfoTitle => 'Personal information';
 
   @override
@@ -687,7 +772,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsUncategorizedFolderHelp =>
-      'Label for the bucket that holds notes with no category. Blank falls back to "Inbox".';
+      'Label for the bucket that holds notes with no category. Blank falls back to \"Inbox\".';
 
   @override
   String get settingsAccountCasdoorNotice =>
@@ -747,7 +832,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get plannerDeadlineTimeWeight => 'Deadline time weight (a)';
 
   @override
-  String get plannerDeadlineImportanceWeight => 'Deadline importance weight (b)';
+  String get plannerDeadlineImportanceWeight =>
+      'Deadline importance weight (b)';
 
   @override
   String get plannerDeadlineSortHelp =>
@@ -877,8 +963,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apiKeyGenerate => 'Generate';
 
   @override
-  String get apiKeyCopyNow =>
-      'Copy this key now — it will NOT be shown again:';
+  String get apiKeyCopyNow => 'Copy this key now — it will NOT be shown again:';
 
   @override
   String get apiKeySavedIt => 'I have saved it';
@@ -896,7 +981,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get apiKeyHelp =>
-      'Use this key with MCP clients (e.g. Claude Desktop) by setting the Authorization header to "Bearer ntc_<key>".';
+      'Use this key with MCP clients (e.g. Claude Desktop) by setting the Authorization header to \"Bearer ntc_<key>\".';
 
   @override
   String get apiKeyMcpEndpoint => 'MCP endpoint:';
@@ -1385,6 +1470,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get activityNextWeek => 'Next week';
+
+  @override
+  String get activityZoomIn => 'Zoom in';
+
+  @override
+  String get activityZoomOut => 'Zoom out';
+
+  @override
+  String get activityRange3Day => '3 days';
+
+  @override
+  String get activityRange1Week => '1 week';
+
+  @override
+  String get activityRange1Month => '1 month';
 
   @override
   String get activityCreateEvent => 'Create event';

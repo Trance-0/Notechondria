@@ -54,6 +54,7 @@ from .models import (
     RecycleBinEntry,
 )
 from .services import (
+    DEFAULT_CALENDAR_RANGE_DAYS,
     block_word_count,
     build_heatmap_payload,
     calendar_week_payload,
@@ -932,11 +933,22 @@ class NoteListCreateApiView(APIView):
         # Anonymous users always see public notes only, regardless of the
         # requested scope.
         scope = request.query_params.get("scope", "personal").strip().lower()
+        # sort: newest (default) | oldest | popular (most study sessions).
+        # window: recency filter on date_created in days — 3 / 7 / 30 / 365,
+        #   or "all" (default) for no time bound. "Most popular in 1 week"
+        #   = sort=popular + window=7.
+        sort = request.query_params.get("sort", "newest").strip().lower()
+        window = request.query_params.get("window", "all").strip().lower()
         limit = request.query_params.get("limit")
         offset = int(request.query_params.get("offset", "0") or 0)
         notes = Note.objects.filter(
             deleted_at__isnull=True,
         ).select_related("course_id", "creator_id__user_id")
+        window_days = {"3": 3, "7": 7, "30": 30, "365": 365}.get(window)
+        if window_days is not None:
+            notes = notes.filter(
+                date_created__gte=timezone.now() - timedelta(days=window_days)
+            )
         if creator is None:
             notes = notes.filter(is_public=True)
         elif scope == "all":
@@ -963,8 +975,16 @@ class NoteListCreateApiView(APIView):
                 ranked_notes.append((score[0], timezone.localtime(note.last_edit), note))
             ranked_notes.sort(key=lambda item: (-item[0], -item[1].timestamp(), item[2].title.lower()))
             notes = [item[2] for item in ranked_notes]
+        elif sort == "oldest":
+            notes = list(notes.order_by("date_created", "id"))
+        elif sort == "popular":
+            notes = list(
+                notes.annotate(_session_count=Count("activity_sessions"))
+                .order_by("-_session_count", "-date_created", "id")
+            )
         else:
-            notes = list(notes.order_by("-last_edit"))
+            # newest (default) — also the fallthrough for unknown sort values.
+            notes = list(notes.order_by("-date_created", "-id"))
         if limit is not None:
             page_size = max(1, min(int(limit), 100))
             total = len(notes)
@@ -1554,7 +1574,10 @@ class TemplateCourseRestoreApiView(APIView):
 
     def post(self, request):
         buffer = io.StringIO()
-        call_command("bootstrap_platform", stdout=buffer)
+        # This endpoint is the explicit "restore the demo/template courses"
+        # admin action, so it opts into the sample catalog that the default
+        # bootstrap now skips.
+        call_command("bootstrap_platform", with_sample_content=True, stdout=buffer)
         creator = ensure_creator(request.user)
         subscription_map = active_subscription_map(creator)
         courses = list(
@@ -1697,7 +1720,18 @@ class ActivityWeekApiView(APIView):
                 parsed_start = datetime.fromisoformat(start_date).date()
             except ValueError:
                 parsed_start = timezone.localdate()
-        return Response(calendar_week_payload(creator, start_date=parsed_start))
+        day_count = DEFAULT_CALENDAR_RANGE_DAYS
+        raw_days = request.query_params.get("days")
+        if raw_days:
+            try:
+                day_count = int(raw_days)
+            except ValueError:
+                day_count = DEFAULT_CALENDAR_RANGE_DAYS
+        return Response(
+            calendar_week_payload(
+                creator, start_date=parsed_start, day_count=day_count
+            )
+        )
 
 
 class HeatmapApiView(APIView):

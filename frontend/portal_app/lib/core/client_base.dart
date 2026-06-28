@@ -21,6 +21,9 @@ abstract class NotechondriaClient implements AuthClient {
     String query = '',
     int offset = 0,
     int limit = 20,
+    String? scope,
+    String? sort,
+    String? window,
   });
   Future<Map<String, dynamic>> createNote(
     String token,
@@ -50,6 +53,7 @@ abstract class NotechondriaClient implements AuthClient {
   Future<Map<String, dynamic>> getActivityWeek(
     String token, {
     String? startDate,
+    int? days,
   });
   Future<List<Map<String, dynamic>>> getCalendarFeeds(String token);
   Future<Map<String, dynamic>> createCalendarFeed(

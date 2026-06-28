@@ -192,12 +192,18 @@ class HttpNotechondriaClient
     String query = '',
     int offset = 0,
     int limit = 20,
+    String? scope,
+    String? sort,
+    String? window,
   }) async {
     final uri = _uri('/notes/').replace(
       queryParameters: {
         'limit': '$limit',
         'offset': '$offset',
         if (query.trim().isNotEmpty) 'q': query.trim(),
+        if (scope != null && scope.isNotEmpty) 'scope': scope,
+        if (sort != null && sort.isNotEmpty) 'sort': sort,
+        if (window != null && window.isNotEmpty) 'window': window,
       },
     );
     final response = await _get(uri, token: token);
@@ -321,10 +327,12 @@ class HttpNotechondriaClient
   Future<Map<String, dynamic>> getActivityWeek(
     String token, {
     String? startDate,
+    int? days,
   }) async {
     final uri = _uri('/activity/week/').replace(
       queryParameters: {
         if (startDate != null && startDate.isNotEmpty) 'start_date': startDate,
+        if (days != null) 'days': days.toString(),
       },
     );
     final response = await _get(uri, token: token);

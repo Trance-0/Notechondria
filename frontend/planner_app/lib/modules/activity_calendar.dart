@@ -40,11 +40,13 @@ class _CalendarEventTile extends StatelessWidget {
     required this.event,
     required this.vertical,
     required this.slotExtent,
+    this.onTap,
   });
 
   final Map<String, dynamic> event;
   final bool vertical;
   final double slotExtent;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -67,15 +69,25 @@ class _CalendarEventTile extends StatelessWidget {
         left: 6,
         right: 6,
         height: math.max(24, extent - 4),
-        child: Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-              color: color, borderRadius: BorderRadius.circular(10)),
-          child: Text(
-            event['title']?.toString() ?? 'Event',
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+                color: color, borderRadius: BorderRadius.circular(10)),
+            child: Text(
+              event['title']?.toString() ?? 'Event',
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              // Backgrounds are fixed light pastels, so pin the label to a
+              // dark ink color — the theme's onSurface goes white in dark
+              // mode and would be invisible on these tiles.
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: _kCalendarEventInk,
+              ),
+            ),
           ),
         ),
       );
@@ -84,6 +96,10 @@ class _CalendarEventTile extends StatelessWidget {
     return const SizedBox.shrink();
   }
 }
+
+/// Fixed dark ink for event tiles painted on light pastel backgrounds so the
+/// label stays legible in both light and dark themes.
+const Color _kCalendarEventInk = Color(0xFF1F2933);
 
 /// Returns the color used for each calendar event type.
 Color _calendarEventColor(String kind) {
@@ -95,6 +111,71 @@ Color _calendarEventColor(String kind) {
     default:
       return const Color(0xFFE0F2FE);
   }
+}
+
+/// Shows the read-only detail popup for a tapped calendar event.
+Future<void> _showCalendarEventDetails(
+  BuildContext context,
+  Map<String, dynamic> event,
+) async {
+  final l10n = AppLocalizations.of(context);
+  final start = DateTime.tryParse(event['starts_at']?.toString() ?? '');
+  final end = DateTime.tryParse(event['ends_at']?.toString() ?? '');
+  final description = event['description']?.toString() ?? '';
+  final calendarTitle = event['calendar_title']?.toString() ?? '';
+  String timeRange() {
+    if (start == null) {
+      return '';
+    }
+    final local = start.toLocal();
+    final stamp = '${_formatWeekDay(local.toIso8601String())} '
+        '${_formatTime(local)}';
+    if (end == null) {
+      return stamp;
+    }
+    return '$stamp – ${_formatTime(end.toLocal())}';
+  }
+
+  await showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(event['title']?.toString() ?? l10n.activityEventTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (timeRange().isNotEmpty)
+            Row(
+              children: [
+                const Icon(Icons.schedule, size: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text(timeRange())),
+              ],
+            ),
+          if (calendarTitle.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.event, size: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text(calendarTitle)),
+              ],
+            ),
+          ],
+          if (description.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(description),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.commonClose),
+        ),
+      ],
+    ),
+  );
 }
 
 /// Formats ISO week dates for calendar headers.

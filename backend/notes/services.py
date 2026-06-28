@@ -1,11 +1,21 @@
 import base64
+import logging
 from datetime import datetime, timedelta, timezone as dt_timezone
 from typing import Optional
+import urllib.error
 import urllib.parse
 import urllib.request
 
 from django.db.models import Count, Max, Sum
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
+
+# Activity-week ranges the API will honor (in days). Anything else is
+# clamped to the default week so the frontend range selector can only ask
+# for windows the heatmap/calendar were designed to render.
+CALENDAR_RANGE_DAYS = {3, 7, 30}
+DEFAULT_CALENDAR_RANGE_DAYS = 7
 
 from courses.models import Course
 from planner.models import (
@@ -397,7 +407,18 @@ def read_calendar_feed(feed: CalendarFeed) -> str:
             },
         )
         with urllib.request.urlopen(request, timeout=10) as response:
-            return response.read().decode("utf-8")
+            body = response.read().decode("utf-8")
+        # Google serves an HTML sign-in/consent page (HTTP 200) instead of
+        # an iCal document when the calendar is private or the secret
+        # address is wrong. Treat that as a feed error so the caller can log
+        # an actionable cause rather than silently rendering zero events.
+        if "BEGIN:VCALENDAR" not in body:
+            raise ValueError(
+                "remote feed did not return iCal data (calendar is likely "
+                "private; use the 'Secret address in iCal format' instead of "
+                "the public share link)"
+            )
+        return body
     return ""
 
 
@@ -418,9 +439,11 @@ def parse_ical_events(raw_ical: str):
     return events
 
 
-def calendar_week_payload(creator, start_date=None):
+def calendar_week_payload(creator, start_date=None, day_count=DEFAULT_CALENDAR_RANGE_DAYS):
+    if day_count not in CALENDAR_RANGE_DAYS:
+        day_count = DEFAULT_CALENDAR_RANGE_DAYS
     start = start_date or timezone.localdate()
-    days = [start + timedelta(days=index) for index in range(7)]
+    days = [start + timedelta(days=index) for index in range(day_count)]
     payload = {day.isoformat(): [] for day in days}
 
     planner_rows = PlannerEvent.objects.filter(
@@ -443,7 +466,26 @@ def calendar_week_payload(creator, start_date=None):
     for feed in CalendarFeed.objects.filter(creator_id=creator, is_enabled=True):
         try:
             raw_ical = read_calendar_feed(feed)
-        except Exception:
+        except urllib.error.HTTPError as exc:
+            logger.warning(
+                "Calendar feed skipped: planner calendar / feed fetch — "
+                "feed id=%s '%s' returned HTTP %s for %s",
+                feed.id, feed.title, exc.code, feed.source_url or "(inline ical)",
+            )
+            continue
+        except (urllib.error.URLError, ValueError) as exc:
+            logger.warning(
+                "Calendar feed skipped: planner calendar / feed fetch — "
+                "feed id=%s '%s' could not be read from %s: %s",
+                feed.id, feed.title, feed.source_url or "(inline ical)", exc,
+            )
+            continue
+        except Exception as exc:  # noqa: BLE001 - last-resort so one bad feed never breaks the week
+            logger.exception(
+                "Calendar feed skipped: planner calendar / feed fetch — "
+                "unexpected error reading feed id=%s '%s': %s",
+                feed.id, feed.title, exc,
+            )
             continue
         for event in parse_ical_events(raw_ical):
             starts_at = parse_ical_datetime(event.get("DTSTART", ""))
@@ -465,16 +507,33 @@ def calendar_week_payload(creator, start_date=None):
                 }
             )
 
-    active_deadlines = [
-        planner_deadline_payload(event)
+    # Upcoming, still-open deadlines (any future date) drive the urgency list.
+    deadline_events = {
+        event.id: event
         for event in PlannerEvent.objects.filter(
             creator_id=creator,
             event_date__gte=timezone.localdate(),
             is_completed=False,
         ).order_by("starts_at", "event_date", "title")[:40]
+    }
+    # Also surface events that were *completed* but still fall inside the
+    # currently visible window. Checking an item in the todo list marks it
+    # done in place (rendered struck-through) instead of making it vanish,
+    # which previously looked like the event had been deleted.
+    for event in PlannerEvent.objects.filter(
+        creator_id=creator,
+        event_date__gte=days[0],
+        event_date__lte=days[-1],
+        is_completed=True,
+    ).order_by("event_date", "title")[:40]:
+        deadline_events.setdefault(event.id, event)
+    active_deadlines = [
+        planner_deadline_payload(event) for event in deadline_events.values()
     ]
+    # Open deadlines first (by urgency), completed ones sink to the bottom.
     active_deadlines.sort(
         key=lambda item: (
+            1 if item.get("is_completed") else 0,
             -float(item.get("urgency_score", 0)),
             item.get("starts_at") or "",
             item.get("title") or "",
