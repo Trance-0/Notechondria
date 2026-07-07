@@ -43,8 +43,8 @@ services:
 
   editor_frontend:
     build:
-      context: ./frontend/editor_app
-      dockerfile: Dockerfile
+      context: ./frontend
+      dockerfile: editor_app/Dockerfile
       args:
         FRONTEND_API_BASE_URL: http://localhost:${ROOT_HTTP_PORT:-8080}/api/v1
         APP_BASE_HREF: /editor/
@@ -55,8 +55,8 @@ services:
 
   planner_frontend:
     build:
-      context: ./frontend/planner_app
-      dockerfile: Dockerfile
+      context: ./frontend
+      dockerfile: planner_app/Dockerfile
       args:
         FRONTEND_API_BASE_URL: http://localhost:${ROOT_HTTP_PORT:-8080}/api/v1
         APP_BASE_HREF: /planner/
@@ -67,8 +67,8 @@ services:
 
   portal_frontend:
     build:
-      context: ./frontend/portal_app
-      dockerfile: Dockerfile
+      context: ./frontend
+      dockerfile: portal_app/Dockerfile
       args:
         FRONTEND_API_BASE_URL: http://localhost:${ROOT_HTTP_PORT:-8080}/api/v1
         APP_BASE_HREF: /portal/

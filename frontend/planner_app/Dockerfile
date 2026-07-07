@@ -1,3 +1,6 @@
+# Build context must be the parent frontend/ directory so the
+# ../notechondria_shared path dependency resolves inside the image:
+#   docker build -f planner_app/Dockerfile frontend/
 FROM ghcr.io/cirruslabs/flutter:stable AS frontend_base
 
 ARG FRONTEND_UID=1000
@@ -5,17 +8,18 @@ ARG FRONTEND_GID=1000
 
 WORKDIR /app
 
-RUN mkdir -p /home/frontend /app     && chown -R ${FRONTEND_UID}:${FRONTEND_GID} /home/frontend /app /sdks/flutter
+RUN mkdir -p /home/frontend /app /notechondria_shared     && chown -R ${FRONTEND_UID}:${FRONTEND_GID} /home/frontend /app /notechondria_shared /sdks/flutter
 
 USER ${FRONTEND_UID}:${FRONTEND_GID}
 
 ENV HOME=/home/frontend
 RUN git config --global --add safe.directory /sdks/flutter     && flutter config --enable-web
 
-COPY --chown=${FRONTEND_UID}:${FRONTEND_GID} pubspec.yaml pubspec.lock ./
+COPY --chown=${FRONTEND_UID}:${FRONTEND_GID} notechondria_shared/ /notechondria_shared/
+COPY --chown=${FRONTEND_UID}:${FRONTEND_GID} planner_app/pubspec.yaml planner_app/pubspec.lock ./
 RUN flutter pub get
 
-COPY --chown=${FRONTEND_UID}:${FRONTEND_GID} . .
+COPY --chown=${FRONTEND_UID}:${FRONTEND_GID} planner_app/ .
 
 FROM frontend_base AS frontend_test
 RUN flutter test test/smoke_test.dart
@@ -28,6 +32,6 @@ RUN flutter build web --release --no-tree-shake-icons --base-href ${APP_BASE_HRE
 FROM nginx:1.27-alpine AS frontend_runtime
 ENV FRONTEND_BACKEND_ORIGIN=http://nginx
 RUN rm /etc/nginx/conf.d/default.conf
-COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
+COPY planner_app/nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=frontend_build /app/build/web /usr/share/nginx/html
 EXPOSE 80
