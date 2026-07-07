@@ -13,7 +13,7 @@ Related: [editor_app](editor_app.md), [planner_app](planner_app.md),
   courses carousel, contribution heatmap, recent-notes discovery list.
   Powered by the backend's
   [`FrontPageApiView`](../server/backend.md#notes-api) at
-  `GET /api/v1/` (anonymous-friendly).
+  `GET /api/v1/front-page/` (anonymous-friendly).
 - Full five-module sidebar since 0.1.18: `Front page`, `Learner`,
   `Course`, `Activity`, `Settings`. Unlike editor/planner (which limit
   `visibleIndices`), the portal surfaces all five so a signed-in user

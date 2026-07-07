@@ -20,6 +20,135 @@ Completed rounds live in `./docs/versions/<semver>.md` — do **not**
 restate them here. When a task is landed, delete its entry from this
 file and add a round-log entry to the new version doc.
 
+## **Urgent** — agent remote-test harness (owner: enable agents to test without me)
+
+Goal: agents verify every change end-to-end against the local Docker
+full stack and report results; the owner only reads summaries and does
+occasional taste checks. The Docker frontend image builds were repaired
+in 0.1.159 (broken since the `notechondria_shared` extraction) — see
+[`testing/agent_remote_testing.md`](testing/agent_remote_testing.md)
+for the harness runbook (stack up/down, backend tests in-container,
+frontend smoke tests via the `frontend_test` build stage, API probes).
+
+- [ ] **Seedable test identity.** Add a management command
+  (`backend/creators/management/commands/seed_agent_user.py`) that
+  idempotently creates a verified test user + prints a fresh `ntc_`
+  API key, so an agent can mint credentials non-interactively:
+  `docker compose exec app python manage.py seed_agent_user`. Guard it
+  behind `DEBUG=True` or an explicit `ALLOW_AGENT_SEED=1` env so it can
+  never run in production.
+- [ ] **MCP servers verified against the live stack.** With the seeded
+  key, exercise the in-backend `/mcp/` handshake + a representative
+  tool call over HTTP, and the standalone `cli/` server over stdio
+  (`pip install -e cli/` needs only `requests`). Record the working
+  agent-host config in `docs/server/mcp.md`; optionally commit a repo
+  `.mcp.json` (key read from env, never committed) so Claude Code
+  sessions get the tools automatically.
+- [ ] **Browser-level probe layer.** Playwright (Python) against the
+  gateway (`http://localhost:8080/portal/` etc.) for smoke flows +
+  screenshots. This unblocks the long-deferred storage-isolation
+  regression test (F1) and gives the owner async screenshots for UI
+  taste checks instead of running the app themselves. Screenshots land
+  in a gitignored `artifacts/` dir; agents attach findings to the
+  round summary.
+- [ ] **Round-end verification convention.** Every future round ends
+  with: backend tests in-container, `frontend_test` build stage per
+  touched app, gateway probe (`/api/v1/handshake/` + one page per
+  app), then commit. Document exceptions explicitly per LLM_CHECK.
+
+## Dev plan — bring every component online (fewest owner-attention rounds)
+
+Working agreement: the owner focuses on testing and new features;
+agents finish the remaining completion work in **batched autonomous
+rounds**. Each round below is sized for one agent session, ends with
+the harness green + a commit, and needs **zero owner input** unless an
+item is tagged `[OWNER]`. All `[OWNER]` items are consolidated into
+Round E so human attention is spent once, at the end.
+
+### Round A — i18n completion sweep (no owner input)
+
+Finish every remaining string so no future round has to context-switch
+back into i18n. Subsumes the per-phase remnants tracked in the i18n
+section below:
+
+- Portal settings **body** strings: personal-info form fields, the
+  API-key section (`settings_sections.dart`), backend/offline +
+  local-data captions, recycle-bin dialog, Casdoor connected-accounts
+  copy.
+- Shared `mcp_skill_section.dart` chrome (keep §1.8 diagnostic strings
+  English).
+- Planner Phase 2: nav, screens, dialogs.
+- Closing audit: grep sweep for hardcoded user-facing literals across
+  all three apps + shared; locale-switch test per app must pass.
+
+### Round B — portal feature parity + stale-module cleanup
+
+- Portal Settings to full parity with editor Settings (tracked as
+  deferred since 0.1.18).
+- Remove the stale unused modules flagged in index.md §6
+  (`planner_app`/`portal_app` copies of `front.dart`, `course.dart`,
+  `activity.dart`, `learner.dart` not reachable from `visibleIndices`)
+  — requires the `app_shell.dart` rewrite; do it together with the
+  Round C shell work to avoid touching the same file twice.
+
+### Round C — low-depth UI pass (Apple-HIG-inspired)
+
+Design goal from the owner: modern interaction in the Apple direction,
+minimal learning effort, **low navigation depth**, no feature loss.
+Concretely:
+
+- **Design tokens in `notechondria_shared`**: one typography scale
+  (large-title page headers), an 8-pt spacing grid, corner-radius and
+  elevation tokens (flat surfaces, hairline dividers, blur where
+  `showBlurDialog` already set the precedent), standard motion
+  durations/curves. Apps consume tokens; no per-app forks.
+- **Depth audit**: every core action reachable in ≤ 2 taps from the
+  app's home surface. Flatten the 7-subpage settings stack into one
+  scrollable grouped page with inline disclosure (search-style jump
+  header), keeping deep links to sections working.
+- **Direct manipulation over menus**: swipe actions on note/event list
+  rows (archive, complete, delete-with-undo SnackBar), pull-to-refresh
+  on every feed, keep drag-to-create (0.1.158 calendar) as the pattern
+  reference.
+- **Sheets over dialogs** on compact layouts: bottom sheets with
+  grabbers for pickers/actions; dialogs stay on wide/desktop.
+- Acceptance: harness screenshots of every main surface before/after
+  for the owner's async review; smoke + locale tests green.
+
+### Round D — cross-app information sharing
+
+Maximize what the three little apps share, so switching apps never
+loses context:
+
+- **Same-origin single sign-in**: the F1 storage namespacing
+  (0.1.127–0.1.129) isolates per-app keys; add a deliberate **shared**
+  namespace for the session token + locale + theme so signing into one
+  app signs into all three on the same origin (Docker/Pages deploys).
+  Guard with the existing storage-isolation acceptance test once the
+  Playwright layer (Urgent section) exists.
+- **Cross-app deep links with context**: portal is the hub — notes
+  open in editor (`/editor/#/note/<id>`), courses/deadlines in planner;
+  editor/planner link back to portal surfaces. Define one shared
+  route-building helper in `notechondria_shared` so link shapes never
+  drift.
+- **Shared workspace summary**: portal front page already gets
+  `upcoming_events` + recent notes from `FrontPageApiView`; surface the
+  same compact cross-module strip (next deadline, last-edited note) in
+  editor and planner headers so information flows both ways. Backend
+  data already exists — frontend consumption only.
+
+### Round E — release + owner checklist (single human-attention gate)
+
+- Editor + planner GitHub Release workflows (see Release / CI section
+  below — decide tag namespacing there first).
+- `[OWNER]` one consolidated checklist, prepared by the agent as a
+  short doc the round before: production `SECRET_KEY` rotation
+  (Render), OAuth redirect-URI registration for final hostnames,
+  `MIN_FRONTEND_VERSION` floor decision, Casdoor redirect-URI list
+  recording (Backend/Auth section below), PyPI publish credentials for
+  `notechondria-mcp` (MCP Phase 4), and a taste-check pass over the
+  Round C screenshot gallery.
+
 ## Global reusable components
 
 ### Cross-platform web shell
