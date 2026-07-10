@@ -257,6 +257,10 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
     final totalHeight = _hourHeight * 24;
     final theme = Theme.of(context);
     final borderColor = theme.colorScheme.outlineVariant;
+    // The 1-month range renders as a Google Calendar-style month grid
+    // (date cells with a few prioritized event chips), not the hour grid —
+    // 30 hour-columns were unreadably narrow and full of empty space.
+    final isMonth = widget.rangeDays == 30;
     final rangeLabel = days.isEmpty
         ? AppLocalizations.of(context).activityWeekCalendar
         : '${_formatWeekDay(days.first['date']?.toString() ?? '')} - ${_formatWeekDay(days.last['date']?.toString() ?? '')}';
@@ -295,20 +299,26 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                               textAlign: TextAlign.center,
                             ),
                           ),
-                          IconButton(
-                            tooltip: AppLocalizations.of(context).activityZoomOut,
-                            onPressed: _hourHeight <= _minHourHeight
-                                ? null
-                                : () => _zoom(-12),
-                            icon: const Icon(Icons.zoom_out),
-                          ),
-                          IconButton(
-                            tooltip: AppLocalizations.of(context).activityZoomIn,
-                            onPressed: _hourHeight >= _maxHourHeight
-                                ? null
-                                : () => _zoom(12),
-                            icon: const Icon(Icons.zoom_in),
-                          ),
+                          // Zoom controls act on the hour-row height; the
+                          // month grid has no hour rows.
+                          if (!isMonth) ...[
+                            IconButton(
+                              tooltip:
+                                  AppLocalizations.of(context).activityZoomOut,
+                              onPressed: _hourHeight <= _minHourHeight
+                                  ? null
+                                  : () => _zoom(-12),
+                              icon: const Icon(Icons.zoom_out),
+                            ),
+                            IconButton(
+                              tooltip:
+                                  AppLocalizations.of(context).activityZoomIn,
+                              onPressed: _hourHeight >= _maxHourHeight
+                                  ? null
+                                  : () => _zoom(12),
+                              icon: const Icon(Icons.zoom_in),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -328,7 +338,21 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                               : (details) => _handleDragEnd(details, bodyWidth),
                           child: Transform.translate(
                             offset: Offset(_dragOffset, 0),
-                            child: Scrollbar(
+                            child: isMonth
+                                ? _MonthCalendarGrid(
+                                    days: days,
+                                    onEventTap: (event) =>
+                                        _showCalendarEventDetails(
+                                            context, event),
+                                    onCreateForDay: (date) =>
+                                        _showCreatePlannerEventDialog(
+                                      context,
+                                      widget.onCreatePlannerEvent,
+                                      initialDateTime: DateTime(date.year,
+                                          date.month, date.day, 12, 0),
+                                    ),
+                                  )
+                                : Scrollbar(
                               controller: _verticalScrollController,
                               thumbVisibility: true,
                               child: SingleChildScrollView(
@@ -785,6 +809,369 @@ class _CalendarEventTile extends StatelessWidget {
     return const SizedBox.shrink();
   }
 }
+
+/// Google Calendar-style month grid: weekday header, weeks as rows, each
+/// day cell showing the date number and a few prioritized event chips with
+/// a locale-neutral "+N" overflow. No hour rows / time offsets — the month
+/// range is for scanning what is on each day, not for time-of-day detail.
+class _MonthCalendarGrid extends StatelessWidget {
+  const _MonthCalendarGrid({
+    required this.days,
+    required this.onEventTap,
+    required this.onCreateForDay,
+  });
+
+  final List<Map<String, dynamic>> days;
+  final void Function(Map<String, dynamic> event) onEventTap;
+  final void Function(DateTime day) onCreateForDay;
+
+  /// Orders a day's events for the limited chip slots: open plans first
+  /// (heaviest weight, then earliest start), then feed/session entries,
+  /// completed events always last (rendered dimmed).
+  static List<Map<String, dynamic>> prioritizedDayEvents(
+    List<dynamic> rawEvents,
+  ) {
+    final events = [
+      for (final e in rawEvents) Map<String, dynamic>.from(e as Map),
+    ];
+    int rank(Map<String, dynamic> e) {
+      if (e['is_completed'] == true) return 2;
+      return e['kind']?.toString() == 'plan' ? 0 : 1;
+    }
+
+    int weight(Map<String, dynamic> e) =>
+        int.tryParse(e['difficulty_weight']?.toString() ?? '') ?? 1;
+    DateTime start(Map<String, dynamic> e) =>
+        DateTime.tryParse(e['starts_at']?.toString() ?? '') ?? DateTime(2100);
+    events.sort((a, b) {
+      final byRank = rank(a).compareTo(rank(b));
+      if (byRank != 0) return byRank;
+      final byWeight = weight(b).compareTo(weight(a));
+      if (byWeight != 0) return byWeight;
+      return start(a).compareTo(start(b));
+    });
+    return events;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final borderColor = theme.colorScheme.outlineVariant;
+    final today = _dateOnly(DateTime.now());
+
+    // Lay the rolling 30-day window out on weekday columns: pad the first
+    // row up to the window's starting weekday, then rows of seven.
+    final cells = <DateTime?>[];
+    final firstDate = days.isEmpty
+        ? null
+        : DateTime.tryParse(days.first['date']?.toString() ?? '');
+    if (firstDate != null) {
+      for (var i = 1; i < firstDate.weekday; i++) {
+        cells.add(null);
+      }
+    }
+    final byDate = <String, List<dynamic>>{};
+    for (final day in days) {
+      final raw = day['date']?.toString() ?? '';
+      final parsed = DateTime.tryParse(raw);
+      if (parsed == null) continue;
+      cells.add(_dateOnly(parsed));
+      byDate[raw] = day['events'] as List<dynamic>? ?? const [];
+    }
+    while (cells.isEmpty || cells.length % 7 != 0) {
+      cells.add(null);
+    }
+    final weekCount = cells.length ~/ 7;
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 28,
+          child: Row(
+            children: [
+              for (final label in _kWeekdayAbbrevs)
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      label,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Column(
+            children: [
+              for (var week = 0; week < weekCount; week++)
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (var col = 0; col < 7; col++)
+                        Expanded(
+                          child: _MonthDayCell(
+                            date: cells[week * 7 + col],
+                            events: cells[week * 7 + col] == null
+                                ? const []
+                                : prioritizedDayEvents(byDate[
+                                        cells[week * 7 + col]!
+                                            .toIso8601String()
+                                            .split('T')
+                                            .first] ??
+                                    const []),
+                            isToday: cells[week * 7 + col] == today,
+                            borderColor: borderColor,
+                            onEventTap: onEventTap,
+                            onCreateForDay: onCreateForDay,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MonthDayCell extends StatelessWidget {
+  const _MonthDayCell({
+    required this.date,
+    required this.events,
+    required this.isToday,
+    required this.borderColor,
+    required this.onEventTap,
+    required this.onCreateForDay,
+  });
+
+  final DateTime? date;
+  final List<Map<String, dynamic>> events;
+  final bool isToday;
+  final Color borderColor;
+  final void Function(Map<String, dynamic> event) onEventTap;
+  final void Function(DateTime day) onCreateForDay;
+
+  static const double _chipHeight = 18;
+  static const double _chipGap = 2;
+  static const double _dateRowHeight = 24;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cellDate = date;
+    if (cellDate == null) {
+      return Container(
+        decoration: BoxDecoration(
+          border: Border(
+            left: BorderSide(color: borderColor),
+            bottom: BorderSide(color: borderColor),
+          ),
+        ),
+      );
+    }
+    return InkWell(
+      onTap: () => onCreateForDay(cellDate),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            left: BorderSide(color: borderColor),
+            bottom: BorderSide(color: borderColor),
+          ),
+        ),
+        padding: const EdgeInsets.all(2),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final chipBudget = math.max(
+              0,
+              ((constraints.maxHeight - _dateRowHeight) /
+                      (_chipHeight + _chipGap))
+                  .floor(),
+            );
+            final visibleCount =
+                math.min(events.length, math.min(chipBudget, 4));
+            // Reserve the last slot for "+N" when events overflow.
+            final shownEvents = events.length > visibleCount &&
+                    visibleCount > 0
+                ? events.sublist(0, visibleCount - 1)
+                : events.sublist(0, visibleCount);
+            final hiddenCount = events.length - shownEvents.length;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  height: _dateRowHeight,
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: isToday
+                        ? Container(
+                            width: 22,
+                            height: 22,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              '${cellDate.day}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: theme.colorScheme.onPrimary,
+                              ),
+                            ),
+                          )
+                        : Text(
+                            cellDate.day == 1
+                                ? '${cellDate.month}/${cellDate.day}'
+                                : '${cellDate.day}',
+                            style: theme.textTheme.labelMedium,
+                          ),
+                  ),
+                ),
+                for (final event in shownEvents)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: _chipGap),
+                    child: _MonthEventChip(
+                      event: event,
+                      height: _chipHeight,
+                      onTap: () => onEventTap(event),
+                    ),
+                  ),
+                if (hiddenCount > 0)
+                  SizedBox(
+                    height: _chipHeight,
+                    child: InkWell(
+                      onTap: () => _showMonthDayEventsDialog(
+                        context,
+                        cellDate,
+                        events,
+                        onEventTap,
+                      ),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Text(
+                            '+$hiddenCount',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact single-line event chip for month-grid day cells.
+class _MonthEventChip extends StatelessWidget {
+  const _MonthEventChip({
+    required this.event,
+    required this.height,
+    required this.onTap,
+  });
+
+  final Map<String, dynamic> event;
+  final double height;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final completed = event['is_completed'] == true;
+    final color = _calendarEventColor(event['kind']?.toString() ?? '');
+    return InkWell(
+      onTap: onTap,
+      child: Opacity(
+        opacity: completed ? 0.55 : 1,
+        child: Container(
+          height: height,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          alignment: Alignment.centerLeft,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            event['title']?.toString() ?? 'Event',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: _kCalendarEventInk,
+              decoration: completed ? TextDecoration.lineThrough : null,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Full event list for one month-grid day (the "+N" overflow target).
+Future<void> _showMonthDayEventsDialog(
+  BuildContext context,
+  DateTime date,
+  List<Map<String, dynamic>> events,
+  void Function(Map<String, dynamic> event) onEventTap,
+) async {
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(_formatWeekDay(date.toIso8601String())),
+      content: SizedBox(
+        width: 360,
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            for (final event in events)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: _MonthEventChip(
+                  event: event,
+                  height: 28,
+                  onTap: () {
+                    Navigator.of(dialogContext).pop();
+                    onEventTap(event);
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: Text(AppLocalizations.of(context).commonClose),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Weekday column labels shared by the week header and the month grid.
+const List<String> _kWeekdayAbbrevs = [
+  'Mon',
+  'Tue',
+  'Wed',
+  'Thu',
+  'Fri',
+  'Sat',
+  'Sun',
+];
 
 /// Fixed dark ink for event tiles painted on light pastel backgrounds so the
 /// label stays legible in both light and dark themes.
