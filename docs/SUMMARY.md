@@ -58,6 +58,7 @@
 # Testing
 
 - [Backend Test Plan](testing/backend_test_plan.md)
+- [Agent Remote Testing](testing/agent_remote_testing.md)
 
 # Versions
 
@@ -65,6 +66,10 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.161 - Pages CI split, backend-tests CI, no-local-containers rule](versions/0.1.161.md)
+- [0.1.160 - MCP agent enablement: gateway route, task parity, instructions, CLI batch](versions/0.1.160.md)
+- [0.1.159 - Docker frontend build fix + agent harness + portal plan](versions/0.1.159.md)
+- [0.1.158 - activity calendar, calendar logging, planner events, cover upload, guest feed](versions/0.1.158.md)
 - [0.1.157 - portal i18n: settings menu + subpage titles](versions/0.1.157.md)
 - [0.1.156 - portal i18n: block editor + activity/calendar](versions/0.1.156.md)
 - [0.1.155 - portal i18n: learner feed + note-metadata dialog](versions/0.1.155.md)
