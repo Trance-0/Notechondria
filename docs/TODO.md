@@ -31,33 +31,37 @@ planner-event parity (window normalization + reopen), `days` on
 `get_activity_week` + REST `include_completed`/`limit` on
 `planner-events/`, baseline `initialize` instructions on both MCP
 servers, upgraded tool descriptions/schemas (planner cluster +
-destructive-tool warnings), and `notechondria-mcp batch`. Constraint
-for all future rounds: docs/AGENTS.md **Host resource budget** — no
-Flutter builds / full-stack `--build` on this host (runtime `up
---no-build` from existing images is fine).
+destructive-tool warnings), and `notechondria-mcp batch`. Landed in
+0.1.161: the Pages CI split (frontend / docs deploys independent) and
+the `backend-tests.yml` CI leg. Standing constraints for all future
+rounds: docs/AGENTS.md **Host resource budget** AND **Deployment
+topology & no-local-containers rule** — this project never runs in
+local Docker on a < 16 GB machine; frontend/docs deploy via GitHub
+Pages, backend via Northflank on commit, suites via CI on push.
 
 - [ ] **Activity UI verification pass (frontend).** Backend + MCP
   Activity flows are verified end-to-end; the Flutter Activity
   screens (portal `activity_week.dart`, planner todo list) have only
-  been exercised by owner reports (0.1.158 fix round). Needs either
-  the Playwright probe layer below or an owner smoke pass against the
-  running stack; collect any remaining Activity bugs into the next
-  fix round.
+  been exercised by owner reports (0.1.158 fix round). Verify against
+  the **deployed** Pages frontend + Northflank backend after the next
+  push; collect any remaining Activity bugs into the next fix round.
 - [ ] **Browser-level probe layer.** Playwright (Python) against the
-  gateway (`http://localhost:8080/portal/` etc.) for smoke flows +
-  screenshots (RAM-budget note: run headless, one browser, after
+  deployed Pages site (`https://trance-0.github.io/Notechondria/...`)
+  for smoke flows + screenshots (headless, one browser, after
   checking `free -h`). Unblocks the storage-isolation regression test
   (F1) and gives the owner async screenshots for UI taste checks.
   Screenshots land in a gitignored `artifacts/` dir.
 - [ ] **Repo `.mcp.json`** registering the CLI server (key read from
   env, never committed) so Claude Code sessions get the 41 tools
-  automatically against a configured backend.
-- [ ] **Round-end verification convention.** Every round that touches
-  runtime code ends with: backend tests in a memory-capped container,
-  gateway probe (`/api/v1/handshake/` + one page per app on the
-  running stack), CLI unit tests when `cli/` changed. Frontend
-  `frontend_test` Docker stages are **CI-only** on this host
-  (resource budget); call out anything not run per LLM_CHECK.
+  automatically against the deployed backend.
+- [ ] **Round-end verification convention.** On this host: CLI unit
+  tests when `cli/` changed, plus static checks; backend Django
+  tests, Flutter smoke tests, web builds, and the docs build are
+  proven by CI (`backend-tests.yml` / `frontend-pages.yml` /
+  `docs-pages.yml`) after the owner pushes. Probe the deployed
+  handshake to confirm a backend deploy landed. Call out anything not
+  run locally per LLM_CHECK — and never start project containers
+  locally.
 
 ## Dev plan — bring every component online (fewest owner-attention rounds)
 

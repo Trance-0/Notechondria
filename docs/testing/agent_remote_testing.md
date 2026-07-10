@@ -1,126 +1,62 @@
 # Agent remote-testing harness
 
-How a coding agent verifies Notechondria end-to-end on the dev host
-without the owner running anything or reading logs. Companion to the
-**Urgent — agent remote-test harness** section in
+How a coding agent verifies Notechondria without the owner running
+anything or reading logs. Companion to the **Urgent** section in
 [`../TODO.md`](../TODO.md).
 
-Everything runs through Docker — the host deliberately has no Flutter
-SDK and its system Python is newer than the backend target, so
-host-native `flutter test` / `manage.py test` are not supported paths.
+**Read first:** docs/AGENTS.md "Deployment topology &
+no-local-containers rule". This project does not deploy locally —
+frontend + docs on GitHub Pages, backend on Northflank on commit.
+**No local containers on machines with < 16 GB RAM** (the current dev
+host has 3.3 GiB and was crashed once by a full-stack build). The
+Docker sections at the bottom apply only to ≥ 16 GB self-host
+targets and CI.
 
-## Resource budget (READ FIRST — a full-stack `up --build` crashed this host)
+## Verification paths (small dev host)
 
-This dev host is small (2 cores, 3.3 GiB RAM) and shared with other
-stacks. Follow docs/AGENTS.md "Host resource budget": check `free -h`
-before every heavy step, never take more than 70% of remaining RAM,
-`--memory`-cap containers, `timeout`-wrap runs, kill anything silent
-for 5 minutes, one heavy job at a time.
+| What | How | When |
+| --- | --- | --- |
+| Backend Django suite | `.github/workflows/backend-tests.yml` (python 3.11, `settings_test`, in-memory sqlite) | CI, on push to `main` touching `backend/**` or `cli/**` |
+| CLI unit tests | `cd cli && python3 -m unittest discover -s tests` — stdlib only, runs on host python | locally, any time |
+| Frontend smoke + web builds | `.github/workflows/frontend-pages.yml` (flutter test + build per app) | CI, on push touching `frontend/**` |
+| Docs build + SUMMARY drift check | `.github/workflows/docs-pages.yml` (mdBook; fails if `versions/<VERSION>.md` is missing from SUMMARY.md) | CI, on push touching `docs/**` / `VERSION` |
+| Deployed backend probe | `curl https://notechondria.trance-0.com/api/v1/handshake/` — version/build block confirms what Northflank is serving | after a push, to confirm the deploy landed |
+| Deployed MCP probe | `POST /mcp/` `tools/list` with a real `ntc_` key (owner-minted; `seed_agent_user` is guarded off in production) | only with an owner-provided key |
 
-**Affordable here:** backend image build, the backend test container
-(~300 MiB), API probes, the MCP CLI.
-**NOT affordable here:** Flutter Docker builds (each can spike past
-1.5 GiB) and the 7-service full-stack compose — treat the "Full
-stack" and "Frontend smoke tests" sections below as reference for a
-bigger machine / CI, not as steps to run on this host.
+The agent workflow is therefore: edit → run what runs on host python →
+commit (never push) → the owner pushes → CI proves the suites and
+Pages/Northflank deploy → probe the deployed handshake if the round
+needs live confirmation.
 
-## Port map (verify before assuming — LLM_CHECK rule)
+## Local test identity (CI / big-host contexts only)
 
-Compose defaults, confirmed free on this host on 2026-07-07:
+`python manage.py seed_agent_user` (guarded by `DEBUG=True` or
+`ALLOW_AGENT_SEED=1`) creates the `agent-tester` user and prints a
+fresh key as a greppable `NOTECHONDRIA_API_KEY=...` last line. Never
+set `ALLOW_AGENT_SEED` on a production deployment.
 
-| Host port | Service |
-| --- | --- |
-| `8080` | `gateway_nginx` — root gateway (`/portal/`, `/editor/`, `/planner/`, `/api/v1`) |
-| `9060` | `backend_nginx` — backend origin (API + static) |
-| `9032` | `db` — PostgreSQL |
+## Reference: Docker verification (≥ 16 GB hosts and CI only)
 
-Re-check with `ss -tlnp` before every `up`; this host also runs frps
-(6000–6099, 7000, 7500, 10080, 10443), portainer (8000, 9443), and an
-openresty on 80/443.
-
-## Full stack up / down
-
-```bash
-docker compose up --build -d          # from repo root
-docker compose ps                     # all services Up
-docker compose logs -f app            # backend logs, Ctrl-C safe
-docker compose down                   # keep the postgres_data volume
-```
-
-The frontend images build from the `frontend/` context (fixed in
-0.1.159 — the app-dir context could not see `../notechondria_shared`
-and every frontend image build had been failing since the shared
-package landed). App-local compose files
-(`frontend/<app>/docker-compose.yml`) use `context: ..` for the same
-reason.
-
-## Backend test suite (verified 2026-07-07: 189 tests, OK)
+Kept for self-host targets; forbidden on the small dev host.
 
 ```bash
 docker compose build app
 docker compose run --rm --no-deps \
   -e DJANGO_SETTINGS_MODULE=notechondria.settings_test \
-  --entrypoint "" app python manage.py test
+  --entrypoint "" app python manage.py test          # backend suite
+docker build --target frontend_test -f frontend/<app>/Dockerfile frontend/  # per-app smoke
+docker compose up -d && curl -s localhost:8080/api/v1/handshake/            # full stack
 ```
 
-`settings_test` uses in-memory sqlite — no `db` service needed
-(hence `--no-deps`), no secrets needed.
+Resource discipline still applies everywhere (docs/AGENTS.md "Host
+resource budget"): measure `free -h` first, ≤ 70% of remaining RAM,
+`--memory` caps, `timeout` wraps, kill after 5 silent minutes, one
+heavy job at a time.
 
-## Frontend smoke tests (in-Docker, no host Flutter)
+## Port map (historical, small dev host)
 
-Each app Dockerfile has a `frontend_test` stage that runs
-`flutter test test/smoke_test.dart`:
-
-```bash
-docker compose build \
-  --build-arg BUILDKIT_INLINE_CACHE=1 \
-  editor_frontend planner_frontend portal_frontend   # release builds
-docker build --target frontend_test -f frontend/portal_app/Dockerfile frontend/
-docker build --target frontend_test -f frontend/editor_app/Dockerfile frontend/
-docker build --target frontend_test -f frontend/planner_app/Dockerfile frontend/
-```
-
-A green `frontend_test` build = the smoke test passed. The stages
-share cached layers with the compose builds, so the marginal cost is
-one `flutter test` run per app.
-
-## API probes
-
-With the stack up:
-
-```bash
-curl -s http://localhost:8080/api/v1/handshake/   # version + build info
-curl -s http://localhost:8080/api/v1/front-page/  # front-page payload (anonymous)
-curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/portal/
-curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/editor/
-curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/planner/
-```
-
-Authenticated probes need an `ntc_` API key — until the
-`seed_agent_user` management command lands (TODO, Urgent section),
-mint one manually in any app: Settings → API settings → rotate API
-key.
-
-```bash
-curl -s -H "Authorization: Bearer ntc_..." http://localhost:8080/api/v1/notes/
-```
-
-## MCP servers
-
-- **In-backend** (`/mcp/`, HTTP): probe with the `ntc_` key against
-  `http://localhost:8080/mcp/` — see [`../server/mcp.md`](../server/mcp.md).
-- **Standalone CLI** (stdio): `pip install -e cli/` (only needs
-  `requests`), then
-  `NOTECHONDRIA_API_URL=http://localhost:8080/api/v1
-  NOTECHONDRIA_API_KEY=ntc_... notechondria-mcp`. Unit tests:
-  `python -m pytest cli/tests/ -q` (no backend required).
-
-## Round-end convention
-
-Before committing, a round that touched runtime code runs, in order:
-
-1. Backend tests in-container (above) — if backend touched.
-2. `frontend_test` stage per touched app.
-3. Stack up + the API/page probes.
-4. Anything not runnable is called out explicitly in the round
-   summary with the reason (LLM_CHECK rule).
+Compose defaults 8080 (gateway) / 9060 (backend nginx) / 9032 (db)
+were verified free on 2026-07-07; the host also runs frps
+(6000–6099, 7000, 7500, 10080, 10443), portainer (8000, 9443), and
+openresty (80/443). Verify with `ss -tlnp` before any assignment on
+any machine.

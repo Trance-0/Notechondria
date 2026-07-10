@@ -52,6 +52,32 @@ affordable; **frontend Flutter Docker builds and the full-stack
 compose are NOT** — defer those to CI (GitHub Actions Pages workflow)
 or an owner-approved window where other stacks are stopped.
 
+## Deployment topology & no-local-containers rule (owner, 2026-07-10)
+
+This project does NOT deploy locally. The live topology is:
+
+- **Frontend** — GitHub Pages, built by
+  `.github/workflows/frontend-pages.yml` on push to `main`.
+- **Docs** — GitHub Pages `docs/` subtree, built by
+  `.github/workflows/docs-pages.yml` (split from the frontend leg in
+  0.1.161 so a failure in either cannot block the other; both publish
+  disjoint subtrees of `gh-pages` with `keep_files: true` under one
+  concurrency group). The docs leg fails if `docs/SUMMARY.md` does not
+  list `versions/<VERSION>.md` — **every round that adds a version doc
+  must also add its SUMMARY.md entry.**
+- **Backend** — Northflank CI/CD deploys on commit. Backend + CLI test
+  suites run in `.github/workflows/backend-tests.yml` on push.
+
+**Do NOT create local containers for this project on any machine with
+less than 16 GB RAM** (this dev host has 3.3 GiB). No `docker compose
+up`, no image builds, no test containers — the deployment paths above
+are the only build/run environments. Pre-push verification on a small
+host is limited to what runs on the host Python (the `cli/` unit
+tests) and static checks; everything else is proven by CI after the
+owner pushes, and any check not run locally is called out per
+LLM_CHECK. The docker-compose files stay in the repo for CI and for
+≥16 GB self-host targets only.
+
 ## §1.7 compliance — canonical module / process names
 
 The canonical `AGENTS.md` §1.7 mandates that every error, warning, info,
