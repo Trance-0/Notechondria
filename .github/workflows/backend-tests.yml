@@ -1,0 +1,58 @@
+name: backend-tests
+
+# CI test leg for the Django backend + the MCP CLI, added in 0.1.161.
+# This is the canonical pre-deploy verification now that local Docker
+# runs of this project are banned on small dev hosts (see
+# docs/AGENTS.md "Deployment topology & no-local-containers rule"):
+# the owner pushes, this proves the suites, and Northflank deploys the
+# backend on commit independently.
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'cli/**'
+      - '.github/workflows/backend-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  django-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Run Django test suite (settings_test, in-memory sqlite)
+        working-directory: backend
+        env:
+          DJANGO_SETTINGS_MODULE: notechondria.settings_test
+        run: python manage.py test
+
+  cli-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run CLI unit tests (stdlib only)
+        working-directory: cli
+        run: python -m unittest discover -s tests -v

@@ -1,0 +1,62 @@
+name: docs-pages
+
+# Docs-only Pages leg, split out of frontend-pages.yml in 0.1.161 so a
+# broken docs build (e.g. a SUMMARY.md drift) can never block a frontend
+# deploy, and vice versa. Both workflows publish to the same gh-pages
+# branch with keep_files: true, each writing only its own subtree
+# (this one: docs/). The shared concurrency group serializes the two
+# publishes so they cannot race on the branch push.
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - 'VERSION'
+      - 'sample.env'
+      - '.github/workflows/docs-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gh-pages-publish
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build docs (mdBook)
+        run: |
+          set -euo pipefail
+          curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.4.40/mdbook-v0.4.40-x86_64-unknown-linux-gnu.tar.gz | tar xz -C /usr/local/bin
+          mdbook build docs
+          # Sanity check: the docs site must include the round-log
+          # for the deployed VERSION, otherwise SUMMARY.md drifted
+          # behind docs/versions/ again (the bug 0.1.100 fixed) and
+          # the gh-pages copy will be stale-by-default. Fail loudly
+          # so the next commit can't accidentally re-introduce the
+          # silent-stale failure mode.
+          version="$(tr -d '\n' < VERSION)"
+          expected="docs/build/versions/${version}.html"
+          if [ ! -f "$expected" ]; then
+            echo "::error file=docs/SUMMARY.md::expected $expected after mdbook build but it is missing — SUMMARY.md probably doesn't list versions/${version}.md. Re-add the entry."
+            exit 1
+          fi
+
+      - name: Deploy docs subtree to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: docs/build
+          destination_dir: docs
+          keep_files: true
