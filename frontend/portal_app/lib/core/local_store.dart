@@ -5,6 +5,7 @@ class _LocalAppSnapshot {
     required this.settings,
     required this.drafts,
     required this.courses,
+    required this.events,
     required this.stats,
     required this.cache,
     required this.logs,
@@ -15,6 +16,7 @@ class _LocalAppSnapshot {
   final Map<String, dynamic> settings;
   final List<Map<String, dynamic>> drafts;
   final List<Map<String, dynamic>> courses;
+  final List<Map<String, dynamic>> events;
   final Map<String, dynamic> stats;
   final Map<String, dynamic> cache;
   final List<String> logs;
@@ -64,6 +66,10 @@ class _LocalAppStore {
   static const String _settingsKey = 'notechondria.portal.local_settings';
   static const String _draftsKey = 'notechondria.portal.local_drafts';
   static const String _coursesKey = 'notechondria.portal.local_courses';
+  // Device-local planner events created while signed out / offline
+  // (0.1.162). They render in the Activity calendar alongside cloud
+  // events but never sync automatically.
+  static const String _eventsKey = 'notechondria.portal.local_events';
   static const String _statsKey = 'notechondria.portal.local_stats';
   static const String _cacheKey = 'notechondria.portal.local_cache';
   static const String _logsKey = 'notechondria.portal.local_logs';
@@ -82,6 +88,7 @@ class _LocalAppStore {
     return {
       'Drafts': sz(_draftsKey),
       'Categories': sz(_coursesKey),
+      'Local events': sz(_eventsKey),
       'Cached server data': sz(_cacheKey),
       'Recycle bin': sz(_trashedDraftsKey) + sz(_trashedCoursesKey),
       'Debug logs': sz(_logsKey),
@@ -146,6 +153,7 @@ class _LocalAppStore {
       settings: _decodeMap(prefs.getString(_settingsKey), defaultSettings()),
       drafts: _decodeList(prefs.getString(_draftsKey)),
       courses: _decodeList(prefs.getString(_coursesKey)),
+      events: _decodeList(prefs.getString(_eventsKey)),
       stats: _decodeMap(prefs.getString(_statsKey), defaultStats()),
       cache: _decodeMap(prefs.getString(_cacheKey), defaultCache()),
       logs: _decodeStringList(prefs.getString(_logsKey)),
@@ -181,6 +189,11 @@ class _LocalAppStore {
   static Future<void> saveCourses(List<Map<String, dynamic>> courses) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_coursesKey, jsonEncode(courses));
+  }
+
+  static Future<void> saveEvents(List<Map<String, dynamic>> events) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_eventsKey, jsonEncode(events));
   }
 
   static Future<void> saveStats(Map<String, dynamic> stats) async {

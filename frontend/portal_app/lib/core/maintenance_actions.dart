@@ -242,6 +242,7 @@ extension _AppShellMaintenanceX on _AppShellState {
   Future<ActionFeedback> _clearLocalData() async {
     _localDrafts = const [];
     _localCourses = const [];
+    _localEvents = const [];
     _localTrashedDrafts = const [];
     _localTrashedCourses = const [];
     _selectedNote = null;
@@ -262,6 +263,7 @@ extension _AppShellMaintenanceX on _AppShellState {
     };
     await persistLocalDrafts();
     await persistLocalCourses();
+    await _LocalAppStore.saveEvents(const []);
     await _persistLocalTrashedDrafts();
     await _persistLocalTrashedCourses();
     await persistLocalStats();
@@ -282,6 +284,29 @@ extension _AppShellMaintenanceX on _AppShellState {
 
   Future<void> _togglePlannerEventCompletion(
       Map<String, dynamic> event, bool completed) async {
+    // Device-local events (created signed-out / offline) toggle in the
+    // local store; they never have a cloud row to PATCH.
+    if (event['is_local'] == true ||
+        event['id']?.toString().startsWith('local-') == true) {
+      final id = event['id']?.toString();
+      _localEvents = [
+        for (final e in _localEvents)
+          if (e['id']?.toString() == id)
+            {
+              ...e,
+              'is_completed': completed,
+              'completed_at': completed
+                  ? DateTime.now().toUtc().toIso8601String()
+                  : null,
+            }
+          else
+            e,
+      ];
+      await _LocalAppStore.saveEvents(_localEvents);
+      await _loadActivityWeek(startDate: _activityWeekStart);
+      refreshState();
+      return;
+    }
     final token = _token;
     if (token == null || token.isEmpty) {
       throw Exception(

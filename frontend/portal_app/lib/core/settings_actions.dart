@@ -201,12 +201,38 @@ extension _AppShellSettingsActionsX on _AppShellState {
   ) async {
     final token = _token;
     if (token == null || token.isEmpty) {
-      return const ActionFeedback(
-        message: 'Planner event not created: '
-            'Portal.Sync.Events/create \u2014 '
-            'no cloud session; sign in first.',
-        isError: true,
+      // Signed-out / offline: keep the event on this device so guests
+      // can plan without an account. Local events render in the
+      // calendar + todo board next to cloud events (0.1.162) but do
+      // not sync automatically.
+      final event = <String, dynamic>{
+        'id': 'local-${DateTime.now().microsecondsSinceEpoch}',
+        'is_local': true,
+        'title': title,
+        'event_date': _dateOnly(eventDate).toIso8601String().split('T').first,
+        'starts_at': eventDate.toIso8601String(),
+        'ends_at': eventDate.add(const Duration(hours: 1)).toIso8601String(),
+        'difficulty_weight': difficultyWeight,
+        'description': description,
+        'is_completed': false,
+        'completed_at': null,
+        'course_id': null,
+      };
+      _localEvents = [..._localEvents, event];
+      await _LocalAppStore.saveEvents(_localEvents);
+      await _loadActivityWeek(startDate: _activityWeekStart);
+      log(
+        level: DebugLogLevel.info,
+        source: 'Portal.LocalStore',
+        message: 'Planner event created locally: '
+            'Portal.LocalStore/event.create \u2014 '
+            'stored on this device only (no cloud session); '
+            'sign in to create cloud events.',
       );
+      return const ActionFeedback(
+          message: 'Planner event created locally: '
+              'Portal.LocalStore/event.create \u2014 '
+              'stored on this device; it will not sync to the cloud.');
     }
     try {
       await widget.client.createPlannerEvent(token, {
@@ -301,11 +327,17 @@ extension _AppShellSettingsActionsX on _AppShellState {
 
   Future<void> _loadActivityWeek({DateTime? startDate, int? rangeDays}) async {
     final token = _token;
-    if (token == null || token.isEmpty) {
-      return;
-    }
     final effectiveStart = _dateOnly(startDate ?? _activityWeekStart);
     final effectiveRange = rangeDays ?? _activityRangeDays;
+    if (token == null || token.isEmpty) {
+      // Signed-out / offline: serve the window purely from the
+      // device-local events so guests still get a working calendar.
+      _activityWeekStart = effectiveStart;
+      _activityRangeDays = effectiveRange;
+      _activityWeek = _localWeekPayload(effectiveStart, effectiveRange);
+      refreshState();
+      return;
+    }
     try {
       final week = await widget.client.getActivityWeek(
         token,
@@ -314,7 +346,7 @@ extension _AppShellSettingsActionsX on _AppShellState {
       );
       _activityWeekStart = effectiveStart;
       _activityRangeDays = effectiveRange;
-      _activityWeek = week;
+      _activityWeek = _mergeLocalEventsIntoWeek(week);
       refreshState();
       log(
         level: DebugLogLevel.debug,
@@ -335,5 +367,76 @@ extension _AppShellSettingsActionsX on _AppShellState {
             'Portal.Sync.Activity/load_week \u2014 $cause.',
       );
     }
+  }
+
+  /// Builds a calendar payload for signed-out / offline users from the
+  /// device-local events only. Mirrors the server
+  /// `calendar_week_payload` shape so the Activity widgets need no
+  /// special-casing.
+  Map<String, dynamic> _localWeekPayload(DateTime start, int rangeDays) {
+    String iso(DateTime d) => d.toIso8601String().split('T').first;
+    final days = <Map<String, dynamic>>[];
+    for (var i = 0; i < rangeDays; i++) {
+      final date = iso(start.add(Duration(days: i)));
+      days.add({
+        'date': date,
+        'events': [
+          for (final e in _localEvents)
+            if (e['event_date']?.toString() == date)
+              {...e, 'kind': 'plan', 'source_id': e['id']},
+        ],
+      });
+    }
+    final windowEnd = iso(start.add(Duration(days: rangeDays - 1)));
+    final deadlines = [
+      for (final e in _localEvents)
+        if (e['is_completed'] != true) {...e},
+      for (final e in _localEvents)
+        if (e['is_completed'] == true &&
+            (e['event_date']?.toString() ?? '').compareTo(iso(start)) >= 0 &&
+            (e['event_date']?.toString() ?? '').compareTo(windowEnd) <= 0)
+          {...e},
+    ];
+    deadlines.sort((a, b) {
+      final byDone = (a['is_completed'] == true ? 1 : 0)
+          .compareTo(b['is_completed'] == true ? 1 : 0);
+      if (byDone != 0) return byDone;
+      return (a['starts_at']?.toString() ?? '')
+          .compareTo(b['starts_at']?.toString() ?? '');
+    });
+    return {
+      'start_date': iso(start),
+      'previous_week_start': iso(start.subtract(Duration(days: rangeDays))),
+      'next_week_start': iso(start.add(Duration(days: rangeDays))),
+      'days': days,
+      'deadlines': deadlines,
+    };
+  }
+
+  /// Splices the device-local events into a server week payload so a
+  /// signed-in user still sees events created while signed out.
+  Map<String, dynamic> _mergeLocalEventsIntoWeek(Map<String, dynamic> week) {
+    if (_localEvents.isEmpty) return week;
+    final merged = Map<String, dynamic>.from(week);
+    merged['days'] = [
+      for (final raw in merged['days'] as List<dynamic>? ?? const [])
+        () {
+          final day = Map<String, dynamic>.from(raw as Map);
+          final date = day['date']?.toString() ?? '';
+          day['events'] = [
+            ...(day['events'] as List<dynamic>? ?? const []),
+            for (final e in _localEvents)
+              if (e['event_date']?.toString() == date)
+                {...e, 'kind': 'plan', 'source_id': e['id']},
+          ];
+          return day;
+        }(),
+    ];
+    merged['deadlines'] = [
+      ...(merged['deadlines'] as List<dynamic>? ?? const []),
+      for (final e in _localEvents)
+        if (e['is_completed'] != true) {...e},
+    ];
+    return merged;
   }
 }

@@ -57,6 +57,22 @@ const _kFeatureUpdates = <FeatureUpdate>[
         'time window.',
     icon: Icons.sort_outlined,
   ),
+  FeatureUpdate(
+    version: '0.1.162',
+    title: 'A real month view',
+    description: 'The 1-month calendar is now a month grid: each day shows '
+        'its top events at a glance, with a +N overflow — tap a day to add '
+        'an event, tap an event for details.',
+    icon: Icons.calendar_month_outlined,
+  ),
+  FeatureUpdate(
+    version: '0.1.162',
+    title: 'Plan without an account',
+    description: 'You can now create activities while signed out or '
+        'offline — they stay on this device and appear in the calendar and '
+        'todo list next to your cloud events.',
+    icon: Icons.event_available_outlined,
+  ),
 ];
 
 extension _AppShellWhatsNewX on _AppShellState {

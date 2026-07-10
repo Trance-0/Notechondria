@@ -115,7 +115,11 @@ extension _AppShellInitialDataX on _AppShellState {
       _calendarFeeds = calendarFeeds;
       _learnerNotes = learnerNotes;
       _deletedNotes = deletedNotes;
-      _activityWeek = activityWeek;
+      // Guests / offline users still get a working calendar from the
+      // device-local events (0.1.162).
+      _activityWeek = activityWeek == null
+          ? _localWeekPayload(_activityWeekStart, _activityRangeDays)
+          : _mergeLocalEventsIntoWeek(activityWeek);
       _hasMoreLearnerNotes = notePage['has_more'] == true;
       _learnerNotesOffset = learnerNotes.length;
       _errorMessage = null;
@@ -286,7 +290,9 @@ extension _AppShellInitialDataX on _AppShellState {
     _selectedNote = null;
     _plannerEvents = plannerEvents;
     _calendarFeeds = calendarFeeds;
-    _activityWeek = activityWeek;
+    _activityWeek = activityWeek == null
+        ? _localWeekPayload(_activityWeekStart, _activityRangeDays)
+        : _mergeLocalEventsIntoWeek(activityWeek);
     _hasMoreLearnerNotes = notePage['has_more'] == true;
     _learnerNotesOffset = learnerNotes.length;
     _errorMessage = errors.isEmpty ? null : errors.first;

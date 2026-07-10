@@ -52,59 +52,49 @@ class _ActivityPage extends StatelessWidget {
           padding: const EdgeInsets.all(20),
           child: Stack(
             children: [
+              // Signed-out users get the same calendar + FAB, served
+              // from device-local events (0.1.162) — the old
+              // full-surface sign-in prompt blocked offline planning.
               Positioned.fill(
-                child: !isAuthenticated
-                    ? _ActivityFillCard(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Center(
-                            child: Text(
-                              l10n.activitySignInPrompt,
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                      )
-                    : isHorizontal
-                        ? (weekDays.isEmpty
-                            ? _ActivityFillCard(
-                                child: Center(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(20),
-                                    child: Text(
-                                      l10n.activityNoWeekEvents,
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
+                child: isHorizontal
+                    ? (weekDays.isEmpty
+                        ? _ActivityFillCard(
+                            child: Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(20),
+                                child: Text(
+                                  l10n.activityNoWeekEvents,
+                                  textAlign: TextAlign.center,
                                 ),
-                              )
-                            : _WideWeekCalendar(
-                                days: weekDays,
-                                rangeDays: rangeDays,
-                                onNavigateWeek: onNavigateWeek,
-                                onShiftStartDay: onShiftStartDay,
-                                onChangeRange: onChangeRange,
-                                onCreatePlannerEvent: onCreatePlannerEvent,
-                              ))
-                        : _VerticalWeekBoard(
+                              ),
+                            ),
+                          )
+                        : _WideWeekCalendar(
                             days: weekDays,
-                            deadlines: deadlines,
-                            plannerEvents: plannerEvents,
+                            rangeDays: rangeDays,
                             onNavigateWeek: onNavigateWeek,
-                            onTogglePlannerEventCompletion:
-                                onTogglePlannerEventCompletion,
-                          ),
+                            onShiftStartDay: onShiftStartDay,
+                            onChangeRange: onChangeRange,
+                            onCreatePlannerEvent: onCreatePlannerEvent,
+                          ))
+                    : _VerticalWeekBoard(
+                        days: weekDays,
+                        deadlines: deadlines,
+                        plannerEvents: plannerEvents,
+                        onNavigateWeek: onNavigateWeek,
+                        onTogglePlannerEventCompletion:
+                            onTogglePlannerEventCompletion,
+                      ),
               ),
-              if (isAuthenticated)
-                Positioned(
-                  right: 20,
-                  bottom: 20,
-                  child: _RoundActivityFab(
-                    onCreatePlannerEvent: onCreatePlannerEvent,
-                    onImportCalendar: onImportCalendar,
-                    onSubscribeCalendar: onSubscribeCalendar,
-                  ),
+              Positioned(
+                right: 20,
+                bottom: 20,
+                child: _RoundActivityFab(
+                  onCreatePlannerEvent: onCreatePlannerEvent,
+                  onImportCalendar: onImportCalendar,
+                  onSubscribeCalendar: onSubscribeCalendar,
                 ),
+              ),
             ],
           ),
         );

@@ -19,6 +19,7 @@ extension _AppShellLoadLocalStateX on _AppShellState {
     }
     _localDrafts = snapshot.drafts;
     _localCourses = snapshot.courses;
+    _localEvents = snapshot.events;
     _localTrashedDrafts = snapshot.trashedDrafts;
     _localTrashedCourses = snapshot.trashedCourses;
     _localStats = snapshot.stats;
