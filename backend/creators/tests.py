@@ -915,3 +915,46 @@ class LastSeenVersionsTests(TestCase):
         self.assertEqual(resp2.status_code, 400)
         resp3 = self._patch({'last_seen_versions': {'editor': ''}})
         self.assertEqual(resp3.status_code, 400)
+
+
+class SeedAgentUserCommandTests(TestCase):
+    """The agent-harness seed command: guarded, idempotent, mints a key."""
+
+    def _run(self, **env):
+        import io
+        from unittest import mock
+        from django.core.management import call_command
+        out = io.StringIO()
+        with mock.patch.dict('os.environ', env, clear=False):
+            call_command('seed_agent_user', stdout=out)
+        return out.getvalue()
+
+    def test_refuses_without_debug_or_env_flag(self):
+        from django.core.management.base import CommandError
+        with self.settings(DEBUG=False):
+            with self.assertRaises(CommandError) as ctx:
+                self._run(ALLOW_AGENT_SEED='')
+        self.assertIn('seed_agent_user', str(ctx.exception))
+
+    def test_creates_user_and_prints_key(self):
+        with self.settings(DEBUG=True):
+            output = self._run()
+        self.assertIn('NOTECHONDRIA_API_KEY=ntc_', output)
+        user = User.objects.get(username='agent-tester')
+        self.assertTrue(user.is_active)
+        self.assertFalse(user.has_usable_password())
+        creator = Creator.objects.get(user_id=user)
+        key = output.rsplit('NOTECHONDRIA_API_KEY=', 1)[1].strip()
+        import hashlib
+        self.assertEqual(creator.api_key_hash, hashlib.sha256(key.encode()).hexdigest())
+        self.assertEqual(creator.api_key_prefix, key[:8])
+
+    def test_rerun_is_idempotent_and_rotates_key(self):
+        with self.settings(DEBUG=False):
+            out1 = self._run(ALLOW_AGENT_SEED='1')
+            out2 = self._run(ALLOW_AGENT_SEED='1')
+        key1 = out1.rsplit('NOTECHONDRIA_API_KEY=', 1)[1].strip()
+        key2 = out2.rsplit('NOTECHONDRIA_API_KEY=', 1)[1].strip()
+        self.assertNotEqual(key1, key2)
+        self.assertEqual(User.objects.filter(username='agent-tester').count(), 1)
+        self.assertIn('reused', out2)
