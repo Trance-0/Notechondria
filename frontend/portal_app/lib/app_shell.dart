@@ -275,6 +275,10 @@ class _AppShellState extends State<AppShell>
   List<Map<String, dynamic>> _localTrashedCourses = const [];
   List<Map<String, dynamic>> _activity = const [];
   List<Map<String, dynamic>> _plannerEvents = const [];
+  // Signed-out / offline planner events, persisted per device
+  // (_LocalAppStore.saveEvents). Merged into the Activity calendar and
+  // todo board next to cloud events; never auto-synced.
+  List<Map<String, dynamic>> _localEvents = const [];
   List<Map<String, dynamic>> _calendarFeeds = const [];
   Map<String, dynamic>? _activityWeek;
   Map<String, dynamic>? _selectedCourse;
@@ -827,7 +831,7 @@ class _AppShellState extends State<AppShell>
         return _ActivityPage(
           activityWeek: _activityWeek,
           isAuthenticated: _token != null && _token!.isNotEmpty,
-          plannerEvents: _plannerEvents,
+          plannerEvents: [..._localEvents, ..._plannerEvents],
           rangeDays: _activityRangeDays,
           onCreatePlannerEvent: _createPlannerEvent,
           onImportCalendar: _importCalendarFeed,
@@ -898,16 +902,41 @@ class _AppShellState extends State<AppShell>
           uiLogs: uiLogs,
           onRotateApiKey: _token != null
               ? () async {
-                  final result = await widget.client.rotateApiKey(_token!);
-                  final newPrefix = result['api_key_prefix']?.toString() ?? '';
-                  if (newPrefix.isNotEmpty && mounted) {
-                    _settings = {
-                      ..._settings ?? <String, dynamic>{},
-                      'api_key_prefix': newPrefix,
-                    };
-                    refreshState();
+                  try {
+                    final result = await widget.client.rotateApiKey(_token!);
+                    final newPrefix =
+                        result['api_key_prefix']?.toString() ?? '';
+                    if (newPrefix.isNotEmpty && mounted) {
+                      _settings = {
+                        ..._settings ?? <String, dynamic>{},
+                        'api_key_prefix': newPrefix,
+                      };
+                      refreshState();
+                    }
+                    log(
+                      level: DebugLogLevel.info,
+                      source: 'Portal.UI',
+                      message: 'API key rotated: Portal.UI/api_key.rotate — '
+                          'new prefix ${newPrefix.isEmpty ? "<unknown>" : newPrefix}; '
+                          'the previous key is now invalid.',
+                    );
+                    return result;
+                  } catch (e) {
+                    // A stale Casdoor session is the common cause: the app
+                    // renders from local cache so it looks signed in, but
+                    // this direct server call 401s. Log the effective cause
+                    // so the Debug log explains the SnackBar.
+                    log(
+                      level: DebugLogLevel.warning,
+                      source: 'Portal.UI',
+                      message: 'API key was NOT rotated: '
+                          'Portal.UI/api_key.rotate — '
+                          '${e.toString().replaceFirst('Exception: ', '')} '
+                          '(if this is a 401, the sign-in session has '
+                          'expired — sign in again and retry).',
+                    );
+                    rethrow;
                   }
-                  return result;
                 }
               : null,
           onSaveMcpSkill: _token != null

@@ -638,18 +638,43 @@ extension _AppShellBuildHelpersX on _AppShellState {
               : null,
           onRotateApiKey: _token != null
               ? () async {
-                  final result = await widget.client.rotateApiKey(_token!);
-                  // Merge the new prefix into the in-memory settings so the
-                  // UI shows the updated masked value after rebuild.
-                  final newPrefix = result['api_key_prefix']?.toString() ?? '';
-                  if (newPrefix.isNotEmpty && mounted) {
-                    _settings = {
-                      ..._settings ?? <String, dynamic>{},
-                      'api_key_prefix': newPrefix,
-                    };
-                    refreshState();
+                  try {
+                    final result = await widget.client.rotateApiKey(_token!);
+                    // Merge the new prefix into the in-memory settings so the
+                    // UI shows the updated masked value after rebuild.
+                    final newPrefix =
+                        result['api_key_prefix']?.toString() ?? '';
+                    if (newPrefix.isNotEmpty && mounted) {
+                      _settings = {
+                        ..._settings ?? <String, dynamic>{},
+                        'api_key_prefix': newPrefix,
+                      };
+                      refreshState();
+                    }
+                    log(
+                      level: DebugLogLevel.info,
+                      source: 'Editor.UI',
+                      message: 'API key rotated: Editor.UI/api_key.rotate — '
+                          'new prefix ${newPrefix.isEmpty ? "<unknown>" : newPrefix}; '
+                          'the previous key is now invalid.',
+                    );
+                    return result;
+                  } catch (e) {
+                    // A stale Casdoor session is the common cause: the app
+                    // renders from local cache so it looks signed in, but
+                    // this direct server call 401s. Log the effective cause
+                    // so the Debug log explains the SnackBar.
+                    log(
+                      level: DebugLogLevel.warning,
+                      source: 'Editor.UI',
+                      message: 'API key was NOT rotated: '
+                          'Editor.UI/api_key.rotate — '
+                          '${e.toString().replaceFirst('Exception: ', '')} '
+                          '(if this is a 401, the sign-in session has '
+                          'expired — sign in again and retry).',
+                    );
+                    rethrow;
                   }
-                  return result;
                 }
               : null,
           onSaveMcpSkill: _token != null
