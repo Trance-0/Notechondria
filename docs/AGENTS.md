@@ -13,6 +13,45 @@ the only active coding worker here, so this project overrides the shared
 branch-discipline default that normally prefers feature branches when a
 repo has branches other than `main`.
 
+## Host resource budget (IMPORTANT — a violation crashed the dev host)
+
+NEVER RUN TEST CASES OR CONTAINERS THAT THE HOST MAY NOT AFFORD. On
+2026-07-10 an agent launched `docker compose up --build -d` (three
+parallel Flutter web builds + seven services) on the shared dev host
+(3.3 GiB RAM, 2 cores, ~half already used by other stacks) and took
+the machine down. Rules, in force for every future round on any host:
+
+1. **Measure before you launch.** Run `free -h` and `nproc`, and list
+   running containers, before starting any build, test suite, or
+   container. You do not know the host's headroom until you check —
+   same discipline as the host-port rule.
+2. **Never take more than 70% of the *remaining* RAM.** Budget the
+   worst-case footprint of what you are about to start (a Flutter web
+   build can spike well past 1.5 GiB; a Django test container needs
+   ~300 MiB). If the worst case exceeds 70% of currently-available
+   memory, do not run it — split it, cap it, or declare it not
+   runnable on this host and say so in the round summary.
+3. **Hard-cap everything you start.** Containers get an explicit
+   `--memory` limit sized within the budget; builds and test runs are
+   wrapped in `timeout` (or an equivalent) so nothing runs unbounded.
+4. **Terminate after 5 minutes of silence.** Any process with no
+   output for 5 minutes is presumed wedged: kill it, record what
+   happened, and fall back — do not wait and do not retry the same
+   invocation at the same scale.
+5. **Sequential, never parallel, heavy jobs.** One Flutter build or
+   one test container at a time. Parallel heavy builds are what
+   crashed the host.
+6. **Always have a fallback plan** stated before the heavy step: what
+   you will do if it OOMs or hangs (smaller target, backend-only
+   verification, or explicitly deferring to a bigger machine / CI).
+   "Rebuild everything and hope" is not a plan.
+
+On this specific dev host (2 cores / 3.3 GiB, shared with frps,
+portainer, openresty, openclaw): backend-only Docker verification is
+affordable; **frontend Flutter Docker builds and the full-stack
+compose are NOT** — defer those to CI (GitHub Actions Pages workflow)
+or an owner-approved window where other stacks are stopped.
+
 ## §1.7 compliance — canonical module / process names
 
 The canonical `AGENTS.md` §1.7 mandates that every error, warning, info,

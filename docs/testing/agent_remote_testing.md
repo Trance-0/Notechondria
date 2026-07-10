@@ -9,6 +9,21 @@ Everything runs through Docker — the host deliberately has no Flutter
 SDK and its system Python is newer than the backend target, so
 host-native `flutter test` / `manage.py test` are not supported paths.
 
+## Resource budget (READ FIRST — a full-stack `up --build` crashed this host)
+
+This dev host is small (2 cores, 3.3 GiB RAM) and shared with other
+stacks. Follow docs/AGENTS.md "Host resource budget": check `free -h`
+before every heavy step, never take more than 70% of remaining RAM,
+`--memory`-cap containers, `timeout`-wrap runs, kill anything silent
+for 5 minutes, one heavy job at a time.
+
+**Affordable here:** backend image build, the backend test container
+(~300 MiB), API probes, the MCP CLI.
+**NOT affordable here:** Flutter Docker builds (each can spike past
+1.5 GiB) and the 7-service full-stack compose — treat the "Full
+stack" and "Frontend smoke tests" sections below as reference for a
+bigger machine / CI, not as steps to run on this host.
+
 ## Port map (verify before assuming — LLM_CHECK rule)
 
 Compose defaults, confirmed free on this host on 2026-07-07:
