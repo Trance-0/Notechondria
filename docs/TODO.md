@@ -20,41 +20,44 @@ Completed rounds live in `./docs/versions/<semver>.md` — do **not**
 restate them here. When a task is landed, delete its entry from this
 file and add a round-log entry to the new version doc.
 
-## **Urgent** — agent remote-test harness (owner: enable agents to test without me)
+## **Urgent** — Activity first, then agent task-execution (owner priority 2026-07-10)
 
-Goal: agents verify every change end-to-end against the local Docker
-full stack and report results; the owner only reads summaries and does
-occasional taste checks. The Docker frontend image builds were repaired
-in 0.1.159 (broken since the `notechondria_shared` extraction) — see
-[`testing/agent_remote_testing.md`](testing/agent_remote_testing.md)
-for the harness runbook (stack up/down, backend tests in-container,
-frontend smoke tests via the `frontend_test` build stage, API probes).
+Owner's current priority order: (1) the Activity surface (calendar +
+tasks) fully working, (2) agents able to remote-test and to create /
+manage tasks for the user over MCP, with batch work going through the
+CLI. Landed in 0.1.160: `seed_agent_user`, the gateway `/mcp/` route
+fix (MCP was unreachable through the Docker gateway), MCP↔REST
+planner-event parity (window normalization + reopen), `days` on
+`get_activity_week` + REST `include_completed`/`limit` on
+`planner-events/`, baseline `initialize` instructions on both MCP
+servers, upgraded tool descriptions/schemas (planner cluster +
+destructive-tool warnings), and `notechondria-mcp batch`. Constraint
+for all future rounds: docs/AGENTS.md **Host resource budget** — no
+Flutter builds / full-stack `--build` on this host (runtime `up
+--no-build` from existing images is fine).
 
-- [ ] **Seedable test identity.** Add a management command
-  (`backend/creators/management/commands/seed_agent_user.py`) that
-  idempotently creates a verified test user + prints a fresh `ntc_`
-  API key, so an agent can mint credentials non-interactively:
-  `docker compose exec app python manage.py seed_agent_user`. Guard it
-  behind `DEBUG=True` or an explicit `ALLOW_AGENT_SEED=1` env so it can
-  never run in production.
-- [ ] **MCP servers verified against the live stack.** With the seeded
-  key, exercise the in-backend `/mcp/` handshake + a representative
-  tool call over HTTP, and the standalone `cli/` server over stdio
-  (`pip install -e cli/` needs only `requests`). Record the working
-  agent-host config in `docs/server/mcp.md`; optionally commit a repo
-  `.mcp.json` (key read from env, never committed) so Claude Code
-  sessions get the tools automatically.
+- [ ] **Activity UI verification pass (frontend).** Backend + MCP
+  Activity flows are verified end-to-end; the Flutter Activity
+  screens (portal `activity_week.dart`, planner todo list) have only
+  been exercised by owner reports (0.1.158 fix round). Needs either
+  the Playwright probe layer below or an owner smoke pass against the
+  running stack; collect any remaining Activity bugs into the next
+  fix round.
 - [ ] **Browser-level probe layer.** Playwright (Python) against the
   gateway (`http://localhost:8080/portal/` etc.) for smoke flows +
-  screenshots. This unblocks the long-deferred storage-isolation
-  regression test (F1) and gives the owner async screenshots for UI
-  taste checks instead of running the app themselves. Screenshots land
-  in a gitignored `artifacts/` dir; agents attach findings to the
-  round summary.
-- [ ] **Round-end verification convention.** Every future round ends
-  with: backend tests in-container, `frontend_test` build stage per
-  touched app, gateway probe (`/api/v1/handshake/` + one page per
-  app), then commit. Document exceptions explicitly per LLM_CHECK.
+  screenshots (RAM-budget note: run headless, one browser, after
+  checking `free -h`). Unblocks the storage-isolation regression test
+  (F1) and gives the owner async screenshots for UI taste checks.
+  Screenshots land in a gitignored `artifacts/` dir.
+- [ ] **Repo `.mcp.json`** registering the CLI server (key read from
+  env, never committed) so Claude Code sessions get the 41 tools
+  automatically against a configured backend.
+- [ ] **Round-end verification convention.** Every round that touches
+  runtime code ends with: backend tests in a memory-capped container,
+  gateway probe (`/api/v1/handshake/` + one page per app on the
+  running stack), CLI unit tests when `cli/` changed. Frontend
+  `frontend_test` Docker stages are **CI-only** on this host
+  (resource budget); call out anything not run per LLM_CHECK.
 
 ## Dev plan — bring every component online (fewest owner-attention rounds)
 

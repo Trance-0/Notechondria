@@ -20,6 +20,32 @@ Index: [`server/backend.md`](backend.md).
 `/mcp/` (no `/api/v1/` prefix, by design — MCP is a separate
 protocol surface).
 
+**Reverse-proxy note (bug fixed in 0.1.160):** any gateway in front
+of the backend must route `/mcp/` explicitly. The Docker full-stack
+gateway (`deployment/docker/nginx/default.conf`) only proxied
+`/api/` + `/admin/`, so `/mcp/` returned the gateway's 404 and the
+MCP server was unreachable on that deployment path even though the
+backend served it. Mirror the `/mcp/` location block when
+configuring any other reverse proxy (Cloudflare, 1Panel, etc.).
+
+## Server instructions (`initialize`)
+
+Both servers return an `instructions` string in the `initialize`
+result: the baseline operating manual in
+`backend/mcp/instructions.py` (data model, workflows, batch
+guidance), with the user's per-account `skill.md`
+(`Creator.mcp_skill_md`) appended under a `## User skill.md` heading
+when present. Parity rule: `cli/notechondria_mcp/instructions.py`
+keeps the identical `BASE_INSTRUCTIONS` text.
+
+## Agent test identity
+
+`python manage.py seed_agent_user` (guarded: `DEBUG=True` or
+`ALLOW_AGENT_SEED=1`) idempotently creates the `agent-tester` user
+and prints a fresh `ntc_` key — the non-interactive path agents use
+against a local stack. See
+[`../testing/agent_remote_testing.md`](../testing/agent_remote_testing.md).
+
 ## Authentication
 
 `ApiKeyAuthentication` from
@@ -111,9 +137,11 @@ other tool already had a REST equivalent. The standalone CLI
 
 ## Tests
 
-`mcp/tests.py` — 51 tests across 4 `TestCase` classes covering:
+`mcp/tests.py` — 53 tests across 4 `TestCase` classes covering:
 API-key auth happy-path and failure modes, every tool's
-request/response shape, and the tool-discovery handshake.
+request/response shape, the tool-discovery handshake, and the
+planner-event window normalization / reopen parity with REST
+(0.1.160).
 
 Run:
 
