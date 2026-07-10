@@ -1747,7 +1747,19 @@ class PlannerEventListCreateApiView(APIView):
 
     def get(self, request):
         creator = ensure_creator(request.user)
-        events = PlannerEvent.objects.filter(creator_id=creator, is_completed=False).order_by("event_date", "title")
+        events = PlannerEvent.objects.filter(creator_id=creator)
+        # Opt-in extras so the CLI MCP server can mirror the in-backend
+        # list_events tool; defaults preserve the original contract
+        # (incomplete only, no truncation).
+        if request.query_params.get("include_completed") not in ("1", "true"):
+            events = events.filter(is_completed=False)
+        events = events.order_by("event_date", "title")
+        raw_limit = request.query_params.get("limit")
+        if raw_limit is not None:
+            try:
+                events = events[: max(1, min(int(raw_limit), 200))]
+            except (TypeError, ValueError):
+                pass
         return Response([planner_event_payload(event) for event in events])
 
     def post(self, request):

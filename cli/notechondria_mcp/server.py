@@ -19,6 +19,7 @@ from typing import Any, Optional
 from . import __version__
 from .client import BackendClient, BackendError
 from .config import Config
+from .instructions import BASE_INSTRUCTIONS
 from .tools import call_tool, tool_specs
 
 PROTOCOL_VERSION = "2025-03-26"
@@ -68,23 +69,24 @@ class McpServer:
     # --- methods ------------------------------------------------------
 
     def _initialize(self) -> dict:
-        # Fetch the user's skill.md so the agent reads the import/export
-        # playbook on connect, matching the in-backend MCP behavior.
-        instructions = ""
+        # Baseline operating manual + the user's skill.md (fetched from
+        # the backend) appended, matching the in-backend MCP behavior.
+        skill_md = ""
         try:
             profile = call_tool(self._client, "get_profile", {})
             if isinstance(profile, dict):
-                instructions = str(profile.get("mcp_skill_md") or "")
+                skill_md = str(profile.get("mcp_skill_md") or "").strip()
         except Exception:  # noqa: BLE001 — initialize must not hard-fail
-            instructions = ""
-        result = {
+            skill_md = ""
+        instructions = BASE_INSTRUCTIONS
+        if skill_md:
+            instructions = f"{BASE_INSTRUCTIONS}\n## User skill.md\n\n{skill_md}"
+        return {
             "protocolVersion": PROTOCOL_VERSION,
             "capabilities": {"tools": {"listChanged": False}},
             "serverInfo": SERVER_INFO,
+            "instructions": instructions,
         }
-        if instructions:
-            result["instructions"] = instructions
-        return result
 
     def _tools_call(self, req_id: Any, params: dict) -> dict:
         name = params.get("name", "")

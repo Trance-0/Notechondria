@@ -2,9 +2,11 @@ import hashlib
 import json
 import secrets
 import uuid
+from datetime import timedelta
 
 from django.contrib.auth.models import User
 from django.test import TestCase, Client
+from django.utils import timezone
 
 from creators.models import Creator
 from courses.models import Course, CourseSubscription
@@ -442,6 +444,39 @@ class McpToolTests(TestCase):
         result2 = self._tool_result(resp2)
         self.assertEqual(len(result2["events"]), 1)
         self.assertEqual(result2["events"][0]["id"], event_id)
+
+    def test_create_event_normalizes_window_like_rest(self):
+        # A bare-date create must store the same default noon one-hour
+        # window the REST POST assigns (normalize_planner_event_window),
+        # so MCP- and app-created events are indistinguishable.
+        resp = self._call_tool("create_event", {
+            "title": "Bare-date task",
+            "event_date": "2026-04-15",
+        })
+        result = self._tool_result(resp)
+        event = PlannerEvent.objects.get(pk=result["id"])
+        self.assertIsNotNone(event.starts_at)
+        self.assertIsNotNone(event.ends_at)
+        self.assertEqual(timezone.localtime(event.starts_at).hour, 12)
+        self.assertEqual(event.ends_at - event.starts_at, timedelta(hours=1))
+        self.assertEqual(result["starts_at"], event.starts_at.isoformat())
+
+    def test_update_event_reopen_clears_completed_at(self):
+        event = PlannerEvent.objects.create(
+            creator_id=self.creator,
+            title="Done task",
+            event_date="2026-04-15",
+            is_completed=True,
+            completed_at=timezone.now(),
+        )
+        resp = self._call_tool("update_event", {
+            "event_id": event.id,
+            "is_completed": False,
+        })
+        result = self._tool_result(resp)
+        self.assertFalse(result["is_completed"])
+        event.refresh_from_db()
+        self.assertIsNone(event.completed_at)
 
     def test_update_event(self):
         event = PlannerEvent.objects.create(

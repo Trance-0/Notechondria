@@ -150,10 +150,15 @@ class ToolRegistryTests(unittest.TestCase):
 
 class ServerDispatchTests(unittest.TestCase):
     def test_initialize_includes_skill_instructions(self):
+        from notechondria_mcp.instructions import BASE_INSTRUCTIONS
+
         server, _ = _server_with_fake()
         resp = server.handle({"jsonrpc": "2.0", "id": 1, "method": "initialize"})
         self.assertEqual(resp["result"]["protocolVersion"], "2025-03-26")
-        self.assertEqual(resp["result"]["instructions"], "# import from X")
+        instructions = resp["result"]["instructions"]
+        self.assertTrue(instructions.startswith(BASE_INSTRUCTIONS))
+        self.assertIn("## User skill.md", instructions)
+        self.assertIn("# import from X", instructions)
 
     def test_tools_list(self):
         server, _ = _server_with_fake()
@@ -193,3 +198,63 @@ class ServerDispatchTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BatchRunnerTests(unittest.TestCase):
+    """The `batch` subcommand's JSONL executor — no network."""
+
+    def _run(self, lines, stop_on_error=False):
+        import io
+        from unittest import mock
+        from notechondria_mcp import batch as batch_mod
+        from notechondria_mcp.config import Config
+
+        fake = FakeClient()
+        out = io.StringIO()
+        with mock.patch.object(batch_mod, "BackendClient", return_value=fake):
+            code = batch_mod.run_batch(
+                Config(api_url="http://x/api/v1", api_key="ntc_test"),
+                source=io.StringIO("\n".join(lines) + "\n"),
+                sink=out,
+                stop_on_error=stop_on_error,
+            )
+        results = [json.loads(l) for l in out.getvalue().splitlines()]
+        return code, results, fake
+
+    def test_executes_lines_and_reports_results(self):
+        code, results, fake = self._run([
+            '{"tool": "create_event", "arguments": {"title": "A", "event_date": "2026-07-12"}}',
+            "# a comment line",
+            "",
+            '{"tool": "create_event", "arguments": {"title": "B", "event_date": "2026-07-13"}}',
+        ])
+        self.assertEqual(code, 0)
+        self.assertEqual([r["ok"] for r in results], [True, True])
+        self.assertEqual([r["line"] for r in results], [1, 4])
+        posted = [c for c in fake.calls if c[0] == "POST"]
+        self.assertEqual(len(posted), 2)
+
+    def test_continues_past_bad_lines_and_exits_nonzero(self):
+        code, results, _ = self._run([
+            "not json",
+            '{"arguments": {}}',
+            '{"tool": "no_such_tool", "arguments": {}}',
+            '{"tool": "create_event", "arguments": {"title": "C", "event_date": "2026-07-14"}}',
+        ])
+        self.assertEqual(code, 1)
+        self.assertEqual([r["ok"] for r in results], [False, False, False, True])
+        self.assertIn("invalid JSON", results[0]["error"])
+        self.assertIn("missing 'tool'", results[1]["error"])
+        self.assertIn("unknown tool", results[2]["error"])
+
+    def test_stop_on_error_aborts_immediately(self):
+        code, results, fake = self._run(
+            [
+                '{"tool": "no_such_tool", "arguments": {}}',
+                '{"tool": "create_event", "arguments": {"title": "D", "event_date": "2026-07-15"}}',
+            ],
+            stop_on_error=True,
+        )
+        self.assertEqual(code, 1)
+        self.assertEqual(len(results), 1)
+        self.assertEqual([c for c in fake.calls if c[0] == "POST"], [])

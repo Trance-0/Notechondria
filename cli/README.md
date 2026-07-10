@@ -49,7 +49,29 @@ with `NOTECHONDRIA_CONFIG`):
 ```bash
 notechondria-mcp check    # verify config + backend connectivity
 notechondria-mcp          # serve MCP over stdio (default)
+notechondria-mcp batch tasks.jsonl   # bulk tool calls (see below)
 ```
+
+### Batch mode (bulk imports)
+
+For bulk jobs — importing a syllabus of deadlines, creating many
+notes — skip the per-call JSON-RPC envelope and feed `batch` a
+newline-delimited JSON file (or stdin with `-`), one
+`{"tool": <name>, "arguments": {...}}` per line. Blank lines and
+`#` comments are skipped; one JSON result is printed per line and
+per-item failures do not stop the run (add `--stop-on-error` to
+abort on the first failure). Exit code 0 = all items succeeded.
+
+```bash
+cat > syllabus.jsonl <<'EOF'
+{"tool": "create_event", "arguments": {"title": "Read chapter 4", "event_date": "2026-07-15"}}
+{"tool": "create_event", "arguments": {"title": "Problem set 2", "event_date": "2026-07-17", "difficulty_weight": 3}}
+EOF
+notechondria-mcp batch syllabus.jsonl
+```
+
+List before creating in bulk (`list_events` / `list_notes`) so reruns
+do not duplicate existing items.
 
 ### Wire into an agent host
 
@@ -72,11 +94,11 @@ Most desktop agent hosts launch an MCP server over stdio. Example
 
 ## Tools
 
-A representative subset of the backend MCP surface is implemented:
-`get_profile`, `list_notes`, `get_note`, `create_note`, `update_note`,
-`delete_note`, `list_courses`, `get_course`, `create_course`,
-`list_events`, `create_event`. The remaining tools are ported in
-Phase 3 (keep parity with `backend/mcp/tools.py`).
+Full parity with the in-backend MCP since 0.1.146: all 41 tools from
+`backend/mcp/tools.py` are implemented over REST with matching names,
+schemas, and descriptions. The `initialize` result carries the same
+baseline `instructions` operating manual
+(`notechondria_mcp/instructions.py`) plus the user's `skill.md`.
 
 ## Develop / test
 

@@ -329,7 +329,8 @@ def _delete_note(user, creator, params):
 
 register_tool(
     "delete_note",
-    "Soft-delete a note (moves to recycle bin).",
+    "Soft-delete a note (moves to the recycle bin; recoverable via "
+    "restore_deleted_note until the bin is emptied).",
     {
         "type": "object",
         "properties": {
@@ -566,11 +567,13 @@ def _list_events(user, creator, params):
 
 register_tool(
     "list_events",
-    "List planner events. By default only incomplete events.",
+    "List the user's planner events (tasks/deadlines/blocks) ordered by "
+    "event_date. Only incomplete (open) events by default. List before "
+    "creating in bulk so you do not duplicate existing tasks.",
     {
         "type": "object",
         "properties": {
-            "include_completed": {"type": "boolean", "description": "Include completed events."},
+            "include_completed": {"type": "boolean", "description": "Also include completed events. Default false."},
             "limit": {"type": "integer", "description": "Max results (default 50, max 200)."},
         },
         "required": [],
@@ -580,6 +583,8 @@ register_tool(
 
 
 def _create_event(user, creator, params):
+    from notes.api import normalize_planner_event_window
+
     event = PlannerEvent.objects.create(
         creator_id=creator,
         title=params.get("title", ""),
@@ -590,22 +595,31 @@ def _create_event(user, creator, params):
         description=params.get("description", ""),
         course_id_id=params.get("course_id"),
     )
+    # Same stored-window contract as the REST create (a bare-date event
+    # gets a noon one-hour window; event_date snaps to starts_at's day).
+    event.refresh_from_db()
+    normalize_planner_event_window(event)
     return _event_payload(event)
 
 
 register_tool(
     "create_event",
-    "Create a planner event.",
+    "Create a planner event (a task, deadline, or study block). For a "
+    "plain task/deadline pass only `title` + `event_date`; the server "
+    "assigns a default noon one-hour window so it renders on the "
+    "calendar grid. Pass `starts_at`/`ends_at` only for a real timed "
+    "block. New events are incomplete; they appear in the app's todo "
+    "list ordered by urgency and on the week calendar.",
     {
         "type": "object",
         "properties": {
-            "title": {"type": "string"},
-            "event_date": {"type": "string", "description": "ISO date (YYYY-MM-DD)."},
-            "starts_at": {"type": "string", "description": "ISO time (HH:MM:SS), optional."},
-            "ends_at": {"type": "string", "description": "ISO time (HH:MM:SS), optional."},
-            "difficulty_weight": {"type": "integer", "description": "1-4 weight for heatmap."},
-            "description": {"type": "string"},
-            "course_id": {"type": "integer", "description": "Associated course."},
+            "title": {"type": "string", "description": "Short task/event title (max 120 chars)."},
+            "event_date": {"type": "string", "description": "Due/occurrence date, ISO date (YYYY-MM-DD)."},
+            "starts_at": {"type": "string", "description": "Full ISO 8601 datetime (e.g. 2026-07-12T14:00:00Z), NOT a bare clock time. Optional; omit for an all-day task."},
+            "ends_at": {"type": "string", "description": "Full ISO 8601 datetime. Optional; defaults to starts_at + 1 hour, and is forced after starts_at."},
+            "difficulty_weight": {"type": "integer", "description": "Effort weight 1 (light) to 4 (heavy); feeds the activity heatmap. Default 1."},
+            "description": {"type": "string", "description": "Optional detail shown in the event dialog (max 255 chars)."},
+            "course_id": {"type": "integer", "description": "Optional owning course id (see list_courses)."},
         },
         "required": ["title", "event_date"],
     },
@@ -614,6 +628,8 @@ register_tool(
 
 
 def _update_event(user, creator, params):
+    from notes.api import normalize_planner_event_window
+
     event = get_object_or_404(PlannerEvent, pk=params["event_id"], creator_id=creator)
     for field in ("title", "event_date", "starts_at", "ends_at", "difficulty_weight", "description", "is_completed"):
         if field in params:
@@ -622,25 +638,35 @@ def _update_event(user, creator, params):
         event.course_id_id = params["course_id"]
     if params.get("is_completed") and not event.completed_at:
         event.completed_at = timezone.now()
+    if params.get("is_completed") is False:
+        event.completed_at = None
     event.save()
+    # Same stored-window contract as the REST PATCH.
+    event.refresh_from_db()
+    normalize_planner_event_window(event)
     return _event_payload(event)
 
 
 register_tool(
     "update_event",
-    "Update a planner event's fields.",
+    "Update a planner event. To complete a task set `is_completed: "
+    "true` (completed tasks stay visible, struck through — prefer this "
+    "over delete_event); `is_completed: false` reopens it. To "
+    "reschedule a timed event set `starts_at` (and `ends_at`) — the "
+    "stored time window wins over `event_date`, which is snapped to "
+    "starts_at's day.",
     {
         "type": "object",
         "properties": {
-            "event_id": {"type": "integer"},
+            "event_id": {"type": "integer", "description": "Event id from list_events / get_activity_week."},
             "title": {"type": "string"},
-            "event_date": {"type": "string"},
-            "starts_at": {"type": ["string", "null"]},
-            "ends_at": {"type": ["string", "null"]},
-            "difficulty_weight": {"type": "integer"},
+            "event_date": {"type": "string", "description": "ISO date (YYYY-MM-DD). Snapped to starts_at's day after save — set starts_at to actually move a timed event."},
+            "starts_at": {"type": ["string", "null"], "description": "Full ISO 8601 datetime (e.g. 2026-07-12T14:00:00Z)."},
+            "ends_at": {"type": ["string", "null"], "description": "Full ISO 8601 datetime; forced after starts_at."},
+            "difficulty_weight": {"type": "integer", "description": "Effort weight 1-4."},
             "description": {"type": "string"},
-            "course_id": {"type": ["integer", "null"]},
-            "is_completed": {"type": "boolean"},
+            "course_id": {"type": ["integer", "null"], "description": "Owning course id, or null to detach."},
+            "is_completed": {"type": "boolean", "description": "true completes (stamps completed_at), false reopens (clears it)."},
         },
         "required": ["event_id"],
     },
@@ -843,7 +869,8 @@ def _empty_recycle_bin(user, creator, params):
 
 register_tool(
     "empty_recycle_bin",
-    "Permanently delete every note currently in the recycle bin.",
+    "PERMANENTLY delete every note in the recycle bin. Irreversible — "
+    "only call when the user explicitly confirms emptying the bin.",
     {"type": "object", "properties": {}, "required": []},
     _empty_recycle_bin,
 )
@@ -1087,7 +1114,9 @@ def _delete_event(user, creator, params):
 
 register_tool(
     "delete_event",
-    "Delete a planner event owned by the authenticated user.",
+    "Permanently delete a planner event (no recycle bin). To finish a "
+    "task keep it and set update_event `is_completed: true` instead; "
+    "delete only when the user asks to remove it outright.",
     {
         "type": "object",
         "properties": {
@@ -1146,20 +1175,31 @@ def _get_activity_week(user, creator, params):
             parsed_start = _dt.fromisoformat(start_date).date()
         except ValueError:
             parsed_start = timezone.localdate()
-    return calendar_week_payload(creator, start_date=parsed_start)
+    day_count = params.get("days", 7)
+    return calendar_week_payload(
+        creator, start_date=parsed_start, day_count=day_count
+    )
 
 
 register_tool(
     "get_activity_week",
-    "Week-view planner payload: sessions, events, deadlines, and calendar "
-    "feed entries for the 7-day window starting at `start_date` (ISO "
-    "date, defaults to today in the server's local timezone).",
+    "The user's calendar window: per-day `events` (planner events with "
+    "kind 'plan', calendar-feed entries with kind 'feed', work sessions) "
+    "plus a `deadlines` list of open tasks sorted by urgency_score "
+    "(completed ones inside the window stay, at the bottom). This is "
+    "the tool for 'what is on my plate' questions and for a weekly "
+    "review. Same payload the app's Activity screen renders.",
     {
         "type": "object",
         "properties": {
             "start_date": {
                 "type": "string",
-                "description": "ISO date (YYYY-MM-DD). Defaults to today.",
+                "description": "Window start, ISO date (YYYY-MM-DD). Defaults to today.",
+            },
+            "days": {
+                "type": "integer",
+                "enum": [3, 7, 30],
+                "description": "Window length in days (the app's 3-day / week / month ranges). Default 7; other values fall back to 7.",
             },
         },
         "required": [],
@@ -1308,8 +1348,11 @@ def _create_calendar_feed(user, creator, params):
 
 register_tool(
     "create_calendar_feed",
-    "Create a calendar feed. `source_kind`='I' for a one-shot iCal paste "
-    "(supply `raw_ical`); 'S' for a subscribed URL (supply `source_url`).",
+    "Create a calendar feed shown in the week calendar. `source_kind`="
+    "'I' for a one-shot iCal paste (supply `raw_ical`); 'S' for a "
+    "subscribed URL that is refetched (supply `source_url` — use the "
+    "calendar's secret/private iCal address; a 'public' Google Calendar "
+    "page URL returns HTML and will not parse).",
     {
         "type": "object",
         "properties": {
