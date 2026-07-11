@@ -203,6 +203,10 @@ def _import_course_git(client: BackendClient, args: dict) -> Any:
     return client.post(f"courses/{int(args['course_id'])}/git/import/", {})
 
 
+def _sync_course_git(client: BackendClient, args: dict) -> Any:
+    return client.post(f"courses/{int(args['course_id'])}/git/sync/", {})
+
+
 def _set_course_git(client: BackendClient, args: dict) -> Any:
     course_id = int(args["course_id"])
     if args.get("unlink"):
@@ -566,6 +570,14 @@ TOOLS: List[dict] = [
                        "App installed. Owner-only.",
         "inputSchema": _schema({"course_id": _INT}, ["course_id"]),
         "handler": _import_course_git,
+    },
+    {
+        "name": "sync_course_git",
+        "description": "Push this course's notes to its bound GitHub repo "
+                       "now (markdown only; note frontmatter preserved). "
+                       "Backend is the source of truth. Owner-only.",
+        "inputSchema": _schema({"course_id": _INT}, ["course_id"]),
+        "handler": _sync_course_git,
     },
     {
         "name": "list_course_notes",

@@ -209,6 +209,18 @@ def append_course_operation(creator, course, operation_type, metadata=None):
     )
 
 
+def arm_course_sync(note):
+    """Arm the lazy-sync debounce when a note in a bound, sync-enabled
+    course is edited (the app is a repo text editor; edits accrue and the
+    push fires after the idle timeout). No-op for unbound courses."""
+    course = getattr(note, "course_id", None)
+    if course is None:
+        return
+    from courses.git_service import mark_course_pending
+
+    mark_course_pending(course)
+
+
 def unique_course_slug(title: str, fallback: str = "course") -> str:
     base = slugify(title)[:100] or fallback
     candidate = base
@@ -653,6 +665,15 @@ class CourseListApiView(APIView):
 
     def get(self, request):
         creator = ensure_creator(request.user) if request.user.is_authenticated else None
+        # Lazy-on-request sync: flush any of this owner's bound courses
+        # whose debounce has elapsed. Best-effort — never blocks the list.
+        if creator is not None:
+            try:
+                from courses.git_service import flush_due_course_syncs
+
+                flush_due_course_syncs(creator)
+            except Exception:  # noqa: BLE001 - sync must never break course listing
+                logger.exception("Lazy course-git flush failed during course list")
         subscription_map = active_subscription_map(creator)
         courses = list(
             Course.objects.select_related("creator_id__user_id")
@@ -959,6 +980,32 @@ class CourseGitImportApiView(APIView):
         return Response(summary)
 
 
+class CourseGitSyncApiView(APIView):
+    """Owner-only: explicitly push this course's notes to its bound repo
+    now (the "sync now" button). Lazy sync also fires this on idle."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, course_id):
+        from courses.git_service import CourseGitServiceError, sync_course_to_repo
+
+        creator = ensure_creator(request.user)
+        course = get_object_or_404(Course, pk=course_id)
+        if course.creator_id_id != creator.id:
+            return Response(
+                {"detail": (
+                    "Cannot sync: Backend.Notes.Courses.Git/sync — "
+                    "category is owned by a different creator."
+                )},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        try:
+            summary = sync_course_to_repo(course)
+        except CourseGitServiceError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(summary)
+
+
 class CourseReorderApiView(APIView):
     """Accepts an ordered list of course ids and rewrites their `sort_order`
     so the user's preferred arrangement survives across sessions."""
@@ -1196,6 +1243,7 @@ class NoteListCreateApiView(APIView):
             note_word_count(note),
             HeatmapActivityTypeChoices.EDITED if existing is not None else HeatmapActivityTypeChoices.CREATED,
         )
+        arm_course_sync(note)
         response_status = status.HTTP_200_OK if existing is not None else status.HTTP_201_CREATED
         logger.info(
             "Note %s: Backend.Notes.Notes/create_or_upsert \u2014 "
@@ -1289,6 +1337,7 @@ class NoteDetailApiView(APIView):
                 max(abs(after_words - before_words), after_words),
                 HeatmapActivityTypeChoices.EDITED,
             )
+        arm_course_sync(note)
         logger.info(
             "Note updated: Backend.Notes.Notes/update \u2014 "
             "creator=%s note_id=%s fields=%s.",
@@ -1425,6 +1474,7 @@ class NoteByUuidApiView(APIView):
             note.save(update_fields=["content", "last_edit"])
             replace_note_blocks(note, note.creator_id, replacement_markdown)
             record_note_activity(note, note_word_count(note), HeatmapActivityTypeChoices.EDITED)
+        arm_course_sync(note)
         data = NoteDetailSerializer(note, context={"request": request}).data
         data["can_edit"] = True
         return Response(data)

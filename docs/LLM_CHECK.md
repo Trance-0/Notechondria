@@ -27,6 +27,17 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.174: course git sync (notes → repo), lazy-on-request. course_repo.py
+  compose_markdown/load_frontmatter_dict + frontmatter on import;
+  git_service serialize_course_for_sync + _commit_files (Contents API PUT
+  via App token) + sync_course_to_repo (clears git_pending_since, sets
+  git_last_synced_at, GIT_SYNC log) + mark_course_pending +
+  flush_due_course_syncs (row-locked select_for_update, best-effort).
+  POST courses/<id>/git/sync/; arm_course_sync in the 3 note-write paths;
+  flush wired into CourseListApiView.get. MCP/CLI sync_course_git (parity
+  44→45). Django tests mock _commit_files (sync clears pending + logs;
+  arm-on-edit; flush fires past timeout, skips within). py_compile + 26
+  CLI tests pass (45 tools); django CI is the gate.
 - 0.1.173: course git import. Note.git_path (migration 0019); courses/
   git_service.py (fetch_course_repo App-token reader + import_course_from_repo
   idempotent note upsert by git_path, GIT_IMPORT log); public token wrappers

@@ -113,11 +113,15 @@ do not run project containers/apps locally.
 - [x] Backend **`git_import`** endpoint (`POST courses/<id>/git/import/`
   + MCP/CLI `import_course_git`): App-token fetch → `parse_course_repo` →
   create/update notes matched by `Note.git_path`; `GIT_IMPORT` log. (0.1.173)
-- [ ] **Lazy-on-request sync**: course notes → markdown (adapter write
+- [x] **Lazy-on-request sync**: course notes → markdown (adapter write
   mapping) → commit/push via the App token to `Course.git_repo`, fired
   when `git_pending_since` exceeds `git_sync_timeout_minutes` (row-locked;
   `git_last_synced_at`/`git_last_sync_error`; `GIT_SYNC` log). Overwrite
-  mapped markdown only, after permission.
+  mapped markdown only, after permission. `serialize_course_for_sync` +
+  `_commit_files` + `sync_course_to_repo` + `mark_course_pending` +
+  `flush_due_course_syncs`; `POST courses/<id>/git/sync/`; arm-on-edit in
+  the three note-write paths; flush on the authenticated course-list
+  poll; MCP/CLI `sync_course_git`. (0.1.174)
 - [ ] **Multi-repo per user**: today `GithubIntegration.repo_full_name`
   is one repo; let each `Course.git_repo` push with the user's App token.
 - [x] **Effective logs** on bind / unlink (`GIT_BIND`/`GIT_UNLINK`). (0.1.170)

@@ -451,6 +451,32 @@ class McpToolTests(TestCase):
             2,
         )
 
+    def test_sync_course_git_pushes_notes(self):
+        from unittest.mock import patch
+        from creators.models import GithubIntegration
+        import courses.git_service as git_service
+
+        course = Course.objects.create(
+            creator_id=self.creator, slug="git-sync", title="Git Sync",
+            git_repo="octo/docs", git_branch="main", git_sync_enabled=True,
+            git_pending_since=timezone.now(),
+        )
+        GithubIntegration.objects.create(
+            creator=self.creator, installation_id="inst-sync-mcp",
+        )
+        Note.objects.create(
+            creator_id=self.creator, course_id=course, sharing_id=_sid(),
+            title="Lesson", content="# Lesson\n\nbody", git_path="docs/l.md",
+            custom_meta='{"sidebar_position": 1}',
+        )
+        with patch.object(git_service, "_commit_files", return_value="sha") as m:
+            resp = self._call_tool("sync_course_git", {"course_id": course.id})
+        result = self._tool_result(resp)
+        self.assertEqual(result["files"], 1)
+        m.assert_called_once()
+        course.refresh_from_db()
+        self.assertIsNone(course.git_pending_since)
+
     def test_delete_course_orphans_notes_to_uncategorized(self):
         extra = Course.objects.create(
             creator_id=self.creator, slug="extra", title="Extra",

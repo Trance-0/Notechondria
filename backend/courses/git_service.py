@@ -22,8 +22,17 @@ import logging
 
 import requests
 
-from courses.course_repo import CONFIG_FILENAME, load_course_config, parse_course_repo
-from courses.models import CourseOperationLog, CourseOperationTypeChoices
+from django.db import transaction
+from django.utils import timezone
+
+from courses.course_repo import (
+    CONFIG_FILENAME,
+    compose_markdown,
+    load_course_config,
+    load_frontmatter_dict,
+    parse_course_repo,
+)
+from courses.models import Course, CourseOperationLog, CourseOperationTypeChoices
 from creators.models import GithubIntegration
 from creators.services import github_sync
 from notes.models import Note
@@ -131,6 +140,10 @@ def import_course_from_repo(course) -> dict:
             git_path = note_data["path"]
             title = (note_data["title"] or "Untitled")[:100]
             markdown = note_data["markdown"]
+            # Preserve the file's own frontmatter (sidebar_position, title,
+            # …) so a later sync re-emits it and doesn't break the repo's
+            # site rendering.
+            frontmatter_json = json.dumps(note_data.get("frontmatter") or {}, default=str)
             existing = Note.objects.filter(
                 creator_id=creator,
                 course_id=course,
@@ -138,9 +151,14 @@ def import_course_from_repo(course) -> dict:
                 deleted_at__isnull=True,
             ).first()
             if existing is not None:
-                if existing.content != markdown or existing.title != title:
+                if (
+                    existing.content != markdown
+                    or existing.title != title
+                    or existing.custom_meta != frontmatter_json
+                ):
                     existing.content = markdown
                     existing.title = title
+                    existing.custom_meta = frontmatter_json
                     existing.save()
                     updated += 1
             else:
@@ -151,6 +169,7 @@ def import_course_from_repo(course) -> dict:
                     title=title,
                     content=markdown,
                     git_path=git_path,
+                    custom_meta=frontmatter_json,
                     editor_mode="G",
                 )
                 created += 1
@@ -180,3 +199,164 @@ def import_course_from_repo(course) -> dict:
         created, updated, parsed["note_count"],
     )
     return summary
+
+
+# ---------------------------------------------------------------------------
+# Sync (course notes -> repo markdown), lazy-on-request
+# ---------------------------------------------------------------------------
+
+def serialize_course_for_sync(course) -> dict[str, str]:
+    """Map the course's git-backed notes to ``{repo_path: markdown}``. The
+    file's original frontmatter (stored in ``custom_meta`` on import) is
+    re-emitted so sync doesn't strip rendering metadata. Only notes with a
+    ``.md`` ``git_path`` are written — nothing else in the repo is touched."""
+    files: dict[str, str] = {}
+    notes = Note.objects.filter(
+        course_id=course, deleted_at__isnull=True, git_path__isnull=False
+    ).exclude(git_path="")
+    for note in notes:
+        if not note.git_path.endswith(".md"):
+            continue
+        frontmatter = load_frontmatter_dict(note.custom_meta)
+        files[note.git_path] = compose_markdown(frontmatter, note.content or "")
+    return files
+
+
+def _commit_files(integration, repo: str, branch: str, files: dict[str, str], message: str) -> str:
+    """Write each mapped markdown file via the Contents API using the App
+    token (GET existing sha, then PUT). Returns the last commit sha."""
+    import base64 as _b64
+
+    import requests as _requests
+
+    token = github_sync.installation_token(integration)
+    headers = github_sync.github_request_headers(token)
+    last_sha = ""
+    for path, text in files.items():
+        url = f"{GITHUB_API}/repos/{repo}/contents/{path}"
+        existing_sha = ""
+        try:
+            probe = _requests.get(url, headers=headers, params={"ref": branch}, timeout=15)
+            if probe.status_code == 200:
+                existing_sha = probe.json().get("sha", "")
+        except _requests.RequestException:
+            pass
+        body = {
+            "message": message,
+            "branch": branch,
+            "content": _b64.b64encode(text.encode("utf-8")).decode("ascii"),
+        }
+        if existing_sha:
+            body["sha"] = existing_sha
+        try:
+            resp = _requests.put(url, headers=headers, json=body, timeout=30)
+        except _requests.RequestException as exc:
+            raise CourseGitServiceError(f"network error writing {path}: {exc}") from exc
+        if resp.status_code >= 400:
+            raise CourseGitServiceError(f"GitHub returned {resp.status_code} writing {path}.")
+        last_sha = (resp.json().get("commit") or {}).get("sha") or last_sha
+    return last_sha
+
+
+def sync_course_to_repo(course) -> dict:
+    """Push the course's notes back to its bound repo (markdown only) and
+    update the sync bookkeeping. Clears ``git_pending_since`` on success;
+    records ``git_last_sync_error`` and re-raises on failure."""
+    creator = course.creator_id
+    if not course.git_repo:
+        raise CourseGitServiceError("This course is not bound to a repository.")
+    integration = integration_for(creator)
+    if integration is None:
+        raise CourseGitServiceError(
+            "Connect your GitHub account (install the app) before syncing."
+        )
+    branch = course.git_branch or "main"
+    files = serialize_course_for_sync(course)
+    if not files:
+        # Nothing to write; just clear the pending flag.
+        course.git_pending_since = None
+        course.git_last_synced_at = timezone.now()
+        course.git_last_sync_error = None
+        course.save(update_fields=["git_pending_since", "git_last_synced_at", "git_last_sync_error"])
+        return {"repo": course.git_repo, "branch": branch, "files": 0, "commit_sha": ""}
+    message = f"notechondria: sync course '{course.title}'"
+    try:
+        sha = _commit_files(integration, course.git_repo, branch, files, message)
+    except CourseGitServiceError as exc:
+        course.git_last_sync_error = str(exc)[:512]
+        course.save(update_fields=["git_last_sync_error"])
+        raise
+    course.git_pending_since = None
+    course.git_last_synced_at = timezone.now()
+    course.git_last_sync_error = None
+    course.save(update_fields=["git_pending_since", "git_last_synced_at", "git_last_sync_error"])
+    CourseOperationLog.objects.create(
+        creator_id=creator,
+        course_id=course,
+        operation_type=CourseOperationTypeChoices.GIT_SYNC,
+        metadata_json=json.dumps({"repo": course.git_repo, "branch": branch, "files": len(files)}, sort_keys=True),
+    )
+    logger.info(
+        "Course git sync: Backend.Courses.Git/sync — course id=%s '%s' -> "
+        "%s@%s (%s files, sha=%s).",
+        course.id, course.title, course.git_repo, branch, len(files), sha,
+    )
+    return {"repo": course.git_repo, "branch": branch, "files": len(files), "commit_sha": sha}
+
+
+def mark_course_pending(course) -> None:
+    """Arm the lazy-sync debounce: called when a bound, sync-enabled
+    course's content changes. Sets ``git_pending_since`` if not already
+    armed (so the timer measures 'time since the FIRST unsynced edit'…
+    actually since the latest arm — re-armed only when clear)."""
+    if not (course.git_sync_enabled and course.git_repo):
+        return
+    if course.git_pending_since is None:
+        course.git_pending_since = timezone.now()
+        course.save(update_fields=["git_pending_since"])
+
+
+def flush_due_course_syncs(creator, *, limit: int = 3) -> int:
+    """Lazy-on-request hook: push any of this creator's bound courses whose
+    debounce has elapsed. Row-locked so concurrent requests can't double
+    push; best-effort (a failing course records its error and is skipped,
+    never breaking the caller). Returns the number synced."""
+    from datetime import timedelta
+
+    now = timezone.now()
+    candidates = list(
+        Course.objects.filter(
+            creator_id=creator,
+            git_sync_enabled=True,
+            git_pending_since__isnull=False,
+        ).exclude(git_repo__isnull=True).exclude(git_repo="")[: max(1, limit) * 4]
+    )
+    synced = 0
+    for course in candidates:
+        if synced >= limit:
+            break
+        due_at = course.git_pending_since + timedelta(minutes=course.git_sync_timeout_minutes or 5)
+        if due_at > now:
+            continue
+        try:
+            with transaction.atomic():
+                locked = (
+                    Course.objects.select_for_update()
+                    .filter(pk=course.pk, git_pending_since__isnull=False)
+                    .first()
+                )
+                if locked is None:
+                    continue  # another request already flushed it
+                sync_course_to_repo(locked)
+                synced += 1
+        except CourseGitServiceError as exc:
+            logger.warning(
+                "Course git sync skipped: Backend.Courses.Git/flush — course "
+                "id=%s: %s", course.pk, exc,
+            )
+        except Exception as exc:  # noqa: BLE001 - never break the request
+            logger.exception(
+                "Course git sync error: Backend.Courses.Git/flush — course "
+                "id=%s: %s", course.pk, exc,
+            )
+    return synced

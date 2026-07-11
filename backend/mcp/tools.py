@@ -591,6 +591,35 @@ register_tool(
 )
 
 
+def _sync_course_git(user, creator, params):
+    from courses.git_service import CourseGitServiceError, sync_course_to_repo
+
+    course = get_object_or_404(Course, pk=params["course_id"])
+    if course.creator_id_id != creator.id:
+        raise PermissionError("You can only sync your own courses.")
+    try:
+        return sync_course_to_repo(course)
+    except CourseGitServiceError as exc:
+        raise ValueError(str(exc)) from exc
+
+
+register_tool(
+    "sync_course_git",
+    "Push this course's notes to its bound GitHub repo now (markdown "
+    "only; each note's original frontmatter is preserved). The backend "
+    "is the source of truth. Course must be bound and the owner must "
+    "have the GitHub App installed. Owner-only.",
+    {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "integer"},
+        },
+        "required": ["course_id"],
+    },
+    _sync_course_git,
+)
+
+
 def _delete_course(user, creator, params):
     course = get_object_or_404(Course, pk=params["course_id"])
     if course.creator_id_id != creator.id:

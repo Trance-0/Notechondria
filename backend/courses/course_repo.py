@@ -214,6 +214,34 @@ def extract_title(path: str, meta: dict, body: str, title_from: list[str], index
     return _humanize(posixpath.basename(path)) or path
 
 
+def compose_markdown(frontmatter: dict, body: str) -> str:
+    """Re-emit a markdown file from a (framework) frontmatter dict + body.
+    Used on sync write-back so the repo file keeps the frontmatter that
+    drives its site rendering (sidebar_position, title, …); only the body
+    is the edited content. Empty/absent frontmatter yields a bare body."""
+    body = (body or "").lstrip("\n")
+    if not frontmatter:
+        return body if not body or body.endswith("\n") else body + "\n"
+    dumped = yaml.safe_dump(
+        frontmatter, sort_keys=False, allow_unicode=True, default_flow_style=False
+    ).strip("\n")
+    return f"---\n{dumped}\n---\n\n{body}".rstrip("\n") + "\n"
+
+
+def load_frontmatter_dict(raw_json: str) -> dict:
+    """Best-effort decode a note's stored ``custom_meta`` JSON back into a
+    frontmatter dict (empty on anything unexpected)."""
+    if not raw_json:
+        return {}
+    try:
+        import json as _json
+
+        decoded = _json.loads(raw_json)
+        return decoded if isinstance(decoded, dict) else {}
+    except (ValueError, TypeError):
+        return {}
+
+
 def _order_value(meta: dict, order_keys: list[str]):
     for key in order_keys:
         if key in meta:
@@ -289,6 +317,7 @@ def parse_course_repo(files: dict[str, str], config: dict) -> dict:
             "title": title,
             "order": order,
             "markdown": body,
+            "frontmatter": meta,
             "is_index": posixpath.basename(path) in index_names,
         })
         if order is not None and (bucket["_order"] is None or order < bucket["_order"]):

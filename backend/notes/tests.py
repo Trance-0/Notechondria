@@ -887,6 +887,112 @@ class HeatmapApiTests(TestCase):
         self.assertEqual(resp2.json()['updated'], 1)
         self.assertEqual(Note.objects.filter(course_id=course).count(), 2)
 
+    def test_course_git_sync_pushes_and_clears_pending(self):
+        from unittest.mock import patch
+        from creators.models import GithubIntegration
+        import courses.git_service as git_service
+
+        course = Course.objects.create(
+            creator_id=self.creator, slug='sync-course', title='Sync Course',
+            git_repo='octo/docs', git_branch='main', git_sync_enabled=True,
+            git_pending_since=timezone.now(),
+        )
+        GithubIntegration.objects.create(
+            creator=self.creator, installation_id='inst-sync',
+        )
+        Note.objects.create(
+            creator_id=self.creator, course_id=course,
+            sharing_id='sync-note-1', title='Filters',
+            content='# Filters\n\nbody', git_path='docs/cv/filters.md',
+            custom_meta='{"sidebar_position": 2, "title": "Filters"}',
+        )
+        # The write mapping preserves the file's frontmatter.
+        files = git_service.serialize_course_for_sync(course)
+        self.assertIn('docs/cv/filters.md', files)
+        self.assertIn('sidebar_position: 2', files['docs/cv/filters.md'])
+
+        with patch.object(git_service, '_commit_files', return_value='sha123') as m:
+            resp = self.client.post(
+                f'/api/v1/courses/{course.id}/git/sync/',
+                data=json.dumps({}), content_type='application/json',
+                **self._auth_headers(),
+            )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.json()['files'], 1)
+        m.assert_called_once()
+        course.refresh_from_db()
+        self.assertIsNone(course.git_pending_since)
+        self.assertIsNotNone(course.git_last_synced_at)
+        self.assertTrue(
+            CourseOperationLog.objects.filter(
+                course_id=course,
+                operation_type=CourseOperationTypeChoices.GIT_SYNC,
+            ).exists()
+        )
+
+    def test_note_edit_arms_bound_course_sync(self):
+        course = Course.objects.create(
+            creator_id=self.creator, slug='arm-course', title='Arm Course',
+            git_repo='octo/docs', git_sync_enabled=True,
+        )
+        note = Note.objects.create(
+            creator_id=self.creator, course_id=course, sharing_id='arm-note',
+            title='N', content='x', git_path='docs/n.md',
+        )
+        self.assertIsNone(course.git_pending_since)
+        resp = self.client.patch(
+            f'/api/v1/notes/{note.id}/',
+            data=json.dumps({'content': '# N\n\nedited'}),
+            content_type='application/json', **self._auth_headers(),
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        course.refresh_from_db()
+        self.assertIsNotNone(course.git_pending_since)
+
+    def test_flush_due_course_syncs_fires_after_timeout(self):
+        from datetime import timedelta
+        from unittest.mock import patch
+        from creators.models import GithubIntegration
+        import courses.git_service as git_service
+
+        course = Course.objects.create(
+            creator_id=self.creator, slug='flush-course', title='Flush Course',
+            git_repo='octo/docs', git_sync_enabled=True,
+            git_sync_timeout_minutes=5,
+            git_pending_since=timezone.now() - timedelta(minutes=10),
+        )
+        GithubIntegration.objects.create(
+            creator=self.creator, installation_id='inst-flush',
+        )
+        Note.objects.create(
+            creator_id=self.creator, course_id=course, sharing_id='flush-note',
+            title='N', content='x', git_path='docs/n.md',
+        )
+        with patch.object(git_service, '_commit_files', return_value='sha'):
+            synced = git_service.flush_due_course_syncs(self.creator)
+        self.assertEqual(synced, 1)
+        course.refresh_from_db()
+        self.assertIsNone(course.git_pending_since)
+
+    def test_flush_skips_courses_within_timeout(self):
+        from unittest.mock import patch
+        from creators.models import GithubIntegration
+        import courses.git_service as git_service
+
+        course = Course.objects.create(
+            creator_id=self.creator, slug='fresh-course', title='Fresh',
+            git_repo='octo/docs', git_sync_enabled=True,
+            git_sync_timeout_minutes=5,
+            git_pending_since=timezone.now(),  # just armed, not due
+        )
+        GithubIntegration.objects.create(
+            creator=self.creator, installation_id='inst-fresh',
+        )
+        with patch.object(git_service, '_commit_files', return_value='sha') as m:
+            synced = git_service.flush_due_course_syncs(self.creator)
+        self.assertEqual(synced, 0)
+        m.assert_not_called()
+
     def test_course_git_import_requires_github_integration(self):
         from unittest.mock import patch
 
