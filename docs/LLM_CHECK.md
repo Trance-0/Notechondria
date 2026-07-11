@@ -27,6 +27,16 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.172: course-repo adapter foundation. Django-free
+  courses/course_repo.py (config + presets + `**`-glob + frontmatter +
+  module/title/order parser), grounded in the real Veronica-7 VitePress
+  layout; markdown-only (MDX skipped+warned). Added PyYAML dep (both req
+  files) since frontmatter/config are YAML — the repo previously forced
+  JSON-only to avoid the dep. Published the standard at
+  docs/integrations/course-repo-format.md. Locked architecture in TODO:
+  per-user App auth, lazy-on-request, adapter-not-restructure. Verified:
+  py_compile + standalone parser assertions pass; 3 CourseRepoAdapterTests
+  added. django CI installs PyYAML — watch that step.
 - 0.1.171: MCP/CLI course-git tools. Factored bind/unlink into
   notes.services (apply_course_git_binding/unlink_course_git/
   course_git_payload/CourseGitError/GIT_REPO_RE) so REST view + both MCP

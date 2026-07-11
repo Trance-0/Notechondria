@@ -96,25 +96,43 @@ do not run project containers/apps locally.
 - [x] Backend **bind / unlink** endpoints (`courses/<id>/git/` GET/PUT/
   DELETE, owner-only, `owner/name` validation), owner-only `git` field
   on `CourseSerializer`. (0.1.170)
-- [ ] Backend **import** endpoint: pull a repo (course_template format)
-  into the bound course's notes.
-- [ ] **Lazy sync worker**: when a bound course's content is unedited
-  for `git_sync_timeout_minutes` (default 5, owner-settable in dev
-  settings), auto-commit/push to the repo. Track via `git_pending_since`
-  → `git_last_synced_at` / `git_last_sync_error`. Needs a scheduler and
-  the commit/push path (GitHub App or bot token).
-- [x] **Effective logs** on bind / unlink (`CourseOperationLog`
-  `GIT_BIND`/`GIT_UNLINK` + structured logger). (0.1.170) — import/sync
-  log rows land with those features.
-- [ ] Backend is the source of truth; the app is a repo text editor.
+**Locked-in architecture (owner, 2026-07-11):**
+- **Auth = per-user GitHub App** (reuse the profile-sync App installation
+  token to push to `Course.git_repo`). The Nesbitt-bot PAT is used ONLY
+  to create the template repo and publish the standard.
+- **Scheduler = lazy-on-request** (no worker/cron): flush pending courses
+  during normal API traffic, row-locked against double-push.
+- **Adapter, not restructure**: bind an existing docs repo (VitePress/
+  Nextra/Docusaurus/GitBook) via `notechondria.course.yaml`; read/write
+  **markdown only**, never touch build config/code/CI. Backend is the
+  source of truth; overwrite mapped markdown only after permission.
+
+- [x] **Course-repo adapter + format standard**: `courses/course_repo.py`
+  (config + presets + parser, tested), `docs/integrations/course-repo-format.md`,
+  PyYAML dep. (0.1.172)
+- [ ] Backend **`git_import`** endpoint: fetch repo tree via the owner's
+  App token → `parse_course_repo` → create/update the course's notes.
+- [ ] **Lazy-on-request sync**: course notes → markdown (adapter write
+  mapping) → commit/push via the App token to `Course.git_repo`, fired
+  when `git_pending_since` exceeds `git_sync_timeout_minutes` (row-locked;
+  `git_last_synced_at`/`git_last_sync_error`; `GIT_SYNC` log). Overwrite
+  mapped markdown only, after permission.
+- [ ] **Multi-repo per user**: today `GithubIntegration.repo_full_name`
+  is one repo; let each `Course.git_repo` push with the user's App token.
+- [x] **Effective logs** on bind / unlink (`GIT_BIND`/`GIT_UNLINK`). (0.1.170)
 - [x] Created the **course template repo**
-  `Nesbitt-bot/notechondria-course-template` (private, `is_template`),
-  seeded from the repo's `course_template/` dir. (2026-07-11) — PAT is a
-  credential, kept out of the repo/logs.
-- [ ] Import & align `colorful-numbers/Veronica-7` to the course_template
-  format (the `git_import` endpoint below consumes it).
+  `Nesbitt-bot/notechondria-course-template` (private, `is_template`).
+  (2026-07-11) — will re-seed as the *standard/reference* (config example)
+  rather than a rigid layout.
+- [ ] **Veronica-7 migration** (bot PAT): fork
+  `colorful-numbers/Veronica-7` → Nesbitt-bot; clone to a temp workspace
+  repo; add `notechondria.course.yaml` (vitepress preset) so it parses
+  without moving files; bind it as a new course; open a PR back to the
+  original adding the config/standard.
+- [ ] **MDX support** (`.mdx`) — skipped in v1 (parser warns); add
+  parsing + sync-write once markdown is solid.
 - [ ] **Cloudflare-style repo selector/binder** UI: list of repos, each
-  opens a modal to pick the course to bind.
+  opens a modal to pick the course to bind + set the sync timeout.
 - [x] **MCP/CLI** `get_course_git` / `set_course_git` (both servers,
   parity; shared `notes.services` logic). (0.1.171) — course *content*
   access over API key already exists (list_courses/get_course/notes

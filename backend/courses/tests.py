@@ -99,3 +99,79 @@ class CleanupInboxCoursesCommandTests(TestCase):
         call_command("cleanup_inbox_courses", "--limit", "1")
         self.assertEqual(
             Course.objects.filter(title__iexact="inbox").count(), 2)
+
+
+class CourseRepoAdapterTests(TestCase):
+    """The course-repo adapter maps a docs repo onto a course structure
+    without restructuring it (courses/course_repo.py)."""
+
+    def _vitepress_files(self):
+        return {
+            "docs/.vitepress/config.mts": "export default {}",  # framework code
+            "docs/.vitepress/sidebars/cv.ts": "export default []",
+            ".github/workflows/deploy.yml": "jobs: {}",  # CI
+            "README.md": "# Repo readme",  # outside content root
+            "docs/cv/index.md": "---\ntitle: Computer Vision\nsidebar_position: 1\n---\n# CV\nintro",
+            "docs/cv/foundations/features.md": "# Feature Detection\nbody",
+            "docs/cv/foundations/filters.md": "---\nsidebar_position: 2\n---\n# Filters\nb",
+            "docs/dnn/basics/mlp.md": "# MLP\nbody",
+            "docs/about.md": "# About\ntop-level",
+            "docs/guide.mdx": "# MDX guide",  # skipped in v1
+        }
+
+    def test_infers_vitepress_and_ignores_framework_files(self):
+        from courses.course_repo import load_course_config, parse_course_repo
+
+        files = self._vitepress_files()
+        config = load_course_config(
+            None, repo_name="colorful-numbers/Veronica-7", paths=list(files)
+        )
+        self.assertEqual(config["preset"], "vitepress")
+        self.assertEqual(config["content"]["root"], "docs")
+        self.assertEqual(config["course"]["slug"], "veronica-7")
+        result = parse_course_repo(files, config)
+        seen = {n["path"] for m in result["modules"] for n in m["notes"]}
+        # Content markdown is picked up; framework/CI/out-of-root files are not.
+        self.assertIn("docs/cv/index.md", seen)
+        self.assertNotIn("docs/.vitepress/config.mts", seen)
+        self.assertNotIn(".github/workflows/deploy.yml", seen)
+        self.assertNotIn("README.md", seen)
+        # MDX is skipped with a warning (deferred to a later version).
+        self.assertNotIn("docs/guide.mdx", seen)
+        self.assertTrue(any("MDX" in w for w in result["warnings"]))
+
+    def test_groups_modules_and_titles_and_orders(self):
+        from courses.course_repo import load_course_config, parse_course_repo
+
+        files = self._vitepress_files()
+        config = load_course_config(None, repo_name="Veronica-7", paths=list(files))
+        result = parse_course_repo(files, config)
+        modules = {m["key"]: m for m in result["modules"]}
+        # cv module titled from its index note's frontmatter.
+        self.assertEqual(modules["cv"]["title"], "Computer Vision")
+        # Within cv: index first, then sidebar_position 2, then unordered.
+        cv_titles = [n["title"] for n in modules["cv"]["notes"]]
+        self.assertEqual(cv_titles[0], "Computer Vision")
+        self.assertEqual(cv_titles[1], "Filters")
+        self.assertEqual(cv_titles[2], "Feature Detection")
+        self.assertEqual(result["note_count"], 5)
+
+    def test_explicit_config_overrides_preset(self):
+        from courses.course_repo import load_course_config, parse_course_repo
+
+        files = {
+            "content/intro.md": "# Intro",
+            "content/unit1/lesson.md": "# Lesson",
+            "src/app.ts": "code",
+        }
+        cfg_text = (
+            "version: 1\n"
+            "preset: custom\n"
+            "course:\n  title: My Class\n"
+            "content:\n  root: content\n  module_depth: 1\n"
+        )
+        config = load_course_config(cfg_text, repo_name="x/y", paths=list(files))
+        self.assertEqual(config["course"]["title"], "My Class")
+        result = parse_course_repo(files, config)
+        seen = {n["path"] for m in result["modules"] for n in m["notes"]}
+        self.assertEqual(seen, {"content/intro.md", "content/unit1/lesson.md"})
