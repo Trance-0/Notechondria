@@ -1548,6 +1548,42 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get activityEditEvent => 'Edit event';
+
+  @override
+  String get activityRepeatLabel => 'Repeat';
+
+  @override
+  String get activityRepeatNever => 'Does not repeat';
+
+  @override
+  String get activityRepeatWeekly => 'Weekly';
+
+  @override
+  String get activityRepeatMonthly => 'Monthly';
+
+  @override
+  String get activityRepeatYearly => 'Yearly';
+
+  @override
+  String get activityRepeatIntervalLabel => 'Repeat every N period(s)';
+
+  @override
+  String get activityRepeatEndsLabel => 'Ends';
+
+  @override
+  String get activityRepeatEndNever => 'Never';
+
+  @override
+  String get activityRepeatEndOnDate => 'On date';
+
+  @override
+  String get activityRepeatEndAfter => 'After N occurrences';
+
+  @override
+  String get activityRepeatCountLabel => 'Number of occurrences';
+
+  @override
   String get mcpSkillCopied => 'skill.md copied to clipboard.';
 
   @override

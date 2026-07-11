@@ -2858,6 +2858,78 @@ abstract class AppLocalizations {
   /// **'Imported {count} event(s) from \"{title}\":'**
   String activityImportedCount(int count, String title);
 
+  /// No description provided for @activityEditEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit event'**
+  String get activityEditEvent;
+
+  /// No description provided for @activityRepeatLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat'**
+  String get activityRepeatLabel;
+
+  /// No description provided for @activityRepeatNever.
+  ///
+  /// In en, this message translates to:
+  /// **'Does not repeat'**
+  String get activityRepeatNever;
+
+  /// No description provided for @activityRepeatWeekly.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly'**
+  String get activityRepeatWeekly;
+
+  /// No description provided for @activityRepeatMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly'**
+  String get activityRepeatMonthly;
+
+  /// No description provided for @activityRepeatYearly.
+  ///
+  /// In en, this message translates to:
+  /// **'Yearly'**
+  String get activityRepeatYearly;
+
+  /// No description provided for @activityRepeatIntervalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat every N period(s)'**
+  String get activityRepeatIntervalLabel;
+
+  /// No description provided for @activityRepeatEndsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Ends'**
+  String get activityRepeatEndsLabel;
+
+  /// No description provided for @activityRepeatEndNever.
+  ///
+  /// In en, this message translates to:
+  /// **'Never'**
+  String get activityRepeatEndNever;
+
+  /// No description provided for @activityRepeatEndOnDate.
+  ///
+  /// In en, this message translates to:
+  /// **'On date'**
+  String get activityRepeatEndOnDate;
+
+  /// No description provided for @activityRepeatEndAfter.
+  ///
+  /// In en, this message translates to:
+  /// **'After N occurrences'**
+  String get activityRepeatEndAfter;
+
+  /// No description provided for @activityRepeatCountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Number of occurrences'**
+  String get activityRepeatCountLabel;
+
   /// No description provided for @mcpSkillCopied.
   ///
   /// In en, this message translates to:

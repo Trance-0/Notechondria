@@ -9,6 +9,7 @@ class _WideWeekCalendar extends StatefulWidget {
     required this.onShiftStartDay,
     required this.onChangeRange,
     required this.onCreatePlannerEvent,
+    required this.onUpdatePlannerEvent,
   });
 
   final List<Map<String, dynamic>> days;
@@ -23,6 +24,9 @@ class _WideWeekCalendar extends StatefulWidget {
     String description, {
     DateTime? endsAt,
   }) onCreatePlannerEvent;
+  final Future<void> Function(
+          Map<String, dynamic> event, Map<String, dynamic> changes)
+      onUpdatePlannerEvent;
 
   @override
   State<_WideWeekCalendar> createState() => _WideWeekCalendarState();
@@ -128,6 +132,18 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
       initialDateTime: start,
       initialEndDateTime: end,
     );
+  }
+
+  /// Hold / right-click handler for an event tile. Only editable planner
+  /// ("plan"-kind) events open the editor; calendar-feed and note-session
+  /// tiles fall back to their read-only detail sheet.
+  void _handleEventHold(Map<String, dynamic> event) {
+    final kind = event['kind']?.toString() ?? '';
+    if (kind == 'plan' && event['id'] != null) {
+      _showEditPlannerEventDialog(context, event, widget.onUpdatePlannerEvent);
+      return;
+    }
+    _showCalendarEventDetails(context, event);
   }
 
   @override
@@ -358,6 +374,7 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                                     onEventTap: (event) =>
                                         _showCalendarEventDetails(
                                             context, event),
+                                    onEventLongPress: _handleEventHold,
                                     onCreateForDay: (date) =>
                                         _showCreatePlannerEventDialog(
                                       context,
@@ -554,6 +571,12 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                                                               onTap: () =>
                                                                   _showCalendarEventDetails(
                                                                 context,
+                                                                Map<String,
+                                                                    dynamic>.from(
+                                                                    event),
+                                                              ),
+                                                              onLongPress: () =>
+                                                                  _handleEventHold(
                                                                 Map<String,
                                                                     dynamic>.from(
                                                                     event),
@@ -783,12 +806,14 @@ class _CalendarEventTile extends StatelessWidget {
     required this.vertical,
     required this.slotExtent,
     this.onTap,
+    this.onLongPress,
   });
 
   final Map<String, dynamic> event;
   final bool vertical;
   final double slotExtent;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -803,7 +828,8 @@ class _CalendarEventTile extends StatelessWidget {
     final spanMinutes = math.max(30, endMinutes - startMinutes);
     final offset = (startMinutes / 60.0) * slotExtent;
     final extent = (spanMinutes / 60.0) * slotExtent;
-    final color = _calendarEventColor(event['kind']?.toString() ?? '');
+    final color = _calendarEventColor(event);
+    final ink = _calendarEventInkFor(color);
 
     if (vertical) {
       return Positioned(
@@ -813,6 +839,8 @@ class _CalendarEventTile extends StatelessWidget {
         height: math.max(24, extent - 4),
         child: GestureDetector(
           onTap: onTap,
+          onLongPress: onLongPress,
+          onSecondaryTap: onLongPress,
           child: Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
@@ -821,13 +849,12 @@ class _CalendarEventTile extends StatelessWidget {
               event['title']?.toString() ?? 'Event',
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
-              // Backgrounds are fixed light pastels, so pin the label to a
-              // dark ink color — the theme's onSurface goes white in dark
-              // mode and would be invisible on these tiles.
-              style: const TextStyle(
+              // Ink is derived from the tile colour's luminance so the label
+              // stays legible on every palette colour, in light or dark theme.
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: _kCalendarEventInk,
+                color: ink,
               ),
             ),
           ),
@@ -847,11 +874,13 @@ class _MonthCalendarGrid extends StatelessWidget {
   const _MonthCalendarGrid({
     required this.days,
     required this.onEventTap,
+    required this.onEventLongPress,
     required this.onCreateForDay,
   });
 
   final List<Map<String, dynamic>> days;
   final void Function(Map<String, dynamic> event) onEventTap;
+  final void Function(Map<String, dynamic> event) onEventLongPress;
   final void Function(DateTime day) onCreateForDay;
 
   /// Orders a day's events for the limited chip slots: open plans first
@@ -1070,6 +1099,7 @@ class _MonthDayCell extends StatelessWidget {
                       event: event,
                       height: _chipHeight,
                       onTap: () => onEventTap(event),
+                      onLongPress: () => onEventLongPress(event),
                     ),
                   ),
                 if (hiddenCount > 0)
@@ -1081,6 +1111,7 @@ class _MonthDayCell extends StatelessWidget {
                         cellDate,
                         events,
                         onEventTap,
+                        onEventLongPress,
                       ),
                       child: Align(
                         alignment: Alignment.centerLeft,
@@ -1111,18 +1142,23 @@ class _MonthEventChip extends StatelessWidget {
     required this.event,
     required this.height,
     required this.onTap,
+    this.onLongPress,
   });
 
   final Map<String, dynamic> event;
   final double height;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
     final completed = event['is_completed'] == true;
-    final color = _calendarEventColor(event['kind']?.toString() ?? '');
+    final color = _calendarEventColor(event);
+    final ink = _calendarEventInkFor(color);
     return InkWell(
       onTap: onTap,
+      onLongPress: onLongPress,
+      onSecondaryTap: onLongPress,
       child: Opacity(
         opacity: completed ? 0.55 : 1,
         child: Container(
@@ -1140,7 +1176,7 @@ class _MonthEventChip extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: _kCalendarEventInk,
+              color: ink,
               decoration: completed ? TextDecoration.lineThrough : null,
             ),
           ),
@@ -1156,6 +1192,7 @@ Future<void> _showMonthDayEventsDialog(
   DateTime date,
   List<Map<String, dynamic>> events,
   void Function(Map<String, dynamic> event) onEventTap,
+  void Function(Map<String, dynamic> event) onEventLongPress,
 ) async {
   await showDialog<void>(
     context: context,
@@ -1175,6 +1212,10 @@ Future<void> _showMonthDayEventsDialog(
                   onTap: () {
                     Navigator.of(dialogContext).pop();
                     onEventTap(event);
+                  },
+                  onLongPress: () {
+                    Navigator.of(dialogContext).pop();
+                    onEventLongPress(event);
                   },
                 ),
               ),
@@ -1202,20 +1243,48 @@ const List<String> _kWeekdayAbbrevs = [
   'Sun',
 ];
 
-/// Fixed dark ink for event tiles painted on light pastel backgrounds so the
-/// label stays legible in both light and dark themes.
+/// Dark ink for tiles painted on light backgrounds.
 const Color _kCalendarEventInk = Color(0xFF1F2933);
 
-/// Returns the color used for each calendar event type.
-Color _calendarEventColor(String kind) {
-  switch (kind) {
-    case 'plan':
-      return const Color(0xFFDFF6E9);
-    case 'note_session':
-      return const Color(0xFFE0E7FF);
-    default:
-      return const Color(0xFFE0F2FE);
+/// Ink that stays legible on any tile colour (dark ink on light tiles,
+/// white on dark ones) — computed from the background luminance so the
+/// label is never invisible in either theme.
+Color _calendarEventInkFor(Color background) {
+  return background.computeLuminance() > 0.5
+      ? _kCalendarEventInk
+      : Colors.white;
+}
+
+/// Light pastel palette used to give each course its own tile colour, so a
+/// week of events reads as distinct classes rather than one flat block.
+const List<Color> _kCoursePalette = [
+  Color(0xFFDFF6E9), // mint
+  Color(0xFFFFE8D6), // peach
+  Color(0xFFE7E0FF), // lavender
+  Color(0xFFFFE0EC), // rose
+  Color(0xFFDFF0FF), // sky
+  Color(0xFFFDF3C4), // butter
+  Color(0xFFD8F5F0), // teal
+  Color(0xFFEDE3D2), // sand
+];
+
+/// Returns the tile colour for a calendar event. Note sessions and external
+/// calendar feeds keep their fixed hues; planner events vary by course so
+/// different courses are visually distinct (uncategorized events share the
+/// first palette colour).
+Color _calendarEventColor(Map<String, dynamic> event) {
+  final kind = event['kind']?.toString() ?? '';
+  if (kind == 'note_session') {
+    return const Color(0xFFE0E7FF);
   }
+  if (kind == 'calendar') {
+    return const Color(0xFFE0F2FE);
+  }
+  final courseId = event['course_id'];
+  if (courseId is int) {
+    return _kCoursePalette[courseId.abs() % _kCoursePalette.length];
+  }
+  return _kCoursePalette[0];
 }
 
 /// Formats ISO week dates for calendar headers.
@@ -1450,6 +1519,356 @@ Future<void> _showCreatePlannerEventDialog(
 
   titleController.dispose();
   descriptionController.dispose();
+}
+
+/// Hold-to-edit dialog for an existing planner ("plan"-kind) event. Pre-fills
+/// from `event` and, on save, PATCHes only the writable fields — including
+/// the recurrence rule (does-not-repeat / weekly / monthly / yearly, an
+/// interval, and an optional end on a date or after N occurrences).
+Future<void> _showEditPlannerEventDialog(
+  BuildContext context,
+  Map<String, dynamic> event,
+  Future<void> Function(
+          Map<String, dynamic> event, Map<String, dynamic> changes)
+      onUpdate,
+) async {
+  final l10n = AppLocalizations.of(context);
+  final titleController =
+      TextEditingController(text: event['title']?.toString() ?? '');
+  final descriptionController =
+      TextEditingController(text: event['description']?.toString() ?? '');
+  final start = DateTime.tryParse(event['starts_at']?.toString() ?? '')?.toLocal();
+  final end = DateTime.tryParse(event['ends_at']?.toString() ?? '')?.toLocal();
+  final baseDate = DateTime.tryParse(event['event_date']?.toString() ?? '') ??
+      start ??
+      DateTime.now();
+  var selectedDate = _dateOnly(baseDate);
+  var selectedTime = start != null
+      ? TimeOfDay(hour: start.hour, minute: start.minute)
+      : const TimeOfDay(hour: 14, minute: 0);
+  var selectedEndTime = end != null
+      ? TimeOfDay(hour: end.hour, minute: end.minute)
+      : const TimeOfDay(hour: 15, minute: 0);
+  var weight = (event['difficulty_weight'] as num?)?.toInt() ?? 1;
+  if (weight < 1) {
+    weight = 1;
+  } else if (weight > 5) {
+    weight = 5;
+  }
+  var freq = event['recurrence_freq']?.toString() ?? 'N';
+  if (!const ['N', 'W', 'M', 'Y'].contains(freq)) {
+    freq = 'N';
+  }
+  var interval = (event['recurrence_interval'] as num?)?.toInt() ?? 1;
+  if (interval < 1) {
+    interval = 1;
+  }
+  DateTime? recurrenceEndDate =
+      DateTime.tryParse(event['recurrence_end_date']?.toString() ?? '');
+  var recurrenceCount = (event['recurrence_count'] as num?)?.toInt();
+  // End mode: 0 never, 1 on-date, 2 after-count.
+  var endMode = recurrenceEndDate != null ? 1 : (recurrenceCount != null ? 2 : 0);
+  final intervalController =
+      TextEditingController(text: interval.toString());
+  final countController =
+      TextEditingController(text: (recurrenceCount ?? 1).toString());
+  ActionFeedback? feedback;
+  var submitting = false;
+
+  String freqLabel(String value) {
+    switch (value) {
+      case 'W':
+        return l10n.activityRepeatWeekly;
+      case 'M':
+        return l10n.activityRepeatMonthly;
+      case 'Y':
+        return l10n.activityRepeatYearly;
+      default:
+        return l10n.activityRepeatNever;
+    }
+  }
+
+  await showDialog<void>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        title: Text(l10n.activityEditEvent),
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: InputDecoration(
+                    labelText: l10n.activityEventTitle,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descriptionController,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    labelText: l10n.courseDescriptionLabel,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.event, size: 16),
+                    onPressed: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: selectedDate,
+                        firstDate: _dateOnly(
+                            DateTime.now().subtract(const Duration(days: 365))),
+                        lastDate: _dateOnly(
+                            DateTime.now().add(const Duration(days: 365 * 3))),
+                      );
+                      if (picked != null) {
+                        setState(() => selectedDate = _dateOnly(picked));
+                      }
+                    },
+                    label:
+                        Text(selectedDate.toIso8601String().split('T').first),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.play_arrow, size: 16),
+                        onPressed: () async {
+                          final picked = await showTimePicker(
+                              context: context, initialTime: selectedTime);
+                          if (picked != null) {
+                            setState(() => selectedTime = picked);
+                          }
+                        },
+                        label: Text(selectedTime.format(context)),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.stop, size: 16),
+                        onPressed: () async {
+                          final picked = await showTimePicker(
+                              context: context, initialTime: selectedEndTime);
+                          if (picked != null) {
+                            setState(() => selectedEndTime = picked);
+                          }
+                        },
+                        label: Text(selectedEndTime.format(context)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  value: weight,
+                  items: List.generate(
+                    5,
+                    (index) => DropdownMenuItem<int>(
+                      value: index + 1,
+                      child: Text(l10n.activityWeightN(index + 1)),
+                    ),
+                  ),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => weight = value);
+                    }
+                  },
+                  decoration: InputDecoration(
+                    labelText: l10n.activityDifficulty,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const Divider(height: 28),
+                DropdownButtonFormField<String>(
+                  value: freq,
+                  items: [
+                    for (final value in const ['N', 'W', 'M', 'Y'])
+                      DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(freqLabel(value)),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => freq = value);
+                    }
+                  },
+                  decoration: InputDecoration(
+                    labelText: l10n.activityRepeatLabel,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                if (freq != 'N') ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: intervalController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: l10n.activityRepeatIntervalLabel,
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<int>(
+                    value: endMode,
+                    items: [
+                      DropdownMenuItem(
+                          value: 0, child: Text(l10n.activityRepeatEndNever)),
+                      DropdownMenuItem(
+                          value: 1, child: Text(l10n.activityRepeatEndOnDate)),
+                      DropdownMenuItem(
+                          value: 2, child: Text(l10n.activityRepeatEndAfter)),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => endMode = value);
+                      }
+                    },
+                    decoration: InputDecoration(
+                      labelText: l10n.activityRepeatEndsLabel,
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                  if (endMode == 1) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.event_busy, size: 16),
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: recurrenceEndDate ??
+                                selectedDate.add(const Duration(days: 30)),
+                            firstDate: selectedDate,
+                            lastDate: _dateOnly(
+                                DateTime.now().add(const Duration(days: 365 * 5))),
+                          );
+                          if (picked != null) {
+                            setState(() => recurrenceEndDate = _dateOnly(picked));
+                          }
+                        },
+                        label: Text(recurrenceEndDate == null
+                            ? l10n.activityRepeatEndOnDate
+                            : recurrenceEndDate!
+                                .toIso8601String()
+                                .split('T')
+                                .first),
+                      ),
+                    ),
+                  ],
+                  if (endMode == 2) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: countController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: l10n.activityRepeatCountLabel,
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ],
+                if (feedback != null) ...[
+                  const SizedBox(height: 12),
+                  FeedbackText(feedback: feedback!),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: submitting ? null : () => Navigator.of(context).pop(),
+            child: Text(l10n.commonCancel),
+          ),
+          FilledButton(
+            onPressed: submitting
+                ? null
+                : () async {
+                    setState(() {
+                      submitting = true;
+                      feedback = null;
+                    });
+                    final startAt = DateTime(
+                      selectedDate.year,
+                      selectedDate.month,
+                      selectedDate.day,
+                      selectedTime.hour,
+                      selectedTime.minute,
+                    );
+                    var endAt = DateTime(
+                      selectedDate.year,
+                      selectedDate.month,
+                      selectedDate.day,
+                      selectedEndTime.hour,
+                      selectedEndTime.minute,
+                    );
+                    if (!endAt.isAfter(startAt)) {
+                      endAt = startAt.add(const Duration(hours: 1));
+                    }
+                    final parsedInterval =
+                        int.tryParse(intervalController.text.trim()) ?? 1;
+                    final parsedCount =
+                        int.tryParse(countController.text.trim()) ?? 1;
+                    final changes = <String, dynamic>{
+                      'title': titleController.text.trim(),
+                      'description': descriptionController.text.trim(),
+                      'event_date':
+                          selectedDate.toIso8601String().split('T').first,
+                      'starts_at': startAt.toUtc().toIso8601String(),
+                      'ends_at': endAt.toUtc().toIso8601String(),
+                      'difficulty_weight': weight,
+                      'recurrence_freq': freq,
+                      'recurrence_interval':
+                          freq == 'N' ? 1 : math.max(1, parsedInterval),
+                      'recurrence_end_date': freq != 'N' && endMode == 1
+                          ? recurrenceEndDate?.toIso8601String().split('T').first
+                          : null,
+                      'recurrence_count': freq != 'N' && endMode == 2
+                          ? math.max(1, parsedCount)
+                          : null,
+                    };
+                    try {
+                      await onUpdate(event, changes);
+                    } catch (error) {
+                      if (!context.mounted) {
+                        return;
+                      }
+                      setState(() {
+                        submitting = false;
+                        feedback =
+                            ActionFeedback(message: error.toString(), isError: true);
+                      });
+                      return;
+                    }
+                    if (!context.mounted) {
+                      return;
+                    }
+                    Navigator.of(context).pop();
+                  },
+            child: Text(submitting ? l10n.noteMetaSaving : l10n.commonSave),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  titleController.dispose();
+  descriptionController.dispose();
+  intervalController.dispose();
+  countController.dispose();
 }
 
 /// Opens a local iCal file picker and forwards the result to the callback.

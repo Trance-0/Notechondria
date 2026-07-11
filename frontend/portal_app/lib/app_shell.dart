@@ -845,6 +845,7 @@ class _AppShellState extends State<AppShell>
           ),
           onChangeRange: (days) => _loadActivityWeek(rangeDays: days),
           onTogglePlannerEventCompletion: _togglePlannerEventCompletion,
+          onUpdatePlannerEvent: _updatePlannerEvent,
         );
       case 4:
         return _SettingsPage(

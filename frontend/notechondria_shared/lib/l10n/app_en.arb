@@ -570,6 +570,18 @@
   "@activityImportedCount": {
     "placeholders": { "count": { "type": "int" }, "title": { "type": "String" } }
   },
+  "activityEditEvent": "Edit event",
+  "activityRepeatLabel": "Repeat",
+  "activityRepeatNever": "Does not repeat",
+  "activityRepeatWeekly": "Weekly",
+  "activityRepeatMonthly": "Monthly",
+  "activityRepeatYearly": "Yearly",
+  "activityRepeatIntervalLabel": "Repeat every N period(s)",
+  "activityRepeatEndsLabel": "Ends",
+  "activityRepeatEndNever": "Never",
+  "activityRepeatEndOnDate": "On date",
+  "activityRepeatEndAfter": "After N occurrences",
+  "activityRepeatCountLabel": "Number of occurrences",
   "mcpSkillCopied": "skill.md copied to clipboard.",
   "mcpSkillTitle": "Agent skill (skill.md)",
   "mcpSkillDescription": "Personal playbook for MCP-connected agents. Use this to describe where to pull notes from (e.g. external sites like notenextra.trance-0.com), how to format imports, which files to export, and where to publish them. Sent verbatim as the `instructions` field of the MCP initialize response.",

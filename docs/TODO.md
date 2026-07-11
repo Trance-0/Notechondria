@@ -73,15 +73,17 @@ do not run project containers/apps locally.
 - [x] Backend: `recurrence_freq/interval/end_date/count` on `PlannerEvent`,
   window expansion in `calendar_week_payload`, serializer + views,
   MCP/CLI parity, tests. (0.1.164)
-- [ ] **Activity UI (portal):** recurrence controls in the create/edit
-  event dialog — default one-time; weekly/monthly/yearly cycle; ends
-  at a date OR after N occurrences. Render recurring occurrences from
-  the expanded week payload.
+- [x] **Activity UI (portal):** recurrence controls in the hold-to-edit
+  event dialog — default one-time; weekly/monthly/yearly; ends at a
+  date OR after N occurrences. Recurring occurrences render from the
+  expanded week payload. (0.1.167) — recurrence in the *create* dialog
+  and planner_app parity still pending.
 
 ### Activity UI fixes (portal)
-- [ ] Event chip CSS: **no visible text in dark theme** — fix contrast
-  and add per-course/per-kind colour variation.
-- [ ] **Long-press / right-click** an event opens the edit dialog.
+- [x] Event chip CSS: luminance-derived ink (legible in dark theme) +
+  per-course palette colour variation. (0.1.167)
+- [x] **Long-press / right-click** an event opens the edit dialog
+  (planner events; falls back to detail sheet otherwise). (0.1.167)
 - [ ] **Course (category) filter** at the top of the activity view to
   filter events by course.
 - [x] **ICS / subscription import feedback modal** (portal): success

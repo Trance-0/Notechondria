@@ -14,6 +14,7 @@ class _ActivityPage extends StatelessWidget {
     required this.onShiftStartDay,
     required this.onChangeRange,
     required this.onTogglePlannerEventCompletion,
+    required this.onUpdatePlannerEvent,
   });
 
   final Map<String, dynamic>? activityWeek;
@@ -36,6 +37,9 @@ class _ActivityPage extends StatelessWidget {
   final Future<void> Function(int days) onChangeRange;
   final Future<void> Function(Map<String, dynamic> event, bool completed)
       onTogglePlannerEventCompletion;
+  final Future<void> Function(
+          Map<String, dynamic> event, Map<String, dynamic> changes)
+      onUpdatePlannerEvent;
 
   @override
   Widget build(BuildContext context) {
@@ -77,6 +81,7 @@ class _ActivityPage extends StatelessWidget {
                             onShiftStartDay: onShiftStartDay,
                             onChangeRange: onChangeRange,
                             onCreatePlannerEvent: onCreatePlannerEvent,
+                            onUpdatePlannerEvent: onUpdatePlannerEvent,
                           ))
                     : _VerticalWeekBoard(
                         days: weekDays,

@@ -66,6 +66,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.167 - activity events: per-course colours, hold-to-edit, recurrence dialog](versions/0.1.167.md)
 - [0.1.166 - activity import feedback (backend summary + portal result modal)](versions/0.1.166.md)
 - [0.1.165 - CI green: stdlib-only CLI client + corrected avatar settings test](versions/0.1.165.md)
 - [0.1.164 - recurring events (backend + MCP/CLI), course git-binding data model](versions/0.1.164.md)

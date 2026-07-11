@@ -333,6 +333,46 @@ extension _AppShellMaintenanceX on _AppShellState {
     );
   }
 
+  /// Applies a field patch to an existing planner event (used by the
+  /// hold-to-edit dialog). `changes` is a partial map of writable fields
+  /// (title, description, event_date, starts_at, ends_at, difficulty_weight,
+  /// recurrence_*). Mirrors the toggle path's local/cloud split.
+  Future<void> _updatePlannerEvent(
+      Map<String, dynamic> event, Map<String, dynamic> changes) async {
+    if (event['is_local'] == true ||
+        event['id']?.toString().startsWith('local-') == true) {
+      final id = event['id']?.toString();
+      _localEvents = [
+        for (final e in _localEvents)
+          if (e['id']?.toString() == id) {...e, ...changes} else e,
+      ];
+      await _LocalAppStore.saveEvents(_localEvents);
+      await _loadActivityWeek(startDate: _activityWeekStart);
+      refreshState();
+      return;
+    }
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      throw Exception(
+        'Planner event not updated: '
+        'Portal.Sync.Events/edit — '
+        'no cloud session; sign in first.',
+      );
+    }
+    await widget.client.updatePlannerEvent(token, event['id'] as int, changes);
+    await _loadActivityWeek(startDate: _activityWeekStart);
+    final refreshedEvents = await widget.client.getPlannerEvents(token);
+    _plannerEvents = refreshedEvents;
+    refreshState();
+    log(
+      level: DebugLogLevel.info,
+      source: 'Portal.Sync.Events/edit',
+      message: 'Planner event edited: '
+          'Portal.Sync.Events/edit — '
+          '"${event['title']}" updated on server.',
+    );
+  }
+
   Future<void> _subscribeToCourse(Map<String, dynamic> course) async {
     final token = _token;
     if (token == null || token.isEmpty) {

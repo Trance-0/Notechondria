@@ -27,6 +27,15 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.167: activity event UI. Per-course palette + luminance-derived ink
+  (dark-theme legible); hold/right-click opens a new edit dialog with the
+  full recurrence rule (freq/interval/end-date-or-count) that PATCHes the
+  0.1.164 backend fields; new `_updatePlannerEvent` handler threaded
+  app_shell→ActivityPage→WideWeekCalendar→tiles; `activityEditEvent` +
+  `activityRepeat*` l10n across ARB and generated AppLocalizations (en+zh).
+  Verified with interpolation-aware Dart brace check + ARB JSON parse;
+  caught a `num.clamp`→int slip pre-push. Flutter build not run locally.
+  Course filter + planner_app parity deferred.
 - 0.1.166: activity import feedback. Backend `summarize_calendar_feed` +
   `import_summary` on the calendar-feed POST (2 tests). Portal shows a
   success/failure result modal after ICS import/subscribe; callback types

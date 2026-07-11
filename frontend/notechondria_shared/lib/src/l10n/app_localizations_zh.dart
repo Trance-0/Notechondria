@@ -1472,6 +1472,42 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get activityEditEvent => '编辑事件';
+
+  @override
+  String get activityRepeatLabel => '重复';
+
+  @override
+  String get activityRepeatNever => '不重复';
+
+  @override
+  String get activityRepeatWeekly => '每周';
+
+  @override
+  String get activityRepeatMonthly => '每月';
+
+  @override
+  String get activityRepeatYearly => '每年';
+
+  @override
+  String get activityRepeatIntervalLabel => '每 N 个周期重复一次';
+
+  @override
+  String get activityRepeatEndsLabel => '结束方式';
+
+  @override
+  String get activityRepeatEndNever => '永不';
+
+  @override
+  String get activityRepeatEndOnDate => '在指定日期';
+
+  @override
+  String get activityRepeatEndAfter => '达到次数后';
+
+  @override
+  String get activityRepeatCountLabel => '重复次数';
+
+  @override
   String get mcpSkillCopied => 'skill.md 已复制到剪贴板。';
 
   @override
