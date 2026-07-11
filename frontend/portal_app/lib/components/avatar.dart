@@ -5,33 +5,45 @@ class _RemoteMedia extends StatelessWidget {
     required this.imageUrl,
     required this.fallback,
     this.fit = BoxFit.cover,
+    this.fallbackUrl = '',
   });
 
   final String imageUrl;
   final Widget fallback;
   final BoxFit fit;
 
-  bool get _isSvg {
-    final lower = imageUrl.toLowerCase();
+  /// Secondary URL tried when [imageUrl] is empty or fails to load.
+  /// Used for the Casdoor-avatar → legacy-upload fallback: when the
+  /// Casdoor server is offline / the avatar 404s, the locally uploaded
+  /// image is shown instead of the generic placeholder.
+  final String fallbackUrl;
+
+  bool _isSvg(String url) {
+    final lower = url.toLowerCase();
     return lower.endsWith('.svg') || lower.contains('.svg?');
   }
 
   @override
   Widget build(BuildContext context) {
+    // On empty/failed primary, recurse into the fallback URL (once),
+    // then the placeholder widget.
+    final onFail = fallbackUrl.trim().isEmpty
+        ? fallback
+        : _RemoteMedia(imageUrl: fallbackUrl, fallback: fallback, fit: fit);
     if (imageUrl.trim().isEmpty) {
-      return fallback;
+      return onFail;
     }
-    if (_isSvg) {
+    if (_isSvg(imageUrl)) {
       return SvgPicture.network(
         imageUrl,
         fit: fit,
-        placeholderBuilder: (_) => fallback,
+        placeholderBuilder: (_) => onFail,
       );
     }
     return Image.network(
       imageUrl,
       fit: fit,
-      errorBuilder: (_, __, ___) => fallback,
+      errorBuilder: (_, __, ___) => onFail,
     );
   }
 }
@@ -40,12 +52,17 @@ class _RemoteAvatar extends StatelessWidget {
   const _RemoteAvatar({
     required this.radius,
     this.imageUrl = '',
+    this.fallbackImageUrl = '',
     this.fallbackLabel = '',
     this.fallbackIcon = Icons.person_outline,
   });
 
   final double radius;
   final String imageUrl;
+
+  /// Legacy locally-uploaded avatar used when [imageUrl] (the Casdoor
+  /// avatar) is empty or fails to load — see [_RemoteMedia.fallbackUrl].
+  final String fallbackImageUrl;
   final String fallbackLabel;
   final IconData fallbackIcon;
 
@@ -73,7 +90,7 @@ class _RemoteAvatar extends StatelessWidget {
             ),
     );
 
-    if (imageUrl.trim().isEmpty) {
+    if (imageUrl.trim().isEmpty && fallbackImageUrl.trim().isEmpty) {
       return fallback;
     }
 
@@ -83,6 +100,7 @@ class _RemoteAvatar extends StatelessWidget {
         height: diameter,
         child: _RemoteMedia(
           imageUrl: imageUrl,
+          fallbackUrl: fallbackImageUrl,
           fit: BoxFit.cover,
           fallback: fallback,
         ),

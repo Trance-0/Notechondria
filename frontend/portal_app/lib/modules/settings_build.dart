@@ -162,6 +162,28 @@ extension _SettingsPageBuildX on _SettingsPageState {
     );
   }
 
+  /// Resolves (casdoorAvatar, localUpload) absolute URLs for the avatar
+  /// widget. The Casdoor avatar (`avatar_url`) is the primary; the
+  /// locally-uploaded image (`image_upload_url`) is the fallback used
+  /// when Casdoor is offline / its avatar fails to load. Falls back to
+  /// the legacy `image_url` when the newer fields are absent (older
+  /// backend payloads).
+  (String, String) _resolveAvatarUrls() {
+    String pick(String key) =>
+        widget.profile?[key]?.toString() ??
+        widget.settings?[key]?.toString() ??
+        '';
+    var casdoor = pick('avatar_url');
+    var local = pick('image_upload_url');
+    // Backward compat: older payloads only had the effective image_url.
+    if (casdoor.isEmpty && local.isEmpty) {
+      local = pick('image_url');
+    }
+    String resolve(String u) =>
+        u.isEmpty ? '' : _resolveRemoteUrl(u, apiBaseUrl: widget.apiBaseUrl);
+    return (resolve(casdoor), resolve(local));
+  }
+
   /// Signed-in account card: avatar + display-name + email header,
   /// followed by nav rows for Personal information, Sign in & security,
   /// API settings, and Connected accounts.
@@ -170,11 +192,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
     final username = widget.profile?['username']?.toString() ?? l10n.commonUser;
     final displayName = widget.profile?['display_name']?.toString() ?? username;
     final email = widget.profile?['email']?.toString() ?? '';
-    final avatarUrl = widget.profile?['image_url']?.toString() ??
-        widget.settings?['image_url']?.toString();
-    final resolvedAvatar = avatarUrl != null && avatarUrl.isNotEmpty
-        ? _resolveRemoteUrl(avatarUrl, apiBaseUrl: widget.apiBaseUrl)
-        : '';
+    final (resolvedAvatar, resolvedLocalAvatar) = _resolveAvatarUrls();
     return Card(
       clipBehavior: Clip.antiAlias,
       margin: EdgeInsets.zero,
@@ -184,6 +202,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
             leading: _RemoteAvatar(
               radius: 20,
               imageUrl: resolvedAvatar,
+              fallbackImageUrl: resolvedLocalAvatar,
               fallbackLabel: username,
             ),
             title: Text(
@@ -265,11 +284,9 @@ extension _SettingsPageBuildX on _SettingsPageState {
   /// Sign-in & security page.
   Widget _buildProfileFields(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final avatarUrl = widget.profile?['image_url']?.toString() ??
-        widget.settings?['image_url']?.toString();
-    final resolvedAvatar = avatarUrl != null && avatarUrl.isNotEmpty
-        ? _resolveRemoteUrl(avatarUrl, apiBaseUrl: widget.apiBaseUrl)
-        : '';
+    final (resolvedAvatar, resolvedLocalAvatar) = _resolveAvatarUrls();
+    final previewAvatar =
+        resolvedAvatar.isNotEmpty ? resolvedAvatar : resolvedLocalAvatar;
     final username = widget.profile?['username']?.toString() ?? l10n.commonUser;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -277,10 +294,11 @@ extension _SettingsPageBuildX on _SettingsPageState {
         Row(
           children: [
             GestureDetector(
-              onTap: () => _previewAvatar(resolvedAvatar, username),
+              onTap: () => _previewAvatar(previewAvatar, username),
               child: _RemoteAvatar(
                 radius: 32,
                 imageUrl: resolvedAvatar,
+                fallbackImageUrl: resolvedLocalAvatar,
                 fallbackLabel: username,
               ),
             ),
