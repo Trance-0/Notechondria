@@ -107,10 +107,12 @@ do not run project containers/apps locally.
   `GIT_BIND`/`GIT_UNLINK` + structured logger). (0.1.170) — import/sync
   log rows land with those features.
 - [ ] Backend is the source of truth; the app is a repo text editor.
-- [ ] Create the **course template repo** on the Nesbitt-bot account,
-  and align it (and the imported `colorful-numbers/Veronica-7`) to the
-  predefined course format documented in `docs/integrations/`. (Needs
-  the Nesbitt-bot PAT — treat as a credential; never commit/log it.)
+- [x] Created the **course template repo**
+  `Nesbitt-bot/notechondria-course-template` (private, `is_template`),
+  seeded from the repo's `course_template/` dir. (2026-07-11) — PAT is a
+  credential, kept out of the repo/logs.
+- [ ] Import & align `colorful-numbers/Veronica-7` to the course_template
+  format (the `git_import` endpoint below consumes it).
 - [ ] **Cloudflare-style repo selector/binder** UI: list of repos, each
   opens a modal to pick the course to bind.
 - [x] **MCP/CLI** `get_course_git` / `set_course_git` (both servers,
