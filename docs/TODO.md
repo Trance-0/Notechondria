@@ -84,8 +84,9 @@ do not run project containers/apps locally.
   per-course palette colour variation. (0.1.167)
 - [x] **Long-press / right-click** an event opens the edit dialog
   (planner events; falls back to detail sheet otherwise). (0.1.167)
-- [ ] **Course (category) filter** at the top of the activity view to
-  filter events by course.
+- [x] **Course (category) filter** at the top of the activity view
+  (portal): `_CourseFilterBar` narrows the grid + deadlines to one
+  course. (0.1.169)
 - [x] **ICS / subscription import feedback modal** (portal): success
   shows a bullet list of imported events, failure shows the reason.
   Backend `import_summary` on feed create. (0.1.166) — planner_app

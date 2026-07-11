@@ -570,6 +570,7 @@
   "@activityImportedCount": {
     "placeholders": { "count": { "type": "int" }, "title": { "type": "String" } }
   },
+  "activityAllCourses": "All courses",
   "activityEditEvent": "Edit event",
   "activityRepeatLabel": "Repeat",
   "activityRepeatNever": "Does not repeat",

@@ -1472,6 +1472,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get activityAllCourses => '全部课程';
+
+  @override
   String get activityEditEvent => '编辑事件';
 
   @override

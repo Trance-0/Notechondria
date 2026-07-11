@@ -27,6 +27,11 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.169: activity course filter. `_ActivityPage` → StatefulWidget with a
+  `_CourseFilterBar` above the calendar; filters grid + deadlines by
+  course_id; app_shell passes the merged courses list; `activityAllCourses`
+  l10n across ARB + generated AppLocalizations. Verified brace balance +
+  ARB parse + no un-prefixed field leaks; Flutter build is the CI gate.
 - 0.1.168: build fix — threaded `onEventLongPress` into `_MonthDayCell`
   (0.1.167 added it to `_MonthCalendarGrid` only, so the month chips'
   build referenced an undefined member and the Flutter build failed).

@@ -1548,6 +1548,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get activityAllCourses => 'All courses';
+
+  @override
   String get activityEditEvent => 'Edit event';
 
   @override

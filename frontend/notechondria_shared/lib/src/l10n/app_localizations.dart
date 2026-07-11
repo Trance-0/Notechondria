@@ -2858,6 +2858,12 @@ abstract class AppLocalizations {
   /// **'Imported {count} event(s) from \"{title}\":'**
   String activityImportedCount(int count, String title);
 
+  /// No description provided for @activityAllCourses.
+  ///
+  /// In en, this message translates to:
+  /// **'All courses'**
+  String get activityAllCourses;
+
   /// No description provided for @activityEditEvent.
   ///
   /// In en, this message translates to:

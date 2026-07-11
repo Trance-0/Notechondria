@@ -492,6 +492,7 @@
   "@activityImportedCount": {
     "placeholders": { "count": { "type": "int" }, "title": { "type": "String" } }
   },
+  "activityAllCourses": "全部课程",
   "activityEditEvent": "编辑事件",
   "activityRepeatLabel": "重复",
   "activityRepeatNever": "不重复",
