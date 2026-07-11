@@ -113,12 +113,14 @@ def auth_payload(user: User, *, token: str, request=None):
     # Append `?v=<sync_ts>` so a Casdoor-side avatar change paints
     # immediately even when the underlying URL string is unchanged.
     avatar_url = avatar_cache_bust(creator.avatar_url, creator)
-    image_url = (
-        avatar_url
-        or absolute_media_url(
-            request, creator.image.url if creator.image else "",
-        )
+    # Always expose the locally-uploaded avatar separately so the SPA
+    # can fall back to it when the Casdoor `avatar_url` fails to load
+    # (auth server offline / 404). `image_url` stays the "effective"
+    # avatar (Casdoor first, then local) for backward compatibility.
+    image_upload_url = absolute_media_url(
+        request, creator.image.url if creator.image else "",
     )
+    image_url = avatar_url or image_upload_url
     return {
         "token": token,
         "user": {
@@ -134,6 +136,7 @@ def auth_payload(user: User, *, token: str, request=None):
             "social_link": creator.social_link or "",
             "image_url": image_url,
             "avatar_url": avatar_url,
+            "image_upload_url": image_upload_url,
             "editor_mode": creator.editor_mode,
             "theme_preset": creator.theme_preset,
             "theme_mode": creator.theme_mode,
@@ -317,6 +320,7 @@ class SettingsSerializer(serializers.Serializer):
     display_name = serializers.CharField(allow_blank=True, required=False, max_length=255)
     image_url = serializers.CharField(read_only=True)
     avatar_url = serializers.CharField(read_only=True)
+    image_upload_url = serializers.CharField(read_only=True)
     avatar = serializers.ImageField(write_only=True, required=False)
     theme_preset = serializers.CharField(required=False, allow_blank=False, max_length=32)
     theme_mode = serializers.ChoiceField(
@@ -371,13 +375,13 @@ class SettingsSerializer(serializers.Serializer):
         # a sync-timestamp query param so a Casdoor-side picture
         # change paints immediately even when the URL is byte-stable.
         avatar_url = avatar_cache_bust(instance.avatar_url, instance)
-        image_url = (
-            avatar_url
-            or absolute_media_url(
-                request,
-                instance.image.url if instance.image else "",
-            )
+        # See auth_payload: expose the local upload separately so the
+        # SPA can fall back when the Casdoor avatar fails to load.
+        image_upload_url = absolute_media_url(
+            request,
+            instance.image.url if instance.image else "",
         )
+        image_url = avatar_url or image_upload_url
         return {
             "username": instance.user_id.username,
             "first_name": instance.user_id.first_name,
@@ -390,6 +394,7 @@ class SettingsSerializer(serializers.Serializer):
             "display_name": display_name,
             "image_url": image_url,
             "avatar_url": avatar_url,
+            "image_upload_url": image_upload_url,
             "editor_mode": instance.editor_mode,
             "theme_preset": instance.theme_preset,
             "theme_mode": instance.theme_mode,

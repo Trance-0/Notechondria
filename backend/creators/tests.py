@@ -958,3 +958,56 @@ class SeedAgentUserCommandTests(TestCase):
         self.assertNotEqual(key1, key2)
         self.assertEqual(User.objects.filter(username='agent-tester').count(), 1)
         self.assertIn('reused', out2)
+
+
+class CasdoorAvatarClaimSyncTests(TestCase):
+    """The Casdoor JWT avatar sync: reads the standard OIDC `picture`
+    claim as a fallback for the custom `avatar` field, and stores it on
+    `Creator.avatar_url` (0.1.163)."""
+
+    def setUp(self):
+        from creators.utils import ensure_creator
+        self.user = User.objects.create_user(
+            username='avatar-user', email='av@example.com', is_active=True,
+        )
+        self.creator = ensure_creator(self.user)
+
+    def test_avatar_claim_preferred_when_present(self):
+        from creators.casdoor_auth import _sync_creator_from_claims
+        _sync_creator_from_claims(self.creator, {
+            'avatar': 'https://cas/av.png',
+            'picture': 'https://cas/pic.png',
+        })
+        self.creator.refresh_from_db()
+        self.assertEqual(self.creator.avatar_url, 'https://cas/av.png')
+
+    def test_picture_claim_used_when_avatar_absent(self):
+        # Casdoor tokens carry the standard OIDC `picture` by default;
+        # the custom `avatar` field is only present if the operator
+        # enabled it. The sync must still resolve an avatar.
+        from creators.casdoor_auth import _sync_creator_from_claims
+        _sync_creator_from_claims(self.creator, {
+            'picture': 'https://cas/pic.png',
+        })
+        self.creator.refresh_from_db()
+        self.assertEqual(self.creator.avatar_url, 'https://cas/pic.png')
+
+    def test_settings_payload_exposes_local_upload_separately(self):
+        from rest_framework.test import APIClient
+        from rest_framework.authtoken.models import Token
+        # avatar_url set (as if from Casdoor) but no local upload.
+        self.creator.avatar_url = 'https://cas/pic.png'
+        self.creator.save(update_fields=['avatar_url'])
+        token = Token.objects.create(user=self.user)
+        client = APIClient()
+        resp = client.get(
+            '/api/v1/settings/', HTTP_AUTHORIZATION=f'Token {token.key}',
+        )
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        # image_url is the effective avatar (Casdoor wins); the local
+        # upload field is present (empty here) so the SPA has a fallback.
+        self.assertEqual(body['avatar_url'], 'https://cas/pic.png')
+        self.assertEqual(body['image_url'], 'https://cas/pic.png')
+        self.assertIn('image_upload_url', body)
+        self.assertEqual(body['image_upload_url'], '')

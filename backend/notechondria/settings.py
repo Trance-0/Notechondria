@@ -512,7 +512,12 @@ CASDOOR_CLAIM_GROUPS = os.getenv("CASDOOR_CLAIM_GROUPS", "groups")
 # Avatar URL claim, refreshed onto Creator.avatar_url every login
 # (see _sync_creator_from_claims in creators/casdoor_auth.py). Empty
 # leaves the SPA falling back to the locally-uploaded Creator.image.
-CASDOOR_CLAIM_AVATAR = os.getenv("CASDOOR_CLAIM_AVATAR", "avatar")
+# Tries `avatar` (Casdoor's custom token field, only present when the
+# operator enabled it in the application Token Format) then `picture`
+# (the standard OIDC claim, present by default) — so avatars resolve
+# regardless of the token-format config. `_claim_str` takes the first
+# non-empty claim in the list.
+CASDOOR_CLAIM_AVATAR = os.getenv("CASDOOR_CLAIM_AVATAR", "avatar,picture")
 # Credential-hash claims (Casdoor application Token Format: JWT-Custom
 # with the Password / Password salt / Password type token fields).
 # Mirrored into User.password by creators/casdoor_password.py so the
