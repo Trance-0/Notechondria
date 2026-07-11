@@ -24,8 +24,9 @@ class _ActivityPage extends StatelessWidget {
     String title,
     DateTime eventDate,
     int difficultyWeight,
-    String description,
-  ) onCreatePlannerEvent;
+    String description, {
+    DateTime? endsAt,
+  }) onCreatePlannerEvent;
   final Future<void> Function(String rawIcal, String title, {int? courseId})
       onImportCalendar;
   final Future<void> Function(String title, String url, {int? courseId})
@@ -199,8 +200,9 @@ class _RoundActivityFab extends StatelessWidget {
     String title,
     DateTime eventDate,
     int difficultyWeight,
-    String description,
-  ) onCreatePlannerEvent;
+    String description, {
+    DateTime? endsAt,
+  }) onCreatePlannerEvent;
   final Future<void> Function(String rawIcal, String title, {int? courseId})
       onImportCalendar;
   final Future<void> Function(String title, String url, {int? courseId})

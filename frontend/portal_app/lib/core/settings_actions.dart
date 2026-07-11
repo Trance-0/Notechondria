@@ -197,8 +197,13 @@ extension _AppShellSettingsActionsX on _AppShellState {
     String title,
     DateTime eventDate,
     int difficultyWeight,
-    String description,
-  ) async {
+    String description, {
+    DateTime? endsAt,
+  }) async {
+    // Drawn drag supplies an explicit end; otherwise a one-hour block.
+    final resolvedEnd = (endsAt != null && endsAt.isAfter(eventDate))
+        ? endsAt
+        : eventDate.add(const Duration(hours: 1));
     final token = _token;
     if (token == null || token.isEmpty) {
       // Signed-out / offline: keep the event on this device so guests
@@ -211,7 +216,7 @@ extension _AppShellSettingsActionsX on _AppShellState {
         'title': title,
         'event_date': _dateOnly(eventDate).toIso8601String().split('T').first,
         'starts_at': eventDate.toIso8601String(),
-        'ends_at': eventDate.add(const Duration(hours: 1)).toIso8601String(),
+        'ends_at': resolvedEnd.toIso8601String(),
         'difficulty_weight': difficultyWeight,
         'description': description,
         'is_completed': false,
@@ -239,7 +244,7 @@ extension _AppShellSettingsActionsX on _AppShellState {
         'title': title,
         'event_date': _dateOnly(eventDate).toIso8601String().split('T').first,
         'starts_at': eventDate.toIso8601String(),
-        'ends_at': eventDate.add(const Duration(hours: 1)).toIso8601String(),
+        'ends_at': resolvedEnd.toIso8601String(),
         'difficulty_weight': difficultyWeight,
         'description': description,
         'course_id': _selectedCourse?['id'],

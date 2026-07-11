@@ -20,8 +20,9 @@ class _WideWeekCalendar extends StatefulWidget {
     String title,
     DateTime eventDate,
     int difficultyWeight,
-    String description,
-  ) onCreatePlannerEvent;
+    String description, {
+    DateTime? endsAt,
+  }) onCreatePlannerEvent;
 
   @override
   State<_WideWeekCalendar> createState() => _WideWeekCalendarState();
@@ -99,12 +100,24 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
       return;
     }
     final startMinutes = _minutesFromLocalY(math.min(startY, endY));
+    // A near-zero drag (a tap) has no meaningful span — fall back to a
+    // default one-hour block; a real drag draws start → end.
+    final rawEndMinutes = _minutesFromLocalY(math.max(startY, endY));
+    final endMinutes =
+        rawEndMinutes - startMinutes < 15 ? startMinutes + 60 : rawEndMinutes;
     final start = DateTime(
       date.year,
       date.month,
       date.day,
       startMinutes ~/ 60,
       startMinutes % 60,
+    );
+    final end = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      (endMinutes ~/ 60).clamp(0, 23),
+      endMinutes % 60,
     );
     if (!mounted) {
       return;
@@ -113,6 +126,7 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
       context,
       widget.onCreatePlannerEvent,
       initialDateTime: start,
+      initialEndDateTime: end,
     );
   }
 
@@ -419,7 +433,22 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                                                       child: GestureDetector(
                                                         behavior: HitTestBehavior
                                                             .opaque,
-                                                        onLongPressStart:
+                                                        // Plain vertical
+                                                        // drag draws an
+                                                        // event's time span
+                                                        // (Google Calendar
+                                                        // style). It wins the
+                                                        // gesture arena over
+                                                        // the parent vertical
+                                                        // scroll, so scroll
+                                                        // the grid with the
+                                                        // wheel / scrollbar /
+                                                        // hour-label column.
+                                                        // The outer surface's
+                                                        // horizontal drag
+                                                        // still navigates
+                                                        // weeks.
+                                                        onVerticalDragStart:
                                                             (details) {
                                                           setState(() {
                                                             _createDayIndex =
@@ -432,7 +461,7 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                                                                 .localPosition.dy;
                                                           });
                                                         },
-                                                        onLongPressMoveUpdate:
+                                                        onVerticalDragUpdate:
                                                             (details) {
                                                           if (_createDayIndex !=
                                                               dayIndex) {
@@ -443,7 +472,7 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                                                                 .localPosition.dy;
                                                           });
                                                         },
-                                                        onLongPressEnd: (_) =>
+                                                        onVerticalDragEnd: (_) =>
                                                             _commitCreateDrag(
                                                                 dayIndex),
                                                         child: Stack(
@@ -1221,9 +1250,11 @@ Future<void> _showCreatePlannerEventDialog(
     String title,
     DateTime eventDate,
     int difficultyWeight,
-    String description,
-  ) onCreatePlannerEvent, {
+    String description, {
+    DateTime? endsAt,
+  }) onCreatePlannerEvent, {
   DateTime? initialDateTime,
+  DateTime? initialEndDateTime,
 }) async {
   final titleController = TextEditingController();
   final descriptionController = TextEditingController();
@@ -1232,6 +1263,15 @@ Future<void> _showCreatePlannerEventDialog(
   var selectedTime = initialDateTime != null
       ? TimeOfDay(hour: initialDateTime.hour, minute: initialDateTime.minute)
       : const TimeOfDay(hour: 14, minute: 0);
+  // End time seeds from a drawn drag (initialEndDateTime) or defaults to
+  // one hour after the start.
+  final seedEnd = initialEndDateTime ??
+      (initialDateTime != null
+          ? initialDateTime.add(const Duration(hours: 1))
+          : null);
+  var selectedEndTime = seedEnd != null
+      ? TimeOfDay(hour: seedEnd.hour, minute: seedEnd.minute)
+      : const TimeOfDay(hour: 15, minute: 0);
   var weight = 1;
   ActionFeedback? feedback;
   var submitting = false;
@@ -1264,30 +1304,33 @@ Future<void> _showCreatePlannerEventDialog(
                 ),
               ),
               const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.event, size: 16),
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: _dateOnly(DateTime.now()),
+                      lastDate: _dateOnly(DateTime.now())
+                          .add(const Duration(days: 365)),
+                    );
+                    if (picked != null) {
+                      setState(() => selectedDate = _dateOnly(picked));
+                    }
+                  },
+                  label: Text(
+                    selectedDate.toIso8601String().split('T').first,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
-                      onPressed: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: selectedDate,
-                          firstDate: _dateOnly(DateTime.now()),
-                          lastDate: _dateOnly(DateTime.now())
-                              .add(const Duration(days: 365)),
-                        );
-                        if (picked != null) {
-                          setState(() => selectedDate = _dateOnly(picked));
-                        }
-                      },
-                      child: Text(
-                        selectedDate.toIso8601String().split('T').first,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.play_arrow, size: 16),
                       onPressed: () async {
                         final picked = await showTimePicker(
                           context: context,
@@ -1297,7 +1340,23 @@ Future<void> _showCreatePlannerEventDialog(
                           setState(() => selectedTime = picked);
                         }
                       },
-                      child: Text(selectedTime.format(context)),
+                      label: Text(selectedTime.format(context)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.stop, size: 16),
+                      onPressed: () async {
+                        final picked = await showTimePicker(
+                          context: context,
+                          initialTime: selectedEndTime,
+                        );
+                        if (picked != null) {
+                          setState(() => selectedEndTime = picked);
+                        }
+                      },
+                      label: Text(selectedEndTime.format(context)),
                     ),
                   ),
                 ],
@@ -1343,17 +1402,31 @@ Future<void> _showCreatePlannerEventDialog(
                       submitting = true;
                       feedback = null;
                     });
+                    final start = DateTime(
+                      selectedDate.year,
+                      selectedDate.month,
+                      selectedDate.day,
+                      selectedTime.hour,
+                      selectedTime.minute,
+                    );
+                    var end = DateTime(
+                      selectedDate.year,
+                      selectedDate.month,
+                      selectedDate.day,
+                      selectedEndTime.hour,
+                      selectedEndTime.minute,
+                    );
+                    // Guard against an end at/before the start (the
+                    // backend also forces ends_at > starts_at).
+                    if (!end.isAfter(start)) {
+                      end = start.add(const Duration(hours: 1));
+                    }
                     final result = await onCreatePlannerEvent(
                       titleController.text.trim(),
-                      DateTime(
-                        selectedDate.year,
-                        selectedDate.month,
-                        selectedDate.day,
-                        selectedTime.hour,
-                        selectedTime.minute,
-                      ),
+                      start,
                       weight,
                       descriptionController.text.trim(),
+                      endsAt: end,
                     );
                     if (!context.mounted) {
                       return;
