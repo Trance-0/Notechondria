@@ -984,6 +984,7 @@ class _MonthCalendarGrid extends StatelessWidget {
                             isToday: cells[week * 7 + col] == today,
                             borderColor: borderColor,
                             onEventTap: onEventTap,
+                            onEventLongPress: onEventLongPress,
                             onCreateForDay: onCreateForDay,
                           ),
                         ),
@@ -1005,6 +1006,7 @@ class _MonthDayCell extends StatelessWidget {
     required this.isToday,
     required this.borderColor,
     required this.onEventTap,
+    required this.onEventLongPress,
     required this.onCreateForDay,
   });
 
@@ -1013,6 +1015,7 @@ class _MonthDayCell extends StatelessWidget {
   final bool isToday;
   final Color borderColor;
   final void Function(Map<String, dynamic> event) onEventTap;
+  final void Function(Map<String, dynamic> event) onEventLongPress;
   final void Function(DateTime day) onCreateForDay;
 
   static const double _chipHeight = 18;

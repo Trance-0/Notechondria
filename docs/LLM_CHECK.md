@@ -27,6 +27,11 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.168: build fix — threaded `onEventLongPress` into `_MonthDayCell`
+  (0.1.167 added it to `_MonthCalendarGrid` only, so the month chips'
+  build referenced an undefined member and the Flutter build failed).
+  Reinforces LLM_CHECK item 1/5: local brace/JSON checks don't catch
+  undefined-name errors — the CI Flutter build is the real gate for Dart.
 - 0.1.167: activity event UI. Per-course palette + luminance-derived ink
   (dark-theme legible); hold/right-click opens a new edit dialog with the
   full recurrence rule (freq/interval/end-date-or-count) that PATCHes the
