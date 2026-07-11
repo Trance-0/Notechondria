@@ -322,37 +322,63 @@ class _HeatmapSection extends StatelessWidget {
               style: theme.textTheme.bodySmall,
             ),
             const SizedBox(height: 12),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (final week in weeks)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 3),
-                      child: Column(
-                        children: [
-                          for (final cell in week)
-                            Container(
-                              width: 13,
-                              height: 13,
-                              margin: const EdgeInsets.only(bottom: 3),
-                              decoration: BoxDecoration(
-                                color: _tintFor(context, cell),
-                                borderRadius: BorderRadius.circular(3),
-                                border: cell['is_today'] == true
-                                    ? Border.all(
-                                        color: theme.colorScheme.onSurface,
-                                        width: 1,
-                                      )
-                                    : null,
+            // The payload spans ~53 weeks; fixed 13px cells always
+            // overflowed (mobile) or left the card half-empty (desktop).
+            // Instead auto-fit: show the most recent weeks that fit and
+            // scale the cells so the grid spans the available width in a
+            // fixed-height band on both mobile and desktop.
+            LayoutBuilder(
+              builder: (context, constraints) {
+                const gap = 3.0;
+                const minCell = 9.0;
+                const maxCell = 16.0;
+                final available = constraints.maxWidth;
+                if (weeks.isEmpty || available <= 0) {
+                  return const SizedBox.shrink();
+                }
+                // Most weeks that fit at the minimum cell size; show the
+                // most recent ones (trim from the front).
+                final maxWeeks =
+                    ((available + gap) / (minCell + gap)).floor().clamp(1, 9999);
+                final shownWeeks = weeks.length <= maxWeeks
+                    ? weeks
+                    : weeks.sublist(weeks.length - maxWeeks);
+                final rawCell =
+                    (available - (shownWeeks.length - 1) * gap) /
+                        shownWeeks.length;
+                final cell = rawCell.clamp(minCell, maxCell);
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (var w = 0; w < shownWeeks.length; w++)
+                      Padding(
+                        padding: EdgeInsets.only(
+                            right: w == shownWeeks.length - 1 ? 0 : gap),
+                        child: Column(
+                          children: [
+                            for (final c in shownWeeks[w])
+                              Container(
+                                width: cell,
+                                height: cell,
+                                margin: const EdgeInsets.only(bottom: gap),
+                                decoration: BoxDecoration(
+                                  color: _tintFor(context, c),
+                                  borderRadius: BorderRadius.circular(3),
+                                  border: c['is_today'] == true
+                                      ? Border.all(
+                                          color: theme.colorScheme.onSurface,
+                                          width: 1,
+                                        )
+                                      : null,
+                                ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                ],
-              ),
+                  ],
+                );
+              },
             ),
           ],
         ),
