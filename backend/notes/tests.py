@@ -290,6 +290,85 @@ class HeatmapApiTests(TestCase):
         self.assertEqual(len(match), 1)
         self.assertTrue(match[0]['is_completed'])
 
+    def test_activity_week_expands_weekly_recurrence(self):
+        # A weekly event whose base occurrence predates the visible window
+        # must still materialise its later occurrences inside the window.
+        today = timezone.localdate()
+        base = today - timedelta(days=14)  # two weeks before the window start
+        PlannerEvent.objects.create(
+            creator_id=self.creator,
+            title='Weekly standup',
+            event_date=base,
+            starts_at=timezone.make_aware(datetime.combine(base, time(9, 0))),
+            ends_at=timezone.make_aware(datetime.combine(base, time(9, 30))),
+            recurrence_freq='W',
+            recurrence_interval=1,
+        )
+        response = self.client.get(
+            f'/api/v1/activity/week/?start_date={today.isoformat()}&days=30',
+            **self._auth_headers(),
+        )
+        self.assertEqual(response.status_code, 200)
+        days = response.json()['days']
+        occ = []
+        for day in days:
+            for ev in day['events']:
+                if ev.get('title') == 'Weekly standup':
+                    occ.append((day['date'], ev))
+        # 30-day window, weekly cadence -> at least 4 occurrences, each
+        # keeping the 09:00 time-of-day and tagging its occurrence date.
+        self.assertGreaterEqual(len(occ), 4)
+        for date_str, ev in occ:
+            self.assertEqual(ev['event_date'], date_str)
+            self.assertTrue(ev['starts_at'].endswith('09:00:00') or 'T09:00' in ev['starts_at'])
+
+    def test_activity_week_recurrence_respects_count(self):
+        # recurrence_count caps the total number of occurrences (incl. first).
+        today = timezone.localdate()
+        PlannerEvent.objects.create(
+            creator_id=self.creator,
+            title='Three-time weekly',
+            event_date=today,
+            recurrence_freq='W',
+            recurrence_interval=1,
+            recurrence_count=3,
+        )
+        response = self.client.get(
+            f'/api/v1/activity/week/?start_date={today.isoformat()}&days=30',
+            **self._auth_headers(),
+        )
+        self.assertEqual(response.status_code, 200)
+        count = sum(
+            1
+            for day in response.json()['days']
+            for ev in day['events']
+            if ev.get('title') == 'Three-time weekly'
+        )
+        self.assertEqual(count, 3)
+
+    def test_activity_week_recurrence_respects_end_date(self):
+        today = timezone.localdate()
+        PlannerEvent.objects.create(
+            creator_id=self.creator,
+            title='Bounded weekly',
+            event_date=today,
+            recurrence_freq='W',
+            recurrence_interval=1,
+            recurrence_end_date=today + timedelta(days=10),  # covers 2 weeks
+        )
+        response = self.client.get(
+            f'/api/v1/activity/week/?start_date={today.isoformat()}&days=30',
+            **self._auth_headers(),
+        )
+        self.assertEqual(response.status_code, 200)
+        count = sum(
+            1
+            for day in response.json()['days']
+            for ev in day['events']
+            if ev.get('title') == 'Bounded weekly'
+        )
+        self.assertEqual(count, 2)
+
     def test_note_cover_upload_and_clear(self):
         import io
 

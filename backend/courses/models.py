@@ -28,6 +28,28 @@ class Course(models.Model):
     cover_image = models.ImageField(upload_to=course_cover_path, blank=True, null=True)
     icon = models.IntegerField(blank=True, null=True, help_text="Material Icons codePoint")
     sort_order = models.IntegerField(default=0, null=False)
+    # Git binding (0.1.164). A course may be bound to a GitHub repo that
+    # mirrors its notes as files. The backend stays the source of
+    # truth: edits land in the DB, then a lazy sync commits/pushes to
+    # the repo after `git_sync_timeout_minutes` of no further edits.
+    # `git_repo` is the `owner/name` full name; empty = not bound.
+    git_provider = models.CharField(
+        max_length=16,
+        choices=(("github", "GitHub"),),
+        default="github",
+        null=False,
+    )
+    git_repo = models.CharField(max_length=255, blank=True, null=True)
+    git_branch = models.CharField(max_length=255, blank=True, null=True, default="main")
+    git_sync_enabled = models.BooleanField(default=False, null=False)
+    # Owner-tunable lazy-commit debounce; the dev-settings UI writes it.
+    git_sync_timeout_minutes = models.PositiveIntegerField(default=5, null=False)
+    # Set to now() on each content edit; the sync worker fires when
+    # (now - git_pending_since) >= git_sync_timeout_minutes, then clears
+    # it. `git_last_synced_at` records the last successful push.
+    git_pending_since = models.DateTimeField(blank=True, null=True)
+    git_last_synced_at = models.DateTimeField(blank=True, null=True)
+    git_last_sync_error = models.CharField(max_length=512, blank=True, null=True)
     date_created = models.DateTimeField(auto_now_add=True, null=False)
     last_edit = models.DateTimeField(auto_now=True, null=False)
 

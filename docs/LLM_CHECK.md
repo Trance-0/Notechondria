@@ -27,6 +27,14 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.164: added recurring-event rule fields to `PlannerEvent` (+ additive
+  migration), window expansion in `calendar_week_payload`, serializer/view
+  persistence, MCP/CLI `create_event`/`update_event` parity, and three
+  `HeatmapApiTests` cases. Added additive git-binding fields to `Course`
+  (foundation only; endpoints/worker/UI tracked in TODO). Verified with
+  `python3 -m py_compile` on every edited module; full Django test run and
+  Flutter builds NOT run locally (no interpreter/toolchain on host) —
+  `backend-tests.yml` is the authority post-push.
 - Fixed Jenkins deploy invocation to pass `project_dir` and `env_path` in the order required by `deployment/scripts/deploy_backend.sh`.
 - Fixed a visible separator encoding issue in the Flutter front page subtitle.
 - Made the selected course stateful across course, learner, and activity views.

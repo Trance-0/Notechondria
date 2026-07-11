@@ -63,6 +63,56 @@ Pages, backend via Northflank on commit, suites via CI on push.
   run locally per LLM_CHECK — and never start project containers
   locally.
 
+## **Urgent** — GitHub course binding & activity UX (owner request 2026-07-11)
+
+Large multi-part owner request. Recurrence backend + MCP/CLI landed in
+0.1.164; the rest below is pending. Deliver in CI-verified increments;
+do not run project containers/apps locally.
+
+### Recurring events
+- [x] Backend: `recurrence_freq/interval/end_date/count` on `PlannerEvent`,
+  window expansion in `calendar_week_payload`, serializer + views,
+  MCP/CLI parity, tests. (0.1.164)
+- [ ] **Activity UI (portal):** recurrence controls in the create/edit
+  event dialog — default one-time; weekly/monthly/yearly cycle; ends
+  at a date OR after N occurrences. Render recurring occurrences from
+  the expanded week payload.
+
+### Activity UI fixes (portal)
+- [ ] Event chip CSS: **no visible text in dark theme** — fix contrast
+  and add per-course/per-kind colour variation.
+- [ ] **Long-press / right-click** an event opens the edit dialog.
+- [ ] **Course (category) filter** at the top of the activity view to
+  filter events by course.
+- [ ] **ICS / subscription import feedback modal**: on success show a
+  short bullet list of imported events; on failure show what went
+  wrong. Currently there is no feedback on activity import.
+
+### Course ↔ GitHub binding (backend source of truth, lazy sync)
+- [ ] Backend endpoints: **import**, **bind**, **unlink** a course to a
+  GitHub repo (uses the git fields already on `Course`; no new model).
+- [ ] **Lazy sync worker**: when a bound course's content is unedited
+  for `git_sync_timeout_minutes` (default 5, owner-settable in dev
+  settings), auto-commit/push to the repo. Track via `git_pending_since`
+  → `git_last_synced_at` / `git_last_sync_error`.
+- [ ] **Effective logs** on import / bind / unlink (reuse
+  `CourseOperationLog`-style logging; extend operation types).
+- [ ] Backend is the source of truth; the app is a repo text editor.
+- [ ] Create the **course template repo** on the Nesbitt-bot account,
+  and align it (and the imported `colorful-numbers/Veronica-7`) to the
+  predefined course format documented in `docs/integrations/`. (Needs
+  the Nesbitt-bot PAT — treat as a credential; never commit/log it.)
+- [ ] **Cloudflare-style repo selector/binder** UI: list of repos, each
+  opens a modal to pick the course to bind.
+- [ ] **MCP/CLI** tools (both servers, parity): get/set a course's git
+  config, and access course content over API key for remote agents.
+
+### Cross-app plumbing
+- [ ] **Developer menu** currently editor-only — embed it in **planner**
+  and **portal** too; menu content depends on each app's support.
+- [ ] **Experimental features** registry: add "GitHub course sync"
+  alongside "import apple journal".
+
 ## Dev plan — bring every component online (fewest owner-attention rounds)
 
 Working agreement: the owner focuses on testing and new features;

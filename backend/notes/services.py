@@ -1,12 +1,12 @@
 import base64
 import logging
-from datetime import datetime, timedelta, timezone as dt_timezone
+from datetime import date, datetime, timedelta, timezone as dt_timezone
 from typing import Optional
 import urllib.error
 import urllib.parse
 import urllib.request
 
-from django.db.models import Count, Max, Sum
+from django.db.models import Count, Max, Q, Sum
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -150,15 +150,105 @@ def planner_event_payload(event: PlannerEvent):
         "course_id": event.course_id_id,
         "is_completed": event.is_completed,
         "completed_at": event.completed_at.isoformat() if event.completed_at else None,
+        "recurrence_freq": event.recurrence_freq,
+        "recurrence_interval": event.recurrence_interval,
+        "recurrence_end_date": event.recurrence_end_date.isoformat()
+        if event.recurrence_end_date
+        else None,
+        "recurrence_count": event.recurrence_count,
     }
 
 
-def planner_deadline_payload(event: PlannerEvent, now=None):
+def _add_months(base_date, months):
+    """Add `months` calendar months to a date, clamping the day to the
+    last valid day of the target month (e.g. Jan 31 + 1 month -> Feb 28/29)."""
+    month_index = base_date.month - 1 + months
+    year = base_date.year + month_index // 12
+    month = month_index % 12 + 1
+    # Days in target month (handles leap years via a probe on the 28th).
+    if month == 12:
+        next_month_first = date(year + 1, 1, 1)
+    else:
+        next_month_first = date(year, month + 1, 1)
+    last_day = (next_month_first - timedelta(days=1)).day
+    return date(year, month, min(base_date.day, last_day))
+
+
+def _add_period(base_date, freq, interval, step):
+    """Return the date `step` recurrences after `base_date`.
+
+    freq: 'W' weekly, 'M' monthly, 'Y' yearly. `interval` is the multiplier
+    (every N weeks/months/years)."""
+    if freq == "W":
+        return base_date + timedelta(weeks=interval * step)
+    if freq == "M":
+        return _add_months(base_date, interval * step)
+    if freq == "Y":
+        return _add_months(base_date, 12 * interval * step)
+    return base_date
+
+
+# Hard ceiling so a malformed rule (interval=0 already normalised to 1) can
+# never spin the expansion loop forever; a daily-ish cap over a decade.
+_MAX_OCCURRENCES = 4000
+
+
+def _expand_occurrence_dates(event, window_start, window_end):
+    """Yield the occurrence dates of `event` that fall within
+    [window_start, window_end], honouring recurrence_end_date (inclusive)
+    and recurrence_count (total occurrences including the first)."""
+    freq = event.recurrence_freq or "N"
+    base = event.event_date
+    if freq == "N":
+        if window_start <= base <= window_end:
+            yield base
+        return
+    interval = event.recurrence_interval or 1
+    if interval < 1:
+        interval = 1
+    end_date = event.recurrence_end_date
+    max_count = event.recurrence_count
+    step = 0
+    while step < _MAX_OCCURRENCES:
+        if max_count is not None and step >= max_count:
+            return
+        occ = _add_period(base, freq, interval, step)
+        if end_date is not None and occ > end_date:
+            return
+        if occ > window_end:
+            return
+        if occ >= window_start:
+            yield occ
+        step += 1
+
+
+def _occurrence_payload(event, occ_date):
+    """planner_event_payload for a single expanded occurrence: shift the
+    start/end datetimes by the day delta from the base occurrence so the
+    time-of-day is preserved, and tag the concrete occurrence date."""
+    payload = planner_event_payload(event)
+    delta_days = (occ_date - event.event_date).days
+    if delta_days:
+        starts_at = datetime.fromisoformat(payload["starts_at"]) + timedelta(days=delta_days)
+        ends_at = datetime.fromisoformat(payload["ends_at"]) + timedelta(days=delta_days)
+        payload["starts_at"] = starts_at.isoformat()
+        payload["ends_at"] = ends_at.isoformat()
+    payload["event_date"] = occ_date.isoformat()
+    payload["occurrence_date"] = occ_date.isoformat()
+    return payload
+
+
+def planner_deadline_payload(event: PlannerEvent, now=None, occ_date=None):
+    """Urgency payload for a deadline. When `occ_date` is given (a recurring
+    series' concrete upcoming occurrence), urgency is measured against that
+    shifted start rather than the stored base occurrence."""
     reference = now or timezone.now()
-    starts_at = event.starts_at or timezone.make_aware(datetime.combine(event.event_date, datetime.min.time().replace(hour=12)))
+    payload = _occurrence_payload(event, occ_date) if occ_date else planner_event_payload(event)
+    starts_at = datetime.fromisoformat(payload["starts_at"])
+    if timezone.is_naive(starts_at):
+        starts_at = timezone.make_aware(starts_at)
     hours_remaining = max((starts_at - reference).total_seconds() / 3600.0, 1 / 60.0)
     urgency = round(float(event.difficulty_weight) / hours_remaining, 4)
-    payload = planner_event_payload(event)
     payload["urgency_score"] = urgency
     return payload
 
@@ -446,14 +536,21 @@ def calendar_week_payload(creator, start_date=None, day_count=DEFAULT_CALENDAR_R
     days = [start + timedelta(days=index) for index in range(day_count)]
     payload = {day.isoformat(): [] for day in days}
 
+    # One-time events whose date lands inside the window, plus *every*
+    # recurring series (its base occurrence may predate the window) so the
+    # expander below can materialise occurrences that fall inside it.
     planner_rows = PlannerEvent.objects.filter(
         creator_id=creator,
-        event_date__gte=days[0],
-        event_date__lte=days[-1],
         is_completed=False,
+    ).filter(
+        Q(recurrence_freq="N", event_date__gte=days[0], event_date__lte=days[-1])
+        | ~Q(recurrence_freq="N")
     )
     for event in planner_rows:
-        payload[event.event_date.isoformat()].append(planner_event_payload(event) | {"kind": "plan", "source_id": event.id})
+        for occ_date in _expand_occurrence_dates(event, days[0], days[-1]):
+            payload[occ_date.isoformat()].append(
+                _occurrence_payload(event, occ_date) | {"kind": "plan", "source_id": event.id}
+            )
 
     session_rows = NoteActivitySession.objects.filter(
         creator_id=creator,
@@ -508,14 +605,29 @@ def calendar_week_payload(creator, start_date=None, day_count=DEFAULT_CALENDAR_R
             )
 
     # Upcoming, still-open deadlines (any future date) drive the urgency list.
+    today = timezone.localdate()
     deadline_events = {
         event.id: event
         for event in PlannerEvent.objects.filter(
             creator_id=creator,
-            event_date__gte=timezone.localdate(),
+            recurrence_freq="N",
+            event_date__gte=today,
             is_completed=False,
         ).order_by("starts_at", "event_date", "title")[:40]
     }
+    active_deadlines = [
+        planner_deadline_payload(event) for event in deadline_events.values()
+    ]
+    # Recurring series: surface only the single next upcoming occurrence
+    # (within a 400-day horizon) so a weekly class doesn't flood the list.
+    deadline_horizon = today + timedelta(days=400)
+    for event in PlannerEvent.objects.filter(
+        creator_id=creator,
+        is_completed=False,
+    ).exclude(recurrence_freq="N").order_by("event_date", "title"):
+        next_occ = next(_expand_occurrence_dates(event, today, deadline_horizon), None)
+        if next_occ is not None:
+            active_deadlines.append(planner_deadline_payload(event, occ_date=next_occ))
     # Also surface events that were *completed* but still fall inside the
     # currently visible window. Checking an item in the todo list marks it
     # done in place (rendered struck-through) instead of making it vanish,
@@ -526,10 +638,9 @@ def calendar_week_payload(creator, start_date=None, day_count=DEFAULT_CALENDAR_R
         event_date__lte=days[-1],
         is_completed=True,
     ).order_by("event_date", "title")[:40]:
-        deadline_events.setdefault(event.id, event)
-    active_deadlines = [
-        planner_deadline_payload(event) for event in deadline_events.values()
-    ]
+        if event.id not in deadline_events:
+            deadline_events[event.id] = event
+            active_deadlines.append(planner_deadline_payload(event))
     # Open deadlines first (by urgency), completed ones sink to the bottom.
     active_deadlines.sort(
         key=lambda item: (

@@ -529,6 +529,13 @@ class PlannerEventWriteSerializer(serializers.Serializer):
     course_id = serializers.IntegerField(required=False, allow_null=True)
     is_completed = serializers.BooleanField(required=False)
     completed_at = serializers.DateTimeField(required=False, allow_null=True)
+    recurrence_freq = serializers.ChoiceField(
+        choices=[("N", "none"), ("W", "weekly"), ("M", "monthly"), ("Y", "yearly")],
+        required=False,
+    )
+    recurrence_interval = serializers.IntegerField(min_value=1, required=False)
+    recurrence_end_date = serializers.DateField(required=False, allow_null=True)
+    recurrence_count = serializers.IntegerField(min_value=1, required=False, allow_null=True)
 
 
 class NoteSessionWriteSerializer(serializers.Serializer):
@@ -1780,6 +1787,10 @@ class PlannerEventListCreateApiView(APIView):
             description=serializer.validated_data.get("description") or "",
             is_completed=serializer.validated_data.get("is_completed", False),
             completed_at=serializer.validated_data.get("completed_at"),
+            recurrence_freq=serializer.validated_data.get("recurrence_freq", "N"),
+            recurrence_interval=serializer.validated_data.get("recurrence_interval", 1),
+            recurrence_end_date=serializer.validated_data.get("recurrence_end_date"),
+            recurrence_count=serializer.validated_data.get("recurrence_count"),
         )
         normalize_planner_event_window(event)
         if event.is_completed and event.completed_at is None:
@@ -1805,6 +1816,10 @@ class PlannerEventDetailApiView(APIView):
             "description",
             "is_completed",
             "completed_at",
+            "recurrence_freq",
+            "recurrence_interval",
+            "recurrence_end_date",
+            "recurrence_count",
         ]:
             if field in serializer.validated_data:
                 setattr(event, field, serializer.validated_data[field])

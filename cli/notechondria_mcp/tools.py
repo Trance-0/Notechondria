@@ -253,7 +253,8 @@ def _list_events(client: BackendClient, args: dict) -> Any:
 def _create_event(client: BackendClient, args: dict) -> Any:
     body = {"title": args["title"], "event_date": args["event_date"]}
     for key in ("starts_at", "ends_at", "description",
-                "difficulty_weight", "course_id"):
+                "difficulty_weight", "course_id", "recurrence_freq",
+                "recurrence_interval", "recurrence_end_date", "recurrence_count"):
         if key in args and args[key] is not None:
             body[key] = args[key]
     return client.post("planner-events/", body)
@@ -263,7 +264,8 @@ def _update_event(client: BackendClient, args: dict) -> Any:
     body = {}
     for key in ("title", "event_date", "starts_at", "ends_at",
                 "difficulty_weight", "description", "course_id",
-                "is_completed"):
+                "is_completed", "recurrence_freq", "recurrence_interval",
+                "recurrence_end_date", "recurrence_count"):
         if key in args:
             body[key] = args[key]
     return client.patch(f"planner-events/{int(args['event_id'])}/", body)
@@ -611,6 +613,10 @@ TOOLS: List[dict] = [
             "difficulty_weight": {"type": "integer", "description": "Effort weight 1 (light) to 4 (heavy); feeds the activity heatmap. Default 1."},
             "description": {"type": "string", "description": "Optional detail shown in the event dialog (max 255 chars)."},
             "course_id": {"type": "integer", "description": "Optional owning course id (see list_courses)."},
+            "recurrence_freq": {"type": "string", "enum": ["N", "W", "M", "Y"], "description": "Repeat rule: N=one-time (default), W=weekly, M=monthly, Y=yearly. event_date is the first occurrence."},
+            "recurrence_interval": {"type": "integer", "description": "Repeat every N periods (default 1). Ignored when recurrence_freq=N."},
+            "recurrence_end_date": {"type": ["string", "null"], "description": "ISO date the series stops on (inclusive). Optional."},
+            "recurrence_count": {"type": ["integer", "null"], "description": "Total number of occurrences including the first. Optional; use this OR recurrence_end_date."},
         }, ["title", "event_date"]),
         "handler": _create_event,
     },
@@ -634,6 +640,10 @@ TOOLS: List[dict] = [
             "description": _STR,
             "course_id": {"type": ["integer", "null"], "description": "Owning course id, or null to detach."},
             "is_completed": {"type": "boolean", "description": "true completes (stamps completed_at), false reopens (clears it)."},
+            "recurrence_freq": {"type": "string", "enum": ["N", "W", "M", "Y"], "description": "Repeat rule: N=one-time, W=weekly, M=monthly, Y=yearly."},
+            "recurrence_interval": {"type": "integer", "description": "Repeat every N periods."},
+            "recurrence_end_date": {"type": ["string", "null"], "description": "ISO date the series stops on (inclusive), or null to clear."},
+            "recurrence_count": {"type": ["integer", "null"], "description": "Total occurrences including the first, or null to clear."},
         }, ["event_id"]),
         "handler": _update_event,
     },

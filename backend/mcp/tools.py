@@ -100,6 +100,10 @@ def _event_payload(event):
         "description": event.description or "",
         "course_id": event.course_id_id if event.course_id_id else None,
         "is_completed": event.is_completed,
+        "recurrence_freq": event.recurrence_freq,
+        "recurrence_interval": event.recurrence_interval,
+        "recurrence_end_date": _iso(event.recurrence_end_date),
+        "recurrence_count": event.recurrence_count,
     }
 
 
@@ -594,6 +598,10 @@ def _create_event(user, creator, params):
         difficulty_weight=params.get("difficulty_weight", 1),
         description=params.get("description", ""),
         course_id_id=params.get("course_id"),
+        recurrence_freq=params.get("recurrence_freq", "N"),
+        recurrence_interval=params.get("recurrence_interval", 1),
+        recurrence_end_date=params.get("recurrence_end_date"),
+        recurrence_count=params.get("recurrence_count"),
     )
     # Same stored-window contract as the REST create (a bare-date event
     # gets a noon one-hour window; event_date snaps to starts_at's day).
@@ -620,6 +628,10 @@ register_tool(
             "difficulty_weight": {"type": "integer", "description": "Effort weight 1 (light) to 4 (heavy); feeds the activity heatmap. Default 1."},
             "description": {"type": "string", "description": "Optional detail shown in the event dialog (max 255 chars)."},
             "course_id": {"type": "integer", "description": "Optional owning course id (see list_courses)."},
+            "recurrence_freq": {"type": "string", "enum": ["N", "W", "M", "Y"], "description": "Repeat rule: N=one-time (default), W=weekly, M=monthly, Y=yearly. event_date is the first occurrence."},
+            "recurrence_interval": {"type": "integer", "description": "Repeat every N periods (default 1). Ignored when recurrence_freq=N."},
+            "recurrence_end_date": {"type": ["string", "null"], "description": "ISO date the series stops on (inclusive). Optional."},
+            "recurrence_count": {"type": ["integer", "null"], "description": "Total number of occurrences including the first. Optional; use this OR recurrence_end_date."},
         },
         "required": ["title", "event_date"],
     },
@@ -631,7 +643,11 @@ def _update_event(user, creator, params):
     from notes.api import normalize_planner_event_window
 
     event = get_object_or_404(PlannerEvent, pk=params["event_id"], creator_id=creator)
-    for field in ("title", "event_date", "starts_at", "ends_at", "difficulty_weight", "description", "is_completed"):
+    for field in (
+        "title", "event_date", "starts_at", "ends_at", "difficulty_weight",
+        "description", "is_completed", "recurrence_freq", "recurrence_interval",
+        "recurrence_end_date", "recurrence_count",
+    ):
         if field in params:
             setattr(event, field, params[field])
     if "course_id" in params:
@@ -667,6 +683,10 @@ register_tool(
             "description": {"type": "string"},
             "course_id": {"type": ["integer", "null"], "description": "Owning course id, or null to detach."},
             "is_completed": {"type": "boolean", "description": "true completes (stamps completed_at), false reopens (clears it)."},
+            "recurrence_freq": {"type": "string", "enum": ["N", "W", "M", "Y"], "description": "Repeat rule: N=one-time, W=weekly, M=monthly, Y=yearly."},
+            "recurrence_interval": {"type": "integer", "description": "Repeat every N periods."},
+            "recurrence_end_date": {"type": ["string", "null"], "description": "ISO date the series stops on (inclusive), or null to clear."},
+            "recurrence_count": {"type": ["integer", "null"], "description": "Total occurrences including the first, or null to clear."},
         },
         "required": ["event_id"],
     },
