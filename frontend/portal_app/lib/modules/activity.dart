@@ -27,10 +27,10 @@ class _ActivityPage extends StatelessWidget {
     String description, {
     DateTime? endsAt,
   }) onCreatePlannerEvent;
-  final Future<void> Function(String rawIcal, String title, {int? courseId})
-      onImportCalendar;
-  final Future<void> Function(String title, String url, {int? courseId})
-      onSubscribeCalendar;
+  final Future<Map<String, dynamic>?> Function(String rawIcal, String title,
+      {int? courseId}) onImportCalendar;
+  final Future<Map<String, dynamic>?> Function(String title, String url,
+      {int? courseId}) onSubscribeCalendar;
   final Future<void> Function(int direction) onNavigateWeek;
   final Future<void> Function(int dayDelta) onShiftStartDay;
   final Future<void> Function(int days) onChangeRange;
@@ -203,10 +203,10 @@ class _RoundActivityFab extends StatelessWidget {
     String description, {
     DateTime? endsAt,
   }) onCreatePlannerEvent;
-  final Future<void> Function(String rawIcal, String title, {int? courseId})
-      onImportCalendar;
-  final Future<void> Function(String title, String url, {int? courseId})
-      onSubscribeCalendar;
+  final Future<Map<String, dynamic>?> Function(String rawIcal, String title,
+      {int? courseId}) onImportCalendar;
+  final Future<Map<String, dynamic>?> Function(String title, String url,
+      {int? courseId}) onSubscribeCalendar;
 
   Future<void> _showMenu(BuildContext context, TapDownDetails? details) async {
     final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;

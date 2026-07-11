@@ -84,9 +84,10 @@ do not run project containers/apps locally.
 - [ ] **Long-press / right-click** an event opens the edit dialog.
 - [ ] **Course (category) filter** at the top of the activity view to
   filter events by course.
-- [ ] **ICS / subscription import feedback modal**: on success show a
-  short bullet list of imported events; on failure show what went
-  wrong. Currently there is no feedback on activity import.
+- [x] **ICS / subscription import feedback modal** (portal): success
+  shows a bullet list of imported events, failure shows the reason.
+  Backend `import_summary` on feed create. (0.1.166) — planner_app
+  parity still pending.
 
 ### Course ↔ GitHub binding (backend source of truth, lazy sync)
 - [ ] Backend endpoints: **import**, **bind**, **unlink** a course to a

@@ -12,6 +12,7 @@
   "commonSkip": "跳过",
   "commonClose": "关闭",
   "commonDone": "完成",
+  "commonOk": "确定",
   "commonCancel": "取消",
   "commonBack": "返回",
   "commonNext": "下一步",
@@ -485,6 +486,12 @@
   "activitySubscribeToCalendar": "订阅日历",
   "activityIcalUrl": "iCal 网址",
   "activitySubscribedCalendar": "已订阅的日历",
+  "activityImportSucceeded": "导入成功",
+  "activityImportFailed": "导入失败",
+  "activityImportedCount": "已从“{title}”导入 {count} 个事件：",
+  "@activityImportedCount": {
+    "placeholders": { "count": { "type": "int" }, "title": { "type": "String" } }
+  },
   "mcpSkillCopied": "skill.md 已复制到剪贴板。",
   "mcpSkillTitle": "智能体技能（skill.md）",
   "mcpSkillDescription": "供 MCP 连接的智能体使用的个人操作手册。可在这里说明从哪里拉取笔记（例如 notenextra.trance-0.com 等外部站点）、如何格式化导入、导出哪些文件，以及发布到哪里。它会原样作为 MCP initialize 响应中的 `instructions` 字段发送。",

@@ -67,6 +67,7 @@ from .services import (
     record_note_activity,
     restore_note_version,
     snapshot_note_version,
+    summarize_calendar_feed,
     version_label,
 )
 
@@ -1914,7 +1915,12 @@ class CalendarFeedListCreateApiView(APIView):
             raw_ical=serializer.validated_data.get("raw_ical") or "",
             is_enabled=serializer.validated_data.get("is_enabled", True),
         )
-        return Response(CalendarFeedSerializer(feed).data, status=status.HTTP_201_CREATED)
+        # Parse the feed once now so the client can show an import-result
+        # modal (success + a short list of events, or a readable error)
+        # instead of silently rendering zero events.
+        payload = CalendarFeedSerializer(feed).data
+        payload["import_summary"] = summarize_calendar_feed(feed)
+        return Response(payload, status=status.HTTP_201_CREATED)
 
 
 class CalendarFeedDetailApiView(APIView):

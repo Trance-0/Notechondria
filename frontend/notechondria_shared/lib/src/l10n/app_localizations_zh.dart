@@ -39,6 +39,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commonDone => '完成';
 
   @override
+  String get commonOk => '确定';
+
+  @override
   String get commonCancel => '取消';
 
   @override
@@ -1456,6 +1459,17 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get activitySubscribedCalendar => '已订阅的日历';
+
+  @override
+  String get activityImportSucceeded => '导入成功';
+
+  @override
+  String get activityImportFailed => '导入失败';
+
+  @override
+  String activityImportedCount(int count, String title) {
+    return '已从“$title”导入 $count 个事件：';
+  }
 
   @override
   String get mcpSkillCopied => 'skill.md 已复制到剪贴板。';

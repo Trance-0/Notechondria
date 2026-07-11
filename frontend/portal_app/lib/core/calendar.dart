@@ -25,7 +25,7 @@ extension _AppShellCalendarX on _AppShellState {
     );
   }
 
-  Future<void> _importCalendarFeed(String rawIcal, String title,
+  Future<Map<String, dynamic>?> _importCalendarFeed(String rawIcal, String title,
       {int? courseId}) async {
     final token = _token;
     if (token == null || token.isEmpty) {
@@ -35,22 +35,27 @@ extension _AppShellCalendarX on _AppShellState {
         'no cloud session; sign in first.',
       );
     }
-    await widget.client.createCalendarFeed(token, {
+    final response = await widget.client.createCalendarFeed(token, {
       'title': title,
       'source_kind': 'I',
       'raw_ical': rawIcal,
       'course_id': courseId,
     });
     await _refreshCalendarState();
+    final summary = response['import_summary'];
+    final count = summary is Map ? summary['count'] : null;
     log(
       level: DebugLogLevel.info,
       source: 'Portal.Sync.Calendar/import',
       message: 'Calendar imported: Portal.Sync.Calendar/import \u2014 '
-          '"$title" iCal feed added.',
+          '"$title" iCal feed added${count != null ? " ($count events)" : ""}.',
     );
+    // The backend returns an import_summary {ok,count,events,error}; hand it
+    // back so the caller can show a success/failure modal.
+    return summary is Map ? Map<String, dynamic>.from(summary) : null;
   }
 
-  Future<void> _subscribeCalendarFeed(String title, String url,
+  Future<Map<String, dynamic>?> _subscribeCalendarFeed(String title, String url,
       {int? courseId}) async {
     final token = _token;
     if (token == null || token.isEmpty) {
@@ -60,20 +65,23 @@ extension _AppShellCalendarX on _AppShellState {
         'no cloud session; sign in first.',
       );
     }
-    await widget.client.createCalendarFeed(token, {
+    final response = await widget.client.createCalendarFeed(token, {
       'title': title,
       'source_kind': 'S',
       'source_url': url,
       'course_id': courseId,
     });
     await _refreshCalendarState();
+    final summary = response['import_summary'];
+    final count = summary is Map ? summary['count'] : null;
     log(
       level: DebugLogLevel.info,
       source: 'Portal.Sync.Calendar/subscribe',
       message: 'Calendar subscribed: '
           'Portal.Sync.Calendar/subscribe \u2014 '
-          '"$title" feed URL registered.',
+          '"$title" feed URL registered${count != null ? " ($count events)" : ""}.',
     );
+    return summary is Map ? Map<String, dynamic>.from(summary) : null;
   }
 
   Future<void> _toggleCalendarFeed(

@@ -158,6 +158,12 @@ abstract class AppLocalizations {
   /// **'Done'**
   String get commonDone;
 
+  /// No description provided for @commonOk.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get commonOk;
+
   /// No description provided for @commonCancel.
   ///
   /// In en, this message translates to:
@@ -2833,6 +2839,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Subscribed calendar'**
   String get activitySubscribedCalendar;
+
+  /// No description provided for @activityImportSucceeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Import succeeded'**
+  String get activityImportSucceeded;
+
+  /// No description provided for @activityImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Import failed'**
+  String get activityImportFailed;
+
+  /// No description provided for @activityImportedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported {count} event(s) from \"{title}\":'**
+  String activityImportedCount(int count, String title);
 
   /// No description provided for @mcpSkillCopied.
   ///

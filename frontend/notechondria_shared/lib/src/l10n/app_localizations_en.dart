@@ -39,6 +39,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonDone => 'Done';
 
   @override
+  String get commonOk => 'OK';
+
+  @override
   String get commonCancel => 'Cancel';
 
   @override
@@ -1532,6 +1535,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get activitySubscribedCalendar => 'Subscribed calendar';
+
+  @override
+  String get activityImportSucceeded => 'Import succeeded';
+
+  @override
+  String get activityImportFailed => 'Import failed';
+
+  @override
+  String activityImportedCount(int count, String title) {
+    return 'Imported $count event(s) from "$title":';
+  }
 
   @override
   String get mcpSkillCopied => 'skill.md copied to clipboard.';

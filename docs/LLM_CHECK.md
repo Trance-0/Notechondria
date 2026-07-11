@@ -27,6 +27,14 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.166: activity import feedback. Backend `summarize_calendar_feed` +
+  `import_summary` on the calendar-feed POST (2 tests). Portal shows a
+  success/failure result modal after ICS import/subscribe; callback types
+  now return the summary; added `commonOk`/`activityImport*` l10n to the
+  ARB and committed generated `AppLocalizations` (en+zh). Verified with
+  py_compile, ARB JSON parse, and an interpolation-aware Dart brace check;
+  Flutter build not run locally — `frontend-pages.yml` is the authority.
+  planner_app import-feedback parity deferred (its own activity copies).
 - 0.1.165: made `backend-tests.yml` green. Rewrote the CLI `BackendClient`
   on stdlib `urllib` (dropped the `requests` dependency) so the "stdlib
   only" `cli-tests` job stops dying on `ModuleNotFoundError`. Fixed the

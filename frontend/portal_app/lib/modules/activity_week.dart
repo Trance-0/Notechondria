@@ -1455,7 +1455,9 @@ Future<void> _showCreatePlannerEventDialog(
 /// Opens a local iCal file picker and forwards the result to the callback.
 Future<void> _showImportCalendarDialog(
   BuildContext context,
-  Future<void> Function(String rawIcal, String title, {int? courseId}) onImport,
+  Future<Map<String, dynamic>?> Function(String rawIcal, String title,
+          {int? courseId})
+      onImport,
 ) async {
   final file = await openFile(
     acceptedTypeGroups: [
@@ -1469,13 +1471,121 @@ Future<void> _showImportCalendarDialog(
   if (!context.mounted) {
     return;
   }
-  await onImport(rawIcal, file.name);
+  Map<String, dynamic>? summary;
+  String? failure;
+  try {
+    summary = await onImport(rawIcal, file.name);
+  } catch (error) {
+    failure = error.toString();
+  }
+  if (!context.mounted) {
+    return;
+  }
+  await _showImportResultModal(context, summary, failure, file.name);
+}
+
+/// Result modal shown after an iCal import / subscription: lists the
+/// imported events on success, or the reason it failed. `summary` is the
+/// backend `import_summary` ({ok,count,events,error}); `failure` is a
+/// client-side/transport error (e.g. not signed in).
+Future<void> _showImportResultModal(
+  BuildContext context,
+  Map<String, dynamic>? summary,
+  String? failure,
+  String feedTitle,
+) async {
+  final l10n = AppLocalizations.of(context);
+  final ok = failure == null && (summary?['ok'] == true);
+  final events = (summary?['events'] as List<dynamic>? ?? const [])
+      .map((item) => Map<String, dynamic>.from(item as Map))
+      .toList();
+  final count = (summary?['count'] as num?)?.toInt() ?? events.length;
+  final errorText = failure ?? summary?['error']?.toString();
+  await showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Row(
+        children: [
+          Icon(
+            ok ? Icons.check_circle : Icons.error_outline,
+            color: ok
+                ? Colors.green
+                : Theme.of(context).colorScheme.error,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              ok
+                  ? l10n.activityImportSucceeded
+                  : l10n.activityImportFailed,
+            ),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 360,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (ok) ...[
+              Text(l10n.activityImportedCount(count, feedTitle)),
+              const SizedBox(height: 10),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 260),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final event in events)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('•  '),
+                              Expanded(
+                                child: Text(
+                                  _importEventLabel(event),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ] else
+              Text(errorText ?? l10n.activityImportFailed),
+          ],
+        ),
+      ),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.commonOk),
+        ),
+      ],
+    ),
+  );
+}
+
+String _importEventLabel(Map<String, dynamic> event) {
+  final title = event['title']?.toString() ?? 'Event';
+  final startsAt = event['starts_at']?.toString() ?? '';
+  if (startsAt.isEmpty) {
+    return title;
+  }
+  return '$title — ${_formatDeadlineStamp(startsAt)}';
 }
 
 /// Opens a dialog for subscribing to a remote iCal feed.
 Future<void> _showSubscribeCalendarDialog(
   BuildContext context,
-  Future<void> Function(String title, String url, {int? courseId}) onSubscribe,
+  Future<Map<String, dynamic>?> Function(String title, String url,
+          {int? courseId})
+      onSubscribe,
 ) async {
   final titleController = TextEditingController();
   final urlController = TextEditingController();
@@ -1511,15 +1621,21 @@ Future<void> _showSubscribeCalendarDialog(
         ),
         FilledButton(
           onPressed: () async {
-            await onSubscribe(
-              titleController.text.trim().isEmpty
-                  ? AppLocalizations.of(context).activitySubscribedCalendar
-                  : titleController.text.trim(),
-              urlController.text.trim(),
-            );
-            if (context.mounted) {
-              Navigator.of(context).pop();
+            final feedTitle = titleController.text.trim().isEmpty
+                ? AppLocalizations.of(context).activitySubscribedCalendar
+                : titleController.text.trim();
+            Map<String, dynamic>? summary;
+            String? failure;
+            try {
+              summary = await onSubscribe(feedTitle, urlController.text.trim());
+            } catch (error) {
+              failure = error.toString();
             }
+            if (!context.mounted) {
+              return;
+            }
+            Navigator.of(context).pop();
+            await _showImportResultModal(context, summary, failure, feedTitle);
           },
           child: Text(AppLocalizations.of(context).courseSubscribe),
         ),

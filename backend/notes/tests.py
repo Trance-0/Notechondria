@@ -249,6 +249,12 @@ class HeatmapApiTests(TestCase):
         )
         self.assertEqual(response.status_code, 201)
         self.assertEqual(CalendarFeed.objects.count(), 1)
+        # The create response carries an import summary so the client can
+        # show success + the imported events right after import.
+        summary = response.json()['import_summary']
+        self.assertTrue(summary['ok'])
+        self.assertEqual(summary['count'], 1)
+        self.assertEqual(summary['events'][0]['title'], 'Study block')
 
         week_response = self.client.get(
             f'/api/v1/activity/week/?start_date={week_start.isoformat()}',
@@ -258,6 +264,25 @@ class HeatmapApiTests(TestCase):
         payload = week_response.json()
         self.assertEqual(len(payload['days']), 7)
         self.assertTrue(any(day['events'] for day in payload['days']))
+
+    def test_calendar_import_summary_reports_empty_feed(self):
+        # An inline feed with no VEVENTs should come back ok=False with a
+        # readable error so the client can show a failure modal.
+        response = self.client.post(
+            '/api/v1/calendar-feeds/',
+            data=json.dumps({
+                'title': 'Empty Calendar',
+                'source_kind': 'I',
+                'raw_ical': 'BEGIN:VCALENDAR\nEND:VCALENDAR',
+            }),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+        self.assertEqual(response.status_code, 201)
+        summary = response.json()['import_summary']
+        self.assertFalse(summary['ok'])
+        self.assertEqual(summary['count'], 0)
+        self.assertTrue(summary['error'])
 
     def test_activity_week_honors_range_days(self):
         start = timezone.localdate()

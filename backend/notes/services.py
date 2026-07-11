@@ -529,6 +529,40 @@ def parse_ical_events(raw_ical: str):
     return events
 
 
+def summarize_calendar_feed(feed, limit=25):
+    """Parse a just-saved feed and return a compact import summary so the
+    client can show success/failure feedback right after import.
+
+    Returns ``{"ok", "count", "events": [{"title", "starts_at"}...],
+    "error"}``. ``ok`` is False (with a human-readable ``error``) when the
+    feed could not be fetched or contained no readable iCal data."""
+    try:
+        raw = read_calendar_feed(feed)
+    except urllib.error.HTTPError as exc:
+        return {"ok": False, "count": 0, "events": [], "error": f"HTTP {exc.code} fetching the calendar URL."}
+    except (urllib.error.URLError, ValueError) as exc:
+        return {"ok": False, "count": 0, "events": [], "error": str(exc)}
+    except Exception as exc:  # noqa: BLE001 - never let a bad feed 500 the import
+        return {"ok": False, "count": 0, "events": [], "error": str(exc)}
+    parsed = parse_ical_events(raw)
+    events = []
+    for item in parsed:
+        starts_at = parse_ical_datetime(item.get("DTSTART", ""))
+        events.append({
+            "title": item.get("SUMMARY", feed.title),
+            "starts_at": starts_at.isoformat() if starts_at else None,
+        })
+    events.sort(key=lambda entry: entry["starts_at"] or "")
+    if not events:
+        return {
+            "ok": False,
+            "count": 0,
+            "events": [],
+            "error": "No calendar events were found in the imported data.",
+        }
+    return {"ok": True, "count": len(events), "events": events[:limit], "error": None}
+
+
 def calendar_week_payload(creator, start_date=None, day_count=DEFAULT_CALENDAR_RANGE_DAYS):
     if day_count not in CALENDAR_RANGE_DAYS:
         day_count = DEFAULT_CALENDAR_RANGE_DAYS

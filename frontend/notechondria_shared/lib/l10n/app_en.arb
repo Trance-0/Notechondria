@@ -12,6 +12,7 @@
   "commonSkip": "Skip",
   "commonClose": "Close",
   "commonDone": "Done",
+  "commonOk": "OK",
   "commonCancel": "Cancel",
   "commonBack": "Back",
   "commonNext": "Next",
@@ -563,6 +564,12 @@
   "activitySubscribeToCalendar": "Subscribe to calendar",
   "activityIcalUrl": "iCal URL",
   "activitySubscribedCalendar": "Subscribed calendar",
+  "activityImportSucceeded": "Import succeeded",
+  "activityImportFailed": "Import failed",
+  "activityImportedCount": "Imported {count} event(s) from \"{title}\":",
+  "@activityImportedCount": {
+    "placeholders": { "count": { "type": "int" }, "title": { "type": "String" } }
+  },
   "mcpSkillCopied": "skill.md copied to clipboard.",
   "mcpSkillTitle": "Agent skill (skill.md)",
   "mcpSkillDescription": "Personal playbook for MCP-connected agents. Use this to describe where to pull notes from (e.g. external sites like notenextra.trance-0.com), how to format imports, which files to export, and where to publish them. Sent verbatim as the `instructions` field of the MCP initialize response.",
