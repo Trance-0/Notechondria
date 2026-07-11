@@ -124,6 +124,12 @@ class CourseOperationTypeChoices(models.TextChoices):
     SUBSCRIBE = "subscribe", _("Subscribe")
     UNSUBSCRIBE = "unsubscribe", _("Unsubscribe")
     OPEN = "open", _("Open")
+    # Git binding lifecycle (0.1.170). These drive the "effective logs"
+    # the owner sees on import / bind / unlink of a course's GitHub repo.
+    GIT_BIND = "git_bind", _("Bind repository")
+    GIT_UNLINK = "git_unlink", _("Unlink repository")
+    GIT_IMPORT = "git_import", _("Import from repository")
+    GIT_SYNC = "git_sync", _("Sync to repository")
 
 
 class CourseOperationLog(models.Model):

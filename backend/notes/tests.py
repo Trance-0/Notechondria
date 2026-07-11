@@ -752,6 +752,90 @@ class HeatmapApiTests(TestCase):
         # Foreign-owned private notes must never leak into scope=all.
         self.assertNotIn('Foreign Private Note', all_titles)
 
+    def test_course_git_bind_get_and_unlink(self):
+        course = Course.objects.create(
+            creator_id=self.creator,
+            slug='git-course',
+            title='Git Course',
+        )
+        # Bind to a repo.
+        bind = self.client.put(
+            f'/api/v1/courses/{course.id}/git/',
+            data=json.dumps({
+                'repo': 'octo-org/course-repo',
+                'branch': 'main',
+                'sync_enabled': True,
+                'sync_timeout_minutes': 10,
+            }),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+        self.assertEqual(bind.status_code, 200)
+        body = bind.json()
+        self.assertEqual(body['repo'], 'octo-org/course-repo')
+        self.assertTrue(body['is_bound'])
+        self.assertTrue(body['sync_enabled'])
+        self.assertEqual(body['sync_timeout_minutes'], 10)
+        self.assertIsNotNone(body['pending_since'])
+        self.assertTrue(
+            CourseOperationLog.objects.filter(
+                course_id=course,
+                operation_type=CourseOperationTypeChoices.GIT_BIND,
+            ).exists()
+        )
+        # The owner's course serializer now exposes the binding.
+        detail = self.client.get(
+            f'/api/v1/courses/{course.id}/', **self._auth_headers()
+        )
+        self.assertEqual(detail.status_code, 200)
+        self.assertEqual(detail.json()['git']['repo'], 'octo-org/course-repo')
+        # Invalid repo names are rejected.
+        bad = self.client.put(
+            f'/api/v1/courses/{course.id}/git/',
+            data=json.dumps({'repo': 'not-a-valid-repo'}),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+        self.assertEqual(bad.status_code, 400)
+        # Unlink clears the repo and disables sync.
+        unlink = self.client.delete(
+            f'/api/v1/courses/{course.id}/git/', **self._auth_headers()
+        )
+        self.assertEqual(unlink.status_code, 200)
+        self.assertFalse(unlink.json()['is_bound'])
+        self.assertFalse(unlink.json()['sync_enabled'])
+        self.assertTrue(
+            CourseOperationLog.objects.filter(
+                course_id=course,
+                operation_type=CourseOperationTypeChoices.GIT_UNLINK,
+            ).exists()
+        )
+
+    def test_course_git_binding_is_owner_only(self):
+        other = User.objects.create_user(username='other-git@example.com', password='pw')
+        other_creator = Creator.objects.create(user_id=other)
+        course = Course.objects.create(
+            creator_id=other_creator,
+            slug='others-git-course',
+            title="Other's Git Course",
+        )
+        # A non-owner cannot bind.
+        resp = self.client.put(
+            f'/api/v1/courses/{course.id}/git/',
+            data=json.dumps({'repo': 'x/y'}),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+        self.assertEqual(resp.status_code, 403)
+        # And the serializer never leaks another owner's binding.
+        course.git_repo = 'secret/repo'
+        course.save(update_fields=['git_repo'])
+        detail = self.client.get(
+            f'/api/v1/courses/{course.id}/', **self._auth_headers()
+        )
+        self.assertEqual(detail.status_code, 200)
+        self.assertIsNone(detail.json()['git'])
+
     def test_course_subscribe_open_and_ordering_are_synced(self):
         course_a = Course.objects.create(
             creator_id=self.creator,

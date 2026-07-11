@@ -66,6 +66,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.170 - course↔GitHub binding: backend config endpoints + owner-only exposure](versions/0.1.170.md)
 - [0.1.169 - activity course (category) filter](versions/0.1.169.md)
 - [0.1.168 - build fix: thread onEventLongPress through _MonthDayCell](versions/0.1.168.md)
 - [0.1.167 - activity events: per-course colours, hold-to-edit, recurrence dialog](versions/0.1.167.md)

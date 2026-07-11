@@ -27,6 +27,13 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.170: course↔GitHub binding backend. `CourseGitBindingApiView`
+  (courses/<id>/git/ GET/PUT/DELETE, owner-only, owner/name validation),
+  owner-only `git` on CourseSerializer, `GIT_*` operation-log types +
+  effective logs on bind/unlink. 2 tests (bind/get/unlink + owner-only
+  403/null). No migration (choices only). py_compile OK; django suite is
+  the CI gate. Lazy-sync worker + import + selector UI + template-repo
+  creation (needs Nesbitt-bot PAT) still pending.
 - 0.1.169: activity course filter. `_ActivityPage` → StatefulWidget with a
   `_CourseFilterBar` above the calendar; filters grid + deadlines by
   course_id; app_shell passes the merged courses list; `activityAllCourses`

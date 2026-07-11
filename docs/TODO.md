@@ -93,14 +93,19 @@ do not run project containers/apps locally.
   parity still pending.
 
 ### Course ↔ GitHub binding (backend source of truth, lazy sync)
-- [ ] Backend endpoints: **import**, **bind**, **unlink** a course to a
-  GitHub repo (uses the git fields already on `Course`; no new model).
+- [x] Backend **bind / unlink** endpoints (`courses/<id>/git/` GET/PUT/
+  DELETE, owner-only, `owner/name` validation), owner-only `git` field
+  on `CourseSerializer`. (0.1.170)
+- [ ] Backend **import** endpoint: pull a repo (course_template format)
+  into the bound course's notes.
 - [ ] **Lazy sync worker**: when a bound course's content is unedited
   for `git_sync_timeout_minutes` (default 5, owner-settable in dev
   settings), auto-commit/push to the repo. Track via `git_pending_since`
-  → `git_last_synced_at` / `git_last_sync_error`.
-- [ ] **Effective logs** on import / bind / unlink (reuse
-  `CourseOperationLog`-style logging; extend operation types).
+  → `git_last_synced_at` / `git_last_sync_error`. Needs a scheduler and
+  the commit/push path (GitHub App or bot token).
+- [x] **Effective logs** on bind / unlink (`CourseOperationLog`
+  `GIT_BIND`/`GIT_UNLINK` + structured logger). (0.1.170) — import/sync
+  log rows land with those features.
 - [ ] Backend is the source of truth; the app is a repo text editor.
 - [ ] Create the **course template repo** on the Nesbitt-bot account,
   and align it (and the imported `colorful-numbers/Veronica-7`) to the

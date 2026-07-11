@@ -205,6 +205,27 @@ def append_course_operation(creator, course, operation_type, metadata=None):
     )
 
 
+def course_git_payload(course):
+    """Owner-facing git-binding state for a course (see CourseSerializer.git
+    and the git-binding endpoints). ``is_bound`` is the simple 'has a repo'
+    flag the repo-selector UI keys off."""
+    return {
+        "provider": course.git_provider,
+        "repo": course.git_repo or "",
+        "branch": course.git_branch or "main",
+        "sync_enabled": course.git_sync_enabled,
+        "sync_timeout_minutes": course.git_sync_timeout_minutes,
+        "is_bound": bool(course.git_repo),
+        "pending_since": course.git_pending_since.isoformat()
+        if course.git_pending_since
+        else None,
+        "last_synced_at": course.git_last_synced_at.isoformat()
+        if course.git_last_synced_at
+        else None,
+        "last_sync_error": course.git_last_sync_error or "",
+    }
+
+
 def unique_course_slug(title: str, fallback: str = "course") -> str:
     base = slugify(title)[:100] or fallback
     candidate = base
@@ -403,6 +424,7 @@ class CourseSerializer(serializers.ModelSerializer):
     is_private_subscription = serializers.SerializerMethodField()
     last_opened_at = serializers.SerializerMethodField()
     media = CourseMediaSerializer(source="media_items", many=True, read_only=True)
+    git = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
@@ -422,7 +444,21 @@ class CourseSerializer(serializers.ModelSerializer):
             "last_opened_at",
             "recent_notes",
             "media",
+            "git",
         ]
+
+    def get_git(self, obj):
+        # Git binding is private to the course owner; subscribers and
+        # anonymous viewers get null so the repo/branch never leaks.
+        request = self.context.get("request") if self.context else None
+        if (
+            request is None
+            or not request.user.is_authenticated
+            or obj.creator_id is None
+            or obj.creator_id.user_id_id != request.user.id
+        ):
+            return None
+        return course_git_payload(obj)
 
     def get_cover_image_url(self, obj):
         request = self.context.get("request") if self.context else None
@@ -841,6 +877,128 @@ class CourseDetailApiView(APIView):
         # reassignment needed.
         course.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+GIT_REPO_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?/[A-Za-z0-9._-]+$")
+
+
+class CourseGitWriteSerializer(serializers.Serializer):
+    """Validates the git-binding payload. `repo` is the GitHub `owner/name`
+    full name; the other fields tune the lazy-sync behaviour."""
+
+    repo = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    branch = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    sync_enabled = serializers.BooleanField(required=False)
+    sync_timeout_minutes = serializers.IntegerField(
+        min_value=1, max_value=1440, required=False
+    )
+
+    def validate_repo(self, value):
+        value = (value or "").strip()
+        if value and not GIT_REPO_RE.match(value):
+            raise serializers.ValidationError(
+                "repo must be a GitHub full name in 'owner/name' form."
+            )
+        return value
+
+
+class CourseGitBindingApiView(APIView):
+    """Owner-only CRUD for a course's GitHub binding (the backend stays the
+    source of truth; this only stores where to mirror to and how eagerly).
+
+    - GET returns the binding config.
+    - PUT binds / updates it (repo, branch, sync toggle, debounce minutes)
+      and, when a repo is set, arms the lazy-sync debounce.
+    - DELETE unlinks (clears the repo and disables sync).
+
+    Every mutation writes a CourseOperationLog row so the owner gets the
+    effective import/bind/unlink log they asked for."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def _owned_course(self, request, course_id):
+        creator = ensure_creator(request.user)
+        course = get_object_or_404(Course, pk=course_id)
+        if course.creator_id_id != creator.id:
+            return creator, course, Response(
+                {"detail": (
+                    "Cannot change git binding: "
+                    "Backend.Notes.Courses.Git/bind — "
+                    "category is owned by a different creator."
+                )},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return creator, course, None
+
+    def get(self, request, course_id):
+        _creator, course, error = self._owned_course(request, course_id)
+        if error is not None:
+            return error
+        return Response(course_git_payload(course))
+
+    def put(self, request, course_id):
+        creator, course, error = self._owned_course(request, course_id)
+        if error is not None:
+            return error
+        serializer = CourseGitWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        was_bound = bool(course.git_repo)
+        if "repo" in data:
+            course.git_repo = data["repo"] or None
+        if "branch" in data:
+            course.git_branch = (data["branch"] or "").strip() or "main"
+        if "sync_enabled" in data:
+            course.git_sync_enabled = data["sync_enabled"]
+        if "sync_timeout_minutes" in data:
+            course.git_sync_timeout_minutes = data["sync_timeout_minutes"]
+        # Binding (or re-pointing) a repo arms the lazy-sync debounce and
+        # clears any stale error from a previous binding.
+        if course.git_repo:
+            if course.git_pending_since is None:
+                course.git_pending_since = timezone.now()
+            course.git_last_sync_error = None
+        else:
+            course.git_sync_enabled = False
+            course.git_pending_since = None
+        course.save()
+        append_course_operation(
+            creator, course, CourseOperationTypeChoices.GIT_BIND,
+            metadata={
+                "repo": course.git_repo or "",
+                "branch": course.git_branch or "",
+                "sync_enabled": course.git_sync_enabled,
+                "was_bound": was_bound,
+            },
+        )
+        logger.info(
+            "Course git bind: Backend.Notes.Courses.Git/bind — "
+            "course id=%s '%s' bound to %s@%s (sync=%s).",
+            course.id, course.title, course.git_repo or "(none)",
+            course.git_branch, course.git_sync_enabled,
+        )
+        return Response(course_git_payload(course))
+
+    def delete(self, request, course_id):
+        creator, course, error = self._owned_course(request, course_id)
+        if error is not None:
+            return error
+        previous_repo = course.git_repo or ""
+        course.git_repo = None
+        course.git_sync_enabled = False
+        course.git_pending_since = None
+        course.git_last_sync_error = None
+        course.save()
+        append_course_operation(
+            creator, course, CourseOperationTypeChoices.GIT_UNLINK,
+            metadata={"repo": previous_repo},
+        )
+        logger.info(
+            "Course git unlink: Backend.Notes.Courses.Git/unlink — "
+            "course id=%s '%s' unlinked from %s.",
+            course.id, course.title, previous_repo or "(none)",
+        )
+        return Response(course_git_payload(course))
 
 
 class CourseReorderApiView(APIView):
