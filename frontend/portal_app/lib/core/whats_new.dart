@@ -73,6 +73,21 @@ const _kFeatureUpdates = <FeatureUpdate>[
         'todo list next to your cloud events.',
     icon: Icons.event_available_outlined,
   ),
+  FeatureUpdate(
+    version: '0.1.163',
+    title: 'Drag to create events',
+    description: 'On the 3-day and week calendar, drag down a day column to '
+        'draw an event over the exact time span you want — just like Google '
+        'Calendar.',
+    icon: Icons.drag_indicator_outlined,
+  ),
+  FeatureUpdate(
+    version: '0.1.163',
+    title: 'A tidier activity heatmap',
+    description: 'The contribution heatmap now scales to fit your screen '
+        'width on both phone and desktop instead of overflowing.',
+    icon: Icons.grid_view_outlined,
+  ),
 ];
 
 extension _AppShellWhatsNewX on _AppShellState {
