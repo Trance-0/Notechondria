@@ -1005,9 +1005,15 @@ class CasdoorAvatarClaimSyncTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         body = resp.json()
-        # image_url is the effective avatar (Casdoor wins); the local
-        # upload field is present (empty here) so the SPA has a fallback.
+        # image_url is the effective avatar (Casdoor wins); image_upload_url
+        # is exposed separately so the SPA can fall back to the local image
+        # (here the default profile image `ensure_creator` attaches) when the
+        # Casdoor avatar fails to load.
         self.assertEqual(body['avatar_url'], 'https://cas/pic.png')
         self.assertEqual(body['image_url'], 'https://cas/pic.png')
         self.assertIn('image_upload_url', body)
-        self.assertEqual(body['image_upload_url'], '')
+        # A local image always exists (default attached at creator creation),
+        # and it is distinct from the Casdoor avatar_url.
+        self.assertTrue(body['image_upload_url'])
+        self.assertNotEqual(body['image_upload_url'], body['avatar_url'])
+        self.assertIn('/media/', body['image_upload_url'])

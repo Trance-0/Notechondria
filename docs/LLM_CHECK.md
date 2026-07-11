@@ -27,6 +27,13 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.165: made `backend-tests.yml` green. Rewrote the CLI `BackendClient`
+  on stdlib `urllib` (dropped the `requests` dependency) so the "stdlib
+  only" `cli-tests` job stops dying on `ModuleNotFoundError`. Fixed the
+  0.1.163 `test_settings_payload_exposes_local_upload_separately` assertion
+  (a default local avatar always exists). Both jobs had been red on the
+  host's blind spot: `requests` is installed here and the Django suite
+  can't run here at all. CI is the authority post-push.
 - 0.1.164: added recurring-event rule fields to `PlannerEvent` (+ additive
   migration), window expansion in `calendar_week_payload`, serializer/view
   persistence, MCP/CLI `create_event`/`update_event` parity, and three

@@ -7,9 +7,10 @@ name = "notechondria-mcp"
 version = "0.1.0"
 description = "Standalone MCP server for Notechondria — talks to the backend over /api/v1 with an ntc_ API key."
 requires-python = ">=3.9"
-dependencies = [
-    "requests>=2.31,<3",
-]
+# No third-party runtime dependencies: the HTTP client uses urllib from
+# the standard library, so the CLI runs (and its CI job tests) with a
+# bare Python install and no pip step.
+dependencies = []
 
 [project.scripts]
 notechondria-mcp = "notechondria_mcp.__main__:main"
