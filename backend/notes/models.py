@@ -50,6 +50,11 @@ class Note(models.Model):
         ),
     )
     client_draft_id = models.CharField(max_length=64, blank=True, null=True)
+    # Repo-relative path this note maps to when its course is bound to a
+    # GitHub repo (0.1.173). Set on git-import; the lazy sync writes the
+    # note's markdown back to this path. Empty for notes not sourced from
+    # a repo. Only markdown paths are ever stored/written.
+    git_path = models.CharField(max_length=512, blank=True, null=True)
     deleted_at = models.DateTimeField(blank=True, null=True)
     note_type = models.CharField(
         max_length=1,

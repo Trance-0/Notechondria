@@ -27,6 +27,13 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.173: course git import. Note.git_path (migration 0019); courses/
+  git_service.py (fetch_course_repo App-token reader + import_course_from_repo
+  idempotent note upsert by git_path, GIT_IMPORT log); public token wrappers
+  on github_sync; POST courses/<id>/git/import/ + MCP/CLI import_course_git
+  (parity 43→44). Tests mock the network fetch (REST idempotent import +
+  no-integration 400; MCP create). py_compile + 26 CLI tests pass; django
+  CI is the gate.
 - 0.1.172: course-repo adapter foundation. Django-free
   courses/course_repo.py (config + presets + `**`-glob + frontmatter +
   module/title/order parser), grounded in the real Veronica-7 VitePress

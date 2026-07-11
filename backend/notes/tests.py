@@ -836,6 +836,74 @@ class HeatmapApiTests(TestCase):
         self.assertEqual(detail.status_code, 200)
         self.assertIsNone(detail.json()['git'])
 
+    def test_course_git_import_creates_and_updates_notes(self):
+        from unittest.mock import patch
+        from creators.models import GithubIntegration
+
+        course = Course.objects.create(
+            creator_id=self.creator, slug='import-course', title='Import Course',
+            git_repo='octo/docs', git_branch='main',
+        )
+        GithubIntegration.objects.create(
+            creator=self.creator, installation_id='inst-1',
+        )
+        files = {
+            'docs/cv/index.md': '---\ntitle: Computer Vision\nsidebar_position: 1\n---\n# CV\nintro',
+            'docs/cv/features.md': '# Features\nbody',
+            'docs/.vitepress/config.mts': 'export default {}',  # ignored
+        }
+        fake = (None, files, list(files))
+        with patch('courses.git_service.fetch_course_repo', return_value=fake):
+            resp = self.client.post(
+                f'/api/v1/courses/{course.id}/git/import/',
+                data=json.dumps({}), content_type='application/json',
+                **self._auth_headers(),
+            )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        summary = resp.json()
+        self.assertEqual(summary['created'], 2)
+        self.assertEqual(summary['note_count'], 2)
+        paths = set(
+            Note.objects.filter(course_id=course).values_list('git_path', flat=True)
+        )
+        self.assertEqual(paths, {'docs/cv/index.md', 'docs/cv/features.md'})
+        self.assertTrue(
+            CourseOperationLog.objects.filter(
+                course_id=course,
+                operation_type=CourseOperationTypeChoices.GIT_IMPORT,
+            ).exists()
+        )
+        # Re-import with a changed file updates in place (no duplicates).
+        files['docs/cv/features.md'] = '# Features\nEDITED body'
+        with patch('courses.git_service.fetch_course_repo',
+                   return_value=(None, files, list(files))):
+            resp2 = self.client.post(
+                f'/api/v1/courses/{course.id}/git/import/',
+                data=json.dumps({}), content_type='application/json',
+                **self._auth_headers(),
+            )
+        self.assertEqual(resp2.status_code, 200)
+        self.assertEqual(resp2.json()['created'], 0)
+        self.assertEqual(resp2.json()['updated'], 1)
+        self.assertEqual(Note.objects.filter(course_id=course).count(), 2)
+
+    def test_course_git_import_requires_github_integration(self):
+        from unittest.mock import patch
+
+        course = Course.objects.create(
+            creator_id=self.creator, slug='no-int-course', title='No Int',
+            git_repo='octo/docs',
+        )
+        with patch('courses.git_service.fetch_course_repo',
+                   return_value=(None, {}, [])):
+            resp = self.client.post(
+                f'/api/v1/courses/{course.id}/git/import/',
+                data=json.dumps({}), content_type='application/json',
+                **self._auth_headers(),
+            )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('GitHub', resp.json()['detail'])
+
     def test_course_subscribe_open_and_ordering_are_synced(self):
         course_a = Course.objects.create(
             creator_id=self.creator,

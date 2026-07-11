@@ -601,6 +601,18 @@ def _ensure_token(integration: GithubIntegration) -> str:
     return token
 
 
+# Public wrappers so sibling services (e.g. the course-git binding) can
+# reuse the App installation token + headers without reaching into the
+# private helpers. The installation grants access to every repo it was
+# installed on, so the same token pushes to a course's own repo.
+def installation_token(integration: GithubIntegration) -> str:
+    return _ensure_token(integration)
+
+
+def github_request_headers(token: str) -> dict[str, str]:
+    return _github_headers(token)
+
+
 def commit_and_push(
     integration: GithubIntegration,
     files: list[_RepoFile],

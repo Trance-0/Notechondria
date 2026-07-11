@@ -110,8 +110,9 @@ do not run project containers/apps locally.
 - [x] **Course-repo adapter + format standard**: `courses/course_repo.py`
   (config + presets + parser, tested), `docs/integrations/course-repo-format.md`,
   PyYAML dep. (0.1.172)
-- [ ] Backend **`git_import`** endpoint: fetch repo tree via the owner's
-  App token → `parse_course_repo` → create/update the course's notes.
+- [x] Backend **`git_import`** endpoint (`POST courses/<id>/git/import/`
+  + MCP/CLI `import_course_git`): App-token fetch → `parse_course_repo` →
+  create/update notes matched by `Note.git_path`; `GIT_IMPORT` log. (0.1.173)
 - [ ] **Lazy-on-request sync**: course notes → markdown (adapter write
   mapping) → commit/push via the App token to `Course.git_repo`, fired
   when `git_pending_since` exceeds `git_sync_timeout_minutes` (row-locked;

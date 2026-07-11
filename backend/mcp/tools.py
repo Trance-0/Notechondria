@@ -562,6 +562,35 @@ register_tool(
 )
 
 
+def _import_course_git(user, creator, params):
+    from courses.git_service import CourseGitServiceError, import_course_from_repo
+
+    course = get_object_or_404(Course, pk=params["course_id"])
+    if course.creator_id_id != creator.id:
+        raise PermissionError("You can only import your own courses.")
+    try:
+        return import_course_from_repo(course)
+    except CourseGitServiceError as exc:
+        raise ValueError(str(exc)) from exc
+
+
+register_tool(
+    "import_course_git",
+    "Pull the bound GitHub repo's markdown into this course's notes via "
+    "the course-repo adapter (idempotent — notes are matched by their "
+    "repo path). The course must be bound (see set_course_git) and the "
+    "owner must have the GitHub App installed. Owner-only.",
+    {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "integer"},
+        },
+        "required": ["course_id"],
+    },
+    _import_course_git,
+)
+
+
 def _delete_course(user, creator, params):
     course = get_object_or_404(Course, pk=params["course_id"])
     if course.creator_id_id != creator.id:

@@ -426,6 +426,31 @@ class McpToolTests(TestCase):
         )
         self.assertFalse(cleared["is_bound"])
 
+    def test_import_course_git_creates_notes(self):
+        from unittest.mock import patch
+        from creators.models import GithubIntegration
+
+        course = Course.objects.create(
+            creator_id=self.creator, slug="git-import", title="Git Import",
+            git_repo="octo/docs", git_branch="main",
+        )
+        GithubIntegration.objects.create(
+            creator=self.creator, installation_id="inst-mcp",
+        )
+        files = {
+            "docs/intro.md": "# Intro\nbody",
+            "docs/unit/lesson.md": "# Lesson\nbody",
+        }
+        with patch("courses.git_service.fetch_course_repo",
+                   return_value=(None, files, list(files))):
+            resp = self._call_tool("import_course_git", {"course_id": course.id})
+        result = self._tool_result(resp)
+        self.assertEqual(result["created"], 2)
+        self.assertEqual(
+            Note.objects.filter(course_id=course).exclude(git_path__isnull=True).count(),
+            2,
+        )
+
     def test_delete_course_orphans_notes_to_uncategorized(self):
         extra = Course.objects.create(
             creator_id=self.creator, slug="extra", title="Extra",

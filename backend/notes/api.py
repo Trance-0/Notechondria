@@ -933,6 +933,32 @@ class CourseGitBindingApiView(APIView):
         return Response(unlink_course_git(creator, course))
 
 
+class CourseGitImportApiView(APIView):
+    """Owner-only: pull the bound repo's markdown into this course's notes
+    via the course-repo adapter. Idempotent (notes matched by git_path)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, course_id):
+        from courses.git_service import CourseGitServiceError, import_course_from_repo
+
+        creator = ensure_creator(request.user)
+        course = get_object_or_404(Course, pk=course_id)
+        if course.creator_id_id != creator.id:
+            return Response(
+                {"detail": (
+                    "Cannot import: Backend.Notes.Courses.Git/import — "
+                    "category is owned by a different creator."
+                )},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        try:
+            summary = import_course_from_repo(course)
+        except CourseGitServiceError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(summary)
+
+
 class CourseReorderApiView(APIView):
     """Accepts an ordered list of course ids and rewrites their `sort_order`
     so the user's preferred arrangement survives across sessions."""

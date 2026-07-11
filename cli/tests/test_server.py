@@ -82,12 +82,13 @@ class ToolRegistryTests(unittest.TestCase):
             call_tool(FakeClient(), "no_such_tool", {})
 
     def test_full_parity_tool_count(self):
-        # CLI is at full parity with backend/mcp/tools.py (43 tools:
-        # 41 + get_course_git/set_course_git in 0.1.171).
+        # CLI is at full parity with backend/mcp/tools.py (44 tools:
+        # 41 + get_course_git/set_course_git (0.1.171) + import_course_git
+        # (0.1.173)).
         names = {s["name"] for s in tool_specs()}
-        self.assertEqual(len(names), 43)
-        self.assertIn("get_course_git", names)
-        self.assertIn("set_course_git", names)
+        self.assertEqual(len(names), 44)
+        for name in ("get_course_git", "set_course_git", "import_course_git"):
+            self.assertIn(name, names)
         # spot-check a few that were ported in Phase 3
         for name in ("update_profile", "search_notes", "get_note_by_uuid",
                      "subscribe_course", "unsubscribe_course",
