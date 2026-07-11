@@ -1,7 +1,7 @@
 # `mcp` app
 
 Path: [`backend/mcp/`](../../backend/mcp/).
-Responsibility: Model-Context-Protocol server. 41 tools that wrap
+Responsibility: Model-Context-Protocol server. 43 tools that wrap
 the [`creators`](creators.md) and [`notes`](notes.md) APIs so an
 external LLM client can read and mutate a user's workspace.
 
@@ -71,7 +71,7 @@ user; rotating issues a new key and invalidates the old one.
 
 ## Tools (`mcp/tools.py`)
 
-41 tools, registered at import time via `register_tool(name, description,
+43 tools, registered at import time via `register_tool(name, description,
 input_schema, fn)`. Each `fn` has signature `(user, creator, params) ->
 dict` and delegates to the same `notes.services` / model logic the REST
 views use — the MCP layer adds no business rules of its own, so if the
@@ -86,8 +86,9 @@ underlying API would 401/403/404 the tool returns the same error.
 - **Recycle bin**: `list_deleted_notes`, `restore_deleted_note`,
   `empty_recycle_bin`.
 - **Courses**: `list_courses`, `get_course`, `create_course`,
-  `update_course`, `delete_course`, `list_course_notes`,
-  `reorder_courses`, `subscribe_course`, `unsubscribe_course`.
+  `update_course`, `delete_course`, `get_course_git`, `set_course_git`,
+  `list_course_notes`, `reorder_courses`, `subscribe_course`,
+  `unsubscribe_course`.
 - **Activity / heatmap**: `get_heatmap`, `get_recent_activity`,
   `get_activity`, `get_activity_week`.
 - **Note sessions**: `list_note_sessions`, `create_note_session`,
@@ -118,6 +119,7 @@ offer identical functionality. Representative mapping:
 | `restore_deleted_note` | `POST notes/<id>/restore/` |
 | `empty_recycle_bin` | `notes/deleted/empty/` |
 | courses CRUD | `courses/[<id>/]` |
+| `get_course_git` / `set_course_git` | `GET` / `PUT` / `DELETE` `courses/<id>/git/` |
 | `list_course_notes` | `GET courses/<id>/notes/` |
 | `reorder_courses` | `POST courses/reorder/` |
 | `subscribe_course` / `unsubscribe_course` | `POST` / `DELETE` `courses/<id>/subscribe/` |
@@ -133,7 +135,7 @@ Result: one gap found and filled. The `list_note_sessions` tool had no
 REST list endpoint (`NoteSessionListCreateApiView` was POST-only); a
 `GET` (with `?note_id=` + `?limit=` filters) was added in 0.1.146. Every
 other tool already had a REST equivalent. The standalone CLI
-(`cli/notechondria_mcp/`) is at **full 41-tool parity** as of 0.1.146.
+(`cli/notechondria_mcp/`) is at **full 43-tool parity** (0.1.146 established 41; 0.1.171 added get_course_git/set_course_git).
 
 ## Tests
 

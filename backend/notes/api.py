@@ -64,10 +64,14 @@ from .services import (
     note_preview_lines,
     note_session_payload,
     planner_event_payload,
+    CourseGitError,
+    apply_course_git_binding,
+    course_git_payload,
     record_note_activity,
     restore_note_version,
     snapshot_note_version,
     summarize_calendar_feed,
+    unlink_course_git,
     version_label,
 )
 
@@ -203,27 +207,6 @@ def append_course_operation(creator, course, operation_type, metadata=None):
         operation_type=operation_type,
         metadata_json="" if not metadata else json.dumps(metadata, sort_keys=True),
     )
-
-
-def course_git_payload(course):
-    """Owner-facing git-binding state for a course (see CourseSerializer.git
-    and the git-binding endpoints). ``is_bound`` is the simple 'has a repo'
-    flag the repo-selector UI keys off."""
-    return {
-        "provider": course.git_provider,
-        "repo": course.git_repo or "",
-        "branch": course.git_branch or "main",
-        "sync_enabled": course.git_sync_enabled,
-        "sync_timeout_minutes": course.git_sync_timeout_minutes,
-        "is_bound": bool(course.git_repo),
-        "pending_since": course.git_pending_since.isoformat()
-        if course.git_pending_since
-        else None,
-        "last_synced_at": course.git_last_synced_at.isoformat()
-        if course.git_last_synced_at
-        else None,
-        "last_sync_error": course.git_last_sync_error or "",
-    }
 
 
 def unique_course_slug(title: str, fallback: str = "course") -> str:
@@ -879,12 +862,9 @@ class CourseDetailApiView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-GIT_REPO_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?/[A-Za-z0-9._-]+$")
-
-
 class CourseGitWriteSerializer(serializers.Serializer):
-    """Validates the git-binding payload. `repo` is the GitHub `owner/name`
-    full name; the other fields tune the lazy-sync behaviour."""
+    """Shapes the git-binding payload; the repo `owner/name` form is
+    validated in the service (`apply_course_git_binding`)."""
 
     repo = serializers.CharField(max_length=255, required=False, allow_blank=True)
     branch = serializers.CharField(max_length=255, required=False, allow_blank=True)
@@ -892,14 +872,6 @@ class CourseGitWriteSerializer(serializers.Serializer):
     sync_timeout_minutes = serializers.IntegerField(
         min_value=1, max_value=1440, required=False
     )
-
-    def validate_repo(self, value):
-        value = (value or "").strip()
-        if value and not GIT_REPO_RE.match(value):
-            raise serializers.ValidationError(
-                "repo must be a GitHub full name in 'owner/name' form."
-            )
-        return value
 
 
 class CourseGitBindingApiView(APIView):
@@ -943,62 +915,22 @@ class CourseGitBindingApiView(APIView):
         serializer = CourseGitWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        was_bound = bool(course.git_repo)
-        if "repo" in data:
-            course.git_repo = data["repo"] or None
-        if "branch" in data:
-            course.git_branch = (data["branch"] or "").strip() or "main"
-        if "sync_enabled" in data:
-            course.git_sync_enabled = data["sync_enabled"]
-        if "sync_timeout_minutes" in data:
-            course.git_sync_timeout_minutes = data["sync_timeout_minutes"]
-        # Binding (or re-pointing) a repo arms the lazy-sync debounce and
-        # clears any stale error from a previous binding.
-        if course.git_repo:
-            if course.git_pending_since is None:
-                course.git_pending_since = timezone.now()
-            course.git_last_sync_error = None
-        else:
-            course.git_sync_enabled = False
-            course.git_pending_since = None
-        course.save()
-        append_course_operation(
-            creator, course, CourseOperationTypeChoices.GIT_BIND,
-            metadata={
-                "repo": course.git_repo or "",
-                "branch": course.git_branch or "",
-                "sync_enabled": course.git_sync_enabled,
-                "was_bound": was_bound,
-            },
-        )
-        logger.info(
-            "Course git bind: Backend.Notes.Courses.Git/bind — "
-            "course id=%s '%s' bound to %s@%s (sync=%s).",
-            course.id, course.title, course.git_repo or "(none)",
-            course.git_branch, course.git_sync_enabled,
-        )
-        return Response(course_git_payload(course))
+        # Only forward fields the client actually sent (so a bare tweak of
+        # one field doesn't reset the others).
+        kwargs = {key: data[key] for key in (
+            "repo", "branch", "sync_enabled", "sync_timeout_minutes",
+        ) if key in data}
+        try:
+            payload = apply_course_git_binding(creator, course, **kwargs)
+        except CourseGitError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(payload)
 
     def delete(self, request, course_id):
         creator, course, error = self._owned_course(request, course_id)
         if error is not None:
             return error
-        previous_repo = course.git_repo or ""
-        course.git_repo = None
-        course.git_sync_enabled = False
-        course.git_pending_since = None
-        course.git_last_sync_error = None
-        course.save()
-        append_course_operation(
-            creator, course, CourseOperationTypeChoices.GIT_UNLINK,
-            metadata={"repo": previous_repo},
-        )
-        logger.info(
-            "Course git unlink: Backend.Notes.Courses.Git/unlink — "
-            "course id=%s '%s' unlinked from %s.",
-            course.id, course.title, previous_repo or "(none)",
-        )
-        return Response(course_git_payload(course))
+        return Response(unlink_course_git(creator, course))
 
 
 class CourseReorderApiView(APIView):

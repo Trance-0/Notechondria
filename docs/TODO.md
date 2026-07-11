@@ -113,8 +113,10 @@ do not run project containers/apps locally.
   the Nesbitt-bot PAT — treat as a credential; never commit/log it.)
 - [ ] **Cloudflare-style repo selector/binder** UI: list of repos, each
   opens a modal to pick the course to bind.
-- [ ] **MCP/CLI** tools (both servers, parity): get/set a course's git
-  config, and access course content over API key for remote agents.
+- [x] **MCP/CLI** `get_course_git` / `set_course_git` (both servers,
+  parity; shared `notes.services` logic). (0.1.171) — course *content*
+  access over API key already exists (list_courses/get_course/notes
+  tools).
 
 ### Cross-app plumbing
 - [ ] **Developer menu** currently editor-only — embed it in **planner**

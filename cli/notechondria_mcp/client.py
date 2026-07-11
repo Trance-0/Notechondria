@@ -100,6 +100,9 @@ class BackendClient:
     def post(self, path: str, json_body: Optional[dict] = None) -> Any:
         return self._request("POST", path, json_body=json_body or {})
 
+    def put(self, path: str, json_body: Optional[dict] = None) -> Any:
+        return self._request("PUT", path, json_body=json_body or {})
+
     def patch(self, path: str, json_body: Optional[dict] = None) -> Any:
         return self._request("PATCH", path, json_body=json_body or {})
 

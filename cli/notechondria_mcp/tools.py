@@ -195,6 +195,21 @@ def _delete_course(client: BackendClient, args: dict) -> Any:
     return {"deleted": True, "course_id": int(args["course_id"])}
 
 
+def _get_course_git(client: BackendClient, args: dict) -> Any:
+    return client.get(f"courses/{int(args['course_id'])}/git/")
+
+
+def _set_course_git(client: BackendClient, args: dict) -> Any:
+    course_id = int(args["course_id"])
+    if args.get("unlink"):
+        return client.delete(f"courses/{course_id}/git/")
+    body = {}
+    for key in ("repo", "branch", "sync_enabled", "sync_timeout_minutes"):
+        if key in args and args[key] is not None:
+            body[key] = args[key]
+    return client.put(f"courses/{course_id}/git/", body)
+
+
 def _list_course_notes(client: BackendClient, args: dict) -> Any:
     return client.get(f"courses/{int(args['course_id'])}/notes/")
 
@@ -512,6 +527,31 @@ TOOLS: List[dict] = [
                        "uncategorized bucket (course_id=NULL).",
         "inputSchema": _schema({"course_id": _INT}, ["course_id"]),
         "handler": _delete_course,
+    },
+    {
+        "name": "get_course_git",
+        "description": "Get a course's GitHub binding (repo owner/name, "
+                       "branch, lazy-sync toggle + timeout, last-sync "
+                       "state). Owner-only.",
+        "inputSchema": _schema({"course_id": _INT}, ["course_id"]),
+        "handler": _get_course_git,
+    },
+    {
+        "name": "set_course_git",
+        "description": "Bind (or re-point / tune) a course's GitHub repo, "
+                       "or unlink it. The backend stays the source of "
+                       "truth; a bound course lazily commits/pushes after "
+                       "sync_timeout_minutes of no edits. Pass unlink=true "
+                       "to clear the binding. Owner-only.",
+        "inputSchema": _schema({
+            "course_id": _INT,
+            "repo": {"type": "string", "description": "GitHub full name 'owner/name'. Empty string clears the repo."},
+            "branch": {"type": "string", "description": "Target branch (default 'main')."},
+            "sync_enabled": _BOOL,
+            "sync_timeout_minutes": {"type": "integer", "description": "Idle minutes before an auto-sync fires (1-1440, default 5)."},
+            "unlink": {"type": "boolean", "description": "If true, unlink the repo and disable sync."},
+        }, ["course_id"]),
+        "handler": _set_course_git,
     },
     {
         "name": "list_course_notes",

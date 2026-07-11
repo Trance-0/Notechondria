@@ -1,5 +1,7 @@
 import base64
+import json
 import logging
+import re
 from datetime import date, datetime, timedelta, timezone as dt_timezone
 from typing import Optional
 import urllib.error
@@ -17,7 +19,7 @@ logger = logging.getLogger(__name__)
 CALENDAR_RANGE_DAYS = {3, 7, 30}
 DEFAULT_CALENDAR_RANGE_DAYS = 7
 
-from courses.models import Course
+from courses.models import Course, CourseOperationLog, CourseOperationTypeChoices
 from planner.models import (
     CalendarFeed,
     HeatmapActivity,
@@ -561,6 +563,127 @@ def summarize_calendar_feed(feed, limit=25):
             "error": "No calendar events were found in the imported data.",
         }
     return {"ok": True, "count": len(events), "events": events[:limit], "error": None}
+
+
+# ---------------------------------------------------------------------------
+# Course ↔ GitHub binding (shared by the REST view and the MCP tools).
+# ---------------------------------------------------------------------------
+
+GIT_REPO_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?/[A-Za-z0-9._-]+$")
+
+# Distinguishes "caller did not pass this field" from "caller passed None".
+_UNSET = object()
+
+
+class CourseGitError(ValueError):
+    """Raised for an invalid git-binding request (e.g. a malformed repo
+    name). Callers map this to a 400 / tool error."""
+
+
+def course_git_payload(course):
+    """Owner-facing git-binding state for a course. ``is_bound`` is the
+    simple 'has a repo' flag the repo-selector UI keys off."""
+    return {
+        "provider": course.git_provider,
+        "repo": course.git_repo or "",
+        "branch": course.git_branch or "main",
+        "sync_enabled": course.git_sync_enabled,
+        "sync_timeout_minutes": course.git_sync_timeout_minutes,
+        "is_bound": bool(course.git_repo),
+        "pending_since": course.git_pending_since.isoformat()
+        if course.git_pending_since
+        else None,
+        "last_synced_at": course.git_last_synced_at.isoformat()
+        if course.git_last_synced_at
+        else None,
+        "last_sync_error": course.git_last_sync_error or "",
+    }
+
+
+def _log_course_git(creator, course, operation_type, metadata):
+    CourseOperationLog.objects.create(
+        creator_id=creator,
+        course_id=course,
+        operation_type=operation_type,
+        metadata_json=json.dumps(metadata, sort_keys=True) if metadata else "",
+    )
+
+
+def apply_course_git_binding(
+    creator,
+    course,
+    *,
+    repo=_UNSET,
+    branch=_UNSET,
+    sync_enabled=_UNSET,
+    sync_timeout_minutes=_UNSET,
+):
+    """Bind / re-point / tune a course's GitHub repo. Only passed fields
+    change. Setting a repo arms the lazy-sync debounce and clears any stale
+    error; clearing it disables sync. Writes a GIT_BIND log row and returns
+    the fresh payload. Raises CourseGitError on a malformed repo name."""
+    was_bound = bool(course.git_repo)
+    if repo is not _UNSET:
+        cleaned = (repo or "").strip()
+        if cleaned and not GIT_REPO_RE.match(cleaned):
+            raise CourseGitError(
+                "repo must be a GitHub full name in 'owner/name' form."
+            )
+        course.git_repo = cleaned or None
+    if branch is not _UNSET:
+        course.git_branch = (branch or "").strip() or "main"
+    if sync_enabled is not _UNSET:
+        course.git_sync_enabled = bool(sync_enabled)
+    if sync_timeout_minutes is not _UNSET:
+        minutes = int(sync_timeout_minutes)
+        if minutes < 1 or minutes > 1440:
+            raise CourseGitError("sync_timeout_minutes must be between 1 and 1440.")
+        course.git_sync_timeout_minutes = minutes
+    if course.git_repo:
+        if course.git_pending_since is None:
+            course.git_pending_since = timezone.now()
+        course.git_last_sync_error = None
+    else:
+        course.git_sync_enabled = False
+        course.git_pending_since = None
+    course.save()
+    _log_course_git(
+        creator, course, CourseOperationTypeChoices.GIT_BIND,
+        {
+            "repo": course.git_repo or "",
+            "branch": course.git_branch or "",
+            "sync_enabled": course.git_sync_enabled,
+            "was_bound": was_bound,
+        },
+    )
+    logger.info(
+        "Course git bind: Backend.Courses.Git/bind — course id=%s '%s' "
+        "bound to %s@%s (sync=%s).",
+        course.id, course.title, course.git_repo or "(none)",
+        course.git_branch, course.git_sync_enabled,
+    )
+    return course_git_payload(course)
+
+
+def unlink_course_git(creator, course):
+    """Clear a course's repo binding and disable sync. Writes a GIT_UNLINK
+    log row and returns the fresh payload."""
+    previous_repo = course.git_repo or ""
+    course.git_repo = None
+    course.git_sync_enabled = False
+    course.git_pending_since = None
+    course.git_last_sync_error = None
+    course.save()
+    _log_course_git(
+        creator, course, CourseOperationTypeChoices.GIT_UNLINK,
+        {"repo": previous_repo},
+    )
+    logger.info(
+        "Course git unlink: Backend.Courses.Git/unlink — course id=%s '%s' "
+        "unlinked from %s.",
+        course.id, course.title, previous_repo or "(none)",
+    )
+    return course_git_payload(course)
 
 
 def calendar_week_payload(creator, start_date=None, day_count=DEFAULT_CALENDAR_RANGE_DAYS):

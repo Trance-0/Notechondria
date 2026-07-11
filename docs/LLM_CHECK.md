@@ -27,6 +27,14 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.171: MCP/CLI course-git tools. Factored bind/unlink into
+  notes.services (apply_course_git_binding/unlink_course_git/
+  course_git_payload/CourseGitError/GIT_REPO_RE) so REST view + both MCP
+  servers share one path; added get_course_git/set_course_git to backend
+  mcp + CLI (parity 41→43, updated the count test + docs/server/mcp.md);
+  CLI BackendClient gained put(). Tests: backend MCP set/get/unlink, CLI
+  dispatch (GET/PUT/DELETE). py_compile + 26 CLI tests pass; django/cli
+  CI is the gate.
 - 0.1.170: course↔GitHub binding backend. `CourseGitBindingApiView`
   (courses/<id>/git/ GET/PUT/DELETE, owner-only, owner/name validation),
   owner-only `git` on CourseSerializer, `GIT_*` operation-log types +

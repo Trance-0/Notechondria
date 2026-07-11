@@ -493,6 +493,75 @@ register_tool(
 )
 
 
+def _get_course_git(user, creator, params):
+    from notes.services import course_git_payload
+
+    course = get_object_or_404(Course, pk=params["course_id"])
+    if course.creator_id_id != creator.id:
+        raise PermissionError("You can only read your own course's git binding.")
+    return course_git_payload(course)
+
+
+register_tool(
+    "get_course_git",
+    "Get a course's GitHub binding (repo owner/name, branch, lazy-sync "
+    "toggle + timeout, last-sync state). Owner-only.",
+    {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "integer"},
+        },
+        "required": ["course_id"],
+    },
+    _get_course_git,
+)
+
+
+def _set_course_git(user, creator, params):
+    from notes.services import (
+        CourseGitError,
+        apply_course_git_binding,
+        unlink_course_git,
+    )
+
+    course = get_object_or_404(Course, pk=params["course_id"])
+    if course.creator_id_id != creator.id:
+        raise PermissionError("You can only bind your own courses.")
+    if params.get("unlink"):
+        return unlink_course_git(creator, course)
+    kwargs = {
+        key: params[key]
+        for key in ("repo", "branch", "sync_enabled", "sync_timeout_minutes")
+        if key in params
+    }
+    try:
+        return apply_course_git_binding(creator, course, **kwargs)
+    except CourseGitError as exc:
+        raise ValueError(str(exc)) from exc
+
+
+register_tool(
+    "set_course_git",
+    "Bind (or re-point / tune) a course's GitHub repo, or unlink it. The "
+    "backend stays the source of truth; a bound course lazily "
+    "commits/pushes after `sync_timeout_minutes` of no edits. Pass "
+    "`unlink: true` to clear the binding. Owner-only.",
+    {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "integer"},
+            "repo": {"type": "string", "description": "GitHub full name 'owner/name'. Empty string clears the repo."},
+            "branch": {"type": "string", "description": "Target branch (default 'main')."},
+            "sync_enabled": {"type": "boolean", "description": "Enable lazy commit/sync."},
+            "sync_timeout_minutes": {"type": "integer", "description": "Idle minutes before an auto-sync fires (1-1440, default 5)."},
+            "unlink": {"type": "boolean", "description": "If true, unlink the repo and disable sync (ignores the other fields)."},
+        },
+        "required": ["course_id"],
+    },
+    _set_course_git,
+)
+
+
 def _delete_course(user, creator, params):
     course = get_object_or_404(Course, pk=params["course_id"])
     if course.creator_id_id != creator.id:

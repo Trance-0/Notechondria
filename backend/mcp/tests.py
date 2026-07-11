@@ -403,6 +403,29 @@ class McpToolTests(TestCase):
         result = self._tool_result(resp)
         self.assertEqual(result["title"], "Organic Chem")
 
+    def test_set_and_get_course_git_binding(self):
+        course = Course.objects.create(
+            creator_id=self.creator, slug="git-mcp", title="Git MCP",
+        )
+        resp = self._call_tool("set_course_git", {
+            "course_id": course.id,
+            "repo": "octo/repo",
+            "sync_enabled": True,
+            "sync_timeout_minutes": 8,
+        })
+        result = self._tool_result(resp)
+        self.assertEqual(result["repo"], "octo/repo")
+        self.assertTrue(result["is_bound"])
+        self.assertEqual(result["sync_timeout_minutes"], 8)
+        # get_course_git reflects it.
+        got = self._tool_result(self._call_tool("get_course_git", {"course_id": course.id}))
+        self.assertEqual(got["repo"], "octo/repo")
+        # Unlink clears it.
+        cleared = self._tool_result(
+            self._call_tool("set_course_git", {"course_id": course.id, "unlink": True})
+        )
+        self.assertFalse(cleared["is_bound"])
+
     def test_delete_course_orphans_notes_to_uncategorized(self):
         extra = Course.objects.create(
             creator_id=self.creator, slug="extra", title="Extra",

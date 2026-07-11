@@ -32,13 +32,17 @@ class FakeClient:
         self.calls.append(("POST", path, json_body))
         return {"id": 1, **(json_body or {})}
 
+    def put(self, path, json_body=None):
+        self.calls.append(("PUT", path, json_body))
+        return {"is_bound": True, **(json_body or {})}
+
     def patch(self, path, json_body=None):
         self.calls.append(("PATCH", path, json_body))
         return {"id": 1, **(json_body or {})}
 
     def delete(self, path):
         self.calls.append(("DELETE", path, None))
-        return None
+        return {"is_bound": False}
 
 
 def _server_with_fake():
@@ -78,9 +82,12 @@ class ToolRegistryTests(unittest.TestCase):
             call_tool(FakeClient(), "no_such_tool", {})
 
     def test_full_parity_tool_count(self):
-        # CLI is at full parity with backend/mcp/tools.py (41 tools).
+        # CLI is at full parity with backend/mcp/tools.py (43 tools:
+        # 41 + get_course_git/set_course_git in 0.1.171).
         names = {s["name"] for s in tool_specs()}
-        self.assertEqual(len(names), 41)
+        self.assertEqual(len(names), 43)
+        self.assertIn("get_course_git", names)
+        self.assertIn("set_course_git", names)
         # spot-check a few that were ported in Phase 3
         for name in ("update_profile", "search_notes", "get_note_by_uuid",
                      "subscribe_course", "unsubscribe_course",
@@ -119,6 +126,29 @@ class ToolRegistryTests(unittest.TestCase):
         fake = FakeClient()
         call_tool(fake, "empty_recycle_bin", {})
         self.assertEqual(fake.calls[-1][:2], ("DELETE", "notes/deleted/empty/"))
+
+    def test_get_course_git_dispatches_to_get(self):
+        fake = FakeClient()
+        call_tool(fake, "get_course_git", {"course_id": 9})
+        self.assertEqual(fake.calls[-1][:2], ("GET", "courses/9/git/"))
+
+    def test_set_course_git_binds_with_put(self):
+        fake = FakeClient()
+        call_tool(fake, "set_course_git", {
+            "course_id": 9,
+            "repo": "octo/repo",
+            "sync_enabled": True,
+            "sync_timeout_minutes": 7,
+        })
+        method, path, body = fake.calls[-1]
+        self.assertEqual((method, path), ("PUT", "courses/9/git/"))
+        self.assertEqual(body["repo"], "octo/repo")
+        self.assertEqual(body["sync_timeout_minutes"], 7)
+
+    def test_set_course_git_unlink_deletes(self):
+        fake = FakeClient()
+        call_tool(fake, "set_course_git", {"course_id": 9, "unlink": True})
+        self.assertEqual(fake.calls[-1][:2], ("DELETE", "courses/9/git/"))
 
     def test_restore_note_version_path(self):
         fake = FakeClient()
