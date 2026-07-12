@@ -27,6 +27,17 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.175: GitHub App binding over MCP/CLI + Veronica-7 adapter validation.
+  Extracted github_sync.list_installation_repositories (shared by REST
+  repo-picker + new tool). Three new MCP/CLI tools (45→48):
+  github_app_status (GET status), connect_github_app (POST callback,
+  idempotent installation-id link), list_github_repos (GET repos). MCP
+  tests mock the repo-list network; CLI 29 tests / 48 tools. Validated the
+  adapter read-only against the real Veronica-7 tree (211 blobs/195 md):
+  preset→vitepress, .vitepress excluded, no leakage, 6 modules/193 notes/0
+  warnings — no adapter bug. Noted imported-note order gap (no sort_order;
+  order preserved in custom_meta) as a TODO. py_compile clean; django CI
+  is the gate.
 - 0.1.174: course git sync (notes → repo), lazy-on-request. course_repo.py
   compose_markdown/load_frontmatter_dict + frontmatter on import;
   git_service serialize_course_for_sync + _commit_files (Contents API PUT

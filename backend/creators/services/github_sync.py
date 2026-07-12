@@ -613,6 +613,47 @@ def github_request_headers(token: str) -> dict[str, str]:
     return _github_headers(token)
 
 
+def list_installation_repositories(integration: GithubIntegration) -> list[dict]:
+    """Return ``[{full_name, default_branch, private}]`` for every repo the
+    installation can access, paginating ``/installation/repositories``.
+    Raises ``GithubSyncError`` on token/network/HTTP failure. Shared by the
+    REST repo-picker and the MCP ``list_github_repos`` tool so both stay in
+    lockstep."""
+    import requests as http_requests
+
+    token = _ensure_token(integration)
+    headers = _github_headers(token)
+    repos: list[dict] = []
+    page = 1
+    while True:
+        try:
+            resp = http_requests.get(
+                f"{GITHUB_API}/installation/repositories",
+                headers=headers,
+                params={"per_page": 100, "page": page},
+                timeout=15,
+            )
+        except http_requests.RequestException as exc:
+            raise GithubSyncError(
+                f"network error contacting GitHub: {exc}."
+            ) from exc
+        if resp.status_code >= 400:
+            raise GithubSyncError(f"GitHub returned {resp.status_code}.")
+        chunk = (resp.json() or {}).get("repositories") or []
+        for repo in chunk:
+            repos.append({
+                "full_name": repo.get("full_name", ""),
+                "default_branch": repo.get("default_branch", "main"),
+                "private": bool(repo.get("private", False)),
+            })
+        if len(chunk) < 100:
+            break
+        page += 1
+        if page > 50:  # defensive cap: 5,000 repos
+            break
+    return repos
+
+
 def commit_and_push(
     integration: GithubIntegration,
     files: list[_RepoFile],

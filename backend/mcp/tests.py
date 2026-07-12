@@ -477,6 +477,60 @@ class McpToolTests(TestCase):
         course.refresh_from_db()
         self.assertIsNone(course.git_pending_since)
 
+    def test_github_app_status_reports_connection(self):
+        from creators.models import GithubIntegration
+
+        # Not connected.
+        resp = self._call_tool("github_app_status")
+        self.assertFalse(self._tool_result(resp)["connected"])
+        # Connected after linking.
+        GithubIntegration.objects.create(
+            creator=self.creator, installation_id="inst-42",
+            account_login="Nesbitt-bot",
+        )
+        resp2 = self._call_tool("github_app_status", req_id=2)
+        result = self._tool_result(resp2)
+        self.assertTrue(result["connected"])
+        self.assertEqual(result["installation_id"], "inst-42")
+        self.assertEqual(result["account_login"], "Nesbitt-bot")
+
+    def test_connect_github_app_persists_installation(self):
+        from creators.models import GithubIntegration
+
+        resp = self._call_tool("connect_github_app", {
+            "installation_id": "99887", "account_login": "Nesbitt-bot",
+        })
+        result = self._tool_result(resp)
+        self.assertTrue(result["connected"])
+        self.assertEqual(result["installation_id"], "99887")
+        integration = GithubIntegration.objects.get(creator=self.creator)
+        self.assertEqual(integration.installation_id, "99887")
+        # Idempotent re-link updates the id.
+        self._call_tool("connect_github_app",
+                        {"installation_id": "55443"}, req_id=2)
+        integration.refresh_from_db()
+        self.assertEqual(integration.installation_id, "55443")
+
+    def test_list_github_repos_returns_installation_repos(self):
+        from unittest.mock import patch
+        from creators.models import GithubIntegration
+
+        GithubIntegration.objects.create(
+            creator=self.creator, installation_id="inst-repos",
+        )
+        fake_repos = [
+            {"full_name": "Nesbitt-bot/Veronica-7", "default_branch": "main", "private": False},
+        ]
+        with patch("creators.services.github_sync.list_installation_repositories",
+                   return_value=fake_repos):
+            resp = self._call_tool("list_github_repos")
+        self.assertEqual(self._tool_result(resp)["repositories"], fake_repos)
+
+    def test_list_github_repos_without_integration_errors(self):
+        resp = self._call_tool("list_github_repos")
+        # No integration linked → tool error surfaced as result.isError.
+        self.assertTrue(resp.json()["result"].get("isError"))
+
     def test_delete_course_orphans_notes_to_uncategorized(self):
         extra = Course.objects.create(
             creator_id=self.creator, slug="extra", title="Extra",

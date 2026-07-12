@@ -768,13 +768,10 @@ class GithubSyncReposApiView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        import requests as http_requests
-
         from .models import GithubIntegration
         from .services.github_sync import (
             GithubSyncError,
-            _ensure_token,
-            _github_headers,
+            list_installation_repositories,
         )
 
         creator = ensure_creator(request.user)
@@ -790,56 +787,16 @@ class GithubSyncReposApiView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            token = _ensure_token(integration)
+            repos = list_installation_repositories(integration)
         except GithubSyncError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        headers = _github_headers(token)
-        repos = []
-        page = 1
-        while True:
-            try:
-                resp = http_requests.get(
-                    "https://api.github.com/installation/repositories",
-                    headers=headers,
-                    params={"per_page": 100, "page": page},
-                    timeout=15,
-                )
-            except http_requests.RequestException as exc:
-                return Response(
-                    {"detail": (
-                        "Cannot list repositories: "
-                        "Backend.Creators.GithubSync/list_repos — "
-                        f"network error contacting GitHub: {exc}."
-                    )},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            if resp.status_code >= 400:
-                return Response(
-                    {"detail": (
-                        "Cannot list repositories: "
-                        "Backend.Creators.GithubSync/list_repos — "
-                        f"GitHub returned {resp.status_code}."
-                    )},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            payload = resp.json() or {}
-            chunk = payload.get("repositories") or []
-            for repo in chunk:
-                repos.append({
-                    "full_name": repo.get("full_name", ""),
-                    "default_branch": repo.get("default_branch", "main"),
-                    "private": bool(repo.get("private", False)),
-                })
-            # GitHub paginates via Link header; falling out when a page
-            # returns fewer than per_page entries is the simpler invariant
-            # and matches the contract of /installation/repositories.
-            if len(chunk) < 100:
-                break
-            page += 1
-            if page > 50:
-                # Defensive cap: 5,000 repos. Anything past that is a
-                # mis-installed App, not a real personal account.
-                break
+            return Response(
+                {"detail": (
+                    "Cannot list repositories: "
+                    "Backend.Creators.GithubSync/list_repos — "
+                    f"{exc}"
+                )},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return Response({"repositories": repos})
 
 

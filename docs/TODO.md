@@ -139,6 +139,16 @@ do not run project containers/apps locally.
   the fork; **bind + import needs the GitHub Data Sync App installed on the
   fork + the production backend** (no local Django here); the **PR back to
   the original is outward-facing to a third party — confirm before opening.**
+- [x] **GitHub App binding over MCP/CLI**: `github_app_status` /
+  `connect_github_app` / `list_github_repos` (both servers, parity 45→48;
+  shared `github_sync.list_installation_repositories`). Lets an agent
+  install-check → link installation id → confirm repo reach before
+  `set_course_git` + `import_course_git`. (0.1.175)
+- [ ] **Imported-note order**: notes have no `sort_order`; the course
+  view lists `-last_edit`, so a fresh git-import shows reverse reading
+  order. Frontmatter `order`/`sidebar_position` is preserved in
+  `custom_meta` — add an order-aware course view (or a `sort_order` field
+  populated on import) so imported courses read top-to-bottom.
 - [ ] **MDX support** (`.mdx`) — skipped in v1 (parser warns); add
   parsing + sync-write once markdown is solid.
 - [ ] **Cloudflare-style repo selector/binder** UI: list of repos, each

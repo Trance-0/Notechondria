@@ -82,13 +82,15 @@ class ToolRegistryTests(unittest.TestCase):
             call_tool(FakeClient(), "no_such_tool", {})
 
     def test_full_parity_tool_count(self):
-        # CLI is at full parity with backend/mcp/tools.py (45 tools:
+        # CLI is at full parity with backend/mcp/tools.py (48 tools:
         # 41 + get_course_git/set_course_git (0.1.171) + import_course_git
-        # (0.1.173) + sync_course_git (0.1.174)).
+        # (0.1.173) + sync_course_git (0.1.174) + github_app_status /
+        # connect_github_app / list_github_repos (0.1.175)).
         names = {s["name"] for s in tool_specs()}
-        self.assertEqual(len(names), 45)
+        self.assertEqual(len(names), 48)
         for name in ("get_course_git", "set_course_git", "import_course_git",
-                     "sync_course_git"):
+                     "sync_course_git", "github_app_status",
+                     "connect_github_app", "list_github_repos"):
             self.assertIn(name, names)
         # spot-check a few that were ported in Phase 3
         for name in ("update_profile", "search_notes", "get_note_by_uuid",
@@ -151,6 +153,25 @@ class ToolRegistryTests(unittest.TestCase):
         fake = FakeClient()
         call_tool(fake, "set_course_git", {"course_id": 9, "unlink": True})
         self.assertEqual(fake.calls[-1][:2], ("DELETE", "courses/9/git/"))
+
+    def test_github_app_status_gets_status(self):
+        fake = FakeClient()
+        call_tool(fake, "github_app_status", {})
+        self.assertEqual(fake.calls[-1][:2], ("GET", "integrations/github/status/"))
+
+    def test_connect_github_app_posts_installation(self):
+        fake = FakeClient()
+        call_tool(fake, "connect_github_app",
+                  {"installation_id": "12345", "account_login": "Nesbitt-bot"})
+        method, path, body = fake.calls[-1]
+        self.assertEqual((method, path), ("POST", "integrations/github/callback/"))
+        self.assertEqual(body["installation_id"], "12345")
+        self.assertEqual(body["account_login"], "Nesbitt-bot")
+
+    def test_list_github_repos_gets_repos(self):
+        fake = FakeClient()
+        call_tool(fake, "list_github_repos", {})
+        self.assertEqual(fake.calls[-1][:2], ("GET", "integrations/github/repos/"))
 
     def test_restore_note_version_path(self):
         fake = FakeClient()

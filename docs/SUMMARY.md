@@ -67,6 +67,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.175 - GitHub App binding over MCP/CLI + Veronica-7 adapter validation](versions/0.1.175.md)
 - [0.1.174 - course git sync (notes → repo), lazy-on-request](versions/0.1.174.md)
 - [0.1.173 - course git import (repo → notes) via the adapter](versions/0.1.173.md)
 - [0.1.172 - course-repo adapter: config format + parser + presets](versions/0.1.172.md)

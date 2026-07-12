@@ -620,6 +620,115 @@ register_tool(
 )
 
 
+def _github_app_status(user, creator, params):
+    from django.conf import settings
+    from creators.models import GithubIntegration
+
+    integration = GithubIntegration.objects.filter(creator=creator).first()
+    install_url = settings.GITHUB_DATA_SYNC_APP_INSTALL_URL or ""
+    app_name = settings.GITHUB_DATA_SYNC_APP_NAME or ""
+    if integration is None:
+        return {"connected": False, "install_url": install_url, "app_name": app_name}
+    return {
+        "connected": True,
+        "install_url": install_url,
+        "app_name": app_name,
+        "installation_id": integration.installation_id,
+        "account_login": integration.account_login,
+        "repo_full_name": integration.repo_full_name,
+        "repo_default_branch": integration.repo_default_branch,
+    }
+
+
+register_tool(
+    "github_app_status",
+    "Show whether this account has the Notechondria GitHub App installed "
+    "(the App token is what course import/sync use). Returns `connected`, "
+    "the `install_url` to install/authorize it, and the linked "
+    "installation id / account when connected.",
+    {"type": "object", "properties": {}},
+    _github_app_status,
+)
+
+
+def _connect_github_app(user, creator, params):
+    """Persist a GitHub App installation id for this account (the id from
+    the `?installation_id=` GitHub redirect after installing the App).
+    Once connected, the App token can read/write any repo the installation
+    was granted — see `list_github_repos`."""
+    from creators.models import GithubIntegration
+
+    installation_id = (params.get("installation_id") or "").strip()
+    if not installation_id:
+        raise ValueError("installation_id is required (from the GitHub App install redirect).")
+    integration, _created = GithubIntegration.objects.update_or_create(
+        creator=creator,
+        defaults={
+            "installation_id": installation_id,
+            "account_login": (params.get("account_login") or "").strip(),
+            "repo_full_name": (params.get("repo_full_name") or "").strip(),
+            "repo_default_branch": (params.get("repo_default_branch") or "main").strip() or "main",
+            "last_error": "",
+        },
+    )
+    return {
+        "connected": True,
+        "installation_id": integration.installation_id,
+        "account_login": integration.account_login,
+    }
+
+
+register_tool(
+    "connect_github_app",
+    "Link a GitHub App installation to this account by its installation id "
+    "(the `installation_id` from the GitHub redirect after installing the "
+    "App on a repo/org). Idempotent — re-linking updates the id. This is "
+    "how you 'bind the app to a repo' before import/sync.",
+    {
+        "type": "object",
+        "properties": {
+            "installation_id": {"type": "string", "description": "Installation id from the GitHub App install redirect."},
+            "account_login": {"type": "string", "description": "Owner login the App was installed on (optional)."},
+            "repo_full_name": {"type": "string", "description": "Default profile-sync repo 'owner/name' (optional; course binding uses set_course_git instead)."},
+            "repo_default_branch": {"type": "string", "description": "Default branch (default 'main')."},
+        },
+        "required": ["installation_id"],
+    },
+    _connect_github_app,
+)
+
+
+def _list_github_repos(user, creator, params):
+    from creators.models import GithubIntegration
+    from creators.services.github_sync import (
+        GithubSyncError,
+        list_installation_repositories,
+    )
+
+    integration = GithubIntegration.objects.filter(creator=creator).first()
+    if integration is None:
+        raise ValueError(
+            "No GitHub App installation linked to this account. "
+            "Install the app, then call connect_github_app first."
+        )
+    try:
+        repos = list_installation_repositories(integration)
+    except GithubSyncError as exc:
+        raise ValueError(str(exc)) from exc
+    return {"repositories": repos}
+
+
+register_tool(
+    "list_github_repos",
+    "List the repositories the linked GitHub App installation can access "
+    "(each with `full_name`, `default_branch`, `private`). Use this to "
+    "confirm a repo is reachable before binding a course to it with "
+    "set_course_git. Requires connect_github_app first.",
+    {"type": "object", "properties": {}},
+    _list_github_repos,
+)
+
+
 def _delete_course(user, creator, params):
     course = get_object_or_404(Course, pk=params["course_id"])
     if course.creator_id_id != creator.id:

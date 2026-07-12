@@ -1,7 +1,7 @@
 # `mcp` app
 
 Path: [`backend/mcp/`](../../backend/mcp/).
-Responsibility: Model-Context-Protocol server. 45 tools that wrap
+Responsibility: Model-Context-Protocol server. 48 tools that wrap
 the [`creators`](creators.md) and [`notes`](notes.md) APIs so an
 external LLM client can read and mutate a user's workspace.
 
@@ -71,7 +71,7 @@ user; rotating issues a new key and invalidates the old one.
 
 ## Tools (`mcp/tools.py`)
 
-45 tools, registered at import time via `register_tool(name, description,
+48 tools, registered at import time via `register_tool(name, description,
 input_schema, fn)`. Each `fn` has signature `(user, creator, params) ->
 dict` and delegates to the same `notes.services` / model logic the REST
 views use — the MCP layer adds no business rules of its own, so if the
@@ -89,6 +89,10 @@ underlying API would 401/403/404 the tool returns the same error.
   `update_course`, `delete_course`, `get_course_git`, `set_course_git`,
   `import_course_git`, `sync_course_git`, `list_course_notes`, `reorder_courses`,
   `subscribe_course`, `unsubscribe_course`.
+- **GitHub App binding**: `github_app_status`, `connect_github_app`,
+  `list_github_repos` (install-status, link an installation id, and list
+  the repos the App can reach — the "bind the app to a repo" flow that
+  precedes `set_course_git` + `import_course_git`).
 - **Activity / heatmap**: `get_heatmap`, `get_recent_activity`,
   `get_activity`, `get_activity_week`.
 - **Note sessions**: `list_note_sessions`, `create_note_session`,
@@ -125,6 +129,9 @@ offer identical functionality. Representative mapping:
 | `list_course_notes` | `GET courses/<id>/notes/` |
 | `reorder_courses` | `POST courses/reorder/` |
 | `subscribe_course` / `unsubscribe_course` | `POST` / `DELETE` `courses/<id>/subscribe/` |
+| `github_app_status` | `GET integrations/github/status/` |
+| `connect_github_app` | `POST integrations/github/callback/` |
+| `list_github_repos` | `GET integrations/github/repos/` |
 | `get_heatmap` | `GET heatmap/` |
 | `get_recent_activity` / `get_activity` | `GET activity/` |
 | `get_activity_week` | `GET activity/week/` |
@@ -137,7 +144,7 @@ Result: one gap found and filled. The `list_note_sessions` tool had no
 REST list endpoint (`NoteSessionListCreateApiView` was POST-only); a
 `GET` (with `?note_id=` + `?limit=` filters) was added in 0.1.146. Every
 other tool already had a REST equivalent. The standalone CLI
-(`cli/notechondria_mcp/`) is at **full 45-tool parity** (41 at 0.1.146; +get_course_git/set_course_git at 0.1.171; +import_course_git at 0.1.173; +sync_course_git at 0.1.174).
+(`cli/notechondria_mcp/`) is at **full 48-tool parity** (41 at 0.1.146; +get_course_git/set_course_git at 0.1.171; +import_course_git at 0.1.173; +sync_course_git at 0.1.174; +github_app_status/connect_github_app/list_github_repos at 0.1.175).
 
 ## Tests
 

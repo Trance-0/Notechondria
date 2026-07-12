@@ -218,6 +218,22 @@ def _set_course_git(client: BackendClient, args: dict) -> Any:
     return client.put(f"courses/{course_id}/git/", body)
 
 
+def _github_app_status(client: BackendClient, args: dict) -> Any:
+    return client.get("integrations/github/status/")
+
+
+def _connect_github_app(client: BackendClient, args: dict) -> Any:
+    body = {"installation_id": args["installation_id"]}
+    for key in ("account_login", "repo_full_name", "repo_default_branch"):
+        if key in args and args[key] is not None:
+            body[key] = args[key]
+    return client.post("integrations/github/callback/", body)
+
+
+def _list_github_repos(client: BackendClient, args: dict) -> Any:
+    return client.get("integrations/github/repos/")
+
+
 def _list_course_notes(client: BackendClient, args: dict) -> Any:
     return client.get(f"courses/{int(args['course_id'])}/notes/")
 
@@ -578,6 +594,39 @@ TOOLS: List[dict] = [
                        "Backend is the source of truth. Owner-only.",
         "inputSchema": _schema({"course_id": _INT}, ["course_id"]),
         "handler": _sync_course_git,
+    },
+    {
+        "name": "github_app_status",
+        "description": "Show whether this account has the Notechondria "
+                       "GitHub App installed (the App token backs course "
+                       "import/sync). Returns connected, the install_url, "
+                       "and the linked installation id / account.",
+        "inputSchema": _schema({}),
+        "handler": _github_app_status,
+    },
+    {
+        "name": "connect_github_app",
+        "description": "Link a GitHub App installation to this account by "
+                       "its installation id (from the GitHub redirect after "
+                       "installing the App on a repo/org). Idempotent. This "
+                       "is how you 'bind the app to a repo' before "
+                       "import/sync.",
+        "inputSchema": _schema({
+            "installation_id": {"type": "string", "description": "Installation id from the GitHub App install redirect."},
+            "account_login": {"type": "string", "description": "Owner login the App was installed on (optional)."},
+            "repo_full_name": {"type": "string", "description": "Default profile-sync repo 'owner/name' (optional)."},
+            "repo_default_branch": {"type": "string", "description": "Default branch (default 'main')."},
+        }, ["installation_id"]),
+        "handler": _connect_github_app,
+    },
+    {
+        "name": "list_github_repos",
+        "description": "List the repositories the linked GitHub App "
+                       "installation can access (full_name, default_branch, "
+                       "private). Use to confirm a repo is reachable before "
+                       "set_course_git. Requires connect_github_app first.",
+        "inputSchema": _schema({}),
+        "handler": _list_github_repos,
     },
     {
         "name": "list_course_notes",
