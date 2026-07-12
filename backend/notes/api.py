@@ -389,6 +389,9 @@ class NoteDetailSerializer(NoteSummarySerializer):
     content = serializers.CharField(read_only=True)
     metadata_json = serializers.CharField(read_only=True)
     custom_meta = serializers.CharField(read_only=True)
+    # Repo path a git-imported note maps to (read-only; set on import, used
+    # by sync). Exposed so the owner/agent can inspect the binding.
+    git_path = serializers.CharField(read_only=True)
 
     class Meta(NoteSummarySerializer.Meta):
         fields = NoteSummarySerializer.Meta.fields + [
@@ -396,6 +399,7 @@ class NoteDetailSerializer(NoteSummarySerializer):
             "content",
             "metadata_json",
             "custom_meta",
+            "git_path",
         ]
 
     def get_blocks(self, obj):

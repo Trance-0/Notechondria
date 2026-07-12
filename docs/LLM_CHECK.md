@@ -27,6 +27,17 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.176: FIX course sync = one atomic commit (Git Data API). Found by
+  running the real Veronica-7 migration on prod: import worked (193 notes /
+  6 modules / 0 warnings, idempotent) but the first sync 503'd after 120s —
+  _commit_files (0.1.174) did one Contents-API PUT per file = 193 commits,
+  timed out, partial/non-atomic, ~70 junk commits on the fork. Rewrote
+  _commit_files to GET ref → GET commit → POST trees(base_tree+all files) →
+  short-circuit if tree unchanged → POST commit → PATCH ref. Atomic, fast,
+  one commit. Exposed git_path on NoteDetailSerializer (was persisted but
+  invisible). Tests mock requests (50 files → 1 tree/1 commit/1 patch; no
+  commit when tree unchanged). Reset the fork's main to the clean config
+  commit after the buggy partial push. Re-verify sync after deploy.
 - 0.1.175: GitHub App binding over MCP/CLI + Veronica-7 adapter validation.
   Extracted github_sync.list_installation_repositories (shared by REST
   repo-picker + new tool). Three new MCP/CLI tools (45→48):

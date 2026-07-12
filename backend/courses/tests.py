@@ -175,3 +175,111 @@ class CourseRepoAdapterTests(TestCase):
         result = parse_course_repo(files, config)
         seen = {n["path"] for m in result["modules"] for n in m["notes"]}
         self.assertEqual(seen, {"content/intro.md", "content/unit1/lesson.md"})
+
+
+class _FakeResp:
+    def __init__(self, status_code=200, payload=None, text=""):
+        self.status_code = status_code
+        self._payload = payload or {}
+        self.text = text
+
+    def json(self):
+        return self._payload
+
+
+class CommitFilesGitDataApiTests(TestCase):
+    """`_commit_files` must push all files as ONE commit via the Git Data
+    API (blobs→tree→commit→ref), not one commit per file (the 0.1.174 bug
+    that timed out on large courses)."""
+
+    def _integration(self):
+        user = User.objects.create_user(username="git@example.com", password="pw")
+        creator = Creator.objects.create(user_id=user)
+        from creators.models import GithubIntegration
+        return GithubIntegration.objects.create(
+            creator=creator, installation_id="inst-commit",
+        )
+
+    def test_single_commit_for_many_files(self):
+        from unittest import mock
+        import courses.git_service as git_service
+
+        integration = self._integration()
+        files = {f"docs/n{i}.md": f"# N{i}\nbody" for i in range(50)}
+
+        gets, posts, patches = [], [], []
+
+        def fake_get(url, headers=None, timeout=None):
+            gets.append(url)
+            if "/git/ref/heads/" in url:
+                return _FakeResp(200, {"object": {"sha": "basecommit"}})
+            if "/git/commits/" in url:
+                return _FakeResp(200, {"tree": {"sha": "basetree"}})
+            return _FakeResp(404, {})
+
+        def fake_post(url, headers=None, json=None, timeout=None):
+            posts.append((url, json))
+            if url.endswith("/git/trees"):
+                # New tree differs from base → a real change.
+                return _FakeResp(201, {"sha": "newtree"})
+            if url.endswith("/git/commits"):
+                return _FakeResp(201, {"sha": "newcommit"})
+            return _FakeResp(404, {})
+
+        def fake_patch(url, headers=None, json=None, timeout=None):
+            patches.append((url, json))
+            return _FakeResp(200, {"object": {"sha": "newcommit"}})
+
+        with mock.patch.object(git_service.github_sync, "installation_token", return_value="t"), \
+             mock.patch.object(git_service.github_sync, "github_request_headers", return_value={}), \
+             mock.patch("requests.get", fake_get), \
+             mock.patch("requests.post", fake_post), \
+             mock.patch("requests.patch", fake_patch):
+            sha = git_service._commit_files(integration, "octo/docs", "main", files, "msg")
+
+        self.assertEqual(sha, "newcommit")
+        # Exactly one tree, one commit, one ref update — regardless of the
+        # 50 files (the old code would have made 50 commits + 100 calls).
+        tree_posts = [p for p in posts if p[0].endswith("/git/trees")]
+        commit_posts = [p for p in posts if p[0].endswith("/git/commits")]
+        self.assertEqual(len(tree_posts), 1)
+        self.assertEqual(len(commit_posts), 1)
+        self.assertEqual(len(patches), 1)
+        # The single tree POST carries all 50 files on top of the base tree.
+        self.assertEqual(tree_posts[0][1]["base_tree"], "basetree")
+        self.assertEqual(len(tree_posts[0][1]["tree"]), 50)
+
+    def test_no_commit_when_nothing_changed(self):
+        from unittest import mock
+        import courses.git_service as git_service
+
+        integration = self._integration()
+        files = {"docs/n.md": "# N\nbody"}
+
+        def fake_get(url, headers=None, timeout=None):
+            if "/git/ref/heads/" in url:
+                return _FakeResp(200, {"object": {"sha": "basecommit"}})
+            if "/git/commits/" in url:
+                return _FakeResp(200, {"tree": {"sha": "basetree"}})
+            return _FakeResp(404, {})
+
+        posted = []
+
+        def fake_post(url, headers=None, json=None, timeout=None):
+            posted.append(url)
+            # Tree is byte-identical → GitHub returns the SAME tree sha.
+            return _FakeResp(201, {"sha": "basetree"})
+
+        def fake_patch(url, headers=None, json=None, timeout=None):
+            raise AssertionError("must not update ref when nothing changed")
+
+        with mock.patch.object(git_service.github_sync, "installation_token", return_value="t"), \
+             mock.patch.object(git_service.github_sync, "github_request_headers", return_value={}), \
+             mock.patch("requests.get", fake_get), \
+             mock.patch("requests.post", fake_post), \
+             mock.patch("requests.patch", fake_patch):
+            sha = git_service._commit_files(integration, "octo/docs", "main", files, "msg")
+
+        self.assertEqual(sha, "")
+        # Only the tree POST happened; no commit, no ref update.
+        self.assertTrue(all(u.endswith("/git/trees") for u in posted))

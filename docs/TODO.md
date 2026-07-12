@@ -144,11 +144,26 @@ do not run project containers/apps locally.
   shared `github_sync.list_installation_repositories`). Lets an agent
   install-check → link installation id → confirm repo reach before
   `set_course_git` + `import_course_git`. (0.1.175)
+- [x] **Sync atomicity/timeout** (found running the real Veronica-7
+  migration): `_commit_files` did one Contents-API PUT per file → 193
+  commits, 503 after 120s, partial/non-atomic push. Rewrote to a single
+  Git Data API commit (tree on `base_tree` → commit → ref), short-circuit
+  when nothing changed. (0.1.176)
+- [x] **Expose `git_path`** on `NoteDetailSerializer` so the git-import
+  mapping is inspectable over the API. (0.1.176)
 - [ ] **Imported-note order**: notes have no `sort_order`; the course
   view lists `-last_edit`, so a fresh git-import shows reverse reading
   order. Frontmatter `order`/`sidebar_position` is preserved in
   `custom_meta` — add an order-aware course view (or a `sort_order` field
   populated on import) so imported courses read top-to-bottom.
+- [ ] **Lost module grouping on import**: the adapter computes 6 modules
+  for Veronica-7 but the flat Course→Note model discards them (only the
+  dir is recoverable from `git_path`). Store the module key in
+  `custom_meta` and/or add a section concept so imported courses keep
+  their structure.
+- [ ] **`pending_since` armed on bind even when `sync_enabled=false`**
+  (harmless — flush only fires for sync-enabled courses — but semantically
+  odd). Only arm when sync is enabled.
 - [ ] **MDX support** (`.mdx`) — skipped in v1 (parser warns); add
   parsing + sync-write once markdown is solid.
 - [ ] **Cloudflare-style repo selector/binder** UI: list of repos, each

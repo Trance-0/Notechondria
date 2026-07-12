@@ -223,39 +223,84 @@ def serialize_course_for_sync(course) -> dict[str, str]:
 
 
 def _commit_files(integration, repo: str, branch: str, files: dict[str, str], message: str) -> str:
-    """Write each mapped markdown file via the Contents API using the App
-    token (GET existing sha, then PUT). Returns the last commit sha."""
-    import base64 as _b64
+    """Write every mapped markdown file as ONE atomic commit via the Git
+    Data API: build a tree on top of the branch's current tree (so files we
+    don't manage are untouched), create a single commit, and fast-forward
+    the ref. Returns the new commit sha, or ``""`` when nothing changed.
 
+    This replaces the 0.1.174 per-file Contents API loop, which made one
+    commit *per file* — for a large course (e.g. 193 notes) that was 193
+    sequential round-trips: it blew past the request/gateway timeout,
+    could be killed mid-run (partial, non-atomic push), and flooded the
+    repo history. The Git Data API needs a fixed handful of calls
+    regardless of file count."""
     import requests as _requests
 
     token = github_sync.installation_token(integration)
     headers = github_sync.github_request_headers(token)
-    last_sha = ""
-    for path, text in files.items():
-        url = f"{GITHUB_API}/repos/{repo}/contents/{path}"
-        existing_sha = ""
+    git_base = f"{GITHUB_API}/repos/{repo}/git"
+
+    def _get(url: str):
         try:
-            probe = _requests.get(url, headers=headers, params={"ref": branch}, timeout=15)
-            if probe.status_code == 200:
-                existing_sha = probe.json().get("sha", "")
-        except _requests.RequestException:
-            pass
-        body = {
-            "message": message,
-            "branch": branch,
-            "content": _b64.b64encode(text.encode("utf-8")).decode("ascii"),
-        }
-        if existing_sha:
-            body["sha"] = existing_sha
-        try:
-            resp = _requests.put(url, headers=headers, json=body, timeout=30)
+            resp = _requests.get(url, headers=headers, timeout=30)
         except _requests.RequestException as exc:
-            raise CourseGitServiceError(f"network error writing {path}: {exc}") from exc
+            raise CourseGitServiceError(f"network error contacting GitHub: {exc}") from exc
         if resp.status_code >= 400:
-            raise CourseGitServiceError(f"GitHub returned {resp.status_code} writing {path}.")
-        last_sha = (resp.json().get("commit") or {}).get("sha") or last_sha
-    return last_sha
+            raise CourseGitServiceError(
+                f"GitHub returned {resp.status_code} reading {url.rsplit('/git/', 1)[-1]}."
+            )
+        return resp.json()
+
+    def _post(url: str, body: dict):
+        try:
+            resp = _requests.post(url, headers=headers, json=body, timeout=60)
+        except _requests.RequestException as exc:
+            raise CourseGitServiceError(f"network error contacting GitHub: {exc}") from exc
+        if resp.status_code >= 400:
+            raise CourseGitServiceError(
+                f"GitHub returned {resp.status_code} on {url.rsplit('/git/', 1)[-1]}: "
+                f"{resp.text[:200]}"
+            )
+        return resp.json()
+
+    ref = _get(f"{git_base}/ref/heads/{branch}")
+    base_commit_sha = (ref.get("object") or {}).get("sha")
+    if not base_commit_sha:
+        raise CourseGitServiceError(f"branch '{branch}' has no commit to build on.")
+    base_tree_sha = ((_get(f"{git_base}/commits/{base_commit_sha}") or {}).get("tree") or {}).get("sha")
+    if not base_tree_sha:
+        raise CourseGitServiceError("could not resolve the branch's base tree.")
+
+    tree_entries = [
+        {"path": path, "mode": "100644", "type": "blob", "content": text}
+        for path, text in files.items()
+    ]
+    new_tree = _post(f"{git_base}/trees", {"base_tree": base_tree_sha, "tree": tree_entries})
+    if new_tree.get("sha") == base_tree_sha:
+        # Recomposed markdown is byte-identical to the repo — don't create
+        # an empty commit.
+        return ""
+
+    commit = _post(f"{git_base}/commits", {
+        "message": message,
+        "tree": new_tree["sha"],
+        "parents": [base_commit_sha],
+    })
+    new_commit_sha = commit.get("sha")
+    if not new_commit_sha:
+        raise CourseGitServiceError("GitHub did not return a commit sha.")
+    try:
+        upd = _requests.patch(
+            f"{git_base}/refs/heads/{branch}", headers=headers,
+            json={"sha": new_commit_sha}, timeout=30,
+        )
+    except _requests.RequestException as exc:
+        raise CourseGitServiceError(f"network error updating ref: {exc}") from exc
+    if upd.status_code >= 400:
+        raise CourseGitServiceError(
+            f"GitHub returned {upd.status_code} updating branch '{branch}': {upd.text[:200]}"
+        )
+    return new_commit_sha
 
 
 def sync_course_to_repo(course) -> dict:
