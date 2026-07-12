@@ -129,11 +129,16 @@ do not run project containers/apps locally.
   `Nesbitt-bot/notechondria-course-template` (private, `is_template`).
   (2026-07-11) — will re-seed as the *standard/reference* (config example)
   rather than a rigid layout.
-- [ ] **Veronica-7 migration** (bot PAT): fork
-  `colorful-numbers/Veronica-7` → Nesbitt-bot; clone to a temp workspace
-  repo; add `notechondria.course.yaml` (vitepress preset) so it parses
-  without moving files; bind it as a new course; open a PR back to the
-  original adding the config/standard.
+- [~] **Veronica-7 migration** — adapter validated read-only against the
+  real repo (211 blobs / 195 md): `infer_preset`→`vitepress`, `.vitepress/**`
+  excluded, no README/TODO leakage, depth-1 → 6 index-titled modules / 193
+  notes / 0 warnings, frontmatter round-trips. Validated
+  `notechondria.course.yaml` + runbook: `docs/integrations/veronica-7-migration.md`.
+  **Remaining (blocked here — need production + owner sign-off):** fork
+  `colorful-numbers/Veronica-7` → Nesbitt-bot (bot PAT); push the config to
+  the fork; **bind + import needs the GitHub Data Sync App installed on the
+  fork + the production backend** (no local Django here); the **PR back to
+  the original is outward-facing to a third party — confirm before opening.**
 - [ ] **MDX support** (`.mdx`) — skipped in v1 (parser warns); add
   parsing + sync-write once markdown is solid.
 - [ ] **Cloudflare-style repo selector/binder** UI: list of repos, each

@@ -48,6 +48,7 @@
 - [GitHub Sync (experimental)](integrations/github-sync.md)
 - [Casdoor migration plan](integrations/casdoor-migration.md)
 - [MCP → CLI migration proposal](integrations/mcp-cli-migration.md)
+- [Veronica-7 course migration runbook](integrations/veronica-7-migration.md)
 - [Casdoor login setup runbook](integrations/casdoor-setup.md)
 
 # Operations
