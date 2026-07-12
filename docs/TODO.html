@@ -349,16 +349,14 @@ Created the <strong>course template repo</strong>
 rather than a rigid layout.</p>
 </li>
 <li>
-<p>[~] <strong>Veronica-7 migration</strong> — adapter validated read-only against the
-real repo (211 blobs / 195 md): <code>infer_preset</code>→<code>vitepress</code>, <code>.vitepress/**</code>
-excluded, no README/TODO leakage, depth-1 → 6 index-titled modules / 193
-notes / 0 warnings, frontmatter round-trips. Validated
-<code>notechondria.course.yaml</code> + runbook: <code>docs/integrations/veronica-7-migration.md</code>.
-<strong>Remaining (blocked here — need production + owner sign-off):</strong> fork
-<code>colorful-numbers/Veronica-7</code> → Nesbitt-bot (bot PAT); push the config to
-the fork; <strong>bind + import needs the GitHub Data Sync App installed on the
-fork + the production backend</strong> (no local Django here); the <strong>PR back to
-the original is outward-facing to a third party — confirm before opening.</strong></p>
+<p><input disabled="" type="checkbox" checked=""/>
+<strong>Veronica-7 migration</strong> — DONE on production (2026-07-12). Forked
+→ <code>Nesbitt-bot/Veronica-7</code>, added <code>notechondria.course.yaml</code>, App
+installed (installation <code>146096524</code>), course <strong>#22</strong> bound, imported
+(193 notes / 6 modules / 0 warnings, idempotent), sync verified (one
+atomic commit, byte-faithful round-trip), lazy sync enabled, and the
+config PR opened upstream: <code>colorful-numbers/Veronica-7#1</code>. Runbook:
+<code>docs/integrations/veronica-7-migration.md</code>.</p>
 </li>
 <li>
 <p><input disabled="" type="checkbox" checked=""/>
