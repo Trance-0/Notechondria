@@ -129,16 +129,13 @@ do not run project containers/apps locally.
   `Nesbitt-bot/notechondria-course-template` (private, `is_template`).
   (2026-07-11) — will re-seed as the *standard/reference* (config example)
   rather than a rigid layout.
-- [~] **Veronica-7 migration** — adapter validated read-only against the
-  real repo (211 blobs / 195 md): `infer_preset`→`vitepress`, `.vitepress/**`
-  excluded, no README/TODO leakage, depth-1 → 6 index-titled modules / 193
-  notes / 0 warnings, frontmatter round-trips. Validated
-  `notechondria.course.yaml` + runbook: `docs/integrations/veronica-7-migration.md`.
-  **Remaining (blocked here — need production + owner sign-off):** fork
-  `colorful-numbers/Veronica-7` → Nesbitt-bot (bot PAT); push the config to
-  the fork; **bind + import needs the GitHub Data Sync App installed on the
-  fork + the production backend** (no local Django here); the **PR back to
-  the original is outward-facing to a third party — confirm before opening.**
+- [x] **Veronica-7 migration** — DONE on production (2026-07-12). Forked
+  → `Nesbitt-bot/Veronica-7`, added `notechondria.course.yaml`, App
+  installed (installation `146096524`), course **#22** bound, imported
+  (193 notes / 6 modules / 0 warnings, idempotent), sync verified (one
+  atomic commit, byte-faithful round-trip), lazy sync enabled, and the
+  config PR opened upstream: `colorful-numbers/Veronica-7#1`. Runbook:
+  `docs/integrations/veronica-7-migration.md`.
 - [x] **GitHub App binding over MCP/CLI**: `github_app_status` /
   `connect_github_app` / `list_github_repos` (both servers, parity 45→48;
   shared `github_sync.list_installation_repositories`). Lets an agent

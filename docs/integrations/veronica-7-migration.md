@@ -48,23 +48,33 @@ sync:
   write: ["**/*.md"]       # sync writes markdown only; never .vitepress/**, code, or CI
 ```
 
-## Remaining steps (need production + owner confirmation)
+## Execution (DONE — 2026-07-12, on production)
 
-These are **not** done — each needs infrastructure this agent's
-environment can't reach, and step 4 is an outward-facing PR to a
-third-party repo:
+All steps ran end-to-end against `https://notechondria.trance-0.com`:
 
-1. **Fork** `colorful-numbers/Veronica-7` → `Nesbitt-bot` (bot PAT).
-   Reversible (a fork on the bot account, deletable).
-2. **Clone the fork** to a temp workspace, add the `notechondria.course.yaml`
-   above, push to the fork. Stays within the bot's own fork.
-3. **Bind + import** the fork as a new course — needs the *production*
-   backend with the GitHub Data Sync **App installed on the fork**
-   (`POST courses/<id>/git/import/`). Then edits sync back via the
-   0.1.174 lazy engine (`POST courses/<id>/git/sync/`).
-4. **PR the config to the original** `colorful-numbers/Veronica-7` so the
-   upstream repo becomes Notechondria-bindable. **Outward-facing to a
-   third party — confirm before opening.**
+1. **Forked** `colorful-numbers/Veronica-7` → `Nesbitt-bot/Veronica-7`
+   (bot PAT).
+2. **Added `notechondria.course.yaml`** to the fork `main` (the config
+   above) via the Contents API — no restructuring needed (the adapter
+   reads the repo as-is).
+3. **App installed** on the fork (installation `146096524`);
+   `connect_github_app` linked it → `list_github_repos` confirmed the fork
+   reachable → course **#22** created → `set_course_git` bound it →
+   `import_course_git`: **193 notes / 6 modules / 0 warnings**, and a
+   re-import was a clean **no-op (idempotent, matched by `git_path`)**.
+4. **Sync verified**: `sync_course_git` pushes back as **one atomic Git
+   Data API commit** (~5 s for 193 files; the 0.1.174 per-file version
+   timed out — fixed in 0.1.176). A note edit → sync round-trips
+   byte-identically, frontmatter preserved; a no-change sync is a no-op
+   (no empty commit). Lazy sync is enabled (10-min debounce).
+5. **PR to the original**: `colorful-numbers/Veronica-7#1` — the
+   config-only diff (one new file, additive, VitePress build untouched).
 
-Steps 1–2 use the bot PAT (must never be echoed to logs or committed);
-step 3 depends on the App installation; step 4 needs owner sign-off.
+Known cosmetic follow-up: the first sync normalized YAML frontmatter in a
+few files (quote style, long-line wrap, trailing newline) — semantically
+lossless, one-time. Byte-faithful frontmatter would require storing the
+raw block on import (see docs/TODO.md).
+
+The bot PAT was used transiently (stored only in the session scratchpad,
+outside the repo, then shredded) and never committed or logged — rotate
+it now that the migration is done.
