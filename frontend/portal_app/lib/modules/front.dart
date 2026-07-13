@@ -358,20 +358,11 @@ class _HeatmapSection extends StatelessWidget {
                         child: Column(
                           children: [
                             for (final c in shownWeeks[w])
-                              Container(
-                                width: cell,
-                                height: cell,
-                                margin: const EdgeInsets.only(bottom: gap),
-                                decoration: BoxDecoration(
-                                  color: _tintFor(context, c),
-                                  borderRadius: BorderRadius.circular(3),
-                                  border: c['is_today'] == true
-                                      ? Border.all(
-                                          color: theme.colorScheme.onSurface,
-                                          width: 1,
-                                        )
-                                      : null,
-                                ),
+                              _HeatmapCell(
+                                cell: c,
+                                size: cell,
+                                gap: gap,
+                                color: _tintFor(context, c),
                               ),
                           ],
                         ),
@@ -383,6 +374,59 @@ class _HeatmapSection extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// A single heatmap day. Non-placeholder days carry a tooltip showing the
+/// date and that day's activity (past intensity) or planned load (future).
+class _HeatmapCell extends StatelessWidget {
+  const _HeatmapCell({
+    required this.cell,
+    required this.size,
+    required this.gap,
+    required this.color,
+  });
+
+  final Map<String, dynamic> cell;
+  final double size;
+  final double gap;
+  final Color color;
+
+  String _tooltip(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final date = cell['date']?.toString() ?? '';
+    final kind = cell['kind']?.toString() ?? 'past';
+    final line = kind == 'future'
+        ? l10n.heatmapPlannedValue(
+            (cell['future_value'] as num?)?.toInt() ?? 0)
+        : l10n.heatmapActivityValue(
+            (cell['past_value'] as num?)?.toInt() ?? 0);
+    return '$date\n$line';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final box = Container(
+      width: size,
+      height: size,
+      margin: EdgeInsets.only(bottom: gap),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(3),
+        border: cell['is_today'] == true
+            ? Border.all(color: theme.colorScheme.onSurface, width: 1)
+            : null,
+      ),
+    );
+    if (cell['placeholder'] == true) {
+      return box;
+    }
+    return Tooltip(
+      message: _tooltip(context),
+      waitDuration: const Duration(milliseconds: 250),
+      child: box,
     );
   }
 }

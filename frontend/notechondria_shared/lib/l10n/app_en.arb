@@ -557,9 +557,17 @@
   "activityNewEvent": "New event",
   "activityEventTitle": "Event title",
   "activityDifficulty": "Difficulty",
-  "activityWeightN": "Weight {n}",
+  "activityWeightN": "{n, select, 1{Trivial} 2{Normal} 3{Important} 4{Significant} 5{Fatal} other{Normal}}",
   "@activityWeightN": {
     "placeholders": { "n": { "type": "int" } }
+  },
+  "heatmapActivityValue": "{value} activity",
+  "@heatmapActivityValue": {
+    "placeholders": { "value": { "type": "int" } }
+  },
+  "heatmapPlannedValue": "planned load {value}",
+  "@heatmapPlannedValue": {
+    "placeholders": { "value": { "type": "int" } }
   },
   "activitySubscribeToCalendar": "Subscribe to calendar",
   "activityIcalUrl": "iCal URL",

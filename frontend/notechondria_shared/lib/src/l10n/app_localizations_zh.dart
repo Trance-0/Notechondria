@@ -1448,7 +1448,30 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String activityWeightN(int n) {
-    return '权重 $n';
+    switch (n) {
+      case 1:
+        return '轻微';
+      case 2:
+        return '普通';
+      case 3:
+        return '重要';
+      case 4:
+        return '重大';
+      case 5:
+        return '致命';
+      default:
+        return '普通';
+    }
+  }
+
+  @override
+  String heatmapActivityValue(int value) {
+    return '活动强度 $value';
+  }
+
+  @override
+  String heatmapPlannedValue(int value) {
+    return '计划负载 $value';
   }
 
   @override

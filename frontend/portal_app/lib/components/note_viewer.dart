@@ -116,6 +116,8 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
                                   child: MarkdownBody(
                                     data: content,
                                     selectable: true,
+                                    styleSheet:
+                                        _noteMarkdownStyleSheet(context),
                                     builders: _markdownBuilders(),
                                     inlineSyntaxes: _markdownInlineSyntaxes(),
                                   ),

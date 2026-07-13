@@ -2822,6 +2822,18 @@ abstract class AppLocalizations {
   /// **'Weight {n}'**
   String activityWeightN(int n);
 
+  /// Heatmap tooltip line for a past/today cell: activity intensity.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} activity'**
+  String heatmapActivityValue(int value);
+
+  /// Heatmap tooltip line for a future cell: planned difficulty load.
+  ///
+  /// In en, this message translates to:
+  /// **'planned load {value}'**
+  String heatmapPlannedValue(int value);
+
   /// No description provided for @activitySubscribeToCalendar.
   ///
   /// In en, this message translates to:

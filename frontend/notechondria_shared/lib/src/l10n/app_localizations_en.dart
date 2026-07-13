@@ -1524,7 +1524,30 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String activityWeightN(int n) {
-    return 'Weight $n';
+    switch (n) {
+      case 1:
+        return 'Trivial';
+      case 2:
+        return 'Normal';
+      case 3:
+        return 'Important';
+      case 4:
+        return 'Significant';
+      case 5:
+        return 'Fatal';
+      default:
+        return 'Normal';
+    }
+  }
+
+  @override
+  String heatmapActivityValue(int value) {
+    return '$value activity';
+  }
+
+  @override
+  String heatmapPlannedValue(int value) {
+    return 'planned load $value';
   }
 
   @override

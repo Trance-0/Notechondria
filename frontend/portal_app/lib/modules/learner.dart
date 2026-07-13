@@ -772,20 +772,6 @@ class _LearnerNoteCard extends StatelessWidget {
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (!isLocalDraft) ...[
-                    const SizedBox(height: 14),
-                    Align(
-                      alignment: Alignment.bottomRight,
-                      child: Text(
-                        AppLocalizations.of(context).feedCourseMetaHint,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),

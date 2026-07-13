@@ -275,6 +275,50 @@ List<md.InlineSyntax> _markdownInlineSyntaxes() {
   return [_LatexInlineSyntax()];
 }
 
+/// Theme-aware markdown styling shared by every note reader (viewer +
+/// learner). Without an explicit sheet, `flutter_markdown` renders
+/// blockquotes and code with its package defaults (a hardcoded pale-blue
+/// blockquote box) that look wrong in dark mode and washed-out in light.
+/// This derives everything from the active [ColorScheme] so both themes
+/// read correctly.
+MarkdownStyleSheet _noteMarkdownStyleSheet(BuildContext context) {
+  final theme = Theme.of(context);
+  final scheme = theme.colorScheme;
+  final base = MarkdownStyleSheet.fromTheme(theme);
+  return base.copyWith(
+    blockquotePadding: const EdgeInsets.fromLTRB(16, 8, 12, 8),
+    blockquote: (base.blockquote ?? theme.textTheme.bodyMedium)
+        ?.copyWith(color: scheme.onSurfaceVariant),
+    blockquoteDecoration: BoxDecoration(
+      color: scheme.surfaceVariant.withOpacity(0.4),
+      border: Border(
+        left: BorderSide(
+          color: scheme.primary.withOpacity(0.6),
+          width: 4,
+        ),
+      ),
+      borderRadius: const BorderRadius.only(
+        topRight: Radius.circular(6),
+        bottomRight: Radius.circular(6),
+      ),
+    ),
+    code: (base.code ?? theme.textTheme.bodyMedium)?.copyWith(
+      backgroundColor: scheme.surfaceVariant.withOpacity(0.55),
+      color: scheme.onSurface,
+      fontFamily: 'monospace',
+    ),
+    codeblockDecoration: BoxDecoration(
+      color: scheme.surfaceVariant.withOpacity(0.45),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    horizontalRuleDecoration: BoxDecoration(
+      border: Border(
+        top: BorderSide(width: 1, color: scheme.outlineVariant),
+      ),
+    ),
+  );
+}
+
 /// Custom image builder for `MarkdownBody.sizedImageBuilder`.
 /// Resolves `local://<note_uuid>/<filename>` URIs through the
 /// shared `LocalAttachmentStore` and renders the bytes via
