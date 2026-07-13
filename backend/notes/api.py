@@ -323,11 +323,16 @@ class NoteSummarySerializer(serializers.ModelSerializer):
     source_note_uuid = serializers.SerializerMethodField()
     cover_image_url = serializers.SerializerMethodField()
 
+    name = serializers.CharField(read_only=True)
+    git_path = serializers.CharField(read_only=True)
+
     class Meta:
         model = Note
         fields = [
             "id",
             "uuid",
+            "name",
+            "git_path",
             "title",
             "description",
             "excerpt",
@@ -389,9 +394,7 @@ class NoteDetailSerializer(NoteSummarySerializer):
     content = serializers.CharField(read_only=True)
     metadata_json = serializers.CharField(read_only=True)
     custom_meta = serializers.CharField(read_only=True)
-    # Repo path a git-imported note maps to (read-only; set on import, used
-    # by sync). Exposed so the owner/agent can inspect the binding.
-    git_path = serializers.CharField(read_only=True)
+    # `git_path` / `name` are inherited from NoteSummarySerializer.
 
     class Meta(NoteSummarySerializer.Meta):
         fields = NoteSummarySerializer.Meta.fields + [
@@ -399,7 +402,6 @@ class NoteDetailSerializer(NoteSummarySerializer):
             "content",
             "metadata_json",
             "custom_meta",
-            "git_path",
         ]
 
     def get_blocks(self, obj):
@@ -1252,6 +1254,13 @@ class NoteListCreateApiView(APIView):
             note_word_count(note),
             HeatmapActivityTypeChoices.EDITED if existing is not None else HeatmapActivityTypeChoices.CREATED,
         )
+        # Give the note a stable, course-unique URL name (0.1.177) so it
+        # can be linked and resolved from sibling notes' markdown.
+        if not note.name and note.course_id_id:
+            from .services import ensure_note_name
+            ensure_note_name(note)
+            if note.name:
+                note.save(update_fields=["name"])
         arm_course_sync(note)
         response_status = status.HTTP_200_OK if existing is not None else status.HTTP_201_CREATED
         logger.info(

@@ -134,6 +134,8 @@ def import_course_from_repo(course) -> dict:
     config = load_course_config(config_text, repo_name=course.git_repo, paths=all_paths)
     parsed = parse_course_repo(files, config)
 
+    from notes.services import ensure_note_name
+
     created = updated = 0
     for module in parsed["modules"]:
         for note_data in module["notes"]:
@@ -151,18 +153,22 @@ def import_course_from_repo(course) -> dict:
                 deleted_at__isnull=True,
             ).first()
             if existing is not None:
-                if (
+                changed = (
                     existing.content != markdown
                     or existing.title != title
                     or existing.custom_meta != frontmatter_json
-                ):
+                )
+                if not existing.name:
+                    ensure_note_name(existing)
+                    changed = True
+                if changed:
                     existing.content = markdown
                     existing.title = title
                     existing.custom_meta = frontmatter_json
                     existing.save()
                     updated += 1
             else:
-                Note.objects.create(
+                note = Note.objects.create(
                     creator_id=creator,
                     course_id=course,
                     sharing_id=generate_unique_id(Note, "sharing_id"),
@@ -172,6 +178,9 @@ def import_course_from_repo(course) -> dict:
                     custom_meta=frontmatter_json,
                     editor_mode="G",
                 )
+                ensure_note_name(note)
+                if note.name:
+                    note.save(update_fields=["name"])
                 created += 1
 
     summary = {

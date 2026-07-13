@@ -1851,3 +1851,82 @@ class NoteAttachmentByUuidApiTests(TestCase):
         self.assertIn(self.note.uuid.hex, data["url"])
         # The file URL should NOT contain the integer note id
         self.assertNotIn(f"note_{self.note.id}", data["url"])
+
+
+class NoteNamePerCourseTests(TestCase):
+    """Note.name is a URL-safe, course-unique slug powering per-note links
+    and in-course markdown link resolution (0.1.177)."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="namer@example.com", password="pw")
+        self.creator = Creator.objects.create(user_id=self.user)
+        self.course = Course.objects.create(
+            creator_id=self.creator, slug="name-course", title="Name Course"
+        )
+        self.token = Token.objects.create(user=self.user)
+
+    def _auth(self):
+        return {"HTTP_AUTHORIZATION": f"Token {self.token.key}"}
+
+    def test_ensure_note_name_slugifies_title(self):
+        from notes.services import ensure_note_name
+
+        note = Note.objects.create(
+            creator_id=self.creator, course_id=self.course,
+            sharing_id="n-slug", title="Optical Flow & SfM",
+        )
+        ensure_note_name(note)
+        self.assertEqual(note.name, "optical-flow-sfm")
+
+    def test_ensure_note_name_dedupes_within_course(self):
+        from notes.services import ensure_note_name
+
+        a = Note.objects.create(
+            creator_id=self.creator, course_id=self.course,
+            sharing_id="n-a", title="Filters", name="filters",
+        )
+        b = Note.objects.create(
+            creator_id=self.creator, course_id=self.course,
+            sharing_id="n-b", title="Filters",
+        )
+        ensure_note_name(b)
+        self.assertEqual(a.name, "filters")
+        self.assertEqual(b.name, "filters-2")
+
+    def test_ensure_note_name_from_git_path_index_uses_folder(self):
+        from notes.services import ensure_note_name
+
+        note = Note.objects.create(
+            creator_id=self.creator, course_id=self.course,
+            sharing_id="n-idx", title="Overview",
+            git_path="docs/cv/advances/index.md",
+        )
+        ensure_note_name(note)
+        self.assertEqual(note.name, "advances")
+
+    def test_create_endpoint_assigns_name(self):
+        resp = self.client.post(
+            "/api/v1/notes/",
+            data=json.dumps({
+                "title": "My First Note",
+                "content": "# My First Note\n\nbody",
+                "course_id": self.course.id,
+            }),
+            content_type="application/json",
+            **self._auth(),
+        )
+        self.assertEqual(resp.status_code, 201, resp.content)
+        self.assertEqual(resp.json().get("name"), "my-first-note")
+
+    def test_name_unique_constraint_enforced(self):
+        from django.db import IntegrityError
+
+        Note.objects.create(
+            creator_id=self.creator, course_id=self.course,
+            sharing_id="c-1", title="A", name="dup",
+        )
+        with self.assertRaises(IntegrityError):
+            Note.objects.create(
+                creator_id=self.creator, course_id=self.course,
+                sharing_id="c-2", title="B", name="dup",
+            )

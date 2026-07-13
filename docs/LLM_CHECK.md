@@ -27,6 +27,20 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.177: portal UI bug batch (1-7) + note-name foundation & in-course
+  link resolution (8). Frontend fixes shipped in 3 CI-validated batches
+  (batches 1-2 built green on Pages before batch 3). Blockquote styleSheet,
+  note-card avatar (avatar_url→image_url), responsive/filled heatmap (year
+  window + full-width cells), heatmap tooltip, removed feedCourseMetaHint,
+  courses PageView carousel + dot selector, weight labels
+  (Trivial..Fatal). Bug 8 core: Note.name (slug, unique-per-course,
+  migration 0020 + backfill, auto-derived from git_path/title, deduped),
+  exposed on serializers; viewer onTapLink → _followNoteLink resolves
+  relative links to sibling notes by repo-path then name. Shareable
+  per-note browser URLs (Navigator 2.0 / url-strategy) DEFERRED to TODO —
+  needs a local Flutter build to migrate app_shell safely. No local Flutter
+  here; Pages CI is the Dart gate. NoteNamePerCourseTests added; django CI
+  is the backend gate.
 - 0.1.176: FIX course sync = one atomic commit (Git Data API). Found by
   running the real Veronica-7 migration on prod: import worked (193 notes /
   6 modules / 0 warnings, idempotent) but the first sync 503'd after 120s —

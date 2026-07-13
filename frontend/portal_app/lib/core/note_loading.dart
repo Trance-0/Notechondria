@@ -202,8 +202,117 @@ extension _AppShellNoteLoadingX on _AppShellState {
     }
     await showDialog<void>(
       context: context,
-      builder: (context) => _NoteViewerDialog(note: detail),
+      builder: (context) => _NoteViewerDialog(
+        note: detail,
+        onFollowLink: _followNoteLink,
+      ),
     );
+  }
+
+  /// Course id a note belongs to, or null (front-page / uncategorized).
+  int? _courseIdOf(Map<String, dynamic> note) {
+    final direct = note['course_id'];
+    if (direct is int) return direct;
+    if (direct is String) return int.tryParse(direct);
+    final course = note['course'];
+    if (course is Map && course['id'] is int) return course['id'] as int;
+    return null;
+  }
+
+  /// Follows a markdown link tapped in the note viewer. External links open
+  /// in the browser; a relative in-course link resolves to a sibling note
+  /// (by repo path relative to this note, else by slugified name) and opens
+  /// it — the "seamless in-course navigation" of bug 8.
+  Future<void> _followNoteLink(
+      Map<String, dynamic> fromNote, String href) async {
+    final raw = href.trim();
+    if (raw.isEmpty) return;
+    final lower = raw.toLowerCase();
+    if (lower.startsWith('http://') ||
+        lower.startsWith('https://') ||
+        lower.startsWith('mailto:') ||
+        lower.startsWith('tel:')) {
+      url_strategy.browserRedirect(raw);
+      return;
+    }
+    final courseId = _courseIdOf(fromNote);
+    if (courseId == null) {
+      showMessage('Link not followed: this note is not part of a course.');
+      return;
+    }
+    List<Map<String, dynamic>> siblings;
+    try {
+      siblings = await widget.client.getCourseNotes(courseId, token: _token);
+    } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      showMessage('Link not followed: Portal.UI/follow_link — $cause.');
+      return;
+    }
+    final target = _matchCourseLink(fromNote, raw, siblings);
+    if (target == null) {
+      showMessage('No note in this course matches "$raw".');
+      return;
+    }
+    await _openNoteViewer(target);
+  }
+
+  /// Resolves a relative link to a sibling note: repo-path resolution first
+  /// (relative to the source note's git_path), then a slugified-name match.
+  Map<String, dynamic>? _matchCourseLink(
+    Map<String, dynamic> fromNote,
+    String href,
+    List<Map<String, dynamic>> siblings,
+  ) {
+    var path = href.split('#').first.split('?').first.trim();
+    if (path.isEmpty) return null;
+    try {
+      path = Uri.decodeFull(path);
+    } catch (_) {
+      // keep the raw path on a malformed escape
+    }
+
+    // 1) Path-based: resolve relative to the source note's repo path.
+    final fromPath = fromNote['git_path']?.toString() ?? '';
+    if (fromPath.isNotEmpty) {
+      String resolved;
+      try {
+        resolved = Uri(path: fromPath).resolveUri(Uri.parse(path)).path;
+      } catch (_) {
+        resolved = path;
+      }
+      resolved = resolved.replaceFirst(RegExp(r'^/+'), '');
+      final candidates = <String>{
+        resolved,
+        '$resolved.md',
+        resolved.endsWith('/') ? '${resolved}index.md' : '$resolved/index.md',
+      };
+      for (final note in siblings) {
+        final gp = note['git_path']?.toString() ?? '';
+        if (gp.isNotEmpty && candidates.contains(gp)) return note;
+      }
+    }
+
+    // 2) Name-based: slugify the last path segment and match note['name'].
+    final segments = path.split('/').where((s) => s.isNotEmpty).toList();
+    if (segments.isNotEmpty) {
+      var last = segments.last;
+      if (last.toLowerCase().endsWith('.md')) {
+        last = last.substring(0, last.length - 3);
+      }
+      final wanted = _slugifyLink(last);
+      if (wanted.isNotEmpty) {
+        for (final note in siblings) {
+          if ((note['name']?.toString() ?? '') == wanted) return note;
+        }
+      }
+    }
+    return null;
+  }
+
+  String _slugifyLink(String input) {
+    final lower = input.trim().toLowerCase();
+    final dashed = lower.replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+    return dashed.replaceAll(RegExp(r'^-+|-+$'), '');
   }
 
   Future<Map<String, dynamic>> _fetchNoteDetail(int noteId) async {

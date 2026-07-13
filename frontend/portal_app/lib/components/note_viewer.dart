@@ -2,9 +2,15 @@ part of notechondria_frontend;
 
 /// Full-screen markdown note reader shared by front, course, and learner flows.
 class _NoteViewerDialog extends StatefulWidget {
-  const _NoteViewerDialog({required this.note});
+  const _NoteViewerDialog({required this.note, this.onFollowLink});
 
   final Map<String, dynamic> note;
+
+  /// Handles a tapped markdown link: an in-course relative link resolves
+  /// to a sibling note (by name / repo path) and opens it; external links
+  /// open in the browser. Null disables link following.
+  final Future<void> Function(Map<String, dynamic> fromNote, String href)?
+      onFollowLink;
 
   @override
   State<_NoteViewerDialog> createState() => _NoteViewerDialogState();
@@ -118,6 +124,14 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
                                     selectable: true,
                                     styleSheet:
                                         _noteMarkdownStyleSheet(context),
+                                    onTapLink: (text, href, title) {
+                                      final target = href?.trim() ?? '';
+                                      if (target.isEmpty) return;
+                                      final follow = widget.onFollowLink;
+                                      if (follow != null) {
+                                        follow(widget.note, target);
+                                      }
+                                    },
                                     builders: _markdownBuilders(),
                                     inlineSyntaxes: _markdownInlineSyntaxes(),
                                   ),

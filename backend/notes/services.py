@@ -37,6 +37,47 @@ from .models import (
 )
 
 
+def unique_note_name(course, base: str, *, exclude_pk=None) -> str:
+    """A URL-safe, course-unique slug from ``base`` (deduped with -2, -3…)."""
+    from django.utils.text import slugify
+
+    base_slug = (slugify(base) or "note")[:150]
+    existing_qs = Note.objects.filter(course_id=course).exclude(name="")
+    if exclude_pk is not None:
+        existing_qs = existing_qs.exclude(pk=exclude_pk)
+    existing = set(existing_qs.values_list("name", flat=True))
+    candidate = base_slug
+    counter = 2
+    while candidate in existing:
+        suffix = f"-{counter}"
+        candidate = f"{base_slug[:150 - len(suffix)]}{suffix}"
+        counter += 1
+    return candidate
+
+
+def ensure_note_name(note: Note) -> str:
+    """Assign a unique-per-course ``name`` if the note lacks one. Imported
+    notes derive it from their ``git_path`` (an ``index``/``README`` takes
+    its folder name for friendlier links); others from the title. Notes
+    with no course are left unnamed. Does not save — the caller persists."""
+    import posixpath
+
+    if note.name:
+        return note.name
+    if note.course_id is None:
+        return ""
+    base = ""
+    if note.git_path:
+        stem = posixpath.splitext(posixpath.basename(note.git_path))[0]
+        if stem.lower() in ("index", "readme"):
+            parent = posixpath.basename(posixpath.dirname(note.git_path))
+            stem = parent or stem
+        base = stem
+    base = base or note.title or "note"
+    note.name = unique_note_name(note.course_id, base, exclude_pk=note.pk)
+    return note.name
+
+
 def count_words(text: str) -> int:
     if not text:
         return 0

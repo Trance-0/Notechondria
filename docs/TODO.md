@@ -165,6 +165,15 @@ do not run project containers/apps locally.
   parsing + sync-write once markdown is solid.
 - [ ] **Cloudflare-style repo selector/binder** UI: list of repos, each
   opens a modal to pick the course to bind + set the sync timeout.
+- [ ] **Shareable per-note browser URLs** (bug 8, part 2): route
+  `/c/<course-slug>/<note-name>` deep-links to a note and updates the URL
+  as notes open, so links are shareable/back-navigable. Foundation exists
+  (`Note.name` unique per course, 0.1.177; in-course link resolution in the
+  viewer). Needs a Navigator-2.0 / `url_strategy` migration of
+  `portal_app` `app_shell` — do it with a local Flutter build to validate
+  (the portal is a single `MaterialApp(home:)` today with a stub URL
+  strategy). Also port link-following to the learner editor preview and add
+  `name` to the MCP/CLI note payloads.
 - [x] **MCP/CLI** `get_course_git` / `set_course_git` (both servers,
   parity; shared `notes.services` logic). (0.1.171) — course *content*
   access over API key already exists (list_courses/get_course/notes
