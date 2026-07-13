@@ -97,10 +97,9 @@ class _FrontPage extends StatelessWidget {
   }
 }
 
-/// Horizontally-scrolling carousel of public courses. Each card shows the
-/// course cover image (or a theme-colored placeholder) plus title and
-/// description. Tapping a card opens the course detail view.
-class _PublicCoursesSection extends StatelessWidget {
+/// Carousel of recent public courses: a swipeable [PageView] of cover
+/// cards with a tappable circular dot selector along the bottom.
+class _PublicCoursesSection extends StatefulWidget {
   const _PublicCoursesSection({
     required this.courses,
     required this.apiBaseUrl,
@@ -112,8 +111,31 @@ class _PublicCoursesSection extends StatelessWidget {
   final Future<void> Function(Map<String, dynamic> course) onOpenCourse;
 
   @override
+  State<_PublicCoursesSection> createState() => _PublicCoursesSectionState();
+}
+
+class _PublicCoursesSectionState extends State<_PublicCoursesSection> {
+  late final PageController _controller = PageController(viewportFraction: 0.92);
+  int _page = 0;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _goTo(int index) {
+    _controller.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final courses = widget.courses;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -135,93 +157,147 @@ class _PublicCoursesSection extends StatelessWidget {
             const SizedBox(height: 12),
             if (courses.isEmpty)
               Text(AppLocalizations.of(context).frontNoCourses)
-            else
+            else ...[
               SizedBox(
-                height: 220,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
+                height: 200,
+                child: PageView.builder(
+                  controller: _controller,
                   itemCount: courses.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
-                  itemBuilder: (context, index) {
-                    final course = courses[index];
-                    final coverUrl = _resolveRemoteUrl(
-                      course['cover_image_url']?.toString() ?? '',
-                      apiBaseUrl: apiBaseUrl,
-                    );
-                    return SizedBox(
-                      width: 240,
-                      child: Card(
-                        clipBehavior: Clip.antiAlias,
-                        elevation: 2,
-                        child: InkWell(
-                          onTap: () => onOpenCourse(course),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              SizedBox(
-                                height: 108,
-                                child: coverUrl.isEmpty
-                                    ? Container(
-                                        color: theme.colorScheme.surfaceVariant,
-                                        alignment: Alignment.center,
-                                        child: const Icon(
-                                          Icons.menu_book_outlined,
-                                          size: 36,
-                                        ),
-                                      )
-                                    : _RemoteMedia(
-                                        imageUrl: coverUrl,
-                                        fit: BoxFit.cover,
-                                        fallback: Container(
-                                          color:
-                                              theme.colorScheme.surfaceVariant,
-                                          alignment: Alignment.center,
-                                          child: const Icon(
-                                            Icons.menu_book_outlined,
-                                            size: 36,
-                                          ),
-                                        ),
-                                      ),
-                              ),
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(12),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        course['title']?.toString() ?? 'Course',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: theme.textTheme.titleMedium
-                                            ?.copyWith(
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Expanded(
-                                        child: Text(
-                                          course['description']?.toString() ??
-                                              '',
-                                          maxLines: 3,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: theme.textTheme.bodySmall,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
+                  onPageChanged: (i) => setState(() => _page = i),
+                  itemBuilder: (context, index) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: _CourseCarouselCard(
+                      course: courses[index],
+                      apiBaseUrl: widget.apiBaseUrl,
+                      onOpen: () => widget.onOpenCourse(courses[index]),
+                    ),
+                  ),
                 ),
               ),
+              if (courses.length > 1) ...[
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    for (var i = 0; i < courses.length; i++)
+                      _CarouselDot(
+                        active: i == _page,
+                        onTap: () => _goTo(i),
+                        color: theme.colorScheme.primary,
+                      ),
+                  ],
+                ),
+              ],
+            ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One slide in the public-courses carousel.
+class _CourseCarouselCard extends StatelessWidget {
+  const _CourseCarouselCard({
+    required this.course,
+    required this.apiBaseUrl,
+    required this.onOpen,
+  });
+
+  final Map<String, dynamic> course;
+  final String? apiBaseUrl;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final coverUrl = _resolveRemoteUrl(
+      course['cover_image_url']?.toString() ?? '',
+      apiBaseUrl: apiBaseUrl,
+    );
+    final placeholder = Container(
+      color: theme.colorScheme.surfaceVariant,
+      alignment: Alignment.center,
+      child: const Icon(Icons.menu_book_outlined, size: 36),
+    );
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      elevation: 2,
+      child: InkWell(
+        onTap: onOpen,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: 108,
+              child: coverUrl.isEmpty
+                  ? placeholder
+                  : _RemoteMedia(
+                      imageUrl: coverUrl,
+                      fit: BoxFit.cover,
+                      fallback: placeholder,
+                    ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      course['title']?.toString() ?? 'Course',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 4),
+                    Expanded(
+                      child: Text(
+                        course['description']?.toString() ?? '',
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Tappable circular page indicator for the courses carousel.
+class _CarouselDot extends StatelessWidget {
+  const _CarouselDot({
+    required this.active,
+    required this.onTap,
+    required this.color,
+  });
+
+  final bool active;
+  final VoidCallback onTap;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      customBorder: const CircleBorder(),
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          width: active ? 22 : 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: active ? color : color.withOpacity(0.35),
+            borderRadius: BorderRadius.circular(4),
+          ),
         ),
       ),
     );
@@ -330,25 +406,26 @@ class _HeatmapSection extends StatelessWidget {
             LayoutBuilder(
               builder: (context, constraints) {
                 const gap = 3.0;
-                const minCell = 9.0;
-                const maxCell = 16.0;
+                const minCell = 10.0;
+                const maxCell = 20.0;
                 final available = constraints.maxWidth;
                 if (weeks.isEmpty || available <= 0) {
                   return const SizedBox.shrink();
                 }
-                // Most weeks that fit at the minimum cell size; show the
-                // most recent ones (trim from the front).
+                // The wider the window, the more history we render: fit as
+                // many recent weeks as possible at the minimum cell size
+                // (trim older weeks from the front), then size each cell to
+                // span the full available width so the grid fills the row
+                // instead of leaving it half-empty.
                 final maxWeeks =
                     ((available + gap) / (minCell + gap)).floor().clamp(1, 9999);
                 final shownWeeks = weeks.length <= maxWeeks
                     ? weeks
                     : weeks.sublist(weeks.length - maxWeeks);
-                final rawCell =
-                    (available - (shownWeeks.length - 1) * gap) /
-                        shownWeeks.length;
-                final cell = rawCell.clamp(minCell, maxCell);
+                final cell = ((available - (shownWeeks.length - 1) * gap) /
+                        shownWeeks.length)
+                    .clamp(minCell, maxCell);
                 return Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     for (var w = 0; w < shownWeeks.length; w++)

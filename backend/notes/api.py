@@ -652,7 +652,12 @@ class FrontPageApiView(APIView):
             "collections": carousel_data,
         }
         if request.user.is_authenticated:
-            payload["heatmap"] = build_heatmap_payload(ensure_creator(request.user))
+            # A full year of past activity (plus ~4 weeks of planned load)
+            # so a wide window can render more history and fill the row;
+            # the frontend trims to the most-recent weeks that fit.
+            payload["heatmap"] = build_heatmap_payload(
+                ensure_creator(request.user), days_before=364, days_after=28
+            )
             payload["upcoming_events"] = [
                 planner_event_payload(event)
                 for event in PlannerEvent.objects.filter(

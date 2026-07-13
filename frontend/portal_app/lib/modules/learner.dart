@@ -628,7 +628,16 @@ class _LearnerNoteCard extends StatelessWidget {
     final authorName = author['username']?.toString() ?? '';
     final avatarFallback =
         authorName.isEmpty ? 'L' : authorName.substring(0, 1);
+    // Prefer the Casdoor avatar, then fall back to the effective/local
+    // image_url — mirrors the (working) settings account card so a note
+    // card's byline shows the same avatar the rest of the app does.
     final avatarUrl = _resolveRemoteUrl(
+      (author['avatar_url']?.toString().isNotEmpty ?? false)
+          ? author['avatar_url'].toString()
+          : author['image_url']?.toString() ?? '',
+      apiBaseUrl: apiBaseUrl,
+    );
+    final avatarFallbackUrl = _resolveRemoteUrl(
       author['image_url']?.toString() ?? '',
       apiBaseUrl: apiBaseUrl,
     );
@@ -672,6 +681,7 @@ class _LearnerNoteCard extends StatelessWidget {
                       _RemoteAvatar(
                         radius: 18,
                         imageUrl: avatarUrl,
+                        fallbackImageUrl: avatarFallbackUrl,
                         fallbackLabel: avatarFallback,
                       ),
                       const SizedBox(width: 12),
