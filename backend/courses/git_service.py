@@ -138,6 +138,7 @@ def import_course_from_repo(course) -> dict:
 
     created = updated = 0
     for module in parsed["modules"]:
+        module_title = (module.get("title") or "")[:160]
         for note_data in module["notes"]:
             git_path = note_data["path"]
             title = (note_data["title"] or "Untitled")[:100]
@@ -157,6 +158,7 @@ def import_course_from_repo(course) -> dict:
                     existing.content != markdown
                     or existing.title != title
                     or existing.custom_meta != frontmatter_json
+                    or existing.module != module_title
                 )
                 if not existing.name:
                     ensure_note_name(existing)
@@ -165,6 +167,7 @@ def import_course_from_repo(course) -> dict:
                     existing.content = markdown
                     existing.title = title
                     existing.custom_meta = frontmatter_json
+                    existing.module = module_title
                     existing.save()
                     updated += 1
             else:
@@ -176,6 +179,7 @@ def import_course_from_repo(course) -> dict:
                     content=markdown,
                     git_path=git_path,
                     custom_meta=frontmatter_json,
+                    module=module_title,
                     editor_mode="G",
                 )
                 ensure_note_name(note)

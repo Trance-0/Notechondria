@@ -27,6 +27,10 @@ class Course(models.Model):
     description = models.TextField(blank=True, null=True)
     cover_image = models.ImageField(upload_to=course_cover_path, blank=True, null=True)
     icon = models.IntegerField(blank=True, null=True, help_text="Material Icons codePoint")
+    # Course accent hue 0-359 (0.1.178). Drives per-course event colour on
+    # the calendar (hue = course, saturation = importance, value = theme).
+    # Null = use the app's default theme colour.
+    color_hue = models.PositiveSmallIntegerField(blank=True, null=True)
     sort_order = models.IntegerField(default=0, null=False)
     # Git binding (0.1.164). A course may be bound to a GitHub repo that
     # mirrors its notes as files. The backend stays the source of

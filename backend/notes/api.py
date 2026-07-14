@@ -325,6 +325,7 @@ class NoteSummarySerializer(serializers.ModelSerializer):
 
     name = serializers.CharField(read_only=True)
     git_path = serializers.CharField(read_only=True)
+    module = serializers.CharField(read_only=True)
 
     class Meta:
         model = Note
@@ -333,6 +334,7 @@ class NoteSummarySerializer(serializers.ModelSerializer):
             "uuid",
             "name",
             "git_path",
+            "module",
             "title",
             "description",
             "excerpt",
@@ -437,6 +439,7 @@ class CourseSerializer(serializers.ModelSerializer):
             "description",
             "cover_image_url",
             "icon",
+            "color_hue",
             "sort_order",
             "owner",
             "subscriber_count",
@@ -517,6 +520,9 @@ class CourseWriteSerializer(serializers.Serializer):
     description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     client_course_id = serializers.CharField(required=False, allow_blank=True, max_length=64)
     icon = serializers.IntegerField(required=False, allow_null=True)
+    color_hue = serializers.IntegerField(
+        required=False, allow_null=True, min_value=0, max_value=359
+    )
 
 
 class NoteWriteSerializer(serializers.Serializer):
@@ -854,6 +860,8 @@ class CourseDetailApiView(APIView):
             course.description = serializer.validated_data.get("description") or ""
         if "icon" in serializer.validated_data:
             course.icon = serializer.validated_data.get("icon")
+        if "color_hue" in serializer.validated_data:
+            course.color_hue = serializer.validated_data.get("color_hue")
         course.save()
         subscription_map = active_subscription_map(creator)
         return Response(

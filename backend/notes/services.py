@@ -191,6 +191,16 @@ def planner_event_payload(event: PlannerEvent):
         "difficulty_weight": event.difficulty_weight,
         "description": event.description or "",
         "course_id": event.course_id_id,
+        "course": (
+            {
+                "id": event.course_id.id,
+                "title": event.course_id.title,
+                "slug": event.course_id.slug,
+                "color_hue": event.course_id.color_hue,
+            }
+            if event.course_id_id
+            else None
+        ),
         "is_completed": event.is_completed,
         "completed_at": event.completed_at.isoformat() if event.completed_at else None,
         "recurrence_freq": event.recurrence_freq,

@@ -62,6 +62,10 @@ class Note(models.Model):
     # git_path basename on import) and de-duplicated per course; empty for
     # legacy/uncategorized notes until they are next saved.
     name = models.SlugField(max_length=160, blank=True, default="")
+    # Human-readable module/section this note belongs to inside its course
+    # (0.1.178). Set on git-import from the adapter's module grouping (cv,
+    # dnn, …); the course view groups notes by this. Empty = ungrouped.
+    module = models.CharField(max_length=160, blank=True, default="")
     deleted_at = models.DateTimeField(blank=True, null=True)
     note_type = models.CharField(
         max_length=1,

@@ -1930,3 +1930,85 @@ class NoteNamePerCourseTests(TestCase):
                 creator_id=self.creator, course_id=self.course,
                 sharing_id="c-2", title="B", name="dup",
             )
+
+
+class CourseHueAndModuleTests(TestCase):
+    """0.1.178 foundations: Course.color_hue, Note.module, event payload
+    course enrichment."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="hue@example.com", password="pw")
+        self.creator = Creator.objects.create(user_id=self.user)
+        self.course = Course.objects.create(
+            creator_id=self.creator, slug="hue-course", title="Hue Course"
+        )
+        self.token = Token.objects.create(user=self.user)
+
+    def _auth(self):
+        return {"HTTP_AUTHORIZATION": f"Token {self.token.key}"}
+
+    def test_patch_course_sets_color_hue(self):
+        resp = self.client.patch(
+            f"/api/v1/courses/{self.course.id}/",
+            data=json.dumps({"title": "Hue Course", "color_hue": 210}),
+            content_type="application/json",
+            **self._auth(),
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.json()["color_hue"], 210)
+        self.course.refresh_from_db()
+        self.assertEqual(self.course.color_hue, 210)
+
+    def test_color_hue_out_of_range_rejected(self):
+        resp = self.client.patch(
+            f"/api/v1/courses/{self.course.id}/",
+            data=json.dumps({"title": "Hue Course", "color_hue": 400}),
+            content_type="application/json",
+            **self._auth(),
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_import_populates_note_module(self):
+        from unittest.mock import patch
+        from creators.models import GithubIntegration
+        import courses.git_service as git_service
+
+        course = Course.objects.create(
+            creator_id=self.creator, slug="mod-course", title="Mod Course",
+            git_repo="octo/docs", git_branch="main",
+        )
+        GithubIntegration.objects.create(
+            creator=self.creator, installation_id="inst-mod",
+        )
+        files = {
+            "docs/cv/index.md": "---\ntitle: CV\n---\n# CV\n",
+            "docs/cv/filters.md": "# Filters\n",
+            "docs/dnn/vit.md": "# ViT\n",
+        }
+        cfg = "preset: vitepress\ncontent:\n  module_depth: 1\n"
+        with patch.object(
+            git_service, "fetch_course_repo",
+            return_value=(cfg, files, list(files)),
+        ):
+            git_service.import_course_from_repo(course)
+        cv_notes = Note.objects.filter(course_id=course, module__icontains="CV")
+        self.assertTrue(cv_notes.exists())
+        # Every imported note carries a non-empty module label.
+        self.assertTrue(
+            all(n.module for n in Note.objects.filter(course_id=course))
+        )
+
+    def test_event_payload_includes_course_hue(self):
+        from notes.services import planner_event_payload
+
+        self.course.color_hue = 120
+        self.course.save(update_fields=["color_hue"])
+        event = PlannerEvent.objects.create(
+            creator_id=self.creator, course_id=self.course,
+            title="Study", event_date=timezone.localdate(),
+            difficulty_weight=3,
+        )
+        payload = planner_event_payload(event)
+        self.assertIsNotNone(payload["course"])
+        self.assertEqual(payload["course"]["color_hue"], 120)
+        self.assertEqual(payload["course"]["title"], "Hue Course")
