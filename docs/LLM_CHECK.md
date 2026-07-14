@@ -27,6 +27,21 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.178: calendar/course feature batch — foundations + #4 + #6-core.
+  Backend (CI-green): Course.color_hue (migration courses/0007, serializer
+  read + write + PATCH, validated 0-359), Note.module (migration
+  notes/0021, populated on git-import from adapter grouping, summary
+  serializer), planner_event_payload embeds course{id,title,slug,color_hue}.
+  Frontend (Pages-validated): #4 course view groups notes by note.module
+  (imported Veronica-7 → cv/dnn/fundamentals/llm/transformer-era) + dropped
+  fabricated objectives/assignments/discussion placeholders; #6 HSV event
+  colours (hue=course, saturation=importance, value=theme). Tests:
+  CourseHueAndModuleTests. Deferred to TODO with reasoning: #5 event
+  detail+course selector, #8 course modal + owner transfer, #6 hue button,
+  #3 lazy load, #1 drag/now-line/15-min snap, #2 ctrl+scroll zoom, #7
+  offline-cache ownership — the interaction/architecture-heavy ones want a
+  local Flutter build to validate (no local Flutter here; Pages CI is the
+  only Dart gate, so large blind gesture/dialog rewrites are high-risk).
 - 0.1.177: portal UI bug batch (1-7) + note-name foundation & in-course
   link resolution (8). Frontend fixes shipped in 3 CI-validated batches
   (batches 1-2 built green on Pages before batch 3). Blockquote styleSheet,

@@ -165,6 +165,42 @@ do not run project containers/apps locally.
   parsing + sync-write once markdown is solid.
 - [ ] **Cloudflare-style repo selector/binder** UI: list of repos, each
   opens a modal to pick the course to bind + set the sync timeout.
+
+### Calendar / course feature batch (remaining after 0.1.178)
+
+Foundations shipped in 0.1.178 (`Course.color_hue`, `Note.module`, event
+payload `course`, module grouping #4, HSV event colours #6-core). Remaining
+items — several are interaction/architecture-heavy and want a local Flutter
+build to validate:
+
+- [ ] **#5 Event detail + course selector**: tapping an event opens a
+  detail view (title, description, course, times, importance, recurrence),
+  not just time; the create/edit dialog gets a course dropdown (default
+  Inbox / null). Backend ready (`PlannerEventWriteSerializer.course_id`,
+  payload `course`); needs threading `course_id` through
+  `onCreatePlannerEvent`/`onUpdatePlannerEvent` + client.
+- [ ] **#8 Course-metadata edit modal** (reusable in planner too): cover
+  image, `color_hue` (hue-only picker), title, description, bound repo,
+  and **owner transfer**. Backend: hue/title/desc/icon writable via course
+  PATCH; add a `POST courses/<id>/transfer/` endpoint (owner-only, target
+  by username/email) for ownership transfer.
+- [ ] **#6 Hue setting button** on the calendar filter row: opens the #8
+  modal for the selected course; disabled with a tooltip when the filter
+  is "all" (no specific course to edit).
+- [ ] **#3 Lazy course loading**: `CourseNotesApiView` already paginates
+  (`limit`/`offset`/`has_more`); make the course view load the first ~10
+  notes/modules, show a loading **bar** (not the template placeholder), and
+  infinite-scroll more at the bottom (no manual "load more" button).
+- [ ] **#1 Drag-to-reschedule** on the week/day grid: drag an event tile to
+  a new time, a Google-Calendar-style "now" time-line indicator, and
+  magnetic snap of the start to the nearest 15-min slot.
+- [ ] **#2 Ctrl+scroll time-axis zoom**: scale the vertical hour axis so
+  the full day fits or a morning/afternoon band expands.
+- [ ] **#7 Offline cache ownership/security**: cache recent edited /
+  subscribed notes+courses locally for offline start; tag all local data
+  with its owning user on first login; on a *different* user's login, warn
+  that cache belongs to user A, refuse to sync it to the cloud, and don't
+  let it pollute user B's workspace.
 - [ ] **Shareable per-note browser URLs** (bug 8, part 2): route
   `/c/<course-slug>/<note-name>` deep-links to a note and updates the URL
   as notes open, so links are shareable/back-navigable. Foundation exists

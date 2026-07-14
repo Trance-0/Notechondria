@@ -67,6 +67,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.178 - Calendar/course feature batch: foundations + modules + event colours](versions/0.1.178.md)
 - [0.1.177 - Portal UI bug batch + note names / in-course links](versions/0.1.177.md)
 - [0.1.176 - Fix: course sync as ONE atomic commit (Git Data API)](versions/0.1.176.md)
 - [0.1.175 - GitHub App binding over MCP/CLI + Veronica-7 adapter validation](versions/0.1.175.md)
