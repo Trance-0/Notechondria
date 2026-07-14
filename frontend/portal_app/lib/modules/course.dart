@@ -233,37 +233,35 @@ class _CoursePageState extends State<_CoursePage> {
       final note = notes[index];
       final metadata =
           _decodeNoteMetadata(note['metadata_json']?.toString() ?? '{}');
-      final rawTitle = metadata['module_title']?.toString() ??
-          metadata['section']?.toString() ??
-          note['title']?.toString() ??
-          'Module ${index + 1}';
+      // The backend `module` field (set on git-import from the adapter's
+      // cv/dnn/… grouping) is authoritative; fall back to legacy metadata
+      // hints, then a single default bucket so notes are never fanned out
+      // one-per-module.
+      final rawTitle = (note['module']?.toString().trim().isNotEmpty ?? false)
+          ? note['module'].toString()
+          : metadata['module_title']?.toString() ??
+              metadata['section']?.toString() ??
+              note['title']?.toString() ??
+              'Module ${index + 1}';
       final title =
           rawTitle.trim().isEmpty ? 'Module ${index + 1}' : rawTitle.trim();
       final key = title.toLowerCase();
       final module = modules.putIfAbsent(
         key,
         () => {
-          'id': metadata['module_id']?.toString() ?? 'module-$index',
+          'id': metadata['module_id']?.toString() ?? 'module-$key',
           'title': title,
-          'description': metadata['module_description']?.toString() ??
-              note['description']?.toString() ??
-              note['excerpt']?.toString() ??
-              'Study materials and public discussion for this module.',
+          // Real, user-authored content only — no fabricated
+          // objectives / assignments / "discussion board" placeholders.
+          'description': metadata['module_description']?.toString() ?? '',
           'objectives': (metadata['objectives'] as List?)
                   ?.map((item) => item.toString())
                   .toList() ??
-              <String>[
-                note['description']?.toString().isNotEmpty == true
-                    ? note['description'].toString()
-                    : 'Review the module notes.',
-              ],
+              const <String>[],
           'assignments': (metadata['assignments'] as List?)
                   ?.map((item) => item.toString())
                   .toList() ??
-              <String>[
-                'Read the module notes.',
-                'Review the discussion board.',
-              ],
+              const <String>[],
           'notes': <Map<String, dynamic>>[],
         },
       );
@@ -545,34 +543,47 @@ class _CoursePageState extends State<_CoursePage> {
                           fontWeight: FontWeight.w800,
                         ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(_openedModule!['description']?.toString() ?? ''),
-                  const SizedBox(height: 16),
-                  Text(
-                    AppLocalizations.of(context).courseObjectives,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 6),
-                  for (final item
-                      in (_openedModule!['objectives'] as List<dynamic>? ??
-                          const []))
-                    Text('• ${item.toString()}'),
-                  const SizedBox(height: 16),
-                  Text(
-                    AppLocalizations.of(context).courseAssignments,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 6),
-                  for (final item
-                      in (_openedModule!['assignments'] as List<dynamic>? ??
-                          const []))
-                    Text('• ${item.toString()}'),
+                  if ((_openedModule!['description']?.toString() ?? '')
+                      .trim()
+                      .isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(_openedModule!['description'].toString()),
+                  ],
+                  // Objectives / assignments only render when the module
+                  // actually declares them — imported modules don't, so no
+                  // fabricated template sections appear.
+                  if ((_openedModule!['objectives'] as List<dynamic>? ??
+                          const [])
+                      .isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      AppLocalizations.of(context).courseObjectives,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 6),
+                    for (final item
+                        in (_openedModule!['objectives'] as List<dynamic>))
+                      Text('• ${item.toString()}'),
+                  ],
+                  if ((_openedModule!['assignments'] as List<dynamic>? ??
+                          const [])
+                      .isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      AppLocalizations.of(context).courseAssignments,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 6),
+                    for (final item
+                        in (_openedModule!['assignments'] as List<dynamic>))
+                      Text('• ${item.toString()}'),
+                  ],
                 ],
               ),
             ),

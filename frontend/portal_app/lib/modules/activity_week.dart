@@ -828,7 +828,7 @@ class _CalendarEventTile extends StatelessWidget {
     final spanMinutes = math.max(30, endMinutes - startMinutes);
     final offset = (startMinutes / 60.0) * slotExtent;
     final extent = (spanMinutes / 60.0) * slotExtent;
-    final color = _calendarEventColor(event);
+    final color = _calendarEventColor(event, brightness: Theme.of(context).brightness);
     final ink = _calendarEventInkFor(color);
 
     if (vertical) {
@@ -1156,7 +1156,7 @@ class _MonthEventChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final completed = event['is_completed'] == true;
-    final color = _calendarEventColor(event);
+    final color = _calendarEventColor(event, brightness: Theme.of(context).brightness);
     final ink = _calendarEventInkFor(color);
     return InkWell(
       onTap: onTap,
@@ -1258,36 +1258,65 @@ Color _calendarEventInkFor(Color background) {
       : Colors.white;
 }
 
-/// Light pastel palette used to give each course its own tile colour, so a
-/// week of events reads as distinct classes rather than one flat block.
-const List<Color> _kCoursePalette = [
-  Color(0xFFDFF6E9), // mint
-  Color(0xFFFFE8D6), // peach
-  Color(0xFFE7E0FF), // lavender
-  Color(0xFFFFE0EC), // rose
-  Color(0xFFDFF0FF), // sky
-  Color(0xFFFDF3C4), // butter
-  Color(0xFFD8F5F0), // teal
-  Color(0xFFEDE3D2), // sand
+/// Evenly-spread fallback hues for courses that haven't set an explicit
+/// `color_hue`, so different courses still read as distinct classes.
+const List<double> _kCourseHues = [
+  145, // mint-green
+  28, // peach
+  260, // violet
+  330, // rose
+  205, // sky-blue
+  48, // amber
+  175, // teal
+  15, // terracotta
 ];
 
-/// Returns the tile colour for a calendar event. Note sessions and external
-/// calendar feeds keep their fixed hues; planner events vary by course so
-/// different courses are visually distinct (uncategorized events share the
-/// first palette colour).
-Color _calendarEventColor(Map<String, dynamic> event) {
-  final kind = event['kind']?.toString() ?? '';
-  if (kind == 'note_session') {
-    return const Color(0xFFE0E7FF);
+/// The event's importance (difficulty weight) clamped to 1..5.
+int _eventImportance(Map<String, dynamic> event) {
+  final raw = int.tryParse(event['difficulty_weight']?.toString() ?? '') ?? 1;
+  return raw.clamp(1, 5);
+}
+
+/// The hue (0-359) for an event's course: the course's explicit `color_hue`
+/// if set, otherwise a stable hue derived from its id.
+double _courseHueFor(Map<String, dynamic> event) {
+  final course = event['course'];
+  final explicit = (course is Map) ? course['color_hue'] : null;
+  if (explicit is int) {
+    return explicit.toDouble().clamp(0, 359);
   }
-  if (kind == 'calendar') {
-    return const Color(0xFFE0F2FE);
+  if (explicit is double) {
+    return explicit.clamp(0, 359);
   }
   final courseId = event['course_id'];
-  if (courseId is int) {
-    return _kCoursePalette[courseId.abs() % _kCoursePalette.length];
+  final seed = (courseId is int) ? courseId.abs() : 0;
+  return _kCourseHues[seed % _kCourseHues.length];
+}
+
+/// Tile colour for a calendar event, in HSV so the three channels carry
+/// meaning: **hue = course** (distinct classes), **saturation = importance**
+/// (heavier events read stronger), and **value = theme** (bright pastels in
+/// light mode, muted in dark). Note sessions and calendar feeds keep their
+/// own fixed hues but still adapt value to the theme.
+Color _calendarEventColor(
+  Map<String, dynamic> event, {
+  Brightness brightness = Brightness.light,
+}) {
+  final isDark = brightness == Brightness.dark;
+  final kind = event['kind']?.toString() ?? '';
+  final value = isDark ? 0.52 : 0.97;
+  if (kind == 'note_session') {
+    return HSVColor.fromAHSV(1, 232, isDark ? 0.45 : 0.16, value).toColor();
   }
-  return _kCoursePalette[0];
+  if (kind == 'calendar') {
+    return HSVColor.fromAHSV(1, 200, isDark ? 0.45 : 0.16, value).toColor();
+  }
+  final hue = _courseHueFor(event);
+  final importance = _eventImportance(event); // 1..5
+  // Importance drives saturation; keep light mode pastel (lower band).
+  final base = 0.22 + (importance - 1) * 0.15; // 0.22..0.82
+  final saturation = (isDark ? base : base * 0.7).clamp(0.1, 0.9);
+  return HSVColor.fromAHSV(1, hue, saturation.toDouble(), value).toColor();
 }
 
 /// Formats ISO week dates for calendar headers.
