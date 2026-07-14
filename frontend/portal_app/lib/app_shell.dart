@@ -79,15 +79,97 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
           brightness: Brightness.dark,
         ),
       ),
-      home: AppShell(
-        client: _client,
-        onThemeChanged: _handleThemeChanged,
-        onLocaleChanged: _handleLocaleChanged,
-        initialIndex: widget.initialIndex,
-        appTitle: widget.title,
-        visibleIndices: widget.visibleIndices,
-      ),
+      // 0.1.179: real URL routing (no more single-root-route app). Every
+      // surface has a unique, shareable address under the web hash
+      // strategy: `#/` front, `#/notes`, `#/courses[/<slug>]`,
+      // `#/activity`, `#/settings`, and `#/note/<uuid>` for a routed
+      // note page (public notes anonymously; owned/subscribed with auth).
+      onGenerateRoute: _generateRoute,
+      onGenerateInitialRoutes: _generateInitialRoutes,
     );
+  }
+
+  AppShell _buildShell({int initialIndex = 0, String? initialCourseSlug}) {
+    return AppShell(
+      client: _client,
+      onThemeChanged: _handleThemeChanged,
+      onLocaleChanged: _handleLocaleChanged,
+      initialIndex: initialIndex,
+      initialCourseSlug: initialCourseSlug,
+      appTitle: widget.title,
+      visibleIndices: widget.visibleIndices,
+    );
+  }
+
+  Route<dynamic> _generateRoute(RouteSettings settings) {
+    final name = settings.name ?? '/';
+    final segments = Uri.parse(name)
+        .pathSegments
+        .where((segment) => segment.isNotEmpty)
+        .toList(growable: false);
+    // `/note/<uuid>` — the routed note page, pushed on top of the shell.
+    if (segments.length == 2 && segments.first == 'note') {
+      final args = settings.arguments is Map
+          ? Map<String, dynamic>.from(settings.arguments as Map)
+          : const <String, dynamic>{};
+      return MaterialPageRoute<void>(
+        settings: settings,
+        builder: (_) => _NoteRoutePage(
+          client: _client,
+          noteUuid: segments[1],
+          token: args['token']?.toString(),
+          preloaded: args['note'] is Map
+              ? Map<String, dynamic>.from(args['note'] as Map)
+              : null,
+        ),
+      );
+    }
+    // Tab / course-detail routes resolve to the shell.
+    var tab = widget.initialIndex;
+    String? courseSlug;
+    if (segments.isNotEmpty) {
+      switch (segments.first) {
+        case 'notes':
+          tab = 1;
+          break;
+        case 'courses':
+          tab = 2;
+          if (segments.length >= 2) {
+            courseSlug = segments[1];
+          }
+          break;
+        case 'activity':
+          tab = 3;
+          break;
+        case 'settings':
+          tab = 4;
+          break;
+        default:
+          tab = 0;
+      }
+    }
+    return MaterialPageRoute<void>(
+      settings: settings,
+      builder: (_) =>
+          _buildShell(initialIndex: tab, initialCourseSlug: courseSlug),
+    );
+  }
+
+  List<Route<dynamic>> _generateInitialRoutes(String initialRoute) {
+    final segments = Uri.parse(initialRoute)
+        .pathSegments
+        .where((segment) => segment.isNotEmpty)
+        .toList(growable: false);
+    if (segments.length == 2 && segments.first == 'note') {
+      // Cold-start note deep link: put the shell underneath so Back (and
+      // the viewer's close button) lands inside the app, not on a blank
+      // page.
+      return <Route<dynamic>>[
+        _generateRoute(const RouteSettings(name: '/')),
+        _generateRoute(RouteSettings(name: initialRoute)),
+      ];
+    }
+    return <Route<dynamic>>[_generateRoute(RouteSettings(name: initialRoute))];
   }
 }
 
@@ -99,6 +181,7 @@ class AppShell extends StatefulWidget {
     this.onThemeChanged,
     this.onLocaleChanged,
     this.initialIndex = 0,
+    this.initialCourseSlug,
     this.appTitle = 'Notechondria',
     this.visibleIndices = const <int>[0, 1, 2, 3, 4],
   });
@@ -110,6 +193,11 @@ class AppShell extends StatefulWidget {
   /// root `MaterialApp` can rebuild with the chosen locale.
   final void Function(String locale)? onLocaleChanged;
   final int initialIndex;
+
+  /// Deep-link target from a `#/courses/<slug>` URL: after boot, the shell
+  /// opens this course on the Course tab (best-effort — unknown slugs just
+  /// land on the course list).
+  final String? initialCourseSlug;
   final String appTitle;
   final List<int> visibleIndices;
 
@@ -366,10 +454,26 @@ class _AppShellState extends State<AppShell>
     return idx >= 0 ? idx : 0;
   }
 
+  /// URL path for each tab index — keeps the address bar in sync with the
+  /// active tab so every tab has a unique, shareable URL.
+  static const List<String> _tabPaths = [
+    '/',
+    '/notes',
+    '/courses',
+    '/activity',
+    '/settings',
+  ];
+
+  void _syncTabUrl() {
+    final index = _selectedIndex.clamp(0, _tabPaths.length - 1);
+    url_strategy.replaceBrowserPath(_tabPaths[index]);
+  }
+
   void _selectActualIndex(int index) {
     setState(() {
       _selectedIndex = index;
     });
+    _syncTabUrl();
   }
 
   void _handleVisibleDestinationSelected(int visibleIndex) {
@@ -411,6 +515,26 @@ class _AppShellState extends State<AppShell>
     await handleOAuthCallback();
     _splashStatus.value = 'Connecting to server';
     await _loadInitialData();
+    await _openInitialCourseDeepLink();
+  }
+
+  /// Resolves a `#/courses/<slug>` cold-start deep link once the course
+  /// list is loaded. Unknown slugs stay on the course-list tab.
+  Future<void> _openInitialCourseDeepLink() async {
+    final slug = widget.initialCourseSlug;
+    if (slug == null || slug.isEmpty || !mounted) {
+      return;
+    }
+    Map<String, dynamic>? match;
+    for (final course in _courses) {
+      if (course['slug']?.toString() == slug) {
+        match = course;
+        break;
+      }
+    }
+    if (match != null) {
+      await _selectCourse(match);
+    }
   }
 
   // ---------------------------------------------------------------------------

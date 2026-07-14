@@ -104,6 +104,7 @@ extension _AppShellNoteLoadingX on _AppShellState {
       _selectedIndex = 2;
       _isLoading = false;
       refreshState();
+      url_strategy.replaceBrowserPath('/courses');
       log(
         level: DebugLogLevel.debug,
         source: 'Portal.UI/open_course',
@@ -136,6 +137,10 @@ extension _AppShellNoteLoadingX on _AppShellState {
       _selectedIndex = 2;
       _isLoading = false;
       refreshState();
+      // Unique, shareable URL for the opened course.
+      final slug = refreshedSelected['slug']?.toString() ?? '';
+      url_strategy.replaceBrowserPath(
+          slug.isEmpty ? '/courses' : '/courses/$slug');
       await _persistLocalCache();
       log(
         level: DebugLogLevel.debug,
@@ -168,6 +173,7 @@ extension _AppShellNoteLoadingX on _AppShellState {
       _selectedIndex = 1;
       _isLoading = false;
       refreshState();
+      url_strategy.replaceBrowserPath('/notes');
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
       _errorMessage = cause;
@@ -200,23 +206,28 @@ extension _AppShellNoteLoadingX on _AppShellState {
     if (!mounted) {
       return;
     }
-    await showDialog<void>(
-      context: context,
-      builder: (context) => _NoteViewerDialog(
-        note: detail,
-        onFollowLink: _followNoteLink,
-      ),
+    final uuid = detail['uuid']?.toString() ?? '';
+    if (uuid.isEmpty) {
+      // Local drafts have no server uuid → no URL identity; keep the
+      // in-place dialog for them.
+      await showDialog<void>(
+        context: context,
+        builder: (context) => _NoteViewerDialog(
+          note: detail,
+          onFollowLink: _followNoteLink,
+        ),
+      );
+      return;
+    }
+    // Routed note page: pushes `#/note/<uuid>` so the address bar carries
+    // a unique, shareable URL and browser Back closes the note.
+    await Navigator.of(context).pushNamed(
+      '/note/$uuid',
+      arguments: <String, dynamic>{'note': detail, 'token': _token},
     );
-  }
-
-  /// Course id a note belongs to, or null (front-page / uncategorized).
-  int? _courseIdOf(Map<String, dynamic> note) {
-    final direct = note['course_id'];
-    if (direct is int) return direct;
-    if (direct is String) return int.tryParse(direct);
-    final course = note['course'];
-    if (course is Map && course['id'] is int) return course['id'] as int;
-    return null;
+    // The popped route restored the underlying route's original name;
+    // re-sync the address bar with the tab actually on screen.
+    _syncTabUrl();
   }
 
   /// Follows a markdown link tapped in the note viewer. External links open
@@ -227,15 +238,11 @@ extension _AppShellNoteLoadingX on _AppShellState {
       Map<String, dynamic> fromNote, String href) async {
     final raw = href.trim();
     if (raw.isEmpty) return;
-    final lower = raw.toLowerCase();
-    if (lower.startsWith('http://') ||
-        lower.startsWith('https://') ||
-        lower.startsWith('mailto:') ||
-        lower.startsWith('tel:')) {
+    if (_isExternalLink(raw)) {
       url_strategy.browserRedirect(raw);
       return;
     }
-    final courseId = _courseIdOf(fromNote);
+    final courseId = _noteCourseIdOf(fromNote);
     if (courseId == null) {
       showMessage('Link not followed: this note is not part of a course.');
       return;
@@ -248,71 +255,12 @@ extension _AppShellNoteLoadingX on _AppShellState {
       showMessage('Link not followed: Portal.UI/follow_link — $cause.');
       return;
     }
-    final target = _matchCourseLink(fromNote, raw, siblings);
+    final target = _matchNoteLinkTarget(fromNote, raw, siblings);
     if (target == null) {
       showMessage('No note in this course matches "$raw".');
       return;
     }
     await _openNoteViewer(target);
-  }
-
-  /// Resolves a relative link to a sibling note: repo-path resolution first
-  /// (relative to the source note's git_path), then a slugified-name match.
-  Map<String, dynamic>? _matchCourseLink(
-    Map<String, dynamic> fromNote,
-    String href,
-    List<Map<String, dynamic>> siblings,
-  ) {
-    var path = href.split('#').first.split('?').first.trim();
-    if (path.isEmpty) return null;
-    try {
-      path = Uri.decodeFull(path);
-    } catch (_) {
-      // keep the raw path on a malformed escape
-    }
-
-    // 1) Path-based: resolve relative to the source note's repo path.
-    final fromPath = fromNote['git_path']?.toString() ?? '';
-    if (fromPath.isNotEmpty) {
-      String resolved;
-      try {
-        resolved = Uri(path: fromPath).resolveUri(Uri.parse(path)).path;
-      } catch (_) {
-        resolved = path;
-      }
-      resolved = resolved.replaceFirst(RegExp(r'^/+'), '');
-      final candidates = <String>{
-        resolved,
-        '$resolved.md',
-        resolved.endsWith('/') ? '${resolved}index.md' : '$resolved/index.md',
-      };
-      for (final note in siblings) {
-        final gp = note['git_path']?.toString() ?? '';
-        if (gp.isNotEmpty && candidates.contains(gp)) return note;
-      }
-    }
-
-    // 2) Name-based: slugify the last path segment and match note['name'].
-    final segments = path.split('/').where((s) => s.isNotEmpty).toList();
-    if (segments.isNotEmpty) {
-      var last = segments.last;
-      if (last.toLowerCase().endsWith('.md')) {
-        last = last.substring(0, last.length - 3);
-      }
-      final wanted = _slugifyLink(last);
-      if (wanted.isNotEmpty) {
-        for (final note in siblings) {
-          if ((note['name']?.toString() ?? '') == wanted) return note;
-        }
-      }
-    }
-    return null;
-  }
-
-  String _slugifyLink(String input) {
-    final lower = input.trim().toLowerCase();
-    final dashed = lower.replaceAll(RegExp(r'[^a-z0-9]+'), '-');
-    return dashed.replaceAll(RegExp(r'^-+|-+$'), '');
   }
 
   Future<Map<String, dynamic>> _fetchNoteDetail(int noteId) async {
@@ -337,4 +285,84 @@ extension _AppShellNoteLoadingX on _AppShellState {
     refreshState();
     return detail;
   }
+}
+
+/// True for links that should leave the app (browser navigation).
+bool _isExternalLink(String href) {
+  final lower = href.toLowerCase();
+  return lower.startsWith('http://') ||
+      lower.startsWith('https://') ||
+      lower.startsWith('mailto:') ||
+      lower.startsWith('tel:');
+}
+
+/// Course id a note belongs to, or null (front-page / uncategorized).
+int? _noteCourseIdOf(Map<String, dynamic> note) {
+  final direct = note['course_id'];
+  if (direct is int) return direct;
+  if (direct is String) return int.tryParse(direct);
+  final course = note['course'];
+  if (course is Map && course['id'] is int) return course['id'] as int;
+  return null;
+}
+
+/// Resolves a relative link to a sibling note: repo-path resolution first
+/// (relative to the source note's git_path), then a slugified-name match.
+/// Top-level (pure) so both the in-shell viewer and the routed
+/// `_NoteRoutePage` share one resolver.
+Map<String, dynamic>? _matchNoteLinkTarget(
+  Map<String, dynamic> fromNote,
+  String href,
+  List<Map<String, dynamic>> siblings,
+) {
+  var path = href.split('#').first.split('?').first.trim();
+  if (path.isEmpty) return null;
+  try {
+    path = Uri.decodeFull(path);
+  } catch (_) {
+    // keep the raw path on a malformed escape
+  }
+
+  // 1) Path-based: resolve relative to the source note's repo path.
+  final fromPath = fromNote['git_path']?.toString() ?? '';
+  if (fromPath.isNotEmpty) {
+    String resolved;
+    try {
+      resolved = Uri(path: fromPath).resolveUri(Uri.parse(path)).path;
+    } catch (_) {
+      resolved = path;
+    }
+    resolved = resolved.replaceFirst(RegExp(r'^/+'), '');
+    final candidates = <String>{
+      resolved,
+      '$resolved.md',
+      resolved.endsWith('/') ? '${resolved}index.md' : '$resolved/index.md',
+    };
+    for (final note in siblings) {
+      final gp = note['git_path']?.toString() ?? '';
+      if (gp.isNotEmpty && candidates.contains(gp)) return note;
+    }
+  }
+
+  // 2) Name-based: slugify the last path segment and match note['name'].
+  final segments = path.split('/').where((s) => s.isNotEmpty).toList();
+  if (segments.isNotEmpty) {
+    var last = segments.last;
+    if (last.toLowerCase().endsWith('.md')) {
+      last = last.substring(0, last.length - 3);
+    }
+    final wanted = _slugifyLinkText(last);
+    if (wanted.isNotEmpty) {
+      for (final note in siblings) {
+        if ((note['name']?.toString() ?? '') == wanted) return note;
+      }
+    }
+  }
+  return null;
+}
+
+String _slugifyLinkText(String input) {
+  final lower = input.trim().toLowerCase();
+  final dashed = lower.replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+  return dashed.replaceAll(RegExp(r'^-+|-+$'), '');
 }

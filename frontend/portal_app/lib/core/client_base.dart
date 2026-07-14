@@ -16,6 +16,12 @@ abstract class NotechondriaClient implements AuthClient {
   Future<List<Map<String, dynamic>>> getCourseNotes(int courseId,
       {String? token});
   Future<Map<String, dynamic>> getNoteDetail(int noteId, {String? token});
+
+  /// Fetch a note by its public UUID (`/notes/uuid/<uuid>/`) — the routed
+  /// note-URL entry point. Anonymous requests read public notes; a token
+  /// additionally reads owned and subscribed-course notes.
+  Future<Map<String, dynamic>> getNoteDetailByUuid(String noteUuid,
+      {String? token});
   Future<Map<String, dynamic>> listNotes({
     String? token,
     String query = '',

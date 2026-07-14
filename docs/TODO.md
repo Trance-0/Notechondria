@@ -201,7 +201,10 @@ build to validate:
   with its owning user on first login; on a *different* user's login, warn
   that cache belongs to user A, refuse to sync it to the cloud, and don't
   let it pollute user B's workspace.
-- [ ] **Shareable per-note browser URLs** (bug 8, part 2): route
+- [x] **Shareable per-note browser URLs** (bug 8, part 2) — DONE 0.1.179
+  for the portal: `#/note/<uuid>` routed page (+ unique URLs for every tab
+  and `#/courses/<slug>`), backend read access extended to active course
+  subscribers. Remaining below: route
   `/c/<course-slug>/<note-name>` deep-links to a note and updates the URL
   as notes open, so links are shareable/back-navigable. Foundation exists
   (`Note.name` unique per course, 0.1.177; in-course link resolution in the

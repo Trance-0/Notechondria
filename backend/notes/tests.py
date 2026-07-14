@@ -2012,3 +2012,66 @@ class CourseHueAndModuleTests(TestCase):
         self.assertIsNotNone(payload["course"])
         self.assertEqual(payload["course"]["color_hue"], 120)
         self.assertEqual(payload["course"]["title"], "Hue Course")
+
+
+class NoteUrlAccessPolicyTests(TestCase):
+    """0.1.179 note-URL access policy: public notes are readable
+    anonymously by uuid; private notes are readable by the owner and by
+    ACTIVE subscribers of their course; everyone else is refused."""
+
+    def setUp(self):
+        self.owner_user = User.objects.create_user(username="owner@example.com", password="pw")
+        self.owner = Creator.objects.create(user_id=self.owner_user)
+        self.sub_user = User.objects.create_user(username="sub@example.com", password="pw")
+        self.subscriber = Creator.objects.create(user_id=self.sub_user)
+        self.other_user = User.objects.create_user(username="other@example.com", password="pw")
+        self.other = Creator.objects.create(user_id=self.other_user)
+        self.course = Course.objects.create(
+            creator_id=self.owner, slug="url-course", title="URL Course"
+        )
+        self.public_note = Note.objects.create(
+            creator_id=self.owner, course_id=self.course,
+            sharing_id="url-pub", title="Public", is_public=True,
+            content="# public",
+        )
+        self.private_note = Note.objects.create(
+            creator_id=self.owner, course_id=self.course,
+            sharing_id="url-priv", title="Private", is_public=False,
+            content="# private",
+        )
+        self.sub_token = Token.objects.create(user=self.sub_user)
+        self.other_token = Token.objects.create(user=self.other_user)
+
+    def _get(self, note, token=None):
+        headers = {"HTTP_AUTHORIZATION": f"Token {token.key}"} if token else {}
+        return self.client.get(f"/api/v1/notes/uuid/{note.uuid}/", **headers)
+
+    def test_public_note_readable_anonymously_by_uuid(self):
+        resp = self._get(self.public_note)
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.json()["title"], "Public")
+
+    def test_private_note_refused_anonymously(self):
+        resp = self._get(self.private_note)
+        self.assertGreaterEqual(resp.status_code, 400)
+
+    def test_private_note_readable_by_active_subscriber(self):
+        CourseSubscription.objects.create(
+            creator_id=self.subscriber, course_id=self.course, is_active=True,
+        )
+        resp = self._get(self.private_note, token=self.sub_token)
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.json()["title"], "Private")
+        # Subscribers can read but never edit.
+        self.assertFalse(resp.json()["can_edit"])
+
+    def test_private_note_refused_for_inactive_subscription(self):
+        CourseSubscription.objects.create(
+            creator_id=self.subscriber, course_id=self.course, is_active=False,
+        )
+        resp = self._get(self.private_note, token=self.sub_token)
+        self.assertGreaterEqual(resp.status_code, 400)
+
+    def test_private_note_refused_for_unrelated_user(self):
+        resp = self._get(self.private_note, token=self.other_token)
+        self.assertGreaterEqual(resp.status_code, 400)

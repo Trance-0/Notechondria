@@ -258,11 +258,21 @@ def note_search_score(note: Note, query: str):
 def can_access_note(request, note: Note) -> bool:
     if note_is_public(note):
         return True
-    return bool(
-        request.user
-        and request.user.is_authenticated
-        and note.creator_id.user_id_id == request.user.id
-    )
+    if not (request.user and request.user.is_authenticated):
+        return False
+    if note.creator_id.user_id_id == request.user.id:
+        return True
+    # 0.1.179: an authenticated user with an ACTIVE subscription to the
+    # note's course may read its private notes too — this is what makes a
+    # shared per-note URL work for subscribed course content. Write access
+    # is still owner-only (checked separately at each write view).
+    if note.course_id_id:
+        return CourseSubscription.objects.filter(
+            course_id=note.course_id_id,
+            creator_id__user_id=request.user.id,
+            is_active=True,
+        ).exists()
+    return False
 
 
 def require_note_access(request, note_id: int) -> Note:

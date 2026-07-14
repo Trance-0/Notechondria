@@ -187,6 +187,16 @@ class HttpNotechondriaClient
   }
 
   @override
+  Future<Map<String, dynamic>> getNoteDetailByUuid(String noteUuid,
+      {String? token}) async {
+    final uri = _uri('/notes/uuid/$noteUuid/');
+    final response = await _get(uri, token: token);
+    return Map<String, dynamic>.from(
+      await decode(response, uri: uri, method: 'GET'),
+    );
+  }
+
+  @override
   Future<Map<String, dynamic>> listNotes({
     String? token,
     String query = '',

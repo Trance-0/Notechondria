@@ -27,6 +27,16 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.179: portal URL routing. MaterialApp home→onGenerateRoute/
+  onGenerateInitialRoutes; URL map #/ #/notes #/courses[/<slug>] #/activity
+  #/settings #/note/<uuid>. In-session sync via replaceBrowserPath
+  (history.replaceState on the hash). _NoteRoutePage (preloaded in-session,
+  uuid-fetch cold start, per-hop routes for in-course links, shared
+  top-level _matchNoteLinkTarget). client.getNoteDetailByUuid added.
+  Backend can_access_note + ACTIVE course subscribers (read-only) →
+  NoteUrlAccessPolicyTests. Portal has no client-side token persistence,
+  so cold-start private URLs prompt sign-in. Editor/planner routing port =
+  TODO.
 - 0.1.178: calendar/course feature batch — foundations + #4 + #6-core.
   Backend (CI-green): Course.color_hue (migration courses/0007, serializer
   read + write + PATCH, validated 0-359), Note.module (migration
