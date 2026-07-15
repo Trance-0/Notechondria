@@ -199,6 +199,7 @@ extension _AppShellSettingsActionsX on _AppShellState {
     int difficultyWeight,
     String description, {
     DateTime? endsAt,
+    int? courseId,
   }) async {
     // Drawn drag supplies an explicit end; otherwise a one-hour block.
     final resolvedEnd = (endsAt != null && endsAt.isAfter(eventDate))
@@ -221,7 +222,7 @@ extension _AppShellSettingsActionsX on _AppShellState {
         'description': description,
         'is_completed': false,
         'completed_at': null,
-        'course_id': null,
+        'course_id': courseId,
       };
       _localEvents = [..._localEvents, event];
       await _LocalAppStore.saveEvents(_localEvents);
@@ -247,7 +248,7 @@ extension _AppShellSettingsActionsX on _AppShellState {
         'ends_at': resolvedEnd.toIso8601String(),
         'difficulty_weight': difficultyWeight,
         'description': description,
-        'course_id': _selectedCourse?['id'],
+        'course_id': courseId,
       });
       await _refreshFrontPageData();
       await _loadActivityWeek(startDate: _activityWeekStart);

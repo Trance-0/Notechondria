@@ -40,6 +40,15 @@
 <body>
   <script src="flutter_bootstrap.js" async></script>
   <script>
+    // Ctrl/⌘ + wheel is the activity calendar's time-axis zoom. Without
+    // this, the BROWSER's page-zoom hijacks the gesture before Flutter
+    // ever sees it, which is why in-app zoom "didn't work" — stop the
+    // default so the app handles it.
+    window.addEventListener('wheel', function (e) {
+      if (e.ctrlKey || e.metaKey) e.preventDefault();
+    }, { passive: false });
+  </script>
+  <script>
     // Service-worker update toast. When a new build's worker installs
     // while an old one still controls the page (the one-reload-stale
     // window of Flutter's content-hash-versioned worker), surface a

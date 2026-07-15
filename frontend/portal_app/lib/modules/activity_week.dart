@@ -10,9 +10,11 @@ class _WideWeekCalendar extends StatefulWidget {
     required this.onChangeRange,
     required this.onCreatePlannerEvent,
     required this.onUpdatePlannerEvent,
+    this.courses = const <Map<String, dynamic>>[],
   });
 
   final List<Map<String, dynamic>> days;
+  final List<Map<String, dynamic>> courses;
   final int rangeDays;
   final Future<void> Function(int direction) onNavigateWeek;
   final Future<void> Function(int dayDelta) onShiftStartDay;
@@ -23,6 +25,7 @@ class _WideWeekCalendar extends StatefulWidget {
     int difficultyWeight,
     String description, {
     DateTime? endsAt,
+    int? courseId,
   }) onCreatePlannerEvent;
   final Future<void> Function(
           Map<String, dynamic> event, Map<String, dynamic> changes)
@@ -131,6 +134,7 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
       widget.onCreatePlannerEvent,
       initialDateTime: start,
       initialEndDateTime: end,
+      courses: widget.courses,
     );
   }
 
@@ -140,7 +144,8 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
   void _handleEventHold(Map<String, dynamic> event) {
     final kind = event['kind']?.toString() ?? '';
     if (kind == 'plan' && event['id'] != null) {
-      _showEditPlannerEventDialog(context, event, widget.onUpdatePlannerEvent);
+      _showEditPlannerEventDialog(context, event, widget.onUpdatePlannerEvent,
+          courses: widget.courses);
       return;
     }
     _showCalendarEventDetails(context, event);
@@ -150,13 +155,40 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
   void initState() {
     super.initState();
     _animationController = AnimationController(vsync: this);
+    // Keep the red current-time indicator moving: repaint once a minute.
+    _nowTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   void dispose() {
+    _nowTimer?.cancel();
     _animationController.dispose();
     _verticalScrollController.dispose();
     super.dispose();
+  }
+
+  Timer? _nowTimer;
+
+  /// Vertical offset of "now" inside a day column's 24-hour stack.
+  double get _nowOffset {
+    final now = DateTime.now();
+    return ((now.hour * 60 + now.minute) / 60.0) * _hourHeight;
+  }
+
+  String get _nowLabel {
+    final now = DateTime.now();
+    return '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+  }
+
+  bool _isToday(String? rawDate) {
+    final date = DateTime.tryParse(rawDate ?? '');
+    if (date == null) return false;
+    final now = DateTime.now();
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
   }
 
   Future<void> _animateOffset(
@@ -381,6 +413,7 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                                       widget.onCreatePlannerEvent,
                                       initialDateTime: DateTime(date.year,
                                           date.month, date.day, 12, 0),
+                                      courses: widget.courses,
                                     ),
                                   )
                                 : Scrollbar(
@@ -393,19 +426,52 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                                   children: [
                                     SizedBox(
                                       width: _labelWidth,
-                                      child: Column(
+                                      child: Stack(
                                         children: [
-                                          const SizedBox(height: 48),
-                                          for (var hour = 0; hour < 24; hour++)
-                                            SizedBox(
-                                              height: _hourHeight,
-                                              child: Align(
-                                                alignment: Alignment.topCenter,
+                                          Column(
+                                            children: [
+                                              const SizedBox(height: 48),
+                                              for (var hour = 0;
+                                                  hour < 24;
+                                                  hour++)
+                                                SizedBox(
+                                                  height: _hourHeight,
+                                                  child: Align(
+                                                    alignment:
+                                                        Alignment.topCenter,
+                                                    child: Text(
+                                                      '${hour.toString().padLeft(2, '0')}:00',
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                          // Red current-time readout on the
+                                          // hour axis, aligned to the now
+                                          // line (48px column header above
+                                          // the 24-hour stack).
+                                          Positioned(
+                                            top: 48 + _nowOffset - 8,
+                                            left: 0,
+                                            right: 4,
+                                            child: IgnorePointer(
+                                              child: Container(
+                                                color: theme
+                                                    .colorScheme.surface
+                                                    .withOpacity(0.85),
                                                 child: Text(
-                                                  '${hour.toString().padLeft(2, '0')}:00',
+                                                  _nowLabel,
+                                                  textAlign: TextAlign.center,
+                                                  style: theme
+                                                      .textTheme.labelSmall
+                                                      ?.copyWith(
+                                                    color: Colors.redAccent,
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
                                                 ),
                                               ),
                                             ),
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -582,6 +648,46 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                                                                     event),
                                                               ),
                                                             ),
+                                                          // Google-Calendar
+                                                          // style red "now"
+                                                          // line on today's
+                                                          // column.
+                                                          if (_isToday(days[
+                                                                      dayIndex]
+                                                                  ['date']
+                                                              ?.toString()))
+                                                            Positioned(
+                                                              top: _nowOffset -
+                                                                  1,
+                                                              left: 0,
+                                                              right: 0,
+                                                              child: IgnorePointer(
+                                                                child: Row(
+                                                                  children: [
+                                                                    Container(
+                                                                      width: 8,
+                                                                      height: 8,
+                                                                      decoration:
+                                                                          const BoxDecoration(
+                                                                        color: Colors
+                                                                            .redAccent,
+                                                                        shape: BoxShape
+                                                                            .circle,
+                                                                      ),
+                                                                    ),
+                                                                    Expanded(
+                                                                      child:
+                                                                          Container(
+                                                                        height:
+                                                                            2,
+                                                                        color: Colors
+                                                                            .redAccent,
+                                                                      ),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                            ),
                                                         ],
                                                       ),
                                                       ),
@@ -710,6 +816,11 @@ Future<void> _showCalendarEventDetails(
   final end = DateTime.tryParse(event['ends_at']?.toString() ?? '');
   final description = event['description']?.toString() ?? '';
   final calendarTitle = event['calendar_title']?.toString() ?? '';
+  final course = event['course'] is Map
+      ? Map<String, dynamic>.from(event['course'] as Map)
+      : const <String, dynamic>{};
+  final courseTitle = course['title']?.toString() ?? '';
+  final importance = _eventImportance(event);
   String timeRange() {
     if (start == null) {
       return '';
@@ -746,6 +857,28 @@ Future<void> _showCalendarEventDetails(
                 const Icon(Icons.event, size: 18),
                 const SizedBox(width: 8),
                 Expanded(child: Text(calendarTitle)),
+              ],
+            ),
+          ],
+          if (courseTitle.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.school_outlined, size: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text(courseTitle)),
+              ],
+            ),
+          ],
+          if (event['difficulty_weight'] != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.flag_outlined, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: Text(AppLocalizations.of(context)
+                        .activityWeightN(importance))),
               ],
             ),
           ],
@@ -1353,9 +1486,11 @@ Future<void> _showCreatePlannerEventDialog(
     int difficultyWeight,
     String description, {
     DateTime? endsAt,
+    int? courseId,
   }) onCreatePlannerEvent, {
   DateTime? initialDateTime,
   DateTime? initialEndDateTime,
+  List<Map<String, dynamic>> courses = const <Map<String, dynamic>>[],
 }) async {
   final titleController = TextEditingController();
   final descriptionController = TextEditingController();
@@ -1374,6 +1509,8 @@ Future<void> _showCreatePlannerEventDialog(
       ? TimeOfDay(hour: seedEnd.hour, minute: seedEnd.minute)
       : const TimeOfDay(hour: 15, minute: 0);
   var weight = 1;
+  // null = uncategorized "inbox" (course optional by design).
+  int? selectedCourseId;
   ActionFeedback? feedback;
   var submitting = false;
 
@@ -1483,6 +1620,33 @@ Future<void> _showCreatePlannerEventDialog(
                   border: const OutlineInputBorder(),
                 ),
               ),
+              if (courses.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int?>(
+                  value: selectedCourseId,
+                  items: [
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('Inbox (uncategorized)'),
+                    ),
+                    for (final course in courses)
+                      if (course['id'] is int)
+                        DropdownMenuItem<int?>(
+                          value: course['id'] as int,
+                          child: Text(
+                            course['title']?.toString() ?? 'Course',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                  ],
+                  onChanged: (value) =>
+                      setState(() => selectedCourseId = value),
+                  decoration: const InputDecoration(
+                    labelText: 'Course (project)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
               if (feedback != null) ...[
                 const SizedBox(height: 12),
                 FeedbackText(feedback: feedback!),
@@ -1528,6 +1692,7 @@ Future<void> _showCreatePlannerEventDialog(
                       weight,
                       descriptionController.text.trim(),
                       endsAt: end,
+                      courseId: selectedCourseId,
                     );
                     if (!context.mounted) {
                       return;
@@ -1562,8 +1727,9 @@ Future<void> _showEditPlannerEventDialog(
   Map<String, dynamic> event,
   Future<void> Function(
           Map<String, dynamic> event, Map<String, dynamic> changes)
-      onUpdate,
-) async {
+      onUpdate, {
+  List<Map<String, dynamic>> courses = const <Map<String, dynamic>>[],
+}) async {
   final l10n = AppLocalizations.of(context);
   final titleController =
       TextEditingController(text: event['title']?.toString() ?? '');
@@ -1586,6 +1752,14 @@ Future<void> _showEditPlannerEventDialog(
     weight = 1;
   } else if (weight > 5) {
     weight = 5;
+  }
+  // Current binding; null = uncategorized "inbox". A binding to a course
+  // that is no longer in the picker list falls back to null so the
+  // dropdown's value always matches an item.
+  int? selectedCourseId = (event['course_id'] as num?)?.toInt();
+  if (selectedCourseId != null &&
+      !courses.any((c) => c['id'] == selectedCourseId)) {
+    selectedCourseId = null;
   }
   var freq = event['recurrence_freq']?.toString() ?? 'N';
   if (!const ['N', 'W', 'M', 'Y'].contains(freq)) {
@@ -1721,6 +1895,33 @@ Future<void> _showEditPlannerEventDialog(
                     border: const OutlineInputBorder(),
                   ),
                 ),
+                if (courses.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<int?>(
+                    value: selectedCourseId,
+                    items: [
+                      const DropdownMenuItem<int?>(
+                        value: null,
+                        child: Text('Inbox (uncategorized)'),
+                      ),
+                      for (final course in courses)
+                        if (course['id'] is int)
+                          DropdownMenuItem<int?>(
+                            value: course['id'] as int,
+                            child: Text(
+                              course['title']?.toString() ?? 'Course',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                    ],
+                    onChanged: (value) =>
+                        setState(() => selectedCourseId = value),
+                    decoration: const InputDecoration(
+                      labelText: 'Course (project)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
                 const Divider(height: 28),
                 DropdownButtonFormField<String>(
                   value: freq,
@@ -1871,6 +2072,7 @@ Future<void> _showEditPlannerEventDialog(
                       'recurrence_count': freq != 'N' && endMode == 2
                           ? math.max(1, parsedCount)
                           : null,
+                      'course_id': selectedCourseId,
                     };
                     try {
                       await onUpdate(event, changes);

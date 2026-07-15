@@ -27,6 +27,16 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.181: activity wide-calendar round. Red now-line (today column dot+
+  bar, minute repaint timer) + red HH:MM on the hour axis. Ctrl+scroll
+  zoom ROOT CAUSE: browser page-zoom eats ctrl+wheel on web — index.html
+  wheel listener {passive:false} preventDefault when ctrl/meta; Flutter
+  handler existed since 0.1.163. Event↔course: course dropdown in create
+  (FAB/month/drag) + edit dialogs (default Inbox=null; courseId threaded
+  through onCreatePlannerEvent typedefs ×3 + _createPlannerEvent local+
+  cloud payloads — replaced the silent _selectedCourse binding); details
+  dialog shows course + importance. Filter bar unchanged (renders w/ ≥1
+  course; absence on device = stale PWA bundle → reload toast).
 - 0.1.180: startup image (portal prefs; URL or ≤50MB upload via
   LocalAttachmentStore, cap 20→50MB; _CustomSplashOverlay BoxFit.cover,
   tap-skip), keep-offline-on-login checkbox (default keep → background
