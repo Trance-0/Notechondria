@@ -9540,7 +9540,7 @@ k.toString
 k=A.aS(k,B.x,t.J)
 k.toString
 s=t.p
-r=A.b([new A.Pc("0.1.179",A.bHO(a),l)],s)
+r=A.b([new A.Pc("0.1.180",A.bHO(a),l)],s)
 if(a.r)r.push(B.E6)
 if(a.x!=null){q=a.c
 q.toString
@@ -11065,7 +11065,7 @@ J.b1(l,"social_link",J.D(f,"social_link"))}f=a.z
 if((f==null?null:f.h(0,"image_url"))!=null)J.b1(l,"image_url",a.z.h(0,"image_url"))
 f=a.Q
 if(f==null)f=B.b5
-k=A.bRK(new A.aAU(B.Ks,"0.1.179",l,f,a.fy,a.go,a.id,a.ch,a.cy,a.d))
+k=A.bRK(new A.aAU(B.Ks,"0.1.180",l,f,a.fy,a.go,a.id,a.ch,a.cy,a.d))
 f=a.c
 f.toString
 f=A.aS(f,B.x,t.J)
@@ -13440,15 +13440,15 @@ p=n}else p=o
 s=p.length===0?3:4
 break
 case 3:s=5
-return A.k(A.EP(a,"0.1.179"),$async$acE)
+return A.k(A.EP(a,"0.1.180"),$async$acE)
 case 5:s=1
 break
-case 4:if(A.ap4(p,"0.1.179")>=0){s=1
-break}m=A.bRb("0.1.179",p,B.aPG)
+case 4:if(A.ap4(p,"0.1.180")>=0){s=1
+break}m=A.bRb("0.1.180",p,B.aPG)
 s=m.length===0?6:7
 break
 case 6:s=8
-return A.k(A.EP(a,"0.1.179"),$async$acE)
+return A.k(A.EP(a,"0.1.180"),$async$acE)
 case 8:s=1
 break
 case 7:a.ok=!0
@@ -13532,8 +13532,8 @@ if(m==null){s=1
 break}s=4
 return A.k(m.nw(),$async$zD)
 case 4:l=b6
-if(J.aL(l)>20971520){a3=b4.c
-if(a3!=null)a3.ai(t.Q).f.fw(A.fd(null,null,null,null,null,B.L,null,A.N("Attachment not added: Editor.UI/editor.attachment \u2014 file exceeds 20 MB per-attachment limit.",null,null,null,null,null,null,null),null,B.bl,null,null,null,null,null,null,null,null,null,null))
+if(J.aL(l)>52428800){a3=b4.c
+if(a3!=null)a3.ai(t.Q).f.fw(A.fd(null,null,null,null,null,B.L,null,A.N("Attachment not added: Editor.UI/editor.attachment \u2014 file exceeds 50 MB per-attachment limit.",null,null,null,null,null,null,null),null,B.bl,null,null,null,null,null,null,null,null,null,null))
 s=1
 break}k=m.b
 j=A.bqU(b4,m.b,l)
@@ -65830,7 +65830,7 @@ s=A.lH(new A.aUw(q))
 if(q.w){o=o.gwR()
 r=q.fy.h(0,"api_base_url")
 r=r==null?p:J.n(r)
-return new A.eQ(B.cC,p,B.cj,B.L,A.b([s,A.aGC(0,new A.NV(o,"0.1.179",new A.aUx(q),q.p4,r,p))],t.p),p)}return s}}
+return new A.eQ(B.cC,p,B.cj,B.L,A.b([s,A.aGC(0,new A.NV(o,"0.1.180",new A.aUx(q),q.p4,r,p))],t.p),p)}return s}}
 A.aUu.prototype={
 $1(a){return a>=0&&a<5},
 $S:55}
@@ -68335,12 +68335,12 @@ p=m.c
 p.toString
 o=q.c
 s=2
-return A.k(A.bed(p,l.gwR(),"0.1.179",o),$async$$0)
+return A.k(A.bed(p,l.gwR(),"0.1.180",o),$async$$0)
 case 2:n=b
 s=3
-return A.k(A.EP(m,"0.1.179"),$async$$0)
+return A.k(A.EP(m,"0.1.180"),$async$$0)
 case 3:l=n?"acknowledged":"skipped"
-m.b4(B.R,"Feature updates "+l+": Editor.UI/whats_new \u2014 "+o.length+" update(s) since "+q.a.a+" marked seen at 0.1.179.","Editor.UI")
+m.b4(B.R,"Feature updates "+l+": Editor.UI/whats_new \u2014 "+o.length+" update(s) since "+q.a.a+" marked seen at 0.1.180.","Editor.UI")
 return A.v(null,r)}})
 return A.w($async$$0,r)},
 $S:131}
@@ -138982,7 +138982,7 @@ yl(a,b,c,d,e){return this.aX0(0,b,c,d,e)},
 aX0(a,b,c,d,e){var s=0,r=A.x(t.Xn),q,p=this,o,n,m,l,k
 var $async$yl=A.t(function(f,g){if(f===1)return A.u(g,r)
 for(;;)switch(s){case 0:k=b.byteLength
-if(k>20971520)throw A.h(A.aAW("Attachment not stored: Shared.LocalAttachmentStore/put \u2014 file is "+k+" bytes but the per-file cap is 20971520."))
+if(k>52428800)throw A.h(A.aAW("Attachment not stored: Shared.LocalAttachmentStore/put \u2014 file is "+k+" bytes but the per-file cap is 52428800."))
 o=A.bip(e)
 n=A.bip(d)
 if(o.length===0||n.length===0)throw A.h(A.aAW("Attachment not stored: Shared.LocalAttachmentStore/put \u2014 noteUuid and filename must be non-empty after sanitization."))
