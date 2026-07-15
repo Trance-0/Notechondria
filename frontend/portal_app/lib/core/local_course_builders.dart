@@ -39,9 +39,17 @@ extension _AppShellLocalCourseBuildersX on _AppShellState {
 
   Future<Map<String, dynamic>> _createLocalCourse(
     String title,
-    String description,
-  ) async {
+    String description, {
+    int? colorHue,
+    String? coverImageUrl,
+  }) async {
     final course = _buildLocalCourse(title: title, description: description);
+    if (colorHue != null) {
+      course['color_hue'] = colorHue;
+    }
+    if (coverImageUrl != null && coverImageUrl.trim().isNotEmpty) {
+      course['cover_image_url'] = coverImageUrl.trim();
+    }
     _localCourses = [course, ..._localCourses];
     _localStats = {
       ..._localStats,
@@ -155,6 +163,7 @@ extension _AppShellLocalCourseBuildersX on _AppShellState {
     String? createdAt,
     int? id,
     String metadataJson = '{}',
+    Map<String, dynamic>? author,
   }) {
     final nowIso = DateTime.now().toUtc().toIso8601String();
     final effectiveTitle = title.trim().isEmpty
@@ -181,11 +190,24 @@ extension _AppShellLocalCourseBuildersX on _AppShellState {
       'date_created': createdAt ?? nowIso,
       'last_edit': nowIso,
       'is_local_draft': true,
-      'author': {
-        'username': 'Local Draft',
-        'display_name': 'Local Draft',
-        'image_url': '',
-      },
+      // Pulled cloud copies keep their real author; fresh drafts are
+      // attributed to the signed-in profile when there is one, so the
+      // note card shows the user's actual avatar instead of a stub.
+      'author': author ??
+          (_profile != null
+              ? {
+                  'username': _profile?['username']?.toString() ?? '',
+                  'display_name': _profile?['display_name']?.toString() ??
+                      _profile?['username']?.toString() ??
+                      '',
+                  'image_url': _profile?['image_url']?.toString() ?? '',
+                  'avatar_url': _profile?['avatar_url']?.toString() ?? '',
+                }
+              : {
+                  'username': 'Local Draft',
+                  'display_name': 'Local Draft',
+                  'image_url': '',
+                }),
     };
   }
 

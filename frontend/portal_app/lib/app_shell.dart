@@ -284,11 +284,15 @@ class _AppShellState extends State<AppShell>
         id: id,
         metadataJson: metadataJson,
       );
-  // AppShellSessionMixin wiring. Portal has no multi-device UI
-  // and doesn't persist the session client-side, so the metadata
-  // and persistSession hooks fall through to the mixin defaults.
-  // The one per-app override is `clearAppSpecificSessionFields`,
-  // which resets `_plannerEvents` on logout.
+  // AppShellSessionMixin wiring. 0.1.182: the portal now persists the
+  // session like the editor — previously every page reload signed the
+  // user out (token was memory-only), which surfaced as "logged in but
+  // no login info shown / no subscribed courses / no course filter".
+  @override
+  Future<void> persistSession(String token, Map<String, dynamic> user) =>
+      _LocalAppStore.saveSession(token, user);
+  @override
+  Future<void> clearPersistedSession() => _LocalAppStore.clearSession();
   @override
   set token(String? value) => _token = value;
   @override
@@ -511,6 +515,8 @@ class _AppShellState extends State<AppShell>
     });
     _splashStatus.value = 'Loading local state';
     await _loadLocalState();
+    _splashStatus.value = 'Restoring session';
+    await _restoreSession();
     _splashStatus.value = 'Completing sign-in';
     final freshSignIn = await handleOAuthCallback();
     _splashStatus.value = 'Connecting to server';
@@ -552,6 +558,26 @@ class _AppShellState extends State<AppShell>
             'Portal.Sync.Session/keep_offline — ${feedback.message}',
       );
     }));
+  }
+
+  /// Restores a persisted auth session if one exists (mirrors the
+  /// editor). Validates the stored token against `/auth/session/`; a
+  /// stale token clears the persisted session instead of restoring it.
+  Future<void> _restoreSession() async {
+    final session = await _LocalAppStore.loadSession();
+    if (session == null) return;
+    final token = session['token']?.toString() ?? '';
+    if (token.isEmpty) return;
+    try {
+      final check = await widget.client.checkSession(token);
+      if (check['authenticated'] == true) {
+        await applyAuthPayload(check);
+        return;
+      }
+    } catch (_) {
+      // Token invalid or network down — fall through and clear.
+    }
+    await _LocalAppStore.clearSession();
   }
 
   /// Resolves a `#/courses/<slug>` cold-start deep link once the course
@@ -1007,6 +1033,7 @@ class _AppShellState extends State<AppShell>
           onUnsubscribe: _unsubscribeFromCourse,
           onFetchNoteDetail: _fetchNoteDetail,
           onEditCourse: _updateCourseMeta,
+          onImportCourseFromGit: _importCourseFromGit,
         );
       case 3:
         return _ActivityPage(

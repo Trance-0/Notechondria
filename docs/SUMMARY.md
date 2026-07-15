@@ -67,6 +67,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.182 - Portal session persistence (root cause) + course/avatar fix round](versions/0.1.182.md)
 - [0.1.181 - Now-line, working ctrl+scroll zoom, event↔course binding](versions/0.1.181.md)
 - [0.1.180 - Startup image, keep-offline login merge, course edit entry, starter cleanup](versions/0.1.180.md)
 - [0.1.179 - Portal URL routing: unique, shareable addresses for every surface](versions/0.1.179.md)

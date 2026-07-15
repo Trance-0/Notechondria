@@ -27,6 +27,20 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.182: ROOT CAUSE round. Portal sessions were memory-only (editor
+  persisted, portal no-op) — every reload silently signed out, explaining
+  "no login info" (#7), missing subscribed courses (#6), missing activity
+  category dropdown (#2), and "new project missing" (#8). Ported editor
+  session persistence (save/load/clear + boot _restoreSession w/
+  /auth/session/ validation). Also: placeholder days keep the hour grid +
+  drag-create in empty/offline weeks (#3); create-course dialog hue +
+  cover URL (#5) + GitHub repo import (create→bind→import, new client
+  setCourseGit/importCourseGit + _put helper) (#9); subscribed list
+  ordered by last view (#6); editor sidebar ordered by recency (#8);
+  avatar fix BOTH apps: pulled drafts kept stub "Local Draft" author
+  (post-0.1.180 pull made it visible) → real author passthrough + editor
+  got the portal's fallbackUrl avatar chain. #1/#4 were already in
+  unpushed 0.1.181. Owner pushes manually; Pages CI validates after.
 - 0.1.181: activity wide-calendar round. Red now-line (today column dot+
   bar, minute repaint timer) + red HH:MM on the hour axis. Ctrl+scroll
   zoom ROOT CAUSE: browser page-zoom eats ctrl+wheel on web — index.html

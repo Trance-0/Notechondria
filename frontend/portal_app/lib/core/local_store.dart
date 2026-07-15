@@ -73,6 +73,7 @@ class _LocalAppStore {
   static const String _statsKey = 'notechondria.portal.local_stats';
   static const String _cacheKey = 'notechondria.portal.local_cache';
   static const String _logsKey = 'notechondria.portal.local_logs';
+  static const String _sessionKey = 'notechondria.portal.session';
   static const String _trashedDraftsKey =
       'notechondria.portal.local_trashed_drafts';
   static const String _trashedCoursesKey =
@@ -281,5 +282,39 @@ class _LocalAppStore {
       }
     } catch (_) {}
     return const [];
+  }
+
+  /// Persists the auth token and profile so the session survives page
+  /// refresh (0.1.182 — previously portal sessions died on every reload,
+  /// which read as "logged in but no login info / no subscribed courses").
+  static Future<void> saveSession(
+      String token, Map<String, dynamic> profile) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+        _sessionKey,
+        jsonEncode({
+          'token': token,
+          'profile': profile,
+        }));
+  }
+
+  /// Loads a previously persisted session. Returns null if none exists.
+  static Future<Map<String, dynamic>?> loadSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_sessionKey);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map && decoded['token'] != null) {
+        return Map<String, dynamic>.from(decoded);
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Clears the persisted session (on logout).
+  static Future<void> clearSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_sessionKey);
   }
 }

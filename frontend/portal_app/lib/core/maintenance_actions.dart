@@ -496,4 +496,58 @@ extension _AppShellMaintenanceX on _AppShellState {
           isError: true);
     }
   }
+
+  /// Creates a cloud course bound to a GitHub repo and imports its
+  /// markdown as the course content (create → PUT git binding → import).
+  /// One repo per course by design (the binding is a single field).
+  Future<ActionFeedback> _importCourseFromGit(
+    String title,
+    String description,
+    String repo, {
+    int? colorHue,
+  }) async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      return const ActionFeedback(
+          message: 'Sign in to import a course from GitHub.', isError: true);
+    }
+    try {
+      final created = await widget.client.createCourse(token, {
+        'title': title.trim().isEmpty ? repo.split('/').last : title.trim(),
+        'description': description,
+        if (colorHue != null) 'color_hue': colorHue,
+      });
+      final courseId = (created['id'] as num?)?.toInt();
+      if (courseId == null) {
+        return const ActionFeedback(
+            message: 'Course created but no id returned.', isError: true);
+      }
+      await widget.client.setCourseGit(token, courseId, {
+        'repo': repo.trim(),
+        'branch': 'main',
+        'sync_enabled': false,
+      });
+      final summary = await widget.client.importCourseGit(token, courseId);
+      final refreshed = (await widget.client.getCourses(token: _token))
+          .map(decorateRemoteCourse)
+          .toList();
+      _courses = refreshed;
+      for (final course in refreshed) {
+        if ((course['id'] as num?)?.toInt() == courseId) {
+          await _selectCourse(course);
+          break;
+        }
+      }
+      final notes = (summary['note_count'] as num?)?.toInt() ?? 0;
+      final modules = (summary['modules'] as num?)?.toInt() ?? 0;
+      return ActionFeedback(
+          message: 'Imported $notes notes in $modules modules from $repo.');
+    } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      return ActionFeedback(
+          message: 'GitHub import failed: Portal.Sync.Courses/git_import — '
+              '$cause',
+          isError: true);
+    }
+  }
 }

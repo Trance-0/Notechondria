@@ -372,10 +372,36 @@ class _AppShellState extends State<AppShell>
   /// repopulates `_courses` from the public-feed response, so signed-
   /// out users still get a sensible catalog.
   List<Map<String, dynamic>> get _allCategories {
+    // 0.1.182: order the real categories by the user's most recent
+    // activity (last opened, else the newest note's edit) so a freshly
+    // created project surfaces at the top instead of being buried by
+    // the server's static sort order.
+    DateTime? recency(Map<String, dynamic> course) {
+      final opened =
+          DateTime.tryParse(course['last_opened_at']?.toString() ?? '');
+      final recent = course['recent_notes'];
+      DateTime? noteEdit;
+      if (recent is List && recent.isNotEmpty && recent.first is Map) {
+        noteEdit = DateTime.tryParse(
+            (recent.first as Map)['last_edit']?.toString() ?? '');
+      }
+      if (opened == null) return noteEdit;
+      if (noteEdit == null) return opened;
+      return opened.isAfter(noteEdit) ? opened : noteEdit;
+    }
+
+    final rows = [..._localCourses, ..._courses];
+    rows.sort((a, b) {
+      final at = recency(a);
+      final bt = recency(b);
+      if (at == null && bt == null) return 0;
+      if (at == null) return 1;
+      if (bt == null) return -1;
+      return bt.compareTo(at);
+    });
     return [
       buildUncategorizedFolder(),
-      ..._localCourses,
-      ..._courses,
+      ...rows,
     ];
   }
 

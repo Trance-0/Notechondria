@@ -17,6 +17,7 @@ class _CoursePage extends StatefulWidget {
     required this.onUnsubscribe,
     required this.onFetchNoteDetail,
     this.onEditCourse,
+    this.onImportCourseFromGit,
   });
 
   final List<Map<String, dynamic>> courses;
@@ -28,8 +29,12 @@ class _CoursePage extends StatefulWidget {
   final bool canCreateLocalCourses;
   final String? apiBaseUrl;
   final ValueChanged<Map<String, dynamic>> onCourseChanged;
-  final Future<Map<String, dynamic>> Function(String title, String description)
-      onCreateLocalCourse;
+  final Future<Map<String, dynamic>> Function(
+    String title,
+    String description, {
+    int? colorHue,
+    String? coverImageUrl,
+  }) onCreateLocalCourse;
   final Future<ActionFeedback> Function({bool announce}) onSyncLocalData;
   final Future<void> Function(Map<String, dynamic> course) onSubscribe;
   final Future<void> Function(Map<String, dynamic> course) onUnsubscribe;
@@ -41,6 +46,15 @@ class _CoursePage extends StatefulWidget {
     Map<String, dynamic> course,
     Map<String, dynamic> payload,
   )? onEditCourse;
+
+  /// Creates a cloud course bound to a GitHub repo and imports its
+  /// markdown (create → bind → import); null hides the repo field.
+  final Future<ActionFeedback> Function(
+    String title,
+    String description,
+    String repo, {
+    int? colorHue,
+  })? onImportCourseFromGit;
 
   @override
   State<_CoursePage> createState() => _CoursePageState();
@@ -105,9 +119,18 @@ class _CoursePageState extends State<_CoursePage> {
   }
 
   List<Map<String, dynamic>> _visibleCourses() {
+    // Default scope: subscribed, most recently viewed first.
     final subscribed = widget.courses
         .where((course) => course['is_subscribed'] == true)
-        .toList();
+        .toList()
+      ..sort((a, b) {
+        final aOpened = DateTime.tryParse(a['last_opened_at']?.toString() ?? '');
+        final bOpened = DateTime.tryParse(b['last_opened_at']?.toString() ?? '');
+        if (aOpened == null && bOpened == null) return 0;
+        if (aOpened == null) return 1;
+        if (bOpened == null) return -1;
+        return bOpened.compareTo(aOpened);
+      });
     final mine = [
       ...widget.localCourses,
       ...widget.courses.where((course) => course['is_owned'] == true),
@@ -127,59 +150,180 @@ class _CoursePageState extends State<_CoursePage> {
   Future<Map<String, dynamic>?> _showCreateLocalCourseDialog() async {
     final titleController = TextEditingController();
     final descriptionController = TextEditingController();
+    final coverController = TextEditingController();
+    final repoController = TextEditingController();
+    double? hue;
+    ActionFeedback? feedback;
+    var submitting = false;
+    final canImportGit =
+        widget.isAuthenticated && widget.onImportCourseFromGit != null;
     try {
       return await showDialog<Map<String, dynamic>>(
         context: context,
-        builder: (context) => AlertDialog(
-          title: Text(AppLocalizations.of(context).courseCreateLocal),
-          content: SizedBox(
-            width: 420,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: titleController,
-                  decoration: InputDecoration(
-                    labelText: AppLocalizations.of(context).courseTitleLabel,
-                    border: const OutlineInputBorder(),
+        builder: (context) => StatefulBuilder(
+          builder: (context, setState) {
+            final currentHue = hue;
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final preview = currentHue == null
+                ? Theme.of(context).colorScheme.primary
+                : HSVColor.fromAHSV(1, currentHue.clamp(0, 359), 0.55,
+                        isDark ? 0.6 : 0.9)
+                    .toColor();
+            return AlertDialog(
+              title: Text(AppLocalizations.of(context).courseCreateLocal),
+              content: SizedBox(
+                width: 420,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: titleController,
+                        decoration: InputDecoration(
+                          labelText:
+                              AppLocalizations.of(context).courseTitleLabel,
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: descriptionController,
+                        maxLines: 3,
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)
+                              .courseDescriptionLabel,
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: coverController,
+                        decoration: const InputDecoration(
+                          labelText: 'Feature image URL (optional)',
+                          hintText: 'https://example.com/cover.png',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: preview,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: currentHue == null
+                                ? const Text('Theme default colour')
+                                : Slider(
+                                    min: 0,
+                                    max: 359,
+                                    value:
+                                        currentHue.clamp(0, 359).toDouble(),
+                                    onChanged: (value) =>
+                                        setState(() => hue = value),
+                                  ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: currentHue != null,
+                            onChanged: (checked) => setState(
+                                () => hue = (checked == true) ? 200.0 : null),
+                          ),
+                          const Expanded(
+                            child: Text('Custom colour hue'),
+                          ),
+                        ],
+                      ),
+                      if (canImportGit) ...[
+                        const Divider(height: 24),
+                        TextField(
+                          controller: repoController,
+                          decoration: const InputDecoration(
+                            labelText:
+                                'Import from GitHub repo (owner/name, optional)',
+                            hintText: 'octo-org/my-docs',
+                            helperText:
+                                'Binds this course to the repo (one repo per '
+                                'course) and imports its markdown.',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                        ),
+                      ],
+                      if (feedback != null) ...[
+                        const SizedBox(height: 8),
+                        FeedbackText(feedback: feedback!),
+                      ],
+                    ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: descriptionController,
-                  maxLines: 3,
-                  decoration: InputDecoration(
-                    labelText:
-                        AppLocalizations.of(context).courseDescriptionLabel,
-                    border: const OutlineInputBorder(),
-                  ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed:
+                      submitting ? null : () => Navigator.of(context).pop(),
+                  child: Text(AppLocalizations.of(context).commonCancel),
+                ),
+                FilledButton(
+                  onPressed: submitting
+                      ? null
+                      : () async {
+                          final repo = repoController.text.trim();
+                          if (repo.isNotEmpty && canImportGit) {
+                            setState(() {
+                              submitting = true;
+                              feedback = null;
+                            });
+                            final result =
+                                await widget.onImportCourseFromGit!(
+                              titleController.text.trim(),
+                              descriptionController.text.trim(),
+                              repo,
+                              colorHue: hue?.round(),
+                            );
+                            if (!context.mounted) return;
+                            if (result.isError) {
+                              setState(() {
+                                submitting = false;
+                                feedback = result;
+                              });
+                              return;
+                            }
+                            Navigator.of(context).pop(null);
+                            return;
+                          }
+                          final created = await widget.onCreateLocalCourse(
+                            titleController.text.trim(),
+                            descriptionController.text.trim(),
+                            colorHue: hue?.round(),
+                            coverImageUrl: coverController.text.trim(),
+                          );
+                          if (context.mounted) {
+                            Navigator.of(context).pop(created);
+                          }
+                        },
+                  child: Text(AppLocalizations.of(context).commonCreate),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(AppLocalizations.of(context).commonCancel),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final created = await widget.onCreateLocalCourse(
-                  titleController.text.trim(),
-                  descriptionController.text.trim(),
-                );
-                if (context.mounted) {
-                  Navigator.of(context).pop(created);
-                }
-              },
-              child: Text(AppLocalizations.of(context).commonCreate),
-            ),
-          ],
+            );
+          },
         ),
       );
     } finally {
       titleController.dispose();
       descriptionController.dispose();
+      coverController.dispose();
+      repoController.dispose();
     }
   }
 

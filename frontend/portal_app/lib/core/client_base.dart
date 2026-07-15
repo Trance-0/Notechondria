@@ -21,6 +21,18 @@ abstract class NotechondriaClient implements AuthClient {
     int courseId,
     Map<String, dynamic> payload,
   );
+
+  /// Binds a course to a GitHub repo (`PUT /courses/<id>/git/`,
+  /// owner-only; one repo per course by design).
+  Future<Map<String, dynamic>> setCourseGit(
+    String token,
+    int courseId,
+    Map<String, dynamic> payload,
+  );
+
+  /// Imports the bound repo's markdown into the course
+  /// (`POST /courses/<id>/git/import/`, idempotent).
+  Future<Map<String, dynamic>> importCourseGit(String token, int courseId);
   Future<List<Map<String, dynamic>>> getCourseNotes(int courseId,
       {String? token});
   Future<Map<String, dynamic>> getNoteDetail(int noteId, {String? token});

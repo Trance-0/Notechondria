@@ -36,6 +36,9 @@ extension _AppShellDraftSyncX on _AppShellState {
           existingDraft?['editor_mode']?.toString() ??
           'P',
       metadataJson: jsonEncode(metadata),
+      author: note['author'] is Map
+          ? Map<String, dynamic>.from(note['author'] as Map)
+          : null,
     );
   }
 

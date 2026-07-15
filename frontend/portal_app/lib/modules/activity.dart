@@ -87,14 +87,34 @@ class _ActivityPageState extends State<_ActivityPage> {
     ];
   }
 
+  /// Empty hour-grid days (starting today) so the calendar always renders
+  /// — offline / no-event states keep the drag-to-create surface instead
+  /// of a "no events" card.
+  List<Map<String, dynamic>> _placeholderDays() {
+    final today = DateTime.now();
+    final count = widget.rangeDays == 30 ? 30 : widget.rangeDays.clamp(1, 14);
+    return [
+      for (var i = 0; i < count; i++)
+        {
+          'date': DateTime(today.year, today.month, today.day + i)
+              .toIso8601String()
+              .split('T')
+              .first,
+          'events': const <Map<String, dynamic>>[],
+        },
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final weekDays = _filterDays(
+    var weekDays = _filterDays(
       (widget.activityWeek?['days'] as List<dynamic>? ?? const [])
           .map((item) => Map<String, dynamic>.from(item as Map))
           .toList(),
     );
+    if (weekDays.isEmpty) {
+      weekDays = _placeholderDays();
+    }
     final deadlines = _filterEvents(
       (widget.activityWeek?['deadlines'] as List<dynamic>? ?? const [])
           .map((item) => Map<String, dynamic>.from(item as Map))
@@ -138,30 +158,21 @@ class _ActivityPageState extends State<_ActivityPage> {
                     // full-surface sign-in prompt blocked offline planning.
                     Positioned.fill(
                       child: isHorizontal
-                          ? (weekDays.isEmpty
-                              ? _ActivityFillCard(
-                                  child: Center(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(20),
-                                      child: Text(
-                                        l10n.activityNoWeekEvents,
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              : _WideWeekCalendar(
-                                  days: weekDays,
-                                  rangeDays: widget.rangeDays,
-                                  courses: widget.courses,
-                                  onNavigateWeek: widget.onNavigateWeek,
-                                  onShiftStartDay: widget.onShiftStartDay,
-                                  onChangeRange: widget.onChangeRange,
-                                  onCreatePlannerEvent:
-                                      widget.onCreatePlannerEvent,
-                                  onUpdatePlannerEvent:
-                                      widget.onUpdatePlannerEvent,
-                                ))
+                          // Always render the hour grid — an empty week
+                          // shows placeholder days so drag-to-create works
+                          // offline / with no events.
+                          ? _WideWeekCalendar(
+                              days: weekDays,
+                              rangeDays: widget.rangeDays,
+                              courses: widget.courses,
+                              onNavigateWeek: widget.onNavigateWeek,
+                              onShiftStartDay: widget.onShiftStartDay,
+                              onChangeRange: widget.onChangeRange,
+                              onCreatePlannerEvent:
+                                  widget.onCreatePlannerEvent,
+                              onUpdatePlannerEvent:
+                                  widget.onUpdatePlannerEvent,
+                            )
                           : _VerticalWeekBoard(
                               days: weekDays,
                               deadlines: deadlines,
