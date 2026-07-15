@@ -213,9 +213,10 @@ class LocalAttachmentStore {
   /// decide when to warn users about the per-origin budget on web.
   Future<int> totalBytes() async => _backend.totalBytes();
 
-  /// Per-file size cap. Matches the editor's existing upload cap so
-  /// users see a consistent error across the sync + store paths.
-  static const int maxBytesPerAttachment = 20 * 1024 * 1024;
+  /// Per-file size cap. Raised 20→50 MB in 0.1.180 so the custom
+  /// startup-image upload (spec: ≤50 MB) fits; note attachments share
+  /// the same ceiling so the error stays consistent across paths.
+  static const int maxBytesPerAttachment = 50 * 1024 * 1024;
 
   /// Parses a `local://<note_uuid>/<filename>` URL. Returns null when
   /// the input is not a local-attachment URL or the path shape is

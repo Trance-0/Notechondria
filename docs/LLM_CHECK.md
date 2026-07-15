@@ -27,6 +27,17 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.180: startup image (portal prefs; URL or ≤50MB upload via
+  LocalAttachmentStore, cap 20→50MB; _CustomSplashOverlay BoxFit.cover,
+  tap-skip), keep-offline-on-login checkbox (default keep → background
+  _pullCloudNotesToLocal merge w/ existing conflict dialog + last_edit
+  stamps; unchecked → drafts cleared on sign-in), course-edit entry
+  (planner filter-bar port + settings button w/ all-courses tooltip +
+  edit dialog title/desc/hue via new client.updateCourse in BOTH apps;
+  portal course-detail owner Edit button), front-page carousel now
+  public-note-only (stale Inbox bucket off everyone's front page,
+  FrontPageCarouselTests). All Dart bracket-balanced; Pages CI is the
+  gate.
 - 0.1.179: portal URL routing. MaterialApp home→onGenerateRoute/
   onGenerateInitialRoutes; URL map #/ #/notes #/courses[/<slug>] #/activity
   #/settings #/note/<uuid>. In-session sync via replaceBrowserPath

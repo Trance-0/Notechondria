@@ -151,14 +151,37 @@ extension _SettingsPageBuildX on _SettingsPageState {
 
   /// Signed-out account block. Renders the shared `AuthHub` which
   /// already handles Casdoor primary + email/password fallback
-  /// behind an expander. Wrapped in a Padding so it sits flush with
-  /// the rest of the Apple-style cards.
+  /// behind an expander, plus the "keep offline data after login"
+  /// choice read by the post-sign-in merge (0.1.180).
   Widget _buildSignedOutAccount(BuildContext context) {
-    return AuthHub(
-      onLogin: widget.onLogin,
-      onCasdoorLogin: widget.onCasdoorLogin,
-      casdoorOrgLoginUrl: widget.casdoorOrgLoginUrl,
-      apiBaseUrl: widget.apiBaseUrl,
+    final keepOffline =
+        widget.localSettings['keep_offline_data_on_login'] != false;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AuthHub(
+          onLogin: widget.onLogin,
+          onCasdoorLogin: widget.onCasdoorLogin,
+          casdoorOrgLoginUrl: widget.casdoorOrgLoginUrl,
+          apiBaseUrl: widget.apiBaseUrl,
+        ),
+        if (widget.onApplyLocalSettings != null)
+          CheckboxListTile(
+            dense: true,
+            controlAffinity: ListTileControlAffinity.leading,
+            title: const Text('Keep offline data after login'),
+            subtitle: const Text(
+                'Merges your local notes with the cloud after sign-in '
+                '(conflicts prompt you to choose which version to keep). '
+                'Unchecked: local drafts are cleared on sign-in.'),
+            value: keepOffline,
+            onChanged: (value) async {
+              await widget.onApplyLocalSettings!(
+                  {'keep_offline_data_on_login': value != false});
+              refreshState();
+            },
+          ),
+      ],
     );
   }
 

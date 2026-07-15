@@ -292,6 +292,18 @@ class _PortalPreferencesPageState extends State<_PortalPreferencesPage> {
   /// rebuild. Mirrors the editor's `_localeOverride`.
   String? _localeOverride;
 
+  late final TextEditingController _splashUrlController =
+      TextEditingController(
+    text: widget.parent.widget.localSettings['splash_image_url']?.toString() ??
+        '',
+  );
+
+  @override
+  void dispose() {
+    _splashUrlController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = widget.parent;
@@ -378,6 +390,56 @@ class _PortalPreferencesPageState extends State<_PortalPreferencesPage> {
                 ],
               ],
             ),
+            if (p.widget.onApplyLocalSettings != null) ...[
+              const SizedBox(height: 12),
+              _SettingsGroupCard(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.wallpaper_outlined),
+                    title: const Text('Startup image'),
+                    subtitle: Text(_splashImageLabel(p)),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: TextField(
+                      controller: _splashUrlController,
+                      decoration: const InputDecoration(
+                        labelText: 'Remote image URL',
+                        hintText: 'https://example.com/startup.png',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      onSubmitted: (_) => _saveSplashUrl(p),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.link, size: 18),
+                          label: const Text('Use URL'),
+                          onPressed: () => _saveSplashUrl(p),
+                        ),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.upload_file_outlined,
+                              size: 18),
+                          label: const Text('Upload image (≤50 MB)'),
+                          onPressed: () => _uploadSplashImage(p),
+                        ),
+                        TextButton.icon(
+                          icon: const Icon(Icons.restart_alt, size: 18),
+                          label: const Text('Reset to default'),
+                          onPressed: () => _resetSplashImage(p),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 12),
             _SettingsCaption(
               text: AppLocalizations.of(context).settingsImmediateSaveCaption,
@@ -386,6 +448,65 @@ class _PortalPreferencesPageState extends State<_PortalPreferencesPage> {
         ),
       ),
     );
+  }
+
+  String _splashImageLabel(_SettingsPageState p) {
+    final local = p.widget.localSettings['splash_image_local']?.toString() ?? '';
+    final url = p.widget.localSettings['splash_image_url']?.toString() ?? '';
+    if (local.isNotEmpty) return 'Custom uploaded image';
+    if (url.isNotEmpty) return url;
+    return 'Default reactor animation';
+  }
+
+  Future<void> _saveSplashUrl(_SettingsPageState p) async {
+    final url = _splashUrlController.text.trim();
+    if (url.isEmpty) return;
+    await p.widget.onApplyLocalSettings!({
+      'splash_image_url': url,
+      'splash_image_local': '',
+    });
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _uploadSplashImage(_SettingsPageState p) async {
+    final file = await openFile(
+      acceptedTypeGroups: const [
+        XTypeGroup(
+          label: 'Images',
+          extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'],
+        ),
+      ],
+    );
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    if (bytes.lengthInBytes > 50 * 1024 * 1024) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Startup image not set: file exceeds 50 MB.')));
+      }
+      return;
+    }
+    final store = await LocalAttachmentStore.open();
+    await store.put(
+      noteUuid: 'app-splash',
+      filename: 'startup-image',
+      contentType: 'image/*',
+      bytes: bytes,
+    );
+    await p.widget.onApplyLocalSettings!({
+      'splash_image_local': 'local://app-splash/startup-image',
+      'splash_image_url': '',
+    });
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _resetSplashImage(_SettingsPageState p) async {
+    await p.widget.onApplyLocalSettings!({
+      'splash_image_local': '',
+      'splash_image_url': '',
+    });
+    _splashUrlController.clear();
+    if (mounted) setState(() {});
   }
 
   static String _editorModeLabel(BuildContext context, String code) {
