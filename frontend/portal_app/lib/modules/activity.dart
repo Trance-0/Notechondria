@@ -16,6 +16,7 @@ class _ActivityPage extends StatefulWidget {
     required this.onChangeRange,
     required this.onTogglePlannerEventCompletion,
     required this.onUpdatePlannerEvent,
+    this.onEditCourse,
   });
 
   final Map<String, dynamic>? activityWeek;
@@ -42,6 +43,13 @@ class _ActivityPage extends StatefulWidget {
   final Future<void> Function(
           Map<String, dynamic> event, Map<String, dynamic> changes)
       onUpdatePlannerEvent;
+
+  /// Owner-only course metadata editor opened from the filter bar's
+  /// settings button; null hides the button entirely.
+  final Future<ActionFeedback> Function(
+    Map<String, dynamic> course,
+    Map<String, dynamic> payload,
+  )? onEditCourse;
 
   @override
   State<_ActivityPage> createState() => _ActivityPageState();
@@ -102,6 +110,23 @@ class _ActivityPageState extends State<_ActivityPage> {
                 courses: widget.courses,
                 selectedCourseId: _courseFilter,
                 onChanged: (value) => setState(() => _courseFilter = value),
+                onEditSelected: widget.onEditCourse == null
+                    ? null
+                    : () {
+                        final id = _courseFilter;
+                        if (id == null) return;
+                        Map<String, dynamic>? match;
+                        for (final course in widget.courses) {
+                          if ((course['id'] as num?)?.toInt() == id) {
+                            match = course;
+                            break;
+                          }
+                        }
+                        if (match != null) {
+                          _showCourseEditDialog(
+                              context, match, widget.onEditCourse!);
+                        }
+                      },
               ),
               const SizedBox(height: 12),
               Expanded(
@@ -172,11 +197,17 @@ class _CourseFilterBar extends StatelessWidget {
     required this.courses,
     required this.selectedCourseId,
     required this.onChanged,
+    this.onEditSelected,
   });
 
   final List<Map<String, dynamic>> courses;
   final int? selectedCourseId;
   final void Function(int?) onChanged;
+
+  /// Opens the course-metadata editor for the selected course. The button
+  /// renders disabled (with an explanatory tooltip) while the filter is on
+  /// "All courses" — course attributes are edited one course at a time.
+  final VoidCallback? onEditSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -217,6 +248,18 @@ class _CourseFilterBar extends StatelessWidget {
             onChanged: onChanged,
           ),
         ),
+        if (onEditSelected != null) ...[
+          const SizedBox(width: 4),
+          Tooltip(
+            message: value == null
+                ? 'Select a specific course to edit its attributes'
+                : 'Edit course attributes (colour, title, description)',
+            child: IconButton(
+              icon: const Icon(Icons.settings_outlined, size: 20),
+              onPressed: value == null ? null : onEditSelected,
+            ),
+          ),
+        ],
       ],
     );
   }

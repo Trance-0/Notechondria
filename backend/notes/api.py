@@ -635,13 +635,23 @@ class FrontPageApiView(APIView):
     def get(self, request):
         creator = ensure_creator(request.user) if request.user.is_authenticated else None
         subscription_map = active_subscription_map(creator)
+        # 0.1.180: the "recent public courses" carousel only surfaces
+        # courses that actually have public content. Previously it listed
+        # EVERY course row, so stale personal buckets (e.g. the pre-0.1.120
+        # editor "Inbox" template) leaked onto everyone's front page.
         courses = list(
             Course.objects.select_related("creator_id__user_id")
             .prefetch_related("media_items")
-            .annotate(_subscriber_count=Count(
-                "subscriptions", filter=Q(subscriptions__is_active=True),
-            ))
-            .all()
+            .annotate(
+                _subscriber_count=Count(
+                    "subscriptions", filter=Q(subscriptions__is_active=True),
+                ),
+                _public_note_count=Count(
+                    "notes",
+                    filter=Q(notes__is_public=True, notes__deleted_at__isnull=True),
+                ),
+            )
+            .filter(_public_note_count__gt=0)
         )
         courses.sort(key=lambda course: course_sort_key(course, subscription_map))
         carousel_courses = courses[:6]

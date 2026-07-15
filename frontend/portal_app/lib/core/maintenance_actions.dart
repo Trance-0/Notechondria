@@ -455,4 +455,45 @@ extension _AppShellMaintenanceX on _AppShellState {
           isError: true);
     }
   }
+
+  /// Owner-only course metadata update (title / description / colour hue)
+  /// used by the course-edit dialog. Refreshes the course list so the new
+  /// hue paints immediately on the calendar.
+  Future<ActionFeedback> _updateCourseMeta(
+      Map<String, dynamic> course, Map<String, dynamic> payload) async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      return const ActionFeedback(
+          message: 'Sign in to edit a course.', isError: true);
+    }
+    final courseId = (course['id'] as num?)?.toInt();
+    if (courseId == null || courseId < 0) {
+      return const ActionFeedback(
+          message: 'Local courses have no cloud metadata to edit.',
+          isError: true);
+    }
+    try {
+      await widget.client.updateCourse(token, courseId, payload);
+      final refreshed = (await widget.client.getCourses(token: _token))
+          .map(decorateRemoteCourse)
+          .toList();
+      _courses = refreshed;
+      final selectedId = (_selectedCourse?['id'] as num?)?.toInt();
+      if (selectedId == courseId) {
+        for (final item in refreshed) {
+          if ((item['id'] as num?)?.toInt() == courseId) {
+            _selectedCourse = item;
+            break;
+          }
+        }
+      }
+      refreshState();
+      return const ActionFeedback(message: 'Course updated.');
+    } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      return ActionFeedback(
+          message: 'Course not updated: Portal.Sync.Courses/update — $cause.',
+          isError: true);
+    }
+  }
 }

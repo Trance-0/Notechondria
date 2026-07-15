@@ -950,6 +950,7 @@ class _AppShellState extends State<AppShell>
           onSubscribe: _subscribeToCourse,
           onUnsubscribe: _unsubscribeFromCourse,
           onFetchNoteDetail: _fetchNoteDetail,
+          onEditCourse: _updateCourseMeta,
         );
       case 3:
         return _ActivityPage(
@@ -973,6 +974,7 @@ class _AppShellState extends State<AppShell>
           onChangeRange: (days) => _loadActivityWeek(rangeDays: days),
           onTogglePlannerEventCompletion: _togglePlannerEventCompletion,
           onUpdatePlannerEvent: _updatePlannerEvent,
+          onEditCourse: _updateCourseMeta,
         );
       case 4:
         return _SettingsPage(

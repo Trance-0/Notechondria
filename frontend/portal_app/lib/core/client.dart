@@ -167,6 +167,19 @@ class HttpNotechondriaClient
   }
 
   @override
+  Future<Map<String, dynamic>> updateCourse(
+    String token,
+    int courseId,
+    Map<String, dynamic> payload,
+  ) async {
+    final uri = _uri('/courses/$courseId/');
+    final response = await _patch(uri, token: token, payload: payload);
+    return Map<String, dynamic>.from(
+      await decode(response, uri: uri, method: 'PATCH'),
+    );
+  }
+
+  @override
   Future<List<Map<String, dynamic>>> getCourseNotes(int courseId,
       {String? token}) async {
     final uri = _uri('/courses/$courseId/notes/');

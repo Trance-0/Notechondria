@@ -793,6 +793,10 @@ class _AppShellState extends State<AppShell>
           activityWeek: _activityWeek,
           isAuthenticated: _token != null && _token!.isNotEmpty,
           plannerEvents: _plannerEvents,
+          courses: (_token == null || _token!.isEmpty)
+              ? _localCourses
+              : [..._localCourses, ..._courses],
+          onEditCourse: _updateCourseMeta,
           onCreatePlannerEvent: _createPlannerEvent,
           onImportCalendar: _importCalendarFeed,
           onSubscribeCalendar: _subscribeCalendarFeed,

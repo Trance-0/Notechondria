@@ -16,6 +16,7 @@ class _CoursePage extends StatefulWidget {
     required this.onSubscribe,
     required this.onUnsubscribe,
     required this.onFetchNoteDetail,
+    this.onEditCourse,
   });
 
   final List<Map<String, dynamic>> courses;
@@ -33,6 +34,13 @@ class _CoursePage extends StatefulWidget {
   final Future<void> Function(Map<String, dynamic> course) onSubscribe;
   final Future<void> Function(Map<String, dynamic> course) onUnsubscribe;
   final Future<Map<String, dynamic>> Function(int noteId) onFetchNoteDetail;
+
+  /// Owner-only metadata editor (title / description / colour hue); null
+  /// hides the Edit entry (e.g. signed-out).
+  final Future<ActionFeedback> Function(
+    Map<String, dynamic> course,
+    Map<String, dynamic> payload,
+  )? onEditCourse;
 
   @override
   State<_CoursePage> createState() => _CoursePageState();
@@ -671,6 +679,20 @@ class _CoursePageState extends State<_CoursePage> {
                                 child: Text(
                                     AppLocalizations.of(context).courseSubscribe),
                               ),
+                            // Owner-only entry to edit the course metadata
+                            // (title / description / calendar colour hue).
+                            if (widget.onEditCourse != null &&
+                                activeCourse['is_owned'] == true)
+                              OutlinedButton.icon(
+                                icon: const Icon(Icons.settings_outlined,
+                                    size: 18),
+                                onPressed: () => _showCourseEditDialog(
+                                  context,
+                                  activeCourse,
+                                  widget.onEditCourse!,
+                                ),
+                                label: const Text('Edit course'),
+                              ),
                           ],
                         ),
                       ],
@@ -913,4 +935,148 @@ class _CourseChip extends StatelessWidget {
       child: Text(label, style: Theme.of(context).textTheme.labelLarge),
     );
   }
+}
+
+/// Owner-only course metadata editor: title, description, and the accent
+/// hue that colours this course's events on the calendar (hue-only — the
+/// calendar derives saturation from event importance and value from the
+/// theme). `onSubmit` PATCHes and refreshes; errors render inline.
+Future<void> _showCourseEditDialog(
+  BuildContext context,
+  Map<String, dynamic> course,
+  Future<ActionFeedback> Function(
+    Map<String, dynamic> course,
+    Map<String, dynamic> payload,
+  ) onSubmit,
+) async {
+  final titleController =
+      TextEditingController(text: course['title']?.toString() ?? '');
+  final descriptionController =
+      TextEditingController(text: course['description']?.toString() ?? '');
+  double? hue = (course['color_hue'] as num?)?.toDouble();
+  ActionFeedback? feedback;
+  var submitting = false;
+
+  await showDialog<void>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) {
+        final currentHue = hue;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final preview = currentHue == null
+            ? Theme.of(context).colorScheme.primary
+            : HSVColor.fromAHSV(
+                    1, currentHue.clamp(0, 359), 0.55, isDark ? 0.6 : 0.9)
+                .toColor();
+        return AlertDialog(
+          title: const Text('Edit course'),
+          content: SizedBox(
+            width: 420,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(
+                      labelText: 'Title',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: descriptionController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Description',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: preview,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: currentHue == null
+                            ? const Text('Theme default colour')
+                            : Slider(
+                                min: 0,
+                                max: 359,
+                                value: currentHue.clamp(0, 359).toDouble(),
+                                onChanged: (value) =>
+                                    setState(() => hue = value),
+                              ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: currentHue != null,
+                        onChanged: (checked) => setState(
+                            () => hue = (checked == true) ? 200.0 : null),
+                      ),
+                      const Expanded(
+                        child: Text(
+                            'Custom hue (colours this course\'s events on the calendar)'),
+                      ),
+                    ],
+                  ),
+                  if (feedback != null) ...[
+                    const SizedBox(height: 8),
+                    FeedbackText(feedback: feedback!),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed:
+                  submitting ? null : () => Navigator.of(context).pop(),
+              child: Text(AppLocalizations.of(context).commonCancel),
+            ),
+            FilledButton(
+              onPressed: submitting
+                  ? null
+                  : () async {
+                      setState(() {
+                        submitting = true;
+                        feedback = null;
+                      });
+                      final trimmedTitle = titleController.text.trim();
+                      final result = await onSubmit(course, {
+                        'title': trimmedTitle.isEmpty
+                            ? (course['title']?.toString() ?? 'Course')
+                            : trimmedTitle,
+                        'description': descriptionController.text,
+                        'color_hue': hue?.round(),
+                      });
+                      if (result.isError) {
+                        setState(() {
+                          submitting = false;
+                          feedback = result;
+                        });
+                        return;
+                      }
+                      if (context.mounted) {
+                        Navigator.of(context).pop();
+                      }
+                    },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    ),
+  );
 }

@@ -2075,3 +2075,45 @@ class NoteUrlAccessPolicyTests(TestCase):
     def test_private_note_refused_for_unrelated_user(self):
         resp = self._get(self.private_note, token=self.other_token)
         self.assertGreaterEqual(resp.status_code, 400)
+
+
+class FrontPageCarouselTests(TestCase):
+    """0.1.180: the public-courses carousel only lists courses with at
+    least one public note — stale personal buckets stay off the front
+    page."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="front@example.com", password="pw")
+        self.creator = Creator.objects.create(user_id=self.user)
+
+    def test_carousel_excludes_courses_without_public_notes(self):
+        public_course = Course.objects.create(
+            creator_id=self.creator, slug="pub-course", title="Public Course"
+        )
+        Note.objects.create(
+            creator_id=self.creator, course_id=public_course,
+            sharing_id="fp-pub", title="Shown", is_public=True,
+        )
+        stale_inbox = Course.objects.create(
+            creator_id=self.creator, slug="stale-inbox", title="Inbox",
+            description="Offline-first local note bucket",
+        )
+        Note.objects.create(
+            creator_id=self.creator, course_id=stale_inbox,
+            sharing_id="fp-priv", title="Hidden", is_public=False,
+        )
+        empty_course = Course.objects.create(
+            creator_id=self.creator, slug="empty-course", title="Empty"
+        )
+        self.assertIsNotNone(empty_course)
+
+        resp = self.client.get("/api/v1/front-page/")
+        self.assertEqual(resp.status_code, 200)
+        payload = resp.json()
+        titles = [c["title"] for c in payload["carousel_courses"]]
+        self.assertIn("Public Course", titles)
+        self.assertNotIn("Inbox", titles)
+        self.assertNotIn("Empty", titles)
+        default = payload.get("default_course")
+        if default is not None:
+            self.assertEqual(default["title"], "Public Course")
