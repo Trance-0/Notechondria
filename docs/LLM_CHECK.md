@@ -27,6 +27,17 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.183: CI FIX + cross-app dialogs. 0.1.182 editor avatar fix used
+  avatarFallbackUrl inside _LearnerNoteCardBody without the field (CI
+  compile fail at learner.dart:762) — field/ctor/call-site threaded.
+  LESSON re-confirmed: variables computed in an outer builder are not
+  visible in extracted card-body widgets; grep the USE site's class
+  before adding references. Course dropdown: portal dialogs now render it
+  unconditionally (was gated on courses.isNotEmpty → invisible while the
+  session bug emptied the list); planner create dialog ported (courseId
+  through page+FAB typedefs → _createPlannerEvent local+cloud payloads;
+  weight labels too); editor has no event dialog. Version banner now
+  shows (v<current> → v<remote>).
 - 0.1.182: ROOT CAUSE round. Portal sessions were memory-only (editor
   persisted, portal no-op) — every reload silently signed out, explaining
   "no login info" (#7), missing subscribed courses (#6), missing activity

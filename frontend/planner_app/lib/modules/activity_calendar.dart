@@ -210,14 +210,18 @@ Future<void> _showCreatePlannerEventDialog(
     String title,
     DateTime eventDate,
     int difficultyWeight,
-    String description,
-  ) onCreatePlannerEvent,
-) async {
+    String description, {
+    int? courseId,
+  }) onCreatePlannerEvent, {
+  List<Map<String, dynamic>> courses = const <Map<String, dynamic>>[],
+}) async {
   final titleController = TextEditingController();
   final descriptionController = TextEditingController();
   var selectedDate = _dateOnly(DateTime.now()).add(const Duration(days: 1));
   var selectedTime = const TimeOfDay(hour: 14, minute: 0);
   var weight = 1;
+  // null = uncategorized "inbox" (course optional by design).
+  int? selectedCourseId;
   ActionFeedback? feedback;
   var submitting = false;
 
@@ -293,7 +297,8 @@ Future<void> _showCreatePlannerEventDialog(
                   5,
                   (index) => DropdownMenuItem<int>(
                     value: index + 1,
-                    child: Text('Weight ${index + 1}'),
+                    child: Text(AppLocalizations.of(context)
+                        .activityWeightN(index + 1)),
                   ),
                 ),
                 onChanged: (value) {
@@ -303,6 +308,30 @@ Future<void> _showCreatePlannerEventDialog(
                 },
                 decoration: const InputDecoration(
                   labelText: 'Difficulty',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int?>(
+                value: selectedCourseId,
+                items: [
+                  const DropdownMenuItem<int?>(
+                    value: null,
+                    child: Text('Inbox (uncategorized)'),
+                  ),
+                  for (final course in courses)
+                    if (course['id'] is int)
+                      DropdownMenuItem<int?>(
+                        value: course['id'] as int,
+                        child: Text(
+                          course['title']?.toString() ?? 'Course',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                ],
+                onChanged: (value) => setState(() => selectedCourseId = value),
+                decoration: const InputDecoration(
+                  labelText: 'Course (project)',
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -337,6 +366,7 @@ Future<void> _showCreatePlannerEventDialog(
                       ),
                       weight,
                       descriptionController.text.trim(),
+                      courseId: selectedCourseId,
                     );
                     if (!context.mounted) {
                       return;

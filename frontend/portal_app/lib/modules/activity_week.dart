@@ -1620,7 +1620,7 @@ Future<void> _showCreatePlannerEventDialog(
                   border: const OutlineInputBorder(),
                 ),
               ),
-              if (courses.isNotEmpty) ...[
+              ...[
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int?>(
                   value: selectedCourseId,
@@ -1895,7 +1895,7 @@ Future<void> _showEditPlannerEventDialog(
                     border: const OutlineInputBorder(),
                   ),
                 ),
-                if (courses.isNotEmpty) ...[
+                ...[
                   const SizedBox(height: 12),
                   DropdownButtonFormField<int?>(
                     value: selectedCourseId,

@@ -688,6 +688,7 @@ class _LearnerNoteCard extends StatelessWidget {
               authorName: authorName,
               avatarFallback: avatarFallback,
               avatarUrl: avatarUrl,
+              avatarFallbackUrl: avatarFallbackUrl,
               isLocalDraft: isLocalDraft,
               canSync: canSync,
               onSync: onSync,
@@ -731,6 +732,7 @@ class _LearnerNoteCardBody extends StatelessWidget {
     required this.authorName,
     required this.avatarFallback,
     required this.avatarUrl,
+    required this.avatarFallbackUrl,
     required this.isLocalDraft,
     required this.canSync,
     required this.onSync,
@@ -744,6 +746,7 @@ class _LearnerNoteCardBody extends StatelessWidget {
   final String authorName;
   final String avatarFallback;
   final String avatarUrl;
+  final String avatarFallbackUrl;
   final bool isLocalDraft;
   final bool canSync;
   final Future<void> Function()? onSync;

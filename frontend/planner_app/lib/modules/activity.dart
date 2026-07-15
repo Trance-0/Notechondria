@@ -24,8 +24,9 @@ class _ActivityPage extends StatefulWidget {
     String title,
     DateTime eventDate,
     int difficultyWeight,
-    String description,
-  ) onCreatePlannerEvent;
+    String description, {
+    int? courseId,
+  }) onCreatePlannerEvent;
   final Future<void> Function(String rawIcal, String title, {int? courseId})
       onImportCalendar;
   final Future<void> Function(String title, String url, {int? courseId})
@@ -169,6 +170,7 @@ class _ActivityPageState extends State<_ActivityPage> {
                         onCreatePlannerEvent: widget.onCreatePlannerEvent,
                         onImportCalendar: widget.onImportCalendar,
                         onSubscribeCalendar: widget.onSubscribeCalendar,
+                        courses: widget.courses,
                       ),
                     ),
                   ],
@@ -485,18 +487,21 @@ class _RoundActivityFab extends StatelessWidget {
     required this.onCreatePlannerEvent,
     required this.onImportCalendar,
     required this.onSubscribeCalendar,
+    this.courses = const <Map<String, dynamic>>[],
   });
 
   final Future<ActionFeedback> Function(
     String title,
     DateTime eventDate,
     int difficultyWeight,
-    String description,
-  ) onCreatePlannerEvent;
+    String description, {
+    int? courseId,
+  }) onCreatePlannerEvent;
   final Future<void> Function(String rawIcal, String title, {int? courseId})
       onImportCalendar;
   final Future<void> Function(String title, String url, {int? courseId})
       onSubscribeCalendar;
+  final List<Map<String, dynamic>> courses;
 
   Future<void> _showMenu(BuildContext context, TapDownDetails? details) async {
     final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
@@ -526,7 +531,8 @@ class _RoundActivityFab extends StatelessWidget {
       await _showSubscribeCalendarDialog(context, onSubscribeCalendar);
       return;
     }
-    await _showCreatePlannerEventDialog(context, onCreatePlannerEvent);
+    await _showCreatePlannerEventDialog(context, onCreatePlannerEvent,
+        courses: courses);
   }
 
   @override
@@ -546,6 +552,7 @@ class _RoundActivityFab extends StatelessWidget {
             _showCreatePlannerEventDialog(
               context,
               onCreatePlannerEvent,
+              courses: courses,
             );
           },
           child: const Icon(Icons.add),
