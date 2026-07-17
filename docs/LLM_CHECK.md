@@ -27,6 +27,16 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.184: avatar ROOT CAUSE found by live CORS probe — Casdoor serves
+  avatars with NO CORS headers; Flutter web refuses cross-origin images
+  without CORS (our CDN sends proper CORS). Fix: mirror_remote_avatar on
+  Casdoor login (Creator.avatar_mirrored_from, migration 0036; 8s/8MB/
+  image-only caps; idempotent per URL) → image_url (effective) serves the
+  mirrored R2 copy; bylines flipped to image_url-first. Heals per-account
+  on next login. Editor sidebar: was listing the ENTIRE public course
+  catalog to every user (new accounts "saw projects they never
+  subscribed") — now owned+subscribed only; no auto-subscribe existed.
+  AvatarMirrorTests added.
 - 0.1.183: CI FIX + cross-app dialogs. 0.1.182 editor avatar fix used
   avatarFallbackUrl inside _LearnerNoteCardBody without the field (CI
   compile fail at learner.dart:762) — field/ctor/call-site threaded.

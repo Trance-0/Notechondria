@@ -138,11 +138,18 @@ def creator_summary_payload(creator, request):
         or username
     )
     avatar_url = _avatar_cache_bust(creator.avatar_url, creator)
+    stored_url = absolute_media_url(
+        request, creator.image.url if creator.image else "",
+    )
+    # 0.1.184: a fresh Casdoor mirror in our own storage is the effective
+    # avatar (Casdoor serves without CORS headers → Flutter web can't
+    # render it cross-origin; our media CDN can).
+    from creators.utils import mirrored_avatar_is_fresh
+
     image_url = (
-        avatar_url
-        or absolute_media_url(
-            request, creator.image.url if creator.image else "",
-        )
+        stored_url
+        if mirrored_avatar_is_fresh(creator)
+        else (avatar_url or stored_url)
     )
     return {
         "id": creator.id,

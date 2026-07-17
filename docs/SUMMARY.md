@@ -67,6 +67,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.184 - Casdoor avatar mirroring (CORS root cause) + editor sidebar scope](versions/0.1.184.md)
 - [0.1.183 - CI fix + course dropdown in event dialogs across apps](versions/0.1.183.md)
 - [0.1.182 - Portal session persistence (root cause) + course/avatar fix round](versions/0.1.182.md)
 - [0.1.181 - Now-line, working ctrl+scroll zoom, event↔course binding](versions/0.1.181.md)

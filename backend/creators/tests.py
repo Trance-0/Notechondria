@@ -1017,3 +1017,78 @@ class CasdoorAvatarClaimSyncTests(TestCase):
         self.assertTrue(body['image_upload_url'])
         self.assertNotEqual(body['image_upload_url'], body['avatar_url'])
         self.assertIn('/media/', body['image_upload_url'])
+
+
+class AvatarMirrorTests(TestCase):
+    """0.1.184: Casdoor avatars are mirrored into our storage on login
+    (Casdoor serves without CORS headers → Flutter web can't render
+    them), and payloads prefer the mirrored copy."""
+
+    def setUp(self):
+        from django.contrib.auth.models import User as U
+        self.user = U.objects.create_user(username='mirror@example.com', password='pw')
+        from creators.models import Creator as C
+        self.creator = C.objects.create(user_id=self.user)
+        self.creator.avatar_url = 'https://cas.example.com/avatar/me.png'
+        self.creator.save(update_fields=['avatar_url'])
+
+    def _fake_resp(self, status=200, content=b'\x89PNG fake', ctype='image/png'):
+        class R:
+            status_code = status
+            headers = {'content-type': ctype}
+        R.content = content
+        return R()
+
+    def test_mirror_stores_bytes_and_records_source(self):
+        from unittest.mock import patch
+        from creators.utils import mirror_remote_avatar
+
+        with patch('requests.get', return_value=self._fake_resp()):
+            stored = mirror_remote_avatar(self.creator)
+        self.assertTrue(stored)
+        self.creator.refresh_from_db()
+        self.assertEqual(
+            self.creator.avatar_mirrored_from,
+            'https://cas.example.com/avatar/me.png',
+        )
+        self.assertIn('casdoor_avatar', self.creator.image.name)
+
+    def test_mirror_is_idempotent_per_url(self):
+        from unittest.mock import patch
+        from creators.utils import mirror_remote_avatar
+
+        with patch('requests.get', return_value=self._fake_resp()) as m:
+            self.assertTrue(mirror_remote_avatar(self.creator))
+            self.assertFalse(mirror_remote_avatar(self.creator))
+            self.assertEqual(m.call_count, 1)
+
+    def test_mirror_rejects_non_image(self):
+        from unittest.mock import patch
+        from creators.utils import mirror_remote_avatar
+
+        with patch('requests.get',
+                   return_value=self._fake_resp(ctype='text/html')):
+            self.assertFalse(mirror_remote_avatar(self.creator))
+        self.creator.refresh_from_db()
+        self.assertEqual(self.creator.avatar_mirrored_from, '')
+
+    def test_payload_prefers_mirrored_copy(self):
+        from unittest.mock import patch
+        from creators.utils import mirror_remote_avatar
+        from notes.api import creator_summary_payload
+
+        with patch('requests.get', return_value=self._fake_resp()):
+            mirror_remote_avatar(self.creator)
+        self.creator.refresh_from_db()
+        payload = creator_summary_payload(self.creator, None)
+        # Effective avatar = our stored media (CORS-safe), not the IdP URL.
+        self.assertIn('casdoor_avatar', payload['image_url'])
+        self.assertTrue(
+            payload['avatar_url'].startswith('https://cas.example.com/'))
+
+    def test_payload_falls_back_to_casdoor_url_without_mirror(self):
+        from notes.api import creator_summary_payload
+
+        payload = creator_summary_payload(self.creator, None)
+        self.assertTrue(
+            payload['image_url'].startswith('https://cas.example.com/'))

@@ -620,14 +620,18 @@ class _LearnerNoteCard extends StatelessWidget {
     // Prefer the Casdoor avatar, then the effective/local image_url —
     // mirrors the settings account card so the byline shows the same
     // avatar the rest of the app does.
+    // `image_url` is the backend's EFFECTIVE avatar — since 0.1.184 it
+    // points at our own storage once the Casdoor avatar is mirrored
+    // (Casdoor itself serves without CORS headers, which Flutter web
+    // refuses to render). The raw Casdoor URL is the fallback.
     final avatarUrl = _resolveRemoteUrl(
-      (author['avatar_url']?.toString().isNotEmpty ?? false)
-          ? author['avatar_url'].toString()
-          : author['image_url']?.toString() ?? '',
+      (author['image_url']?.toString().isNotEmpty ?? false)
+          ? author['image_url'].toString()
+          : author['avatar_url']?.toString() ?? '',
       apiBaseUrl: apiBaseUrl,
     );
     final avatarFallbackUrl = _resolveRemoteUrl(
-      author['image_url']?.toString() ?? '',
+      author['avatar_url']?.toString() ?? '',
       apiBaseUrl: apiBaseUrl,
     );
     final uuid = note['uuid']?.toString() ?? '';

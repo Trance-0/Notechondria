@@ -390,7 +390,18 @@ class _AppShellState extends State<AppShell>
       return opened.isAfter(noteEdit) ? opened : noteEdit;
     }
 
-    final rows = [..._localCourses, ..._courses];
+    // 0.1.184: the sidebar lists only the user's OWN workspace — local
+    // courses plus cloud courses they own or actively subscribe to. The
+    // course list endpoint returns the whole public catalog, and listing
+    // it here made brand-new accounts see other people's projects in
+    // their sidebar (with no subscription involved). Discovery of public
+    // courses stays in the Course view; new users see just the Inbox
+    // folder until they create or subscribe to something.
+    final rows = [
+      ..._localCourses,
+      ..._courses.where((course) =>
+          course['is_owned'] == true || course['is_subscribed'] == true),
+    ];
     rows.sort((a, b) {
       final at = recency(a);
       final bt = recency(b);

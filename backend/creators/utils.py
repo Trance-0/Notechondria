@@ -96,3 +96,58 @@ def ensure_creator(user: User) -> Creator:
         attach_default_profile_image(creator)
         creator.save()
     return creator
+
+
+def mirror_remote_avatar(creator: Creator, *, timeout: int = 8) -> bool:
+    """Copy the creator's remote (Casdoor) avatar into our own media
+    storage (0.1.184).
+
+    Why: Casdoor serves avatar files WITHOUT CORS headers, and Flutter
+    web's renderer refuses to draw cross-origin images without CORS — so
+    avatars pointing at the IdP never render in the apps. Our R2/CDN
+    media serves with proper CORS, so a mirrored copy renders everywhere.
+
+    Idempotent per avatar change: skips when ``avatar_mirrored_from``
+    already equals the current ``avatar_url``. Best-effort — any network
+    or validation failure returns False and leaves the creator untouched.
+    Returns True when a new copy was stored.
+    """
+    import requests
+
+    url = (creator.avatar_url or "").strip()
+    if not url or creator.avatar_mirrored_from == url:
+        return False
+    try:
+        resp = requests.get(url, timeout=timeout)
+    except requests.RequestException:
+        return False
+    if resp.status_code != 200:
+        return False
+    content_type = (resp.headers.get("content-type") or "").split(";")[0].strip()
+    ext = {
+        "image/png": "png",
+        "image/jpeg": "jpg",
+        "image/gif": "gif",
+        "image/webp": "webp",
+    }.get(content_type)
+    if ext is None:
+        return False
+    data = resp.content
+    if not data or len(data) > 8 * 1024 * 1024:
+        return False
+    creator.image.save(
+        f"casdoor_avatar.{ext}", ContentFile(data), save=False,
+    )
+    creator.avatar_mirrored_from = url
+    creator.save(update_fields=["image", "avatar_mirrored_from"])
+    return True
+
+
+def mirrored_avatar_is_fresh(creator: Creator) -> bool:
+    """True when `image` holds a mirror of the CURRENT `avatar_url` —
+    i.e. the stored copy can be served instead of the CORS-less IdP URL."""
+    return bool(
+        creator.avatar_url
+        and creator.avatar_mirrored_from == creator.avatar_url
+        and creator_has_image_file(creator)
+    )

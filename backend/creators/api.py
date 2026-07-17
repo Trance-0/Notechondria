@@ -16,6 +16,7 @@ import logging
 from .utils import (
     ensure_creator,
     ensure_creator_avatar,
+    mirrored_avatar_is_fresh,
 )
 
 
@@ -120,7 +121,15 @@ def auth_payload(user: User, *, token: str, request=None):
     image_upload_url = absolute_media_url(
         request, creator.image.url if creator.image else "",
     )
-    image_url = avatar_url or image_upload_url
+    # 0.1.184: when `image` holds a fresh mirror of the Casdoor avatar,
+    # the EFFECTIVE avatar points at our own storage (proper CORS —
+    # Flutter web can actually render it); the raw Casdoor URL stays in
+    # `avatar_url` for reference/fallback.
+    image_url = (
+        image_upload_url
+        if mirrored_avatar_is_fresh(creator)
+        else (avatar_url or image_upload_url)
+    )
     return {
         "token": token,
         "user": {
@@ -381,7 +390,12 @@ class SettingsSerializer(serializers.Serializer):
             request,
             instance.image.url if instance.image else "",
         )
-        image_url = avatar_url or image_upload_url
+        # 0.1.184: fresh Casdoor mirror in our storage wins (CORS-safe).
+        image_url = (
+            image_upload_url
+            if mirrored_avatar_is_fresh(instance)
+            else (avatar_url or image_upload_url)
+        )
         return {
             "username": instance.user_id.username,
             "first_name": instance.user_id.first_name,
