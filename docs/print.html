@@ -6145,6 +6145,20 @@ envelope both pages, <strong>author payload does no storage I/O</strong> (patche
 <code>creator_has_image_file</code> raises if touched), and per-request author
 memoization (25 rows → 1 computation). Post-deploy prod timings recorded
 in the round summary (target: module list + note list &lt; 500 ms).</p>
+<h2 id="measured-after-deploy-prod-3-runs"><a class="header" href="#measured-after-deploy-prod-3-runs">Measured after deploy (prod, 3 runs)</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Endpoint</th><th>Before</th><th>After (warm)</th></tr></thead><tbody>
+<tr><td><code>courses/22/notes/?limit=10</code></td><td>n/a (param ignored)</td><td><strong>0.21–0.60 s</strong></td></tr>
+<tr><td><code>courses/22/notes/?limit=20&amp;offset=100</code></td><td>n/a</td><td><strong>0.21–0.48 s</strong></td></tr>
+<tr><td><code>courses/22/notes/</code> (full 193, legacy)</td><td>16.2 s</td><td><strong>0.77 s</strong> (21×)</td></tr>
+<tr><td><code>courses/</code></td><td>1.8 s</td><td>0.33–0.60 s</td></tr>
+<tr><td><code>front-page/</code></td><td>2.6 s</td><td>0.57–0.77 s</td></tr>
+</tbody></table>
+</div>
+<p>First hit after deploy was 2.1 s (cold worker); warm averages for the
+course module/note lists are comfortably <strong>&lt; 500 ms</strong>. Full suite (245
+tests) verified in the Docker harness before push; backend CI green
+(the two prior red runs were AvatarMirrorTests asserting a filename the
+<code>upload_to</code> callable rewrites — fixed to assert storage location).</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="01184---casdoor-avatar-mirroring-cors-root-cause--editor-sidebar-scope"><a class="header" href="#01184---casdoor-avatar-mirroring-cors-root-cause--editor-sidebar-scope">0.1.184 - Casdoor avatar mirroring (CORS root cause) + editor sidebar scope</a></h1>
 <h2 id="avatar-rendering--the-real-root-cause"><a class="header" href="#avatar-rendering--the-real-root-cause">Avatar rendering — the real root cause</a></h2>
 <p>Live-debugged with the owner's API credentials:
