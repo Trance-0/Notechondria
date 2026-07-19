@@ -116,17 +116,25 @@ def absolute_media_url(request, raw_url: str) -> str:
 def creator_summary_payload(creator, request):
     """Author card emitted on every public-facing note / comment surface.
 
-    Avatar resolution mirrors ``creators.api.auth_payload``: prefer the
-    Casdoor remote ``avatar_url`` (cache-busted by ``?v=<sync_ts>`` so a
-    Casdoor-side picture change paints immediately) and only fall back to
-    the locally-uploaded ``image`` when the remote URL is empty. Pre-0.1.120
-    this view read ``creator.image`` only, which meant the user's chosen
-    Casdoor avatar never showed up on a public note's byline even though
-    every other Notechondria surface honoured it.
+    Avatar resolution mirrors ``creators.api.auth_payload``: a fresh
+    Casdoor mirror in our own storage is the effective avatar (Casdoor
+    serves without CORS headers → Flutter web can't render it
+    cross-origin); otherwise the Casdoor URL, then the local upload.
+
+    Performance contract (0.1.185): this runs **per row** on every list
+    surface — it must do ZERO storage or network I/O and ZERO writes.
+    The old version called ``ensure_creator_avatar`` (an R2
+    ``storage.exists()`` HEAD + potential write) per note row: a
+    193-note course spent ~15 s in storage round-trips for one author.
+    Payloads are additionally memoized per request via
+    ``author_payload_cache`` since list rows overwhelmingly share
+    authors.
     """
     if creator is None:
         return None
-    creator = ensure_creator_avatar(creator)
+    cache = getattr(request, "_author_payload_cache", None) if request else None
+    if cache is not None and creator.id in cache:
+        return cache[creator.id]
     username = creator.user_id.username if creator.user_id_id else "unknown"
     display_name = (
         (creator.display_name or "").strip()
@@ -139,11 +147,8 @@ def creator_summary_payload(creator, request):
     )
     avatar_url = _avatar_cache_bust(creator.avatar_url, creator)
     stored_url = absolute_media_url(
-        request, creator.image.url if creator.image else "",
+        request, creator.image.url if creator.image and creator.image.name else "",
     )
-    # 0.1.184: a fresh Casdoor mirror in our own storage is the effective
-    # avatar (Casdoor serves without CORS headers → Flutter web can't
-    # render it cross-origin; our media CDN can).
     from creators.utils import mirrored_avatar_is_fresh
 
     image_url = (
@@ -151,13 +156,19 @@ def creator_summary_payload(creator, request):
         if mirrored_avatar_is_fresh(creator)
         else (avatar_url or stored_url)
     )
-    return {
+    payload = {
         "id": creator.id,
         "username": username,
         "display_name": display_name,
         "image_url": image_url,
         "avatar_url": avatar_url,
     }
+    if request is not None:
+        if cache is None:
+            cache = {}
+            request._author_payload_cache = cache
+        cache[creator.id] = payload
+    return payload
 
 
 def _avatar_cache_bust(url: str, creator) -> str:
@@ -1125,6 +1136,34 @@ class CourseNotesApiView(APIView):
             # Pre-0.1.83 promoted "default-course" notes to the public
             # feed; that rule was removed there and never reinstated.
             notes = notes.filter(is_public=True)
+        # 0.1.185: lazy loading for large (e.g. git-imported) courses.
+        # With `limit` the response is a page envelope; without it the
+        # legacy bare list is preserved so older clients keep working.
+        limit = request.query_params.get("limit")
+        if limit is not None:
+            try:
+                page_size = max(1, min(int(limit), 100))
+                offset = max(0, int(request.query_params.get("offset", "0") or 0))
+            except ValueError:
+                return Response(
+                    {"detail": (
+                        "Cannot list category notes: "
+                        "Backend.Notes.Courses/notes — "
+                        "`limit`/`offset` must be integers."
+                    )},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            total = notes.count()
+            rows = notes[offset:offset + page_size]
+            return Response({
+                "results": NoteSummarySerializer(
+                    rows, many=True, context={"request": request},
+                ).data,
+                "total": total,
+                "offset": offset,
+                "limit": page_size,
+                "has_more": offset + page_size < total,
+            })
         return Response(
             NoteSummarySerializer(notes, many=True, context={"request": request}).data
         )

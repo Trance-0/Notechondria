@@ -27,6 +27,19 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.185: course loading PERF. Measured prod: courses/22/notes/ = 16.2s
+  (317KB, unpaginated); root cause = storage-network N+1 — per-row author
+  payload did ensure_creator_avatar + mirrored_avatar_is_fresh, each an
+  R2 storage.exists() HEAD (~386 HEADs/request for ONE author). Fixes:
+  creator_summary_payload = zero-I/O pure field reads + per-request memo
+  by creator id; mirrored_avatar_is_fresh field-only; CourseNotesApiView
+  limit/offset envelope (bare list preserved sans limit). Portal:
+  open-course = openCourse ∥ first-10-notes page, course-list refresh
+  backgrounded, loading bar gates the view (no stale recent_notes
+  placeholder render), infinite scroll streams 20/page. LESSON: never put
+  storage.exists()/writes in per-row serializer paths; measure with curl
+  -w time_total before optimizing. CourseNotesPerformanceTests guard the
+  contract (storage patched to raise).
 - 0.1.184: avatar ROOT CAUSE found by live CORS probe — Casdoor serves
   avatars with NO CORS headers; Flutter web refuses cross-origin images
   without CORS (our CDN sends proper CORS). Fix: mirror_remote_avatar on

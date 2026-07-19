@@ -114,44 +114,61 @@ extension _AppShellNoteLoadingX on _AppShellState {
       return;
     }
     try {
-      var effectiveCourse = Map<String, dynamic>.from(course);
-      if ((_token?.isNotEmpty ?? false) && course['is_subscribed'] == true) {
-        effectiveCourse =
-            await widget.client.openCourse(_token!, course['id'] as int);
-      }
-      final refreshedCourses = (await widget.client.getCourses(token: _token))
-          .map(decorateRemoteCourse)
-          .toList();
-      final refreshedSelected = refreshedCourses.firstWhere(
-        (item) => item['id'] == effectiveCourse['id'],
-        orElse: () => effectiveCourse,
-      );
-      final notes = await widget.client.getCourseNotes(
-        refreshedSelected['id'] as int,
-        token: _token,
-      );
-      _courses = refreshedCourses;
-      _selectedCourse = refreshedSelected;
-      _courseNotes = notes;
+      final courseId = course['id'] as int;
+      // 0.1.185 fast path: only the FIRST notes page (and the open-course
+      // subscription stamp, in parallel) block the render. The previous
+      // flow chained openCourse → FULL course-list refresh → the entire
+      // unpaged note set (~16 s on a 193-note imported course).
+      _courseNotesLoading = true;
+      _courseNotes = const [];
+      _courseNotesHasMore = false;
+      _courseNotesOffset = 0;
       _selectedNote = null;
       _selectedIndex = 2;
+      refreshState();
+      final openFuture =
+          ((_token?.isNotEmpty ?? false) && course['is_subscribed'] == true)
+              ? widget.client.openCourse(_token!, courseId)
+              : Future.value(Map<String, dynamic>.from(course));
+      final results = await Future.wait<dynamic>([
+        openFuture,
+        widget.client.getCourseNotesPage(courseId,
+            token: _token, limit: 10, offset: 0),
+      ]);
+      final effectiveCourse = Map<String, dynamic>.from(results[0] as Map);
+      final page = Map<String, dynamic>.from(results[1] as Map);
+      final rows = (page['results'] as List<dynamic>? ?? const [])
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+      _selectedCourse = decorateRemoteCourse(effectiveCourse);
+      _courseNotes = rows;
+      _courseNotesHasMore = page['has_more'] == true;
+      _courseNotesOffset = rows.length;
+      _courseNotesLoading = false;
       _isLoading = false;
       refreshState();
       // Unique, shareable URL for the opened course.
-      final slug = refreshedSelected['slug']?.toString() ?? '';
+      final slug = effectiveCourse['slug']?.toString() ?? '';
       url_strategy.replaceBrowserPath(
           slug.isEmpty ? '/courses' : '/courses/$slug');
+      // Course-list refresh moves off the critical path.
+      unawaited(widget.client.getCourses(token: _token).then((refreshed) {
+        if (!mounted) return;
+        _courses = refreshed.map(decorateRemoteCourse).toList();
+        refreshState();
+      }).catchError((_) {}));
       await _persistLocalCache();
       log(
         level: DebugLogLevel.debug,
         source: 'Portal.UI/open_course',
         message: "Opened course: Portal.UI/open_course \u2014 "
-            "'${refreshedSelected['title']}' loaded from cloud.",
+            "'${effectiveCourse['title']}' loaded from cloud.",
       );
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
       _selectedCourse = course;
       _courseNotes = const [];
+      _courseNotesLoading = false;
       _errorMessage = cause;
       _isLoading = false;
       refreshState();
@@ -261,6 +278,35 @@ extension _AppShellNoteLoadingX on _AppShellState {
       return;
     }
     await _openNoteViewer(target);
+  }
+
+  /// Streams the next course-notes page in (infinite scroll — no manual
+  /// buttons). No-ops while a fetch is in flight or when exhausted.
+  Future<void> _loadMoreCourseNotes() async {
+    final course = _selectedCourse;
+    final courseId = (course?['id'] as num?)?.toInt();
+    if (courseId == null ||
+        courseId < 0 ||
+        !_courseNotesHasMore ||
+        _courseNotesLoadingMore) {
+      return;
+    }
+    _courseNotesLoadingMore = true;
+    refreshState();
+    try {
+      final page = await widget.client.getCourseNotesPage(courseId,
+          token: _token, limit: 20, offset: _courseNotesOffset);
+      final rows = (page['results'] as List<dynamic>? ?? const [])
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+      _courseNotes = [..._courseNotes, ...rows];
+      _courseNotesOffset += rows.length;
+      _courseNotesHasMore = page['has_more'] == true && rows.isNotEmpty;
+    } catch (_) {
+      // Silent: the next scroll retries.
+    }
+    _courseNotesLoadingMore = false;
+    refreshState();
   }
 
   Future<Map<String, dynamic>> _fetchNoteDetail(int noteId) async {

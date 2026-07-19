@@ -213,6 +213,23 @@ class HttpNotechondriaClient
   }
 
   @override
+  Future<Map<String, dynamic>> getCourseNotesPage(
+    int courseId, {
+    String? token,
+    int limit = 10,
+    int offset = 0,
+  }) async {
+    final uri = _uri('/courses/$courseId/notes/').replace(queryParameters: {
+      'limit': '$limit',
+      'offset': '$offset',
+    });
+    final response = await _get(uri, token: token);
+    return Map<String, dynamic>.from(
+      await decode(response, uri: uri, method: 'GET'),
+    );
+  }
+
+  @override
   Future<Map<String, dynamic>> getNoteDetail(int noteId,
       {String? token}) async {
     final uri = _uri('/notes/$noteId/');

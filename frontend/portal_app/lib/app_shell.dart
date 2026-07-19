@@ -359,6 +359,14 @@ class _AppShellState extends State<AppShell>
   List<Map<String, dynamic>> _courses = const [];
   List<Map<String, dynamic>> _localCourses = const [];
   List<Map<String, dynamic>> _courseNotes = const [];
+  // Lazy course-notes paging (0.1.185): first page loads with the course,
+  // further pages stream in on scroll. `_courseNotesLoading` gates the
+  // course view behind a progress bar so stale/placeholder content never
+  // renders before real data.
+  bool _courseNotesLoading = false;
+  bool _courseNotesHasMore = false;
+  int _courseNotesOffset = 0;
+  bool _courseNotesLoadingMore = false;
   List<Map<String, dynamic>> _learnerNotes = const [];
   List<Map<String, dynamic>> _localDrafts = const [];
   List<Map<String, dynamic>> _deletedNotes = const [];
@@ -1021,6 +1029,10 @@ class _AppShellState extends State<AppShell>
           localCourses: _localCourses,
           selectedCourse: _selectedCourse,
           notes: _courseNotes,
+          notesLoading: _courseNotesLoading,
+          notesHasMore: _courseNotesHasMore,
+          notesLoadingMore: _courseNotesLoadingMore,
+          onLoadMoreNotes: _loadMoreCourseNotes,
           localNotes: _localDrafts,
           isAuthenticated: _token != null && _token!.isNotEmpty,
           canCreateLocalCourses: true,

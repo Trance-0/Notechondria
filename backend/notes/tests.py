@@ -2117,3 +2117,77 @@ class FrontPageCarouselTests(TestCase):
         default = payload.get("default_course")
         if default is not None:
             self.assertEqual(default["title"], "Public Course")
+
+
+class CourseNotesPerformanceTests(TestCase):
+    """0.1.185: course-notes must not do per-row storage I/O and must
+    paginate on request."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="perf@example.com", password="pw")
+        self.creator = Creator.objects.create(user_id=self.user)
+        self.course = Course.objects.create(
+            creator_id=self.creator, slug="perf-course", title="Perf Course"
+        )
+        for i in range(25):
+            Note.objects.create(
+                creator_id=self.creator, course_id=self.course,
+                sharing_id=f"perf-{i}", title=f"Note {i}",
+                content=f"# Note {i}\nbody", is_public=True,
+            )
+        self.token = Token.objects.create(user=self.user)
+
+    def _auth(self):
+        return {"HTTP_AUTHORIZATION": f"Token {self.token.key}"}
+
+    def test_bare_list_still_returned_without_limit(self):
+        resp = self.client.get(f"/api/v1/courses/{self.course.id}/notes/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIsInstance(resp.json(), list)
+        self.assertEqual(len(resp.json()), 25)
+
+    def test_paginated_envelope_with_limit(self):
+        resp = self.client.get(
+            f"/api/v1/courses/{self.course.id}/notes/?limit=10&offset=0")
+        self.assertEqual(resp.status_code, 200)
+        page = resp.json()
+        self.assertEqual(len(page["results"]), 10)
+        self.assertEqual(page["total"], 25)
+        self.assertTrue(page["has_more"])
+        resp2 = self.client.get(
+            f"/api/v1/courses/{self.course.id}/notes/?limit=10&offset=20")
+        page2 = resp2.json()
+        self.assertEqual(len(page2["results"]), 5)
+        self.assertFalse(page2["has_more"])
+
+    def test_author_payload_does_no_storage_io(self):
+        """The per-row author payload must never touch storage — the old
+        ensure_creator_avatar/storage.exists path cost one R2 HEAD per
+        note (a 193-note course took ~15s)."""
+        from unittest.mock import patch
+
+        def _boom(*args, **kwargs):  # noqa: ANN001
+            raise AssertionError("storage.exists() called in list path")
+
+        with patch("creators.utils.creator_has_image_file", side_effect=_boom):
+            resp = self.client.get(
+                f"/api/v1/courses/{self.course.id}/notes/?limit=10")
+        self.assertEqual(resp.status_code, 200, resp.content)
+
+    def test_author_payload_memoized_per_request(self):
+        from unittest.mock import patch
+        from notes import api as notes_api
+
+        calls = {"n": 0}
+        original = notes_api._avatar_cache_bust
+
+        def counting(url, creator):
+            calls["n"] += 1
+            return original(url, creator)
+
+        with patch.object(notes_api, "_avatar_cache_bust", counting):
+            resp = self.client.get(
+                f"/api/v1/courses/{self.course.id}/notes/?limit=25")
+        self.assertEqual(resp.status_code, 200)
+        # 25 rows, one shared author → the payload computed once.
+        self.assertEqual(calls["n"], 1)

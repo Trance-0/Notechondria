@@ -6,6 +6,10 @@ class _CoursePage extends StatefulWidget {
     required this.localCourses,
     required this.selectedCourse,
     required this.notes,
+    this.notesLoading = false,
+    this.notesHasMore = false,
+    this.notesLoadingMore = false,
+    this.onLoadMoreNotes,
     required this.localNotes,
     required this.isAuthenticated,
     required this.canCreateLocalCourses,
@@ -24,6 +28,17 @@ class _CoursePage extends StatefulWidget {
   final List<Map<String, dynamic>> localCourses;
   final Map<String, dynamic>? selectedCourse;
   final List<Map<String, dynamic>> notes;
+
+  /// First-page fetch in flight: the course view shows a loading bar and
+  /// renders NO note/module content (stale `recent_notes` previews used
+  /// to appear as if they were the course, which read as fake content).
+  final bool notesLoading;
+  final bool notesHasMore;
+  final bool notesLoadingMore;
+
+  /// Streams the next page in when the user nears the bottom (infinite
+  /// scroll; no manual load-more buttons).
+  final Future<void> Function()? onLoadMoreNotes;
   final List<Map<String, dynamic>> localNotes;
   final bool isAuthenticated;
   final bool canCreateLocalCourses;
@@ -559,7 +574,19 @@ class _CoursePageState extends State<_CoursePage> {
         ? const <Map<String, dynamic>>[]
         : _courseNotes(activeCourse);
     final modules = _modulesFromNotes(activeNotes);
-    return ListView(
+    // Infinite scroll: nearing the bottom streams the next notes page in
+    // (no manual load-more buttons).
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (activeCourse != null &&
+            widget.notesHasMore &&
+            !widget.notesLoadingMore &&
+            notification.metrics.extentAfter < 600) {
+          widget.onLoadMoreNotes?.call();
+        }
+        return false;
+      },
+      child: ListView(
       padding: const EdgeInsets.all(20),
       children: [
         LayoutBuilder(
@@ -873,14 +900,24 @@ class _CoursePageState extends State<_CoursePage> {
                 ?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
-          if (modules.isEmpty)
+          if (widget.notesLoading) ...[
+            const LinearProgressIndicator(),
+            const SizedBox(height: 12),
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('Loading course content…'),
+              ),
+            ),
+          ] else if (modules.isEmpty)
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(AppLocalizations.of(context).courseNoModules),
               ),
             ),
-          for (final module in modules)
+          if (!widget.notesLoading)
+            for (final module in modules)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Card(
@@ -906,6 +943,7 @@ class _CoursePageState extends State<_CoursePage> {
               ),
             ),
           const SizedBox(height: 20),
+          if (!widget.notesLoading)
           _DiscussionBoard(
             title: AppLocalizations.of(context).courseDiscussion,
             notes: activeNotes,
@@ -918,8 +956,13 @@ class _CoursePageState extends State<_CoursePage> {
             },
             emptyMessage: AppLocalizations.of(context).courseNoDiscussion,
           ),
+          if (widget.notesLoadingMore) ...[
+            const SizedBox(height: 8),
+            const LinearProgressIndicator(),
+          ],
         ],
       ],
+      ),
     );
   }
 }

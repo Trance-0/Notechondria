@@ -145,9 +145,17 @@ def mirror_remote_avatar(creator: Creator, *, timeout: int = 8) -> bool:
 
 def mirrored_avatar_is_fresh(creator: Creator) -> bool:
     """True when `image` holds a mirror of the CURRENT `avatar_url` —
-    i.e. the stored copy can be served instead of the CORS-less IdP URL."""
+    i.e. the stored copy can be served instead of the CORS-less IdP URL.
+
+    Field-only check (0.1.185): the original version verified the file
+    with ``storage.exists()`` — an R2 network HEAD — and this predicate
+    runs per author payload, i.e. per note row. A 193-note course paid
+    ~200 storage round-trips (~15 s) for one author. ``mirror_remote_avatar``
+    only records ``avatar_mirrored_from`` after a successful save, so the
+    field comparison alone is trustworthy."""
     return bool(
         creator.avatar_url
         and creator.avatar_mirrored_from == creator.avatar_url
-        and creator_has_image_file(creator)
+        and creator.image
+        and creator.image.name
     )
