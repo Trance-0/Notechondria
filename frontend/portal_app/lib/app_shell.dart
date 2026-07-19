@@ -89,13 +89,17 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
     );
   }
 
-  AppShell _buildShell({int initialIndex = 0, String? initialCourseSlug}) {
+  AppShell _buildShell(
+      {int initialIndex = 0,
+      String? initialCourseSlug,
+      String? initialModuleKey}) {
     return AppShell(
       client: _client,
       onThemeChanged: _handleThemeChanged,
       onLocaleChanged: _handleLocaleChanged,
       initialIndex: initialIndex,
       initialCourseSlug: initialCourseSlug,
+      initialModuleKey: initialModuleKey,
       appTitle: widget.title,
       visibleIndices: widget.visibleIndices,
     );
@@ -127,6 +131,7 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
     // Tab / course-detail routes resolve to the shell.
     var tab = widget.initialIndex;
     String? courseSlug;
+    String? moduleKey;
     if (segments.isNotEmpty) {
       switch (segments.first) {
         case 'notes':
@@ -136,6 +141,9 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
           tab = 2;
           if (segments.length >= 2) {
             courseSlug = segments[1];
+          }
+          if (segments.length >= 4 && segments[2] == 'm') {
+            moduleKey = segments[3];
           }
           break;
         case 'activity':
@@ -150,8 +158,10 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
     }
     return MaterialPageRoute<void>(
       settings: settings,
-      builder: (_) =>
-          _buildShell(initialIndex: tab, initialCourseSlug: courseSlug),
+      builder: (_) => _buildShell(
+          initialIndex: tab,
+          initialCourseSlug: courseSlug,
+          initialModuleKey: moduleKey),
     );
   }
 
@@ -182,6 +192,7 @@ class AppShell extends StatefulWidget {
     this.onLocaleChanged,
     this.initialIndex = 0,
     this.initialCourseSlug,
+    this.initialModuleKey,
     this.appTitle = 'Notechondria',
     this.visibleIndices = const <int>[0, 1, 2, 3, 4],
   });
@@ -198,6 +209,10 @@ class AppShell extends StatefulWidget {
   /// opens this course on the Course tab (best-effort — unknown slugs just
   /// land on the course list).
   final String? initialCourseSlug;
+
+  /// Optional module deep link (`#/courses/<slug>/m/<key>`): once the
+  /// course's notes load, the matching module opens.
+  final String? initialModuleKey;
   final String appTitle;
   final List<int> visibleIndices;
 
@@ -1044,6 +1059,8 @@ class _AppShellState extends State<AppShell>
           onSubscribe: _subscribeToCourse,
           onUnsubscribe: _unsubscribeFromCourse,
           onFetchNoteDetail: _fetchNoteDetail,
+          onOpenRoutedNote: _openNoteViewer,
+          initialModuleKey: widget.initialModuleKey,
           onEditCourse: _updateCourseMeta,
           onImportCourseFromGit: _importCourseFromGit,
         );

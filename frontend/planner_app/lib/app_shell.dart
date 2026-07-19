@@ -331,10 +331,21 @@ class _AppShellState extends State<AppShell>
     return idx >= 0 ? idx : 0;
   }
 
+  // Unique URL per full-screen tab (0.1.186): the address bar always
+  // identifies the surface on screen; modal dialogs stay URL-less.
+  static const List<String> _tabPaths = [
+    '/',
+    '/courses',
+    '/activity',
+    '/settings',
+  ];
+
   void _selectActualIndex(int index) {
     setState(() {
       _selectedIndex = index;
     });
+    url_strategy.replaceBrowserPath(
+        _tabPaths[index.clamp(0, _tabPaths.length - 1)]);
   }
 
   void _handleVisibleDestinationSelected(int visibleIndex) {
@@ -349,7 +360,15 @@ class _AppShellState extends State<AppShell>
   @override
   void initState() {
     super.initState();
-    final clamped = widget.initialIndex.clamp(0, _titles.length - 1);
+    var initial = widget.initialIndex;
+    // Cold-start tab deep link (`#/courses` etc.).
+    final fragment = Uri.base.fragment;
+    final tabFromUrl = _tabPaths.indexOf(
+        fragment.startsWith('/') ? fragment : '/$fragment');
+    if (tabFromUrl > 0) {
+      initial = tabFromUrl;
+    }
+    final clamped = initial.clamp(0, _titles.length - 1);
     _selectedIndex =
         _visibleIndices.contains(clamped) ? clamped : _visibleIndices.first;
     // Route the HTTP client's per-request DEBUG logs into the shared

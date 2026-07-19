@@ -67,6 +67,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.186 - In-note navigation from courses + URLs for every full-screen surface](versions/0.1.186.md)
 - [0.1.185 - Course loading: 16s → sub-second (storage N+1 + lazy pages)](versions/0.1.185.md)
 - [0.1.184 - Casdoor avatar mirroring (CORS root cause) + editor sidebar scope](versions/0.1.184.md)
 - [0.1.183 - CI fix + course dropdown in event dialogs across apps](versions/0.1.183.md)

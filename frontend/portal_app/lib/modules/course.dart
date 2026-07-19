@@ -20,6 +20,8 @@ class _CoursePage extends StatefulWidget {
     required this.onSubscribe,
     required this.onUnsubscribe,
     required this.onFetchNoteDetail,
+    this.onOpenRoutedNote,
+    this.initialModuleKey,
     this.onEditCourse,
     this.onImportCourseFromGit,
   });
@@ -55,6 +57,14 @@ class _CoursePage extends StatefulWidget {
   final Future<void> Function(Map<String, dynamic> course) onUnsubscribe;
   final Future<Map<String, dynamic>> Function(int noteId) onFetchNoteDetail;
 
+  /// Opens a note through the shell's routed viewer (`#/note/<uuid>`,
+  /// working in-course links). Null falls back to the local dialog.
+  final Future<void> Function(Map<String, dynamic> note)? onOpenRoutedNote;
+
+  /// Module deep link from `#/courses/<slug>/m/<key>` — opened once the
+  /// course's modules are built (consumed once).
+  final String? initialModuleKey;
+
   /// Owner-only metadata editor (title / description / colour hue); null
   /// hides the Edit entry (e.g. signed-out).
   final Future<ActionFeedback> Function(
@@ -80,6 +90,7 @@ class _CoursePageState extends State<_CoursePage> {
   String _scope = 'public';
   Map<String, dynamic>? _openedCourse;
   Map<String, dynamic>? _openedModule;
+  bool _initialModuleConsumed = false;
   int _courseVisibleNotes = 4;
   int _moduleVisibleNotes = 4;
 
@@ -437,9 +448,65 @@ class _CoursePageState extends State<_CoursePage> {
     return modules.values.toList(growable: false);
   }
 
+  /// Address-bar sync for the course/module surfaces: every full-screen
+  /// view has a unique URL (`/courses/<slug>` and `/courses/<slug>/m/<key>`).
+  void _syncCourseUrl(
+      Map<String, dynamic>? course, Map<String, dynamic>? module) {
+    final slug = course?['slug']?.toString() ?? '';
+    if (slug.isEmpty) {
+      url_strategy.replaceBrowserPath('/courses');
+      return;
+    }
+    if (module == null) {
+      url_strategy.replaceBrowserPath('/courses/$slug');
+      return;
+    }
+    final key = _slugifyLinkText(module['title']?.toString() ?? '');
+    url_strategy.replaceBrowserPath(
+        key.isEmpty ? '/courses/$slug' : '/courses/$slug/m/$key');
+  }
+
+  /// Opens the `#/courses/<slug>/m/<key>` deep-link module once modules
+  /// exist (consumed once; unknown keys just stay on the course).
+  void _maybeConsumeInitialModule(
+      Map<String, dynamic>? activeCourse,
+      List<Map<String, dynamic>> modules) {
+    final wanted = widget.initialModuleKey;
+    if (_initialModuleConsumed ||
+        wanted == null ||
+        wanted.isEmpty ||
+        activeCourse == null ||
+        modules.isEmpty ||
+        _openedModule != null) {
+      return;
+    }
+    for (final module in modules) {
+      if (_slugifyLinkText(module['title']?.toString() ?? '') == wanted) {
+        _initialModuleConsumed = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          setState(() {
+            _openedModule = module;
+            _moduleVisibleNotes = 4;
+          });
+        });
+        return;
+      }
+    }
+  }
+
   Future<void> _openNote(Map<String, dynamic> note) async {
     final noteId = (note['id'] as num?)?.toInt();
     if (noteId == null) {
+      return;
+    }
+    // Routed open (0.1.186): pushes `#/note/<uuid>` so every note read
+    // from a course/module has a unique shareable URL, browser Back
+    // works, and in-note relative links ("what to read next") resolve
+    // through the shell's follow-link handler. The bare dialog used
+    // here before had NO link handler at all.
+    if (widget.onOpenRoutedNote != null) {
+      await widget.onOpenRoutedNote!(note);
       return;
     }
     final detail = await widget.onFetchNoteDetail(noteId);
@@ -574,6 +641,7 @@ class _CoursePageState extends State<_CoursePage> {
         ? const <Map<String, dynamic>>[]
         : _courseNotes(activeCourse);
     final modules = _modulesFromNotes(activeNotes);
+    _maybeConsumeInitialModule(activeCourse, modules);
     // Infinite scroll: nearing the bottom streams the next notes page in
     // (no manual load-more buttons).
     return NotificationListener<ScrollNotification>(
@@ -702,6 +770,7 @@ class _CoursePageState extends State<_CoursePage> {
               setState(() {
                 _openedModule = null;
               });
+              _syncCourseUrl(activeCourse, null);
             },
             icon: const Icon(Icons.arrow_back),
             label: Text(AppLocalizations.of(context).courseBackTo(
@@ -789,6 +858,7 @@ class _CoursePageState extends State<_CoursePage> {
                 _openedCourse = null;
                 _openedModule = null;
               });
+              url_strategy.replaceBrowserPath('/courses');
             },
             icon: const Icon(Icons.arrow_back),
             label: Text(AppLocalizations.of(context).courseBackToResults),
@@ -938,6 +1008,7 @@ class _CoursePageState extends State<_CoursePage> {
                       _openedModule = module;
                       _moduleVisibleNotes = 4;
                     });
+                    _syncCourseUrl(activeCourse, module);
                   },
                 ),
               ),

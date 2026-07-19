@@ -368,6 +368,11 @@ Map<String, dynamic>? _matchNoteLinkTarget(
   } catch (_) {
     // keep the raw path on a malformed escape
   }
+  // Site builds link to rendered pages: `.html` maps back to the `.md`
+  // source.
+  if (path.toLowerCase().endsWith('.html')) {
+    path = path.substring(0, path.length - 5);
+  }
 
   // 1) Path-based: resolve relative to the source note's repo path.
   final fromPath = fromNote['git_path']?.toString() ?? '';
@@ -384,6 +389,18 @@ Map<String, dynamic>? _matchNoteLinkTarget(
       '$resolved.md',
       resolved.endsWith('/') ? '${resolved}index.md' : '$resolved/index.md',
     };
+    // Site-root-absolute links (`/cv/foundations/filters`) omit the
+    // repo's content root (`docs/`); retry with the source note's
+    // leading directory prefixed.
+    if (path.startsWith('/') && fromPath.contains('/')) {
+      final root = fromPath.split('/').first;
+      final prefixed = '$root/${path.replaceFirst(RegExp(r'^/+'), '')}';
+      candidates.addAll({
+        prefixed,
+        '$prefixed.md',
+        prefixed.endsWith('/') ? '${prefixed}index.md' : '$prefixed/index.md',
+      });
+    }
     for (final note in siblings) {
       final gp = note['git_path']?.toString() ?? '';
       if (gp.isNotEmpty && candidates.contains(gp)) return note;

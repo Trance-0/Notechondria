@@ -352,10 +352,23 @@ class _AppShellState extends State<AppShell>
         : visible;
   }
 
+  // Unique URL per full-screen tab (0.1.186). Note deep links keep their
+  // richer `#/notes/<uuid>` form; a bare tab path never clobbers one
+  // (replaceState only fires on explicit tab switches).
+  static const List<String> _tabPaths = [
+    '/',
+    '/notes',
+    '/courses',
+    '/activity',
+    '/settings',
+  ];
+
   void _selectActualIndex(int index) {
     setState(() {
       _selectedIndex = index;
     });
+    url_strategy.browserReplaceState(
+        '#${_tabPaths[index.clamp(0, _tabPaths.length - 1)]}');
   }
 
   bool _showWidePageHeader(int index) => false;
@@ -449,7 +462,16 @@ class _AppShellState extends State<AppShell>
   @override
   void initState() {
     super.initState();
-    final clamped = widget.initialIndex.clamp(0, _titles.length - 1);
+    var initial = widget.initialIndex;
+    // Cold-start tab deep link (`#/courses` etc.); `#/notes/<uuid>` note
+    // links are handled separately by _parseNoteUuidFromUrl.
+    final fragment = Uri.base.fragment;
+    final tabFromUrl = _tabPaths.indexOf(
+        fragment.startsWith('/') ? fragment : '/$fragment');
+    if (tabFromUrl > 0) {
+      initial = tabFromUrl;
+    }
+    final clamped = initial.clamp(0, _titles.length - 1);
     _selectedIndex =
         _visibleIndices.contains(clamped) ? clamped : _visibleIndices.first;
     // Route the HTTP client's per-request DEBUG logs into the shared

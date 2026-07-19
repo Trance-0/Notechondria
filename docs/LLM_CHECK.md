@@ -27,6 +27,16 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.186: in-note nav + full-screen URLs. ROOT CAUSE of dead "what to
+  read next" links: course view opened notes via bare _NoteViewerDialog
+  with NO onFollowLink/routing (the resolver itself was fine) — course/
+  module note opens now use the shell routed viewer (#/note/<uuid>).
+  Resolver: strip .html, retry site-root-absolute links with the source
+  git_path content-root prefix. Portal module URLs
+  (#/courses/<slug>/m/<key>, sync + cold-start consume-once). Editor+
+  planner tab URL sync + boot fragment parse (planner got
+  replaceBrowserPath shim; editor reuses browserReplaceState; its
+  #/notes/<uuid> deep links unaffected). Dialogs stay URL-less by spec.
 - 0.1.185: course loading PERF. Measured prod: courses/22/notes/ = 16.2s
   (317KB, unpaginated); root cause = storage-network N+1 — per-row author
   payload did ensure_creator_avatar + mirrored_avatar_is_fresh, each an
