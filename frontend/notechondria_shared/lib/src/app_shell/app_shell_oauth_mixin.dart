@@ -192,10 +192,20 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
       }
       // The current page origin doubles as the redirect URI;
       // Casdoor must have it pre-registered in the application
-      // settings on the admin UI. Drop any existing query string
-      // so the round-trip's `?code=&state=` is the only thing
-      // present when handleOAuthCallback wakes back up.
-      final origin = Uri.base.replace(queryParameters: {}).toString();
+      // settings on the admin UI. Drop the query string AND the hash
+      // fragment: since the apps adopted hash routing (`#/settings`
+      // etc., 0.1.179/0.1.186) `Uri.base` carries a fragment, and a
+      // redirect_uri containing it fails Casdoor's exact-match
+      // validation — the IdP then never redirects back with a code,
+      // which broke login with no backend log at all.
+      final origin =
+          Uri.base.removeFragment().replace(queryParameters: {}).toString();
+      log(
+        level: DebugLogLevel.info,
+        source: '$logAppTag.Auth/oauth.launch',
+        message: 'Casdoor sign-in starting: $logAppTag.Auth/oauth.launch — '
+            'redirect_uri=$origin intent=$intent.',
+      );
       final prefs = await SharedPreferences.getInstance();
       // 0.1.127: keys are app-namespaced. On GitHub Pages all three
       // apps share one browser origin (one localStorage), so the old
@@ -242,6 +252,12 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
     if (state != 'casdoor') {
       return false;
     }
+    log(
+      level: DebugLogLevel.info,
+      source: '$logAppTag.Auth/casdoor.callback',
+      message: 'Casdoor callback received: $logAppTag.Auth/casdoor.callback — '
+          'authorization code present, starting exchange.',
+    );
 
     // Clean the URL so a page refresh doesn't re-process the code.
     // Preserve the fragment — it may carry a note deep-link

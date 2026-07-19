@@ -27,6 +27,15 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.187: LOGIN FIX. launchOAuth used Uri.base.replace(queryParameters:
+  {}) for redirect_uri — .replace() KEEPS the fragment, and hash routing
+  (0.1.179/0.1.186) put #/settings in the URL right where the sign-in
+  button lives → redirect_uri=…/#/settings failed Casdoor exact-match →
+  IdP never redirected back → zero logs anywhere (backend never called).
+  Fix: removeFragment() first; added launch log (redirect_uri visible)
+  + callback-received log. LESSON: URL-shape changes (adding fragments)
+  can silently break OAuth exact-match redirect_uri — grep every
+  Uri.base-derived redirect construction when touching routing.
 - 0.1.186: in-note nav + full-screen URLs. ROOT CAUSE of dead "what to
   read next" links: course view opened notes via bare _NoteViewerDialog
   with NO onFollowLink/routing (the resolver itself was fine) — course/
