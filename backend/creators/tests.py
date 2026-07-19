@@ -1051,7 +1051,10 @@ class AvatarMirrorTests(TestCase):
             self.creator.avatar_mirrored_from,
             'https://cas.example.com/avatar/me.png',
         )
-        self.assertIn('casdoor_avatar', self.creator.image.name)
+        # The image field's upload_to callable renames files (profile_latest_*),
+        # so assert on WHERE it landed (our storage), not the filename.
+        self.assertTrue(self.creator.image.name)
+        self.assertIn('user_upload', self.creator.image.name)
 
     def test_mirror_is_idempotent_per_url(self):
         from unittest.mock import patch
@@ -1082,7 +1085,9 @@ class AvatarMirrorTests(TestCase):
         self.creator.refresh_from_db()
         payload = creator_summary_payload(self.creator, None)
         # Effective avatar = our stored media (CORS-safe), not the IdP URL.
-        self.assertIn('casdoor_avatar', payload['image_url'])
+        self.assertIn('/media/', payload['image_url'])
+        self.assertFalse(
+            payload['image_url'].startswith('https://cas.example.com/'))
         self.assertTrue(
             payload['avatar_url'].startswith('https://cas.example.com/'))
 
