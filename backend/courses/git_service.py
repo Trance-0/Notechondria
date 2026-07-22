@@ -137,9 +137,14 @@ def import_course_from_repo(course) -> dict:
     from notes.services import ensure_note_name
 
     created = updated = 0
-    for module in parsed["modules"]:
+    for module_index, module in enumerate(parsed["modules"]):
         module_title = (module.get("title") or "")[:160]
-        for note_data in module["notes"]:
+        for note_index, note_data in enumerate(module["notes"]):
+            # Reading position: modules stay grouped and ordered, notes
+            # keep the adapter's within-module order (frontmatter
+            # `order`/`sidebar_position`, then path). 1-based so 0 keeps
+            # meaning "unset" for natively-created notes.
+            sort_order = (module_index + 1) * 1000 + note_index + 1
             git_path = note_data["path"]
             title = (note_data["title"] or "Untitled")[:100]
             markdown = note_data["markdown"]
@@ -159,6 +164,7 @@ def import_course_from_repo(course) -> dict:
                     or existing.title != title
                     or existing.custom_meta != frontmatter_json
                     or existing.module != module_title
+                    or existing.sort_order != sort_order
                 )
                 if not existing.name:
                     ensure_note_name(existing)
@@ -168,6 +174,7 @@ def import_course_from_repo(course) -> dict:
                     existing.title = title
                     existing.custom_meta = frontmatter_json
                     existing.module = module_title
+                    existing.sort_order = sort_order
                     existing.save()
                     updated += 1
             else:
@@ -180,6 +187,7 @@ def import_course_from_repo(course) -> dict:
                     git_path=git_path,
                     custom_meta=frontmatter_json,
                     module=module_title,
+                    sort_order=sort_order,
                     editor_mode="G",
                 )
                 ensure_note_name(note)

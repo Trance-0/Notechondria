@@ -1126,7 +1126,14 @@ class CourseNotesApiView(APIView):
 
     def get(self, request, course_id):
         course = get_object_or_404(Course, pk=course_id)
-        notes = course.notes.filter(deleted_at__isnull=True).select_related("course_id", "creator_id__user_id").order_by("-last_edit")
+        # 0.1.188: imported courses read top-to-bottom. `sort_order` is 0
+        # for natively-created notes, so those still fall back to pure
+        # recency via the secondary key (unchanged behaviour).
+        notes = (
+            course.notes.filter(deleted_at__isnull=True)
+            .select_related("course_id", "creator_id__user_id")
+            .order_by("sort_order", "-last_edit")
+        )
         if (
             not request.user.is_authenticated
             or course.creator_id is None

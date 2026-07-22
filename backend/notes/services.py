@@ -691,8 +691,16 @@ def apply_course_git_binding(
             raise CourseGitError("sync_timeout_minutes must be between 1 and 1440.")
         course.git_sync_timeout_minutes = minutes
     if course.git_repo:
-        if course.git_pending_since is None:
-            course.git_pending_since = timezone.now()
+        # 0.1.188: only arm the lazy-sync debounce when sync is actually
+        # enabled. Arming it on a sync-disabled binding was harmless
+        # (`flush_due_course_syncs` filters on `git_sync_enabled`) but
+        # reported a permanently "pending" course in the git payload,
+        # which read as a stuck sync.
+        if course.git_sync_enabled:
+            if course.git_pending_since is None:
+                course.git_pending_since = timezone.now()
+        else:
+            course.git_pending_since = None
         course.git_last_sync_error = None
     else:
         course.git_sync_enabled = False

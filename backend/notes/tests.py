@@ -2191,3 +2191,100 @@ class CourseNotesPerformanceTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         # 25 rows, one shared author → the payload computed once.
         self.assertEqual(calls["n"], 1)
+
+
+class ImportedNoteOrderAndBindPendingTests(TestCase):
+    """0.1.188: imported courses read top-to-bottom, and binding without
+    sync enabled doesn't report a permanently pending sync."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="order@example.com", password="pw")
+        self.creator = Creator.objects.create(user_id=self.user)
+        self.token = Token.objects.create(user=self.user)
+
+    def _auth(self):
+        return {"HTTP_AUTHORIZATION": f"Token {self.token.key}"}
+
+    def test_import_sets_reading_order_and_list_follows_it(self):
+        from unittest.mock import patch
+        from creators.models import GithubIntegration
+        import courses.git_service as git_service
+
+        course = Course.objects.create(
+            creator_id=self.creator, slug="ord-course", title="Ord Course",
+            git_repo="octo/docs", git_branch="main",
+        )
+        GithubIntegration.objects.create(
+            creator=self.creator, installation_id="inst-ord",
+        )
+        # Two modules; frontmatter `order` fixes the within-module order.
+        files = {
+            "docs/aa/index.md": "---\ntitle: AA\norder: 1\n---\n# AA\n",
+            "docs/aa/second.md": "---\ntitle: A2\norder: 2\n---\n# A2\n",
+            "docs/bb/only.md": "---\ntitle: B1\norder: 1\n---\n# B1\n",
+        }
+        cfg = "preset: vitepress\ncontent:\n  module_depth: 1\n"
+        with patch.object(git_service, "fetch_course_repo",
+                          return_value=(cfg, files, list(files))):
+            git_service.import_course_from_repo(course)
+
+        orders = list(
+            Note.objects.filter(course_id=course)
+            .order_by("sort_order")
+            .values_list("sort_order", "title")
+        )
+        # Every imported note gets a positive, strictly increasing position.
+        self.assertTrue(all(o > 0 for o, _ in orders))
+        self.assertEqual([o for o, _ in orders], sorted(o for o, _ in orders))
+        self.assertEqual(len(orders), 3)
+
+        # The API lists them in that reading order (not by edit recency).
+        resp = self.client.get(f"/api/v1/courses/{course.id}/notes/", **self._auth())
+        self.assertEqual(resp.status_code, 200)
+        api_titles = [n["title"] for n in resp.json()]
+        self.assertEqual(api_titles, [t for _, t in orders])
+
+    def test_native_notes_keep_recency_order(self):
+        """sort_order is 0 for natively-created notes, so the secondary
+        `-last_edit` key preserves the old behaviour."""
+        course = Course.objects.create(
+            creator_id=self.creator, slug="nat-course", title="Nat Course",
+        )
+        first = Note.objects.create(
+            creator_id=self.creator, course_id=course,
+            sharing_id="nat-1", title="Older", is_public=True,
+        )
+        second = Note.objects.create(
+            creator_id=self.creator, course_id=course,
+            sharing_id="nat-2", title="Newer", is_public=True,
+        )
+        self.assertEqual(first.sort_order, 0)
+        self.assertEqual(second.sort_order, 0)
+        resp = self.client.get(f"/api/v1/courses/{course.id}/notes/", **self._auth())
+        self.assertEqual([n["title"] for n in resp.json()], ["Newer", "Older"])
+
+    def test_bind_without_sync_enabled_is_not_pending(self):
+        course = Course.objects.create(
+            creator_id=self.creator, slug="bind-course", title="Bind Course",
+        )
+        resp = self.client.put(
+            f"/api/v1/courses/{course.id}/git/",
+            data=json.dumps({"repo": "octo/repo", "sync_enabled": False}),
+            content_type="application/json", **self._auth(),
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertTrue(resp.json()["is_bound"])
+        self.assertFalse(resp.json()["sync_enabled"])
+        self.assertIsNone(resp.json()["pending_since"])
+
+    def test_bind_with_sync_enabled_arms_pending(self):
+        course = Course.objects.create(
+            creator_id=self.creator, slug="bind2-course", title="Bind2 Course",
+        )
+        resp = self.client.put(
+            f"/api/v1/courses/{course.id}/git/",
+            data=json.dumps({"repo": "octo/repo", "sync_enabled": True}),
+            content_type="application/json", **self._auth(),
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertIsNotNone(resp.json()["pending_since"])

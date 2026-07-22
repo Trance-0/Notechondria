@@ -66,6 +66,13 @@ class Note(models.Model):
     # (0.1.178). Set on git-import from the adapter's module grouping (cv,
     # dnn, …); the course view groups notes by this. Empty = ungrouped.
     module = models.CharField(max_length=160, blank=True, default="")
+    # Reading position within the course (0.1.188). Set on git-import from
+    # the adapter's module/note ordering (module index * 1000 + note
+    # index) so an imported course lists top-to-bottom instead of by edit
+    # recency — every imported note is written within the same second, so
+    # `-last_edit` produced an essentially arbitrary order. 0 = unset:
+    # native courses keep pure recency ordering via the secondary sort.
+    sort_order = models.IntegerField(default=0, null=False, db_index=True)
     deleted_at = models.DateTimeField(blank=True, null=True)
     note_type = models.CharField(
         max_length=1,
