@@ -2288,3 +2288,50 @@ class ImportedNoteOrderAndBindPendingTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200, resp.content)
         self.assertIsNotNone(resp.json()["pending_since"])
+
+
+class UncategorizedNoteFilterTests(TestCase):
+    """0.1.190: `course_id=none` lists only notes in no category — the
+    editor's Inbox folder, which previously showed every owned note."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="inbox@example.com", password="pw")
+        self.creator = Creator.objects.create(user_id=self.user)
+        self.course = Course.objects.create(
+            creator_id=self.creator, slug="inbox-course", title="Categorised",
+        )
+        self.loose = Note.objects.create(
+            creator_id=self.creator, course_id=None,
+            sharing_id="inbox-loose", title="Loose note",
+        )
+        self.filed = Note.objects.create(
+            creator_id=self.creator, course_id=self.course,
+            sharing_id="inbox-filed", title="Filed note",
+        )
+        self.token = Token.objects.create(user=self.user)
+
+    def _titles(self, qs=""):
+        resp = self.client.get(
+            f"/api/v1/notes/?limit=50{qs}",
+            HTTP_AUTHORIZATION=f"Token {self.token.key}",
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        return [n["title"] for n in resp.json()["results"]]
+
+    def test_uncategorized_only_excludes_filed_notes(self):
+        titles = self._titles("&course_id=none")
+        self.assertIn("Loose note", titles)
+        self.assertNotIn("Filed note", titles)
+
+    def test_null_and_uncategorized_aliases_work(self):
+        for alias in ("null", "uncategorized"):
+            self.assertNotIn("Filed note", self._titles(f"&course_id={alias}"))
+
+    def test_no_course_id_still_lists_everything(self):
+        titles = self._titles()
+        self.assertIn("Loose note", titles)
+        self.assertIn("Filed note", titles)
+
+    def test_numeric_course_id_still_filters_to_that_course(self):
+        titles = self._titles(f"&course_id={self.course.id}")
+        self.assertEqual(titles, ["Filed note"])

@@ -40,6 +40,11 @@ abstract class NotechondriaClient implements AuthClient {
     int limit = 20,
     int? courseId,
 
+    /// Restrict to notes in NO category — the Inbox folder. Sends
+    /// `course_id=none`, which the backend maps to `course_id IS NULL`.
+    /// Ignored when [courseId] is set.
+    bool uncategorizedOnly = false,
+
     /// Search scope: 'personal' = own notes only (default).
     /// 'all' = own notes + public notes from any user.
     String scope = 'personal',

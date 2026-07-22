@@ -324,6 +324,13 @@ class _AppShellState extends State<AppShell>
   /// Currently selected category (course) for note filtering. null = all notes.
   int? _selectedCategoryId;
 
+  /// True when the sidebar's Inbox folder is the active selection
+  /// (0.1.190). The Inbox has no course id, so it used to share the
+  /// `_selectedCategoryId == null` state with "All notes" and rendered
+  /// exactly the same list — every note the user owned, categorised ones
+  /// included. This flag separates the two.
+  bool _uncategorizedSelected = false;
+
   /// Dedupe-key for the sidebar pin diagnostic so we don't spam the debug
   /// log with one warning per rebuild. Re-emit only when the category set
   /// composition (id/title/is_default tuple) changes. Lives on the State

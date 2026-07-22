@@ -59,6 +59,7 @@ extension _AppShellNoteLoadingX on _AppShellState {
         courseId: (activeCourseId != null && activeCourseId > 0)
             ? activeCourseId
             : null,
+        uncategorizedOnly: _uncategorizedSelected,
         scope: effectiveScope,
       );
       final rows = (page['results'] as List<dynamic>? ?? const [])
@@ -87,6 +88,10 @@ extension _AppShellNoteLoadingX on _AppShellState {
     final courseId = (course['id'] as num?)?.toInt();
     _selectedCourse = course;
     _selectedCategoryId = courseId;
+    // The Inbox row carries `is_uncategorized` and no id; every real
+    // category has an id.
+    _uncategorizedSelected =
+        courseId == null && course['is_uncategorized'] == true;
     _selectedIndex = 1;
     _selectedNote = null;
     refreshState();

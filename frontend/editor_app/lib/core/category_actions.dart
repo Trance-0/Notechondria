@@ -246,6 +246,7 @@ extension _AppShellCategoryX on _AppShellState {
         if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
           _selectedCourse = null;
           _selectedCategoryId = null;
+      _uncategorizedSelected = false;
         }
         refreshState();
         await persistLocalCourses();
@@ -266,6 +267,7 @@ extension _AppShellCategoryX on _AppShellState {
         if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
           _selectedCourse = null;
           _selectedCategoryId = null;
+      _uncategorizedSelected = false;
         }
         refreshState();
         await _persistLocalCache();
@@ -352,6 +354,7 @@ extension _AppShellCategoryX on _AppShellState {
       // selected). The sidebar pins it client-side.
       _selectedCourse = null;
       _selectedCategoryId = null;
+      _uncategorizedSelected = false;
     }
     refreshState();
     if (hasToken) {

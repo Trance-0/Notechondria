@@ -249,6 +249,7 @@ class HttpNotechondriaClient
     int offset = 0,
     int limit = 20,
     int? courseId,
+    bool uncategorizedOnly = false,
     String scope = 'personal',
   }) async {
     final uri = _uri('/notes/').replace(
@@ -257,7 +258,10 @@ class HttpNotechondriaClient
         'offset': '$offset',
         'scope': scope,
         if (query.trim().isNotEmpty) 'q': query.trim(),
-        if (courseId != null) 'course_id': '$courseId',
+        if (courseId != null)
+          'course_id': '$courseId'
+        else if (uncategorizedOnly)
+          'course_id': 'none',
       },
     );
     final response = await _get(uri, token: token);

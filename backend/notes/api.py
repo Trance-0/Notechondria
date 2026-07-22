@@ -1227,8 +1227,16 @@ class NoteListCreateApiView(APIView):
             # values defensively (treat anything we don't recognize as
             # personal so a stale frontend doesn't break with a 400).
             notes = notes.filter(creator_id=creator)
+        # `course_id=none` (also `null` / `uncategorized`) means "notes in
+        # no category at all" — the editor's Inbox folder (0.1.190).
+        # Previously only a truthy numeric id filtered anything, so the
+        # Inbox, which has no id, fell through to the unfiltered list and
+        # showed every note the user owned, categorised ones included.
         if course_id:
-            notes = notes.filter(course_id_id=course_id)
+            if str(course_id).strip().lower() in ("none", "null", "uncategorized"):
+                notes = notes.filter(course_id__isnull=True)
+            else:
+                notes = notes.filter(course_id_id=course_id)
         if query:
             ranked_notes = []
             for note in notes:

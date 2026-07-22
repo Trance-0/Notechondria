@@ -48,10 +48,13 @@ extension _AppShellBuildHelpersX on _AppShellState {
                 child: SidebarItem(
                   icon: Icons.menu_book_outlined,
                   label: l10n.navAllNotes,
-                  selected: _selectedIndex == 1 && _selectedCategoryId == null,
+                  selected: _selectedIndex == 1 &&
+                      _selectedCategoryId == null &&
+                      !_uncategorizedSelected,
                   onTap: () {
                     Navigator.of(context).pop(); // close drawer
                     _selectedCategoryId = null;
+                    _uncategorizedSelected = false;
                     _selectedIndex = 1;
                     refreshState();
                     _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
@@ -263,9 +266,12 @@ extension _AppShellBuildHelpersX on _AppShellState {
                       icon: Icons.menu_book_outlined,
                       label: l10n.navAllNotes,
                       selected:
-                          _selectedIndex == 1 && _selectedCategoryId == null,
+                          _selectedIndex == 1 &&
+                              _selectedCategoryId == null &&
+                              !_uncategorizedSelected,
                       onTap: () {
                         _selectedCategoryId = null;
+                        _uncategorizedSelected = false;
                         _selectedIndex = 1;
                         refreshState();
                         _loadLearnerNotes(
