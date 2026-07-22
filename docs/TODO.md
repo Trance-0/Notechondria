@@ -1,4 +1,27 @@
-﻿# TODO
+﻿# TODO — working agreements
+
+> **Open work now lives in [GitHub Issues](https://github.com/Trance-0/Notechondria/issues).**
+> The 26 unfinished items from this file were migrated there on 2026-07-19
+> (labelled `todo-import`, plus an `area:*` label per component) so each one
+> has its own status, discussion thread, and close event.
+>
+> Browse by area:
+> [activity](https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%3Aactivity) ·
+> [calendar](https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%3Acalendar) ·
+> [backend](https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%3Abackend) ·
+> [auth](https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%3Aauth) ·
+> [mcp](https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%3Amcp) ·
+> [i18n](https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%3Ai18n) ·
+> [github-sync](https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%3Agithub-sync)
+>
+> **New work goes straight to an Issue, not to this file.** If you do add
+> `- [ ]` items here, `python3 scripts/todo_to_issues.py --dry-run` previews
+> them and `--create` files the new ones (existing titles are skipped, so
+> it is safe to re-run).
+>
+> What stays here: the standing working agreements below, and the
+> per-section record of what already shipped (`- [x]` with the version that
+> landed it). Full round write-ups live in `docs/versions/`.
 
 Pending version: 0.1
 
@@ -39,29 +62,6 @@ topology & no-local-containers rule** — this project never runs in
 local Docker on a < 16 GB machine; frontend/docs deploy via GitHub
 Pages, backend via Northflank on commit, suites via CI on push.
 
-- [ ] **Activity UI verification pass (frontend).** Backend + MCP
-  Activity flows are verified end-to-end; the Flutter Activity
-  screens (portal `activity_week.dart`, planner todo list) have only
-  been exercised by owner reports (0.1.158 fix round). Verify against
-  the **deployed** Pages frontend + Northflank backend after the next
-  push; collect any remaining Activity bugs into the next fix round.
-- [ ] **Browser-level probe layer.** Playwright (Python) against the
-  deployed Pages site (`https://trance-0.github.io/Notechondria/...`)
-  for smoke flows + screenshots (headless, one browser, after
-  checking `free -h`). Unblocks the storage-isolation regression test
-  (F1) and gives the owner async screenshots for UI taste checks.
-  Screenshots land in a gitignored `artifacts/` dir.
-- [ ] **Repo `.mcp.json`** registering the CLI server (key read from
-  env, never committed) so Claude Code sessions get the 41 tools
-  automatically against the deployed backend.
-- [ ] **Round-end verification convention.** On this host: CLI unit
-  tests when `cli/` changed, plus static checks; backend Django
-  tests, Flutter smoke tests, web builds, and the docs build are
-  proven by CI (`backend-tests.yml` / `frontend-pages.yml` /
-  `docs-pages.yml`) after the owner pushes. Probe the deployed
-  handshake to confirm a backend deploy landed. Call out anything not
-  run locally per LLM_CHECK — and never start project containers
-  locally.
 
 ## **Urgent** — GitHub course binding & activity UX (owner request 2026-07-11)
 
@@ -122,8 +122,6 @@ do not run project containers/apps locally.
   `flush_due_course_syncs`; `POST courses/<id>/git/sync/`; arm-on-edit in
   the three note-write paths; flush on the authenticated course-list
   poll; MCP/CLI `sync_course_git`. (0.1.174)
-- [ ] **Multi-repo per user**: today `GithubIntegration.repo_full_name`
-  is one repo; let each `Course.git_repo` push with the user's App token.
 - [x] **Effective logs** on bind / unlink (`GIT_BIND`/`GIT_UNLINK`). (0.1.170)
 - [x] Created the **course template repo**
   `Nesbitt-bot/notechondria-course-template` (private, `is_template`).
@@ -156,10 +154,6 @@ do not run project containers/apps locally.
 - [x] **`pending_since` armed on bind even when `sync_enabled=false`** —
   the debounce is armed only when sync is enabled (cleared when off), so
   the git payload no longer advertises a stuck pending sync. (0.1.188)
-- [ ] **MDX support** (`.mdx`) — skipped in v1 (parser warns); add
-  parsing + sync-write once markdown is solid.
-- [ ] **Cloudflare-style repo selector/binder** UI: list of repos, each
-  opens a modal to pick the course to bind + set the sync timeout.
 
 ### Calendar / course feature batch (remaining after 0.1.178)
 
@@ -171,12 +165,6 @@ build to validate:
 - [x] **#5 Event detail + course selector** — course dropdown in the
   create + edit dialogs (portal 0.1.181, planner 0.1.183; default Inbox)
   and the detail dialog shows course + importance alongside the time.
-- [ ] **Course ownership transfer** (last remaining piece of the #8
-  course-metadata modal — title / description / colour hue / cover /
-  bound-repo editing all shipped in 0.1.180): add a
-  `POST courses/<id>/transfer/` endpoint (owner-only, target by
-  username/email) plus the modal control that calls it. Decide what
-  happens to the course's notes, which keep their own `creator_id`.
 - [x] **#6 Hue setting button** on the calendar filter row — opens the
   course-edit modal for the selected course; disabled with a tooltip on
   "All courses". (0.1.180, both apps)
@@ -184,17 +172,9 @@ build to validate:
   a loading bar gates the view (no placeholder content), and further pages
   infinite-scroll in at 20/page. Backend gained real `limit/offset`
   pagination. (0.1.185)
-- [ ] **#1 Drag-to-reschedule** on the week/day grid: drag an event tile to
-  a new time, a Google-Calendar-style "now" time-line indicator, and
-  magnetic snap of the start to the nearest 15-min slot.
 - [x] **#2 Ctrl+scroll time-axis zoom** — the handler existed since
   0.1.163; the browser's page-zoom was swallowing ctrl+wheel. Fixed by
   `preventDefault()` on ctrl/meta wheel in `web/index.html`. (0.1.181)
-- [ ] **#7 Offline cache ownership/security**: cache recent edited /
-  subscribed notes+courses locally for offline start; tag all local data
-  with its owning user on first login; on a *different* user's login, warn
-  that cache belongs to user A, refuse to sync it to the cloud, and don't
-  let it pollute user B's workspace.
 - [x] **Shareable per-note browser URLs** (bug 8, part 2) — DONE 0.1.179
   for the portal: `#/note/<uuid>` routed page (+ unique URLs for every tab
   and `#/courses/<slug>`), backend read access extended to active course
@@ -213,10 +193,6 @@ build to validate:
   tools).
 
 ### Cross-app plumbing
-- [ ] **Developer menu** currently editor-only — embed it in **planner**
-  and **portal** too; menu content depends on each app's support.
-- [ ] **Experimental features** registry: add "GitHub course sync"
-  alongside "import apple journal".
 
 ## Dev plan — bring every component online (fewest owner-attention rounds)
 
@@ -325,11 +301,6 @@ across 0.1.127–0.1.129 — see
 [`0.1.128.md`](versions/0.1.128.md), and
 [`0.1.129.md`](versions/0.1.129.md). Remaining:
 
-- [ ] **Storage-isolation regression test.** Script the F1 acceptance
-  test (load editor then planner under one origin, assert neither
-  mutates the other's namespaced keys) — Playwright against the built
-  web bundles, or a `flutter drive` web run. Needs a browser-driver
-  toolchain not currently set up in this environment.
 
 ### Login and account info
 
@@ -406,8 +377,6 @@ English (US) + Chinese (Simplified), a Language setting in each app
   command I/O stay English by design. The per-app What's-New /
   onboarding *content* registries also stay English for now — only the
   shared chrome is localized.)
-- [ ] **Phase 2 — planner strings.** Translate planner UI; reuse the
-  shared catalog for common strings.
 - [~] **Phase 3 — portal strings (nearly done).** Localized across
   0.1.154–0.1.156: front page, course browser, learner feed,
   note-metadata dialog, the block note editor, and the activity /
@@ -423,22 +392,9 @@ English (US) + Chinese (Simplified), a Language setting in each app
   (0.1.154 also fixed a functional gap: portal's API base URL is now
   editable from the always-reachable Backend settings page, so a
   signed-out user can repoint the backend.)
-- [ ] **Phase 4 — shared-widget + dialog sweep.** Ensure every shared
-  component (auth dialogs, onboarding tour, what's-new, install
-  banner, debug log, error state) is fully localized, and audit
-  SnackBar/dialog strings. Keep AGENTS.md §1.8 diagnostic strings
-  English for greppability; localize the user-facing consequence text.
 
 ## Planner
 
-- [ ] Planner starter workspace currently seeds a single "Starter
-  planning course" + two planning drafts on first run
-  (`planner_app/lib/app_shell.dart` `_ensureStarterWorkspace`).
-  Decide whether planner should have an analogous
-  "Inbox / scratchpad" category instead of a premade course — or
-  whether the planning-course semantics make a non-Inbox default
-  the right default. Changing planner's starter default is a UX
-  break, so gather feedback before touching.
 
 ## Version-update notification (landed 0.1.151–0.1.152)
 
@@ -486,52 +442,11 @@ that had deferred it. Shows once on first run (tracked by an
 from each app's Settings ("View tutorial"). On a brand-new user's
 first boot it takes priority over the What's-New / install nudges.
 
-- [ ] **Optional: anchored coach marks (still deferred).** If a future
-  round wants step-by-step pointers at specific controls, that remains
-  deferred until the responsive layouts are stable — each anchored
-  step would need authoring twice around the 960 px breakpoint. The
-  paged tour covers onboarding without it.
 
 ## Backend
 
 ### Auth
 
-- [ ] **Casdoor migration — remaining phases 4–5 only.** Phases 1–3
-  of [`docs/integrations/casdoor-migration.md`](integrations/casdoor-migration.md)
-  landed across 0.1.95–0.1.101 (JWT auth class, `Creator.casdoor_sub`,
-  exchange/bind/unlink endpoints, shared `AuthHub` + OAuth mixin,
-  link-challenge flow in 0.1.118, OIDC profile refresh in 0.1.119;
-  the `Session` model was dropped in 0.1.106). Still open:
-  4. Retire the remaining legacy auth endpoints. Owner decision
-     (0.1.127): the email/password fallback login is **permanent**
-     (Casdoor-outage escape hatch) and now auto-syncs the Casdoor
-     password into the local hash — see
-     [`versions/0.1.127.md`](versions/0.1.127.md). Everything else
-     legacy can go.
-  5. Cleanup: delete dead serializers / templates / helpers listed in
-     the survey, and add a status header to
-     `integrations/casdoor-migration.md` marking phases 1–3 DONE so
-     future rounds stop re-planning them.
-- [ ] **Casdoor password-hash claim is scrubbed (watch upstream).**
-  The owner configured the application's Token Format (JWT-Custom,
-  RS256, token fields Password / Password salt / Password type), but
-  live tokens from auth.trance-0.com carry an **empty** `password`
-  claim value (`passwordType` says `bcrypt`; verified 2026-06-12) —
-  current Casdoor scrubs the hash server-side. The claims-sync path
-  in `backend/creators/casdoor_password.py` is implemented and
-  dormant; it activates automatically if a Casdoor upgrade starts
-  emitting the hash. Until then the ROPC grant at fallback-login
-  time covers the sync. Re-test after Casdoor upgrades.
-- [ ] **Document the final Casdoor redirect-URI list.** The owner
-  completed the app config on `auth.trance-0.com` (0.1.127). Record
-  the registered redirect URIs and token-format settings (JWT-Custom,
-  RS256, Password / Password salt / Password type token fields) in
-  `integrations/casdoor-setup.md` so the config is reproducible.
-- [ ] **MCP API keys stay app-internal.** Casdoor is NOT in the
-  per-request hot path for MCP — the `Bearer ntc_<key>` scheme keeps
-  using `creators.authentication.ApiKeyAuthentication` and the
-  `/api/v1/auth/rotate-api-key/` endpoint. Document this in
-  `docs/server/mcp.md` as part of the cutover round.
 
 ### MCP
 
@@ -560,43 +475,11 @@ in both `backend/mcp/tools.py` and `cli/notechondria_mcp/tools.py`.**
   matching names + schemas (name-set diff asserted identical). Filled
   the one audit gap: added a filtered `GET` to `note-sessions/` (was
   POST-only) so `list_note_sessions` works over REST.
-- [ ] **Phase 4 — distribute.** Publish `notechondria-mcp` to PyPI;
-  document agent-host config.
-- [ ] **Phase 5 (deferred).** Cutover/deletion of `backend/mcp/` —
-  not until further notice (both servers kept for now).
 
 ### GitHub Sync
 
-- [ ] **Push-side conflict resolution.** The Contents API PUTs in
-  `creators.services.github_sync.commit_and_push` overwrite the
-  remote blob unconditionally. A user editing on two devices
-  between syncs can lose changes. Fetch the existing blob on each
-  path, diff against the materialized payload, and surface a
-  "remote changed — overwrite or merge?" prompt before writing.
-  Lifted from the 0.1.94 carryover.
-- [ ] **Asset rotation / pruning.** Repeated `include_assets=true`
-  pushes accumulate orphan files for notes deleted client-side
-  whose old `assets/notes/<uuid>/` paths still live in the remote
-  tree. Add a `--prune-orphans` mode on the push pipeline that
-  walks the Trees API and removes unreferenced subtrees in the
-  same commit. Lifted from the 0.1.94 carryover.
 
 ## Release / CI
 
-- [ ] **Editor + planner GitHub Release workflows.** 0.1.68
-  documented the existing `portal-release.yml` workflow in
-  [`docs/deployment/release.md`](deployment/release.md). The
-  same shape is needed for `editor_app` and `planner_app`.
-  Decide tag namespacing before duplicating: a plain `v0.1.68`
-  push would fire all three workflows and they'd race to
-  publish/update the same GitHub Release. Proposals:
-  - `ve0.1.68` → editor, `vp0.1.68` → planner, `v0.1.68` →
-    portal. Each workflow filters on its own tag prefix.
-  - OR fold all three into a single `frontend-release.yml`
-    with a per-app matrix leg and a single publish job at the
-    end (attaches all 18 archives to one release). Cleaner
-    artefact discovery, harder matrix.
-  - Windows code signing is still open — see
-    [release.md #not yet automated](deployment/release.md#not-yet-automated).
 
 ## Documentation pages
