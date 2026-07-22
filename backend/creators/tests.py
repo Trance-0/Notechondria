@@ -1097,3 +1097,129 @@ class AvatarMirrorTests(TestCase):
         payload = creator_summary_payload(self.creator, None)
         self.assertTrue(
             payload['image_url'].startswith('https://cas.example.com/'))
+
+
+class GithubSyncPushConflictTests(TestCase):
+    """0.1.189: the profile-sync push is one atomic Git Data commit and
+    refuses to overwrite a branch that moved since our last push."""
+
+    def setUp(self):
+        from django.contrib.auth.models import User as U
+        from creators.models import Creator as C, GithubIntegration
+        self.user = U.objects.create_user(username='sync@example.com', password='pw')
+        self.creator = C.objects.create(user_id=self.user)
+        self.integration = GithubIntegration.objects.create(
+            creator=self.creator, installation_id='inst-sync',
+            repo_full_name='octo/backup', repo_default_branch='main',
+        )
+
+    def _files(self):
+        from creators.services.github_sync import _RepoFile
+        return [_RepoFile('profile/creator.json', b'{"a":1}')]
+
+    def _fake_transport(self, head_sha, tree_sha='newtree'):
+        """Minimal Git Data API double; records the calls it receives."""
+        calls = {'posts': [], 'patches': []}
+
+        class R:
+            def __init__(self, payload, status=200):
+                self._p, self.status_code, self.text = payload, status, ''
+            def json(self): return self._p
+
+        def get(url, headers=None, timeout=None, params=None):
+            if '/git/ref/heads/' in url:
+                return R({'object': {'sha': head_sha}})
+            if '/git/commits/' in url:
+                return R({'tree': {'sha': 'basetree'}})
+            return R({}, 404)
+
+        def post(url, headers=None, json=None, timeout=None):
+            calls['posts'].append(url)
+            if url.endswith('/git/blobs'):
+                return R({'sha': 'blob1'})
+            if url.endswith('/git/trees'):
+                return R({'sha': tree_sha})
+            if url.endswith('/git/commits'):
+                return R({'sha': 'commit-new'})
+            return R({}, 404)
+
+        def patch(url, headers=None, json=None, timeout=None):
+            calls['patches'].append(url)
+            return R({})
+
+        return get, post, patch, calls
+
+    def test_conflict_when_remote_moved_since_last_push(self):
+        from unittest.mock import patch as mpatch
+        from creators.services.github_sync import commit_and_push, GithubSyncConflict
+
+        self.integration.last_push_sha = 'ours-old'
+        self.integration.save(update_fields=['last_push_sha'])
+        get, post, patch_, calls = self._fake_transport(head_sha='someone-else')
+        with mpatch('creators.services.github_sync._ensure_token', return_value='t'), \
+             mpatch('requests.get', get), mpatch('requests.post', post), \
+             mpatch('requests.patch', patch_):
+            with self.assertRaises(GithubSyncConflict):
+                commit_and_push(self.integration, self._files())
+        # Nothing was written.
+        self.assertEqual(calls['patches'], [])
+
+    def test_force_overwrites_a_moved_branch(self):
+        from unittest.mock import patch as mpatch
+        from creators.services.github_sync import commit_and_push
+
+        self.integration.last_push_sha = 'ours-old'
+        self.integration.save(update_fields=['last_push_sha'])
+        get, post, patch_, calls = self._fake_transport(head_sha='someone-else')
+        with mpatch('creators.services.github_sync._ensure_token', return_value='t'), \
+             mpatch('requests.get', get), mpatch('requests.post', post), \
+             mpatch('requests.patch', patch_):
+            sha = commit_and_push(self.integration, self._files(), force=True)
+        self.assertEqual(sha, 'commit-new')
+        self.assertEqual(len(calls['patches']), 1)
+
+    def test_first_ever_push_has_nothing_to_conflict_with(self):
+        from unittest.mock import patch as mpatch
+        from creators.services.github_sync import commit_and_push
+
+        self.assertEqual(self.integration.last_push_sha, '')
+        get, post, patch_, calls = self._fake_transport(head_sha='whatever')
+        with mpatch('creators.services.github_sync._ensure_token', return_value='t'), \
+             mpatch('requests.get', get), mpatch('requests.post', post), \
+             mpatch('requests.patch', patch_):
+            sha = commit_and_push(self.integration, self._files())
+        self.assertEqual(sha, 'commit-new')
+
+    def test_single_atomic_commit_not_per_file_writes(self):
+        from unittest.mock import patch as mpatch
+        from creators.services.github_sync import commit_and_push, _RepoFile
+
+        files = [_RepoFile(f'notes/{i}.md', b'x') for i in range(12)]
+        get, post, patch_, calls = self._fake_transport(head_sha='head')
+        with mpatch('creators.services.github_sync._ensure_token', return_value='t'), \
+             mpatch('requests.get', get), mpatch('requests.post', post), \
+             mpatch('requests.patch', patch_):
+            commit_and_push(self.integration, files)
+        trees = [u for u in calls['posts'] if u.endswith('/git/trees')]
+        commits = [u for u in calls['posts'] if u.endswith('/git/commits')]
+        # 12 files → exactly one tree, one commit, one ref update.
+        self.assertEqual(len(trees), 1)
+        self.assertEqual(len(commits), 1)
+        self.assertEqual(len(calls['patches']), 1)
+
+    def test_unchanged_tree_makes_no_commit(self):
+        from unittest.mock import patch as mpatch
+        from creators.services.github_sync import commit_and_push
+
+        # Tree resolves to the SAME sha as the base tree → nothing to do.
+        get, post, patch_, calls = self._fake_transport(
+            head_sha='head', tree_sha='basetree')
+        with mpatch('creators.services.github_sync._ensure_token', return_value='t'), \
+             mpatch('requests.get', get), mpatch('requests.post', post), \
+             mpatch('requests.patch', patch_):
+            sha = commit_and_push(self.integration, self._files())
+        self.assertEqual(sha, 'head')
+        self.assertEqual(calls['patches'], [])
+        self.assertNotIn(
+            f'{"https://api.github.com"}/repos/octo/backup/git/commits',
+            calls['posts'])

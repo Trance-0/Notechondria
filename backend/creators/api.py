@@ -747,7 +747,11 @@ class GithubSyncPushApiView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        from .services.github_sync import GithubSyncError, push_user_data
+        from .services.github_sync import (
+            GithubSyncConflict,
+            GithubSyncError,
+            push_user_data,
+        )
 
         creator = ensure_creator(request.user)
         # Accept the flag from either the query string (for the
@@ -759,8 +763,24 @@ class GithubSyncPushApiView(APIView):
             if hasattr(request, "data") else None
         )
         include_assets = str(raw).lower() in ("1", "true", "yes", "on")
+        raw_force = (
+            request.query_params.get("force")
+            or request.data.get("force")
+            or ""
+        )
+        force = str(raw_force).lower() in ("1", "true", "yes", "on")
         try:
-            sha = push_user_data(creator, include_assets=include_assets)
+            sha = push_user_data(
+                creator, include_assets=include_assets, force=force
+            )
+        except GithubSyncConflict as exc:
+            # 409, not 400: the request was valid but the remote moved.
+            # The client re-sends with `force` once the user accepts the
+            # overwrite. See GithubSyncConflict for the rationale.
+            return Response(
+                {"detail": str(exc), "conflict": True},
+                status=status.HTTP_409_CONFLICT,
+            )
         except GithubSyncError as exc:
             return Response(
                 {"detail": str(exc)},
