@@ -38123,7 +38123,7 @@ J.bu(l,"social_link",J.C(f,"social_link"))}f=a.z
 if((f==null?null:f.h(0,"image_url"))!=null)J.bu(l,"image_url",a.z.h(0,"image_url"))
 f=a.Q
 if(f==null)f=B.b8
-k=A.bXj(new A.aD4(B.vt,"0.1.188",l,f,a.p2,a.p3,a.p4,a.ch,a.fr,a.d))
+k=A.bXj(new A.aD4(B.vt,"0.1.189",l,f,a.p2,a.p3,a.p4,a.ch,a.fr,a.d))
 f=a.c
 f.toString
 f=A.a1(f,B.k,t.J)
@@ -40734,15 +40734,15 @@ p=n}else p=o
 s=p.length===0?3:4
 break
 case 3:s=5
-return A.k(A.Fo(a,"0.1.188"),$async$ae0)
+return A.k(A.Fo(a,"0.1.189"),$async$ae0)
 case 5:s=1
 break
-case 4:if(A.aqL(p,"0.1.188")>=0){s=1
-break}m=A.bWK("0.1.188",p,B.aNc)
+case 4:if(A.aqL(p,"0.1.189")>=0){s=1
+break}m=A.bWK("0.1.189",p,B.aNc)
 s=m.length===0?6:7
 break
 case 6:s=8
-return A.k(A.Fo(a,"0.1.188"),$async$ae0)
+return A.k(A.Fo(a,"0.1.189"),$async$ae0)
 case 8:s=1
 break
 case 7:a.y1=!0
@@ -141138,11 +141138,11 @@ p=r==null?l:J.n(r)
 if(p==null)p=""
 o=q.length!==0||p.length!==0
 r=m.aS
-if(o)k=new A.Ro(k.gv2(),"0.1.188",q,p,r,new A.aWh(m),l)
+if(o)k=new A.Ro(k.gv2(),"0.1.189",q,p,r,new A.aWh(m),l)
 else{k=k.gv2()
 n=m.p2.h(0,"api_base_url")
 n=n==null?l:J.n(n)
-n=new A.OB(k,"0.1.188",new A.aWi(m),r,n,l)
+n=new A.OB(k,"0.1.189",new A.aWi(m),r,n,l)
 k=n}return A.ha(B.bZ,A.b([s,A.Mw(0,k)],t.p),B.v,B.bQ,l)}return s},
 axx(a){var s,r,q,p,o,n,m=this,l=null,k=A.a1(a,B.k,t.J)
 k.toString
@@ -141183,7 +141183,7 @@ if(o===4){h=j.Iq(h,o)
 o=A.A(a).ok.f
 q.push(new A.af(B.aEd,A.x(h,i,i,i,i,o==null?i:o.ds(B.ax),i,i,i),i))}q.push(A.bE(j.a35(),1))
 return A.p8(i,A.hR(!0,A.be(A.b([r,A.bE(A.aW(q,B.bd,B.h,B.l,0,B.q),1)],n),B.p,B.h,B.l,0,i,i),!1,B.R,!0),i)},
-a35(){var s,r,q,p,o,n,m=this,l=null,k=t.p,j=A.b([new A.PV("0.1.188",A.bNv(m),l)],k)
+a35(){var s,r,q,p,o,n,m=this,l=null,k=t.p,j=A.b([new A.PV("0.1.189",A.bNv(m),l)],k)
 if(m.r)j.push(B.Fl)
 if(m.x!=null){s=m.c
 s.toString
@@ -143532,12 +143532,12 @@ p=m.c
 p.toString
 o=q.c
 s=2
-return A.k(A.bkh(p,l.gv2(),"0.1.188",o),$async$$0)
+return A.k(A.bkh(p,l.gv2(),"0.1.189",o),$async$$0)
 case 2:n=b
 s=3
-return A.k(A.Fo(m,"0.1.188"),$async$$0)
+return A.k(A.Fo(m,"0.1.189"),$async$$0)
 case 3:l=n?"acknowledged":"skipped"
-m.bB(B.ah,"Feature updates "+l+": Portal.UI/whats_new \u2014 "+o.length+" update(s) since "+q.a.a+" marked seen at 0.1.188.","Portal.UI")
+m.bB(B.ah,"Feature updates "+l+": Portal.UI/whats_new \u2014 "+o.length+" update(s) since "+q.a.a+" marked seen at 0.1.189.","Portal.UI")
 return A.t(null,r)}})
 return A.u($async$$0,r)},
 $S:195}
