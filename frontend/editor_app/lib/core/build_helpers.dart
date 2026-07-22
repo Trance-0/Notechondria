@@ -42,7 +42,11 @@ extension _AppShellBuildHelpersX on _AppShellState {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 16),
-              // "All Notes" item
+              // "All Notes" item. The `!_uncategorizedSelected`
+              // guard below matters: the Inbox row also carries a
+              // null category id, so without it both rows would
+              // highlight at once — the same state collision that
+              // made Inbox list every note before 0.1.190.
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: SidebarItem(
