@@ -168,29 +168,28 @@ payload `course`, module grouping #4, HSV event colours #6-core). Remaining
 items — several are interaction/architecture-heavy and want a local Flutter
 build to validate:
 
-- [ ] **#5 Event detail + course selector**: tapping an event opens a
-  detail view (title, description, course, times, importance, recurrence),
-  not just time; the create/edit dialog gets a course dropdown (default
-  Inbox / null). Backend ready (`PlannerEventWriteSerializer.course_id`,
-  payload `course`); needs threading `course_id` through
-  `onCreatePlannerEvent`/`onUpdatePlannerEvent` + client.
-- [ ] **#8 Course-metadata edit modal** (reusable in planner too): cover
-  image, `color_hue` (hue-only picker), title, description, bound repo,
-  and **owner transfer**. Backend: hue/title/desc/icon writable via course
-  PATCH; add a `POST courses/<id>/transfer/` endpoint (owner-only, target
-  by username/email) for ownership transfer.
-- [ ] **#6 Hue setting button** on the calendar filter row: opens the #8
-  modal for the selected course; disabled with a tooltip when the filter
-  is "all" (no specific course to edit).
-- [ ] **#3 Lazy course loading**: `CourseNotesApiView` already paginates
-  (`limit`/`offset`/`has_more`); make the course view load the first ~10
-  notes/modules, show a loading **bar** (not the template placeholder), and
-  infinite-scroll more at the bottom (no manual "load more" button).
+- [x] **#5 Event detail + course selector** — course dropdown in the
+  create + edit dialogs (portal 0.1.181, planner 0.1.183; default Inbox)
+  and the detail dialog shows course + importance alongside the time.
+- [ ] **Course ownership transfer** (last remaining piece of the #8
+  course-metadata modal — title / description / colour hue / cover /
+  bound-repo editing all shipped in 0.1.180): add a
+  `POST courses/<id>/transfer/` endpoint (owner-only, target by
+  username/email) plus the modal control that calls it. Decide what
+  happens to the course's notes, which keep their own `creator_id`.
+- [x] **#6 Hue setting button** on the calendar filter row — opens the
+  course-edit modal for the selected course; disabled with a tooltip on
+  "All courses". (0.1.180, both apps)
+- [x] **#3 Lazy course loading** — first page (10) loads with the course,
+  a loading bar gates the view (no placeholder content), and further pages
+  infinite-scroll in at 20/page. Backend gained real `limit/offset`
+  pagination. (0.1.185)
 - [ ] **#1 Drag-to-reschedule** on the week/day grid: drag an event tile to
   a new time, a Google-Calendar-style "now" time-line indicator, and
   magnetic snap of the start to the nearest 15-min slot.
-- [ ] **#2 Ctrl+scroll time-axis zoom**: scale the vertical hour axis so
-  the full day fits or a morning/afternoon band expands.
+- [x] **#2 Ctrl+scroll time-axis zoom** — the handler existed since
+  0.1.163; the browser's page-zoom was swallowing ctrl+wheel. Fixed by
+  `preventDefault()` on ctrl/meta wheel in `web/index.html`. (0.1.181)
 - [ ] **#7 Offline cache ownership/security**: cache recent edited /
   subscribed notes+courses locally for offline start; tag all local data
   with its owning user on first login; on a *different* user's login, warn
