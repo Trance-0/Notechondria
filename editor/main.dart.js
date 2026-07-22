@@ -9495,7 +9495,7 @@ r=s}if(r==null)r="Category"}else r=l.gJL()
 else r=l.gwS()
 s=A.rN(B.H,0,new A.dY(new A.aRT(l),m),A.N(r,m,m,m,m,m,m,m))
 q=l.gJL()
-p=a.f===1&&a.RG==null
+p=a.f===1&&a.RG==null&&!a.rx
 o=t.p
 p=A.b([B.bx,new A.ay(B.eg,new A.l4(B.ur,q,p,new A.aRU(b,a),m),m)],o)
 if(a.goQ().length!==0){q=l.gUB()
@@ -9520,7 +9520,7 @@ s=A.C(b).ax
 r=s.to
 if(r==null){r=s.t
 if(r==null)r=s.k3}q=l.gJL()
-p=a.f===1&&a.RG==null
+p=a.f===1&&a.RG==null&&!a.rx
 o=t.p
 p=A.b([B.lX,new A.ay(B.eg,new A.l4(B.ur,q,p,new A.aSm(a),m),m)],o)
 if(a.goQ().length!==0){q=l.gUB()
@@ -9540,7 +9540,7 @@ k.toString
 k=A.aS(k,B.x,t.J)
 k.toString
 s=t.p
-r=A.b([new A.Pe("0.1.189",A.bHR(a),l)],s)
+r=A.b([new A.Pe("0.1.190",A.bHR(a),l)],s)
 if(a.r)r.push(B.E6)
 if(a.x!=null){q=a.c
 q.toString
@@ -9669,8 +9669,8 @@ o=a.y
 n=o!=null
 m=n&&o.length!==0
 l="total="+j+" pinned="+p+" signedIn="+m+" rows="+r+q
-if(a.rx===l)return
-a.rx=l
+if(a.ry===l)return
+a.ry=l
 m=b===0&&c>0?B.b3:B.di
 o=n&&o.length!==0
 a.b2(m,"Sidebar Categories rebuilt: Editor.UI/sidebar.pin_diagnostics \u2014 total="+j+" pinned="+p+" signedIn="+o+". Rows: "+r+q+'. Pinned counts rows where `is_default == true` OR title casefolds to "inbox". A `pinned=0` warning with `total>0` means neither signal matched any row \u2014 paste this line so we can see the actual title/flag/origin tuple. Tap "Restore default Inbox" in Settings to reseed.',"Editor.UI/sidebar.pin_diagnostics")},
@@ -9845,8 +9845,8 @@ i=a.fr
 i=A.bw(i==null?null:J.D(i,"id"))
 i=i==null?null:B.d.be(i)
 h=n
-if(i==null?h==null:i===h)a.RG=a.fr=null
-a.bT()
+if(i==null?h==null:i===h){a.RG=a.fr=null
+a.rx=!1}a.bT()
 s=10
 return A.k(A.ko(a.ch),$async$z6)
 case 10:s=11
@@ -9866,8 +9866,8 @@ a.ay=i
 i=a.fr
 i=A.bw(i==null?null:J.D(i,"id"))
 i=i==null?null:B.d.be(i)
-if(i===n)a.RG=a.fr=null
-a.bT()
+if(i===n){a.RG=a.fr=null
+a.rx=!1}a.bT()
 s=13
 return A.k(A.kj(a),$async$z6)
 case 13:s=14
@@ -9945,8 +9945,8 @@ return A.k(A.kj(a),$async$z7)
 case 14:case 11:f=a.fr
 f=A.bw(f==null?null:J.D(f,"id"))
 f=f==null?null:B.d.be(f)
-if(f===e)a.RG=a.fr=null
-a.bT()
+if(f===e){a.RG=a.fr=null
+a.rx=!1}a.bT()
 s=k?15:16
 break
 case 15:s=17
@@ -11070,7 +11070,7 @@ J.b1(l,"social_link",J.D(f,"social_link"))}f=a.z
 if((f==null?null:f.h(0,"image_url"))!=null)J.b1(l,"image_url",a.z.h(0,"image_url"))
 f=a.Q
 if(f==null)f=B.b5
-k=A.bRN(new A.aAV(B.Kt,"0.1.189",l,f,a.fy,a.go,a.id,a.ch,a.cy,a.d))
+k=A.bRN(new A.aAV(B.Kt,"0.1.190",l,f,a.fy,a.go,a.id,a.ch,a.cy,a.d))
 f=a.c
 f.toString
 f=A.aS(f,B.x,t.J)
@@ -12837,7 +12837,7 @@ d=a4.a.c
 a=n?a4.y:null
 a0=j!=null&&j>0?j:null
 s=7
-return A.k(d.uT(a0,20,k,m,l,a),$async$i0)
+return A.k(d.uT(a0,20,k,m,l,a,a4.rx),$async$i0)
 case 7:i=a9
 a=t.kc.a(J.D(i,"results"))
 d=a==null?B.E:a
@@ -12880,6 +12880,7 @@ p=A.bw(q.h(b,"id"))
 o=p==null?null:B.d.be(p)
 a.fr=b
 a.RG=o
+a.rx=o==null&&J.e(q.h(b,"is_uncategorized"),!0)
 a.f=1
 a.fx=null
 a.bT()
@@ -13463,15 +13464,15 @@ p=n}else p=o
 s=p.length===0?3:4
 break
 case 3:s=5
-return A.k(A.EQ(a,"0.1.189"),$async$acF)
+return A.k(A.EQ(a,"0.1.190"),$async$acF)
 case 5:s=1
 break
-case 4:if(A.ap5(p,"0.1.189")>=0){s=1
-break}m=A.bRe("0.1.189",p,B.aPH)
+case 4:if(A.ap5(p,"0.1.190")>=0){s=1
+break}m=A.bRe("0.1.190",p,B.aPH)
 s=m.length===0?6:7
 break
 case 6:s=8
-return A.k(A.EQ(a,"0.1.189"),$async$acF)
+return A.k(A.EQ(a,"0.1.190"),$async$acF)
 case 8:s=1
 break
 case 7:a.ok=!0
@@ -13932,7 +13933,9 @@ _.p2=""
 _.p3=null
 _.p4=n
 _.R8="personal"
-_.c=_.a=_.rx=_.RG=null},
+_.RG=null
+_.rx=!1
+_.c=_.a=_.ry=null},
 aUy:function aUy(){},
 aUx:function aUx(a,b){this.a=a
 this.b=b},
@@ -65874,7 +65877,7 @@ s=A.lI(new A.aUA(q))
 if(q.w){o=o.gwS()
 r=q.fy.h(0,"api_base_url")
 r=r==null?p:J.n(r)
-return new A.eQ(B.cC,p,B.cj,B.L,A.b([s,A.aGD(0,new A.NX(o,"0.1.189",new A.aUB(q),q.p4,r,p))],t.p),p)}return s}}
+return new A.eQ(B.cC,p,B.cj,B.L,A.b([s,A.aGD(0,new A.NX(o,"0.1.190",new A.aUB(q),q.p4,r,p))],t.p),p)}return s}}
 A.aUy.prototype={
 $1(a){return a>=0&&a<5},
 $S:57}
@@ -66445,6 +66448,7 @@ A.aRU.prototype={
 $0(){A.bv(this.a,!1).cK()
 var s=this.b
 s.RG=null
+s.rx=!1
 s.f=1
 s.bT()
 A.i0(s,s.p2,!0,null)},
@@ -66524,6 +66528,7 @@ $S:0}
 A.aSm.prototype={
 $0(){var s=this.a
 s.RG=null
+s.rx=!1
 s.f=1
 s.bT()
 A.i0(s,s.p2,!0,null)},
@@ -67372,11 +67377,11 @@ s=1
 break
 case 1:return A.v(q,r)}})
 return A.w($async$z1,r)},
-uT(a,b,c,d,e,f){return this.aTV(a,b,c,d,e,f)},
-aTU(a,b,c,d){return this.uT(null,a,b,"",c,d)},
-aTT(a,b,c){return this.uT(null,a,b,"","personal",c)},
-aTV(a,b,c,d,e,f){var s=0,r=A.x(t.P),q,p=this,o,n,m,l,k,j,i
-var $async$uT=A.t(function(g,h){if(g===1)return A.u(h,r)
+uT(a,b,c,d,e,f,g){return this.aTV(a,b,c,d,e,f,g)},
+aTU(a,b,c,d){return this.uT(null,a,b,"",c,d,!1)},
+aTT(a,b,c){return this.uT(null,a,b,"","personal",c,!1)},
+aTV(a,b,c,d,e,f,g){var s=0,r=A.x(t.P),q,p=this,o,n,m,l,k,j,i
+var $async$uT=A.t(function(h,a0){if(h===1)return A.u(a0,r)
 for(;;)switch(s){case 0:m=A.cT(p,"/notes/")
 l=t.N
 k=t.z
@@ -67387,13 +67392,14 @@ j.m(0,"scope",e)
 o=B.c.ab(d)
 if(o.length!==0)j.m(0,"q",o)
 if(a!=null)j.m(0,"course_id",A.l(a))
+else if(g)j.m(0,"course_id","none")
 n=m.yt(0,j)
 i=A
 s=4
 return A.k(A.lG(p,n,f),$async$uT)
 case 4:s=3
-return A.k(p.cX(0,h,"GET",n),$async$uT)
-case 3:q=i.aZ(h,l,k)
+return A.k(p.cX(0,a0,"GET",n),$async$uT)
+case 3:q=i.aZ(a0,l,k)
 s=1
 break
 case 1:return A.v(q,r)}})
@@ -68406,12 +68412,12 @@ p=m.c
 p.toString
 o=q.c
 s=2
-return A.k(A.beg(p,l.gwS(),"0.1.189",o),$async$$0)
+return A.k(A.beg(p,l.gwS(),"0.1.190",o),$async$$0)
 case 2:n=b
 s=3
-return A.k(A.EQ(m,"0.1.189"),$async$$0)
+return A.k(A.EQ(m,"0.1.190"),$async$$0)
 case 3:l=n?"acknowledged":"skipped"
-m.b2(B.P,"Feature updates "+l+": Editor.UI/whats_new \u2014 "+o.length+" update(s) since "+q.a.a+" marked seen at 0.1.189.","Editor.UI")
+m.b2(B.P,"Feature updates "+l+": Editor.UI/whats_new \u2014 "+o.length+" update(s) since "+q.a.a+" marked seen at 0.1.190.","Editor.UI")
 return A.v(null,r)}})
 return A.w($async$$0,r)},
 $S:137}
