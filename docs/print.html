@@ -541,7 +541,28 @@ Follow the shared rules in
 <a href="../AGENTS.md/AGENTS.html"><code>AGENTS.md/AGENTS.md</code></a>; this file's §0
 wins on conflicts.</p>
 </blockquote>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="todo"><a class="header" href="#todo">TODO</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="todo--working-agreements"><a class="header" href="#todo--working-agreements">TODO — working agreements</a></h1>
+<blockquote>
+<p><strong>Open work now lives in <a href="https://github.com/Trance-0/Notechondria/issues">GitHub Issues</a>.</strong>
+The 26 unfinished items from this file were migrated there on 2026-07-19
+(labelled <code>todo-import</code>, plus an <code>area:*</code> label per component) so each one
+has its own status, discussion thread, and close event.</p>
+<p>Browse by area:
+<a href="https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%3Aactivity">activity</a> ·
+<a href="https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%3Acalendar">calendar</a> ·
+<a href="https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%3Abackend">backend</a> ·
+<a href="https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%3Aauth">auth</a> ·
+<a href="https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%3Amcp">mcp</a> ·
+<a href="https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%3Ai18n">i18n</a> ·
+<a href="https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%3Agithub-sync">github-sync</a></p>
+<p><strong>New work goes straight to an Issue, not to this file.</strong> If you do add
+<code>- [ ]</code> items here, <code>python3 scripts/todo_to_issues.py --dry-run</code> previews
+them and <code>--create</code> files the new ones (existing titles are skipped, so
+it is safe to re-run).</p>
+<p>What stays here: the standing working agreements below, and the
+per-section record of what already shipped (<code>- [x]</code> with the version that
+landed it). Full round write-ups live in <code>docs/versions/</code>.</p>
+</blockquote>
 <p>Pending version: 0.1</p>
 <p>Here is a list of task we need to do now after testing, finishing and solve these bugs in order, and check the item from the list when you are done, ignore the checked items. The following is the list you need to follow:</p>
 <ol>
@@ -580,35 +601,6 @@ rounds: docs/AGENTS.md <strong>Host resource budget</strong> AND <strong>Deploym
 topology &amp; no-local-containers rule</strong> — this project never runs in
 local Docker on a &lt; 16 GB machine; frontend/docs deploy via GitHub
 Pages, backend via Northflank on commit, suites via CI on push.</p>
-<ul>
-<li><input disabled="" type="checkbox"/>
-<strong>Activity UI verification pass (frontend).</strong> Backend + MCP
-Activity flows are verified end-to-end; the Flutter Activity
-screens (portal <code>activity_week.dart</code>, planner todo list) have only
-been exercised by owner reports (0.1.158 fix round). Verify against
-the <strong>deployed</strong> Pages frontend + Northflank backend after the next
-push; collect any remaining Activity bugs into the next fix round.</li>
-<li><input disabled="" type="checkbox"/>
-<strong>Browser-level probe layer.</strong> Playwright (Python) against the
-deployed Pages site (<code>https://trance-0.github.io/Notechondria/...</code>)
-for smoke flows + screenshots (headless, one browser, after
-checking <code>free -h</code>). Unblocks the storage-isolation regression test
-(F1) and gives the owner async screenshots for UI taste checks.
-Screenshots land in a gitignored <code>artifacts/</code> dir.</li>
-<li><input disabled="" type="checkbox"/>
-<strong>Repo <code>.mcp.json</code></strong> registering the CLI server (key read from
-env, never committed) so Claude Code sessions get the 41 tools
-automatically against the deployed backend.</li>
-<li><input disabled="" type="checkbox"/>
-<strong>Round-end verification convention.</strong> On this host: CLI unit
-tests when <code>cli/</code> changed, plus static checks; backend Django
-tests, Flutter smoke tests, web builds, and the docs build are
-proven by CI (<code>backend-tests.yml</code> / <code>frontend-pages.yml</code> /
-<code>docs-pages.yml</code>) after the owner pushes. Probe the deployed
-handshake to confirm a backend deploy landed. Call out anything not
-run locally per LLM_CHECK — and never start project containers
-locally.</li>
-</ul>
 <h2 id="urgent--github-course-binding--activity-ux-owner-request-2026-07-11"><a class="header" href="#urgent--github-course-binding--activity-ux-owner-request-2026-07-11"><strong>Urgent</strong> — GitHub course binding &amp; activity UX (owner request 2026-07-11)</a></h2>
 <p>Large multi-part owner request. Recurrence backend + MCP/CLI landed in
 0.1.164; the rest below is pending. Deliver in CI-verified increments;
@@ -695,11 +687,6 @@ the three note-write paths; flush on the authenticated course-list
 poll; MCP/CLI <code>sync_course_git</code>. (0.1.174)</p>
 </li>
 <li>
-<p><input disabled="" type="checkbox"/>
-<strong>Multi-repo per user</strong>: today <code>GithubIntegration.repo_full_name</code>
-is one repo; let each <code>Course.git_repo</code> push with the user's App token.</p>
-</li>
-<li>
 <p><input disabled="" type="checkbox" checked=""/>
 <strong>Effective logs</strong> on bind / unlink (<code>GIT_BIND</code>/<code>GIT_UNLINK</code>). (0.1.170)</p>
 </li>
@@ -758,16 +745,6 @@ adapter's module label and the course view groups by it. (0.1.178)</p>
 the debounce is armed only when sync is enabled (cleared when off), so
 the git payload no longer advertises a stuck pending sync. (0.1.188)</p>
 </li>
-<li>
-<p><input disabled="" type="checkbox"/>
-<strong>MDX support</strong> (<code>.mdx</code>) — skipped in v1 (parser warns); add
-parsing + sync-write once markdown is solid.</p>
-</li>
-<li>
-<p><input disabled="" type="checkbox"/>
-<strong>Cloudflare-style repo selector/binder</strong> UI: list of repos, each
-opens a modal to pick the course to bind + set the sync timeout.</p>
-</li>
 </ul>
 <h3 id="calendar--course-feature-batch-remaining-after-01178"><a class="header" href="#calendar--course-feature-batch-remaining-after-01178">Calendar / course feature batch (remaining after 0.1.178)</a></h3>
 <p>Foundations shipped in 0.1.178 (<code>Course.color_hue</code>, <code>Note.module</code>, event
@@ -779,13 +756,6 @@ build to validate:</p>
 <strong>#5 Event detail + course selector</strong> — course dropdown in the
 create + edit dialogs (portal 0.1.181, planner 0.1.183; default Inbox)
 and the detail dialog shows course + importance alongside the time.</li>
-<li><input disabled="" type="checkbox"/>
-<strong>Course ownership transfer</strong> (last remaining piece of the #8
-course-metadata modal — title / description / colour hue / cover /
-bound-repo editing all shipped in 0.1.180): add a
-<code>POST courses/&lt;id&gt;/transfer/</code> endpoint (owner-only, target by
-username/email) plus the modal control that calls it. Decide what
-happens to the course's notes, which keep their own <code>creator_id</code>.</li>
 <li><input disabled="" type="checkbox" checked=""/>
 <strong>#6 Hue setting button</strong> on the calendar filter row — opens the
 course-edit modal for the selected course; disabled with a tooltip on
@@ -795,20 +765,10 @@ course-edit modal for the selected course; disabled with a tooltip on
 a loading bar gates the view (no placeholder content), and further pages
 infinite-scroll in at 20/page. Backend gained real <code>limit/offset</code>
 pagination. (0.1.185)</li>
-<li><input disabled="" type="checkbox"/>
-<strong>#1 Drag-to-reschedule</strong> on the week/day grid: drag an event tile to
-a new time, a Google-Calendar-style "now" time-line indicator, and
-magnetic snap of the start to the nearest 15-min slot.</li>
 <li><input disabled="" type="checkbox" checked=""/>
 <strong>#2 Ctrl+scroll time-axis zoom</strong> — the handler existed since
 0.1.163; the browser's page-zoom was swallowing ctrl+wheel. Fixed by
 <code>preventDefault()</code> on ctrl/meta wheel in <code>web/index.html</code>. (0.1.181)</li>
-<li><input disabled="" type="checkbox"/>
-<strong>#7 Offline cache ownership/security</strong>: cache recent edited /
-subscribed notes+courses locally for offline start; tag all local data
-with its owning user on first login; on a <em>different</em> user's login, warn
-that cache belongs to user A, refuse to sync it to the cloud, and don't
-let it pollute user B's workspace.</li>
 <li><input disabled="" type="checkbox" checked=""/>
 <strong>Shareable per-note browser URLs</strong> (bug 8, part 2) — DONE 0.1.179
 for the portal: <code>#/note/&lt;uuid&gt;</code> routed page (+ unique URLs for every tab
@@ -829,14 +789,6 @@ access over API key already exists (list_courses/get_course/notes
 tools).</li>
 </ul>
 <h3 id="cross-app-plumbing"><a class="header" href="#cross-app-plumbing">Cross-app plumbing</a></h3>
-<ul>
-<li><input disabled="" type="checkbox"/>
-<strong>Developer menu</strong> currently editor-only — embed it in <strong>planner</strong>
-and <strong>portal</strong> too; menu content depends on each app's support.</li>
-<li><input disabled="" type="checkbox"/>
-<strong>Experimental features</strong> registry: add "GitHub course sync"
-alongside "import apple journal".</li>
-</ul>
 <h2 id="dev-plan--bring-every-component-online-fewest-owner-attention-rounds"><a class="header" href="#dev-plan--bring-every-component-online-fewest-owner-attention-rounds">Dev plan — bring every component online (fewest owner-attention rounds)</a></h2>
 <p>Working agreement: the owner focuses on testing and new features;
 agents finish the remaining completion work in <strong>batched autonomous
@@ -936,14 +888,6 @@ across 0.1.127–0.1.129 — see
 <a href="versions/0.1.127.html"><code>versions/0.1.127.md</code></a>,
 <a href="versions/0.1.128.html"><code>0.1.128.md</code></a>, and
 <a href="versions/0.1.129.html"><code>0.1.129.md</code></a>. Remaining:</p>
-<ul>
-<li><input disabled="" type="checkbox"/>
-<strong>Storage-isolation regression test.</strong> Script the F1 acceptance
-test (load editor then planner under one origin, assert neither
-mutates the other's namespaced keys) — Playwright against the built
-web bundles, or a <code>flutter drive</code> web run. Needs a browser-driver
-toolchain not currently set up in this environment.</li>
-</ul>
 <h3 id="login-and-account-info"><a class="header" href="#login-and-account-info">Login and account info</a></h3>
 <h3 id="local-data--storage"><a class="header" href="#local-data--storage">Local data / storage</a></h3>
 <h3 id="app-preferences"><a class="header" href="#app-preferences">App preferences</a></h3>
@@ -1011,9 +955,6 @@ strings English per AGENTS.md §1.8). (Log OUTPUT lines + terminal
 command I/O stay English by design. The per-app What's-New /
 onboarding <em>content</em> registries also stay English for now — only the
 shared chrome is localized.)</li>
-<li><input disabled="" type="checkbox"/>
-<strong>Phase 2 — planner strings.</strong> Translate planner UI; reuse the
-shared catalog for common strings.</li>
 <li>[~] <strong>Phase 3 — portal strings (nearly done).</strong> Localized across
 0.1.154–0.1.156: front page, course browser, learner feed,
 note-metadata dialog, the block note editor, and the activity /
@@ -1029,25 +970,8 @@ accounts copy — plus the shared <code>mcp_skill_section.dart</code>.
 (0.1.154 also fixed a functional gap: portal's API base URL is now
 editable from the always-reachable Backend settings page, so a
 signed-out user can repoint the backend.)</li>
-<li><input disabled="" type="checkbox"/>
-<strong>Phase 4 — shared-widget + dialog sweep.</strong> Ensure every shared
-component (auth dialogs, onboarding tour, what's-new, install
-banner, debug log, error state) is fully localized, and audit
-SnackBar/dialog strings. Keep AGENTS.md §1.8 diagnostic strings
-English for greppability; localize the user-facing consequence text.</li>
 </ul>
 <h2 id="planner"><a class="header" href="#planner">Planner</a></h2>
-<ul>
-<li><input disabled="" type="checkbox"/>
-Planner starter workspace currently seeds a single "Starter
-planning course" + two planning drafts on first run
-(<code>planner_app/lib/app_shell.dart</code> <code>_ensureStarterWorkspace</code>).
-Decide whether planner should have an analogous
-"Inbox / scratchpad" category instead of a premade course — or
-whether the planning-course semantics make a non-Inbox default
-the right default. Changing planner's starter default is a UX
-break, so gather feedback before touching.</li>
-</ul>
 <h2 id="version-update-notification-landed-0115101152"><a class="header" href="#version-update-notification-landed-0115101152">Version-update notification (landed 0.1.151–0.1.152)</a></h2>
 <p>Owner-confirmed <strong>handshake-compare</strong> approach (no GitHub polling) + a
 <code>min_frontend_version</code> compat floor. Backend handshake exposes both
@@ -1088,58 +1012,8 @@ that had deferred it. Shows once on first run (tracked by an
 <code>onboarding_seen</code> local-stats flag), is skippable, and is re-openable
 from each app's Settings ("View tutorial"). On a brand-new user's
 first boot it takes priority over the What's-New / install nudges.</p>
-<ul>
-<li><input disabled="" type="checkbox"/>
-<strong>Optional: anchored coach marks (still deferred).</strong> If a future
-round wants step-by-step pointers at specific controls, that remains
-deferred until the responsive layouts are stable — each anchored
-step would need authoring twice around the 960 px breakpoint. The
-paged tour covers onboarding without it.</li>
-</ul>
 <h2 id="backend"><a class="header" href="#backend">Backend</a></h2>
 <h3 id="auth"><a class="header" href="#auth">Auth</a></h3>
-<ul>
-<li><input disabled="" type="checkbox"/>
-<strong>Casdoor migration — remaining phases 4–5 only.</strong> Phases 1–3
-of <a href="integrations/casdoor-migration.html"><code>docs/integrations/casdoor-migration.md</code></a>
-landed across 0.1.95–0.1.101 (JWT auth class, <code>Creator.casdoor_sub</code>,
-exchange/bind/unlink endpoints, shared <code>AuthHub</code> + OAuth mixin,
-link-challenge flow in 0.1.118, OIDC profile refresh in 0.1.119;
-the <code>Session</code> model was dropped in 0.1.106). Still open:
-4. Retire the remaining legacy auth endpoints. Owner decision
-(0.1.127): the email/password fallback login is <strong>permanent</strong>
-(Casdoor-outage escape hatch) and now auto-syncs the Casdoor
-password into the local hash — see
-<a href="versions/0.1.127.html"><code>versions/0.1.127.md</code></a>. Everything else
-legacy can go.
-5. Cleanup: delete dead serializers / templates / helpers listed in
-the survey, and add a status header to
-<code>integrations/casdoor-migration.md</code> marking phases 1–3 DONE so
-future rounds stop re-planning them.</li>
-<li><input disabled="" type="checkbox"/>
-<strong>Casdoor password-hash claim is scrubbed (watch upstream).</strong>
-The owner configured the application's Token Format (JWT-Custom,
-RS256, token fields Password / Password salt / Password type), but
-live tokens from auth.trance-0.com carry an <strong>empty</strong> <code>password</code>
-claim value (<code>passwordType</code> says <code>bcrypt</code>; verified 2026-06-12) —
-current Casdoor scrubs the hash server-side. The claims-sync path
-in <code>backend/creators/casdoor_password.py</code> is implemented and
-dormant; it activates automatically if a Casdoor upgrade starts
-emitting the hash. Until then the ROPC grant at fallback-login
-time covers the sync. Re-test after Casdoor upgrades.</li>
-<li><input disabled="" type="checkbox"/>
-<strong>Document the final Casdoor redirect-URI list.</strong> The owner
-completed the app config on <code>auth.trance-0.com</code> (0.1.127). Record
-the registered redirect URIs and token-format settings (JWT-Custom,
-RS256, Password / Password salt / Password type token fields) in
-<code>integrations/casdoor-setup.md</code> so the config is reproducible.</li>
-<li><input disabled="" type="checkbox"/>
-<strong>MCP API keys stay app-internal.</strong> Casdoor is NOT in the
-per-request hot path for MCP — the <code>Bearer ntc_&lt;key&gt;</code> scheme keeps
-using <code>creators.authentication.ApiKeyAuthentication</code> and the
-<code>/api/v1/auth/rotate-api-key/</code> endpoint. Document this in
-<code>docs/server/mcp.md</code> as part of the cutover round.</li>
-</ul>
 <h3 id="mcp"><a class="header" href="#mcp">MCP</a></h3>
 <p><strong>Standalone CLI MCP server</strong> — proposal + owner decisions in
 <a href="integrations/mcp-cli-migration.html"><code>docs/integrations/mcp-cli-migration.md</code></a>.
@@ -1169,53 +1043,9 @@ added the MCP⇄CLI parity rule.</li>
 matching names + schemas (name-set diff asserted identical). Filled
 the one audit gap: added a filtered <code>GET</code> to <code>note-sessions/</code> (was
 POST-only) so <code>list_note_sessions</code> works over REST.</li>
-<li><input disabled="" type="checkbox"/>
-<strong>Phase 4 — distribute.</strong> Publish <code>notechondria-mcp</code> to PyPI;
-document agent-host config.</li>
-<li><input disabled="" type="checkbox"/>
-<strong>Phase 5 (deferred).</strong> Cutover/deletion of <code>backend/mcp/</code> —
-not until further notice (both servers kept for now).</li>
 </ul>
 <h3 id="github-sync"><a class="header" href="#github-sync">GitHub Sync</a></h3>
-<ul>
-<li><input disabled="" type="checkbox"/>
-<strong>Push-side conflict resolution.</strong> The Contents API PUTs in
-<code>creators.services.github_sync.commit_and_push</code> overwrite the
-remote blob unconditionally. A user editing on two devices
-between syncs can lose changes. Fetch the existing blob on each
-path, diff against the materialized payload, and surface a
-"remote changed — overwrite or merge?" prompt before writing.
-Lifted from the 0.1.94 carryover.</li>
-<li><input disabled="" type="checkbox"/>
-<strong>Asset rotation / pruning.</strong> Repeated <code>include_assets=true</code>
-pushes accumulate orphan files for notes deleted client-side
-whose old <code>assets/notes/&lt;uuid&gt;/</code> paths still live in the remote
-tree. Add a <code>--prune-orphans</code> mode on the push pipeline that
-walks the Trees API and removes unreferenced subtrees in the
-same commit. Lifted from the 0.1.94 carryover.</li>
-</ul>
 <h2 id="release--ci"><a class="header" href="#release--ci">Release / CI</a></h2>
-<ul>
-<li><input disabled="" type="checkbox"/>
-<strong>Editor + planner GitHub Release workflows.</strong> 0.1.68
-documented the existing <code>portal-release.yml</code> workflow in
-<a href="deployment/release.html"><code>docs/deployment/release.md</code></a>. The
-same shape is needed for <code>editor_app</code> and <code>planner_app</code>.
-Decide tag namespacing before duplicating: a plain <code>v0.1.68</code>
-push would fire all three workflows and they'd race to
-publish/update the same GitHub Release. Proposals:
-<ul>
-<li><code>ve0.1.68</code> → editor, <code>vp0.1.68</code> → planner, <code>v0.1.68</code> →
-portal. Each workflow filters on its own tag prefix.</li>
-<li>OR fold all three into a single <code>frontend-release.yml</code>
-with a per-app matrix leg and a single publish job at the
-end (attaches all 18 archives to one release). Cleaner
-artefact discovery, harder matrix.</li>
-<li>Windows code signing is still open — see
-<a href="deployment/release.html#not-yet-automated">release.md #not yet automated</a>.</li>
-</ul>
-</li>
-</ul>
 <h2 id="documentation-pages"><a class="header" href="#documentation-pages">Documentation pages</a></h2>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="editor-app-frontendeditor_app"><a class="header" href="#editor-app-frontendeditor_app">Editor app (<code>frontend/editor_app/</code>)</a></h1>
 <p>Offline-first markdown note editor. One of three standalone Flutter apps
