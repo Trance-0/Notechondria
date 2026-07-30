@@ -92,6 +92,29 @@ Most desktop agent hosts launch an MCP server over stdio. Example
 }
 ```
 
+### Claude Code (repo `.mcp.json`)
+
+This repo ships a project-scoped [`.mcp.json`](../.mcp.json) at its root,
+so a Claude Code session opened here picks up all 41 tools automatically —
+no per-session wiring. It runs the installed `notechondria-mcp` console
+script against the **deployed** backend by default.
+
+Two one-time prerequisites (the config file holds **no secret** — the key
+is read from your environment, never committed):
+
+```bash
+cd cli && pip install -e .          # puts `notechondria-mcp` on PATH
+export NOTECHONDRIA_API_KEY="ntc_xxxxxxxx"   # your rotated key
+# optional: point at a different backend (defaults to the deployed one)
+# export NOTECHONDRIA_API_URL="http://localhost:9080/api/v1"
+```
+
+`NOTECHONDRIA_API_URL` defaults to
+`https://notechondria.trance-0.com/api/v1` via `${VAR:-default}`
+expansion; set the env var to override. If `NOTECHONDRIA_API_KEY` is
+unset the server simply fails to connect (Claude Code reports it and
+continues) — nothing else is affected.
+
 ## Tools
 
 Full parity with the in-backend MCP since 0.1.146: all 41 tools from

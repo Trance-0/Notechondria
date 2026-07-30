@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "notechondria": {
+      "command": "notechondria-mcp",
+      "args": [],
+      "env": {
+        "NOTECHONDRIA_API_URL": "${NOTECHONDRIA_API_URL:-https://notechondria.trance-0.com/api/v1}",
+        "NOTECHONDRIA_API_KEY": "${NOTECHONDRIA_API_KEY}"
+      }
+    }
+  }
+}
