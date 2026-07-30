@@ -816,6 +816,7 @@ class _AppShellState extends State<AppShell>
               ? _localCourses
               : [..._localCourses, ..._courses],
           onEditCourse: _updateCourseMeta,
+          onTransferCourse: _transferCourseOwnership,
           onCreatePlannerEvent: _createPlannerEvent,
           onImportCalendar: _importCalendarFeed,
           onSubscribeCalendar: _subscribeCalendarFeed,

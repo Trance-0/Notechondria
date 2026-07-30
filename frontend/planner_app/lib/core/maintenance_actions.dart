@@ -453,4 +453,45 @@ extension _AppShellMaintenanceX on _AppShellState {
           isError: true);
     }
   }
+
+  /// Owner-only: hand a course to another creator (#11). On success the
+  /// course leaves this account, so the owned list is refreshed.
+  Future<ActionFeedback> _transferCourseOwnership(
+      Map<String, dynamic> course, String target) async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      return const ActionFeedback(
+          message: 'Sign in to transfer a course.', isError: true);
+    }
+    final courseId = (course['id'] as num?)?.toInt();
+    if (courseId == null || courseId < 0) {
+      return const ActionFeedback(
+          message: 'Local courses have no cloud ownership to transfer.',
+          isError: true);
+    }
+    final recipient = target.trim();
+    if (recipient.isEmpty) {
+      return const ActionFeedback(
+          message: "Enter the recipient's username or email.", isError: true);
+    }
+    try {
+      final result =
+          await widget.client.transferCourse(token, courseId, recipient);
+      final refreshed = (await widget.client.getCourses(token: _token))
+          .map(decorateRemoteCourse)
+          .toList();
+      _courses = refreshed;
+      refreshState();
+      final clearedGit = result['git_binding_cleared'] == true;
+      return ActionFeedback(
+          message: 'Course transferred to "$recipient".'
+              '${clearedGit ? ' Its GitHub binding was cleared.' : ''}');
+    } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      return ActionFeedback(
+          message:
+              'Course not transferred: Planner.Sync.Courses/transfer — $cause.',
+          isError: true);
+    }
+  }
 }

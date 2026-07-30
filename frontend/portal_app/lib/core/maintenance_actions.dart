@@ -517,6 +517,51 @@ extension _AppShellMaintenanceX on _AppShellState {
     }
   }
 
+  /// Owner-only: hand a course to another creator (#11). On success the
+  /// course leaves this account (it is no longer owned), so it drops off
+  /// the owned list and the selection clears.
+  Future<ActionFeedback> _transferCourseOwnership(
+      Map<String, dynamic> course, String target) async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      return const ActionFeedback(
+          message: 'Sign in to transfer a course.', isError: true);
+    }
+    final courseId = (course['id'] as num?)?.toInt();
+    if (courseId == null || courseId < 0) {
+      return const ActionFeedback(
+          message: 'Local courses have no cloud ownership to transfer.',
+          isError: true);
+    }
+    final recipient = target.trim();
+    if (recipient.isEmpty) {
+      return const ActionFeedback(
+          message: "Enter the recipient's username or email.", isError: true);
+    }
+    try {
+      final result =
+          await widget.client.transferCourse(token, courseId, recipient);
+      final refreshed = (await widget.client.getCourses(token: _token))
+          .map(decorateRemoteCourse)
+          .toList();
+      _courses = refreshed;
+      if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
+        _selectedCourse = null;
+      }
+      refreshState();
+      final clearedGit = result['git_binding_cleared'] == true;
+      return ActionFeedback(
+          message: 'Course transferred to "$recipient".'
+              '${clearedGit ? ' Its GitHub binding was cleared.' : ''}');
+    } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      return ActionFeedback(
+          message:
+              'Course not transferred: Portal.Sync.Courses/transfer — $cause.',
+          isError: true);
+    }
+  }
+
   /// Creates a cloud course bound to a GitHub repo and imports its
   /// markdown as the course content (create → PUT git binding → import).
   /// One repo per course by design (the binding is a single field).

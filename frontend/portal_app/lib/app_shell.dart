@@ -1062,6 +1062,7 @@ class _AppShellState extends State<AppShell>
           onOpenRoutedNote: _openNoteViewer,
           initialModuleKey: widget.initialModuleKey,
           onEditCourse: _updateCourseMeta,
+          onTransferCourse: _transferCourseOwnership,
           onImportCourseFromGit: _importCourseFromGit,
         );
       case 3:
@@ -1087,6 +1088,7 @@ class _AppShellState extends State<AppShell>
           onTogglePlannerEventCompletion: _togglePlannerEventCompletion,
           onUpdatePlannerEvent: _updatePlannerEvent,
           onEditCourse: _updateCourseMeta,
+          onTransferCourse: _transferCourseOwnership,
         );
       case 4:
         return _SettingsPage(

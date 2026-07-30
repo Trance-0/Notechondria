@@ -22,6 +22,15 @@ abstract class NotechondriaClient implements AuthClient {
     Map<String, dynamic> payload,
   );
 
+  /// Owner-only: hands a course to another creator, named by username or
+  /// email (`POST /courses/<id>/transfer/`). The course's notes keep
+  /// their own author; any GitHub binding is cleared server-side.
+  Future<Map<String, dynamic>> transferCourse(
+    String token,
+    int courseId,
+    String target,
+  );
+
   /// Binds a course to a GitHub repo (`PUT /courses/<id>/git/`,
   /// owner-only; one repo per course by design).
   Future<Map<String, dynamic>> setCourseGit(

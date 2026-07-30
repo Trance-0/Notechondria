@@ -14,6 +14,7 @@ class _ActivityPage extends StatefulWidget {
     required this.onTogglePlannerEventCompletion,
     this.courses = const <Map<String, dynamic>>[],
     this.onEditCourse,
+    this.onTransferCourse,
   });
 
   final Map<String, dynamic>? activityWeek;
@@ -42,6 +43,13 @@ class _ActivityPage extends StatefulWidget {
     Map<String, dynamic> course,
     Map<String, dynamic> payload,
   )? onEditCourse;
+
+  /// Owner-only ownership transfer (#11): hands the course to the creator
+  /// named by username / email. Null hides the Transfer entry.
+  final Future<ActionFeedback> Function(
+    Map<String, dynamic> course,
+    String target,
+  )? onTransferCourse;
 
   @override
   State<_ActivityPage> createState() => _ActivityPageState();
@@ -114,8 +122,8 @@ class _ActivityPageState extends State<_ActivityPage> {
                           }
                         }
                         if (match != null) {
-                          _showCourseEditDialog(
-                              context, match, widget.onEditCourse!);
+                          _showCourseEditDialog(context, match,
+                              widget.onEditCourse!, widget.onTransferCourse);
                         }
                       },
               ),
@@ -264,12 +272,17 @@ Future<void> _showCourseEditDialog(
   Future<ActionFeedback> Function(
     Map<String, dynamic> course,
     Map<String, dynamic> payload,
-  ) onSubmit,
-) async {
+  ) onSubmit, [
+  Future<ActionFeedback> Function(
+    Map<String, dynamic> course,
+    String target,
+  )? onTransfer,
+]) async {
   final titleController =
       TextEditingController(text: course['title']?.toString() ?? '');
   final descriptionController =
       TextEditingController(text: course['description']?.toString() ?? '');
+  final transferController = TextEditingController();
   double? hue = (course['color_hue'] as num?)?.toDouble();
   ActionFeedback? feedback;
   var submitting = false;
@@ -348,6 +361,98 @@ Future<void> _showCourseEditDialog(
                       ),
                     ],
                   ),
+                  if (onTransfer != null) ...[
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Transfer ownership',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Hand this course to another user by their username or '
+                      'email. You will lose owner access (its notes keep '
+                      'their own authors; any GitHub binding is cleared).',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: transferController,
+                      enabled: !submitting,
+                      decoration: const InputDecoration(
+                        labelText: 'Recipient username or email',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor:
+                              Theme.of(context).colorScheme.error,
+                        ),
+                        icon: const Icon(Icons.swap_horiz, size: 18),
+                        onPressed: submitting
+                            ? null
+                            : () async {
+                                final target = transferController.text.trim();
+                                if (target.isEmpty) {
+                                  setState(() => feedback = const ActionFeedback(
+                                        message: 'Enter the recipient\'s '
+                                            'username or email.',
+                                        isError: true,
+                                      ));
+                                  return;
+                                }
+                                final confirmed = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Transfer ownership?'),
+                                    content: Text(
+                                      'Give "${course['title'] ?? 'this course'}" '
+                                      'to "$target"? You will lose owner '
+                                      'access unless they share it back.',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(false),
+                                        child: Text(AppLocalizations.of(context)
+                                            .commonCancel),
+                                      ),
+                                      FilledButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(true),
+                                        child: const Text('Transfer'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (confirmed != true) return;
+                                setState(() {
+                                  submitting = true;
+                                  feedback = null;
+                                });
+                                final result =
+                                    await onTransfer!(course, target);
+                                if (result.isError) {
+                                  setState(() {
+                                    submitting = false;
+                                    feedback = result;
+                                  });
+                                  return;
+                                }
+                                if (context.mounted) {
+                                  Navigator.of(context).pop();
+                                }
+                              },
+                        label: const Text('Transfer ownership…'),
+                      ),
+                    ),
+                  ],
                   if (feedback != null) ...[
                     const SizedBox(height: 8),
                     FeedbackText(feedback: feedback!),

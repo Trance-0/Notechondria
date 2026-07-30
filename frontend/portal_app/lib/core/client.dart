@@ -180,6 +180,23 @@ class HttpNotechondriaClient
   }
 
   @override
+  Future<Map<String, dynamic>> transferCourse(
+    String token,
+    int courseId,
+    String target,
+  ) async {
+    final uri = _uri('/courses/$courseId/transfer/');
+    final response = await _post(
+      uri,
+      token: token,
+      payload: {'target': target},
+    );
+    return Map<String, dynamic>.from(
+      await decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
   Future<Map<String, dynamic>> setCourseGit(
     String token,
     int courseId,

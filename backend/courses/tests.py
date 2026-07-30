@@ -1,8 +1,11 @@
+import json
 import uuid
 
 from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.test import TestCase
+
+from rest_framework.authtoken.models import Token
 
 from creators.models import Creator
 from courses.models import Course
@@ -283,3 +286,102 @@ class CommitFilesGitDataApiTests(TestCase):
         self.assertEqual(sha, "")
         # Only the tree POST happened; no commit, no ref update.
         self.assertTrue(all(u.endswith("/git/trees") for u in posted))
+
+
+class CourseTransferApiTests(TestCase):
+    """POST /api/v1/courses/<id>/transfer/ — owner hands a course to
+    another creator (#11). Notes keep their own creator; the git binding
+    is cleared on transfer."""
+
+    def setUp(self):
+        self.alice = User.objects.create_user(
+            username="alice", password="pw", email="alice@example.com")
+        self.bob = User.objects.create_user(
+            username="bob", password="pw", email="bob@example.com")
+        self.alice_c = Creator.objects.create(user_id=self.alice)
+        self.bob_c = Creator.objects.create(user_id=self.bob)
+        self.course = Course.objects.create(
+            creator_id=self.alice_c, slug="alice-bio", title="Biology",
+            client_course_id="local-123",
+        )
+        self.note = Note.objects.create(
+            creator_id=self.alice_c, course_id=self.course,
+            sharing_id=_sid(), title="Cells",
+        )
+        self.alice_token = Token.objects.create(user=self.alice)
+        self.bob_token = Token.objects.create(user=self.bob)
+
+    def _post(self, token, body):
+        return self.client.post(
+            f"/api/v1/courses/{self.course.id}/transfer/",
+            data=json.dumps(body), content_type="application/json",
+            HTTP_AUTHORIZATION=f"Token {token.key}",
+        )
+
+    def test_owner_transfers_by_username(self):
+        resp = self._post(self.alice_token, {"target": "bob"})
+        self.assertEqual(resp.status_code, 200)
+        self.course.refresh_from_db()
+        self.assertEqual(self.course.creator_id_id, self.bob_c.id)
+        # Notes keep their own creator_id (still alice's) but stay linked
+        # to the now-bob-owned course.
+        self.note.refresh_from_db()
+        self.assertEqual(self.note.creator_id_id, self.alice_c.id)
+        self.assertEqual(self.note.course_id_id, self.course.id)
+        # Device-local id is dropped to avoid the recipient's unique key.
+        self.assertIsNone(self.course.client_course_id)
+
+    def test_transfer_by_email_is_case_insensitive(self):
+        resp = self._post(self.alice_token, {"target": "BOB@EXAMPLE.COM"})
+        self.assertEqual(resp.status_code, 200)
+        self.course.refresh_from_db()
+        self.assertEqual(self.course.creator_id_id, self.bob_c.id)
+
+    def test_git_binding_cleared_on_transfer(self):
+        self.course.git_repo = "alice/bio"
+        self.course.git_sync_enabled = True
+        self.course.save()
+        resp = self._post(self.alice_token, {"target": "bob"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json().get("git_binding_cleared"))
+        self.course.refresh_from_db()
+        self.assertFalse(self.course.git_repo)
+        self.assertFalse(self.course.git_sync_enabled)
+
+    def test_non_owner_cannot_transfer(self):
+        resp = self._post(self.bob_token, {"target": "alice"})
+        self.assertEqual(resp.status_code, 403)
+        self.course.refresh_from_db()
+        self.assertEqual(self.course.creator_id_id, self.alice_c.id)
+
+    def test_unknown_target_returns_404(self):
+        resp = self._post(self.alice_token, {"target": "nobody"})
+        self.assertEqual(resp.status_code, 404)
+        self.course.refresh_from_db()
+        self.assertEqual(self.course.creator_id_id, self.alice_c.id)
+
+    def test_transfer_to_self_rejected(self):
+        resp = self._post(self.alice_token, {"target": "alice"})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_missing_target_rejected(self):
+        resp = self._post(self.alice_token, {})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_title_collision_conflicts(self):
+        Course.objects.create(
+            creator_id=self.bob_c, slug="bob-bio", title="Biology")
+        resp = self._post(self.alice_token, {"target": "bob"})
+        self.assertEqual(resp.status_code, 409)
+        self.course.refresh_from_db()
+        self.assertEqual(self.course.creator_id_id, self.alice_c.id)
+
+    def test_anonymous_cannot_transfer(self):
+        resp = self.client.post(
+            f"/api/v1/courses/{self.course.id}/transfer/",
+            data=json.dumps({"target": "bob"}),
+            content_type="application/json",
+        )
+        self.assertIn(resp.status_code, (401, 403))
+        self.course.refresh_from_db()
+        self.assertEqual(self.course.creator_id_id, self.alice_c.id)

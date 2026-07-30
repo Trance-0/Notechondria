@@ -6,6 +6,7 @@ from difflib import SequenceMatcher
 from datetime import datetime, timedelta, time
 
 from django.conf import settings
+from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.db import transaction
 from django.db.models import Count, Q
@@ -938,6 +939,120 @@ class CourseDetailApiView(APIView):
         # reassignment needed.
         course.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CourseTransferApiView(APIView):
+    """Owner-only: hand a course to another creator (#11). The recipient is
+    named by username or email. The course's notes keep their own
+    ``creator_id`` (co-authored notes stay with their original authors);
+    only the course's ownership moves. Any GitHub binding is cleared,
+    because it points at the previous owner's repo, which the new owner
+    cannot push to."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, course_id):
+        creator = ensure_creator(request.user)
+        course = get_object_or_404(Course, pk=course_id)
+        if course.creator_id_id != creator.id:
+            return Response(
+                {"detail": (
+                    "Cannot transfer course: "
+                    "Backend.Notes.Courses/transfer — "
+                    "course is owned by a different creator."
+                )},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        target_key = str(
+            request.data.get("target")
+            or request.data.get("username")
+            or request.data.get("email")
+            or ""
+        ).strip()
+        if not target_key:
+            return Response(
+                {"detail": (
+                    "Cannot transfer course: "
+                    "Backend.Notes.Courses/transfer — "
+                    "no target username or email was provided."
+                )},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        target_user = (
+            User.objects.filter(
+                Q(username__iexact=target_key) | Q(email__iexact=target_key)
+            )
+            .order_by("id")
+            .first()
+        )
+        if target_user is None:
+            return Response(
+                {"detail": (
+                    "Cannot transfer course: "
+                    "Backend.Notes.Courses/transfer — "
+                    f"no user matches '{target_key}'."
+                )},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if target_user.id == request.user.id:
+            return Response(
+                {"detail": (
+                    "Cannot transfer course: "
+                    "Backend.Notes.Courses/transfer — "
+                    "you already own this course."
+                )},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        target_creator = ensure_creator(target_user)
+        # Category titles are case-insensitively unique per creator
+        # (mirrors the PATCH guard). Refuse rather than hand the recipient
+        # a colliding pair they then cannot rename cleanly.
+        collision = (
+            Course.objects.filter(
+                creator_id=target_creator, title__iexact=course.title
+            )
+            .exclude(pk=course.pk)
+            .exists()
+        )
+        if collision:
+            return Response(
+                {"detail": (
+                    "Cannot transfer course: "
+                    "Backend.Notes.Courses/transfer — "
+                    f"the recipient already has a category named "
+                    f"'{course.title}'. Rename this course first."
+                )},
+                status=status.HTTP_409_CONFLICT,
+            )
+        previous_owner = creator
+        had_git_repo = bool(course.git_repo)
+        with transaction.atomic():
+            course.creator_id = target_creator
+            # `client_course_id` was the previous owner's device-local id;
+            # it is meaningless to the recipient and would collide with
+            # their unique (creator, client_course_id) key, so drop it.
+            course.client_course_id = None
+            # Clear the GitHub binding: it targets the previous owner's
+            # repo, which the recipient has no push access to.
+            course.git_repo = None
+            course.git_sync_enabled = False
+            course.git_pending_since = None
+            course.git_last_sync_error = None
+            course.save()
+        logger.info(
+            "Course ownership transfer: Backend.Notes.Courses/transfer — "
+            "course id=%s '%s' moved from %s to %s%s.",
+            course.id, course.title,
+            previous_owner.user_id.username, target_user.username,
+            " (git binding cleared)" if had_git_repo else "",
+        )
+        subscription_map = active_subscription_map(target_creator)
+        payload = CourseSerializer(
+            course,
+            context={"request": request, "subscription_map": subscription_map},
+        ).data
+        payload["git_binding_cleared"] = had_git_repo
+        return Response(payload, status=status.HTTP_200_OK)
 
 
 class CourseGitWriteSerializer(serializers.Serializer):

@@ -27,6 +27,19 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.193: FEATURE, #11. Course ownership transfer. POST
+  courses/<id>/transfer/ (CourseTransferApiView, owner-only): target by
+  username/email (case-insensitive); reassigns Course.creator_id; NOTES
+  KEEP their own creator_id; drops client_course_id (old owner's local
+  id, collides with recipient's unique key); CLEARS the git binding (old
+  owner's repo). 403 non-owner / 404 unknown / 400 self|missing / 409
+  title collision (titles unique per creator). Frontend: transferCourse
+  client method + "Transfer ownership" section in the course-edit dialog
+  (portal course.dart, planner activity.dart), confirm-guarded; editor
+  has no such modal. Tests in courses/tests.py. No local Django (host
+  py3.14 vs 3.11 pins) → backend-tests.yml is the authoritative run,
+  checked via the public Actions API; py_compile + urls_test reachability
+  verified locally.
 - 0.1.192: SECURITY, #13. Offline cache (drafts/courses/events) is
   per-ORIGIN, shared by every user who signs in on the device. It had no
   owner stamp, so on a shared machine user B could see + push user A's
