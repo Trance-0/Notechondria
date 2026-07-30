@@ -737,11 +737,13 @@ class GithubSyncPushApiView(APIView):
     """Push the authenticated user's full server-side data to their
     linked GitHub repo. Returns the resulting commit SHA.
 
-    Accepts an optional ``include_assets`` query string flag (or JSON
-    body field) — when truthy, avatar / cover / attachment bytes are
-    inlined under ``assets/`` in the export so the resulting clone is
-    self-contained. Subject to the per-file and per-push size caps in
-    `creators.services.github_sync`.
+    Accepts optional ``include_assets`` and ``prune_orphans`` flags (query
+    string or JSON body). ``include_assets`` inlines avatar / cover /
+    attachment bytes under ``assets/`` so the clone is self-contained
+    (subject to the size caps in `creators.services.github_sync`).
+    ``prune_orphans`` additionally deletes, in the same commit, any
+    ``assets/notes/<uuid>/…`` blobs left behind by notes that no longer
+    exist.
     """
 
     permission_classes = [permissions.IsAuthenticated]
@@ -769,9 +771,18 @@ class GithubSyncPushApiView(APIView):
             or ""
         )
         force = str(raw_force).lower() in ("1", "true", "yes", "on")
+        raw_prune = (
+            request.query_params.get("prune_orphans")
+            or request.data.get("prune_orphans")
+            or ""
+        )
+        prune_orphans = str(raw_prune).lower() in ("1", "true", "yes", "on")
         try:
             sha = push_user_data(
-                creator, include_assets=include_assets, force=force
+                creator,
+                include_assets=include_assets,
+                force=force,
+                prune_orphans=prune_orphans,
             )
         except GithubSyncConflict as exc:
             # 409, not 400: the request was valid but the remote moved.
@@ -786,7 +797,13 @@ class GithubSyncPushApiView(APIView):
                 {"detail": str(exc)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        return Response({"commit_sha": sha, "include_assets": include_assets})
+        return Response(
+            {
+                "commit_sha": sha,
+                "include_assets": include_assets,
+                "prune_orphans": prune_orphans,
+            }
+        )
 
 
 class GithubSyncReposApiView(APIView):

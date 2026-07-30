@@ -67,6 +67,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.194 - GitHub sync: prune orphaned note assets](versions/0.1.194.md)
 - [0.1.193 - Course ownership transfer](versions/0.1.193.md)
 - [0.1.192 - Offline cache is owner-scoped (no cross-user leak)](versions/0.1.192.md)
 - [0.1.191 - Editor Inbox default for offline / signed-out users](versions/0.1.191.md)

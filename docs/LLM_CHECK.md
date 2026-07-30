@@ -27,6 +27,18 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.194: BACKEND, #28. GitHub-sync orphan-asset pruning. The push
+  builds a delta on base_tree, so deleting a note client-side left its
+  assets/notes/<uuid>/ subtree behind forever. Pure
+  _orphan_asset_deletions(remote_tree, live_uuids) → Git-tree delete
+  entries (sha=None) for note-asset blobs whose uuid isn't live (ONLY
+  assets/notes/<uuid>/ blobs; never notes/course/profile/avatar files,
+  never tree entries). commit_and_push(prune_asset_uuids=) fetches the
+  recursive base tree and deletes in the SAME commit; skips if the tree
+  is truncated. push_user_data(prune_orphans=) computes live =
+  non-soft-deleted notes; API push endpoint takes a prune_orphans flag
+  (defaults false). Pure-fn tests in creators/tests.py
+  (OrphanAssetPruneTests). Backend-only → backend-tests.yml authoritative.
 - 0.1.193: FEATURE, #11. Course ownership transfer. POST
   courses/<id>/transfer/ (CourseTransferApiView, owner-only): target by
   username/email (case-insensitive); reassigns Course.creator_id; NOTES

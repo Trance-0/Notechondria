@@ -428,6 +428,69 @@ class GithubSyncTests(TestCase):
         )
 
 
+class OrphanAssetPruneTests(TestCase):
+    """Pure-function coverage for `_orphan_asset_deletions` (#28): decides
+    which `assets/notes/<uuid>/…` blobs to delete on a `prune_orphans`
+    push. No DB / no network."""
+
+    def _fn(self):
+        from creators.services.github_sync import _orphan_asset_deletions
+        return _orphan_asset_deletions
+
+    def _tree(self):
+        # `dead` note was deleted client-side; `live` is still present.
+        return [
+            {'path': 'notes/live.md', 'type': 'blob', 'mode': '100644'},
+            {'path': 'assets/avatar.png', 'type': 'blob', 'mode': '100644'},
+            {'path': 'assets/notes', 'type': 'tree', 'mode': '040000'},
+            {'path': 'assets/notes/live', 'type': 'tree', 'mode': '040000'},
+            {'path': 'assets/notes/live/cover.jpg',
+             'type': 'blob', 'mode': '100644'},
+            {'path': 'assets/notes/dead/cover.png',
+             'type': 'blob', 'mode': '100644'},
+            {'path': 'assets/notes/dead/attachments/a1.bin',
+             'type': 'blob', 'mode': '100644'},
+        ]
+
+    def test_deletes_only_dead_note_asset_blobs(self):
+        deletions = self._fn()(self._tree(), {'live'})
+        paths = {d['path'] for d in deletions}
+        self.assertEqual(paths, {
+            'assets/notes/dead/cover.png',
+            'assets/notes/dead/attachments/a1.bin',
+        })
+        # Every deletion is a null-sha blob entry (the Git Trees delete form).
+        for d in deletions:
+            self.assertIsNone(d['sha'])
+            self.assertEqual(d['type'], 'blob')
+            self.assertEqual(d['mode'], '100644')
+
+    def test_live_assets_avatar_and_notes_are_kept(self):
+        deletions = self._fn()(self._tree(), {'live'})
+        paths = {d['path'] for d in deletions}
+        # A live note's cover, the avatar, notes/, and tree entries survive.
+        self.assertNotIn('assets/notes/live/cover.jpg', paths)
+        self.assertNotIn('assets/avatar.png', paths)
+        self.assertNotIn('notes/live.md', paths)
+        # `tree` entries are never emitted as deletions (only blobs).
+        self.assertNotIn('assets/notes/dead', paths)
+
+    def test_empty_live_set_prunes_all_note_assets(self):
+        deletions = self._fn()(self._tree(), set())
+        paths = {d['path'] for d in deletions}
+        self.assertEqual(paths, {
+            'assets/notes/live/cover.jpg',
+            'assets/notes/dead/cover.png',
+            'assets/notes/dead/attachments/a1.bin',
+        })
+        # Non-note assets (avatar) are still never touched.
+        self.assertNotIn('assets/avatar.png', paths)
+
+    def test_all_live_prunes_nothing(self):
+        deletions = self._fn()(self._tree(), {'live', 'dead'})
+        self.assertEqual(deletions, [])
+
+
 class CasdoorAuthTests(TestCase):
     """Coverage for the Casdoor surface (`creators.casdoor_auth`,
     `CasdoorConfigApiView`, `CasdoorExchangeApiView`,
