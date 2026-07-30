@@ -40,7 +40,11 @@ extension _AppShellNoteLoadingX on _AppShellState {
     // asked to see only local drafts. Either way, clear the cloud
     // result list and skip the listNotes call.
     final isLocalCourseSelected = activeCourseId != null && activeCourseId < 0;
-    if (isLocalCourseSelected || effectiveScope == 'local') {
+    // An anonymous user's Inbox is their local drafts only — no cloud
+    // identity to list, and the public feed belongs to "All notes"
+    // (#30 reopen).
+    final anonymousInbox = _uncategorizedSelected && !isAuthenticated;
+    if (isLocalCourseSelected || effectiveScope == 'local' || anonymousInbox) {
       _learnerNotes = const [];
       _hasMoreLearnerNotes = false;
       _learnerNotesOffset = 0;

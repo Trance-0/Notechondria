@@ -443,7 +443,10 @@ extension _AppShellCategoryX on _AppShellState {
               ? Icons.folder_outlined
               : (isInbox ? Icons.inbox_outlined : Icons.school_outlined),
           label: cat['title']?.toString() ?? 'Category',
-          selected: _selectedCategoryId == (cat['id'] as num?)?.toInt(),
+          selected: (cat['is_uncategorized'] == true)
+                ? _uncategorizedSelected
+                : (!_uncategorizedSelected &&
+                    _selectedCategoryId == (cat['id'] as num?)?.toInt()),
           onTap: () => _selectCourse(cat),
         ),
       ),

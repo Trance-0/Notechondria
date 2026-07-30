@@ -67,6 +67,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.191 - Editor Inbox default for offline / signed-out users](versions/0.1.191.md)
 - [0.1.190 - Editor Inbox shows only uncategorized notes](versions/0.1.190.md)
 - [0.1.189 - GitHub sync: no more silent overwrites (atomic push + conflict gate)](versions/0.1.189.md)
 - [0.1.188 - Imported-course reading order + bind pending-state fix](versions/0.1.188.md)

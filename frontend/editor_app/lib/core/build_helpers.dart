@@ -234,7 +234,10 @@ extension _AppShellBuildHelpersX on _AppShellState {
       child: SidebarItem(
         icon: _courseIcon(cat),
         label: cat['title']?.toString() ?? 'Category',
-        selected: _selectedCategoryId == (cat['id'] as num?)?.toInt(),
+        selected: (cat['is_uncategorized'] == true)
+                ? _uncategorizedSelected
+                : (!_uncategorizedSelected &&
+                    _selectedCategoryId == (cat['id'] as num?)?.toInt()),
         onTap: () {
           Navigator.of(context).pop();
           _selectCourse(cat);

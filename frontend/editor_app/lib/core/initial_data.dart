@@ -217,11 +217,27 @@ extension _AppShellInitialDataX on _AppShellState {
     }
     _splashStatus.value = 'Loading notes';
     final isAuthd = _token != null && _token!.isNotEmpty;
+    // #30 (reopen): anonymous / offline users land on the Inbox — their
+    // local drafts plus the intro note — NOT the platform's public
+    // discovery feed. Public notes stay one click away via "All notes".
+    if (!isAuthd) {
+      _uncategorizedSelected = true;
+      _selectedCategoryId = null;
+    } else {
+      // Signed-in boot keeps the documented "All notes" default; the
+      // Inbox is one tap away in the sidebar.
+      _uncategorizedSelected = false;
+    }
     final scope = isAuthd ? _learnerSearchScope : 'all';
-    // 'local' is a frontend-only scope — skip the backend fetch
-    // so _loadInitialData doesn't repopulate _learnerNotes with
-    // cloud data while the user is filtering to local drafts only.
-    if (scope != 'local') {
+    // Skip the cloud fetch for the frontend-only 'local' scope AND for
+    // the anonymous Inbox default: an unauthenticated user has no cloud
+    // identity, so there is nothing to list, and pulling the public feed
+    // here is exactly what made Inbox show public notes (#30 reopen).
+    final anonymousInbox = !isAuthd && _uncategorizedSelected;
+    if (anonymousInbox) {
+      learnerNotes = const [];
+    }
+    if (scope != 'local' && !anonymousInbox) {
       try {
         notePage = await timed(
           'Editor._loadInitialData.listNotes',
