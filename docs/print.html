@@ -5960,12 +5960,14 @@ cleared, non-owner 403, unknown target 404, self 400, missing target
 <ul>
 <li><code>transferCourse(token, courseId, target)</code> client method
 (<code>POST …/transfer/</code>).</li>
-<li>A <strong>"Transfer ownership"</strong> section in the course-edit dialog (portal
-<code>course.dart</code>, planner <code>activity.dart</code>): a recipient field + a
-confirm-guarded button. On success the course leaves the account, so
-the owned list refreshes and the selection clears. Owner-gated (the
-edit dialog only opens for owned courses). The editor uses inline
-category rename and has no such modal, so it is unchanged.</li>
+<li>A <strong>"Transfer ownership"</strong> section in the course-edit dialog: a
+recipient field + a confirm-guarded button. On success the course
+leaves the account, so the owned list refreshes and the selection
+clears. Owner-gated (the edit dialog only opens for owned courses).
+Reachable from every place that dialog opens — portal's course page and
+its activity filter-bar settings button, plus planner's activity filter
+bar. The editor uses inline category rename and has no such modal, so
+it is unchanged.</li>
 </ul>
 <h2 id="verification"><a class="header" href="#verification">Verification</a></h2>
 <ul>
