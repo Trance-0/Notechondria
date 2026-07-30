@@ -17,6 +17,7 @@ class _ActivityPage extends StatefulWidget {
     required this.onTogglePlannerEventCompletion,
     required this.onUpdatePlannerEvent,
     this.onEditCourse,
+    this.onTransferCourse,
   });
 
   final Map<String, dynamic>? activityWeek;
@@ -51,6 +52,13 @@ class _ActivityPage extends StatefulWidget {
     Map<String, dynamic> course,
     Map<String, dynamic> payload,
   )? onEditCourse;
+
+  /// Owner-only ownership transfer (#11), surfaced in the same course-edit
+  /// dialog. Null hides the Transfer entry.
+  final Future<ActionFeedback> Function(
+    Map<String, dynamic> course,
+    String target,
+  )? onTransferCourse;
 
   @override
   State<_ActivityPage> createState() => _ActivityPageState();
@@ -144,8 +152,8 @@ class _ActivityPageState extends State<_ActivityPage> {
                           }
                         }
                         if (match != null) {
-                          _showCourseEditDialog(
-                              context, match, widget.onEditCourse!);
+                          _showCourseEditDialog(context, match,
+                              widget.onEditCourse!, widget.onTransferCourse);
                         }
                       },
               ),
