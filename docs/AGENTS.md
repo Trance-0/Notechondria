@@ -78,6 +78,51 @@ owner pushes, and any check not run locally is called out per
 LLM_CHECK. The docker-compose files stay in the repo for CI and for
 ≥16 GB self-host targets only.
 
+## Round-end verification convention (owner, urgent)
+
+Because the suites cannot run on this host (no Flutter SDK; host Python
+is 3.14 while the backend pins 3.11-era deps; local containers are
+banned), verification is split between local static checks and
+CI-after-push. Do these every round:
+
+**Before pushing (local):**
+
+- `cd cli && python3 -m unittest discover -s tests` when `cli/` changed
+  (stdlib only — no network, no MCP SDK).
+- `python -m py_compile <files>` for every changed backend file;
+  a bracket-balance pass for every changed Dart file (catches the
+  syntax errors CI would otherwise be the first to see).
+- Confirm bookkeeping: `VERSION` bumped, `docs/versions/<v>.md` **and**
+  its `docs/SUMMARY.md` entry added in the same commit, `LLM_CHECK.md`
+  round log appended. Skip the version bump for repo-tooling-only
+  changes (e.g. `.mcp.json`) so it doesn't trigger a no-op rebuild.
+- State explicitly which checks were NOT run locally (per LLM_CHECK).
+
+**After pushing (CI + deployed artifacts).** There is no `gh` CLI or
+GITHUB token here, but the repo is public, so read status from the
+GitHub REST API (unauthenticated, ~60 req/hr):
+
+- **CI conclusions:**
+  `GET /repos/Trance-0/Notechondria/actions/runs?per_page=N`, filter by
+  `head_sha` + `name` (`backend-tests` / `frontend-pages` /
+  `docs-pages`), read `status`/`conclusion`. On a failure,
+  `…/actions/runs/<id>/jobs` names the failing step (raw logs need auth
+  → 403, but the step name is usually enough to localise the bug).
+  `backend-tests` is path-filtered — it only runs when `backend/`
+  changed.
+- **Backend deploy landed:** probe
+  `https://notechondria.trance-0.com/api/v1/handshake/`.
+- **Frontend deploy landed with the new code:** curl the deployed bundle
+  and grep the baked version —
+  `curl -s https://trance-0.github.io/Notechondria/<app>/main.dart.js |
+  grep -oE '0\.1\.[0-9]+'` — for editor / planner / portal. A green
+  `frontend-pages` is necessary but not sufficient: a concurrency race
+  once cancelled a build and left a stale bundle (0.1.190), so always
+  confirm the dominant `0.1.NNN` in the bundle matches `VERSION`. CI's
+  `Test <app>` step runs only `test/smoke_test.dart`, so any logic that
+  must be CI-checked belongs there (the shared package's own tests are
+  not CI-run).
+
 ## §1.7 compliance — canonical module / process names
 
 The canonical `AGENTS.md` §1.7 mandates that every error, warning, info,
