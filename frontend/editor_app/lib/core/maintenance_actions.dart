@@ -157,6 +157,26 @@ extension _AppShellMaintenanceX on _AppShellState {
   }
 
   Future<ActionFeedback> _syncAllLocalData({bool announce = true}) async {
+    // Cross-user offline-cache guard (0.1.192): never push another user's
+    // local drafts into the signed-in account. `foreign_local_data_owner`
+    // is set at sign-in by _reconcileLocalDataOwner when the device's
+    // cache belongs to someone else.
+    final foreignOwner =
+        _localSettings['foreign_local_data_owner']?.toString() ?? '';
+    if (foreignOwner.isNotEmpty) {
+      const src = 'Editor.Sync.Notes/push_all';
+      final feedback = ActionFeedback(
+        message: 'Local data not synced: $src \u2014 '
+            'these offline notes belong to "$foreignOwner", not the '
+            'signed-in account. Clear local data or sign in as '
+            '"$foreignOwner" to keep them.',
+        isError: true,
+      );
+      if (announce) {
+        showMessage(feedback.message);
+      }
+      return feedback;
+    }
     final token = _token;
     if (token == null || token.isEmpty) {
       return const ActionFeedback(

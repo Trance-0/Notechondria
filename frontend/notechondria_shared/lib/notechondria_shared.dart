@@ -12,6 +12,8 @@ export 'src/models/api_debug_snapshot.dart' show ApiDebugSnapshot;
 export 'src/utils/blur_dialog.dart' show showBlurDialog;
 export 'src/utils/compact_timestamp.dart' show formatCompactTimestamp;
 export 'src/utils/format_bytes.dart' show formatBytes;
+export 'src/utils/local_data_ownership.dart'
+    show resolveLocalDataOwner, LocalDataOwnership, LocalOwnerDecision;
 export 'src/utils/friendly_error.dart' show friendlyError;
 export 'src/utils/version_status.dart'
     show

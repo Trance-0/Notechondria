@@ -27,6 +27,17 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.192: SECURITY, #13. Offline cache (drafts/courses/events) is
+  per-ORIGIN, shared by every user who signs in on the device. It had no
+  owner stamp, so on a shared machine user B could see + push user A's
+  offline drafts into B's cloud. Fix: pure resolveLocalDataOwner()
+  (claimed/sameUser/foreignUser) + _reconcileLocalDataOwner at sign-in
+  stamps local_data_owner and sets foreign_local_data_owner when the
+  cache belongs to someone else — WITHOUT retagging (retag would let it
+  sync as the new user). Foreign → post-login auto-push is skipped AND
+  _syncAllLocalData refuses in all 3 apps. Escape: clear local data or
+  sign in as the prior owner. CI test: portal smoke_test covers the pure
+  fn (shared pkg tests aren't CI-run; no local Flutter SDK).
 - 0.1.187: LOGIN FIX. launchOAuth used Uri.base.replace(queryParameters:
   {}) for redirect_uri — .replace() KEEPS the fragment, and hash routing
   (0.1.179/0.1.186) put #/settings in the URL right where the sign-in
