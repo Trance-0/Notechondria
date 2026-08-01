@@ -27,6 +27,12 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.195: UI FIX (owner-reported). Editor Settings showed "Settings"
+  twice: the shell nav already labels the destination (l10n.navSettings,
+  sidebar/drawer) and settings.dart's body ALSO rendered a
+  Text('Settings') headline. Removed the body headline (only main page
+  that duplicated its nav label as a body title; kept the intro line).
+  Planner/portal already showed it once.
 - 0.1.194: BACKEND, #28. GitHub-sync orphan-asset pruning. The push
   builds a delta on base_tree, so deleting a note client-side left its
   assets/notes/<uuid>/ subtree behind forever. Pure
