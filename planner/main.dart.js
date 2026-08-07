@@ -37946,7 +37946,7 @@ a1=a6.fr
 a2=a6.fx
 a3=a6.fy
 if(a3==null)a3=B.ca
-k=A.bT3(new A.aC7(B.lO,"0.1.195",l,f,d,c,b,a,a0,a6.d,a1,a2,a3))
+k=A.bT3(new A.aC7(B.lO,"0.1.196",l,f,d,c,b,a,a0,a6.d,a1,a2,a3))
 a3=a6.c
 a3.toString
 a3=A.b5(a3,B.ae,t.J)
@@ -40187,15 +40187,15 @@ p=n}else p=o
 s=p.length===0?3:4
 break
 case 3:s=5
-return A.k(A.EQ(a,"0.1.195"),$async$ado)
+return A.k(A.EQ(a,"0.1.196"),$async$ado)
 case 5:s=1
 break
-case 4:if(A.apQ(p,"0.1.195")>=0){s=1
-break}m=A.bSv("0.1.195",p,B.aLh)
+case 4:if(A.apQ(p,"0.1.196")>=0){s=1
+break}m=A.bSv("0.1.196",p,B.aLh)
 s=m.length===0?6:7
 break
 case 6:s=8
-return A.k(A.EQ(a,"0.1.195"),$async$ado)
+return A.k(A.EQ(a,"0.1.196"),$async$ado)
 case 8:s=1
 break
 case 7:a.p3=!0
@@ -139825,7 +139825,7 @@ s=A.is(new A.aUv(q))
 if(q.w){p=p.gxZ()
 r=q.k1.h(0,"api_base_url")
 r=r==null?null:J.y(r)
-return A.hM(B.ci,A.b([s,A.M1(0,new A.O6(p,"0.1.195",new A.aUw(q),q.RG,r,null))],t.p),B.y,B.bU,null)}return s},
+return A.hM(B.ci,A.b([s,A.M1(0,new A.O6(p,"0.1.196",new A.aUw(q),q.RG,r,null))],t.p),B.y,B.bU,null)}return s},
 atF(a){var s,r,q,p,o,n=this,m=null,l=n.f
 l=l!==2?A.R(B.vm[l],m,m,m,m,m,m,m,m):m
 s=n.a1j()
@@ -139867,7 +139867,7 @@ if(q===3){q=B.vm[q]
 n=A.A(a).ok.f
 r.push(new A.ap(B.aDz,A.R(q,j,j,j,j,n==null?j:n.en(B.as),j,j,j),j))}r.push(A.bY(k.a1j(),1))
 return A.bqF(j,A.oQ(!0,A.bF(A.b([i,A.bY(A.bg(r,B.br,B.j,B.m,0,B.q),1)],o),B.v,B.j,B.m,0,j,j),!1,B.a5,!0),j)},
-a1j(){var s,r,q,p,o,n,m=this,l=null,k=t.p,j=A.b([new A.Pq("0.1.195",A.bJm(m),l)],k)
+a1j(){var s,r,q,p,o,n,m=this,l=null,k=t.p,j=A.b([new A.Pq("0.1.196",A.bJm(m),l)],k)
 if(m.r)j.push(B.EJ)
 if(m.x!=null){s=m.c
 s.toString
@@ -141809,12 +141809,12 @@ p=m.c
 p.toString
 o=q.c
 s=2
-return A.k(A.bgv(p,l.gxZ(),"0.1.195",o),$async$$0)
+return A.k(A.bgv(p,l.gxZ(),"0.1.196",o),$async$$0)
 case 2:n=b
 s=3
-return A.k(A.EQ(m,"0.1.195"),$async$$0)
+return A.k(A.EQ(m,"0.1.196"),$async$$0)
 case 3:l=n?"acknowledged":"skipped"
-m.c6(B.aj,"Feature updates "+l+": Planner.UI/whats_new \u2014 "+o.length+" update(s) since "+q.a.a+" marked seen at 0.1.195.","Planner.UI")
+m.c6(B.aj,"Feature updates "+l+": Planner.UI/whats_new \u2014 "+o.length+" update(s) since "+q.a.a+" marked seen at 0.1.196.","Planner.UI")
 return A.v(null,r)}})
 return A.w($async$$0,r)},
 $S:190}
