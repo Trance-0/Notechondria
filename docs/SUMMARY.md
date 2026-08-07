@@ -67,6 +67,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.196 - Fix: web apps stuck on load — strip the deprecated service worker](versions/0.1.196.md)
 - [0.1.195 - Editor Settings: "Settings" no longer shown twice](versions/0.1.195.md)
 - [0.1.194 - GitHub sync: prune orphaned note assets](versions/0.1.194.md)
 - [0.1.193 - Course ownership transfer](versions/0.1.193.md)

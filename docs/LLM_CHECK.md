@@ -27,6 +27,18 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.196: INCIDENT FIX (owner-reported). Portal web app stuck on load,
+  Firefox NS_ERROR on a font. Server side 100% healthy (all assets 200,
+  backend <1s). Cause: this Flutter SDK deprecated its service worker and
+  ships a self-destroying flutter_service_worker.js, but the bootstrap
+  still registered it every load → re-register/unregister churn served a
+  broken cached asset mix and never painted. Smoke test can't see it (test
+  VM, no SW, empty storage). Fix: set STRIP_SERVICE_WORKER=true repo var +
+  hardened the strip step in frontend-pages.yml — remove serviceWorkerSettings
+  from _flutter.loader.load() (now matches minified-variable form too, with
+  a build-time assert) and KEEP a self-destroying SW (old switch deleted it,
+  stranding stale browsers). No SW registered going forward; stuck browsers
+  self-heal on next load.
 - 0.1.195: UI FIX (owner-reported). Editor Settings showed "Settings"
   twice: the shell nav already labels the destination (l10n.navSettings,
   sidebar/drawer) and settings.dart's body ALSO rendered a
