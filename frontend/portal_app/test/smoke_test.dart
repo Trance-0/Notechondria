@@ -11,6 +11,39 @@ void main() {
     expect(find.text('Front page'), findsWidgets);
   });
 
+  group('note-conflict line diff (#31)', () {
+    test('identical text yields only equal rows', () {
+      final rows = diffLines('a\nb\nc', 'a\nb\nc');
+      expect(rows.every((r) => r.kind == DiffLineKind.equal), isTrue);
+      expect(rows.map((r) => r.left).toList(), ['a', 'b', 'c']);
+    });
+    test('a replaced line is a changed row (old left, new right)', () {
+      final rows = diffLines('a\nB\nc', 'a\nX\nc');
+      final changed = rows.where((r) => r.kind == DiffLineKind.changed).toList();
+      expect(changed.length, 1);
+      expect(changed.single.left, 'B');
+      expect(changed.single.right, 'X');
+      // The unchanged lines survive as equal rows.
+      expect(rows.where((r) => r.kind == DiffLineKind.equal).length, 2);
+    });
+    test('remote-only lines are added; local-only lines are removed', () {
+      final added = diffLines('a\nc', 'a\nb\nc');
+      expect(added.where((r) => r.kind == DiffLineKind.added).single.right, 'b');
+      final removed = diffLines('a\nb\nc', 'a\nc');
+      expect(
+          removed.where((r) => r.kind == DiffLineKind.removed).single.left, 'b');
+    });
+    test('CRLF vs LF alone is not a difference', () {
+      final rows = diffLines('a\r\nb', 'a\nb');
+      expect(rows.every((r) => r.kind == DiffLineKind.equal), isTrue);
+    });
+    test('empty local vs non-empty remote is all added', () {
+      final rows = diffLines('', 'x\ny');
+      expect(rows.map((r) => r.kind).toSet(), {DiffLineKind.added});
+      expect(rows.map((r) => r.right).toList(), ['x', 'y']);
+    });
+  });
+
   group('cross-user offline-cache ownership (#13)', () {
     test('unrecorded owner is claimed by the current user', () {
       final d = resolveLocalDataOwner(recordedOwner: null, currentUser: 'alice');

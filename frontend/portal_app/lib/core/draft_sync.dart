@@ -54,47 +54,23 @@ extension _AppShellDraftSyncX on _AppShellState {
       builder: (context) => AlertDialog(
         title: const Text('Resolve note conflict'),
         content: SizedBox(
-          width: 460,
+          width: (MediaQuery.of(context).size.width - 80).clamp(280.0, 640.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'A local note and a cloud note share the title "${remoteNote['title'] ?? 'Untitled note'}".',
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Local',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleSmall
-                    ?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                localDraft['description']?.toString().isNotEmpty == true
-                    ? localDraft['description'].toString()
-                    : _excerptFromMarkdown(
-                        localDraft['content']?.toString() ?? '',
-                      ),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
+                'A local note and a cloud note share the title '
+                '"${remoteNote['title'] ?? 'Untitled note'}". Review the '
+                'differences below, then choose which version to keep.',
               ),
               const SizedBox(height: 12),
-              Text(
-                'Cloud',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleSmall
-                    ?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                remoteNote['description']?.toString().isNotEmpty == true
-                    ? remoteNote['description'].toString()
-                    : remoteNote['excerpt']?.toString() ?? '',
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
+              // #31: git-diff-style side-by-side (local vs cloud) so the
+              // user sees exactly what changed, not just a per-side summary.
+              NoteConflictDiffView(
+                localContent: localDraft['content']?.toString() ?? '',
+                remoteContent: remoteNote['content']?.toString() ??
+                    _noteToMarkdown(remoteNote),
               ),
             ],
           ),

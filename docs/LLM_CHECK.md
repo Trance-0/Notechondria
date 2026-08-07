@@ -27,6 +27,15 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.197: FEATURE, #31 (owner-reported bug). Note-conflict resolver showed
+  only a per-side summary; owner wanted a side-by-side git-diff. Added pure
+  diffLines() (LCS, shared/src/utils/line_diff.dart) → aligned DiffRows
+  (equal/changed/removed/added; removed-then-added runs paired into changed;
+  CRLF normalized) + shared NoteConflictDiffView widget (two-up, monospace,
+  height-capped, diff tints). All 3 apps' _showPullConflictDialog now embed
+  it over note CONTENT (was excerpts); dialog width responsive. Pure-fn
+  tests in portal smoke_test. Shared-widget resolves via each app's
+  main.dart barrel import.
 - 0.1.196: INCIDENT FIX (owner-reported). Portal web app stuck on load,
   Firefox NS_ERROR on a font. Server side 100% healthy (all assets 200,
   backend <1s). Cause: this Flutter SDK deprecated its service worker and

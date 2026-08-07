@@ -14,6 +14,8 @@ export 'src/utils/compact_timestamp.dart' show formatCompactTimestamp;
 export 'src/utils/format_bytes.dart' show formatBytes;
 export 'src/utils/local_data_ownership.dart'
     show resolveLocalDataOwner, LocalDataOwnership, LocalOwnerDecision;
+export 'src/utils/line_diff.dart' show diffLines, DiffRow, DiffLineKind;
+export 'src/components/note_conflict_diff.dart' show NoteConflictDiffView;
 export 'src/utils/friendly_error.dart' show friendlyError;
 export 'src/utils/version_status.dart'
     show
