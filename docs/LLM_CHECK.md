@@ -27,6 +27,32 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 2026-09-09 (Jenkins operations / docs only): reviewed all 16 open issues
+  against main 26d21829 and corrected stale browser/low-memory blocker
+  wording on #4, #5, and #16 through GitHub. No unverified issue was closed.
+  Decision list and remaining acceptance work are recorded in
+  `docs/operations/issue-triage-2026-09-09.md`.
+  Diagnosed Jenkins webhook follow-up polling failures: Git did not use
+  the Windows system proxy, and the job watched all branches. Verified
+  the existing loopback proxy, configured Git's repository-specific proxy
+  under the Jenkins service account, saved `*/main` in the job, and removed
+  its unnecessary public-repository SCM credential reference through
+  Jenkins' configuration API after the form did not persist that selection.
+  A GitHub-generated ping returned HTTP 200 in 1.45 seconds; a bounded
+  Jenkins SCM polling diagnostic inspected in Chrome reported no errors
+  and found all four remote heads. No build was scheduled by that probe.
+  Added receiver-versus-polling troubleshooting and proxy rollback steps
+  to `docs/deployment/deploy.md`. Fast-forwarded the initially clean local
+  checkout from 0.1.195 to existing remote 0.1.197 before authoring docs.
+  No application code, containers, tests, or deployments were run; no
+  version bump is needed for this operations/documentation-only repair.
+  A local XML diagnostic failed and echoed sensitive Jenkins configuration
+  into tool output; notified the owner to rotate exposed credentials.
+  No credential values were copied into repository files. Reviewed the
+  README entry points and corrected the docs workflow and issue-tracker
+  links. `git diff --check` passed; no application tests are applicable
+  to these operations/documentation changes.
+
 - 0.1.197: FEATURE, #31 (owner-reported bug). Note-conflict resolver showed
   only a per-side summary; owner wanted a side-by-side git-diff. Added pure
   diffLines() (LCS, shared/src/utils/line_diff.dart) → aligned DiffRows

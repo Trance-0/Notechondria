@@ -32,6 +32,7 @@ From the Jenkins dashboard: `Manage Jenkins` > `Plugins` > `Available plugins`. 
 | **Environment Injector** (EnvInject) | Injects variables from Properties Content into builds |
 | **Docker Pipeline** | Lets pipeline steps interact with Docker |
 | **Git** | SCM checkout support (usually pre-installed) |
+| **GitHub** | Receives `/github-webhook/` events and enables `githubPush()` |
 | **Credentials** | Manages secrets (usually pre-installed) |
 
 After installing, restart Jenkins when prompted.
@@ -85,6 +86,49 @@ Common first-run issues:
 - **Docker not found**: Ensure Docker is installed and accessible to the Jenkins user.
 - **Git long paths (Windows)**: Run `git config --system core.longpaths true` in an admin shell.
 - **Missing backup**: The first backup step may skip because no database exists yet. This is expected.
+
+### GitHub webhook verification and SCM polling
+
+In GitHub repository Settings > Webhooks, use the public Jenkins URL
+`https://jenkins.trance-0.com/github-webhook/`, with the trailing slash,
+the push event, Active enabled, and SSL verification enabled. Jenkins'
+GitHub plugin accepts JSON and form-encoded payloads. Keep the job's
+**GitHub hook trigger for GITScm polling** enabled; `Jenkinsfile` also
+declares `githubPush()` once the pipeline has run.
+
+A webhook delivery and a build are separate steps. GitHub's Recent
+Deliveries proves HTTP delivery; the job's **GitHub Hook Log** proves
+whether Git could poll the repository. A successful ping verifies the
+receiver, but does not trigger a build or prove deployment succeeds.
+
+On 2026-09-09, the hook was active at the correct URL. The previous
+Jenkins hook log showed `git ls-remote` connection resets/timeouts and
+ended with `No changes`. The job watched `**` and its last-built revision
+was on the old `codex` branch. Use `*/main` to avoid selecting backup or
+Pages branches.
+
+The Windows service account's Git did not inherit the Windows system
+proxy. Direct Git requests failed intermittently; the already-running
+local proxy succeeded. For this host, the repair was a repository-scoped
+setting, run as the Jenkins service account:
+
+```powershell
+git config --global 'http.https://github.com/Trance-0/Notechondria.git.proxy' 'http://127.0.0.1:7897'
+git -c http.lowSpeedLimit=1 -c http.lowSpeedTime=20 ls-remote --heads https://github.com/Trance-0/Notechondria.git
+```
+
+`127.0.0.1:7897` was verified against the running proxy and Windows
+settings on this machine; do not copy that address to another host
+without checking its proxy. Keep the proxy running while Jenkins needs
+GitHub. To remove this setting when direct access is reliable again:
+
+```powershell
+git config --global --unset 'http.https://github.com/Trance-0/Notechondria.git.proxy'
+```
+
+Do not disable TLS verification or Jenkins CSRF protection to repair a
+Git network failure. Check delivery, SCM polling, checkout, and deployment
+independently before attributing a failed build to the webhook.
 
 ### Jenkins-injected deployment env
 

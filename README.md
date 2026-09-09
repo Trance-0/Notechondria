@@ -31,7 +31,7 @@ Render should use the backend runtime files:
 ## Docs
 
 Full documentation site (rebuilt on every push to `main`, per
-`.github/workflows/frontend-pages.yml`):
+`.github/workflows/docs-pages.yml`):
 **<https://trance-0.github.io/Notechondria/docs/>**.
 
 Entry points:
@@ -50,7 +50,8 @@ Entry points:
   process).
 - [`docs/versions/`](docs/versions/) — per-release changelog
   (`0.1.x` series).
-- [`docs/TODO.md`](docs/TODO.md) — active work list.
+- [GitHub issues](https://github.com/Trance-0/Notechondria/issues) — active work list;
+  [`docs/TODO.md`](docs/TODO.md) records the tracker migration.
 
 ## Frontend default API behavior
 - On GitHub Pages: defaults to `https://notechondria.trance-0.com/api/v1`
