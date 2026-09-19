@@ -205,6 +205,7 @@
 <tr><td><strong>Environment Injector</strong> (EnvInject)</td><td>Injects variables from Properties Content into builds</td></tr>
 <tr><td><strong>Docker Pipeline</strong></td><td>Lets pipeline steps interact with Docker</td></tr>
 <tr><td><strong>Git</strong></td><td>SCM checkout support (usually pre-installed)</td></tr>
+<tr><td><strong>GitHub</strong></td><td>Receives <code>/github-webhook/</code> events and enables <code>githubPush()</code></td></tr>
 <tr><td><strong>Credentials</strong></td><td>Manages secrets (usually pre-installed)</td></tr>
 </tbody></table>
 </div>
@@ -252,6 +253,38 @@ another deployment branch)</li>
 <li><strong>Git long paths (Windows)</strong>: Run <code>git config --system core.longpaths true</code> in an admin shell.</li>
 <li><strong>Missing backup</strong>: The first backup step may skip because no database exists yet. This is expected.</li>
 </ul>
+<h3 id="github-webhook-verification-and-scm-polling"><a class="header" href="#github-webhook-verification-and-scm-polling">GitHub webhook verification and SCM polling</a></h3>
+<p>In GitHub repository Settings &gt; Webhooks, use the public Jenkins URL
+<code>https://jenkins.trance-0.com/github-webhook/</code>, with the trailing slash,
+the push event, Active enabled, and SSL verification enabled. Jenkins'
+GitHub plugin accepts JSON and form-encoded payloads. Keep the job's
+<strong>GitHub hook trigger for GITScm polling</strong> enabled; <code>Jenkinsfile</code> also
+declares <code>githubPush()</code> once the pipeline has run.</p>
+<p>A webhook delivery and a build are separate steps. GitHub's Recent
+Deliveries proves HTTP delivery; the job's <strong>GitHub Hook Log</strong> proves
+whether Git could poll the repository. A successful ping verifies the
+receiver, but does not trigger a build or prove deployment succeeds.</p>
+<p>On 2026-09-09, the hook was active at the correct URL. The previous
+Jenkins hook log showed <code>git ls-remote</code> connection resets/timeouts and
+ended with <code>No changes</code>. The job watched <code>**</code> and its last-built revision
+was on the old <code>codex</code> branch. Use <code>*/main</code> to avoid selecting backup or
+Pages branches.</p>
+<p>The Windows service account's Git did not inherit the Windows system
+proxy. Direct Git requests failed intermittently; the already-running
+local proxy succeeded. For this host, the repair was a repository-scoped
+setting, run as the Jenkins service account:</p>
+<pre><code class="language-powershell">git config --global 'http.https://github.com/Trance-0/Notechondria.git.proxy' 'http://127.0.0.1:7897'
+git -c http.lowSpeedLimit=1 -c http.lowSpeedTime=20 ls-remote --heads https://github.com/Trance-0/Notechondria.git
+</code></pre>
+<p><code>127.0.0.1:7897</code> was verified against the running proxy and Windows
+settings on this machine; do not copy that address to another host
+without checking its proxy. Keep the proxy running while Jenkins needs
+GitHub. To remove this setting when direct access is reliable again:</p>
+<pre><code class="language-powershell">git config --global --unset 'http.https://github.com/Trance-0/Notechondria.git.proxy'
+</code></pre>
+<p>Do not disable TLS verification or Jenkins CSRF protection to repair a
+Git network failure. Check delivery, SCM polling, checkout, and deployment
+independently before attributing a failed build to the webhook.</p>
 <h3 id="jenkins-injected-deployment-env"><a class="header" href="#jenkins-injected-deployment-env">Jenkins-injected deployment env</a></h3>
 <p>Do not commit the real deployment <code>.env</code> file. Instead, inject deployment variables in Jenkins and let the pipeline materialize <code>.env.deploy</code> during the build.</p>
 <p>Recommended setup with the Environment Injector plugin:</p>
