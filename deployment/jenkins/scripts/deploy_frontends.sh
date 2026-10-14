@@ -10,6 +10,8 @@ bash "$NETWORK_SCRIPT" "$ENV_FILE"
 
 for app in editor_app planner_app portal_app; do
   cd "$ROOT_DIR/frontend/$app"
-  docker compose --env-file "$ENV_FILE" build --no-cache
-  docker compose --env-file "$ENV_FILE" up -d
+  export FRONTEND_IMAGE="notechondria-${app}:${BUILD_NUMBER:-local}"
+  export APP_BASE_HREF="/${app%_app}/"
+  docker compose --env-file "$ENV_FILE" build
+  docker compose --env-file "$ENV_FILE" up -d --wait --wait-timeout 180
 done

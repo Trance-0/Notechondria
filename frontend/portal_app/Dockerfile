@@ -12,10 +12,11 @@ USER ${FRONTEND_UID}:${FRONTEND_GID}
 ENV HOME=/home/frontend
 RUN git config --global --add safe.directory /sdks/flutter     && flutter config --enable-web
 
-COPY --chown=${FRONTEND_UID}:${FRONTEND_GID} pubspec.yaml pubspec.lock ./
+COPY --chown=${FRONTEND_UID}:${FRONTEND_GID} portal_app/pubspec.yaml portal_app/pubspec.lock ./
+COPY --chown=${FRONTEND_UID}:${FRONTEND_GID} notechondria_shared /notechondria_shared
 RUN flutter pub get
 
-COPY --chown=${FRONTEND_UID}:${FRONTEND_GID} . .
+COPY --chown=${FRONTEND_UID}:${FRONTEND_GID} portal_app/ .
 
 FROM frontend_base AS frontend_test
 RUN flutter test test/smoke_test.dart

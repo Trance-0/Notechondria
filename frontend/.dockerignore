@@ -5,3 +5,8 @@
 .idea
 build
 windows
+**/.dart_tool
+**/.flutter-plugins*
+**/build
+**/.env*
+**/*.env

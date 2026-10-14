@@ -11,6 +11,7 @@ networks:
 
 services:
   app:
+    restart: unless-stopped
     image: ${APP_IMAGE:-trancezero/notechondria:latest}
     build:
       context: ..
@@ -59,6 +60,7 @@ services:
       - notechondria-back
       - notechondria-shared
   db:
+    restart: unless-stopped
     image: postgres:15
     volumes:
       - postgres-data:/var/lib/postgresql/data/
@@ -77,6 +79,7 @@ services:
     networks:
       - notechondria-back
   nginx:
+    restart: unless-stopped
     image: ${NGINX_IMAGE:-trancezero/nginx:latest}
     build: ./nginx
     volumes:

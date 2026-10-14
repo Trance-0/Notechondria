@@ -1,97 +1,68 @@
 pipeline {
   agent any
-
   options {
     timestamps()
     disableConcurrentBuilds()
+    skipDefaultCheckout(true)
+    timeout(time: 120, unit: 'MINUTES')
+    buildDiscarder(logRotator(numToKeepStr: '20'))
   }
-
+  parameters {
+    string(name: 'LOCAL_SOURCE_DIR', defaultValue: '', description: 'Trusted local source snapshot; leave empty for SCM checkout.')
+  }
   environment {
     ENV_FILE = '.env.deploy'
-    BACKUP_DIR = 'backups'
-    PREPARE_ENV_SCRIPT = 'deployment/jenkins/scripts/prepare_env.sh'
-    BACKUP_SCRIPT = 'deployment/jenkins/scripts/backup_postgres.sh'
-    TEST_BACKEND_SCRIPT = 'deployment/jenkins/scripts/test_backend.sh'
-    TEST_FRONTENDS_SCRIPT = 'deployment/jenkins/scripts/test_frontends.sh'
-    DEPLOY_BACKEND_SCRIPT = 'deployment/jenkins/scripts/deploy_backend.sh'
-    DEPLOY_FRONTENDS_SCRIPT = 'deployment/jenkins/scripts/deploy_frontends.sh'
-    DEPLOY_GATEWAY_SCRIPT = 'deployment/jenkins/scripts/deploy_gateway.sh'
+    DEPLOY_ENV_SOURCE = '/var/lib/jenkins/secrets/notechondria-deploy.env'
+    BACKUP_DIR = '/var/lib/jenkins/backups/notechondria'
+    NO_PROXY = 'localhost,127.0.0.1,::1'
+    no_proxy = 'localhost,127.0.0.1,::1'
   }
-
-  triggers {
-    githubPush()
-  }
-
+  triggers { githubPush() }
   stages {
-    stage('Checkout') {
+    stage('Source snapshot') {
       steps {
-        checkout scm
-      }
-    }
-
-    stage('Prepare Environment') {
-      steps {
-        sh 'bash ${PREPARE_ENV_SCRIPT} "${WORKSPACE}/${ENV_FILE}"'
-      }
-    }
-
-    stage('Backup Database') {
-      steps {
-        sh 'bash ${BACKUP_SCRIPT} "${WORKSPACE}/${ENV_FILE}" "${WORKSPACE}/${BACKUP_DIR}" "${WORKSPACE}"'
-      }
-    }
-
-    stage('Test') {
-      parallel {
-        stage('Backend Tests') {
-          steps {
-            catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-              sh 'bash ${TEST_BACKEND_SCRIPT} "${WORKSPACE}" "${WORKSPACE}/${ENV_FILE}"'
+        deleteDir()
+        script {
+          if (params.LOCAL_SOURCE_DIR?.trim()) {
+            withEnv(["SOURCE_DIR=${params.LOCAL_SOURCE_DIR}"]) {
+              sh 'python3 /usr/local/lib/notechondria-jenkins/snapshot_source.py "$SOURCE_DIR" "$WORKSPACE"'
             }
-          }
-        }
-        stage('Frontend Tests') {
-          steps {
-            catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-              sh 'bash ${TEST_FRONTENDS_SCRIPT}'
-            }
+          } else {
+            checkout scm
           }
         }
       }
     }
-
-    stage('Deploy') {
-      parallel {
-        stage('Backend Deploy') {
-          steps {
-            catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-              sh 'bash ${DEPLOY_BACKEND_SCRIPT} "${WORKSPACE}" "${WORKSPACE}/${ENV_FILE}" "${WORKSPACE}/deployment/jenkins/scripts/wait_for_stack.sh" "300" "${WORKSPACE}/deployment/jenkins/scripts/ensure_db_ready.sh"'
-            }
-          }
-        }
-        stage('Frontend Deploy') {
-          steps {
-            catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-              sh 'bash ${DEPLOY_FRONTENDS_SCRIPT} "${WORKSPACE}/${ENV_FILE}"'
-            }
-          }
-        }
+    stage('Prepare environment') {
+      steps {
+        sh 'bash deployment/jenkins/scripts/prepare_env.sh "$WORKSPACE/$ENV_FILE" "$DEPLOY_ENV_SOURCE"'
       }
     }
-
-    stage('Gateway Finalize') {
+    stage('Backend tests') {
+      steps { sh 'bash deployment/jenkins/scripts/test_backend.sh "$WORKSPACE" "$WORKSPACE/$ENV_FILE"' }
+    }
+    stage('Frontend tests') {
+      steps { sh 'bash deployment/jenkins/scripts/test_frontends.sh' }
+    }
+    stage('Database backup') {
+      steps { sh 'timeout 5m bash deployment/jenkins/scripts/backup_postgres.sh "$WORKSPACE/$ENV_FILE" "$BACKUP_DIR" "$WORKSPACE"' }
+    }
+    stage('Backend deployment') {
+      steps { sh 'bash deployment/jenkins/scripts/deploy_backend.sh "$WORKSPACE" "$WORKSPACE/$ENV_FILE"' }
+    }
+    stage('Frontend deployment') {
+      steps { sh 'bash deployment/jenkins/scripts/deploy_frontends.sh "$WORKSPACE/$ENV_FILE"' }
+    }
+    stage('Gateway and health verification') {
       steps {
-        sh 'bash ${DEPLOY_GATEWAY_SCRIPT} "${WORKSPACE}/${ENV_FILE}"'
+        sh 'bash deployment/jenkins/scripts/deploy_gateway.sh "$WORKSPACE/$ENV_FILE"'
+        sh 'bash deployment/jenkins/scripts/verify_deployment.sh "$WORKSPACE/$ENV_FILE"'
       }
     }
   }
-
   post {
-    success {
-      echo 'Full-stack Jenkins deployment pipeline succeeded.'
-    }
-    failure {
-      echo 'Full-stack Jenkins deployment pipeline failed.'
-    }
+    always { sh 'rm -f "$WORKSPACE/$ENV_FILE"' }
+    success { echo 'Deployment verified: Jenkins.Deploy/complete — backend and all three frontend routes passed HTTP checks.' }
+    failure { echo 'Deployment incomplete: Jenkins.Deploy/pipeline — a required stage failed; inspect the failed stage console.' }
   }
 }

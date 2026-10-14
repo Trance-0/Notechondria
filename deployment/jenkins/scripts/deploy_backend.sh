@@ -17,7 +17,7 @@ cd "$PROJECT_DIR/backend"
 
 bash "$NETWORK_SCRIPT" "$ENV_PATH"
 bash "$DB_READY_SCRIPT" "$PROJECT_DIR" "$ENV_PATH" "$WAIT_TIMEOUT_SECONDS"
-docker compose --env-file "$ENV_PATH" build --pull --no-cache app nginx
+docker compose --env-file "$ENV_PATH" build app nginx
 docker compose --env-file "$ENV_PATH" up -d --force-recreate
 bash "$WAIT_SCRIPT" "$PROJECT_DIR" "$ENV_PATH" "$WAIT_TIMEOUT_SECONDS"
 docker compose --env-file "$ENV_PATH" exec -T app python manage.py migrate --noinput
