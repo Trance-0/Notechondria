@@ -152,7 +152,9 @@ This project's canonical module / process names are:
 | `Portal.Auth` | portal_app auth flows | same verbs as `Editor.Auth` |
 | `Portal.Sync.FrontPage` | portal front-page sync | `pull` |
 | `Portal.LocalStore` | portal local persistence | same verbs |
-| `Portal.UI` | portal user-visible actions | same verbs |
+| `Portal.UI` | portal user-visible actions | same verbs, plus `render` (the shared `StartupErrorWidget`, all apps) |
+| `Editor.Startup` / `Planner.Startup` / `Portal.Startup` | cold start and its fallbacks (`core/bootstrap.dart`, `runGuardedApp`) | `bootstrap`, `retry`, `work_offline`, `initial_data`, `zone`, `uncaught_error` |
+| `Editor.HTTP` / `Planner.HTTP` / `Portal.HTTP` | per-app HTTP layer (`HttpClientInternalsMixin.send`) | `request`, `response`, `request_failed` |
 | `Shared.AuthDialog` | `notechondria_shared` auth dialog stack | `login.submit`, `register.submit`, `verify.submit`, `reset.request`, `reset.confirm` |
 | `Shared.DebugLog` | shared debug log card / terminal | `ls`, `cd`, `clear`, `copy`, `unknown_command` |
 | `Backend.Creators.Auth` | `backend/creators/api.py` auth endpoints | `register`, `login`, `verify`, `bind`, `oauth.google`, `oauth.github`, `password.reset` |

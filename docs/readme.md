@@ -39,6 +39,13 @@ deployable.
   [`development/python_environments.md`](development/python_environments.md).
 - **Frontend**: Flutter per-app (editor/planner/portal). Each is a
   self-contained workspace with its own `pubspec.yaml`.
+- **Web apps against the remote backend**: `scripts/local_remote_deploy.sh
+  up` builds the three apps in Docker. It serves them at
+  `http://127.0.0.1:9068/{portal,editor,planner}/` (loopback only) behind
+  an nginx gateway that proxies `/api/` to
+  `https://notechondria.trance-0.com`. Env vars: `LOCAL_GATEWAY_HOST_PORT`
+  and `REMOTE_BACKEND_ORIGIN`. See
+  [`development/local_dev.md`](development/local_dev.md).
 
 Quick smoke (all three frontend apps):
 
@@ -75,6 +82,27 @@ Resolved by `_defaultApiBaseUrl()` in each app's
 user edits the URL in Settings, the client calls
 [`verifyHandshake`](server/backend.md#handshake) against the candidate
 before committing.
+
+### Startup when the backend is down (since 0.1.198)
+
+Each app paints its local data first and never waits on the backend
+without a bound:
+
+- `web/index.html` shows a loading indicator until Flutter's first frame.
+  If the Flutter loader fails to download or throws, or nothing has
+  rendered after 20s, it shows the cause and a Reload button.
+- Backend requests made during startup, the error banner's Retry, and its
+  Work offline are capped at 10s, and later requests in the same pass fail
+  fast after the first timeout. An unresponsive backend therefore ends in the
+  "Cloud data not loaded: <App>.Startup/bootstrap — the server did not
+  respond within 10s" banner over local data, with Work offline and Retry.
+- A startup step that throws (for example a corrupt local cache) shows a
+  failure screen with Retry and Continue anyway. Uncaught errors before the
+  first frame, and widget build errors, render visible fallbacks instead of
+  a blank page.
+
+See the `src/startup/` section of
+[`client/notechondria_shared.md`](client/notechondria_shared.md).
 
 ### Per-app OAuth redirect URIs (since 0.1.90)
 
@@ -150,9 +178,11 @@ install). The supported path is **Add to Home Screen**:
 - **Android (Chrome)**: open the app URL and accept the install
   prompt (or menu > "Add to Home screen").
 
-Since 0.1.127 the Pages builds ship a service worker, so an installed
-app launches offline after its first online load; an in-app toast
-offers a one-tap reload when a new version is deployed.
+Since 0.1.196 the Pages builds register no service worker (the
+`STRIP_SERVICE_WORKER` kill switch in `frontend-pages.yml` is on, because
+this Flutter SDK deprecated its worker). Every launch fetches the current
+bundle, so an installed app needs a connection to open. Data already saved
+on the device stays available after it opens.
 
 ## Where to go next
 

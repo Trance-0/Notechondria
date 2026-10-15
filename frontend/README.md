@@ -51,7 +51,13 @@ GitHub Pages project-site paths:
 
 Pages runtime choices:
 - local bundled web runtime assets (`--no-web-resources-cdn`)
-- disabled published service-worker bootstrap
+- disabled published service-worker bootstrap. The strip step edits only
+  the `_flutter.loader.load(...)` call site and asserts that the inlined
+  `flutter.js` loader is unchanged (0.1.198)
+- startup fallbacks (0.1.198): an HTML loading/failure message in each
+  `web/index.html`, startup backend requests capped at 10s ending in the
+  Work offline / Retry banner, and `runGuardedApp` error guards (see
+  `docs/readme.md`, "Startup when the backend is down")
 - root landing page links to all three apps
 - default API target on Pages: `https://notechondria.trance-0.com/api/v1`
 

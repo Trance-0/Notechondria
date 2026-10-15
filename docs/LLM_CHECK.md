@@ -12,6 +12,7 @@ Use this checklist at the end of each modification round.
 6. Expanding scope without checking whether there were already user changes in the worktree.
 7. Assuming a host port such as `80`, `443`, `8080`, or any other port is free without first confirming it on the target machine; you do not know the host machine state, so never assign host ports on assumption.
 8. Launching builds/tests/containers beyond what the host can afford (crashed the 3.3 GiB dev host on 2026-07-10 with three parallel Flutter Docker builds + a 7-service stack). Check `free -h` first; take at most 70% of remaining RAM; `--memory`-cap containers; `timeout`-wrap runs; kill anything silent for 5 minutes; run heavy jobs sequentially. See docs/AGENTS.md "Host resource budget".
+9. Post-processing generated web output with whole-file regexes. 0.1.196's Pages service-worker strip also matched the inlined `flutter.js` loader's own `serviceWorkerSettings:e` parameter, so every app threw `ReferenceError: e is not defined` and stayed blank for two releases while CI was green (VM smoke tests never run the bootstrap JS). Scope edits of `flutter_bootstrap.js` to the call site after `//# sourceMappingURL=flutter.js.map`, assert the loader is unchanged, and load the built bundle in a real browser before claiming a web fix.
 
 ## Round-end checklist
 
@@ -26,6 +27,52 @@ Use this checklist at the end of each modification round.
 - Confirm every host port assignment was explicitly verified for the target machine instead of assuming a common port is available; you have no knowledge of host port availability until it is checked.
 
 ## Current round log
+
+- 0.1.198: INCIDENT FIX (owner-reported white screen) + backend-unavailable
+  fallbacks. Root cause `.github/workflows/frontend-pages.yml:130`: the
+  0.1.196 strip regex also removed `serviceWorkerSettings:e` from the inlined
+  flutter.js loader signature, so `_flutter.loader.load()` threw before
+  fetching main.dart.js. The line-131 whole-file assert forced that. The strip
+  is now scoped to the call site, with the loader asserted byte-identical to
+  build/web/flutter.js. Fallbacks: startup requests are bounded by a shared
+  StartupRequestBudget (zone value, enforced in HttpClientInternalsMixin.send;
+  10s, fail-fast after the first timeout). Also added: the shared
+  LoadErrorBanner (Work offline / Retry), a StartupFailureView for a startup
+  step that throws, runGuardedApp (zone + PlatformDispatcher + FlutterError +
+  non-blank ErrorWidget.builder), and an HTML loader/failure message in every
+  web/index.html. Pure moves brought portal app_shell from 1515 to 866 lines
+  and planner from 1065 to 912. The shared WideCourseSidebarSection replaced
+  two identical private copies. Verified in Docker
+  (ghcr.io/cirruslabs/flutter:stable, 3.44.0): analyze 0 errors in all four
+  packages; app tests all pass; shared 67 pass, plus 3 failures in
+  version_update_banner_test that already fail on unmodified HEAD. Release
+  web builds were checked in headless Firefox: the HEAD strip reproduces the
+  ReferenceError and now shows the HTML fallback, and the new strip boots all
+  three apps against notechondria.trance-0.com. Hang shows the banner after
+  ~10s, refused shows it at once, and a missing bootstrap shows the
+  script-download message.
+  GOTCHAS: (1) `flutter gen-l10n` fails on this SDK
+  for the pre-existing `activityWeightN` (int placeholder in a select); the
+  new keys were generated from a temp ARB copy and spliced in, leaving
+  `activityWeightN` as committed. (2) Tests that call app.main() must restore
+  ErrorWidget.builder before the test body ends (flutter_test invariant).
+  (3) The version-banner handshake probe keeps an 8s timer; hanging-backend
+  widget tests must pump past it. NOT run: Chrome/Safari, iOS/Android
+  installs, CI itself (runs after the owner pushes).
+  LOCAL DEPLOY: `scripts/local_remote_deploy.sh up|down` builds the three
+  app images with the existing Dockerfiles. One nginx gateway
+  (`deployment/docker/nginx/local_remote.conf.template`) publishes only
+  127.0.0.1:9068 and proxies /api/, /media/, and /static/ to the remote. It
+  sends Host $proxy_host and verifies upstream TLS. A proxy is required
+  because loopback origins always use same-origin /api/v1. Verified in
+  Playwright Chromium and Firefox (Docker, host network). All three apps
+  render live remote data. A black-holed origin shows the 10s "Cloud data
+  not loaded" banner; a refused origin shows the gateway 502 as "Expected
+  JSON ... received HTML", which still lacks the §1.8 parts. GOTCHAS:
+  container Chromium without a locale reports `en-US@posix`, and the
+  Flutter engine throws RangeError in Intl.Locale before the first frame,
+  so pass a locale to headless runs. The Docker build path does not bake
+  APP_VERSION (reports 0.1.21).
 
 - 2026-09-09 (Jenkins operations / docs only): reviewed all 16 open issues
   against main 26d21829 and corrected stale browser/low-memory blocker

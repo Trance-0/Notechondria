@@ -95,9 +95,30 @@ in 0.1.67 relies on this pair.
 | `auth_dialogs_wizard.dart` | `RegistrationWizard` | Multi-step signup flow (invitation-code → email+password → verify). |
 | `debug_log.dart`, `debug_widgets.dart` | `DebugLogCard`, `ApiDebugCard` | Debug drawer surfaces on the Settings surface. |
 | `error_state.dart` | `ErrorStatePanel` | "Something went wrong" screen with API base URL context. |
+| `load_error_banner.dart` | `LoadErrorBanner` | Since 0.1.198: the connection / load-error bar shared by all three shells (was three copies). Renders the raw error through `friendlyError` (localized AGENTS.md §1.8 text) with Work offline / Retry / Dismiss. |
+| `startup_failure_view.dart` | `StartupFailureView` | Since 0.1.198: full-page fallback when a startup step throws, with the §1.8 cause, Retry, and an optional "Continue anyway". |
+| `wide_course_sidebar_section.dart` | `WideCourseSidebarSection` | Collapsible "Courses" list in the planner / portal wide sidebar (moved here from two identical private copies in 0.1.198). |
 | `navigation.dart` | Navigation rail / bottom-bar helpers. |
 | `phased_status.dart` | `PhasedStatusIndicator` — replaces a bare spinner with a labelled "Sending request to backend → Waiting for backend response → Applying response" line. Used by `EmailPasswordDialog._submit`. |
 | `splash_screen.dart` | `SplashScreen` | Splash screen backed by `src/reaction_simulator/` since 0.1.128 — a Dart port of the owner's `index` repo reaction simulator (TCA-cycle particles colliding and reacting on a toroidal world; hardcoded 128-particle target, spawn energy ~ N(250000, 60000)). Replaced the hand-drawn `splash_painter.dart` Krebs-cycle painter (deleted). |
+
+## `src/startup/` — startup resilience (since 0.1.198)
+
+- **`startup_budget.dart`** — `StartupRequestBudget` and
+  `runWithStartupBudget`. Each app runs its cold start, the load-error
+  banner's Retry, and its Work offline inside a budget. The budget travels
+  as a zone value and `HttpClientInternalsMixin.send` enforces it: every
+  request is capped at `kBackendStartupTimeout` (10s), and after the first
+  timeout the rest of the pass fails fast with a `BackendStartupTimeout`.
+  `friendlyError` renders that as the localized "did not respond within 10s"
+  message. Requests outside a pass keep their previous behavior and are
+  unbounded.
+- **`startup_guard.dart`** — `runGuardedApp` (used by every `main.dart`)
+  wraps `runApp` in `runZonedGuarded`, chains `FlutterError.onError` and
+  `PlatformDispatcher.instance.onError`, and installs `StartupErrorWidget` as
+  a non-blank `ErrorWidget.builder`. An uncaught error before the first frame
+  shows `StartupFailureApp`; later ones are only logged, because the shell's
+  own fallbacks are on screen by then.
 
 ## `src/models/`
 

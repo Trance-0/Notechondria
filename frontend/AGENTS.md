@@ -12,6 +12,10 @@ This directory contains the three standalone Notechondria frontend apps.
   splash, error-state, debug card, auth-dialog stack, app-preferences
   rows, and the cross-cutting `ActionFeedback` / `ApiDebugSnapshot`
   models + `showBlurDialog` / `formatCompactTimestamp` helpers.
+  Since 0.1.198 it also owns startup resilience: `runGuardedApp`, the
+  `StartupRequestBudget` (10s-bounded startup requests), `LoadErrorBanner`,
+  and `StartupFailureView`. Any new startup network call must run inside
+  the app's startup budget (`core/bootstrap.dart`).
 - `README.md` — concise human overview
 
 ## Current progress
