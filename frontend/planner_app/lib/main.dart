@@ -22,6 +22,7 @@ import 'core/url_strategy.dart'
     if (dart.library.html) 'core/url_strategy_web.dart' as url_strategy;
 
 part 'app_shell.dart';
+part 'core/bootstrap.dart';
 part 'core/calendar.dart';
 part 'core/client.dart';
 part 'core/course_helpers.dart';
@@ -61,8 +62,12 @@ part 'modules/activity_week.dart';
 part 'modules/settings.dart';
 
 void main() {
-  runApp(
-    const NotechondriaApp(
+  // Guarded launch: uncaught startup errors, framework errors, and widget
+  // build errors render a visible fallback instead of a blank page.
+  runGuardedApp(
+    appModule: 'Planner',
+    appTitle: 'Notechondria Planner',
+    buildApp: () => const NotechondriaApp(
       initialIndex: 1,
       title: 'Notechondria Planner',
       // 0=Learner, 1=Course, 2=Activity, 3=Settings

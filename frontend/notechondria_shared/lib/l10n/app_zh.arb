@@ -428,9 +428,13 @@
   "tourPortalAppsTitle": "打开各应用",
   "tourPortalAppsBody": "随时进入编辑器或规划器。登录即可同步你自己的内容。",
 
-  "errorNetwork": "无法连接到服务器。请检查你的网络连接后重试。",
-  "errorTimeout": "服务器响应超时。请重试。",
-  "errorServer": "服务器出错了。请稍后重试。",
+  "errorNetwork": "未能加载云端数据：{source} — 无法连接到服务器（网络请求失败）。请检查网络连接，然后重试或离线使用。",
+  "errorTimeout": "未能加载云端数据：{source} — 服务器未及时响应（请求超时）。请重试或离线使用。",
+  "errorServer": "未能加载云端数据：{source} — 服务器返回错误（HTTP 5xx）。请稍后重试或离线使用。",
+  "startupBackendTimeout": "未能加载云端数据：{source} — 服务器在 {seconds} 秒内未响应。当前显示本设备上保存的数据；请重试或离线使用。",
+  "startupFailureTitle": "应用未能完成启动",
+  "startupFailureMessage": "应用未能完成启动：{source} — {cause}。请重试，或继续使用本设备上保存的数据。",
+  "startupContinueAnyway": "仍然继续",
 
   "versionUpdateAvailable": "有新版本可用。刷新以更新。",
   "versionDeploying": "新版本正在发布——部分功能可能暂时不可用。",

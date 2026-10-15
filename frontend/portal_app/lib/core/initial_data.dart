@@ -309,7 +309,9 @@ extension _AppShellInitialDataX on _AppShellState {
           ? 'Initial Portal._loadInitialData data loaded '
               '(${courses.length} cloud courses, ${learnerNotes.length} notes).'
           : sessionRejected
-              ? 'Session expired \u2014 signed out. Please sign in again.'
+              ? 'Signed out: Portal.Session/reject \u2014 at least two '
+                  'authenticated requests were rejected (expired or revoked '
+                  'session). Please sign in again.'
               : 'Initial Portal._loadInitialData load used offline fallback: '
                   'Portal.Sync.FrontPage/bootstrap \u2014 ${errors.first}.',
     );

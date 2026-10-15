@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../components/debug_log.dart';
 import '../models/api_debug_snapshot.dart';
+import '../startup/startup_budget.dart';
 
 /// Internal HTTP plumbing for each app's `HttpNotechondriaClient`.
 /// Owns the four headline helpers from `docs/TODO.md` plus their
@@ -88,6 +89,13 @@ mixin HttpClientInternalsMixin {
   /// `requestBytes` is shown in the dispatch line for POST/PATCH
   /// payloads so the debug terminal surfaces request size at a
   /// glance.
+  ///
+  /// Inside a startup pass (`runWithStartupBudget`) the request is
+  /// bounded by that pass's [StartupRequestBudget] and fails with a
+  /// [BackendStartupTimeout] instead of waiting forever on an
+  /// unresponsive server. Outside a pass the request is unbounded, as
+  /// before, so long user-initiated calls (uploads, GitHub push) are not
+  /// cut off.
   Future<http.Response> send(
     String method,
     Uri uri,
@@ -103,8 +111,11 @@ mixin HttpClientInternalsMixin {
           '$method ${uri.path}'
           '${requestBytes > 0 ? " (${requestBytes}B payload)" : ""}.',
     );
+    final budget = currentStartupBudget;
     try {
-      final response = await operation();
+      final response = budget == null
+          ? await operation()
+          : await budget.run('$method ${uri.path}', operation);
       final elapsedMs = DateTime.now().difference(started).inMilliseconds;
       logger?.call(
         _levelForStatus(response.statusCode),
@@ -132,7 +143,16 @@ mixin HttpClientInternalsMixin {
         looksLikeHtml: false,
         note: 'Request failed before a response was received.',
       ));
-      throw Exception('Client failed to fetch, uri=$uri');
+      // Keep the startup timeout intact: its shaped message names the
+      // startup pass and is what the backend-unavailable banner parses.
+      if (error is BackendStartupTimeout) rethrow;
+      // "failed to fetch" is the marker `friendlyError` maps to the
+      // network-unreachable message; keep it in the cause.
+      throw Exception(
+        'Server request failed: $tag.HTTP/request — client failed to '
+        'fetch $method $uri before a response arrived '
+        '(${error.runtimeType}).',
+      );
     }
   }
 

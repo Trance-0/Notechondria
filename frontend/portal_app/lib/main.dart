@@ -22,6 +22,8 @@ import 'core/url_strategy.dart'
     if (dart.library.html) 'core/url_strategy_web.dart' as url_strategy;
 
 part 'app_shell.dart';
+part 'core/bootstrap.dart';
+part 'core/build_page.dart';
 part 'core/calendar.dart';
 part 'core/client.dart';
 part 'core/client_base.dart';
@@ -50,6 +52,7 @@ part 'core/whats_new.dart';
 part 'core/onboarding.dart';
 part 'core/snapshot.dart';
 part 'components/avatar.dart';
+part 'components/custom_splash_overlay.dart';
 part 'components/note_viewer.dart';
 part 'components/note_route_page.dart';
 part 'modules/front.dart';
@@ -65,8 +68,12 @@ part 'modules/settings_pages.dart';
 part 'modules/settings_sections.dart';
 
 void main() {
-  runApp(
-    const NotechondriaApp(
+  // Guarded launch: uncaught startup errors, framework errors, and widget
+  // build errors render a visible fallback instead of a blank page.
+  runGuardedApp(
+    appModule: 'Portal',
+    appTitle: 'Notechondria Portal',
+    buildApp: () => const NotechondriaApp(
       initialIndex: 0,
       title: 'Notechondria Portal',
       // 0=Front page, 1=Learner (from editor), 2=Course (from planner),

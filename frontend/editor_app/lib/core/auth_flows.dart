@@ -173,6 +173,17 @@ extension _AppShellAuthFlowsX on _AppShellState {
         await applyAuthPayload(check);
         return;
       }
+    } on BackendStartupTimeout catch (error) {
+      // A startup timeout says nothing about the token; clearing the
+      // session would sign the user out because the server was slow.
+      // Keep it saved; the load-error banner's Retry restores it.
+      log(
+        level: DebugLogLevel.warning,
+        source: 'Editor.Auth/restore',
+        message: 'Saved session not restored yet \u2014 $error '
+            'The session stays saved; Retry restores it.',
+      );
+      return;
     } catch (_) {
       // Token invalid or network down — fall through and clear.
     }

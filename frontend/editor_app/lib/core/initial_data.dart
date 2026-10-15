@@ -317,8 +317,11 @@ extension _AppShellInitialDataX on _AppShellState {
           ? 'Initial Editor._loadInitialData data loaded '
               '(${courses.length} categories, ${learnerNotes.length} notes).'
           : sessionRejected
-              ? 'Session expired \u2014 signed out. Please sign in again.'
-              : 'Initial load used offline fallback: ${errors.first}',
+              ? 'Signed out: Editor.Session/reject \u2014 at least two '
+                  'authenticated requests were rejected (expired or revoked '
+                  'session). Please sign in again.'
+              : 'Initial Editor._loadInitialData load used offline fallback: '
+                  'Editor.Sync.Notes/bootstrap \u2014 ${errors.first}.',
     );
     if (!sessionRejected && errors.isEmpty) {
       unawaited(_autoMigrateLegacyInbox());

@@ -271,6 +271,10 @@ class _AppShellState extends State<AppShell>
   bool _isLoading = true;
   bool _showSplash = true;
   String? _errorMessage;
+
+  /// Cause of a startup step that threw; while set, `build` shows the
+  /// shared `StartupFailureView` instead of the shell.
+  String? _startupFailure;
   String? _token;
   Map<String, dynamic>? _profile;
   Map<String, dynamic>? _settings;
@@ -501,35 +505,8 @@ class _AppShellState extends State<AppShell>
     super.dispose();
   }
 
-  Future<void> _bootstrapApp() async {
-    _splashTimer = Timer(const Duration(seconds: 10), () {
-      if (mounted && _isLoading) {
-        setState(() {
-          _isLoading = false;
-          _showSplash = false;
-        });
-      }
-    });
-    _splashStatus.value = 'Loading local workspace';
-    await _loadLocalState();
-    // Restore the stored auth token BEFORE handling any OAuth callback.
-    // The bind flow needs `_token` to be non-null so it can call the
-    // authenticated /auth/bind/* endpoint; otherwise the fallback logic
-    // would hit the public /auth/<provider>/ endpoint and either log in
-    // as the OAuth identity's email owner or create a new account,
-    // effectively overwriting the current user.
-    _splashStatus.value = 'Restoring session';
-    await _restoreSession();
-    _splashStatus.value = 'Completing sign-in';
-    await handleOAuthCallback();
-    _splashStatus.value = 'Connecting to server';
-    await _loadInitialData();
-    // Deep-link: if the URL contains a note UUID, load it.
-    final deepLinkUuid = _parseNoteUuidFromUrl();
-    if (deepLinkUuid != null) {
-      await _openNoteByUuid(deepLinkUuid);
-    }
-  }
+  // `_bootstrapApp` and the startup recovery actions live in
+  // `core/bootstrap.dart`.
 
   // All state-mutating logic has been extracted into per-concern
   // extensions on `_AppShellState` under `lib/core/*.dart` so this
@@ -571,6 +548,15 @@ class _AppShellState extends State<AppShell>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final startupFailure = _startupFailure;
+    if (startupFailure != null) {
+      return StartupFailureView(
+        source: 'Editor.Startup/bootstrap',
+        cause: startupFailure,
+        onRetry: _retryBootstrap,
+        onContinue: _continueAfterBootstrapFailure,
+      );
+    }
     final scaffold = LayoutBuilder(
       builder: (context, constraints) {
         final isWideLayout = constraints.maxWidth >= 960;

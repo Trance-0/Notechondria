@@ -1356,14 +1356,35 @@ class AppLocalizationsEn extends AppLocalizations {
       'Jump into the Editor or Planner anytime. Sign in to sync your own work.';
 
   @override
-  String get errorNetwork =>
-      'Couldn\'t reach the server. Check your connection and try again.';
+  String errorNetwork(String source) {
+    return 'Cloud data not loaded: $source — the server could not be reached (network request failed). Check your connection, then retry or work offline.';
+  }
 
   @override
-  String get errorTimeout => 'The server took too long to respond. Try again.';
+  String errorTimeout(String source) {
+    return 'Cloud data not loaded: $source — the server did not respond in time (request timed out). Retry or work offline.';
+  }
 
   @override
-  String get errorServer => 'The server hit an error. Try again in a moment.';
+  String errorServer(String source) {
+    return 'Cloud data not loaded: $source — the server returned an error (HTTP 5xx). Retry in a moment or work offline.';
+  }
+
+  @override
+  String startupBackendTimeout(String source, int seconds) {
+    return 'Cloud data not loaded: $source — the server did not respond within ${seconds}s. Showing data saved on this device; retry or work offline.';
+  }
+
+  @override
+  String get startupFailureTitle => 'The app could not finish starting';
+
+  @override
+  String startupFailureMessage(String source, String cause) {
+    return 'The app could not finish starting: $source — $cause. Retry, or continue with the data saved on this device.';
+  }
+
+  @override
+  String get startupContinueAnyway => 'Continue anyway';
 
   @override
   String get versionUpdateAvailable =>

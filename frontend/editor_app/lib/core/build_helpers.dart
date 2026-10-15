@@ -464,7 +464,6 @@ extension _AppShellBuildHelpersX on _AppShellState {
   }
 
   Widget _buildBody() {
-    final l10n = AppLocalizations.of(context);
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 250),
       child: SelectionArea(
@@ -477,43 +476,17 @@ extension _AppShellBuildHelpersX on _AppShellState {
             ),
             if (_isLoading) const LinearProgressIndicator(minHeight: 2),
             if (_errorMessage != null)
-              Material(
-                color: Theme.of(context).colorScheme.errorContainer,
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      Icon(Icons.cloud_off_outlined,
-                          color:
-                              Theme.of(context).colorScheme.onErrorContainer),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(friendlyError(l10n, _errorMessage!),
-                            style: TextStyle(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onErrorContainer)),
-                      ),
-                      if (_localSettings['offline_mode'] != true)
-                        TextButton(
-                          onPressed: () => _setOfflineMode(true),
-                          child: Text(l10n.errorWorkOffline),
-                        ),
-                      TextButton(
-                          onPressed: _loadInitialData,
-                          child: Text(l10n.commonRetry)),
-                      IconButton(
-                        onPressed: () {
-                          _errorMessage = null;
-                          refreshState();
-                        },
-                        icon: const Icon(Icons.close),
-                        tooltip: l10n.commonDismiss,
-                      ),
-                    ],
-                  ),
-                ),
+              LoadErrorBanner(
+                message: _errorMessage!,
+                source: 'Editor.Startup/initial_data',
+                onWorkOffline: _localSettings['offline_mode'] != true
+                    ? _workOffline
+                    : null,
+                onRetry: _retryStartup,
+                onDismiss: () {
+                  _errorMessage = null;
+                  refreshState();
+                },
               ),
             Expanded(
               child: AnimatedSwitcher(

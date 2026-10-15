@@ -100,7 +100,9 @@ mixin AppShellLogMixin<W extends StatefulWidget> on State<W> {
 
   /// Wraps a backend call so its duration is recorded in the debug
   /// log at DEBUG level. Re-throws after emitting the failure line so
-  /// callers can still branch on the error.
+  /// callers can still branch on the error. Inside a startup pass the
+  /// call is also bounded by the pass's `StartupRequestBudget` (enforced
+  /// in the HTTP layer), so a failure here can be a startup timeout.
   Future<T> timed<T>(String source, Future<T> Function() op) async {
     final start = DateTime.now();
     try {
@@ -115,7 +117,8 @@ mixin AppShellLogMixin<W extends StatefulWidget> on State<W> {
     } catch (error) {
       log(
         source: source,
-        message: 'failed: ${error.toString().replaceFirst("Exception: ", "")}',
+        message: 'Backend call failed \u2014 '
+            '${error.toString().replaceFirst("Exception: ", "")}',
         level: DebugLogLevel.error,
         durationMs: DateTime.now().difference(start).inMilliseconds,
       );

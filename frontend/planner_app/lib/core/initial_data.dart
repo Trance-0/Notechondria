@@ -293,7 +293,9 @@ extension _AppShellInitialDataX on _AppShellState {
           ? 'Initial Planner._loadInitialData data loaded '
               '(${courses.length} cloud courses, ${learnerNotes.length} notes).'
           : sessionRejected
-              ? 'Session expired \u2014 signed out. Please sign in again.'
+              ? 'Signed out: Planner.Session/reject \u2014 at least two '
+                  'authenticated requests were rejected (expired or revoked '
+                  'session). Please sign in again.'
               : 'Initial Planner._loadInitialData load used offline fallback: '
                   'Planner.Sync.Planner/bootstrap \u2014 ${errors.first}.',
     );

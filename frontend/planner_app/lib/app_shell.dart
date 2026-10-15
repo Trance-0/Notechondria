@@ -251,6 +251,10 @@ class _AppShellState extends State<AppShell>
   bool _isLoading = true;
   bool _showSplash = true;
   String? _errorMessage;
+
+  /// Cause of a startup step that threw; while set, `build` shows the
+  /// shared `StartupFailureView` instead of the shell.
+  String? _startupFailure;
   String? _token;
   Map<String, dynamic>? _profile;
   Map<String, dynamic>? _settings;
@@ -381,21 +385,8 @@ class _AppShellState extends State<AppShell>
     _bootstrapApp();
   }
 
-  Future<void> _bootstrapApp() async {
-    _splashTimer = Timer(const Duration(seconds: 10), () {
-      if (mounted)
-        setState(() {
-          _isLoading = false;
-          _showSplash = false;
-        });
-    });
-    _splashStatus.value = 'Loading local planner data';
-    await _loadLocalState();
-    _splashStatus.value = 'Completing sign-in';
-    await handleOAuthCallback();
-    _splashStatus.value = 'Connecting to server';
-    await _loadInitialData();
-  }
+  // `_bootstrapApp` and the startup recovery actions live in
+  // `core/bootstrap.dart`.
 
   // ---------------------------------------------------------------------------
   // OAuth helpers
@@ -470,6 +461,15 @@ class _AppShellState extends State<AppShell>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final startupFailure = _startupFailure;
+    if (startupFailure != null) {
+      return StartupFailureView(
+        source: 'Planner.Startup/bootstrap',
+        cause: startupFailure,
+        onRetry: _retryBootstrap,
+        onContinue: _continueAfterBootstrapFailure,
+      );
+    }
     final scaffold = LayoutBuilder(
       builder: (context, constraints) {
         final isWideLayout = constraints.maxWidth >= 960;
@@ -589,7 +589,7 @@ class _AppShellState extends State<AppShell>
                               _visibleIndices.contains(1)) ...[
                             const SizedBox(height: 12),
                             Flexible(
-                              child: _WideCourseSidebarSection(
+                              child: WideCourseSidebarSection(
                                 expanded: _coursePanelExpanded,
                                 courses: subscribedCourses,
                                 selectedCourseId:
@@ -664,52 +664,14 @@ class _AppShellState extends State<AppShell>
             ),
             if (_isLoading) const LinearProgressIndicator(minHeight: 2),
             if (_errorMessage != null)
-              Material(
-                color: Theme.of(context).colorScheme.errorContainer,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.cloud_off_outlined,
-                        color: Theme.of(context).colorScheme.onErrorContainer,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          friendlyError(
-                              AppLocalizations.of(context), _errorMessage!),
-                          style: TextStyle(
-                            color:
-                                Theme.of(context).colorScheme.onErrorContainer,
-                          ),
-                        ),
-                      ),
-                      if (_localSettings['offline_mode'] != true)
-                        TextButton(
-                          onPressed: () => _setOfflineMode(true),
-                          child: Text(
-                              AppLocalizations.of(context).errorWorkOffline),
-                        ),
-                      TextButton(
-                        onPressed: _loadInitialData,
-                        child: Text(AppLocalizations.of(context).commonRetry),
-                      ),
-                      IconButton(
-                        onPressed: () {
-                          setState(() {
-                            _errorMessage = null;
-                          });
-                        },
-                        icon: const Icon(Icons.close),
-                        tooltip: AppLocalizations.of(context).commonDismiss,
-                      ),
-                    ],
-                  ),
-                ),
+              LoadErrorBanner(
+                message: _errorMessage!,
+                source: 'Planner.Startup/initial_data',
+                onWorkOffline: _localSettings['offline_mode'] != true
+                    ? _workOffline
+                    : null,
+                onRetry: _retryStartup,
+                onDismiss: () => setState(() => _errorMessage = null),
               ),
             Expanded(
               child: AnimatedSwitcher(
@@ -946,120 +908,5 @@ class _AppShellState extends State<AppShell>
       default:
         return const SizedBox.shrink();
     }
-  }
-}
-
-class _WideCourseSidebarSection extends StatelessWidget {
-  const _WideCourseSidebarSection({
-    required this.expanded,
-    required this.courses,
-    required this.selectedCourseId,
-    required this.onToggleExpanded,
-    required this.onSelectCourse,
-  });
-
-  final bool expanded;
-  final List<Map<String, dynamic>> courses;
-  final int? selectedCourseId;
-  final VoidCallback onToggleExpanded;
-  final ValueChanged<Map<String, dynamic>> onSelectCourse;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Card(
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      color: colorScheme.surfaceVariant.withOpacity(0.35),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          InkWell(
-            onTap: onToggleExpanded,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Courses',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                  Icon(expanded ? Icons.expand_less : Icons.expand_more),
-                ],
-              ),
-            ),
-          ),
-          if (expanded)
-            Flexible(
-              child: ListView(
-                shrinkWrap: true,
-                padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                children: [
-                  for (final course in courses)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: InkWell(
-                        onTap: () => onSelectCourse(course),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Ink(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: selectedCourseId == course['id']
-                                ? colorScheme.primaryContainer
-                                : Colors.transparent,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                course['title']?.toString() ?? 'Course',
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      color: selectedCourseId == course['id']
-                                          ? colorScheme.onPrimaryContainer
-                                          : null,
-                                    ),
-                              ),
-                              if ((course['last_opened_at']?.toString() ?? '')
-                                  .isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Opened ${formatCompactTimestamp(course['last_opened_at'].toString())}',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
-                                        color: selectedCourseId == course['id']
-                                            ? colorScheme.onPrimaryContainer
-                                            : colorScheme.onSurfaceVariant,
-                                      ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
   }
 }

@@ -2519,20 +2519,44 @@ abstract class AppLocalizations {
   /// No description provided for @errorNetwork.
   ///
   /// In en, this message translates to:
-  /// **'Couldn\'t reach the server. Check your connection and try again.'**
-  String get errorNetwork;
+  /// **'Cloud data not loaded: {source} — the server could not be reached (network request failed). Check your connection, then retry or work offline.'**
+  String errorNetwork(String source);
 
   /// No description provided for @errorTimeout.
   ///
   /// In en, this message translates to:
-  /// **'The server took too long to respond. Try again.'**
-  String get errorTimeout;
+  /// **'Cloud data not loaded: {source} — the server did not respond in time (request timed out). Retry or work offline.'**
+  String errorTimeout(String source);
 
   /// No description provided for @errorServer.
   ///
   /// In en, this message translates to:
-  /// **'The server hit an error. Try again in a moment.'**
-  String get errorServer;
+  /// **'Cloud data not loaded: {source} — the server returned an error (HTTP 5xx). Retry in a moment or work offline.'**
+  String errorServer(String source);
+
+  /// No description provided for @startupBackendTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud data not loaded: {source} — the server did not respond within {seconds}s. Showing data saved on this device; retry or work offline.'**
+  String startupBackendTimeout(String source, int seconds);
+
+  /// No description provided for @startupFailureTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The app could not finish starting'**
+  String get startupFailureTitle;
+
+  /// No description provided for @startupFailureMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The app could not finish starting: {source} — {cause}. Retry, or continue with the data saved on this device.'**
+  String startupFailureMessage(String source, String cause);
+
+  /// No description provided for @startupContinueAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue anyway'**
+  String get startupContinueAnyway;
 
   /// No description provided for @versionUpdateAvailable.
   ///

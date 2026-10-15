@@ -24,6 +24,7 @@ import 'core/url_strategy.dart'
 
 part 'app_shell.dart';
 part 'core/auth_flows.dart';
+part 'core/bootstrap.dart';
 part 'core/build_helpers.dart';
 part 'core/category_actions.dart';
 part 'core/client.dart';
@@ -78,8 +79,12 @@ void main() {
   // Snapshot the pristine launch URL fragment synchronously, before
   // Flutter's router gets a chance to rewrite it (see the field doc).
   bootInitialFragment = Uri.base.fragment;
-  runApp(
-    const NotechondriaApp(
+  // Guarded launch: uncaught startup errors, framework errors, and widget
+  // build errors render a visible fallback instead of a blank page.
+  runGuardedApp(
+    appModule: 'Editor',
+    appTitle: 'Notechondria Editor',
+    buildApp: () => const NotechondriaApp(
       initialIndex: 1,
       title: 'Notechondria Editor',
       visibleIndices: <int>[1, 4],

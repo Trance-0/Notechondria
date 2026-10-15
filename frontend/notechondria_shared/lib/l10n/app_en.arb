@@ -497,9 +497,34 @@
   "tourPortalAppsTitle": "Open the apps",
   "tourPortalAppsBody": "Jump into the Editor or Planner anytime. Sign in to sync your own work.",
 
-  "errorNetwork": "Couldn't reach the server. Check your connection and try again.",
-  "errorTimeout": "The server took too long to respond. Try again.",
-  "errorServer": "The server hit an error. Try again in a moment.",
+  "errorNetwork": "Cloud data not loaded: {source} — the server could not be reached (network request failed). Check your connection, then retry or work offline.",
+  "@errorNetwork": {
+    "placeholders": { "source": { "type": "String" } }
+  },
+  "errorTimeout": "Cloud data not loaded: {source} — the server did not respond in time (request timed out). Retry or work offline.",
+  "@errorTimeout": {
+    "placeholders": { "source": { "type": "String" } }
+  },
+  "errorServer": "Cloud data not loaded: {source} — the server returned an error (HTTP 5xx). Retry in a moment or work offline.",
+  "@errorServer": {
+    "placeholders": { "source": { "type": "String" } }
+  },
+  "startupBackendTimeout": "Cloud data not loaded: {source} — the server did not respond within {seconds}s. Showing data saved on this device; retry or work offline.",
+  "@startupBackendTimeout": {
+    "placeholders": {
+      "source": { "type": "String" },
+      "seconds": { "type": "int" }
+    }
+  },
+  "startupFailureTitle": "The app could not finish starting",
+  "startupFailureMessage": "The app could not finish starting: {source} — {cause}. Retry, or continue with the data saved on this device.",
+  "@startupFailureMessage": {
+    "placeholders": {
+      "source": { "type": "String" },
+      "cause": { "type": "String" }
+    }
+  },
+  "startupContinueAnyway": "Continue anyway",
 
   "versionUpdateAvailable": "A new version is available. Refresh to update.",
   "versionDeploying": "A new version is rolling out — some features may be briefly unavailable.",

@@ -17,6 +17,19 @@ export 'src/utils/local_data_ownership.dart'
 export 'src/utils/line_diff.dart' show diffLines, DiffRow, DiffLineKind;
 export 'src/components/note_conflict_diff.dart' show NoteConflictDiffView;
 export 'src/utils/friendly_error.dart' show friendlyError;
+export 'src/startup/startup_budget.dart'
+    show
+        BackendStartupTimeout,
+        StartupRequestBudget,
+        currentStartupBudget,
+        kBackendStartupTimeout,
+        runWithStartupBudget;
+export 'src/startup/startup_guard.dart'
+    show StartupErrorWidget, StartupFailureApp, StartupGuard, runGuardedApp;
+export 'src/components/startup_failure_view.dart' show StartupFailureView;
+export 'src/components/load_error_banner.dart' show LoadErrorBanner;
+export 'src/components/wide_course_sidebar_section.dart'
+    show WideCourseSidebarSection;
 export 'src/utils/version_status.dart'
     show
         AppVersionStatus,
