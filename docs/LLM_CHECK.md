@@ -517,6 +517,11 @@ Use this checklist at the end of each modification round.
 
 # Ubuntu Jenkins installer verification
 
+- Startup failure follow-up: the sudo host generator created `secrets/` as
+  root, preventing the user-run Jenkins service from writing its master key.
+  The generator now explicitly owns both bootstrap directories as the service
+  user with mode 0700. Retry clears systemd's failed-start counter and reports
+  a failed service immediately. Actual sudo rerun remains user-operated.
 - Home scaffold: `bash ~/scripts/install-jenkins.sh` invokes the versioned
   installer in `deployment/jenkins/`; fresh and repeated installs preserve data.
 - Native ARM64 Docker base image manifest checked for Flutter stable.

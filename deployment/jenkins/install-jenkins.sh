@@ -91,12 +91,17 @@ timeout 30m java -jar "$MANAGER" --war "$WAR" --plugin-download-directory /var/l
 STAGE=startup
 log 'Starting Jenkins — waiting up to five minutes for the authenticated controller.'
 sudo systemctl daemon-reload
+sudo systemctl reset-failed jenkins
 sudo systemctl enable --now jenkins
 ready=false
 for attempt in $(seq 1 60); do
   if curl -fsS --connect-timeout 3 --max-time 5 "http://127.0.0.1:$PORT/login" >/dev/null && [[ -f /var/lib/jenkins/.notechondria-bootstrap-complete ]]; then
     ready=true
     break
+  fi
+  if systemctl is-failed --quiet jenkins; then
+    log 'Startup cannot complete — Jenkins service failed; collecting diagnostics immediately.'
+    false
   fi
   log "Waiting for Jenkins initialization — attempt $attempt/60."
   sleep 5

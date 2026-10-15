@@ -11,6 +11,13 @@ repo, user, group, port = sys.argv[1:]
 home = Path("/var/lib/jenkins")
 owner = pwd.getpwnam(user)
 
+# Jenkins creates its own master key here during boot. Creating only the
+# credential files as the service user leaves their parent root-owned.
+for directory, mode in ((home / "secrets", 0o700), (home / "init.groovy.d", 0o700)):
+    directory.mkdir(parents=True, exist_ok=True)
+    os.chown(directory, owner.pw_uid, owner.pw_gid)
+    directory.chmod(mode)
+
 
 def write(path, text, mode=0o600):
     path = Path(path)
