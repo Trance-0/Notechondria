@@ -152,6 +152,26 @@ extension _AppShellMaintenanceX on _AppShellState {
   }
 
   Future<ActionFeedback> _syncAllLocalData({bool announce = true}) async {
+    // Cross-user offline-cache guard (0.1.192): never push another user's
+    // local drafts into the signed-in account. `foreign_local_data_owner`
+    // is set at sign-in by _reconcileLocalDataOwner when the device's
+    // cache belongs to someone else.
+    final foreignOwner =
+        _localSettings['foreign_local_data_owner']?.toString() ?? '';
+    if (foreignOwner.isNotEmpty) {
+      const src = 'Portal.Sync.Notes/push_all';
+      final feedback = ActionFeedback(
+        message: 'Local data not synced: $src \u2014 '
+            'these offline notes belong to "$foreignOwner", not the '
+            'signed-in account. Clear local data or sign in as '
+            '"$foreignOwner" to keep them.',
+        isError: true,
+      );
+      if (announce) {
+        showMessage(feedback.message);
+      }
+      return feedback;
+    }
     final token = _token;
     if (token == null || token.isEmpty) {
       return const ActionFeedback(
@@ -242,6 +262,7 @@ extension _AppShellMaintenanceX on _AppShellState {
   Future<ActionFeedback> _clearLocalData() async {
     _localDrafts = const [];
     _localCourses = const [];
+    _localEvents = const [];
     _localTrashedDrafts = const [];
     _localTrashedCourses = const [];
     _selectedNote = null;
@@ -262,6 +283,7 @@ extension _AppShellMaintenanceX on _AppShellState {
     };
     await persistLocalDrafts();
     await persistLocalCourses();
+    await _LocalAppStore.saveEvents(const []);
     await _persistLocalTrashedDrafts();
     await _persistLocalTrashedCourses();
     await persistLocalStats();
@@ -282,6 +304,29 @@ extension _AppShellMaintenanceX on _AppShellState {
 
   Future<void> _togglePlannerEventCompletion(
       Map<String, dynamic> event, bool completed) async {
+    // Device-local events (created signed-out / offline) toggle in the
+    // local store; they never have a cloud row to PATCH.
+    if (event['is_local'] == true ||
+        event['id']?.toString().startsWith('local-') == true) {
+      final id = event['id']?.toString();
+      _localEvents = [
+        for (final e in _localEvents)
+          if (e['id']?.toString() == id)
+            {
+              ...e,
+              'is_completed': completed,
+              'completed_at': completed
+                  ? DateTime.now().toUtc().toIso8601String()
+                  : null,
+            }
+          else
+            e,
+      ];
+      await _LocalAppStore.saveEvents(_localEvents);
+      await _loadActivityWeek(startDate: _activityWeekStart);
+      refreshState();
+      return;
+    }
     final token = _token;
     if (token == null || token.isEmpty) {
       throw Exception(
@@ -305,6 +350,46 @@ extension _AppShellMaintenanceX on _AppShellState {
       message: 'Planner event ${completed ? "completed" : "reopened"}: '
           'Portal.Sync.Events/toggle \u2014 '
           '"${event['title']}" state updated on server.',
+    );
+  }
+
+  /// Applies a field patch to an existing planner event (used by the
+  /// hold-to-edit dialog). `changes` is a partial map of writable fields
+  /// (title, description, event_date, starts_at, ends_at, difficulty_weight,
+  /// recurrence_*). Mirrors the toggle path's local/cloud split.
+  Future<void> _updatePlannerEvent(
+      Map<String, dynamic> event, Map<String, dynamic> changes) async {
+    if (event['is_local'] == true ||
+        event['id']?.toString().startsWith('local-') == true) {
+      final id = event['id']?.toString();
+      _localEvents = [
+        for (final e in _localEvents)
+          if (e['id']?.toString() == id) {...e, ...changes} else e,
+      ];
+      await _LocalAppStore.saveEvents(_localEvents);
+      await _loadActivityWeek(startDate: _activityWeekStart);
+      refreshState();
+      return;
+    }
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      throw Exception(
+        'Planner event not updated: '
+        'Portal.Sync.Events/edit — '
+        'no cloud session; sign in first.',
+      );
+    }
+    await widget.client.updatePlannerEvent(token, event['id'] as int, changes);
+    await _loadActivityWeek(startDate: _activityWeekStart);
+    final refreshedEvents = await widget.client.getPlannerEvents(token);
+    _plannerEvents = refreshedEvents;
+    refreshState();
+    log(
+      level: DebugLogLevel.info,
+      source: 'Portal.Sync.Events/edit',
+      message: 'Planner event edited: '
+          'Portal.Sync.Events/edit — '
+          '"${event['title']}" updated on server.',
     );
   }
 
@@ -387,6 +472,146 @@ extension _AppShellMaintenanceX on _AppShellState {
       return ActionFeedback(
           message: 'Template courses not restored: '
               'Portal.LocalStore/restore_templates \u2014 $cause.',
+          isError: true);
+    }
+  }
+
+  /// Owner-only course metadata update (title / description / colour hue)
+  /// used by the course-edit dialog. Refreshes the course list so the new
+  /// hue paints immediately on the calendar.
+  Future<ActionFeedback> _updateCourseMeta(
+      Map<String, dynamic> course, Map<String, dynamic> payload) async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      return const ActionFeedback(
+          message: 'Sign in to edit a course.', isError: true);
+    }
+    final courseId = (course['id'] as num?)?.toInt();
+    if (courseId == null || courseId < 0) {
+      return const ActionFeedback(
+          message: 'Local courses have no cloud metadata to edit.',
+          isError: true);
+    }
+    try {
+      await widget.client.updateCourse(token, courseId, payload);
+      final refreshed = (await widget.client.getCourses(token: _token))
+          .map(decorateRemoteCourse)
+          .toList();
+      _courses = refreshed;
+      final selectedId = (_selectedCourse?['id'] as num?)?.toInt();
+      if (selectedId == courseId) {
+        for (final item in refreshed) {
+          if ((item['id'] as num?)?.toInt() == courseId) {
+            _selectedCourse = item;
+            break;
+          }
+        }
+      }
+      refreshState();
+      return const ActionFeedback(message: 'Course updated.');
+    } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      return ActionFeedback(
+          message: 'Course not updated: Portal.Sync.Courses/update — $cause.',
+          isError: true);
+    }
+  }
+
+  /// Owner-only: hand a course to another creator (#11). On success the
+  /// course leaves this account (it is no longer owned), so it drops off
+  /// the owned list and the selection clears.
+  Future<ActionFeedback> _transferCourseOwnership(
+      Map<String, dynamic> course, String target) async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      return const ActionFeedback(
+          message: 'Sign in to transfer a course.', isError: true);
+    }
+    final courseId = (course['id'] as num?)?.toInt();
+    if (courseId == null || courseId < 0) {
+      return const ActionFeedback(
+          message: 'Local courses have no cloud ownership to transfer.',
+          isError: true);
+    }
+    final recipient = target.trim();
+    if (recipient.isEmpty) {
+      return const ActionFeedback(
+          message: "Enter the recipient's username or email.", isError: true);
+    }
+    try {
+      final result =
+          await widget.client.transferCourse(token, courseId, recipient);
+      final refreshed = (await widget.client.getCourses(token: _token))
+          .map(decorateRemoteCourse)
+          .toList();
+      _courses = refreshed;
+      if ((_selectedCourse?['id'] as num?)?.toInt() == courseId) {
+        _selectedCourse = null;
+      }
+      refreshState();
+      final clearedGit = result['git_binding_cleared'] == true;
+      return ActionFeedback(
+          message: 'Course transferred to "$recipient".'
+              '${clearedGit ? ' Its GitHub binding was cleared.' : ''}');
+    } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      return ActionFeedback(
+          message:
+              'Course not transferred: Portal.Sync.Courses/transfer — $cause.',
+          isError: true);
+    }
+  }
+
+  /// Creates a cloud course bound to a GitHub repo and imports its
+  /// markdown as the course content (create → PUT git binding → import).
+  /// One repo per course by design (the binding is a single field).
+  Future<ActionFeedback> _importCourseFromGit(
+    String title,
+    String description,
+    String repo, {
+    int? colorHue,
+  }) async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      return const ActionFeedback(
+          message: 'Sign in to import a course from GitHub.', isError: true);
+    }
+    try {
+      final created = await widget.client.createCourse(token, {
+        'title': title.trim().isEmpty ? repo.split('/').last : title.trim(),
+        'description': description,
+        if (colorHue != null) 'color_hue': colorHue,
+      });
+      final courseId = (created['id'] as num?)?.toInt();
+      if (courseId == null) {
+        return const ActionFeedback(
+            message: 'Course created but no id returned.', isError: true);
+      }
+      await widget.client.setCourseGit(token, courseId, {
+        'repo': repo.trim(),
+        'branch': 'main',
+        'sync_enabled': false,
+      });
+      final summary = await widget.client.importCourseGit(token, courseId);
+      final refreshed = (await widget.client.getCourses(token: _token))
+          .map(decorateRemoteCourse)
+          .toList();
+      _courses = refreshed;
+      for (final course in refreshed) {
+        if ((course['id'] as num?)?.toInt() == courseId) {
+          await _selectCourse(course);
+          break;
+        }
+      }
+      final notes = (summary['note_count'] as num?)?.toInt() ?? 0;
+      final modules = (summary['modules'] as num?)?.toInt() ?? 0;
+      return ActionFeedback(
+          message: 'Imported $notes notes in $modules modules from $repo.');
+    } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      return ActionFeedback(
+          message: 'GitHub import failed: Portal.Sync.Courses/git_import — '
+              '$cause',
           isError: true);
     }
   }

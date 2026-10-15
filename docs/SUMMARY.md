@@ -48,6 +48,7 @@
 - [GitHub Sync (experimental)](integrations/github-sync.md)
 - [Casdoor migration plan](integrations/casdoor-migration.md)
 - [MCP → CLI migration proposal](integrations/mcp-cli-migration.md)
+- [Veronica-7 course migration runbook](integrations/veronica-7-migration.md)
 - [Casdoor login setup runbook](integrations/casdoor-setup.md)
 
 # Operations
@@ -58,6 +59,7 @@
 # Testing
 
 - [Backend Test Plan](testing/backend_test_plan.md)
+- [Agent Remote Testing](testing/agent_remote_testing.md)
 
 # Versions
 
@@ -65,6 +67,46 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.197 - Note-conflict resolver: side-by-side diff](versions/0.1.197.md)
+- [0.1.196 - Fix: web apps stuck on load — strip the deprecated service worker](versions/0.1.196.md)
+- [0.1.195 - Editor Settings: "Settings" no longer shown twice](versions/0.1.195.md)
+- [0.1.194 - GitHub sync: prune orphaned note assets](versions/0.1.194.md)
+- [0.1.193 - Course ownership transfer](versions/0.1.193.md)
+- [0.1.192 - Offline cache is owner-scoped (no cross-user leak)](versions/0.1.192.md)
+- [0.1.191 - Editor Inbox default for offline / signed-out users](versions/0.1.191.md)
+- [0.1.190 - Editor Inbox shows only uncategorized notes](versions/0.1.190.md)
+- [0.1.189 - GitHub sync: no more silent overwrites (atomic push + conflict gate)](versions/0.1.189.md)
+- [0.1.188 - Imported-course reading order + bind pending-state fix](versions/0.1.188.md)
+- [0.1.187 - Fix Casdoor login: hash fragment leaked into redirect_uri](versions/0.1.187.md)
+- [0.1.186 - In-note navigation from courses + URLs for every full-screen surface](versions/0.1.186.md)
+- [0.1.185 - Course loading: 16s → sub-second (storage N+1 + lazy pages)](versions/0.1.185.md)
+- [0.1.184 - Casdoor avatar mirroring (CORS root cause) + editor sidebar scope](versions/0.1.184.md)
+- [0.1.183 - CI fix + course dropdown in event dialogs across apps](versions/0.1.183.md)
+- [0.1.182 - Portal session persistence (root cause) + course/avatar fix round](versions/0.1.182.md)
+- [0.1.181 - Now-line, working ctrl+scroll zoom, event↔course binding](versions/0.1.181.md)
+- [0.1.180 - Startup image, keep-offline login merge, course edit entry, starter cleanup](versions/0.1.180.md)
+- [0.1.179 - Portal URL routing: unique, shareable addresses for every surface](versions/0.1.179.md)
+- [0.1.178 - Calendar/course feature batch: foundations + modules + event colours](versions/0.1.178.md)
+- [0.1.177 - Portal UI bug batch + note names / in-course links](versions/0.1.177.md)
+- [0.1.176 - Fix: course sync as ONE atomic commit (Git Data API)](versions/0.1.176.md)
+- [0.1.175 - GitHub App binding over MCP/CLI + Veronica-7 adapter validation](versions/0.1.175.md)
+- [0.1.174 - course git sync (notes → repo), lazy-on-request](versions/0.1.174.md)
+- [0.1.173 - course git import (repo → notes) via the adapter](versions/0.1.173.md)
+- [0.1.172 - course-repo adapter: config format + parser + presets](versions/0.1.172.md)
+- [0.1.171 - MCP/CLI course-git tools + git-binding logic factored into services](versions/0.1.171.md)
+- [0.1.170 - course↔GitHub binding: backend config endpoints + owner-only exposure](versions/0.1.170.md)
+- [0.1.169 - activity course (category) filter](versions/0.1.169.md)
+- [0.1.168 - build fix: thread onEventLongPress through _MonthDayCell](versions/0.1.168.md)
+- [0.1.167 - activity events: per-course colours, hold-to-edit, recurrence dialog](versions/0.1.167.md)
+- [0.1.166 - activity import feedback (backend summary + portal result modal)](versions/0.1.166.md)
+- [0.1.165 - CI green: stdlib-only CLI client + corrected avatar settings test](versions/0.1.165.md)
+- [0.1.164 - recurring events (backend + MCP/CLI), course git-binding data model](versions/0.1.164.md)
+- [0.1.163 - drag-to-draw events, heatmap auto-fit, Casdoor avatar fallback](versions/0.1.163.md)
+- [0.1.162 - offline activities, month grid view, debug-log order, rotation logging](versions/0.1.162.md)
+- [0.1.161 - Pages CI split, backend-tests CI, no-local-containers rule](versions/0.1.161.md)
+- [0.1.160 - MCP agent enablement: gateway route, task parity, instructions, CLI batch](versions/0.1.160.md)
+- [0.1.159 - Docker frontend build fix + agent harness + portal plan](versions/0.1.159.md)
+- [0.1.158 - activity calendar, calendar logging, planner events, cover upload, guest feed](versions/0.1.158.md)
 - [0.1.157 - portal i18n: settings menu + subpage titles](versions/0.1.157.md)
 - [0.1.156 - portal i18n: block editor + activity/calendar](versions/0.1.156.md)
 - [0.1.155 - portal i18n: learner feed + note-metadata dialog](versions/0.1.155.md)

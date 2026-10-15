@@ -27,7 +27,33 @@ class Course(models.Model):
     description = models.TextField(blank=True, null=True)
     cover_image = models.ImageField(upload_to=course_cover_path, blank=True, null=True)
     icon = models.IntegerField(blank=True, null=True, help_text="Material Icons codePoint")
+    # Course accent hue 0-359 (0.1.178). Drives per-course event colour on
+    # the calendar (hue = course, saturation = importance, value = theme).
+    # Null = use the app's default theme colour.
+    color_hue = models.PositiveSmallIntegerField(blank=True, null=True)
     sort_order = models.IntegerField(default=0, null=False)
+    # Git binding (0.1.164). A course may be bound to a GitHub repo that
+    # mirrors its notes as files. The backend stays the source of
+    # truth: edits land in the DB, then a lazy sync commits/pushes to
+    # the repo after `git_sync_timeout_minutes` of no further edits.
+    # `git_repo` is the `owner/name` full name; empty = not bound.
+    git_provider = models.CharField(
+        max_length=16,
+        choices=(("github", "GitHub"),),
+        default="github",
+        null=False,
+    )
+    git_repo = models.CharField(max_length=255, blank=True, null=True)
+    git_branch = models.CharField(max_length=255, blank=True, null=True, default="main")
+    git_sync_enabled = models.BooleanField(default=False, null=False)
+    # Owner-tunable lazy-commit debounce; the dev-settings UI writes it.
+    git_sync_timeout_minutes = models.PositiveIntegerField(default=5, null=False)
+    # Set to now() on each content edit; the sync worker fires when
+    # (now - git_pending_since) >= git_sync_timeout_minutes, then clears
+    # it. `git_last_synced_at` records the last successful push.
+    git_pending_since = models.DateTimeField(blank=True, null=True)
+    git_last_synced_at = models.DateTimeField(blank=True, null=True)
+    git_last_sync_error = models.CharField(max_length=512, blank=True, null=True)
     date_created = models.DateTimeField(auto_now_add=True, null=False)
     last_edit = models.DateTimeField(auto_now=True, null=False)
 
@@ -102,6 +128,12 @@ class CourseOperationTypeChoices(models.TextChoices):
     SUBSCRIBE = "subscribe", _("Subscribe")
     UNSUBSCRIBE = "unsubscribe", _("Unsubscribe")
     OPEN = "open", _("Open")
+    # Git binding lifecycle (0.1.170). These drive the "effective logs"
+    # the owner sees on import / bind / unlink of a course's GitHub repo.
+    GIT_BIND = "git_bind", _("Bind repository")
+    GIT_UNLINK = "git_unlink", _("Unlink repository")
+    GIT_IMPORT = "git_import", _("Import from repository")
+    GIT_SYNC = "git_sync", _("Sync to repository")
 
 
 class CourseOperationLog(models.Model):

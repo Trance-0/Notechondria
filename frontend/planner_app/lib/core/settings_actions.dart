@@ -220,8 +220,9 @@ extension _AppShellSettingsActionsX on _AppShellState {
     String title,
     DateTime eventDate,
     int difficultyWeight,
-    String description,
-  ) async {
+    String description, {
+    int? courseId,
+  }) async {
     final token = _token;
     if (token == null || token.isEmpty) {
       final event = _buildLocalPlannerEvent(
@@ -229,7 +230,7 @@ extension _AppShellSettingsActionsX on _AppShellState {
         eventDate: eventDate,
         difficultyWeight: difficultyWeight,
         description: description,
-        courseId: (_selectedCourse?['id'] as num?)?.toInt(),
+        courseId: courseId,
       );
       _plannerEvents = [event, ..._plannerEvents];
       _activityWeek = _buildOfflineActivityWeek();
@@ -255,7 +256,7 @@ extension _AppShellSettingsActionsX on _AppShellState {
         'ends_at': eventDate.add(const Duration(hours: 1)).toIso8601String(),
         'difficulty_weight': difficultyWeight,
         'description': description,
-        'course_id': _selectedCourse?['id'],
+        'course_id': courseId,
       });
       await _loadActivityWeek(startDate: _activityWeekStart);
       return const ActionFeedback(

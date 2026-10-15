@@ -12,6 +12,8 @@ import uuid
 
 from django.http import JsonResponse
 
+from .instructions import BASE_INSTRUCTIONS
+
 logger = logging.getLogger("django")
 
 # ---------------------------------------------------------------------------
@@ -106,17 +108,20 @@ def handle_request(body, user, creator):
     params = body.get("params", {})
 
     if method == "initialize":
-        # Surface the user's per-account skill.md (import / export
-        # preferences, target platforms, etc.) as the MCP `instructions`
-        # field. Agents that respect the spec read this on connect.
+        # `instructions` = the baseline app operating manual, with the
+        # user's per-account skill.md (import / export preferences,
+        # target platforms, etc.) appended when present. Agents that
+        # respect the spec read this on connect.
         skill_md = (getattr(creator, "mcp_skill_md", "") or "").strip()
+        instructions = BASE_INSTRUCTIONS
+        if skill_md:
+            instructions = f"{BASE_INSTRUCTIONS}\n## User skill.md\n\n{skill_md}"
         result = {
             "protocolVersion": MCP_PROTOCOL_VERSION,
             "capabilities": SERVER_CAPABILITIES,
             "serverInfo": SERVER_INFO,
+            "instructions": instructions,
         }
-        if skill_md:
-            result["instructions"] = skill_md
         return _result_response(result, req_id)
 
     if method == "notifications/initialized":

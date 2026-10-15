@@ -42,16 +42,23 @@ extension _AppShellBuildHelpersX on _AppShellState {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 16),
-              // "All Notes" item
+              // "All Notes" item. The `!_uncategorizedSelected`
+              // guard below matters: the Inbox row also carries a
+              // null category id, so without it both rows would
+              // highlight at once — the same state collision that
+              // made Inbox list every note before 0.1.190.
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: SidebarItem(
                   icon: Icons.menu_book_outlined,
                   label: l10n.navAllNotes,
-                  selected: _selectedIndex == 1 && _selectedCategoryId == null,
+                  selected: _selectedIndex == 1 &&
+                      _selectedCategoryId == null &&
+                      !_uncategorizedSelected,
                   onTap: () {
                     Navigator.of(context).pop(); // close drawer
                     _selectedCategoryId = null;
+                    _uncategorizedSelected = false;
                     _selectedIndex = 1;
                     refreshState();
                     _loadLearnerNotes(reset: true, query: _learnerSearchQuery);
@@ -227,7 +234,10 @@ extension _AppShellBuildHelpersX on _AppShellState {
       child: SidebarItem(
         icon: _courseIcon(cat),
         label: cat['title']?.toString() ?? 'Category',
-        selected: _selectedCategoryId == (cat['id'] as num?)?.toInt(),
+        selected: (cat['is_uncategorized'] == true)
+                ? _uncategorizedSelected
+                : (!_uncategorizedSelected &&
+                    _selectedCategoryId == (cat['id'] as num?)?.toInt()),
         onTap: () {
           Navigator.of(context).pop();
           _selectCourse(cat);
@@ -263,9 +273,12 @@ extension _AppShellBuildHelpersX on _AppShellState {
                       icon: Icons.menu_book_outlined,
                       label: l10n.navAllNotes,
                       selected:
-                          _selectedIndex == 1 && _selectedCategoryId == null,
+                          _selectedIndex == 1 &&
+                              _selectedCategoryId == null &&
+                              !_uncategorizedSelected,
                       onTap: () {
                         _selectedCategoryId = null;
+                        _uncategorizedSelected = false;
                         _selectedIndex = 1;
                         refreshState();
                         _loadLearnerNotes(
@@ -638,18 +651,43 @@ extension _AppShellBuildHelpersX on _AppShellState {
               : null,
           onRotateApiKey: _token != null
               ? () async {
-                  final result = await widget.client.rotateApiKey(_token!);
-                  // Merge the new prefix into the in-memory settings so the
-                  // UI shows the updated masked value after rebuild.
-                  final newPrefix = result['api_key_prefix']?.toString() ?? '';
-                  if (newPrefix.isNotEmpty && mounted) {
-                    _settings = {
-                      ..._settings ?? <String, dynamic>{},
-                      'api_key_prefix': newPrefix,
-                    };
-                    refreshState();
+                  try {
+                    final result = await widget.client.rotateApiKey(_token!);
+                    // Merge the new prefix into the in-memory settings so the
+                    // UI shows the updated masked value after rebuild.
+                    final newPrefix =
+                        result['api_key_prefix']?.toString() ?? '';
+                    if (newPrefix.isNotEmpty && mounted) {
+                      _settings = {
+                        ..._settings ?? <String, dynamic>{},
+                        'api_key_prefix': newPrefix,
+                      };
+                      refreshState();
+                    }
+                    log(
+                      level: DebugLogLevel.info,
+                      source: 'Editor.UI',
+                      message: 'API key rotated: Editor.UI/api_key.rotate — '
+                          'new prefix ${newPrefix.isEmpty ? "<unknown>" : newPrefix}; '
+                          'the previous key is now invalid.',
+                    );
+                    return result;
+                  } catch (e) {
+                    // A stale Casdoor session is the common cause: the app
+                    // renders from local cache so it looks signed in, but
+                    // this direct server call 401s. Log the effective cause
+                    // so the Debug log explains the SnackBar.
+                    log(
+                      level: DebugLogLevel.warning,
+                      source: 'Editor.UI',
+                      message: 'API key was NOT rotated: '
+                          'Editor.UI/api_key.rotate — '
+                          '${e.toString().replaceFirst('Exception: ', '')} '
+                          '(if this is a 401, the sign-in session has '
+                          'expired — sign in again and retry).',
+                    );
+                    rethrow;
                   }
-                  return result;
                 }
               : null,
           onSaveMcpSkill: _token != null

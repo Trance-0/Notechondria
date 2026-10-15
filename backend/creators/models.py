@@ -120,6 +120,17 @@ class Creator(models.Model):
             "Empty = use the local `image`."
         ),
     )
+    avatar_mirrored_from = models.URLField(
+        max_length=512, blank=True, default="",
+        help_text=(
+            "Source URL of the last Casdoor avatar mirrored into `image` "
+            "(0.1.184). Casdoor serves avatars WITHOUT CORS headers, which "
+            "Flutter web's renderer refuses cross-origin — login copies the "
+            "bytes into our own storage (proper CORS); this records which "
+            "URL the copy came from so the mirror is idempotent per avatar "
+            "change."
+        ),
+    )
     casdoor_profile_synced_at = models.DateTimeField(
         blank=True, null=True,
         help_text=(

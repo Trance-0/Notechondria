@@ -12,6 +12,23 @@ abstract class NotechondriaClient implements AuthClient {
     Map<String, dynamic> payload,
   );
   Future<Map<String, dynamic>> getCourseDetail(int courseId, {String? token});
+
+  /// Owner-only course metadata update (`PATCH /courses/<id>/`): title,
+  /// description, icon, and `color_hue` (0-359 or null = theme default).
+  Future<Map<String, dynamic>> updateCourse(
+    String token,
+    int courseId,
+    Map<String, dynamic> payload,
+  );
+
+  /// Owner-only: hands a course to another creator, named by username or
+  /// email (`POST /courses/<id>/transfer/`). The course's notes keep
+  /// their own author; any GitHub binding is cleared server-side.
+  Future<Map<String, dynamic>> transferCourse(
+    String token,
+    int courseId,
+    String target,
+  );
   Future<List<Map<String, dynamic>>> getCourseNotes(int courseId,
       {String? token});
   Future<Map<String, dynamic>> getNoteDetail(int noteId, {String? token});
@@ -345,6 +362,36 @@ class HttpNotechondriaClient
     final response = await _get(uri, token: token);
     return Map<String, dynamic>.from(
       await decode(response, uri: uri, method: 'GET'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> updateCourse(
+    String token,
+    int courseId,
+    Map<String, dynamic> payload,
+  ) async {
+    final uri = _uri('/courses/$courseId/');
+    final response = await _patch(uri, token: token, payload: payload);
+    return Map<String, dynamic>.from(
+      await decode(response, uri: uri, method: 'PATCH'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> transferCourse(
+    String token,
+    int courseId,
+    String target,
+  ) async {
+    final uri = _uri('/courses/$courseId/transfer/');
+    final response = await _post(
+      uri,
+      token: token,
+      payload: {'target': target},
+    );
+    return Map<String, dynamic>.from(
+      await decode(response, uri: uri, method: 'POST'),
     );
   }
 

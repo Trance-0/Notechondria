@@ -158,7 +158,25 @@ mixin HttpClientInternalsMixin {
         trimmed.startsWith('<');
     if (response.body.isEmpty) {
       if (response.statusCode >= 400) {
-        throw Exception('Request failed with ${response.statusCode}');
+        // Empty-body errors used to throw without recording a debug
+        // snapshot or a §1.7-shaped message — an invisible failure
+        // (reported against api-key rotation: "no effective log").
+        _recordDebugSnapshot(ApiDebugSnapshot(
+          recordedAt: DateTime.now(),
+          method: method,
+          url: uri.toString(),
+          statusCode: response.statusCode,
+          contentType: contentType,
+          bodyPreview: '',
+          looksLikeHtml: false,
+          note: 'The error response had an empty body.',
+        ));
+        throw Exception(shapedErrorMessage(
+          statusCode: response.statusCode,
+          uri: uri,
+          method: method,
+          data: 'HTTP ${response.statusCode} with an empty response body',
+        ));
       }
       return {};
     }

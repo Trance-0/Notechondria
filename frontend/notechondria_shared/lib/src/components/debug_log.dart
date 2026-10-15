@@ -608,8 +608,14 @@ class _DebugLogCardState extends State<DebugLogCard> {
                                 _localizedLevel(l10n, _minLevel)),
                       ),
                     )
+                  // Entries are stored newest-first; `reverse: true` puts
+                  // index 0 at the visual bottom, so the log reads
+                  // chronologically (latest at the bottom) and stays
+                  // pinned to the newest entry as lines arrive — unless
+                  // the user has scrolled up to read history (chat UX).
                   : ListView.builder(
                       padding: EdgeInsets.zero,
+                      reverse: true,
                       itemCount: entries.length,
                       itemBuilder: (context, index) {
                         final e = entries[index];

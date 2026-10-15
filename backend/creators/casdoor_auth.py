@@ -302,6 +302,31 @@ def _sync_creator_from_claims(creator, claims: dict) -> None:
             exc,
         )
 
+    # 0.1.184: mirror the Casdoor avatar bytes into our own storage.
+    # Casdoor serves avatars without CORS headers, which Flutter web
+    # refuses to render cross-origin — the mirrored copy (R2/CDN, proper
+    # CORS) is what the SPA actually paints. Idempotent per avatar change;
+    # best-effort so a slow/unreachable IdP file never blocks login.
+    try:
+        from .utils import mirror_remote_avatar
+
+        if mirror_remote_avatar(creator):
+            logger.info(
+                "Casdoor avatar mirrored: "
+                "Backend.Creators.CasdoorAuth/avatar_mirror — "
+                "username=%s source=%s.",
+                user.username,
+                creator.avatar_mirrored_from,
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "Casdoor avatar mirror failed: "
+            "Backend.Creators.CasdoorAuth/avatar_mirror — "
+            "username=%s cause=%s.",
+            user.username,
+            exc,
+        )
+
 
 def _resolve_existing_user(claims: dict) -> Optional[User]:
     """Find the Django ``User`` whose Creator already carries the

@@ -39,6 +39,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commonDone => '完成';
 
   @override
+  String get commonOk => '确定';
+
+  @override
   String get commonCancel => '取消';
 
   @override
@@ -1445,7 +1448,30 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String activityWeightN(int n) {
-    return '权重 $n';
+    switch (n) {
+      case 1:
+        return '轻微';
+      case 2:
+        return '普通';
+      case 3:
+        return '重要';
+      case 4:
+        return '重大';
+      case 5:
+        return '致命';
+      default:
+        return '普通';
+    }
+  }
+
+  @override
+  String heatmapActivityValue(int value) {
+    return '活动强度 $value';
+  }
+
+  @override
+  String heatmapPlannedValue(int value) {
+    return '计划负载 $value';
   }
 
   @override
@@ -1456,6 +1482,56 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get activitySubscribedCalendar => '已订阅的日历';
+
+  @override
+  String get activityImportSucceeded => '导入成功';
+
+  @override
+  String get activityImportFailed => '导入失败';
+
+  @override
+  String activityImportedCount(int count, String title) {
+    return '已从“$title”导入 $count 个事件：';
+  }
+
+  @override
+  String get activityAllCourses => '全部课程';
+
+  @override
+  String get activityEditEvent => '编辑事件';
+
+  @override
+  String get activityRepeatLabel => '重复';
+
+  @override
+  String get activityRepeatNever => '不重复';
+
+  @override
+  String get activityRepeatWeekly => '每周';
+
+  @override
+  String get activityRepeatMonthly => '每月';
+
+  @override
+  String get activityRepeatYearly => '每年';
+
+  @override
+  String get activityRepeatIntervalLabel => '每 N 个周期重复一次';
+
+  @override
+  String get activityRepeatEndsLabel => '结束方式';
+
+  @override
+  String get activityRepeatEndNever => '永不';
+
+  @override
+  String get activityRepeatEndOnDate => '在指定日期';
+
+  @override
+  String get activityRepeatEndAfter => '达到次数后';
+
+  @override
+  String get activityRepeatCountLabel => '重复次数';
 
   @override
   String get mcpSkillCopied => 'skill.md 已复制到剪贴板。';

@@ -668,14 +668,14 @@ class _SettingsPageState extends State<_SettingsPage> {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        Text(
-          'Settings',
-          style: Theme.of(context)
-              .textTheme
-              .headlineSmall
-              ?.copyWith(fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 8),
+        // No "Settings" headline here: the shell's navigation
+        // (sidebar in the wide layout, drawer in compact) already labels
+        // this destination "Settings" (l10n.navSettings). A body headline
+        // made the word "Settings" appear twice on screen at once. This
+        // was the only main page that duplicated its nav label as a body
+        // title — Notes / Course / Activity render no such headline — so
+        // dropping it keeps exactly one "Settings" and matches the other
+        // tabs. The descriptive line below stays as the page's intro.
         const Text(
           'Manage your account, preferences, and local data. Online '
           'account settings require an active login; local '

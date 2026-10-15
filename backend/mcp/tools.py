@@ -100,6 +100,10 @@ def _event_payload(event):
         "description": event.description or "",
         "course_id": event.course_id_id if event.course_id_id else None,
         "is_completed": event.is_completed,
+        "recurrence_freq": event.recurrence_freq,
+        "recurrence_interval": event.recurrence_interval,
+        "recurrence_end_date": _iso(event.recurrence_end_date),
+        "recurrence_count": event.recurrence_count,
     }
 
 
@@ -329,7 +333,8 @@ def _delete_note(user, creator, params):
 
 register_tool(
     "delete_note",
-    "Soft-delete a note (moves to recycle bin).",
+    "Soft-delete a note (moves to the recycle bin; recoverable via "
+    "restore_deleted_note until the bin is emptied).",
     {
         "type": "object",
         "properties": {
@@ -488,6 +493,242 @@ register_tool(
 )
 
 
+def _get_course_git(user, creator, params):
+    from notes.services import course_git_payload
+
+    course = get_object_or_404(Course, pk=params["course_id"])
+    if course.creator_id_id != creator.id:
+        raise PermissionError("You can only read your own course's git binding.")
+    return course_git_payload(course)
+
+
+register_tool(
+    "get_course_git",
+    "Get a course's GitHub binding (repo owner/name, branch, lazy-sync "
+    "toggle + timeout, last-sync state). Owner-only.",
+    {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "integer"},
+        },
+        "required": ["course_id"],
+    },
+    _get_course_git,
+)
+
+
+def _set_course_git(user, creator, params):
+    from notes.services import (
+        CourseGitError,
+        apply_course_git_binding,
+        unlink_course_git,
+    )
+
+    course = get_object_or_404(Course, pk=params["course_id"])
+    if course.creator_id_id != creator.id:
+        raise PermissionError("You can only bind your own courses.")
+    if params.get("unlink"):
+        return unlink_course_git(creator, course)
+    kwargs = {
+        key: params[key]
+        for key in ("repo", "branch", "sync_enabled", "sync_timeout_minutes")
+        if key in params
+    }
+    try:
+        return apply_course_git_binding(creator, course, **kwargs)
+    except CourseGitError as exc:
+        raise ValueError(str(exc)) from exc
+
+
+register_tool(
+    "set_course_git",
+    "Bind (or re-point / tune) a course's GitHub repo, or unlink it. The "
+    "backend stays the source of truth; a bound course lazily "
+    "commits/pushes after `sync_timeout_minutes` of no edits. Pass "
+    "`unlink: true` to clear the binding. Owner-only.",
+    {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "integer"},
+            "repo": {"type": "string", "description": "GitHub full name 'owner/name'. Empty string clears the repo."},
+            "branch": {"type": "string", "description": "Target branch (default 'main')."},
+            "sync_enabled": {"type": "boolean", "description": "Enable lazy commit/sync."},
+            "sync_timeout_minutes": {"type": "integer", "description": "Idle minutes before an auto-sync fires (1-1440, default 5)."},
+            "unlink": {"type": "boolean", "description": "If true, unlink the repo and disable sync (ignores the other fields)."},
+        },
+        "required": ["course_id"],
+    },
+    _set_course_git,
+)
+
+
+def _import_course_git(user, creator, params):
+    from courses.git_service import CourseGitServiceError, import_course_from_repo
+
+    course = get_object_or_404(Course, pk=params["course_id"])
+    if course.creator_id_id != creator.id:
+        raise PermissionError("You can only import your own courses.")
+    try:
+        return import_course_from_repo(course)
+    except CourseGitServiceError as exc:
+        raise ValueError(str(exc)) from exc
+
+
+register_tool(
+    "import_course_git",
+    "Pull the bound GitHub repo's markdown into this course's notes via "
+    "the course-repo adapter (idempotent — notes are matched by their "
+    "repo path). The course must be bound (see set_course_git) and the "
+    "owner must have the GitHub App installed. Owner-only.",
+    {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "integer"},
+        },
+        "required": ["course_id"],
+    },
+    _import_course_git,
+)
+
+
+def _sync_course_git(user, creator, params):
+    from courses.git_service import CourseGitServiceError, sync_course_to_repo
+
+    course = get_object_or_404(Course, pk=params["course_id"])
+    if course.creator_id_id != creator.id:
+        raise PermissionError("You can only sync your own courses.")
+    try:
+        return sync_course_to_repo(course)
+    except CourseGitServiceError as exc:
+        raise ValueError(str(exc)) from exc
+
+
+register_tool(
+    "sync_course_git",
+    "Push this course's notes to its bound GitHub repo now (markdown "
+    "only; each note's original frontmatter is preserved). The backend "
+    "is the source of truth. Course must be bound and the owner must "
+    "have the GitHub App installed. Owner-only.",
+    {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "integer"},
+        },
+        "required": ["course_id"],
+    },
+    _sync_course_git,
+)
+
+
+def _github_app_status(user, creator, params):
+    from django.conf import settings
+    from creators.models import GithubIntegration
+
+    integration = GithubIntegration.objects.filter(creator=creator).first()
+    install_url = settings.GITHUB_DATA_SYNC_APP_INSTALL_URL or ""
+    app_name = settings.GITHUB_DATA_SYNC_APP_NAME or ""
+    if integration is None:
+        return {"connected": False, "install_url": install_url, "app_name": app_name}
+    return {
+        "connected": True,
+        "install_url": install_url,
+        "app_name": app_name,
+        "installation_id": integration.installation_id,
+        "account_login": integration.account_login,
+        "repo_full_name": integration.repo_full_name,
+        "repo_default_branch": integration.repo_default_branch,
+    }
+
+
+register_tool(
+    "github_app_status",
+    "Show whether this account has the Notechondria GitHub App installed "
+    "(the App token is what course import/sync use). Returns `connected`, "
+    "the `install_url` to install/authorize it, and the linked "
+    "installation id / account when connected.",
+    {"type": "object", "properties": {}},
+    _github_app_status,
+)
+
+
+def _connect_github_app(user, creator, params):
+    """Persist a GitHub App installation id for this account (the id from
+    the `?installation_id=` GitHub redirect after installing the App).
+    Once connected, the App token can read/write any repo the installation
+    was granted — see `list_github_repos`."""
+    from creators.models import GithubIntegration
+
+    installation_id = (params.get("installation_id") or "").strip()
+    if not installation_id:
+        raise ValueError("installation_id is required (from the GitHub App install redirect).")
+    integration, _created = GithubIntegration.objects.update_or_create(
+        creator=creator,
+        defaults={
+            "installation_id": installation_id,
+            "account_login": (params.get("account_login") or "").strip(),
+            "repo_full_name": (params.get("repo_full_name") or "").strip(),
+            "repo_default_branch": (params.get("repo_default_branch") or "main").strip() or "main",
+            "last_error": "",
+        },
+    )
+    return {
+        "connected": True,
+        "installation_id": integration.installation_id,
+        "account_login": integration.account_login,
+    }
+
+
+register_tool(
+    "connect_github_app",
+    "Link a GitHub App installation to this account by its installation id "
+    "(the `installation_id` from the GitHub redirect after installing the "
+    "App on a repo/org). Idempotent — re-linking updates the id. This is "
+    "how you 'bind the app to a repo' before import/sync.",
+    {
+        "type": "object",
+        "properties": {
+            "installation_id": {"type": "string", "description": "Installation id from the GitHub App install redirect."},
+            "account_login": {"type": "string", "description": "Owner login the App was installed on (optional)."},
+            "repo_full_name": {"type": "string", "description": "Default profile-sync repo 'owner/name' (optional; course binding uses set_course_git instead)."},
+            "repo_default_branch": {"type": "string", "description": "Default branch (default 'main')."},
+        },
+        "required": ["installation_id"],
+    },
+    _connect_github_app,
+)
+
+
+def _list_github_repos(user, creator, params):
+    from creators.models import GithubIntegration
+    from creators.services.github_sync import (
+        GithubSyncError,
+        list_installation_repositories,
+    )
+
+    integration = GithubIntegration.objects.filter(creator=creator).first()
+    if integration is None:
+        raise ValueError(
+            "No GitHub App installation linked to this account. "
+            "Install the app, then call connect_github_app first."
+        )
+    try:
+        repos = list_installation_repositories(integration)
+    except GithubSyncError as exc:
+        raise ValueError(str(exc)) from exc
+    return {"repositories": repos}
+
+
+register_tool(
+    "list_github_repos",
+    "List the repositories the linked GitHub App installation can access "
+    "(each with `full_name`, `default_branch`, `private`). Use this to "
+    "confirm a repo is reachable before binding a course to it with "
+    "set_course_git. Requires connect_github_app first.",
+    {"type": "object", "properties": {}},
+    _list_github_repos,
+)
+
+
 def _delete_course(user, creator, params):
     course = get_object_or_404(Course, pk=params["course_id"])
     if course.creator_id_id != creator.id:
@@ -566,11 +807,13 @@ def _list_events(user, creator, params):
 
 register_tool(
     "list_events",
-    "List planner events. By default only incomplete events.",
+    "List the user's planner events (tasks/deadlines/blocks) ordered by "
+    "event_date. Only incomplete (open) events by default. List before "
+    "creating in bulk so you do not duplicate existing tasks.",
     {
         "type": "object",
         "properties": {
-            "include_completed": {"type": "boolean", "description": "Include completed events."},
+            "include_completed": {"type": "boolean", "description": "Also include completed events. Default false."},
             "limit": {"type": "integer", "description": "Max results (default 50, max 200)."},
         },
         "required": [],
@@ -580,6 +823,8 @@ register_tool(
 
 
 def _create_event(user, creator, params):
+    from notes.api import normalize_planner_event_window
+
     event = PlannerEvent.objects.create(
         creator_id=creator,
         title=params.get("title", ""),
@@ -589,23 +834,40 @@ def _create_event(user, creator, params):
         difficulty_weight=params.get("difficulty_weight", 1),
         description=params.get("description", ""),
         course_id_id=params.get("course_id"),
+        recurrence_freq=params.get("recurrence_freq", "N"),
+        recurrence_interval=params.get("recurrence_interval", 1),
+        recurrence_end_date=params.get("recurrence_end_date"),
+        recurrence_count=params.get("recurrence_count"),
     )
+    # Same stored-window contract as the REST create (a bare-date event
+    # gets a noon one-hour window; event_date snaps to starts_at's day).
+    event.refresh_from_db()
+    normalize_planner_event_window(event)
     return _event_payload(event)
 
 
 register_tool(
     "create_event",
-    "Create a planner event.",
+    "Create a planner event (a task, deadline, or study block). For a "
+    "plain task/deadline pass only `title` + `event_date`; the server "
+    "assigns a default noon one-hour window so it renders on the "
+    "calendar grid. Pass `starts_at`/`ends_at` only for a real timed "
+    "block. New events are incomplete; they appear in the app's todo "
+    "list ordered by urgency and on the week calendar.",
     {
         "type": "object",
         "properties": {
-            "title": {"type": "string"},
-            "event_date": {"type": "string", "description": "ISO date (YYYY-MM-DD)."},
-            "starts_at": {"type": "string", "description": "ISO time (HH:MM:SS), optional."},
-            "ends_at": {"type": "string", "description": "ISO time (HH:MM:SS), optional."},
-            "difficulty_weight": {"type": "integer", "description": "1-4 weight for heatmap."},
-            "description": {"type": "string"},
-            "course_id": {"type": "integer", "description": "Associated course."},
+            "title": {"type": "string", "description": "Short task/event title (max 120 chars)."},
+            "event_date": {"type": "string", "description": "Due/occurrence date, ISO date (YYYY-MM-DD)."},
+            "starts_at": {"type": "string", "description": "Full ISO 8601 datetime (e.g. 2026-07-12T14:00:00Z), NOT a bare clock time. Optional; omit for an all-day task."},
+            "ends_at": {"type": "string", "description": "Full ISO 8601 datetime. Optional; defaults to starts_at + 1 hour, and is forced after starts_at."},
+            "difficulty_weight": {"type": "integer", "description": "Effort weight 1 (light) to 4 (heavy); feeds the activity heatmap. Default 1."},
+            "description": {"type": "string", "description": "Optional detail shown in the event dialog (max 255 chars)."},
+            "course_id": {"type": "integer", "description": "Optional owning course id (see list_courses)."},
+            "recurrence_freq": {"type": "string", "enum": ["N", "W", "M", "Y"], "description": "Repeat rule: N=one-time (default), W=weekly, M=monthly, Y=yearly. event_date is the first occurrence."},
+            "recurrence_interval": {"type": "integer", "description": "Repeat every N periods (default 1). Ignored when recurrence_freq=N."},
+            "recurrence_end_date": {"type": ["string", "null"], "description": "ISO date the series stops on (inclusive). Optional."},
+            "recurrence_count": {"type": ["integer", "null"], "description": "Total number of occurrences including the first. Optional; use this OR recurrence_end_date."},
         },
         "required": ["title", "event_date"],
     },
@@ -614,33 +876,53 @@ register_tool(
 
 
 def _update_event(user, creator, params):
+    from notes.api import normalize_planner_event_window
+
     event = get_object_or_404(PlannerEvent, pk=params["event_id"], creator_id=creator)
-    for field in ("title", "event_date", "starts_at", "ends_at", "difficulty_weight", "description", "is_completed"):
+    for field in (
+        "title", "event_date", "starts_at", "ends_at", "difficulty_weight",
+        "description", "is_completed", "recurrence_freq", "recurrence_interval",
+        "recurrence_end_date", "recurrence_count",
+    ):
         if field in params:
             setattr(event, field, params[field])
     if "course_id" in params:
         event.course_id_id = params["course_id"]
     if params.get("is_completed") and not event.completed_at:
         event.completed_at = timezone.now()
+    if params.get("is_completed") is False:
+        event.completed_at = None
     event.save()
+    # Same stored-window contract as the REST PATCH.
+    event.refresh_from_db()
+    normalize_planner_event_window(event)
     return _event_payload(event)
 
 
 register_tool(
     "update_event",
-    "Update a planner event's fields.",
+    "Update a planner event. To complete a task set `is_completed: "
+    "true` (completed tasks stay visible, struck through — prefer this "
+    "over delete_event); `is_completed: false` reopens it. To "
+    "reschedule a timed event set `starts_at` (and `ends_at`) — the "
+    "stored time window wins over `event_date`, which is snapped to "
+    "starts_at's day.",
     {
         "type": "object",
         "properties": {
-            "event_id": {"type": "integer"},
+            "event_id": {"type": "integer", "description": "Event id from list_events / get_activity_week."},
             "title": {"type": "string"},
-            "event_date": {"type": "string"},
-            "starts_at": {"type": ["string", "null"]},
-            "ends_at": {"type": ["string", "null"]},
-            "difficulty_weight": {"type": "integer"},
+            "event_date": {"type": "string", "description": "ISO date (YYYY-MM-DD). Snapped to starts_at's day after save — set starts_at to actually move a timed event."},
+            "starts_at": {"type": ["string", "null"], "description": "Full ISO 8601 datetime (e.g. 2026-07-12T14:00:00Z)."},
+            "ends_at": {"type": ["string", "null"], "description": "Full ISO 8601 datetime; forced after starts_at."},
+            "difficulty_weight": {"type": "integer", "description": "Effort weight 1-4."},
             "description": {"type": "string"},
-            "course_id": {"type": ["integer", "null"]},
-            "is_completed": {"type": "boolean"},
+            "course_id": {"type": ["integer", "null"], "description": "Owning course id, or null to detach."},
+            "is_completed": {"type": "boolean", "description": "true completes (stamps completed_at), false reopens (clears it)."},
+            "recurrence_freq": {"type": "string", "enum": ["N", "W", "M", "Y"], "description": "Repeat rule: N=one-time, W=weekly, M=monthly, Y=yearly."},
+            "recurrence_interval": {"type": "integer", "description": "Repeat every N periods."},
+            "recurrence_end_date": {"type": ["string", "null"], "description": "ISO date the series stops on (inclusive), or null to clear."},
+            "recurrence_count": {"type": ["integer", "null"], "description": "Total occurrences including the first, or null to clear."},
         },
         "required": ["event_id"],
     },
@@ -843,7 +1125,8 @@ def _empty_recycle_bin(user, creator, params):
 
 register_tool(
     "empty_recycle_bin",
-    "Permanently delete every note currently in the recycle bin.",
+    "PERMANENTLY delete every note in the recycle bin. Irreversible — "
+    "only call when the user explicitly confirms emptying the bin.",
     {"type": "object", "properties": {}, "required": []},
     _empty_recycle_bin,
 )
@@ -1087,7 +1370,9 @@ def _delete_event(user, creator, params):
 
 register_tool(
     "delete_event",
-    "Delete a planner event owned by the authenticated user.",
+    "Permanently delete a planner event (no recycle bin). To finish a "
+    "task keep it and set update_event `is_completed: true` instead; "
+    "delete only when the user asks to remove it outright.",
     {
         "type": "object",
         "properties": {
@@ -1146,20 +1431,31 @@ def _get_activity_week(user, creator, params):
             parsed_start = _dt.fromisoformat(start_date).date()
         except ValueError:
             parsed_start = timezone.localdate()
-    return calendar_week_payload(creator, start_date=parsed_start)
+    day_count = params.get("days", 7)
+    return calendar_week_payload(
+        creator, start_date=parsed_start, day_count=day_count
+    )
 
 
 register_tool(
     "get_activity_week",
-    "Week-view planner payload: sessions, events, deadlines, and calendar "
-    "feed entries for the 7-day window starting at `start_date` (ISO "
-    "date, defaults to today in the server's local timezone).",
+    "The user's calendar window: per-day `events` (planner events with "
+    "kind 'plan', calendar-feed entries with kind 'feed', work sessions) "
+    "plus a `deadlines` list of open tasks sorted by urgency_score "
+    "(completed ones inside the window stay, at the bottom). This is "
+    "the tool for 'what is on my plate' questions and for a weekly "
+    "review. Same payload the app's Activity screen renders.",
     {
         "type": "object",
         "properties": {
             "start_date": {
                 "type": "string",
-                "description": "ISO date (YYYY-MM-DD). Defaults to today.",
+                "description": "Window start, ISO date (YYYY-MM-DD). Defaults to today.",
+            },
+            "days": {
+                "type": "integer",
+                "enum": [3, 7, 30],
+                "description": "Window length in days (the app's 3-day / week / month ranges). Default 7; other values fall back to 7.",
             },
         },
         "required": [],
@@ -1308,8 +1604,11 @@ def _create_calendar_feed(user, creator, params):
 
 register_tool(
     "create_calendar_feed",
-    "Create a calendar feed. `source_kind`='I' for a one-shot iCal paste "
-    "(supply `raw_ical`); 'S' for a subscribed URL (supply `source_url`).",
+    "Create a calendar feed shown in the week calendar. `source_kind`="
+    "'I' for a one-shot iCal paste (supply `raw_ical`); 'S' for a "
+    "subscribed URL that is refetched (supply `source_url` — use the "
+    "calendar's secret/private iCal address; a 'public' Google Calendar "
+    "page URL returns HTML and will not parse).",
     {
         "type": "object",
         "properties": {

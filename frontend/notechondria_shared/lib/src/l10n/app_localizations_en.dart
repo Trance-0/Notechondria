@@ -39,6 +39,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonDone => 'Done';
 
   @override
+  String get commonOk => 'OK';
+
+  @override
   String get commonCancel => 'Cancel';
 
   @override
@@ -1521,7 +1524,30 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String activityWeightN(int n) {
-    return 'Weight $n';
+    switch (n) {
+      case 1:
+        return 'Trivial';
+      case 2:
+        return 'Normal';
+      case 3:
+        return 'Important';
+      case 4:
+        return 'Significant';
+      case 5:
+        return 'Fatal';
+      default:
+        return 'Normal';
+    }
+  }
+
+  @override
+  String heatmapActivityValue(int value) {
+    return '$value activity';
+  }
+
+  @override
+  String heatmapPlannedValue(int value) {
+    return 'planned load $value';
   }
 
   @override
@@ -1532,6 +1558,56 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get activitySubscribedCalendar => 'Subscribed calendar';
+
+  @override
+  String get activityImportSucceeded => 'Import succeeded';
+
+  @override
+  String get activityImportFailed => 'Import failed';
+
+  @override
+  String activityImportedCount(int count, String title) {
+    return 'Imported $count event(s) from "$title":';
+  }
+
+  @override
+  String get activityAllCourses => 'All courses';
+
+  @override
+  String get activityEditEvent => 'Edit event';
+
+  @override
+  String get activityRepeatLabel => 'Repeat';
+
+  @override
+  String get activityRepeatNever => 'Does not repeat';
+
+  @override
+  String get activityRepeatWeekly => 'Weekly';
+
+  @override
+  String get activityRepeatMonthly => 'Monthly';
+
+  @override
+  String get activityRepeatYearly => 'Yearly';
+
+  @override
+  String get activityRepeatIntervalLabel => 'Repeat every N period(s)';
+
+  @override
+  String get activityRepeatEndsLabel => 'Ends';
+
+  @override
+  String get activityRepeatEndNever => 'Never';
+
+  @override
+  String get activityRepeatEndOnDate => 'On date';
+
+  @override
+  String get activityRepeatEndAfter => 'After N occurrences';
+
+  @override
+  String get activityRepeatCountLabel => 'Number of occurrences';
 
   @override
   String get mcpSkillCopied => 'skill.md copied to clipboard.';

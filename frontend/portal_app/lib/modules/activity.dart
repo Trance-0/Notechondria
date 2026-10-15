@@ -1,11 +1,12 @@
 part of notechondria_frontend;
 
 /// Activity module showing planner events, note sessions, and calendar feeds.
-class _ActivityPage extends StatelessWidget {
+class _ActivityPage extends StatefulWidget {
   const _ActivityPage({
     required this.activityWeek,
     required this.isAuthenticated,
     required this.plannerEvents,
+    required this.courses,
     required this.rangeDays,
     required this.onCreatePlannerEvent,
     required this.onImportCalendar,
@@ -14,101 +15,274 @@ class _ActivityPage extends StatelessWidget {
     required this.onShiftStartDay,
     required this.onChangeRange,
     required this.onTogglePlannerEventCompletion,
+    required this.onUpdatePlannerEvent,
+    this.onEditCourse,
+    this.onTransferCourse,
   });
 
   final Map<String, dynamic>? activityWeek;
   final bool isAuthenticated;
   final List<Map<String, dynamic>> plannerEvents;
+  final List<Map<String, dynamic>> courses;
   final int rangeDays;
   final Future<ActionFeedback> Function(
     String title,
     DateTime eventDate,
     int difficultyWeight,
-    String description,
-  ) onCreatePlannerEvent;
-  final Future<void> Function(String rawIcal, String title, {int? courseId})
-      onImportCalendar;
-  final Future<void> Function(String title, String url, {int? courseId})
-      onSubscribeCalendar;
+    String description, {
+    DateTime? endsAt,
+    int? courseId,
+  }) onCreatePlannerEvent;
+  final Future<Map<String, dynamic>?> Function(String rawIcal, String title,
+      {int? courseId}) onImportCalendar;
+  final Future<Map<String, dynamic>?> Function(String title, String url,
+      {int? courseId}) onSubscribeCalendar;
   final Future<void> Function(int direction) onNavigateWeek;
   final Future<void> Function(int dayDelta) onShiftStartDay;
   final Future<void> Function(int days) onChangeRange;
   final Future<void> Function(Map<String, dynamic> event, bool completed)
       onTogglePlannerEventCompletion;
+  final Future<void> Function(
+          Map<String, dynamic> event, Map<String, dynamic> changes)
+      onUpdatePlannerEvent;
+
+  /// Owner-only course metadata editor opened from the filter bar's
+  /// settings button; null hides the button entirely.
+  final Future<ActionFeedback> Function(
+    Map<String, dynamic> course,
+    Map<String, dynamic> payload,
+  )? onEditCourse;
+
+  /// Owner-only ownership transfer (#11), surfaced in the same course-edit
+  /// dialog. Null hides the Transfer entry.
+  final Future<ActionFeedback> Function(
+    Map<String, dynamic> course,
+    String target,
+  )? onTransferCourse;
+
+  @override
+  State<_ActivityPage> createState() => _ActivityPageState();
+}
+
+class _ActivityPageState extends State<_ActivityPage> {
+  // null = show every course; otherwise only events with this course_id.
+  int? _courseFilter;
+
+  /// Keeps only events matching the active course filter, per day.
+  List<Map<String, dynamic>> _filterDays(List<Map<String, dynamic>> days) {
+    if (_courseFilter == null) {
+      return days;
+    }
+    return [
+      for (final day in days)
+        {
+          ...day,
+          'events': [
+            for (final event in (day['events'] as List<dynamic>? ?? const []))
+              if ((event as Map)['course_id'] == _courseFilter) event,
+          ],
+        },
+    ];
+  }
+
+  List<Map<String, dynamic>> _filterEvents(List<Map<String, dynamic>> events) {
+    if (_courseFilter == null) {
+      return events;
+    }
+    return [
+      for (final event in events)
+        if (event['course_id'] == _courseFilter) event,
+    ];
+  }
+
+  /// Empty hour-grid days (starting today) so the calendar always renders
+  /// — offline / no-event states keep the drag-to-create surface instead
+  /// of a "no events" card.
+  List<Map<String, dynamic>> _placeholderDays() {
+    final today = DateTime.now();
+    final count = widget.rangeDays == 30 ? 30 : widget.rangeDays.clamp(1, 14);
+    return [
+      for (var i = 0; i < count; i++)
+        {
+          'date': DateTime(today.year, today.month, today.day + i)
+              .toIso8601String()
+              .split('T')
+              .first,
+          'events': const <Map<String, dynamic>>[],
+        },
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final weekDays = (activityWeek?['days'] as List<dynamic>? ?? const [])
-        .map((item) => Map<String, dynamic>.from(item as Map))
-        .toList();
-    final deadlines = (activityWeek?['deadlines'] as List<dynamic>? ?? const [])
-        .map((item) => Map<String, dynamic>.from(item as Map))
-        .toList();
+    var weekDays = _filterDays(
+      (widget.activityWeek?['days'] as List<dynamic>? ?? const [])
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList(),
+    );
+    if (weekDays.isEmpty) {
+      weekDays = _placeholderDays();
+    }
+    final deadlines = _filterEvents(
+      (widget.activityWeek?['deadlines'] as List<dynamic>? ?? const [])
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList(),
+    );
     return LayoutBuilder(
       builder: (context, constraints) {
         final isHorizontal = MediaQuery.of(context).size.width >= 960;
         return Padding(
           padding: const EdgeInsets.all(20),
-          child: Stack(
+          child: Column(
             children: [
-              Positioned.fill(
-                child: !isAuthenticated
-                    ? _ActivityFillCard(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Center(
-                            child: Text(
-                              l10n.activitySignInPrompt,
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                      )
-                    : isHorizontal
-                        ? (weekDays.isEmpty
-                            ? _ActivityFillCard(
-                                child: Center(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(20),
-                                    child: Text(
-                                      l10n.activityNoWeekEvents,
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                ),
-                              )
-                            : _WideWeekCalendar(
-                                days: weekDays,
-                                rangeDays: rangeDays,
-                                onNavigateWeek: onNavigateWeek,
-                                onShiftStartDay: onShiftStartDay,
-                                onChangeRange: onChangeRange,
-                                onCreatePlannerEvent: onCreatePlannerEvent,
-                              ))
-                        : _VerticalWeekBoard(
-                            days: weekDays,
-                            deadlines: deadlines,
-                            plannerEvents: plannerEvents,
-                            onNavigateWeek: onNavigateWeek,
-                            onTogglePlannerEventCompletion:
-                                onTogglePlannerEventCompletion,
-                          ),
+              _CourseFilterBar(
+                courses: widget.courses,
+                selectedCourseId: _courseFilter,
+                onChanged: (value) => setState(() => _courseFilter = value),
+                onEditSelected: widget.onEditCourse == null
+                    ? null
+                    : () {
+                        final id = _courseFilter;
+                        if (id == null) return;
+                        Map<String, dynamic>? match;
+                        for (final course in widget.courses) {
+                          if ((course['id'] as num?)?.toInt() == id) {
+                            match = course;
+                            break;
+                          }
+                        }
+                        if (match != null) {
+                          _showCourseEditDialog(context, match,
+                              widget.onEditCourse!, widget.onTransferCourse);
+                        }
+                      },
               ),
-              if (isAuthenticated)
-                Positioned(
-                  right: 20,
-                  bottom: 20,
-                  child: _RoundActivityFab(
-                    onCreatePlannerEvent: onCreatePlannerEvent,
-                    onImportCalendar: onImportCalendar,
-                    onSubscribeCalendar: onSubscribeCalendar,
-                  ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: Stack(
+                  children: [
+                    // Signed-out users get the same calendar + FAB, served
+                    // from device-local events (0.1.162) — the old
+                    // full-surface sign-in prompt blocked offline planning.
+                    Positioned.fill(
+                      child: isHorizontal
+                          // Always render the hour grid — an empty week
+                          // shows placeholder days so drag-to-create works
+                          // offline / with no events.
+                          ? _WideWeekCalendar(
+                              days: weekDays,
+                              rangeDays: widget.rangeDays,
+                              courses: widget.courses,
+                              onNavigateWeek: widget.onNavigateWeek,
+                              onShiftStartDay: widget.onShiftStartDay,
+                              onChangeRange: widget.onChangeRange,
+                              onCreatePlannerEvent:
+                                  widget.onCreatePlannerEvent,
+                              onUpdatePlannerEvent:
+                                  widget.onUpdatePlannerEvent,
+                            )
+                          : _VerticalWeekBoard(
+                              days: weekDays,
+                              deadlines: deadlines,
+                              plannerEvents:
+                                  _filterEvents(widget.plannerEvents),
+                              onNavigateWeek: widget.onNavigateWeek,
+                              onTogglePlannerEventCompletion:
+                                  widget.onTogglePlannerEventCompletion,
+                            ),
+                    ),
+                    Positioned(
+                      right: 20,
+                      bottom: 20,
+                      child: _RoundActivityFab(
+                        onCreatePlannerEvent: widget.onCreatePlannerEvent,
+                        onImportCalendar: widget.onImportCalendar,
+                        onSubscribeCalendar: widget.onSubscribeCalendar,
+                        courses: widget.courses,
+                      ),
+                    ),
+                  ],
                 ),
+              ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+/// Top-of-activity filter that narrows the calendar + deadlines to a single
+/// course (category). Hidden when the user has no courses.
+class _CourseFilterBar extends StatelessWidget {
+  const _CourseFilterBar({
+    required this.courses,
+    required this.selectedCourseId,
+    required this.onChanged,
+    this.onEditSelected,
+  });
+
+  final List<Map<String, dynamic>> courses;
+  final int? selectedCourseId;
+  final void Function(int?) onChanged;
+
+  /// Opens the course-metadata editor for the selected course. The button
+  /// renders disabled (with an explanatory tooltip) while the filter is on
+  /// "All courses" — course attributes are edited one course at a time.
+  final VoidCallback? onEditSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    // De-duplicate courses by id (local + cloud lists can overlap).
+    final entries = <int, String>{};
+    for (final course in courses) {
+      final id = course['id'];
+      if (id is int) {
+        final title = course['title']?.toString() ?? '';
+        entries[id] = title.isEmpty ? 'Course $id' : title;
+      }
+    }
+    if (entries.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    // Guard against a stale selection (e.g. an unsubscribed course).
+    final value = entries.containsKey(selectedCourseId) ? selectedCourseId : null;
+    return Row(
+      children: [
+        const Icon(Icons.filter_list, size: 18),
+        const SizedBox(width: 8),
+        Flexible(
+          child: DropdownButton<int?>(
+            isExpanded: true,
+            value: value,
+            items: [
+              DropdownMenuItem<int?>(
+                value: null,
+                child: Text(l10n.activityAllCourses),
+              ),
+              for (final entry in entries.entries)
+                DropdownMenuItem<int?>(
+                  value: entry.key,
+                  child: Text(entry.value, overflow: TextOverflow.ellipsis),
+                ),
+            ],
+            onChanged: onChanged,
+          ),
+        ),
+        if (onEditSelected != null) ...[
+          const SizedBox(width: 4),
+          Tooltip(
+            message: value == null
+                ? 'Select a specific course to edit its attributes'
+                : 'Edit course attributes (colour, title, description)',
+            child: IconButton(
+              icon: const Icon(Icons.settings_outlined, size: 20),
+              onPressed: value == null ? null : onEditSelected,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -203,18 +377,22 @@ class _RoundActivityFab extends StatelessWidget {
     required this.onCreatePlannerEvent,
     required this.onImportCalendar,
     required this.onSubscribeCalendar,
+    this.courses = const <Map<String, dynamic>>[],
   });
 
+  final List<Map<String, dynamic>> courses;
   final Future<ActionFeedback> Function(
     String title,
     DateTime eventDate,
     int difficultyWeight,
-    String description,
-  ) onCreatePlannerEvent;
-  final Future<void> Function(String rawIcal, String title, {int? courseId})
-      onImportCalendar;
-  final Future<void> Function(String title, String url, {int? courseId})
-      onSubscribeCalendar;
+    String description, {
+    DateTime? endsAt,
+    int? courseId,
+  }) onCreatePlannerEvent;
+  final Future<Map<String, dynamic>?> Function(String rawIcal, String title,
+      {int? courseId}) onImportCalendar;
+  final Future<Map<String, dynamic>?> Function(String title, String url,
+      {int? courseId}) onSubscribeCalendar;
 
   Future<void> _showMenu(BuildContext context, TapDownDetails? details) async {
     final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
@@ -251,7 +429,8 @@ class _RoundActivityFab extends StatelessWidget {
       await _showSubscribeCalendarDialog(context, onSubscribeCalendar);
       return;
     }
-    await _showCreatePlannerEventDialog(context, onCreatePlannerEvent);
+    await _showCreatePlannerEventDialog(context, onCreatePlannerEvent,
+        courses: courses);
   }
 
   @override
@@ -270,6 +449,7 @@ class _RoundActivityFab extends StatelessWidget {
             _showCreatePlannerEventDialog(
               context,
               onCreatePlannerEvent,
+              courses: courses,
             );
           },
           child: const Icon(Icons.add),

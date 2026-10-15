@@ -6,6 +6,10 @@ class _CoursePage extends StatefulWidget {
     required this.localCourses,
     required this.selectedCourse,
     required this.notes,
+    this.notesLoading = false,
+    this.notesHasMore = false,
+    this.notesLoadingMore = false,
+    this.onLoadMoreNotes,
     required this.localNotes,
     required this.isAuthenticated,
     required this.canCreateLocalCourses,
@@ -16,23 +20,74 @@ class _CoursePage extends StatefulWidget {
     required this.onSubscribe,
     required this.onUnsubscribe,
     required this.onFetchNoteDetail,
+    this.onOpenRoutedNote,
+    this.initialModuleKey,
+    this.onEditCourse,
+    this.onTransferCourse,
+    this.onImportCourseFromGit,
   });
 
   final List<Map<String, dynamic>> courses;
   final List<Map<String, dynamic>> localCourses;
   final Map<String, dynamic>? selectedCourse;
   final List<Map<String, dynamic>> notes;
+
+  /// First-page fetch in flight: the course view shows a loading bar and
+  /// renders NO note/module content (stale `recent_notes` previews used
+  /// to appear as if they were the course, which read as fake content).
+  final bool notesLoading;
+  final bool notesHasMore;
+  final bool notesLoadingMore;
+
+  /// Streams the next page in when the user nears the bottom (infinite
+  /// scroll; no manual load-more buttons).
+  final Future<void> Function()? onLoadMoreNotes;
   final List<Map<String, dynamic>> localNotes;
   final bool isAuthenticated;
   final bool canCreateLocalCourses;
   final String? apiBaseUrl;
   final ValueChanged<Map<String, dynamic>> onCourseChanged;
-  final Future<Map<String, dynamic>> Function(String title, String description)
-      onCreateLocalCourse;
+  final Future<Map<String, dynamic>> Function(
+    String title,
+    String description, {
+    int? colorHue,
+    String? coverImageUrl,
+  }) onCreateLocalCourse;
   final Future<ActionFeedback> Function({bool announce}) onSyncLocalData;
   final Future<void> Function(Map<String, dynamic> course) onSubscribe;
   final Future<void> Function(Map<String, dynamic> course) onUnsubscribe;
   final Future<Map<String, dynamic>> Function(int noteId) onFetchNoteDetail;
+
+  /// Opens a note through the shell's routed viewer (`#/note/<uuid>`,
+  /// working in-course links). Null falls back to the local dialog.
+  final Future<void> Function(Map<String, dynamic> note)? onOpenRoutedNote;
+
+  /// Module deep link from `#/courses/<slug>/m/<key>` — opened once the
+  /// course's modules are built (consumed once).
+  final String? initialModuleKey;
+
+  /// Owner-only metadata editor (title / description / colour hue); null
+  /// hides the Edit entry (e.g. signed-out).
+  final Future<ActionFeedback> Function(
+    Map<String, dynamic> course,
+    Map<String, dynamic> payload,
+  )? onEditCourse;
+
+  /// Owner-only ownership transfer (#11): hands the course to the creator
+  /// named by username / email. Null hides the Transfer entry.
+  final Future<ActionFeedback> Function(
+    Map<String, dynamic> course,
+    String target,
+  )? onTransferCourse;
+
+  /// Creates a cloud course bound to a GitHub repo and imports its
+  /// markdown (create → bind → import); null hides the repo field.
+  final Future<ActionFeedback> Function(
+    String title,
+    String description,
+    String repo, {
+    int? colorHue,
+  })? onImportCourseFromGit;
 
   @override
   State<_CoursePage> createState() => _CoursePageState();
@@ -43,6 +98,7 @@ class _CoursePageState extends State<_CoursePage> {
   String _scope = 'public';
   Map<String, dynamic>? _openedCourse;
   Map<String, dynamic>? _openedModule;
+  bool _initialModuleConsumed = false;
   int _courseVisibleNotes = 4;
   int _moduleVisibleNotes = 4;
 
@@ -97,9 +153,18 @@ class _CoursePageState extends State<_CoursePage> {
   }
 
   List<Map<String, dynamic>> _visibleCourses() {
+    // Default scope: subscribed, most recently viewed first.
     final subscribed = widget.courses
         .where((course) => course['is_subscribed'] == true)
-        .toList();
+        .toList()
+      ..sort((a, b) {
+        final aOpened = DateTime.tryParse(a['last_opened_at']?.toString() ?? '');
+        final bOpened = DateTime.tryParse(b['last_opened_at']?.toString() ?? '');
+        if (aOpened == null && bOpened == null) return 0;
+        if (aOpened == null) return 1;
+        if (bOpened == null) return -1;
+        return bOpened.compareTo(aOpened);
+      });
     final mine = [
       ...widget.localCourses,
       ...widget.courses.where((course) => course['is_owned'] == true),
@@ -119,59 +184,180 @@ class _CoursePageState extends State<_CoursePage> {
   Future<Map<String, dynamic>?> _showCreateLocalCourseDialog() async {
     final titleController = TextEditingController();
     final descriptionController = TextEditingController();
+    final coverController = TextEditingController();
+    final repoController = TextEditingController();
+    double? hue;
+    ActionFeedback? feedback;
+    var submitting = false;
+    final canImportGit =
+        widget.isAuthenticated && widget.onImportCourseFromGit != null;
     try {
       return await showDialog<Map<String, dynamic>>(
         context: context,
-        builder: (context) => AlertDialog(
-          title: Text(AppLocalizations.of(context).courseCreateLocal),
-          content: SizedBox(
-            width: 420,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: titleController,
-                  decoration: InputDecoration(
-                    labelText: AppLocalizations.of(context).courseTitleLabel,
-                    border: const OutlineInputBorder(),
+        builder: (context) => StatefulBuilder(
+          builder: (context, setState) {
+            final currentHue = hue;
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final preview = currentHue == null
+                ? Theme.of(context).colorScheme.primary
+                : HSVColor.fromAHSV(1, currentHue.clamp(0, 359), 0.55,
+                        isDark ? 0.6 : 0.9)
+                    .toColor();
+            return AlertDialog(
+              title: Text(AppLocalizations.of(context).courseCreateLocal),
+              content: SizedBox(
+                width: 420,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: titleController,
+                        decoration: InputDecoration(
+                          labelText:
+                              AppLocalizations.of(context).courseTitleLabel,
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: descriptionController,
+                        maxLines: 3,
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)
+                              .courseDescriptionLabel,
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: coverController,
+                        decoration: const InputDecoration(
+                          labelText: 'Feature image URL (optional)',
+                          hintText: 'https://example.com/cover.png',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: preview,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: currentHue == null
+                                ? const Text('Theme default colour')
+                                : Slider(
+                                    min: 0,
+                                    max: 359,
+                                    value:
+                                        currentHue.clamp(0, 359).toDouble(),
+                                    onChanged: (value) =>
+                                        setState(() => hue = value),
+                                  ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: currentHue != null,
+                            onChanged: (checked) => setState(
+                                () => hue = (checked == true) ? 200.0 : null),
+                          ),
+                          const Expanded(
+                            child: Text('Custom colour hue'),
+                          ),
+                        ],
+                      ),
+                      if (canImportGit) ...[
+                        const Divider(height: 24),
+                        TextField(
+                          controller: repoController,
+                          decoration: const InputDecoration(
+                            labelText:
+                                'Import from GitHub repo (owner/name, optional)',
+                            hintText: 'octo-org/my-docs',
+                            helperText:
+                                'Binds this course to the repo (one repo per '
+                                'course) and imports its markdown.',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                        ),
+                      ],
+                      if (feedback != null) ...[
+                        const SizedBox(height: 8),
+                        FeedbackText(feedback: feedback!),
+                      ],
+                    ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: descriptionController,
-                  maxLines: 3,
-                  decoration: InputDecoration(
-                    labelText:
-                        AppLocalizations.of(context).courseDescriptionLabel,
-                    border: const OutlineInputBorder(),
-                  ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed:
+                      submitting ? null : () => Navigator.of(context).pop(),
+                  child: Text(AppLocalizations.of(context).commonCancel),
+                ),
+                FilledButton(
+                  onPressed: submitting
+                      ? null
+                      : () async {
+                          final repo = repoController.text.trim();
+                          if (repo.isNotEmpty && canImportGit) {
+                            setState(() {
+                              submitting = true;
+                              feedback = null;
+                            });
+                            final result =
+                                await widget.onImportCourseFromGit!(
+                              titleController.text.trim(),
+                              descriptionController.text.trim(),
+                              repo,
+                              colorHue: hue?.round(),
+                            );
+                            if (!context.mounted) return;
+                            if (result.isError) {
+                              setState(() {
+                                submitting = false;
+                                feedback = result;
+                              });
+                              return;
+                            }
+                            Navigator.of(context).pop(null);
+                            return;
+                          }
+                          final created = await widget.onCreateLocalCourse(
+                            titleController.text.trim(),
+                            descriptionController.text.trim(),
+                            colorHue: hue?.round(),
+                            coverImageUrl: coverController.text.trim(),
+                          );
+                          if (context.mounted) {
+                            Navigator.of(context).pop(created);
+                          }
+                        },
+                  child: Text(AppLocalizations.of(context).commonCreate),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(AppLocalizations.of(context).commonCancel),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final created = await widget.onCreateLocalCourse(
-                  titleController.text.trim(),
-                  descriptionController.text.trim(),
-                );
-                if (context.mounted) {
-                  Navigator.of(context).pop(created);
-                }
-              },
-              child: Text(AppLocalizations.of(context).commonCreate),
-            ),
-          ],
+            );
+          },
         ),
       );
     } finally {
       titleController.dispose();
       descriptionController.dispose();
+      coverController.dispose();
+      repoController.dispose();
     }
   }
 
@@ -233,37 +419,35 @@ class _CoursePageState extends State<_CoursePage> {
       final note = notes[index];
       final metadata =
           _decodeNoteMetadata(note['metadata_json']?.toString() ?? '{}');
-      final rawTitle = metadata['module_title']?.toString() ??
-          metadata['section']?.toString() ??
-          note['title']?.toString() ??
-          'Module ${index + 1}';
+      // The backend `module` field (set on git-import from the adapter's
+      // cv/dnn/… grouping) is authoritative; fall back to legacy metadata
+      // hints, then a single default bucket so notes are never fanned out
+      // one-per-module.
+      final rawTitle = (note['module']?.toString().trim().isNotEmpty ?? false)
+          ? note['module'].toString()
+          : metadata['module_title']?.toString() ??
+              metadata['section']?.toString() ??
+              note['title']?.toString() ??
+              'Module ${index + 1}';
       final title =
           rawTitle.trim().isEmpty ? 'Module ${index + 1}' : rawTitle.trim();
       final key = title.toLowerCase();
       final module = modules.putIfAbsent(
         key,
         () => {
-          'id': metadata['module_id']?.toString() ?? 'module-$index',
+          'id': metadata['module_id']?.toString() ?? 'module-$key',
           'title': title,
-          'description': metadata['module_description']?.toString() ??
-              note['description']?.toString() ??
-              note['excerpt']?.toString() ??
-              'Study materials and public discussion for this module.',
+          // Real, user-authored content only — no fabricated
+          // objectives / assignments / "discussion board" placeholders.
+          'description': metadata['module_description']?.toString() ?? '',
           'objectives': (metadata['objectives'] as List?)
                   ?.map((item) => item.toString())
                   .toList() ??
-              <String>[
-                note['description']?.toString().isNotEmpty == true
-                    ? note['description'].toString()
-                    : 'Review the module notes.',
-              ],
+              const <String>[],
           'assignments': (metadata['assignments'] as List?)
                   ?.map((item) => item.toString())
                   .toList() ??
-              <String>[
-                'Read the module notes.',
-                'Review the discussion board.',
-              ],
+              const <String>[],
           'notes': <Map<String, dynamic>>[],
         },
       );
@@ -272,9 +456,65 @@ class _CoursePageState extends State<_CoursePage> {
     return modules.values.toList(growable: false);
   }
 
+  /// Address-bar sync for the course/module surfaces: every full-screen
+  /// view has a unique URL (`/courses/<slug>` and `/courses/<slug>/m/<key>`).
+  void _syncCourseUrl(
+      Map<String, dynamic>? course, Map<String, dynamic>? module) {
+    final slug = course?['slug']?.toString() ?? '';
+    if (slug.isEmpty) {
+      url_strategy.replaceBrowserPath('/courses');
+      return;
+    }
+    if (module == null) {
+      url_strategy.replaceBrowserPath('/courses/$slug');
+      return;
+    }
+    final key = _slugifyLinkText(module['title']?.toString() ?? '');
+    url_strategy.replaceBrowserPath(
+        key.isEmpty ? '/courses/$slug' : '/courses/$slug/m/$key');
+  }
+
+  /// Opens the `#/courses/<slug>/m/<key>` deep-link module once modules
+  /// exist (consumed once; unknown keys just stay on the course).
+  void _maybeConsumeInitialModule(
+      Map<String, dynamic>? activeCourse,
+      List<Map<String, dynamic>> modules) {
+    final wanted = widget.initialModuleKey;
+    if (_initialModuleConsumed ||
+        wanted == null ||
+        wanted.isEmpty ||
+        activeCourse == null ||
+        modules.isEmpty ||
+        _openedModule != null) {
+      return;
+    }
+    for (final module in modules) {
+      if (_slugifyLinkText(module['title']?.toString() ?? '') == wanted) {
+        _initialModuleConsumed = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          setState(() {
+            _openedModule = module;
+            _moduleVisibleNotes = 4;
+          });
+        });
+        return;
+      }
+    }
+  }
+
   Future<void> _openNote(Map<String, dynamic> note) async {
     final noteId = (note['id'] as num?)?.toInt();
     if (noteId == null) {
+      return;
+    }
+    // Routed open (0.1.186): pushes `#/note/<uuid>` so every note read
+    // from a course/module has a unique shareable URL, browser Back
+    // works, and in-note relative links ("what to read next") resolve
+    // through the shell's follow-link handler. The bare dialog used
+    // here before had NO link handler at all.
+    if (widget.onOpenRoutedNote != null) {
+      await widget.onOpenRoutedNote!(note);
       return;
     }
     final detail = await widget.onFetchNoteDetail(noteId);
@@ -409,7 +649,20 @@ class _CoursePageState extends State<_CoursePage> {
         ? const <Map<String, dynamic>>[]
         : _courseNotes(activeCourse);
     final modules = _modulesFromNotes(activeNotes);
-    return ListView(
+    _maybeConsumeInitialModule(activeCourse, modules);
+    // Infinite scroll: nearing the bottom streams the next notes page in
+    // (no manual load-more buttons).
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (activeCourse != null &&
+            widget.notesHasMore &&
+            !widget.notesLoadingMore &&
+            notification.metrics.extentAfter < 600) {
+          widget.onLoadMoreNotes?.call();
+        }
+        return false;
+      },
+      child: ListView(
       padding: const EdgeInsets.all(20),
       children: [
         LayoutBuilder(
@@ -525,6 +778,7 @@ class _CoursePageState extends State<_CoursePage> {
               setState(() {
                 _openedModule = null;
               });
+              _syncCourseUrl(activeCourse, null);
             },
             icon: const Icon(Icons.arrow_back),
             label: Text(AppLocalizations.of(context).courseBackTo(
@@ -545,34 +799,47 @@ class _CoursePageState extends State<_CoursePage> {
                           fontWeight: FontWeight.w800,
                         ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(_openedModule!['description']?.toString() ?? ''),
-                  const SizedBox(height: 16),
-                  Text(
-                    AppLocalizations.of(context).courseObjectives,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 6),
-                  for (final item
-                      in (_openedModule!['objectives'] as List<dynamic>? ??
-                          const []))
-                    Text('• ${item.toString()}'),
-                  const SizedBox(height: 16),
-                  Text(
-                    AppLocalizations.of(context).courseAssignments,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 6),
-                  for (final item
-                      in (_openedModule!['assignments'] as List<dynamic>? ??
-                          const []))
-                    Text('• ${item.toString()}'),
+                  if ((_openedModule!['description']?.toString() ?? '')
+                      .trim()
+                      .isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(_openedModule!['description'].toString()),
+                  ],
+                  // Objectives / assignments only render when the module
+                  // actually declares them — imported modules don't, so no
+                  // fabricated template sections appear.
+                  if ((_openedModule!['objectives'] as List<dynamic>? ??
+                          const [])
+                      .isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      AppLocalizations.of(context).courseObjectives,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 6),
+                    for (final item
+                        in (_openedModule!['objectives'] as List<dynamic>))
+                      Text('• ${item.toString()}'),
+                  ],
+                  if ((_openedModule!['assignments'] as List<dynamic>? ??
+                          const [])
+                      .isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      AppLocalizations.of(context).courseAssignments,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 6),
+                    for (final item
+                        in (_openedModule!['assignments'] as List<dynamic>))
+                      Text('• ${item.toString()}'),
+                  ],
                 ],
               ),
             ),
@@ -599,6 +866,7 @@ class _CoursePageState extends State<_CoursePage> {
                 _openedCourse = null;
                 _openedModule = null;
               });
+              url_strategy.replaceBrowserPath('/courses');
             },
             icon: const Icon(Icons.arrow_back),
             label: Text(AppLocalizations.of(context).courseBackToResults),
@@ -660,6 +928,21 @@ class _CoursePageState extends State<_CoursePage> {
                                 child: Text(
                                     AppLocalizations.of(context).courseSubscribe),
                               ),
+                            // Owner-only entry to edit the course metadata
+                            // (title / description / calendar colour hue).
+                            if (widget.onEditCourse != null &&
+                                activeCourse['is_owned'] == true)
+                              OutlinedButton.icon(
+                                icon: const Icon(Icons.settings_outlined,
+                                    size: 18),
+                                onPressed: () => _showCourseEditDialog(
+                                  context,
+                                  activeCourse,
+                                  widget.onEditCourse!,
+                                  widget.onTransferCourse,
+                                ),
+                                label: const Text('Edit course'),
+                              ),
                           ],
                         ),
                       ],
@@ -696,14 +979,24 @@ class _CoursePageState extends State<_CoursePage> {
                 ?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
-          if (modules.isEmpty)
+          if (widget.notesLoading) ...[
+            const LinearProgressIndicator(),
+            const SizedBox(height: 12),
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('Loading course content…'),
+              ),
+            ),
+          ] else if (modules.isEmpty)
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(AppLocalizations.of(context).courseNoModules),
               ),
             ),
-          for (final module in modules)
+          if (!widget.notesLoading)
+            for (final module in modules)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Card(
@@ -724,11 +1017,13 @@ class _CoursePageState extends State<_CoursePage> {
                       _openedModule = module;
                       _moduleVisibleNotes = 4;
                     });
+                    _syncCourseUrl(activeCourse, module);
                   },
                 ),
               ),
             ),
           const SizedBox(height: 20),
+          if (!widget.notesLoading)
           _DiscussionBoard(
             title: AppLocalizations.of(context).courseDiscussion,
             notes: activeNotes,
@@ -741,8 +1036,13 @@ class _CoursePageState extends State<_CoursePage> {
             },
             emptyMessage: AppLocalizations.of(context).courseNoDiscussion,
           ),
+          if (widget.notesLoadingMore) ...[
+            const SizedBox(height: 8),
+            const LinearProgressIndicator(),
+          ],
         ],
       ],
+      ),
     );
   }
 }
@@ -902,4 +1202,245 @@ class _CourseChip extends StatelessWidget {
       child: Text(label, style: Theme.of(context).textTheme.labelLarge),
     );
   }
+}
+
+/// Owner-only course metadata editor: title, description, and the accent
+/// hue that colours this course's events on the calendar (hue-only — the
+/// calendar derives saturation from event importance and value from the
+/// theme). `onSubmit` PATCHes and refreshes; errors render inline.
+Future<void> _showCourseEditDialog(
+  BuildContext context,
+  Map<String, dynamic> course,
+  Future<ActionFeedback> Function(
+    Map<String, dynamic> course,
+    Map<String, dynamic> payload,
+  ) onSubmit, [
+  Future<ActionFeedback> Function(
+    Map<String, dynamic> course,
+    String target,
+  )? onTransfer,
+]) async {
+  final titleController =
+      TextEditingController(text: course['title']?.toString() ?? '');
+  final descriptionController =
+      TextEditingController(text: course['description']?.toString() ?? '');
+  final transferController = TextEditingController();
+  double? hue = (course['color_hue'] as num?)?.toDouble();
+  ActionFeedback? feedback;
+  var submitting = false;
+
+  await showDialog<void>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) {
+        final currentHue = hue;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final preview = currentHue == null
+            ? Theme.of(context).colorScheme.primary
+            : HSVColor.fromAHSV(
+                    1, currentHue.clamp(0, 359), 0.55, isDark ? 0.6 : 0.9)
+                .toColor();
+        return AlertDialog(
+          title: const Text('Edit course'),
+          content: SizedBox(
+            width: 420,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(
+                      labelText: 'Title',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: descriptionController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Description',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: preview,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: currentHue == null
+                            ? const Text('Theme default colour')
+                            : Slider(
+                                min: 0,
+                                max: 359,
+                                value: currentHue.clamp(0, 359).toDouble(),
+                                onChanged: (value) =>
+                                    setState(() => hue = value),
+                              ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: currentHue != null,
+                        onChanged: (checked) => setState(
+                            () => hue = (checked == true) ? 200.0 : null),
+                      ),
+                      const Expanded(
+                        child: Text(
+                            'Custom hue (colours this course\'s events on the calendar)'),
+                      ),
+                    ],
+                  ),
+                  if (onTransfer != null) ...[
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Transfer ownership',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Hand this course to another user by their username or '
+                      'email. You will lose owner access (its notes keep '
+                      'their own authors; any GitHub binding is cleared).',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: transferController,
+                      enabled: !submitting,
+                      decoration: const InputDecoration(
+                        labelText: 'Recipient username or email',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor:
+                              Theme.of(context).colorScheme.error,
+                        ),
+                        icon: const Icon(Icons.swap_horiz, size: 18),
+                        onPressed: submitting
+                            ? null
+                            : () async {
+                                final target = transferController.text.trim();
+                                if (target.isEmpty) {
+                                  setState(() => feedback = const ActionFeedback(
+                                        message: 'Enter the recipient\'s '
+                                            'username or email.',
+                                        isError: true,
+                                      ));
+                                  return;
+                                }
+                                final confirmed = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Transfer ownership?'),
+                                    content: Text(
+                                      'Give "${course['title'] ?? 'this course'}" '
+                                      'to "$target"? You will lose owner '
+                                      'access unless they share it back.',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(false),
+                                        child: Text(AppLocalizations.of(context)
+                                            .commonCancel),
+                                      ),
+                                      FilledButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(true),
+                                        child: const Text('Transfer'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (confirmed != true) return;
+                                setState(() {
+                                  submitting = true;
+                                  feedback = null;
+                                });
+                                final result =
+                                    await onTransfer!(course, target);
+                                if (result.isError) {
+                                  setState(() {
+                                    submitting = false;
+                                    feedback = result;
+                                  });
+                                  return;
+                                }
+                                if (context.mounted) {
+                                  Navigator.of(context).pop();
+                                }
+                              },
+                        label: const Text('Transfer ownership…'),
+                      ),
+                    ),
+                  ],
+                  if (feedback != null) ...[
+                    const SizedBox(height: 8),
+                    FeedbackText(feedback: feedback!),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed:
+                  submitting ? null : () => Navigator.of(context).pop(),
+              child: Text(AppLocalizations.of(context).commonCancel),
+            ),
+            FilledButton(
+              onPressed: submitting
+                  ? null
+                  : () async {
+                      setState(() {
+                        submitting = true;
+                        feedback = null;
+                      });
+                      final trimmedTitle = titleController.text.trim();
+                      final result = await onSubmit(course, {
+                        'title': trimmedTitle.isEmpty
+                            ? (course['title']?.toString() ?? 'Course')
+                            : trimmedTitle,
+                        'description': descriptionController.text,
+                        'color_hue': hue?.round(),
+                      });
+                      if (result.isError) {
+                        setState(() {
+                          submitting = false;
+                          feedback = result;
+                        });
+                        return;
+                      }
+                      if (context.mounted) {
+                        Navigator.of(context).pop();
+                      }
+                    },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    ),
+  );
 }

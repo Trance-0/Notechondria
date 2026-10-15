@@ -2,9 +2,11 @@ import hashlib
 import json
 import secrets
 import uuid
+from datetime import timedelta
 
 from django.contrib.auth.models import User
 from django.test import TestCase, Client
+from django.utils import timezone
 
 from creators.models import Creator
 from courses.models import Course, CourseSubscription
@@ -401,6 +403,134 @@ class McpToolTests(TestCase):
         result = self._tool_result(resp)
         self.assertEqual(result["title"], "Organic Chem")
 
+    def test_set_and_get_course_git_binding(self):
+        course = Course.objects.create(
+            creator_id=self.creator, slug="git-mcp", title="Git MCP",
+        )
+        resp = self._call_tool("set_course_git", {
+            "course_id": course.id,
+            "repo": "octo/repo",
+            "sync_enabled": True,
+            "sync_timeout_minutes": 8,
+        })
+        result = self._tool_result(resp)
+        self.assertEqual(result["repo"], "octo/repo")
+        self.assertTrue(result["is_bound"])
+        self.assertEqual(result["sync_timeout_minutes"], 8)
+        # get_course_git reflects it.
+        got = self._tool_result(self._call_tool("get_course_git", {"course_id": course.id}))
+        self.assertEqual(got["repo"], "octo/repo")
+        # Unlink clears it.
+        cleared = self._tool_result(
+            self._call_tool("set_course_git", {"course_id": course.id, "unlink": True})
+        )
+        self.assertFalse(cleared["is_bound"])
+
+    def test_import_course_git_creates_notes(self):
+        from unittest.mock import patch
+        from creators.models import GithubIntegration
+
+        course = Course.objects.create(
+            creator_id=self.creator, slug="git-import", title="Git Import",
+            git_repo="octo/docs", git_branch="main",
+        )
+        GithubIntegration.objects.create(
+            creator=self.creator, installation_id="inst-mcp",
+        )
+        files = {
+            "docs/intro.md": "# Intro\nbody",
+            "docs/unit/lesson.md": "# Lesson\nbody",
+        }
+        with patch("courses.git_service.fetch_course_repo",
+                   return_value=(None, files, list(files))):
+            resp = self._call_tool("import_course_git", {"course_id": course.id})
+        result = self._tool_result(resp)
+        self.assertEqual(result["created"], 2)
+        self.assertEqual(
+            Note.objects.filter(course_id=course).exclude(git_path__isnull=True).count(),
+            2,
+        )
+
+    def test_sync_course_git_pushes_notes(self):
+        from unittest.mock import patch
+        from creators.models import GithubIntegration
+        import courses.git_service as git_service
+
+        course = Course.objects.create(
+            creator_id=self.creator, slug="git-sync", title="Git Sync",
+            git_repo="octo/docs", git_branch="main", git_sync_enabled=True,
+            git_pending_since=timezone.now(),
+        )
+        GithubIntegration.objects.create(
+            creator=self.creator, installation_id="inst-sync-mcp",
+        )
+        Note.objects.create(
+            creator_id=self.creator, course_id=course, sharing_id=_sid(),
+            title="Lesson", content="# Lesson\n\nbody", git_path="docs/l.md",
+            custom_meta='{"sidebar_position": 1}',
+        )
+        with patch.object(git_service, "_commit_files", return_value="sha") as m:
+            resp = self._call_tool("sync_course_git", {"course_id": course.id})
+        result = self._tool_result(resp)
+        self.assertEqual(result["files"], 1)
+        m.assert_called_once()
+        course.refresh_from_db()
+        self.assertIsNone(course.git_pending_since)
+
+    def test_github_app_status_reports_connection(self):
+        from creators.models import GithubIntegration
+
+        # Not connected.
+        resp = self._call_tool("github_app_status")
+        self.assertFalse(self._tool_result(resp)["connected"])
+        # Connected after linking.
+        GithubIntegration.objects.create(
+            creator=self.creator, installation_id="inst-42",
+            account_login="Nesbitt-bot",
+        )
+        resp2 = self._call_tool("github_app_status", req_id=2)
+        result = self._tool_result(resp2)
+        self.assertTrue(result["connected"])
+        self.assertEqual(result["installation_id"], "inst-42")
+        self.assertEqual(result["account_login"], "Nesbitt-bot")
+
+    def test_connect_github_app_persists_installation(self):
+        from creators.models import GithubIntegration
+
+        resp = self._call_tool("connect_github_app", {
+            "installation_id": "99887", "account_login": "Nesbitt-bot",
+        })
+        result = self._tool_result(resp)
+        self.assertTrue(result["connected"])
+        self.assertEqual(result["installation_id"], "99887")
+        integration = GithubIntegration.objects.get(creator=self.creator)
+        self.assertEqual(integration.installation_id, "99887")
+        # Idempotent re-link updates the id.
+        self._call_tool("connect_github_app",
+                        {"installation_id": "55443"}, req_id=2)
+        integration.refresh_from_db()
+        self.assertEqual(integration.installation_id, "55443")
+
+    def test_list_github_repos_returns_installation_repos(self):
+        from unittest.mock import patch
+        from creators.models import GithubIntegration
+
+        GithubIntegration.objects.create(
+            creator=self.creator, installation_id="inst-repos",
+        )
+        fake_repos = [
+            {"full_name": "Nesbitt-bot/Veronica-7", "default_branch": "main", "private": False},
+        ]
+        with patch("creators.services.github_sync.list_installation_repositories",
+                   return_value=fake_repos):
+            resp = self._call_tool("list_github_repos")
+        self.assertEqual(self._tool_result(resp)["repositories"], fake_repos)
+
+    def test_list_github_repos_without_integration_errors(self):
+        resp = self._call_tool("list_github_repos")
+        # No integration linked → tool error surfaced as result.isError.
+        self.assertTrue(resp.json()["result"].get("isError"))
+
     def test_delete_course_orphans_notes_to_uncategorized(self):
         extra = Course.objects.create(
             creator_id=self.creator, slug="extra", title="Extra",
@@ -442,6 +572,39 @@ class McpToolTests(TestCase):
         result2 = self._tool_result(resp2)
         self.assertEqual(len(result2["events"]), 1)
         self.assertEqual(result2["events"][0]["id"], event_id)
+
+    def test_create_event_normalizes_window_like_rest(self):
+        # A bare-date create must store the same default noon one-hour
+        # window the REST POST assigns (normalize_planner_event_window),
+        # so MCP- and app-created events are indistinguishable.
+        resp = self._call_tool("create_event", {
+            "title": "Bare-date task",
+            "event_date": "2026-04-15",
+        })
+        result = self._tool_result(resp)
+        event = PlannerEvent.objects.get(pk=result["id"])
+        self.assertIsNotNone(event.starts_at)
+        self.assertIsNotNone(event.ends_at)
+        self.assertEqual(timezone.localtime(event.starts_at).hour, 12)
+        self.assertEqual(event.ends_at - event.starts_at, timedelta(hours=1))
+        self.assertEqual(result["starts_at"], event.starts_at.isoformat())
+
+    def test_update_event_reopen_clears_completed_at(self):
+        event = PlannerEvent.objects.create(
+            creator_id=self.creator,
+            title="Done task",
+            event_date="2026-04-15",
+            is_completed=True,
+            completed_at=timezone.now(),
+        )
+        resp = self._call_tool("update_event", {
+            "event_id": event.id,
+            "is_completed": False,
+        })
+        result = self._tool_result(resp)
+        self.assertFalse(result["is_completed"])
+        event.refresh_from_db()
+        self.assertIsNone(event.completed_at)
 
     def test_update_event(self):
         event = PlannerEvent.objects.create(

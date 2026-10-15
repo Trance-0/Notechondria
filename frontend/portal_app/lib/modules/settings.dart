@@ -38,6 +38,7 @@ class _SettingsPage extends StatefulWidget {
     this.localTrashedDraftCount = 0,
     this.localTrashedCourseCount = 0,
     this.onOfflineModeChanged,
+    this.onApplyLocalSettings,
     this.apiBaseUrl,
     this.debugSnapshotListenable,
     this.debugHistoryListenable,
@@ -118,6 +119,11 @@ class _SettingsPage extends StatefulWidget {
   /// `_applyLocalAppSettings({'offline_mode': bool})` and re-run
   /// `_loadInitialData` so the new mode takes effect immediately.
   final Future<void> Function(bool offlineMode)? onOfflineModeChanged;
+
+  /// Persists a patch of local app settings (e.g. the startup-image
+  /// preference) through the shell's normal settings pipeline.
+  final Future<void> Function(Map<String, dynamic> patch)?
+      onApplyLocalSettings;
 
   /// Opens the local recycle-bin browser.
   final Future<void> Function()? onOpenLocalRecycleBin;

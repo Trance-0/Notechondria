@@ -44,6 +44,11 @@ class _VersionUpdateBannerState extends State<VersionUpdateBanner> {
   AppVersionStatus? _dismissed;
   Timer? _timer;
 
+  /// Remote (backend-reported) version from the last probe, shown next to
+  /// the banner text so users can see exactly which build they are on and
+  /// which one is available (e.g. "v0.1.181 → v0.1.183").
+  String _remoteVersion = '';
+
   @override
   void initState() {
     super.initState();
@@ -67,6 +72,7 @@ class _VersionUpdateBannerState extends State<VersionUpdateBanner> {
       info = null;
     }
     if (!mounted) return;
+    final remote = info?.version ?? '';
     final next = info == null
         ? AppVersionStatus.upToDate
         : computeVersionStatus(
@@ -74,8 +80,9 @@ class _VersionUpdateBannerState extends State<VersionUpdateBanner> {
             backendVersion: info.version,
             minFrontendVersion: info.minFrontendVersion,
           );
-    if (next != _status) {
+    if (next != _status || remote != _remoteVersion) {
       setState(() {
+        _remoteVersion = remote;
         _status = next;
         // A new, distinct status re-shows even if a prior one was
         // dismissed.
@@ -116,6 +123,11 @@ class _VersionUpdateBannerState extends State<VersionUpdateBanner> {
       case AppVersionStatus.upToDate:
         return const SizedBox.shrink();
     }
+    // Current → available build numbers, so the user knows exactly which
+    // version they're on and which one the refresh delivers.
+    final versionDetail = _remoteVersion.isEmpty
+        ? ' (v${widget.frontendVersion})'
+        : ' (v${widget.frontendVersion} → v$_remoteVersion)';
 
     final bg = isHard
         ? theme.colorScheme.errorContainer
@@ -139,7 +151,7 @@ class _VersionUpdateBannerState extends State<VersionUpdateBanner> {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(message, style: TextStyle(color: fg)),
+              child: Text(message + versionDetail, style: TextStyle(color: fg)),
             ),
             // "Rolling out" needs no user action yet, but a refresh still
             // lets an impatient user re-check. Always offer Refresh.

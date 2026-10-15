@@ -51,6 +51,7 @@ part 'core/onboarding.dart';
 part 'core/snapshot.dart';
 part 'components/avatar.dart';
 part 'components/note_viewer.dart';
+part 'components/note_route_page.dart';
 part 'modules/front.dart';
 part 'modules/learner.dart';
 part 'modules/course.dart';

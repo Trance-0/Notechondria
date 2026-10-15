@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import '../components/debug_log.dart';
 import 'auth_client.dart';
+import '../utils/local_data_ownership.dart';
 
 /// Session-establishment + sign-out flow shared across `_AppShellState`
 /// in editor / planner / portal. The biggest cross-app body the
@@ -296,6 +297,7 @@ mixin AppShellSessionMixin<W extends StatefulWidget> on State<W> {
     applySessionMetadata(payload);
     refreshState();
     await persistSession(token, user);
+    final foreignLocalData = await _reconcileLocalDataOwner(user);
     await applyLocalAppSettings({
       'theme_preset': serverSettings['theme_preset']?.toString() ??
           localSettings['theme_preset'],
@@ -318,8 +320,12 @@ mixin AppShellSessionMixin<W extends StatefulWidget> on State<W> {
     // when a single flaky 401 tripped sessionRejected and nuked
     // the fresh token.
     try {
-      await syncAllLocalCourses();
-      await syncAllLocalDrafts();
+      // Cross-user offline-cache guard (#13): never auto-push local data
+      // that belongs to a different user into the account just signed in.
+      if (!foreignLocalData) {
+        await syncAllLocalCourses();
+        await syncAllLocalDrafts();
+      }
     } catch (error) {
       log(
         level: DebugLogLevel.warning,
@@ -388,4 +394,58 @@ mixin AppShellSessionMixin<W extends StatefulWidget> on State<W> {
     return DateTime.tryParse(raw ?? '')?.toUtc() ??
         DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
   }
+
+  /// Cross-user offline-cache guard (0.1.192): stamp the local data with
+  /// the signed-in user, or — if it already belongs to someone else —
+  /// flag it so the sync path refuses to push it and the user is warned.
+  /// See [resolveLocalDataOwner].
+  /// Returns true when the device's local data belongs to a DIFFERENT
+  /// user, in which case the caller must NOT auto-push it to the cloud.
+  Future<bool> _reconcileLocalDataOwner(Map<String, dynamic> user) async {
+    final username = user['username']?.toString() ?? '';
+    if (username.isEmpty) return false;
+    final recorded = localSettings['local_data_owner']?.toString();
+    final decision =
+        resolveLocalDataOwner(recordedOwner: recorded, currentUser: username);
+    switch (decision.status) {
+      case LocalDataOwnership.claimed:
+      case LocalDataOwnership.sameUser:
+        // Same user (or first claim): own the data, clear any prior flag.
+        if ((localSettings['local_data_owner']?.toString() ?? '') !=
+                decision.owner ||
+            (localSettings['foreign_local_data_owner']?.toString() ?? '')
+                .isNotEmpty) {
+          await applyLocalAppSettings({
+            'local_data_owner': decision.owner,
+            'foreign_local_data_owner': '',
+          });
+        }
+        return false;
+      case LocalDataOwnership.foreignUser:
+        // Different user's cache on this device. Do NOT retag it (that
+        // would let it sync as the new user's) — flag it so
+        // `_syncAllLocalData` refuses and warn the person signing in.
+        await applyLocalAppSettings({
+          'foreign_local_data_owner': decision.priorOwner,
+        });
+        log(
+          level: DebugLogLevel.warning,
+          source: '$logAppTag.Auth/local_data_owner',
+          message: 'Foreign offline data detected: '
+              '$logAppTag.Auth/local_data_owner — local drafts on this '
+              'device belong to "${decision.priorOwner}", not "$username"; '
+              'they will not sync to this account.',
+        );
+        if (mounted) {
+          showMessage(
+            'Heads up: offline notes on this device belong to '
+            '"${decision.priorOwner}". They will NOT sync to your account. '
+            'Clear local data (Settings) or sign in as '
+            '"${decision.priorOwner}" to keep them.',
+          );
+        }
+        return true;
+    }
+  }
+
 }

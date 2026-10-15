@@ -11,6 +11,7 @@ Use this checklist at the end of each modification round.
 5. Reporting success without clearly separating verified work from unverified work.
 6. Expanding scope without checking whether there were already user changes in the worktree.
 7. Assuming a host port such as `80`, `443`, `8080`, or any other port is free without first confirming it on the target machine; you do not know the host machine state, so never assign host ports on assumption.
+8. Launching builds/tests/containers beyond what the host can afford (crashed the 3.3 GiB dev host on 2026-07-10 with three parallel Flutter Docker builds + a 7-service stack). Check `free -h` first; take at most 70% of remaining RAM; `--memory`-cap containers; `timeout`-wrap runs; kill anything silent for 5 minutes; run heavy jobs sequentially. See docs/AGENTS.md "Host resource budget".
 
 ## Round-end checklist
 
@@ -26,6 +27,329 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 2026-09-09 (Jenkins operations / docs only): reviewed all 16 open issues
+  against main 26d21829 and corrected stale browser/low-memory blocker
+  wording on #4, #5, and #16 through GitHub. No unverified issue was closed.
+  Decision list and remaining acceptance work are recorded in
+  `docs/operations/issue-triage-2026-09-09.md`.
+  Diagnosed Jenkins webhook follow-up polling failures: Git did not use
+  the Windows system proxy, and the job watched all branches. Verified
+  the existing loopback proxy, configured Git's repository-specific proxy
+  under the Jenkins service account, saved `*/main` in the job, and removed
+  its unnecessary public-repository SCM credential reference through
+  Jenkins' configuration API after the form did not persist that selection.
+  A GitHub-generated ping returned HTTP 200 in 1.45 seconds; a bounded
+  Jenkins SCM polling diagnostic inspected in Chrome reported no errors
+  and found all four remote heads. No build was scheduled by that probe.
+  Added receiver-versus-polling troubleshooting and proxy rollback steps
+  to `docs/deployment/deploy.md`. Fast-forwarded the initially clean local
+  checkout from 0.1.195 to existing remote 0.1.197 before authoring docs.
+  No application code, containers, tests, or deployments were run; no
+  version bump is needed for this operations/documentation-only repair.
+  A local XML diagnostic failed and echoed sensitive Jenkins configuration
+  into tool output; notified the owner to rotate exposed credentials.
+  No credential values were copied into repository files. Reviewed the
+  README entry points and corrected the docs workflow and issue-tracker
+  links. `git diff --check` passed; no application tests are applicable
+  to these operations/documentation changes.
+
+- 0.1.197: FEATURE, #31 (owner-reported bug). Note-conflict resolver showed
+  only a per-side summary; owner wanted a side-by-side git-diff. Added pure
+  diffLines() (LCS, shared/src/utils/line_diff.dart) → aligned DiffRows
+  (equal/changed/removed/added; removed-then-added runs paired into changed;
+  CRLF normalized) + shared NoteConflictDiffView widget (two-up, monospace,
+  height-capped, diff tints). All 3 apps' _showPullConflictDialog now embed
+  it over note CONTENT (was excerpts); dialog width responsive. Pure-fn
+  tests in portal smoke_test. Shared-widget resolves via each app's
+  main.dart barrel import.
+- 0.1.196: INCIDENT FIX (owner-reported). Portal web app stuck on load,
+  Firefox NS_ERROR on a font. Server side 100% healthy (all assets 200,
+  backend <1s). Cause: this Flutter SDK deprecated its service worker and
+  ships a self-destroying flutter_service_worker.js, but the bootstrap
+  still registered it every load → re-register/unregister churn served a
+  broken cached asset mix and never painted. Smoke test can't see it (test
+  VM, no SW, empty storage). Fix: set STRIP_SERVICE_WORKER=true repo var +
+  hardened the strip step in frontend-pages.yml — remove serviceWorkerSettings
+  from _flutter.loader.load() (now matches minified-variable form too, with
+  a build-time assert) and KEEP a self-destroying SW (old switch deleted it,
+  stranding stale browsers). No SW registered going forward; stuck browsers
+  self-heal on next load.
+- 0.1.195: UI FIX (owner-reported). Editor Settings showed "Settings"
+  twice: the shell nav already labels the destination (l10n.navSettings,
+  sidebar/drawer) and settings.dart's body ALSO rendered a
+  Text('Settings') headline. Removed the body headline (only main page
+  that duplicated its nav label as a body title; kept the intro line).
+  Planner/portal already showed it once.
+- 0.1.194: BACKEND, #28. GitHub-sync orphan-asset pruning. The push
+  builds a delta on base_tree, so deleting a note client-side left its
+  assets/notes/<uuid>/ subtree behind forever. Pure
+  _orphan_asset_deletions(remote_tree, live_uuids) → Git-tree delete
+  entries (sha=None) for note-asset blobs whose uuid isn't live (ONLY
+  assets/notes/<uuid>/ blobs; never notes/course/profile/avatar files,
+  never tree entries). commit_and_push(prune_asset_uuids=) fetches the
+  recursive base tree and deletes in the SAME commit; skips if the tree
+  is truncated. push_user_data(prune_orphans=) computes live =
+  non-soft-deleted notes; API push endpoint takes a prune_orphans flag
+  (defaults false). Pure-fn tests in creators/tests.py
+  (OrphanAssetPruneTests). Backend-only → backend-tests.yml authoritative.
+- 0.1.193: FEATURE, #11. Course ownership transfer. POST
+  courses/<id>/transfer/ (CourseTransferApiView, owner-only): target by
+  username/email (case-insensitive); reassigns Course.creator_id; NOTES
+  KEEP their own creator_id; drops client_course_id (old owner's local
+  id, collides with recipient's unique key); CLEARS the git binding (old
+  owner's repo). 403 non-owner / 404 unknown / 400 self|missing / 409
+  title collision (titles unique per creator). Frontend: transferCourse
+  client method + "Transfer ownership" section in the course-edit dialog
+  (portal course.dart, planner activity.dart), confirm-guarded; editor
+  has no such modal. Tests in courses/tests.py. No local Django (host
+  py3.14 vs 3.11 pins) → backend-tests.yml is the authoritative run,
+  checked via the public Actions API; py_compile + urls_test reachability
+  verified locally.
+- 0.1.192: SECURITY, #13. Offline cache (drafts/courses/events) is
+  per-ORIGIN, shared by every user who signs in on the device. It had no
+  owner stamp, so on a shared machine user B could see + push user A's
+  offline drafts into B's cloud. Fix: pure resolveLocalDataOwner()
+  (claimed/sameUser/foreignUser) + _reconcileLocalDataOwner at sign-in
+  stamps local_data_owner and sets foreign_local_data_owner when the
+  cache belongs to someone else — WITHOUT retagging (retag would let it
+  sync as the new user). Foreign → post-login auto-push is skipped AND
+  _syncAllLocalData refuses in all 3 apps. Escape: clear local data or
+  sign in as the prior owner. CI test: portal smoke_test covers the pure
+  fn (shared pkg tests aren't CI-run; no local Flutter SDK).
+- 0.1.187: LOGIN FIX. launchOAuth used Uri.base.replace(queryParameters:
+  {}) for redirect_uri — .replace() KEEPS the fragment, and hash routing
+  (0.1.179/0.1.186) put #/settings in the URL right where the sign-in
+  button lives → redirect_uri=…/#/settings failed Casdoor exact-match →
+  IdP never redirected back → zero logs anywhere (backend never called).
+  Fix: removeFragment() first; added launch log (redirect_uri visible)
+  + callback-received log. LESSON: URL-shape changes (adding fragments)
+  can silently break OAuth exact-match redirect_uri — grep every
+  Uri.base-derived redirect construction when touching routing.
+- 0.1.186: in-note nav + full-screen URLs. ROOT CAUSE of dead "what to
+  read next" links: course view opened notes via bare _NoteViewerDialog
+  with NO onFollowLink/routing (the resolver itself was fine) — course/
+  module note opens now use the shell routed viewer (#/note/<uuid>).
+  Resolver: strip .html, retry site-root-absolute links with the source
+  git_path content-root prefix. Portal module URLs
+  (#/courses/<slug>/m/<key>, sync + cold-start consume-once). Editor+
+  planner tab URL sync + boot fragment parse (planner got
+  replaceBrowserPath shim; editor reuses browserReplaceState; its
+  #/notes/<uuid> deep links unaffected). Dialogs stay URL-less by spec.
+- 0.1.185: course loading PERF. Measured prod: courses/22/notes/ = 16.2s
+  (317KB, unpaginated); root cause = storage-network N+1 — per-row author
+  payload did ensure_creator_avatar + mirrored_avatar_is_fresh, each an
+  R2 storage.exists() HEAD (~386 HEADs/request for ONE author). Fixes:
+  creator_summary_payload = zero-I/O pure field reads + per-request memo
+  by creator id; mirrored_avatar_is_fresh field-only; CourseNotesApiView
+  limit/offset envelope (bare list preserved sans limit). Portal:
+  open-course = openCourse ∥ first-10-notes page, course-list refresh
+  backgrounded, loading bar gates the view (no stale recent_notes
+  placeholder render), infinite scroll streams 20/page. LESSON: never put
+  storage.exists()/writes in per-row serializer paths; measure with curl
+  -w time_total before optimizing. CourseNotesPerformanceTests guard the
+  contract (storage patched to raise).
+- 0.1.184: avatar ROOT CAUSE found by live CORS probe — Casdoor serves
+  avatars with NO CORS headers; Flutter web refuses cross-origin images
+  without CORS (our CDN sends proper CORS). Fix: mirror_remote_avatar on
+  Casdoor login (Creator.avatar_mirrored_from, migration 0036; 8s/8MB/
+  image-only caps; idempotent per URL) → image_url (effective) serves the
+  mirrored R2 copy; bylines flipped to image_url-first. Heals per-account
+  on next login. Editor sidebar: was listing the ENTIRE public course
+  catalog to every user (new accounts "saw projects they never
+  subscribed") — now owned+subscribed only; no auto-subscribe existed.
+  AvatarMirrorTests added.
+- 0.1.183: CI FIX + cross-app dialogs. 0.1.182 editor avatar fix used
+  avatarFallbackUrl inside _LearnerNoteCardBody without the field (CI
+  compile fail at learner.dart:762) — field/ctor/call-site threaded.
+  LESSON re-confirmed: variables computed in an outer builder are not
+  visible in extracted card-body widgets; grep the USE site's class
+  before adding references. Course dropdown: portal dialogs now render it
+  unconditionally (was gated on courses.isNotEmpty → invisible while the
+  session bug emptied the list); planner create dialog ported (courseId
+  through page+FAB typedefs → _createPlannerEvent local+cloud payloads;
+  weight labels too); editor has no event dialog. Version banner now
+  shows (v<current> → v<remote>).
+- 0.1.182: ROOT CAUSE round. Portal sessions were memory-only (editor
+  persisted, portal no-op) — every reload silently signed out, explaining
+  "no login info" (#7), missing subscribed courses (#6), missing activity
+  category dropdown (#2), and "new project missing" (#8). Ported editor
+  session persistence (save/load/clear + boot _restoreSession w/
+  /auth/session/ validation). Also: placeholder days keep the hour grid +
+  drag-create in empty/offline weeks (#3); create-course dialog hue +
+  cover URL (#5) + GitHub repo import (create→bind→import, new client
+  setCourseGit/importCourseGit + _put helper) (#9); subscribed list
+  ordered by last view (#6); editor sidebar ordered by recency (#8);
+  avatar fix BOTH apps: pulled drafts kept stub "Local Draft" author
+  (post-0.1.180 pull made it visible) → real author passthrough + editor
+  got the portal's fallbackUrl avatar chain. #1/#4 were already in
+  unpushed 0.1.181. Owner pushes manually; Pages CI validates after.
+- 0.1.181: activity wide-calendar round. Red now-line (today column dot+
+  bar, minute repaint timer) + red HH:MM on the hour axis. Ctrl+scroll
+  zoom ROOT CAUSE: browser page-zoom eats ctrl+wheel on web — index.html
+  wheel listener {passive:false} preventDefault when ctrl/meta; Flutter
+  handler existed since 0.1.163. Event↔course: course dropdown in create
+  (FAB/month/drag) + edit dialogs (default Inbox=null; courseId threaded
+  through onCreatePlannerEvent typedefs ×3 + _createPlannerEvent local+
+  cloud payloads — replaced the silent _selectedCourse binding); details
+  dialog shows course + importance. Filter bar unchanged (renders w/ ≥1
+  course; absence on device = stale PWA bundle → reload toast).
+- 0.1.180: startup image (portal prefs; URL or ≤50MB upload via
+  LocalAttachmentStore, cap 20→50MB; _CustomSplashOverlay BoxFit.cover,
+  tap-skip), keep-offline-on-login checkbox (default keep → background
+  _pullCloudNotesToLocal merge w/ existing conflict dialog + last_edit
+  stamps; unchecked → drafts cleared on sign-in), course-edit entry
+  (planner filter-bar port + settings button w/ all-courses tooltip +
+  edit dialog title/desc/hue via new client.updateCourse in BOTH apps;
+  portal course-detail owner Edit button), front-page carousel now
+  public-note-only (stale Inbox bucket off everyone's front page,
+  FrontPageCarouselTests). All Dart bracket-balanced; Pages CI is the
+  gate.
+- 0.1.179: portal URL routing. MaterialApp home→onGenerateRoute/
+  onGenerateInitialRoutes; URL map #/ #/notes #/courses[/<slug>] #/activity
+  #/settings #/note/<uuid>. In-session sync via replaceBrowserPath
+  (history.replaceState on the hash). _NoteRoutePage (preloaded in-session,
+  uuid-fetch cold start, per-hop routes for in-course links, shared
+  top-level _matchNoteLinkTarget). client.getNoteDetailByUuid added.
+  Backend can_access_note + ACTIVE course subscribers (read-only) →
+  NoteUrlAccessPolicyTests. Portal has no client-side token persistence,
+  so cold-start private URLs prompt sign-in. Editor/planner routing port =
+  TODO.
+- 0.1.178: calendar/course feature batch — foundations + #4 + #6-core.
+  Backend (CI-green): Course.color_hue (migration courses/0007, serializer
+  read + write + PATCH, validated 0-359), Note.module (migration
+  notes/0021, populated on git-import from adapter grouping, summary
+  serializer), planner_event_payload embeds course{id,title,slug,color_hue}.
+  Frontend (Pages-validated): #4 course view groups notes by note.module
+  (imported Veronica-7 → cv/dnn/fundamentals/llm/transformer-era) + dropped
+  fabricated objectives/assignments/discussion placeholders; #6 HSV event
+  colours (hue=course, saturation=importance, value=theme). Tests:
+  CourseHueAndModuleTests. Deferred to TODO with reasoning: #5 event
+  detail+course selector, #8 course modal + owner transfer, #6 hue button,
+  #3 lazy load, #1 drag/now-line/15-min snap, #2 ctrl+scroll zoom, #7
+  offline-cache ownership — the interaction/architecture-heavy ones want a
+  local Flutter build to validate (no local Flutter here; Pages CI is the
+  only Dart gate, so large blind gesture/dialog rewrites are high-risk).
+- 0.1.177: portal UI bug batch (1-7) + note-name foundation & in-course
+  link resolution (8). Frontend fixes shipped in 3 CI-validated batches
+  (batches 1-2 built green on Pages before batch 3). Blockquote styleSheet,
+  note-card avatar (avatar_url→image_url), responsive/filled heatmap (year
+  window + full-width cells), heatmap tooltip, removed feedCourseMetaHint,
+  courses PageView carousel + dot selector, weight labels
+  (Trivial..Fatal). Bug 8 core: Note.name (slug, unique-per-course,
+  migration 0020 + backfill, auto-derived from git_path/title, deduped),
+  exposed on serializers; viewer onTapLink → _followNoteLink resolves
+  relative links to sibling notes by repo-path then name. Shareable
+  per-note browser URLs (Navigator 2.0 / url-strategy) DEFERRED to TODO —
+  needs a local Flutter build to migrate app_shell safely. No local Flutter
+  here; Pages CI is the Dart gate. NoteNamePerCourseTests added; django CI
+  is the backend gate.
+- 0.1.176: FIX course sync = one atomic commit (Git Data API). Found by
+  running the real Veronica-7 migration on prod: import worked (193 notes /
+  6 modules / 0 warnings, idempotent) but the first sync 503'd after 120s —
+  _commit_files (0.1.174) did one Contents-API PUT per file = 193 commits,
+  timed out, partial/non-atomic, ~70 junk commits on the fork. Rewrote
+  _commit_files to GET ref → GET commit → POST trees(base_tree+all files) →
+  short-circuit if tree unchanged → POST commit → PATCH ref. Atomic, fast,
+  one commit. Exposed git_path on NoteDetailSerializer (was persisted but
+  invisible). Tests mock requests (50 files → 1 tree/1 commit/1 patch; no
+  commit when tree unchanged). Reset the fork's main to the clean config
+  commit after the buggy partial push. Re-verify sync after deploy.
+- 0.1.175: GitHub App binding over MCP/CLI + Veronica-7 adapter validation.
+  Extracted github_sync.list_installation_repositories (shared by REST
+  repo-picker + new tool). Three new MCP/CLI tools (45→48):
+  github_app_status (GET status), connect_github_app (POST callback,
+  idempotent installation-id link), list_github_repos (GET repos). MCP
+  tests mock the repo-list network; CLI 29 tests / 48 tools. Validated the
+  adapter read-only against the real Veronica-7 tree (211 blobs/195 md):
+  preset→vitepress, .vitepress excluded, no leakage, 6 modules/193 notes/0
+  warnings — no adapter bug. Noted imported-note order gap (no sort_order;
+  order preserved in custom_meta) as a TODO. py_compile clean; django CI
+  is the gate.
+- 0.1.174: course git sync (notes → repo), lazy-on-request. course_repo.py
+  compose_markdown/load_frontmatter_dict + frontmatter on import;
+  git_service serialize_course_for_sync + _commit_files (Contents API PUT
+  via App token) + sync_course_to_repo (clears git_pending_since, sets
+  git_last_synced_at, GIT_SYNC log) + mark_course_pending +
+  flush_due_course_syncs (row-locked select_for_update, best-effort).
+  POST courses/<id>/git/sync/; arm_course_sync in the 3 note-write paths;
+  flush wired into CourseListApiView.get. MCP/CLI sync_course_git (parity
+  44→45). Django tests mock _commit_files (sync clears pending + logs;
+  arm-on-edit; flush fires past timeout, skips within). py_compile + 26
+  CLI tests pass (45 tools); django CI is the gate.
+- 0.1.173: course git import. Note.git_path (migration 0019); courses/
+  git_service.py (fetch_course_repo App-token reader + import_course_from_repo
+  idempotent note upsert by git_path, GIT_IMPORT log); public token wrappers
+  on github_sync; POST courses/<id>/git/import/ + MCP/CLI import_course_git
+  (parity 43→44). Tests mock the network fetch (REST idempotent import +
+  no-integration 400; MCP create). py_compile + 26 CLI tests pass; django
+  CI is the gate.
+- 0.1.172: course-repo adapter foundation. Django-free
+  courses/course_repo.py (config + presets + `**`-glob + frontmatter +
+  module/title/order parser), grounded in the real Veronica-7 VitePress
+  layout; markdown-only (MDX skipped+warned). Added PyYAML dep (both req
+  files) since frontmatter/config are YAML — the repo previously forced
+  JSON-only to avoid the dep. Published the standard at
+  docs/integrations/course-repo-format.md. Locked architecture in TODO:
+  per-user App auth, lazy-on-request, adapter-not-restructure. Verified:
+  py_compile + standalone parser assertions pass; 3 CourseRepoAdapterTests
+  added. django CI installs PyYAML — watch that step.
+- 0.1.171: MCP/CLI course-git tools. Factored bind/unlink into
+  notes.services (apply_course_git_binding/unlink_course_git/
+  course_git_payload/CourseGitError/GIT_REPO_RE) so REST view + both MCP
+  servers share one path; added get_course_git/set_course_git to backend
+  mcp + CLI (parity 41→43, updated the count test + docs/server/mcp.md);
+  CLI BackendClient gained put(). Tests: backend MCP set/get/unlink, CLI
+  dispatch (GET/PUT/DELETE). py_compile + 26 CLI tests pass; django/cli
+  CI is the gate.
+- 0.1.170: course↔GitHub binding backend. `CourseGitBindingApiView`
+  (courses/<id>/git/ GET/PUT/DELETE, owner-only, owner/name validation),
+  owner-only `git` on CourseSerializer, `GIT_*` operation-log types +
+  effective logs on bind/unlink. 2 tests (bind/get/unlink + owner-only
+  403/null). No migration (choices only). py_compile OK; django suite is
+  the CI gate. Lazy-sync worker + import + selector UI + template-repo
+  creation (needs Nesbitt-bot PAT) still pending.
+- 0.1.169: activity course filter. `_ActivityPage` → StatefulWidget with a
+  `_CourseFilterBar` above the calendar; filters grid + deadlines by
+  course_id; app_shell passes the merged courses list; `activityAllCourses`
+  l10n across ARB + generated AppLocalizations. Verified brace balance +
+  ARB parse + no un-prefixed field leaks; Flutter build is the CI gate.
+- 0.1.168: build fix — threaded `onEventLongPress` into `_MonthDayCell`
+  (0.1.167 added it to `_MonthCalendarGrid` only, so the month chips'
+  build referenced an undefined member and the Flutter build failed).
+  Reinforces LLM_CHECK item 1/5: local brace/JSON checks don't catch
+  undefined-name errors — the CI Flutter build is the real gate for Dart.
+- 0.1.167: activity event UI. Per-course palette + luminance-derived ink
+  (dark-theme legible); hold/right-click opens a new edit dialog with the
+  full recurrence rule (freq/interval/end-date-or-count) that PATCHes the
+  0.1.164 backend fields; new `_updatePlannerEvent` handler threaded
+  app_shell→ActivityPage→WideWeekCalendar→tiles; `activityEditEvent` +
+  `activityRepeat*` l10n across ARB and generated AppLocalizations (en+zh).
+  Verified with interpolation-aware Dart brace check + ARB JSON parse;
+  caught a `num.clamp`→int slip pre-push. Flutter build not run locally.
+  Course filter + planner_app parity deferred.
+- 0.1.166: activity import feedback. Backend `summarize_calendar_feed` +
+  `import_summary` on the calendar-feed POST (2 tests). Portal shows a
+  success/failure result modal after ICS import/subscribe; callback types
+  now return the summary; added `commonOk`/`activityImport*` l10n to the
+  ARB and committed generated `AppLocalizations` (en+zh). Verified with
+  py_compile, ARB JSON parse, and an interpolation-aware Dart brace check;
+  Flutter build not run locally — `frontend-pages.yml` is the authority.
+  planner_app import-feedback parity deferred (its own activity copies).
+- 0.1.165: made `backend-tests.yml` green. Rewrote the CLI `BackendClient`
+  on stdlib `urllib` (dropped the `requests` dependency) so the "stdlib
+  only" `cli-tests` job stops dying on `ModuleNotFoundError`. Fixed the
+  0.1.163 `test_settings_payload_exposes_local_upload_separately` assertion
+  (a default local avatar always exists). Both jobs had been red on the
+  host's blind spot: `requests` is installed here and the Django suite
+  can't run here at all. CI is the authority post-push.
+- 0.1.164: added recurring-event rule fields to `PlannerEvent` (+ additive
+  migration), window expansion in `calendar_week_payload`, serializer/view
+  persistence, MCP/CLI `create_event`/`update_event` parity, and three
+  `HeatmapApiTests` cases. Added additive git-binding fields to `Course`
+  (foundation only; endpoints/worker/UI tracked in TODO). Verified with
+  `python3 -m py_compile` on every edited module; full Django test run and
+  Flutter builds NOT run locally (no interpreter/toolchain on host) —
+  `backend-tests.yml` is the authority post-push.
 - Fixed Jenkins deploy invocation to pass `project_dir` and `env_path` in the order required by `deployment/scripts/deploy_backend.sh`.
 - Fixed a visible separator encoding issue in the Flutter front page subtitle.
 - Made the selected course stateful across course, learner, and activity views.
@@ -190,6 +514,7 @@ Use this checklist at the end of each modification round.
 - 0.1.155: Portal i18n Phase 3 cont. — learner notes feed + note-metadata dialog (en/zh). learner.dart reused the editor`s existing feed*/common*/note* keys heavily (composer menu, search hints, unsynced-drafts card, headers/empty states, FAB tooltips, note-card menu, load-more) + a few portal-specific (feedSearchCloud/feedSyncToCloud/feedLoadNotes/feedEmptyCloudSynced/feedEmptyLocalLogin/feedCourseMetaHint/feedBadgePublic/Private). note_metadata_dialog.dart got noteMeta* keys (cover section, Note details, course/section/description fields, Public note + help, Version history + empty, Restore/Cancel/Save) — named noteMeta* so the EDITOR`s equivalent note_metadata.dart can share them later. ARB +~30 keys. Left as English by design: data-default note titles (onCreateNote title: Untitled — a stored value, not chrome), XTypeGroup file-picker labels, log lines. Verified: analyze 0 errors (shared+portal), portal smoke + web build pass. Remaining portal: learner_note_editor (block toolbar), activity/activity_week (event/calendar dialogs), settings chrome.
 - 0.1.156: Portal i18n Phase 3 cont. — block note editor + activity/calendar (en/zh). learner_note_editor.dart (block-type menu, formatting toolbar, hints, editor-mode dropdown, _SaveStatus), activity.dart (sign-in prompt, empty states, week nav, FAB menu+hint), activity_week.dart (Week calendar label+nav, New-event dialog, Subscribe-to-calendar dialog). ARB +~45 keys (editor*/activity*/commonLoading). editor* named generically so the EDITOR app block editor can share later. Reused common*/note*/course*. Left English by design: data-default note title (onCreateNote), XTypeGroup file-picker labels (OS chrome), short technical block-arg labels (Language/URL), log lines. PATTERN for these mass-translation rounds: build(context) methods get a `final l10n = AppLocalizations.of(context);` local; deeply-nested const widgets get de-consted + inline AppLocalizations.of(context); each Edit triggers transient "getter not defined" diagnostics until the final gen-l10n — expected, dont chase them per-edit, regenerate once at the end. Verified: analyze 0 errors x4, shared 59 + portal smoke + web build pass. Remaining portal: settings*.dart chrome only.
 - 0.1.157: Portal i18n — settings navigation chrome (en/zh). Localized the settings menu tiles (settings.dart: Portal preferences/View tutorial/Backend/Local data/Recycle bin; settings_build.dart account section: Personal information/Sign in & security/API settings/Connected accounts), all 7 subpage AppBar titles (settings_pages.dart), and the Portal-preferences rows (Default editor mode/Theme preset/Theme mode + immediate-save caption). REUSED the editor settings* keys from 0.1.140 heavily; added only settingsPortalPreferences/settingsConnectedAccounts + 4 subtitle keys. GOTCHA I hit: tried to preserve the old caption string with `if (false) const _SettingsCaption(...)` — that creates an analyzer "Dead code" warning AND is ugly; just DELETE the replaced string, dont stash it behind if(false). Verified: analyze 0 errors (shared+portal), portal smoke + web build pass. FINAL remaining i18n: deep settings subpage BODY strings (personal-info form fields, settings_sections API-key copy, backend/local-data captions, recycle-bin dialog, Casdoor copy) + shared mcp_skill_section.dart. Portal screens + settings navigation fully localized across 0.1.154-0.1.157.
+
 # Ubuntu Jenkins installer verification
 
 - Home scaffold: `bash ~/scripts/install-jenkins.sh` invokes the versioned
@@ -203,3 +528,9 @@ Use this checklist at the end of each modification round.
 - Installer syntax, source snapshot behavior, credential redaction, generated
   host configuration, and Compose validation are checked separately from a real
   sudo installation and a Jenkins-triggered deployment.
+
+- 0.1.159: Docker frontend builds FIXED (broken ~80 versions) + agent remote-test harness + Rounds A-E plan. ROOT CAUSE: 6a62288c (2026-04-15) made all 3 apps depend on `path: ../notechondria_shared`, but Dockerfiles/compose kept build context = the app dir, so in-image `flutter pub get` could never resolve the shared package; no Docker file changed after 2026-04-09. FIX: context is now `frontend/` (root compose `context: ./frontend` + `dockerfile: <app>_app/Dockerfile`; app-local compose `context: ..`); Dockerfiles copy `notechondria_shared/` to `/notechondria_shared` so the relative dep resolves from `/app`, app sources from `<app>_app/`, and the nginx-template COPY gained the app prefix. `frontend/.dockerignore` already existed and covers the wider context. LESSON: when a path dependency is added to any Dockerized component, grep every Dockerfile/compose whose build context excludes the dep's directory — CI (Pages) building from repo root masked this for months. Harness runbook: docs/testing/agent_remote_testing.md (port map for THIS host — 80/443/6000-6099/7000/7500/8000/9443/10080/10443 busy; 8080/9060/9032 free, verified 2026-07-07). Verified this round: backend 189 tests OK in-container under settings_test (`docker compose run --rm --no-deps -e DJANGO_SETTINGS_MODULE=notechondria.settings_test --entrypoint "" app python manage.py test`); full-stack `docker compose up --build -d` from the fixed contexts + gateway probes. Host reality: no Flutter SDK, python3 is 3.14 (backend targets 3.11 image) — Docker is the ONLY verification path here.
+- 0.1.160: MCP agent enablement + the host-crash lesson. CRASHED THE DEV HOST mid-round: `docker compose up --build -d` = 3 parallel Flutter builds + 7 services on a 2-core/3.3GiB box shared with 4 other stacks -> OOM. New standing rules in docs/AGENTS.md "Host resource budget" (measure free RAM first; <=70% of remaining; --memory caps; timeout wraps; kill after 5 silent minutes; sequential heavy jobs; stated fallback). Runtime `up -d --no-build` from existing images is CHEAP (~0.1GiB) — it was the builds that killed it; also `docker builder prune -af` freed 18GB disk. BUGS: (1) gateway nginx had no /mcp/ location -> MCP 404 through the canonical entry while :9060 served it (why "is MCP running?" was unanswerable); any reverse proxy needs the /mcp/ block. (2) backend MCP _create/_update_event bypassed normalize_planner_event_window (REST applies it) -> divergent stored rows + responses; fixed with refresh_from_db()+normalize; update_event also lacked REST's reopen (is_completed:false must clear completed_at). (3) create_event schema said starts_at is "ISO time (HH:MM:SS)" but the field is a DateTimeField — misleading schemas are bugs, agents follow them literally. NEW: seed_agent_user (DEBUG/ALLOW_AGENT_SEED=1-guarded, prints NOTECHONDRIA_API_KEY=... last line); baseline initialize instructions (backend/mcp/instructions.py ≡ cli copy, user skill.md appended); planner-cluster description/schema rewrite BOTH servers; REST planner-events GET include_completed/limit (opt-in, defaults unchanged); get_activity_week days={3,7,30}; `notechondria-mcp batch` JSONL runner (continues past per-item errors, exit 0 iff all ok). Verified: backend 192 OK in 768MiB-capped container; cli 23 OK; live gateway MCP 41 tools + normalized create + days=3 + batch run exit 0. NOT run (budget): flutter frontend_test stages — frontend untouched.
+- 0.1.161: Pages CI split + no-local-containers rule. The 0.1.160 push failed CI: docs/SUMMARY.md was missing versions/0.1.160.md (and 0.1.158/0.1.159 — the check only trips on the CURRENT VERSION, so earlier drift hid) and the docs build living inside frontend-pages.yml took the app deploy down with it. RULE: every round that adds docs/versions/<v>.md MUST add the SUMMARY.md entry in the same commit (the version doc is not deployed otherwise; the docs leg hard-fails). SPLIT: docs-pages.yml (mdBook + drift check -> gh-pages docs/ via destination_dir, keep_files) vs frontend-pages.yml (apps only); both share concurrency group gh-pages-publish so branch pushes can't race — keep_files:true is what makes disjoint-subtree publishing safe. NEW backend-tests.yml: Django suite (py3.11, settings_test) + cli unittest on push to backend/**|cli/**. OWNER RULE (docs/AGENTS.md "Deployment topology & no-local-containers rule"): NEVER create local containers for this project on <16GB machines; frontend=GitHub Pages, backend=Northflank on commit; local stack/images/volume removed from the dev host; pre-push local verification = cli unittest + static checks only, everything else is CI-proven after the owner pushes; agent_remote_testing.md rewritten CI-first. Verified locally: cli 23 OK, workflows YAML-parse. NOT run locally (by rule): Django/Flutter/mdBook — CI proves them on next push.
+- 0.1.162: Offline activities + month grid + observability fixes, authored WITHOUT a local Flutter toolchain (CI proves; bracket-balance script was the only local syntax check — avoid new l10n keys in such rounds since gen-l10n can't run: the month grid uses locale-neutral "+N" and reuses commonClose/_formatWeekDay). ROTATION "failure": deployed backend is healthy (probed: bogus JWT -> shaped 401 "JWT verification failed... sign in again"); the real story is an EXPIRED Casdoor session on a cache-rendered app — the bug was observability: (a) shared decode() threw bare unshaped errors on empty-body >=400 with NO debug snapshot (invisible failure path, now records + shapes), (b) rotate callbacks logged nothing (now §1.7 entries Portal.UI|Editor.UI/api_key.rotate on success+failure, rethrow keeps the SnackBar). DEBUG LOG: entries stored newest-first + ListView reverse:true = latest at bottom + auto-pin (chat UX) — don't reorder storage, callers (copy/persist) depend on newest-first. OFFLINE EVENTS (portal): local_events store; _localWeekPayload mirrors calendar_week_payload shape so widgets need no special-casing; merge into server payload keeps signed-out events visible after sign-in; local ids are strings 'local-<µs>' — NEVER cast event ids to int in shared surfaces (vertical board was safe; toggle branches on is_local/'local-' prefix). Activity sign-in prompt gate removed. MONTH VIEW: rangeDays==30 renders _MonthCalendarGrid (weeks x 7 cells, prioritized chips: open plans by weight desc/start asc, completed last dimmed, +N overflow dialog; cell tap = create at noon); zoom hidden in month mode; rolling 30-day window laid out on weekday columns with leading/trailing blank cells (not calendar-month aligned — matches the backend window semantics). Whats-new: 2 portal entries added same-commit per convention.
+- 0.1.163: drag-to-draw events + heatmap auto-fit + Casdoor avatar fallback (portal frontend + shared backend; no local Flutter/containers — CI proves; py_compile + bracket-balance were the local checks). DRAG-DRAW: hour-grid create is now onVerticalDrag (was long-press) and USES the drawn end (was discarded → always 1h); onCreatePlannerEvent gained a named-optional `endsAt` (named so existing 4-arg callers/FAB compile unchanged), plumbed to cloud+local create; vertical drag wins the arena over the parent scroll so scroll via wheel/scrollbar/label-column; outer horizontal drag still nav-weeks (different axis, coexists). HEATMAP: was ~53 weeks of fixed 13px cells in a horizontal scroll → overflow mobile / half-empty desktop; now LayoutBuilder trims to most-recent weeks that fit + scales cell 9–16px to span width. AVATAR ROOT CAUSES: (1) CASDOOR_CLAIM_AVATAR default was "avatar" (Casdoor custom token field, opt-in) — standard OIDC is "picture"; changed default to "avatar,picture" (_claim_str takes first non-empty) so avatars resolve regardless of token-format config. (2) backend image_url = avatar_url or local → once Casdoor avatar set, local upload URL never sent, no fallback when Casdoor img fails; added image_upload_url (always the local upload) to BOTH auth_payload and SettingsSerializer.to_representation (+declared field), image_url unchanged for compat. (3) portal avatar widget _RemoteMedia/_RemoteAvatar gained fallbackUrl: Casdoor avatar_url primary → on empty/onError use image_upload_url → initials. Editor/planner get backend fixes free; their frontend on-error fallback is a noted follow-up (not a regression). Probed deployed acct (ntc_ key): avatar_url/image_url already resolve to Casdoor avatar — confirms sync path; fix hardens source+fallback. Tests: CasdoorAvatarClaimSyncTests (avatar>picture precedence, picture-when-no-avatar, image_upload_url in settings payload). GOTCHA for future: settings GET = SettingsSerializer(creator).data with request in context; adding a payload key is safe (no exact-shape assertions in creators/notes tests). New env: CASDOOR_CLAIM_AVATAR default avatar→avatar,picture.

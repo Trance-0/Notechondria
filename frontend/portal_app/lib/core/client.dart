@@ -167,6 +167,59 @@ class HttpNotechondriaClient
   }
 
   @override
+  Future<Map<String, dynamic>> updateCourse(
+    String token,
+    int courseId,
+    Map<String, dynamic> payload,
+  ) async {
+    final uri = _uri('/courses/$courseId/');
+    final response = await _patch(uri, token: token, payload: payload);
+    return Map<String, dynamic>.from(
+      await decode(response, uri: uri, method: 'PATCH'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> transferCourse(
+    String token,
+    int courseId,
+    String target,
+  ) async {
+    final uri = _uri('/courses/$courseId/transfer/');
+    final response = await _post(
+      uri,
+      token: token,
+      payload: {'target': target},
+    );
+    return Map<String, dynamic>.from(
+      await decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> setCourseGit(
+    String token,
+    int courseId,
+    Map<String, dynamic> payload,
+  ) async {
+    final uri = _uri('/courses/$courseId/git/');
+    final response = await _put(uri, token: token, payload: payload);
+    return Map<String, dynamic>.from(
+      await decode(response, uri: uri, method: 'PUT'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> importCourseGit(
+      String token, int courseId) async {
+    final uri = _uri('/courses/$courseId/git/import/');
+    final response = await _post(uri, token: token);
+    return Map<String, dynamic>.from(
+      await decode(response, uri: uri, method: 'POST'),
+    );
+  }
+
+  @override
   Future<List<Map<String, dynamic>>> getCourseNotes(int courseId,
       {String? token}) async {
     final uri = _uri('/courses/$courseId/notes/');
@@ -177,9 +230,36 @@ class HttpNotechondriaClient
   }
 
   @override
+  Future<Map<String, dynamic>> getCourseNotesPage(
+    int courseId, {
+    String? token,
+    int limit = 10,
+    int offset = 0,
+  }) async {
+    final uri = _uri('/courses/$courseId/notes/').replace(queryParameters: {
+      'limit': '$limit',
+      'offset': '$offset',
+    });
+    final response = await _get(uri, token: token);
+    return Map<String, dynamic>.from(
+      await decode(response, uri: uri, method: 'GET'),
+    );
+  }
+
+  @override
   Future<Map<String, dynamic>> getNoteDetail(int noteId,
       {String? token}) async {
     final uri = _uri('/notes/$noteId/');
+    final response = await _get(uri, token: token);
+    return Map<String, dynamic>.from(
+      await decode(response, uri: uri, method: 'GET'),
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> getNoteDetailByUuid(String noteUuid,
+      {String? token}) async {
+    final uri = _uri('/notes/uuid/$noteUuid/');
     final response = await _get(uri, token: token);
     return Map<String, dynamic>.from(
       await decode(response, uri: uri, method: 'GET'),

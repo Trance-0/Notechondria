@@ -50,6 +50,29 @@ class Note(models.Model):
         ),
     )
     client_draft_id = models.CharField(max_length=64, blank=True, null=True)
+    # Repo-relative path this note maps to when its course is bound to a
+    # GitHub repo (0.1.173). Set on git-import; the lazy sync writes the
+    # note's markdown back to this path. Empty for notes not sourced from
+    # a repo. Only markdown paths are ever stored/written.
+    git_path = models.CharField(max_length=512, blank=True, null=True)
+    # URL-safe name, unique within the note's course (0.1.177). Powers
+    # stable per-note links and in-course markdown link resolution: a
+    # relative link `[x](other-name)` in one note resolves to the sibling
+    # note whose `name` matches. Auto-derived from the title (or the
+    # git_path basename on import) and de-duplicated per course; empty for
+    # legacy/uncategorized notes until they are next saved.
+    name = models.SlugField(max_length=160, blank=True, default="")
+    # Human-readable module/section this note belongs to inside its course
+    # (0.1.178). Set on git-import from the adapter's module grouping (cv,
+    # dnn, …); the course view groups notes by this. Empty = ungrouped.
+    module = models.CharField(max_length=160, blank=True, default="")
+    # Reading position within the course (0.1.188). Set on git-import from
+    # the adapter's module/note ordering (module index * 1000 + note
+    # index) so an imported course lists top-to-bottom instead of by edit
+    # recency — every imported note is written within the same second, so
+    # `-last_edit` produced an essentially arbitrary order. 0 = unset:
+    # native courses keep pure recency ordering via the secondary sort.
+    sort_order = models.IntegerField(default=0, null=False, db_index=True)
     deleted_at = models.DateTimeField(blank=True, null=True)
     note_type = models.CharField(
         max_length=1,
@@ -97,7 +120,14 @@ class Note(models.Model):
                 fields=["creator_id", "client_draft_id"],
                 condition=Q(client_draft_id__isnull=False),
                 name="unique_note_client_draft_per_creator",
-            )
+            ),
+            # A note's URL name is unique within its course (only enforced
+            # for notes that actually have both a course and a name).
+            models.UniqueConstraint(
+                fields=["course_id", "name"],
+                condition=Q(course_id__isnull=False) & ~Q(name=""),
+                name="unique_note_name_per_course",
+            ),
         ]
 
     def __str__(self) -> str:

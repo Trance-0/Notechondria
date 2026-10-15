@@ -13,9 +13,54 @@ abstract class NotechondriaClient implements AuthClient {
     Map<String, dynamic> payload,
   );
   Future<Map<String, dynamic>> getCourseDetail(int courseId, {String? token});
+
+  /// Owner-only course metadata update (`PATCH /courses/<id>/`): title,
+  /// description, icon, and `color_hue` (0-359 or null = theme default).
+  Future<Map<String, dynamic>> updateCourse(
+    String token,
+    int courseId,
+    Map<String, dynamic> payload,
+  );
+
+  /// Owner-only: hands a course to another creator, named by username or
+  /// email (`POST /courses/<id>/transfer/`). The course's notes keep
+  /// their own author; any GitHub binding is cleared server-side.
+  Future<Map<String, dynamic>> transferCourse(
+    String token,
+    int courseId,
+    String target,
+  );
+
+  /// Binds a course to a GitHub repo (`PUT /courses/<id>/git/`,
+  /// owner-only; one repo per course by design).
+  Future<Map<String, dynamic>> setCourseGit(
+    String token,
+    int courseId,
+    Map<String, dynamic> payload,
+  );
+
+  /// Imports the bound repo's markdown into the course
+  /// (`POST /courses/<id>/git/import/`, idempotent).
+  Future<Map<String, dynamic>> importCourseGit(String token, int courseId);
   Future<List<Map<String, dynamic>>> getCourseNotes(int courseId,
       {String? token});
+
+  /// Paged course-notes (`?limit=&offset=`) → `{results, total, offset,
+  /// limit, has_more}`. The unpaged [getCourseNotes] stays for callers
+  /// that genuinely need the full set (e.g. in-course link resolution).
+  Future<Map<String, dynamic>> getCourseNotesPage(
+    int courseId, {
+    String? token,
+    int limit = 10,
+    int offset = 0,
+  });
   Future<Map<String, dynamic>> getNoteDetail(int noteId, {String? token});
+
+  /// Fetch a note by its public UUID (`/notes/uuid/<uuid>/`) — the routed
+  /// note-URL entry point. Anonymous requests read public notes; a token
+  /// additionally reads owned and subscribed-course notes.
+  Future<Map<String, dynamic>> getNoteDetailByUuid(String noteUuid,
+      {String? token});
   Future<Map<String, dynamic>> listNotes({
     String? token,
     String query = '',

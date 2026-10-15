@@ -249,6 +249,12 @@ class HeatmapApiTests(TestCase):
         )
         self.assertEqual(response.status_code, 201)
         self.assertEqual(CalendarFeed.objects.count(), 1)
+        # The create response carries an import summary so the client can
+        # show success + the imported events right after import.
+        summary = response.json()['import_summary']
+        self.assertTrue(summary['ok'])
+        self.assertEqual(summary['count'], 1)
+        self.assertEqual(summary['events'][0]['title'], 'Study block')
 
         week_response = self.client.get(
             f'/api/v1/activity/week/?start_date={week_start.isoformat()}',
@@ -258,6 +264,25 @@ class HeatmapApiTests(TestCase):
         payload = week_response.json()
         self.assertEqual(len(payload['days']), 7)
         self.assertTrue(any(day['events'] for day in payload['days']))
+
+    def test_calendar_import_summary_reports_empty_feed(self):
+        # An inline feed with no VEVENTs should come back ok=False with a
+        # readable error so the client can show a failure modal.
+        response = self.client.post(
+            '/api/v1/calendar-feeds/',
+            data=json.dumps({
+                'title': 'Empty Calendar',
+                'source_kind': 'I',
+                'raw_ical': 'BEGIN:VCALENDAR\nEND:VCALENDAR',
+            }),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+        self.assertEqual(response.status_code, 201)
+        summary = response.json()['import_summary']
+        self.assertFalse(summary['ok'])
+        self.assertEqual(summary['count'], 0)
+        self.assertTrue(summary['error'])
 
     def test_activity_week_honors_range_days(self):
         start = timezone.localdate()
@@ -289,6 +314,85 @@ class HeatmapApiTests(TestCase):
         match = [d for d in deadlines if d['title'] == 'Completed in window']
         self.assertEqual(len(match), 1)
         self.assertTrue(match[0]['is_completed'])
+
+    def test_activity_week_expands_weekly_recurrence(self):
+        # A weekly event whose base occurrence predates the visible window
+        # must still materialise its later occurrences inside the window.
+        today = timezone.localdate()
+        base = today - timedelta(days=14)  # two weeks before the window start
+        PlannerEvent.objects.create(
+            creator_id=self.creator,
+            title='Weekly standup',
+            event_date=base,
+            starts_at=timezone.make_aware(datetime.combine(base, time(9, 0))),
+            ends_at=timezone.make_aware(datetime.combine(base, time(9, 30))),
+            recurrence_freq='W',
+            recurrence_interval=1,
+        )
+        response = self.client.get(
+            f'/api/v1/activity/week/?start_date={today.isoformat()}&days=30',
+            **self._auth_headers(),
+        )
+        self.assertEqual(response.status_code, 200)
+        days = response.json()['days']
+        occ = []
+        for day in days:
+            for ev in day['events']:
+                if ev.get('title') == 'Weekly standup':
+                    occ.append((day['date'], ev))
+        # 30-day window, weekly cadence -> at least 4 occurrences, each
+        # keeping the 09:00 time-of-day and tagging its occurrence date.
+        self.assertGreaterEqual(len(occ), 4)
+        for date_str, ev in occ:
+            self.assertEqual(ev['event_date'], date_str)
+            self.assertTrue(ev['starts_at'].endswith('09:00:00') or 'T09:00' in ev['starts_at'])
+
+    def test_activity_week_recurrence_respects_count(self):
+        # recurrence_count caps the total number of occurrences (incl. first).
+        today = timezone.localdate()
+        PlannerEvent.objects.create(
+            creator_id=self.creator,
+            title='Three-time weekly',
+            event_date=today,
+            recurrence_freq='W',
+            recurrence_interval=1,
+            recurrence_count=3,
+        )
+        response = self.client.get(
+            f'/api/v1/activity/week/?start_date={today.isoformat()}&days=30',
+            **self._auth_headers(),
+        )
+        self.assertEqual(response.status_code, 200)
+        count = sum(
+            1
+            for day in response.json()['days']
+            for ev in day['events']
+            if ev.get('title') == 'Three-time weekly'
+        )
+        self.assertEqual(count, 3)
+
+    def test_activity_week_recurrence_respects_end_date(self):
+        today = timezone.localdate()
+        PlannerEvent.objects.create(
+            creator_id=self.creator,
+            title='Bounded weekly',
+            event_date=today,
+            recurrence_freq='W',
+            recurrence_interval=1,
+            recurrence_end_date=today + timedelta(days=10),  # covers 2 weeks
+        )
+        response = self.client.get(
+            f'/api/v1/activity/week/?start_date={today.isoformat()}&days=30',
+            **self._auth_headers(),
+        )
+        self.assertEqual(response.status_code, 200)
+        count = sum(
+            1
+            for day in response.json()['days']
+            for ev in day['events']
+            if ev.get('title') == 'Bounded weekly'
+        )
+        self.assertEqual(count, 2)
 
     def test_note_cover_upload_and_clear(self):
         import io
@@ -647,6 +751,264 @@ class HeatmapApiTests(TestCase):
         self.assertIn('Foreign Public Note', all_titles)
         # Foreign-owned private notes must never leak into scope=all.
         self.assertNotIn('Foreign Private Note', all_titles)
+
+    def test_course_git_bind_get_and_unlink(self):
+        course = Course.objects.create(
+            creator_id=self.creator,
+            slug='git-course',
+            title='Git Course',
+        )
+        # Bind to a repo.
+        bind = self.client.put(
+            f'/api/v1/courses/{course.id}/git/',
+            data=json.dumps({
+                'repo': 'octo-org/course-repo',
+                'branch': 'main',
+                'sync_enabled': True,
+                'sync_timeout_minutes': 10,
+            }),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+        self.assertEqual(bind.status_code, 200)
+        body = bind.json()
+        self.assertEqual(body['repo'], 'octo-org/course-repo')
+        self.assertTrue(body['is_bound'])
+        self.assertTrue(body['sync_enabled'])
+        self.assertEqual(body['sync_timeout_minutes'], 10)
+        self.assertIsNotNone(body['pending_since'])
+        self.assertTrue(
+            CourseOperationLog.objects.filter(
+                course_id=course,
+                operation_type=CourseOperationTypeChoices.GIT_BIND,
+            ).exists()
+        )
+        # The owner's course serializer now exposes the binding.
+        detail = self.client.get(
+            f'/api/v1/courses/{course.id}/', **self._auth_headers()
+        )
+        self.assertEqual(detail.status_code, 200)
+        self.assertEqual(detail.json()['git']['repo'], 'octo-org/course-repo')
+        # Invalid repo names are rejected.
+        bad = self.client.put(
+            f'/api/v1/courses/{course.id}/git/',
+            data=json.dumps({'repo': 'not-a-valid-repo'}),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+        self.assertEqual(bad.status_code, 400)
+        # Unlink clears the repo and disables sync.
+        unlink = self.client.delete(
+            f'/api/v1/courses/{course.id}/git/', **self._auth_headers()
+        )
+        self.assertEqual(unlink.status_code, 200)
+        self.assertFalse(unlink.json()['is_bound'])
+        self.assertFalse(unlink.json()['sync_enabled'])
+        self.assertTrue(
+            CourseOperationLog.objects.filter(
+                course_id=course,
+                operation_type=CourseOperationTypeChoices.GIT_UNLINK,
+            ).exists()
+        )
+
+    def test_course_git_binding_is_owner_only(self):
+        other = User.objects.create_user(username='other-git@example.com', password='pw')
+        other_creator = Creator.objects.create(user_id=other)
+        course = Course.objects.create(
+            creator_id=other_creator,
+            slug='others-git-course',
+            title="Other's Git Course",
+        )
+        # A non-owner cannot bind.
+        resp = self.client.put(
+            f'/api/v1/courses/{course.id}/git/',
+            data=json.dumps({'repo': 'x/y'}),
+            content_type='application/json',
+            **self._auth_headers(),
+        )
+        self.assertEqual(resp.status_code, 403)
+        # And the serializer never leaks another owner's binding.
+        course.git_repo = 'secret/repo'
+        course.save(update_fields=['git_repo'])
+        detail = self.client.get(
+            f'/api/v1/courses/{course.id}/', **self._auth_headers()
+        )
+        self.assertEqual(detail.status_code, 200)
+        self.assertIsNone(detail.json()['git'])
+
+    def test_course_git_import_creates_and_updates_notes(self):
+        from unittest.mock import patch
+        from creators.models import GithubIntegration
+
+        course = Course.objects.create(
+            creator_id=self.creator, slug='import-course', title='Import Course',
+            git_repo='octo/docs', git_branch='main',
+        )
+        GithubIntegration.objects.create(
+            creator=self.creator, installation_id='inst-1',
+        )
+        files = {
+            'docs/cv/index.md': '---\ntitle: Computer Vision\nsidebar_position: 1\n---\n# CV\nintro',
+            'docs/cv/features.md': '# Features\nbody',
+            'docs/.vitepress/config.mts': 'export default {}',  # ignored
+        }
+        fake = (None, files, list(files))
+        with patch('courses.git_service.fetch_course_repo', return_value=fake):
+            resp = self.client.post(
+                f'/api/v1/courses/{course.id}/git/import/',
+                data=json.dumps({}), content_type='application/json',
+                **self._auth_headers(),
+            )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        summary = resp.json()
+        self.assertEqual(summary['created'], 2)
+        self.assertEqual(summary['note_count'], 2)
+        paths = set(
+            Note.objects.filter(course_id=course).values_list('git_path', flat=True)
+        )
+        self.assertEqual(paths, {'docs/cv/index.md', 'docs/cv/features.md'})
+        self.assertTrue(
+            CourseOperationLog.objects.filter(
+                course_id=course,
+                operation_type=CourseOperationTypeChoices.GIT_IMPORT,
+            ).exists()
+        )
+        # Re-import with a changed file updates in place (no duplicates).
+        files['docs/cv/features.md'] = '# Features\nEDITED body'
+        with patch('courses.git_service.fetch_course_repo',
+                   return_value=(None, files, list(files))):
+            resp2 = self.client.post(
+                f'/api/v1/courses/{course.id}/git/import/',
+                data=json.dumps({}), content_type='application/json',
+                **self._auth_headers(),
+            )
+        self.assertEqual(resp2.status_code, 200)
+        self.assertEqual(resp2.json()['created'], 0)
+        self.assertEqual(resp2.json()['updated'], 1)
+        self.assertEqual(Note.objects.filter(course_id=course).count(), 2)
+
+    def test_course_git_sync_pushes_and_clears_pending(self):
+        from unittest.mock import patch
+        from creators.models import GithubIntegration
+        import courses.git_service as git_service
+
+        course = Course.objects.create(
+            creator_id=self.creator, slug='sync-course', title='Sync Course',
+            git_repo='octo/docs', git_branch='main', git_sync_enabled=True,
+            git_pending_since=timezone.now(),
+        )
+        GithubIntegration.objects.create(
+            creator=self.creator, installation_id='inst-sync',
+        )
+        Note.objects.create(
+            creator_id=self.creator, course_id=course,
+            sharing_id='sync-note-1', title='Filters',
+            content='# Filters\n\nbody', git_path='docs/cv/filters.md',
+            custom_meta='{"sidebar_position": 2, "title": "Filters"}',
+        )
+        # The write mapping preserves the file's frontmatter.
+        files = git_service.serialize_course_for_sync(course)
+        self.assertIn('docs/cv/filters.md', files)
+        self.assertIn('sidebar_position: 2', files['docs/cv/filters.md'])
+
+        with patch.object(git_service, '_commit_files', return_value='sha123') as m:
+            resp = self.client.post(
+                f'/api/v1/courses/{course.id}/git/sync/',
+                data=json.dumps({}), content_type='application/json',
+                **self._auth_headers(),
+            )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.json()['files'], 1)
+        m.assert_called_once()
+        course.refresh_from_db()
+        self.assertIsNone(course.git_pending_since)
+        self.assertIsNotNone(course.git_last_synced_at)
+        self.assertTrue(
+            CourseOperationLog.objects.filter(
+                course_id=course,
+                operation_type=CourseOperationTypeChoices.GIT_SYNC,
+            ).exists()
+        )
+
+    def test_note_edit_arms_bound_course_sync(self):
+        course = Course.objects.create(
+            creator_id=self.creator, slug='arm-course', title='Arm Course',
+            git_repo='octo/docs', git_sync_enabled=True,
+        )
+        note = Note.objects.create(
+            creator_id=self.creator, course_id=course, sharing_id='arm-note',
+            title='N', content='x', git_path='docs/n.md',
+        )
+        self.assertIsNone(course.git_pending_since)
+        resp = self.client.patch(
+            f'/api/v1/notes/{note.id}/',
+            data=json.dumps({'content': '# N\n\nedited'}),
+            content_type='application/json', **self._auth_headers(),
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        course.refresh_from_db()
+        self.assertIsNotNone(course.git_pending_since)
+
+    def test_flush_due_course_syncs_fires_after_timeout(self):
+        from datetime import timedelta
+        from unittest.mock import patch
+        from creators.models import GithubIntegration
+        import courses.git_service as git_service
+
+        course = Course.objects.create(
+            creator_id=self.creator, slug='flush-course', title='Flush Course',
+            git_repo='octo/docs', git_sync_enabled=True,
+            git_sync_timeout_minutes=5,
+            git_pending_since=timezone.now() - timedelta(minutes=10),
+        )
+        GithubIntegration.objects.create(
+            creator=self.creator, installation_id='inst-flush',
+        )
+        Note.objects.create(
+            creator_id=self.creator, course_id=course, sharing_id='flush-note',
+            title='N', content='x', git_path='docs/n.md',
+        )
+        with patch.object(git_service, '_commit_files', return_value='sha'):
+            synced = git_service.flush_due_course_syncs(self.creator)
+        self.assertEqual(synced, 1)
+        course.refresh_from_db()
+        self.assertIsNone(course.git_pending_since)
+
+    def test_flush_skips_courses_within_timeout(self):
+        from unittest.mock import patch
+        from creators.models import GithubIntegration
+        import courses.git_service as git_service
+
+        course = Course.objects.create(
+            creator_id=self.creator, slug='fresh-course', title='Fresh',
+            git_repo='octo/docs', git_sync_enabled=True,
+            git_sync_timeout_minutes=5,
+            git_pending_since=timezone.now(),  # just armed, not due
+        )
+        GithubIntegration.objects.create(
+            creator=self.creator, installation_id='inst-fresh',
+        )
+        with patch.object(git_service, '_commit_files', return_value='sha') as m:
+            synced = git_service.flush_due_course_syncs(self.creator)
+        self.assertEqual(synced, 0)
+        m.assert_not_called()
+
+    def test_course_git_import_requires_github_integration(self):
+        from unittest.mock import patch
+
+        course = Course.objects.create(
+            creator_id=self.creator, slug='no-int-course', title='No Int',
+            git_repo='octo/docs',
+        )
+        with patch('courses.git_service.fetch_course_repo',
+                   return_value=(None, {}, [])):
+            resp = self.client.post(
+                f'/api/v1/courses/{course.id}/git/import/',
+                data=json.dumps({}), content_type='application/json',
+                **self._auth_headers(),
+            )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('GitHub', resp.json()['detail'])
 
     def test_course_subscribe_open_and_ordering_are_synced(self):
         course_a = Course.objects.create(
@@ -1489,3 +1851,487 @@ class NoteAttachmentByUuidApiTests(TestCase):
         self.assertIn(self.note.uuid.hex, data["url"])
         # The file URL should NOT contain the integer note id
         self.assertNotIn(f"note_{self.note.id}", data["url"])
+
+
+class NoteNamePerCourseTests(TestCase):
+    """Note.name is a URL-safe, course-unique slug powering per-note links
+    and in-course markdown link resolution (0.1.177)."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="namer@example.com", password="pw")
+        self.creator = Creator.objects.create(user_id=self.user)
+        self.course = Course.objects.create(
+            creator_id=self.creator, slug="name-course", title="Name Course"
+        )
+        self.token = Token.objects.create(user=self.user)
+
+    def _auth(self):
+        return {"HTTP_AUTHORIZATION": f"Token {self.token.key}"}
+
+    def test_ensure_note_name_slugifies_title(self):
+        from notes.services import ensure_note_name
+
+        note = Note.objects.create(
+            creator_id=self.creator, course_id=self.course,
+            sharing_id="n-slug", title="Optical Flow & SfM",
+        )
+        ensure_note_name(note)
+        self.assertEqual(note.name, "optical-flow-sfm")
+
+    def test_ensure_note_name_dedupes_within_course(self):
+        from notes.services import ensure_note_name
+
+        a = Note.objects.create(
+            creator_id=self.creator, course_id=self.course,
+            sharing_id="n-a", title="Filters", name="filters",
+        )
+        b = Note.objects.create(
+            creator_id=self.creator, course_id=self.course,
+            sharing_id="n-b", title="Filters",
+        )
+        ensure_note_name(b)
+        self.assertEqual(a.name, "filters")
+        self.assertEqual(b.name, "filters-2")
+
+    def test_ensure_note_name_from_git_path_index_uses_folder(self):
+        from notes.services import ensure_note_name
+
+        note = Note.objects.create(
+            creator_id=self.creator, course_id=self.course,
+            sharing_id="n-idx", title="Overview",
+            git_path="docs/cv/advances/index.md",
+        )
+        ensure_note_name(note)
+        self.assertEqual(note.name, "advances")
+
+    def test_create_endpoint_assigns_name(self):
+        resp = self.client.post(
+            "/api/v1/notes/",
+            data=json.dumps({
+                "title": "My First Note",
+                "content": "# My First Note\n\nbody",
+                "course_id": self.course.id,
+            }),
+            content_type="application/json",
+            **self._auth(),
+        )
+        self.assertEqual(resp.status_code, 201, resp.content)
+        self.assertEqual(resp.json().get("name"), "my-first-note")
+
+    def test_name_unique_constraint_enforced(self):
+        from django.db import IntegrityError
+
+        Note.objects.create(
+            creator_id=self.creator, course_id=self.course,
+            sharing_id="c-1", title="A", name="dup",
+        )
+        with self.assertRaises(IntegrityError):
+            Note.objects.create(
+                creator_id=self.creator, course_id=self.course,
+                sharing_id="c-2", title="B", name="dup",
+            )
+
+
+class CourseHueAndModuleTests(TestCase):
+    """0.1.178 foundations: Course.color_hue, Note.module, event payload
+    course enrichment."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="hue@example.com", password="pw")
+        self.creator = Creator.objects.create(user_id=self.user)
+        self.course = Course.objects.create(
+            creator_id=self.creator, slug="hue-course", title="Hue Course"
+        )
+        self.token = Token.objects.create(user=self.user)
+
+    def _auth(self):
+        return {"HTTP_AUTHORIZATION": f"Token {self.token.key}"}
+
+    def test_patch_course_sets_color_hue(self):
+        resp = self.client.patch(
+            f"/api/v1/courses/{self.course.id}/",
+            data=json.dumps({"title": "Hue Course", "color_hue": 210}),
+            content_type="application/json",
+            **self._auth(),
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.json()["color_hue"], 210)
+        self.course.refresh_from_db()
+        self.assertEqual(self.course.color_hue, 210)
+
+    def test_color_hue_out_of_range_rejected(self):
+        resp = self.client.patch(
+            f"/api/v1/courses/{self.course.id}/",
+            data=json.dumps({"title": "Hue Course", "color_hue": 400}),
+            content_type="application/json",
+            **self._auth(),
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_import_populates_note_module(self):
+        from unittest.mock import patch
+        from creators.models import GithubIntegration
+        import courses.git_service as git_service
+
+        course = Course.objects.create(
+            creator_id=self.creator, slug="mod-course", title="Mod Course",
+            git_repo="octo/docs", git_branch="main",
+        )
+        GithubIntegration.objects.create(
+            creator=self.creator, installation_id="inst-mod",
+        )
+        files = {
+            "docs/cv/index.md": "---\ntitle: CV\n---\n# CV\n",
+            "docs/cv/filters.md": "# Filters\n",
+            "docs/dnn/vit.md": "# ViT\n",
+        }
+        cfg = "preset: vitepress\ncontent:\n  module_depth: 1\n"
+        with patch.object(
+            git_service, "fetch_course_repo",
+            return_value=(cfg, files, list(files)),
+        ):
+            git_service.import_course_from_repo(course)
+        cv_notes = Note.objects.filter(course_id=course, module__icontains="CV")
+        self.assertTrue(cv_notes.exists())
+        # Every imported note carries a non-empty module label.
+        self.assertTrue(
+            all(n.module for n in Note.objects.filter(course_id=course))
+        )
+
+    def test_event_payload_includes_course_hue(self):
+        from notes.services import planner_event_payload
+
+        self.course.color_hue = 120
+        self.course.save(update_fields=["color_hue"])
+        event = PlannerEvent.objects.create(
+            creator_id=self.creator, course_id=self.course,
+            title="Study", event_date=timezone.localdate(),
+            difficulty_weight=3,
+        )
+        payload = planner_event_payload(event)
+        self.assertIsNotNone(payload["course"])
+        self.assertEqual(payload["course"]["color_hue"], 120)
+        self.assertEqual(payload["course"]["title"], "Hue Course")
+
+
+class NoteUrlAccessPolicyTests(TestCase):
+    """0.1.179 note-URL access policy: public notes are readable
+    anonymously by uuid; private notes are readable by the owner and by
+    ACTIVE subscribers of their course; everyone else is refused."""
+
+    def setUp(self):
+        self.owner_user = User.objects.create_user(username="owner@example.com", password="pw")
+        self.owner = Creator.objects.create(user_id=self.owner_user)
+        self.sub_user = User.objects.create_user(username="sub@example.com", password="pw")
+        self.subscriber = Creator.objects.create(user_id=self.sub_user)
+        self.other_user = User.objects.create_user(username="other@example.com", password="pw")
+        self.other = Creator.objects.create(user_id=self.other_user)
+        self.course = Course.objects.create(
+            creator_id=self.owner, slug="url-course", title="URL Course"
+        )
+        self.public_note = Note.objects.create(
+            creator_id=self.owner, course_id=self.course,
+            sharing_id="url-pub", title="Public", is_public=True,
+            content="# public",
+        )
+        self.private_note = Note.objects.create(
+            creator_id=self.owner, course_id=self.course,
+            sharing_id="url-priv", title="Private", is_public=False,
+            content="# private",
+        )
+        self.sub_token = Token.objects.create(user=self.sub_user)
+        self.other_token = Token.objects.create(user=self.other_user)
+
+    def _get(self, note, token=None):
+        headers = {"HTTP_AUTHORIZATION": f"Token {token.key}"} if token else {}
+        return self.client.get(f"/api/v1/notes/uuid/{note.uuid}/", **headers)
+
+    def test_public_note_readable_anonymously_by_uuid(self):
+        resp = self._get(self.public_note)
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.json()["title"], "Public")
+
+    def test_private_note_refused_anonymously(self):
+        resp = self._get(self.private_note)
+        self.assertGreaterEqual(resp.status_code, 400)
+
+    def test_private_note_readable_by_active_subscriber(self):
+        CourseSubscription.objects.create(
+            creator_id=self.subscriber, course_id=self.course, is_active=True,
+        )
+        resp = self._get(self.private_note, token=self.sub_token)
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.json()["title"], "Private")
+        # Subscribers can read but never edit.
+        self.assertFalse(resp.json()["can_edit"])
+
+    def test_private_note_refused_for_inactive_subscription(self):
+        CourseSubscription.objects.create(
+            creator_id=self.subscriber, course_id=self.course, is_active=False,
+        )
+        resp = self._get(self.private_note, token=self.sub_token)
+        self.assertGreaterEqual(resp.status_code, 400)
+
+    def test_private_note_refused_for_unrelated_user(self):
+        resp = self._get(self.private_note, token=self.other_token)
+        self.assertGreaterEqual(resp.status_code, 400)
+
+
+class FrontPageCarouselTests(TestCase):
+    """0.1.180: the public-courses carousel only lists courses with at
+    least one public note — stale personal buckets stay off the front
+    page."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="front@example.com", password="pw")
+        self.creator = Creator.objects.create(user_id=self.user)
+
+    def test_carousel_excludes_courses_without_public_notes(self):
+        public_course = Course.objects.create(
+            creator_id=self.creator, slug="pub-course", title="Public Course"
+        )
+        Note.objects.create(
+            creator_id=self.creator, course_id=public_course,
+            sharing_id="fp-pub", title="Shown", is_public=True,
+        )
+        stale_inbox = Course.objects.create(
+            creator_id=self.creator, slug="stale-inbox", title="Inbox",
+            description="Offline-first local note bucket",
+        )
+        Note.objects.create(
+            creator_id=self.creator, course_id=stale_inbox,
+            sharing_id="fp-priv", title="Hidden", is_public=False,
+        )
+        empty_course = Course.objects.create(
+            creator_id=self.creator, slug="empty-course", title="Empty"
+        )
+        self.assertIsNotNone(empty_course)
+
+        resp = self.client.get("/api/v1/front-page/")
+        self.assertEqual(resp.status_code, 200)
+        payload = resp.json()
+        titles = [c["title"] for c in payload["carousel_courses"]]
+        self.assertIn("Public Course", titles)
+        self.assertNotIn("Inbox", titles)
+        self.assertNotIn("Empty", titles)
+        default = payload.get("default_course")
+        if default is not None:
+            self.assertEqual(default["title"], "Public Course")
+
+
+class CourseNotesPerformanceTests(TestCase):
+    """0.1.185: course-notes must not do per-row storage I/O and must
+    paginate on request."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="perf@example.com", password="pw")
+        self.creator = Creator.objects.create(user_id=self.user)
+        self.course = Course.objects.create(
+            creator_id=self.creator, slug="perf-course", title="Perf Course"
+        )
+        for i in range(25):
+            Note.objects.create(
+                creator_id=self.creator, course_id=self.course,
+                sharing_id=f"perf-{i}", title=f"Note {i}",
+                content=f"# Note {i}\nbody", is_public=True,
+            )
+        self.token = Token.objects.create(user=self.user)
+
+    def _auth(self):
+        return {"HTTP_AUTHORIZATION": f"Token {self.token.key}"}
+
+    def test_bare_list_still_returned_without_limit(self):
+        resp = self.client.get(f"/api/v1/courses/{self.course.id}/notes/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIsInstance(resp.json(), list)
+        self.assertEqual(len(resp.json()), 25)
+
+    def test_paginated_envelope_with_limit(self):
+        resp = self.client.get(
+            f"/api/v1/courses/{self.course.id}/notes/?limit=10&offset=0")
+        self.assertEqual(resp.status_code, 200)
+        page = resp.json()
+        self.assertEqual(len(page["results"]), 10)
+        self.assertEqual(page["total"], 25)
+        self.assertTrue(page["has_more"])
+        resp2 = self.client.get(
+            f"/api/v1/courses/{self.course.id}/notes/?limit=10&offset=20")
+        page2 = resp2.json()
+        self.assertEqual(len(page2["results"]), 5)
+        self.assertFalse(page2["has_more"])
+
+    def test_author_payload_does_no_storage_io(self):
+        """The per-row author payload must never touch storage — the old
+        ensure_creator_avatar/storage.exists path cost one R2 HEAD per
+        note (a 193-note course took ~15s)."""
+        from unittest.mock import patch
+
+        def _boom(*args, **kwargs):  # noqa: ANN001
+            raise AssertionError("storage.exists() called in list path")
+
+        with patch("creators.utils.creator_has_image_file", side_effect=_boom):
+            resp = self.client.get(
+                f"/api/v1/courses/{self.course.id}/notes/?limit=10")
+        self.assertEqual(resp.status_code, 200, resp.content)
+
+    def test_author_payload_memoized_per_request(self):
+        from unittest.mock import patch
+        from notes import api as notes_api
+
+        calls = {"n": 0}
+        original = notes_api._avatar_cache_bust
+
+        def counting(url, creator):
+            calls["n"] += 1
+            return original(url, creator)
+
+        with patch.object(notes_api, "_avatar_cache_bust", counting):
+            resp = self.client.get(
+                f"/api/v1/courses/{self.course.id}/notes/?limit=25")
+        self.assertEqual(resp.status_code, 200)
+        # 25 rows, one shared author → the payload computed once.
+        self.assertEqual(calls["n"], 1)
+
+
+class ImportedNoteOrderAndBindPendingTests(TestCase):
+    """0.1.188: imported courses read top-to-bottom, and binding without
+    sync enabled doesn't report a permanently pending sync."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="order@example.com", password="pw")
+        self.creator = Creator.objects.create(user_id=self.user)
+        self.token = Token.objects.create(user=self.user)
+
+    def _auth(self):
+        return {"HTTP_AUTHORIZATION": f"Token {self.token.key}"}
+
+    def test_import_sets_reading_order_and_list_follows_it(self):
+        from unittest.mock import patch
+        from creators.models import GithubIntegration
+        import courses.git_service as git_service
+
+        course = Course.objects.create(
+            creator_id=self.creator, slug="ord-course", title="Ord Course",
+            git_repo="octo/docs", git_branch="main",
+        )
+        GithubIntegration.objects.create(
+            creator=self.creator, installation_id="inst-ord",
+        )
+        # Two modules; frontmatter `order` fixes the within-module order.
+        files = {
+            "docs/aa/index.md": "---\ntitle: AA\norder: 1\n---\n# AA\n",
+            "docs/aa/second.md": "---\ntitle: A2\norder: 2\n---\n# A2\n",
+            "docs/bb/only.md": "---\ntitle: B1\norder: 1\n---\n# B1\n",
+        }
+        cfg = "preset: vitepress\ncontent:\n  module_depth: 1\n"
+        with patch.object(git_service, "fetch_course_repo",
+                          return_value=(cfg, files, list(files))):
+            git_service.import_course_from_repo(course)
+
+        orders = list(
+            Note.objects.filter(course_id=course)
+            .order_by("sort_order")
+            .values_list("sort_order", "title")
+        )
+        # Every imported note gets a positive, strictly increasing position.
+        self.assertTrue(all(o > 0 for o, _ in orders))
+        self.assertEqual([o for o, _ in orders], sorted(o for o, _ in orders))
+        self.assertEqual(len(orders), 3)
+
+        # The API lists them in that reading order (not by edit recency).
+        resp = self.client.get(f"/api/v1/courses/{course.id}/notes/", **self._auth())
+        self.assertEqual(resp.status_code, 200)
+        api_titles = [n["title"] for n in resp.json()]
+        self.assertEqual(api_titles, [t for _, t in orders])
+
+    def test_native_notes_keep_recency_order(self):
+        """sort_order is 0 for natively-created notes, so the secondary
+        `-last_edit` key preserves the old behaviour."""
+        course = Course.objects.create(
+            creator_id=self.creator, slug="nat-course", title="Nat Course",
+        )
+        first = Note.objects.create(
+            creator_id=self.creator, course_id=course,
+            sharing_id="nat-1", title="Older", is_public=True,
+        )
+        second = Note.objects.create(
+            creator_id=self.creator, course_id=course,
+            sharing_id="nat-2", title="Newer", is_public=True,
+        )
+        self.assertEqual(first.sort_order, 0)
+        self.assertEqual(second.sort_order, 0)
+        resp = self.client.get(f"/api/v1/courses/{course.id}/notes/", **self._auth())
+        self.assertEqual([n["title"] for n in resp.json()], ["Newer", "Older"])
+
+    def test_bind_without_sync_enabled_is_not_pending(self):
+        course = Course.objects.create(
+            creator_id=self.creator, slug="bind-course", title="Bind Course",
+        )
+        resp = self.client.put(
+            f"/api/v1/courses/{course.id}/git/",
+            data=json.dumps({"repo": "octo/repo", "sync_enabled": False}),
+            content_type="application/json", **self._auth(),
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertTrue(resp.json()["is_bound"])
+        self.assertFalse(resp.json()["sync_enabled"])
+        self.assertIsNone(resp.json()["pending_since"])
+
+    def test_bind_with_sync_enabled_arms_pending(self):
+        course = Course.objects.create(
+            creator_id=self.creator, slug="bind2-course", title="Bind2 Course",
+        )
+        resp = self.client.put(
+            f"/api/v1/courses/{course.id}/git/",
+            data=json.dumps({"repo": "octo/repo", "sync_enabled": True}),
+            content_type="application/json", **self._auth(),
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertIsNotNone(resp.json()["pending_since"])
+
+
+class UncategorizedNoteFilterTests(TestCase):
+    """0.1.190: `course_id=none` lists only notes in no category — the
+    editor's Inbox folder, which previously showed every owned note."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="inbox@example.com", password="pw")
+        self.creator = Creator.objects.create(user_id=self.user)
+        self.course = Course.objects.create(
+            creator_id=self.creator, slug="inbox-course", title="Categorised",
+        )
+        self.loose = Note.objects.create(
+            creator_id=self.creator, course_id=None,
+            sharing_id="inbox-loose", title="Loose note",
+        )
+        self.filed = Note.objects.create(
+            creator_id=self.creator, course_id=self.course,
+            sharing_id="inbox-filed", title="Filed note",
+        )
+        self.token = Token.objects.create(user=self.user)
+
+    def _titles(self, qs=""):
+        resp = self.client.get(
+            f"/api/v1/notes/?limit=50{qs}",
+            HTTP_AUTHORIZATION=f"Token {self.token.key}",
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        return [n["title"] for n in resp.json()["results"]]
+
+    def test_uncategorized_only_excludes_filed_notes(self):
+        titles = self._titles("&course_id=none")
+        self.assertIn("Loose note", titles)
+        self.assertNotIn("Filed note", titles)
+
+    def test_null_and_uncategorized_aliases_work(self):
+        for alias in ("null", "uncategorized"):
+            self.assertNotIn("Filed note", self._titles(f"&course_id={alias}"))
+
+    def test_no_course_id_still_lists_everything(self):
+        titles = self._titles()
+        self.assertIn("Loose note", titles)
+        self.assertIn("Filed note", titles)
+
+    def test_numeric_course_id_still_filters_to_that_course(self):
+        titles = self._titles(f"&course_id={self.course.id}")
+        self.assertEqual(titles, ["Filed note"])

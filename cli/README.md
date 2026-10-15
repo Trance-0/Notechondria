@@ -49,7 +49,29 @@ with `NOTECHONDRIA_CONFIG`):
 ```bash
 notechondria-mcp check    # verify config + backend connectivity
 notechondria-mcp          # serve MCP over stdio (default)
+notechondria-mcp batch tasks.jsonl   # bulk tool calls (see below)
 ```
+
+### Batch mode (bulk imports)
+
+For bulk jobs — importing a syllabus of deadlines, creating many
+notes — skip the per-call JSON-RPC envelope and feed `batch` a
+newline-delimited JSON file (or stdin with `-`), one
+`{"tool": <name>, "arguments": {...}}` per line. Blank lines and
+`#` comments are skipped; one JSON result is printed per line and
+per-item failures do not stop the run (add `--stop-on-error` to
+abort on the first failure). Exit code 0 = all items succeeded.
+
+```bash
+cat > syllabus.jsonl <<'EOF'
+{"tool": "create_event", "arguments": {"title": "Read chapter 4", "event_date": "2026-07-15"}}
+{"tool": "create_event", "arguments": {"title": "Problem set 2", "event_date": "2026-07-17", "difficulty_weight": 3}}
+EOF
+notechondria-mcp batch syllabus.jsonl
+```
+
+List before creating in bulk (`list_events` / `list_notes`) so reruns
+do not duplicate existing items.
 
 ### Wire into an agent host
 
@@ -70,13 +92,36 @@ Most desktop agent hosts launch an MCP server over stdio. Example
 }
 ```
 
+### Claude Code (repo `.mcp.json`)
+
+This repo ships a project-scoped [`.mcp.json`](../.mcp.json) at its root,
+so a Claude Code session opened here picks up all 41 tools automatically —
+no per-session wiring. It runs the installed `notechondria-mcp` console
+script against the **deployed** backend by default.
+
+Two one-time prerequisites (the config file holds **no secret** — the key
+is read from your environment, never committed):
+
+```bash
+cd cli && pip install -e .          # puts `notechondria-mcp` on PATH
+export NOTECHONDRIA_API_KEY="ntc_xxxxxxxx"   # your rotated key
+# optional: point at a different backend (defaults to the deployed one)
+# export NOTECHONDRIA_API_URL="http://localhost:9080/api/v1"
+```
+
+`NOTECHONDRIA_API_URL` defaults to
+`https://notechondria.trance-0.com/api/v1` via `${VAR:-default}`
+expansion; set the env var to override. If `NOTECHONDRIA_API_KEY` is
+unset the server simply fails to connect (Claude Code reports it and
+continues) — nothing else is affected.
+
 ## Tools
 
-A representative subset of the backend MCP surface is implemented:
-`get_profile`, `list_notes`, `get_note`, `create_note`, `update_note`,
-`delete_note`, `list_courses`, `get_course`, `create_course`,
-`list_events`, `create_event`. The remaining tools are ported in
-Phase 3 (keep parity with `backend/mcp/tools.py`).
+Full parity with the in-backend MCP since 0.1.146: all 41 tools from
+`backend/mcp/tools.py` are implemented over REST with matching names,
+schemas, and descriptions. The `initialize` result carries the same
+baseline `instructions` operating manual
+(`notechondria_mcp/instructions.py`) plus the user's `skill.md`.
 
 ## Develop / test
 

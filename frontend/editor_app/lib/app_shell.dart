@@ -324,6 +324,13 @@ class _AppShellState extends State<AppShell>
   /// Currently selected category (course) for note filtering. null = all notes.
   int? _selectedCategoryId;
 
+  /// True when the sidebar's Inbox folder is the active selection
+  /// (0.1.190). The Inbox has no course id, so it used to share the
+  /// `_selectedCategoryId == null` state with "All notes" and rendered
+  /// exactly the same list — every note the user owned, categorised ones
+  /// included. This flag separates the two.
+  bool _uncategorizedSelected = false;
+
   /// Dedupe-key for the sidebar pin diagnostic so we don't spam the debug
   /// log with one warning per rebuild. Re-emit only when the category set
   /// composition (id/title/is_default tuple) changes. Lives on the State
@@ -352,10 +359,23 @@ class _AppShellState extends State<AppShell>
         : visible;
   }
 
+  // Unique URL per full-screen tab (0.1.186). Note deep links keep their
+  // richer `#/notes/<uuid>` form; a bare tab path never clobbers one
+  // (replaceState only fires on explicit tab switches).
+  static const List<String> _tabPaths = [
+    '/',
+    '/notes',
+    '/courses',
+    '/activity',
+    '/settings',
+  ];
+
   void _selectActualIndex(int index) {
     setState(() {
       _selectedIndex = index;
     });
+    url_strategy.browserReplaceState(
+        '#${_tabPaths[index.clamp(0, _tabPaths.length - 1)]}');
   }
 
   bool _showWidePageHeader(int index) => false;
@@ -372,10 +392,47 @@ class _AppShellState extends State<AppShell>
   /// repopulates `_courses` from the public-feed response, so signed-
   /// out users still get a sensible catalog.
   List<Map<String, dynamic>> get _allCategories {
+    // 0.1.182: order the real categories by the user's most recent
+    // activity (last opened, else the newest note's edit) so a freshly
+    // created project surfaces at the top instead of being buried by
+    // the server's static sort order.
+    DateTime? recency(Map<String, dynamic> course) {
+      final opened =
+          DateTime.tryParse(course['last_opened_at']?.toString() ?? '');
+      final recent = course['recent_notes'];
+      DateTime? noteEdit;
+      if (recent is List && recent.isNotEmpty && recent.first is Map) {
+        noteEdit = DateTime.tryParse(
+            (recent.first as Map)['last_edit']?.toString() ?? '');
+      }
+      if (opened == null) return noteEdit;
+      if (noteEdit == null) return opened;
+      return opened.isAfter(noteEdit) ? opened : noteEdit;
+    }
+
+    // 0.1.184: the sidebar lists only the user's OWN workspace — local
+    // courses plus cloud courses they own or actively subscribe to. The
+    // course list endpoint returns the whole public catalog, and listing
+    // it here made brand-new accounts see other people's projects in
+    // their sidebar (with no subscription involved). Discovery of public
+    // courses stays in the Course view; new users see just the Inbox
+    // folder until they create or subscribe to something.
+    final rows = [
+      ..._localCourses,
+      ..._courses.where((course) =>
+          course['is_owned'] == true || course['is_subscribed'] == true),
+    ];
+    rows.sort((a, b) {
+      final at = recency(a);
+      final bt = recency(b);
+      if (at == null && bt == null) return 0;
+      if (at == null) return 1;
+      if (bt == null) return -1;
+      return bt.compareTo(at);
+    });
     return [
       buildUncategorizedFolder(),
-      ..._localCourses,
-      ..._courses,
+      ...rows,
     ];
   }
 
@@ -412,7 +469,16 @@ class _AppShellState extends State<AppShell>
   @override
   void initState() {
     super.initState();
-    final clamped = widget.initialIndex.clamp(0, _titles.length - 1);
+    var initial = widget.initialIndex;
+    // Cold-start tab deep link (`#/courses` etc.); `#/notes/<uuid>` note
+    // links are handled separately by _parseNoteUuidFromUrl.
+    final fragment = Uri.base.fragment;
+    final tabFromUrl = _tabPaths.indexOf(
+        fragment.startsWith('/') ? fragment : '/$fragment');
+    if (tabFromUrl > 0) {
+      initial = tabFromUrl;
+    }
+    final clamped = initial.clamp(0, _titles.length - 1);
     _selectedIndex =
         _visibleIndices.contains(clamped) ? clamped : _visibleIndices.first;
     // Route the HTTP client's per-request DEBUG logs into the shared

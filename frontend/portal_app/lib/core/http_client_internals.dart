@@ -63,6 +63,24 @@ extension HttpNotechondriaClientInternalsX on HttpNotechondriaClient {
     );
   }
 
+  Future<http.Response> _put(
+    Uri uri, {
+    String? token,
+    required Map<String, dynamic> payload,
+  }) {
+    final body = jsonEncode(payload);
+    return send(
+      'PUT',
+      uri,
+      () => _httpClient.put(
+        uri,
+        headers: headers(token: token, includeJsonContentType: true),
+        body: body,
+      ),
+      requestBytes: body.length,
+    );
+  }
+
   Future<http.Response> _delete(Uri uri, {String? token}) {
     return send(
       'DELETE',

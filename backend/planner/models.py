@@ -28,6 +28,27 @@ class PlannerEvent(models.Model):
     description = models.CharField(max_length=255, blank=True, null=True)
     is_completed = models.BooleanField(default=False, null=False)
     completed_at = models.DateTimeField(blank=True, null=True)
+    # Recurrence (0.1.164). `recurrence_freq='N'` (default) is a
+    # one-time event; W/M/Y repeat weekly / monthly / yearly every
+    # `recurrence_interval` periods. A recurring series ends at
+    # `recurrence_end_date` (inclusive) OR after `recurrence_count`
+    # occurrences (whichever is set; both null = open-ended). The row
+    # stores the FIRST occurrence; the calendar expands the series in
+    # the requested window — no per-occurrence rows are materialized.
+    recurrence_freq = models.CharField(
+        max_length=1,
+        choices=(
+            ("N", _("Does not repeat")),
+            ("W", _("Weekly")),
+            ("M", _("Monthly")),
+            ("Y", _("Yearly")),
+        ),
+        default="N",
+        null=False,
+    )
+    recurrence_interval = models.PositiveIntegerField(default=1, null=False)
+    recurrence_end_date = models.DateField(blank=True, null=True)
+    recurrence_count = models.PositiveIntegerField(blank=True, null=True)
     date_created = models.DateTimeField(auto_now_add=True, null=False)
     last_edit = models.DateTimeField(auto_now=True, null=False)
 

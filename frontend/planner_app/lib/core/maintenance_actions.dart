@@ -151,6 +151,26 @@ extension _AppShellMaintenanceX on _AppShellState {
   }
 
   Future<ActionFeedback> _syncAllLocalData({bool announce = true}) async {
+    // Cross-user offline-cache guard (0.1.192): never push another user's
+    // local drafts into the signed-in account. `foreign_local_data_owner`
+    // is set at sign-in by _reconcileLocalDataOwner when the device's
+    // cache belongs to someone else.
+    final foreignOwner =
+        _localSettings['foreign_local_data_owner']?.toString() ?? '';
+    if (foreignOwner.isNotEmpty) {
+      const src = 'Planner.Sync.Notes/push_all';
+      final feedback = ActionFeedback(
+        message: 'Local data not synced: $src \u2014 '
+            'these offline notes belong to "$foreignOwner", not the '
+            'signed-in account. Clear local data or sign in as '
+            '"$foreignOwner" to keep them.',
+        isError: true,
+      );
+      if (announce) {
+        showMessage(feedback.message);
+      }
+      return feedback;
+    }
     final token = _token;
     if (token == null || token.isEmpty) {
       return const ActionFeedback(
@@ -398,6 +418,79 @@ extension _AppShellMaintenanceX on _AppShellState {
       return ActionFeedback(
           message: 'Template courses not restored: '
               'Planner.LocalStore/restore_templates \u2014 $cause.',
+          isError: true);
+    }
+  }
+
+  /// Owner-only course metadata update (title / description / colour hue)
+  /// used by the course-edit dialog. Refreshes the course list so the new
+  /// hue paints immediately on the calendar.
+  Future<ActionFeedback> _updateCourseMeta(
+      Map<String, dynamic> course, Map<String, dynamic> payload) async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      return const ActionFeedback(
+          message: 'Sign in to edit a course.', isError: true);
+    }
+    final courseId = (course['id'] as num?)?.toInt();
+    if (courseId == null || courseId < 0) {
+      return const ActionFeedback(
+          message: 'Local courses have no cloud metadata to edit.',
+          isError: true);
+    }
+    try {
+      await widget.client.updateCourse(token, courseId, payload);
+      final refreshed = (await widget.client.getCourses(token: _token))
+          .map(decorateRemoteCourse)
+          .toList();
+      _courses = refreshed;
+      refreshState();
+      return const ActionFeedback(message: 'Course updated.');
+    } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      return ActionFeedback(
+          message: 'Course not updated: Planner.Sync.Courses/update — $cause.',
+          isError: true);
+    }
+  }
+
+  /// Owner-only: hand a course to another creator (#11). On success the
+  /// course leaves this account, so the owned list is refreshed.
+  Future<ActionFeedback> _transferCourseOwnership(
+      Map<String, dynamic> course, String target) async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      return const ActionFeedback(
+          message: 'Sign in to transfer a course.', isError: true);
+    }
+    final courseId = (course['id'] as num?)?.toInt();
+    if (courseId == null || courseId < 0) {
+      return const ActionFeedback(
+          message: 'Local courses have no cloud ownership to transfer.',
+          isError: true);
+    }
+    final recipient = target.trim();
+    if (recipient.isEmpty) {
+      return const ActionFeedback(
+          message: "Enter the recipient's username or email.", isError: true);
+    }
+    try {
+      final result =
+          await widget.client.transferCourse(token, courseId, recipient);
+      final refreshed = (await widget.client.getCourses(token: _token))
+          .map(decorateRemoteCourse)
+          .toList();
+      _courses = refreshed;
+      refreshState();
+      final clearedGit = result['git_binding_cleared'] == true;
+      return ActionFeedback(
+          message: 'Course transferred to "$recipient".'
+              '${clearedGit ? ' Its GitHub binding was cleared.' : ''}');
+    } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      return ActionFeedback(
+          message:
+              'Course not transferred: Planner.Sync.Courses/transfer — $cause.',
           isError: true);
     }
   }

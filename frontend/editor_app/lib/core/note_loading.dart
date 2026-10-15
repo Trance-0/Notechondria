@@ -40,7 +40,11 @@ extension _AppShellNoteLoadingX on _AppShellState {
     // asked to see only local drafts. Either way, clear the cloud
     // result list and skip the listNotes call.
     final isLocalCourseSelected = activeCourseId != null && activeCourseId < 0;
-    if (isLocalCourseSelected || effectiveScope == 'local') {
+    // An anonymous user's Inbox is their local drafts only — no cloud
+    // identity to list, and the public feed belongs to "All notes"
+    // (#30 reopen).
+    final anonymousInbox = _uncategorizedSelected && !isAuthenticated;
+    if (isLocalCourseSelected || effectiveScope == 'local' || anonymousInbox) {
       _learnerNotes = const [];
       _hasMoreLearnerNotes = false;
       _learnerNotesOffset = 0;
@@ -59,6 +63,7 @@ extension _AppShellNoteLoadingX on _AppShellState {
         courseId: (activeCourseId != null && activeCourseId > 0)
             ? activeCourseId
             : null,
+        uncategorizedOnly: _uncategorizedSelected,
         scope: effectiveScope,
       );
       final rows = (page['results'] as List<dynamic>? ?? const [])
@@ -87,6 +92,10 @@ extension _AppShellNoteLoadingX on _AppShellState {
     final courseId = (course['id'] as num?)?.toInt();
     _selectedCourse = course;
     _selectedCategoryId = courseId;
+    // The Inbox row carries `is_uncategorized` and no id; every real
+    // category has an id.
+    _uncategorizedSelected =
+        courseId == null && course['is_uncategorized'] == true;
     _selectedIndex = 1;
     _selectedNote = null;
     refreshState();

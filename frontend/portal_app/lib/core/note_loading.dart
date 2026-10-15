@@ -104,6 +104,7 @@ extension _AppShellNoteLoadingX on _AppShellState {
       _selectedIndex = 2;
       _isLoading = false;
       refreshState();
+      url_strategy.replaceBrowserPath('/courses');
       log(
         level: DebugLogLevel.debug,
         source: 'Portal.UI/open_course',
@@ -113,40 +114,61 @@ extension _AppShellNoteLoadingX on _AppShellState {
       return;
     }
     try {
-      var effectiveCourse = Map<String, dynamic>.from(course);
-      if ((_token?.isNotEmpty ?? false) && course['is_subscribed'] == true) {
-        effectiveCourse =
-            await widget.client.openCourse(_token!, course['id'] as int);
-      }
-      final refreshedCourses = (await widget.client.getCourses(token: _token))
-          .map(decorateRemoteCourse)
-          .toList();
-      final refreshedSelected = refreshedCourses.firstWhere(
-        (item) => item['id'] == effectiveCourse['id'],
-        orElse: () => effectiveCourse,
-      );
-      final notes = await widget.client.getCourseNotes(
-        refreshedSelected['id'] as int,
-        token: _token,
-      );
-      _courses = refreshedCourses;
-      _selectedCourse = refreshedSelected;
-      _courseNotes = notes;
+      final courseId = course['id'] as int;
+      // 0.1.185 fast path: only the FIRST notes page (and the open-course
+      // subscription stamp, in parallel) block the render. The previous
+      // flow chained openCourse → FULL course-list refresh → the entire
+      // unpaged note set (~16 s on a 193-note imported course).
+      _courseNotesLoading = true;
+      _courseNotes = const [];
+      _courseNotesHasMore = false;
+      _courseNotesOffset = 0;
       _selectedNote = null;
       _selectedIndex = 2;
+      refreshState();
+      final openFuture =
+          ((_token?.isNotEmpty ?? false) && course['is_subscribed'] == true)
+              ? widget.client.openCourse(_token!, courseId)
+              : Future.value(Map<String, dynamic>.from(course));
+      final results = await Future.wait<dynamic>([
+        openFuture,
+        widget.client.getCourseNotesPage(courseId,
+            token: _token, limit: 10, offset: 0),
+      ]);
+      final effectiveCourse = Map<String, dynamic>.from(results[0] as Map);
+      final page = Map<String, dynamic>.from(results[1] as Map);
+      final rows = (page['results'] as List<dynamic>? ?? const [])
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+      _selectedCourse = decorateRemoteCourse(effectiveCourse);
+      _courseNotes = rows;
+      _courseNotesHasMore = page['has_more'] == true;
+      _courseNotesOffset = rows.length;
+      _courseNotesLoading = false;
       _isLoading = false;
       refreshState();
+      // Unique, shareable URL for the opened course.
+      final slug = effectiveCourse['slug']?.toString() ?? '';
+      url_strategy.replaceBrowserPath(
+          slug.isEmpty ? '/courses' : '/courses/$slug');
+      // Course-list refresh moves off the critical path.
+      unawaited(widget.client.getCourses(token: _token).then((refreshed) {
+        if (!mounted) return;
+        _courses = refreshed.map(decorateRemoteCourse).toList();
+        refreshState();
+      }).catchError((_) {}));
       await _persistLocalCache();
       log(
         level: DebugLogLevel.debug,
         source: 'Portal.UI/open_course',
         message: "Opened course: Portal.UI/open_course \u2014 "
-            "'${refreshedSelected['title']}' loaded from cloud.",
+            "'${effectiveCourse['title']}' loaded from cloud.",
       );
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
       _selectedCourse = course;
       _courseNotes = const [];
+      _courseNotesLoading = false;
       _errorMessage = cause;
       _isLoading = false;
       refreshState();
@@ -168,6 +190,7 @@ extension _AppShellNoteLoadingX on _AppShellState {
       _selectedIndex = 1;
       _isLoading = false;
       refreshState();
+      url_strategy.replaceBrowserPath('/notes');
     } catch (error) {
       final cause = error.toString().replaceFirst('Exception: ', '');
       _errorMessage = cause;
@@ -200,10 +223,90 @@ extension _AppShellNoteLoadingX on _AppShellState {
     if (!mounted) {
       return;
     }
-    await showDialog<void>(
-      context: context,
-      builder: (context) => _NoteViewerDialog(note: detail),
+    final uuid = detail['uuid']?.toString() ?? '';
+    if (uuid.isEmpty) {
+      // Local drafts have no server uuid → no URL identity; keep the
+      // in-place dialog for them.
+      await showDialog<void>(
+        context: context,
+        builder: (context) => _NoteViewerDialog(
+          note: detail,
+          onFollowLink: _followNoteLink,
+        ),
+      );
+      return;
+    }
+    // Routed note page: pushes `#/note/<uuid>` so the address bar carries
+    // a unique, shareable URL and browser Back closes the note.
+    await Navigator.of(context).pushNamed(
+      '/note/$uuid',
+      arguments: <String, dynamic>{'note': detail, 'token': _token},
     );
+    // The popped route restored the underlying route's original name;
+    // re-sync the address bar with the tab actually on screen.
+    _syncTabUrl();
+  }
+
+  /// Follows a markdown link tapped in the note viewer. External links open
+  /// in the browser; a relative in-course link resolves to a sibling note
+  /// (by repo path relative to this note, else by slugified name) and opens
+  /// it — the "seamless in-course navigation" of bug 8.
+  Future<void> _followNoteLink(
+      Map<String, dynamic> fromNote, String href) async {
+    final raw = href.trim();
+    if (raw.isEmpty) return;
+    if (_isExternalLink(raw)) {
+      url_strategy.browserRedirect(raw);
+      return;
+    }
+    final courseId = _noteCourseIdOf(fromNote);
+    if (courseId == null) {
+      showMessage('Link not followed: this note is not part of a course.');
+      return;
+    }
+    List<Map<String, dynamic>> siblings;
+    try {
+      siblings = await widget.client.getCourseNotes(courseId, token: _token);
+    } catch (error) {
+      final cause = error.toString().replaceFirst('Exception: ', '');
+      showMessage('Link not followed: Portal.UI/follow_link — $cause.');
+      return;
+    }
+    final target = _matchNoteLinkTarget(fromNote, raw, siblings);
+    if (target == null) {
+      showMessage('No note in this course matches "$raw".');
+      return;
+    }
+    await _openNoteViewer(target);
+  }
+
+  /// Streams the next course-notes page in (infinite scroll — no manual
+  /// buttons). No-ops while a fetch is in flight or when exhausted.
+  Future<void> _loadMoreCourseNotes() async {
+    final course = _selectedCourse;
+    final courseId = (course?['id'] as num?)?.toInt();
+    if (courseId == null ||
+        courseId < 0 ||
+        !_courseNotesHasMore ||
+        _courseNotesLoadingMore) {
+      return;
+    }
+    _courseNotesLoadingMore = true;
+    refreshState();
+    try {
+      final page = await widget.client.getCourseNotesPage(courseId,
+          token: _token, limit: 20, offset: _courseNotesOffset);
+      final rows = (page['results'] as List<dynamic>? ?? const [])
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+      _courseNotes = [..._courseNotes, ...rows];
+      _courseNotesOffset += rows.length;
+      _courseNotesHasMore = page['has_more'] == true && rows.isNotEmpty;
+    } catch (_) {
+      // Silent: the next scroll retries.
+    }
+    _courseNotesLoadingMore = false;
+    refreshState();
   }
 
   Future<Map<String, dynamic>> _fetchNoteDetail(int noteId) async {
@@ -228,4 +331,101 @@ extension _AppShellNoteLoadingX on _AppShellState {
     refreshState();
     return detail;
   }
+}
+
+/// True for links that should leave the app (browser navigation).
+bool _isExternalLink(String href) {
+  final lower = href.toLowerCase();
+  return lower.startsWith('http://') ||
+      lower.startsWith('https://') ||
+      lower.startsWith('mailto:') ||
+      lower.startsWith('tel:');
+}
+
+/// Course id a note belongs to, or null (front-page / uncategorized).
+int? _noteCourseIdOf(Map<String, dynamic> note) {
+  final direct = note['course_id'];
+  if (direct is int) return direct;
+  if (direct is String) return int.tryParse(direct);
+  final course = note['course'];
+  if (course is Map && course['id'] is int) return course['id'] as int;
+  return null;
+}
+
+/// Resolves a relative link to a sibling note: repo-path resolution first
+/// (relative to the source note's git_path), then a slugified-name match.
+/// Top-level (pure) so both the in-shell viewer and the routed
+/// `_NoteRoutePage` share one resolver.
+Map<String, dynamic>? _matchNoteLinkTarget(
+  Map<String, dynamic> fromNote,
+  String href,
+  List<Map<String, dynamic>> siblings,
+) {
+  var path = href.split('#').first.split('?').first.trim();
+  if (path.isEmpty) return null;
+  try {
+    path = Uri.decodeFull(path);
+  } catch (_) {
+    // keep the raw path on a malformed escape
+  }
+  // Site builds link to rendered pages: `.html` maps back to the `.md`
+  // source.
+  if (path.toLowerCase().endsWith('.html')) {
+    path = path.substring(0, path.length - 5);
+  }
+
+  // 1) Path-based: resolve relative to the source note's repo path.
+  final fromPath = fromNote['git_path']?.toString() ?? '';
+  if (fromPath.isNotEmpty) {
+    String resolved;
+    try {
+      resolved = Uri(path: fromPath).resolveUri(Uri.parse(path)).path;
+    } catch (_) {
+      resolved = path;
+    }
+    resolved = resolved.replaceFirst(RegExp(r'^/+'), '');
+    final candidates = <String>{
+      resolved,
+      '$resolved.md',
+      resolved.endsWith('/') ? '${resolved}index.md' : '$resolved/index.md',
+    };
+    // Site-root-absolute links (`/cv/foundations/filters`) omit the
+    // repo's content root (`docs/`); retry with the source note's
+    // leading directory prefixed.
+    if (path.startsWith('/') && fromPath.contains('/')) {
+      final root = fromPath.split('/').first;
+      final prefixed = '$root/${path.replaceFirst(RegExp(r'^/+'), '')}';
+      candidates.addAll({
+        prefixed,
+        '$prefixed.md',
+        prefixed.endsWith('/') ? '${prefixed}index.md' : '$prefixed/index.md',
+      });
+    }
+    for (final note in siblings) {
+      final gp = note['git_path']?.toString() ?? '';
+      if (gp.isNotEmpty && candidates.contains(gp)) return note;
+    }
+  }
+
+  // 2) Name-based: slugify the last path segment and match note['name'].
+  final segments = path.split('/').where((s) => s.isNotEmpty).toList();
+  if (segments.isNotEmpty) {
+    var last = segments.last;
+    if (last.toLowerCase().endsWith('.md')) {
+      last = last.substring(0, last.length - 3);
+    }
+    final wanted = _slugifyLinkText(last);
+    if (wanted.isNotEmpty) {
+      for (final note in siblings) {
+        if ((note['name']?.toString() ?? '') == wanted) return note;
+      }
+    }
+  }
+  return null;
+}
+
+String _slugifyLinkText(String input) {
+  final lower = input.trim().toLowerCase();
+  final dashed = lower.replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+  return dashed.replaceAll(RegExp(r'^-+|-+$'), '');
 }

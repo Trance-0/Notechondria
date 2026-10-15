@@ -77,6 +77,17 @@ class GithubSyncError(RuntimeError):
     module/process, cause."""
 
 
+class GithubSyncConflict(GithubSyncError):
+    """The remote branch advanced since our last push (0.1.189).
+
+    Raised instead of overwriting: a second device — or a manual commit —
+    moved the branch, so a blind push would silently discard those
+    changes. Callers surface this as a 409 and can retry with
+    ``force=True`` once the user has chosen to overwrite.
+    """
+
+
+
 @dataclass
 class _RepoFile:
     path: str
@@ -601,14 +612,119 @@ def _ensure_token(integration: GithubIntegration) -> str:
     return token
 
 
+# Public wrappers so sibling services (e.g. the course-git binding) can
+# reuse the App installation token + headers without reaching into the
+# private helpers. The installation grants access to every repo it was
+# installed on, so the same token pushes to a course's own repo.
+def installation_token(integration: GithubIntegration) -> str:
+    return _ensure_token(integration)
+
+
+def github_request_headers(token: str) -> dict[str, str]:
+    return _github_headers(token)
+
+
+def list_installation_repositories(integration: GithubIntegration) -> list[dict]:
+    """Return ``[{full_name, default_branch, private}]`` for every repo the
+    installation can access, paginating ``/installation/repositories``.
+    Raises ``GithubSyncError`` on token/network/HTTP failure. Shared by the
+    REST repo-picker and the MCP ``list_github_repos`` tool so both stay in
+    lockstep."""
+    import requests as http_requests
+
+    token = _ensure_token(integration)
+    headers = _github_headers(token)
+    repos: list[dict] = []
+    page = 1
+    while True:
+        try:
+            resp = http_requests.get(
+                f"{GITHUB_API}/installation/repositories",
+                headers=headers,
+                params={"per_page": 100, "page": page},
+                timeout=15,
+            )
+        except http_requests.RequestException as exc:
+            raise GithubSyncError(
+                f"network error contacting GitHub: {exc}."
+            ) from exc
+        if resp.status_code >= 400:
+            raise GithubSyncError(f"GitHub returned {resp.status_code}.")
+        chunk = (resp.json() or {}).get("repositories") or []
+        for repo in chunk:
+            repos.append({
+                "full_name": repo.get("full_name", ""),
+                "default_branch": repo.get("default_branch", "main"),
+                "private": bool(repo.get("private", False)),
+            })
+        if len(chunk) < 100:
+            break
+        page += 1
+        if page > 50:  # defensive cap: 5,000 repos
+            break
+    return repos
+
+
+def _orphan_asset_deletions(
+    remote_tree: list[dict], live_asset_uuids: set[str]
+) -> list[dict]:
+    """Pure helper (#28): given the recursive remote tree and the set of
+    live note uuid hexes, return Git-tree delete entries (``sha`` = None)
+    for every ``assets/notes/<uuid>/…`` blob whose ``<uuid>`` is not live.
+
+    Only ``assets/notes/<uuid>/`` blobs are ever targeted, so notes, course
+    files, the profile export, and any hand-added repo files are never
+    touched. A blob is an orphan when its note was deleted client-side
+    (hard- or soft-deleted) so it is no longer materialized, yet its old
+    asset subtree still lives in the remote tree.
+    """
+    deletions: list[dict] = []
+    for entry in remote_tree:
+        if entry.get("type") != "blob":
+            continue
+        path = entry.get("path") or ""
+        parts = path.split("/")
+        if len(parts) >= 4 and parts[0] == "assets" and parts[1] == "notes":
+            uuid_hex = parts[2]
+            if uuid_hex and uuid_hex not in live_asset_uuids:
+                deletions.append(
+                    {
+                        "path": path,
+                        "mode": entry.get("mode") or "100644",
+                        "type": "blob",
+                        "sha": None,
+                    }
+                )
+    return deletions
+
+
 def commit_and_push(
     integration: GithubIntegration,
     files: list[_RepoFile],
     *,
     message: str | None = None,
+    force: bool = False,
+    prune_asset_uuids: set[str] | None = None,
 ) -> str:
-    """Push ``files`` as a single commit to the integration's repo via
-    the GitHub Contents API. Returns the commit SHA."""
+    """Push ``files`` as ONE atomic commit via the Git Data API.
+
+    0.1.189 replaced a per-file Contents API loop that had two problems:
+
+    * **Silent data loss** — each PUT overwrote the remote blob using a
+      sha read moments earlier, so anything committed since the previous
+      sync (a second device, a manual edit) was discarded without a
+      word. The branch head is now compared against
+      ``integration.last_push_sha``; if the remote moved, this raises
+      :class:`GithubSyncConflict` instead of clobbering. ``force=True``
+      is the explicit "overwrite anyway" path.
+    * **Non-atomic and slow** — one request per file meant a partial
+      push on any mid-loop failure, and N sequential round-trips. The
+      tree flow is a fixed handful of calls and lands all-or-nothing.
+
+    Returns the new commit sha, or the unchanged head sha when the
+    materialized tree is byte-identical to what is already published
+    (no empty commit).
+    """
     token = _ensure_token(integration)
     repo = integration.repo_full_name
     if not repo:
@@ -619,62 +735,186 @@ def commit_and_push(
         )
     branch = integration.repo_default_branch or "main"
     headers = _github_headers(token)
+    git_base = f"{GITHUB_API}/repos/{repo}/git"
 
-    # Walk each file: GET the existing blob (to obtain its sha for
-    # update) then PUT the new content. GitHub's Contents API is one
-    # request per path; for ~hundreds of notes per user this is fine
-    # and avoids a Trees-API + commit-by-hand flow that fights merge
-    # conflicts.
-    commit_msg = message or f"sync: {_utc_iso(now())}"
-    last_sha = ""
-    for file in files:
-        url = f"{GITHUB_API}/repos/{repo}/contents/{file.path}"
-        existing_sha = ""
+    def _get(url: str):
         try:
-            resp = requests.get(
-                url, headers=headers, params={"ref": branch}, timeout=15
-            )
-            if resp.status_code == 200:
-                existing_sha = resp.json().get("sha", "")
-        except requests.RequestException as exc:
-            logger.warning(
-                "GitHub sync probe failed: "
-                "Backend.Creators.GithubSync/commit_and_push — "
-                "GET %s: %s.",
-                file.path,
-                exc,
-            )
-        body = {
-            "message": commit_msg,
-            "branch": branch,
-            "content": base64.b64encode(file.content_bytes).decode("ascii"),
-        }
-        if existing_sha:
-            body["sha"] = existing_sha
-        try:
-            resp = requests.put(url, headers=headers, json=body, timeout=30)
+            resp = requests.get(url, headers=headers, timeout=30)
         except requests.RequestException as exc:
             raise GithubSyncError(
                 "GitHub sync aborted: "
                 "Backend.Creators.GithubSync/commit_and_push — "
-                f"network error writing {file.path}: {exc}."
-            )
+                f"network error contacting GitHub: {exc}."
+            ) from exc
         if resp.status_code >= 400:
             raise GithubSyncError(
                 "GitHub sync rejected: "
                 "Backend.Creators.GithubSync/commit_and_push — "
-                f"GitHub returned {resp.status_code} for {file.path}."
+                f"GitHub returned {resp.status_code} reading "
+                f"{url.rsplit('/git/', 1)[-1]}."
             )
-        commit = resp.json().get("commit") or {}
-        last_sha = commit.get("sha") or last_sha
-    return last_sha
+        return resp.json()
+
+    def _post(url: str, payload: dict):
+        try:
+            resp = requests.post(url, headers=headers, json=payload, timeout=60)
+        except requests.RequestException as exc:
+            raise GithubSyncError(
+                "GitHub sync aborted: "
+                "Backend.Creators.GithubSync/commit_and_push — "
+                f"network error contacting GitHub: {exc}."
+            ) from exc
+        if resp.status_code >= 400:
+            raise GithubSyncError(
+                "GitHub sync rejected: "
+                "Backend.Creators.GithubSync/commit_and_push — "
+                f"GitHub returned {resp.status_code} on "
+                f"{url.rsplit('/git/', 1)[-1]}: {resp.text[:200]}"
+            )
+        return resp.json()
+
+    ref = _get(f"{git_base}/ref/heads/{branch}")
+    head_sha = (ref.get("object") or {}).get("sha") or ""
+    if not head_sha:
+        raise GithubSyncError(
+            "GitHub sync rejected: "
+            "Backend.Creators.GithubSync/commit_and_push — "
+            f"branch '{branch}' has no commit to build on."
+        )
+
+    # Conflict gate: the remote must still be where our last push left
+    # it. A blank last_push_sha means this installation has never pushed
+    # (or predates the field), so there is nothing to compare against.
+    previous = (integration.last_push_sha or "").strip()
+    if previous and previous != head_sha and not force:
+        raise GithubSyncConflict(
+            "GitHub sync stopped: "
+            "Backend.Creators.GithubSync/commit_and_push — "
+            f"'{repo}' branch '{branch}' is at {head_sha[:8]} but this "
+            f"account last pushed {previous[:8]}. Something else committed "
+            "since (another device, or an edit made directly on GitHub); "
+            "pushing now would overwrite it. Re-run with force to "
+            "overwrite deliberately."
+        )
+
+    base_tree = ((_get(f"{git_base}/commits/{head_sha}") or {}).get("tree") or {}).get("sha")
+    if not base_tree:
+        raise GithubSyncError(
+            "GitHub sync rejected: "
+            "Backend.Creators.GithubSync/commit_and_push — "
+            "could not resolve the branch's base tree."
+        )
+
+    # Binary-safe: blobs are uploaded base64 and referenced by sha, so
+    # attachment bytes survive intact (inline tree `content` is UTF-8only).
+    tree_entries = []
+    for file in files:
+        blob = _post(
+            f"{git_base}/blobs",
+            {
+                "content": base64.b64encode(file.content_bytes).decode("ascii"),
+                "encoding": "base64",
+            },
+        )
+        tree_entries.append(
+            {
+                "path": file.path,
+                "mode": "100644",
+                "type": "blob",
+                "sha": blob["sha"],
+            }
+        )
+
+    # Orphan-asset pruning (#28): delete `assets/notes/<uuid>/…` blobs for
+    # notes that no longer exist, in this same commit. Only runs when the
+    # caller supplies the live-uuid set. The recursive base tree can be
+    # truncated for very large repos; if so we skip pruning rather than
+    # act on a partial listing (deleting from incomplete data is unsafe).
+    if prune_asset_uuids is not None:
+        remote = _get(f"{git_base}/trees/{base_tree}?recursive=1")
+        if remote.get("truncated"):
+            logger.warning(
+                "GitHub sync prune skipped: "
+                "Backend.Creators.GithubSync/commit_and_push — remote tree "
+                "for '%s' is truncated; not pruning orphan assets from a "
+                "partial listing.",
+                repo,
+            )
+        else:
+            deletions = _orphan_asset_deletions(
+                remote.get("tree") or [], prune_asset_uuids
+            )
+            if deletions:
+                logger.info(
+                    "GitHub sync pruning orphan assets: "
+                    "Backend.Creators.GithubSync/commit_and_push — %d blob(s) "
+                    "for deleted notes in '%s'.",
+                    len(deletions),
+                    repo,
+                )
+            tree_entries.extend(deletions)
+
+    new_tree = _post(
+        f"{git_base}/trees", {"base_tree": base_tree, "tree": tree_entries}
+    )
+    if new_tree.get("sha") == base_tree:
+        # Nothing changed since the last publish — skip the empty commit.
+        return head_sha
+
+    commit = _post(
+        f"{git_base}/commits",
+        {
+            "message": message or f"sync: {_utc_iso(now())}",
+            "tree": new_tree["sha"],
+            "parents": [head_sha],
+        },
+    )
+    new_sha = commit.get("sha")
+    if not new_sha:
+        raise GithubSyncError(
+            "GitHub sync rejected: "
+            "Backend.Creators.GithubSync/commit_and_push — "
+            "GitHub did not return a commit sha."
+        )
+    try:
+        upd = requests.patch(
+            f"{git_base}/refs/heads/{branch}",
+            headers=headers,
+            json={"sha": new_sha},
+            timeout=30,
+        )
+    except requests.RequestException as exc:
+        raise GithubSyncError(
+            "GitHub sync aborted: "
+            "Backend.Creators.GithubSync/commit_and_push — "
+            f"network error updating branch '{branch}': {exc}."
+        ) from exc
+    if upd.status_code >= 400:
+        raise GithubSyncError(
+            "GitHub sync rejected: "
+            "Backend.Creators.GithubSync/commit_and_push — "
+            f"GitHub returned {upd.status_code} updating branch "
+            f"'{branch}': {upd.text[:200]}"
+        )
+    return new_sha
 
 
-def push_user_data(creator: Creator, *, include_assets: bool = False) -> str:
+def push_user_data(
+    creator: Creator,
+    *,
+    include_assets: bool = False,
+    force: bool = False,
+    prune_orphans: bool = False,
+) -> str:
     """Materialize and push the creator's full data export. Returns the
     final commit SHA. Pass ``include_assets=True`` to inline avatar /
     cover / attachment bytes (subject to the per-file and per-push
-    size caps documented at the top of this module)."""
+    size caps documented at the top of this module).
+
+    Pass ``prune_orphans=True`` to also delete, in the same commit, any
+    ``assets/notes/<uuid>/…`` blobs left behind by notes that no longer
+    exist (deleted client-side). The live set is this creator's current,
+    non-soft-deleted notes — exactly what the export materializes."""
     integration = getattr(creator, "github_integration", None)
     if integration is None:
         raise GithubSyncError(
@@ -683,10 +923,22 @@ def push_user_data(creator: Creator, *, include_assets: bool = False) -> str:
             "no GitHub App installation linked to this account."
         )
     files = materialize(creator, include_assets=include_assets)
+    prune_asset_uuids: set[str] | None = None
+    if prune_orphans:
+        from notes.models import Note
+
+        prune_asset_uuids = {
+            uuid.hex
+            for uuid in Note.objects.filter(
+                creator_id=creator, deleted_at__isnull=True
+            ).values_list("uuid", flat=True)
+        }
     started = time.monotonic()
     sha = ""
     try:
-        sha = commit_and_push(integration, files)
+        sha = commit_and_push(
+            integration, files, force=force, prune_asset_uuids=prune_asset_uuids
+        )
     except GithubSyncError as exc:
         integration.last_error = str(exc)
         integration.save(update_fields=["last_error", "updated_at"])
@@ -706,11 +958,13 @@ def push_user_data(creator: Creator, *, include_assets: bool = False) -> str:
     logger.info(
         "Pushed user data to GitHub: "
         "Backend.Creators.GithubSync/push_user_data — "
-        "creator=%s repo=%s files=%d include_assets=%s sha=%s duration=%.2fs.",
+        "creator=%s repo=%s files=%d include_assets=%s prune_orphans=%s "
+        "sha=%s duration=%.2fs.",
         creator.user_id.username,
         integration.repo_full_name,
         len(files),
         include_assets,
+        prune_orphans,
         sha[:8],
         duration,
     )

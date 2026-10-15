@@ -1,12 +1,14 @@
 import base64
+import json
 import logging
-from datetime import datetime, timedelta, timezone as dt_timezone
+import re
+from datetime import date, datetime, timedelta, timezone as dt_timezone
 from typing import Optional
 import urllib.error
 import urllib.parse
 import urllib.request
 
-from django.db.models import Count, Max, Sum
+from django.db.models import Count, Max, Q, Sum
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -17,7 +19,7 @@ logger = logging.getLogger(__name__)
 CALENDAR_RANGE_DAYS = {3, 7, 30}
 DEFAULT_CALENDAR_RANGE_DAYS = 7
 
-from courses.models import Course
+from courses.models import Course, CourseOperationLog, CourseOperationTypeChoices
 from planner.models import (
     CalendarFeed,
     HeatmapActivity,
@@ -33,6 +35,47 @@ from .models import (
     NoteVersion,
     NoteIndex,
 )
+
+
+def unique_note_name(course, base: str, *, exclude_pk=None) -> str:
+    """A URL-safe, course-unique slug from ``base`` (deduped with -2, -3…)."""
+    from django.utils.text import slugify
+
+    base_slug = (slugify(base) or "note")[:150]
+    existing_qs = Note.objects.filter(course_id=course).exclude(name="")
+    if exclude_pk is not None:
+        existing_qs = existing_qs.exclude(pk=exclude_pk)
+    existing = set(existing_qs.values_list("name", flat=True))
+    candidate = base_slug
+    counter = 2
+    while candidate in existing:
+        suffix = f"-{counter}"
+        candidate = f"{base_slug[:150 - len(suffix)]}{suffix}"
+        counter += 1
+    return candidate
+
+
+def ensure_note_name(note: Note) -> str:
+    """Assign a unique-per-course ``name`` if the note lacks one. Imported
+    notes derive it from their ``git_path`` (an ``index``/``README`` takes
+    its folder name for friendlier links); others from the title. Notes
+    with no course are left unnamed. Does not save — the caller persists."""
+    import posixpath
+
+    if note.name:
+        return note.name
+    if note.course_id is None:
+        return ""
+    base = ""
+    if note.git_path:
+        stem = posixpath.splitext(posixpath.basename(note.git_path))[0]
+        if stem.lower() in ("index", "readme"):
+            parent = posixpath.basename(posixpath.dirname(note.git_path))
+            stem = parent or stem
+        base = stem
+    base = base or note.title or "note"
+    note.name = unique_note_name(note.course_id, base, exclude_pk=note.pk)
+    return note.name
 
 
 def count_words(text: str) -> int:
@@ -148,17 +191,117 @@ def planner_event_payload(event: PlannerEvent):
         "difficulty_weight": event.difficulty_weight,
         "description": event.description or "",
         "course_id": event.course_id_id,
+        "course": (
+            {
+                "id": event.course_id.id,
+                "title": event.course_id.title,
+                "slug": event.course_id.slug,
+                "color_hue": event.course_id.color_hue,
+            }
+            if event.course_id_id
+            else None
+        ),
         "is_completed": event.is_completed,
         "completed_at": event.completed_at.isoformat() if event.completed_at else None,
+        "recurrence_freq": event.recurrence_freq,
+        "recurrence_interval": event.recurrence_interval,
+        "recurrence_end_date": event.recurrence_end_date.isoformat()
+        if event.recurrence_end_date
+        else None,
+        "recurrence_count": event.recurrence_count,
     }
 
 
-def planner_deadline_payload(event: PlannerEvent, now=None):
+def _add_months(base_date, months):
+    """Add `months` calendar months to a date, clamping the day to the
+    last valid day of the target month (e.g. Jan 31 + 1 month -> Feb 28/29)."""
+    month_index = base_date.month - 1 + months
+    year = base_date.year + month_index // 12
+    month = month_index % 12 + 1
+    # Days in target month (handles leap years via a probe on the 28th).
+    if month == 12:
+        next_month_first = date(year + 1, 1, 1)
+    else:
+        next_month_first = date(year, month + 1, 1)
+    last_day = (next_month_first - timedelta(days=1)).day
+    return date(year, month, min(base_date.day, last_day))
+
+
+def _add_period(base_date, freq, interval, step):
+    """Return the date `step` recurrences after `base_date`.
+
+    freq: 'W' weekly, 'M' monthly, 'Y' yearly. `interval` is the multiplier
+    (every N weeks/months/years)."""
+    if freq == "W":
+        return base_date + timedelta(weeks=interval * step)
+    if freq == "M":
+        return _add_months(base_date, interval * step)
+    if freq == "Y":
+        return _add_months(base_date, 12 * interval * step)
+    return base_date
+
+
+# Hard ceiling so a malformed rule (interval=0 already normalised to 1) can
+# never spin the expansion loop forever; a daily-ish cap over a decade.
+_MAX_OCCURRENCES = 4000
+
+
+def _expand_occurrence_dates(event, window_start, window_end):
+    """Yield the occurrence dates of `event` that fall within
+    [window_start, window_end], honouring recurrence_end_date (inclusive)
+    and recurrence_count (total occurrences including the first)."""
+    freq = event.recurrence_freq or "N"
+    base = event.event_date
+    if freq == "N":
+        if window_start <= base <= window_end:
+            yield base
+        return
+    interval = event.recurrence_interval or 1
+    if interval < 1:
+        interval = 1
+    end_date = event.recurrence_end_date
+    max_count = event.recurrence_count
+    step = 0
+    while step < _MAX_OCCURRENCES:
+        if max_count is not None and step >= max_count:
+            return
+        occ = _add_period(base, freq, interval, step)
+        if end_date is not None and occ > end_date:
+            return
+        if occ > window_end:
+            return
+        if occ >= window_start:
+            yield occ
+        step += 1
+
+
+def _occurrence_payload(event, occ_date):
+    """planner_event_payload for a single expanded occurrence: shift the
+    start/end datetimes by the day delta from the base occurrence so the
+    time-of-day is preserved, and tag the concrete occurrence date."""
+    payload = planner_event_payload(event)
+    delta_days = (occ_date - event.event_date).days
+    if delta_days:
+        starts_at = datetime.fromisoformat(payload["starts_at"]) + timedelta(days=delta_days)
+        ends_at = datetime.fromisoformat(payload["ends_at"]) + timedelta(days=delta_days)
+        payload["starts_at"] = starts_at.isoformat()
+        payload["ends_at"] = ends_at.isoformat()
+    payload["event_date"] = occ_date.isoformat()
+    payload["occurrence_date"] = occ_date.isoformat()
+    return payload
+
+
+def planner_deadline_payload(event: PlannerEvent, now=None, occ_date=None):
+    """Urgency payload for a deadline. When `occ_date` is given (a recurring
+    series' concrete upcoming occurrence), urgency is measured against that
+    shifted start rather than the stored base occurrence."""
     reference = now or timezone.now()
-    starts_at = event.starts_at or timezone.make_aware(datetime.combine(event.event_date, datetime.min.time().replace(hour=12)))
+    payload = _occurrence_payload(event, occ_date) if occ_date else planner_event_payload(event)
+    starts_at = datetime.fromisoformat(payload["starts_at"])
+    if timezone.is_naive(starts_at):
+        starts_at = timezone.make_aware(starts_at)
     hours_remaining = max((starts_at - reference).total_seconds() / 3600.0, 1 / 60.0)
     urgency = round(float(event.difficulty_weight) / hours_remaining, 4)
-    payload = planner_event_payload(event)
     payload["urgency_score"] = urgency
     return payload
 
@@ -439,6 +582,169 @@ def parse_ical_events(raw_ical: str):
     return events
 
 
+def summarize_calendar_feed(feed, limit=25):
+    """Parse a just-saved feed and return a compact import summary so the
+    client can show success/failure feedback right after import.
+
+    Returns ``{"ok", "count", "events": [{"title", "starts_at"}...],
+    "error"}``. ``ok`` is False (with a human-readable ``error``) when the
+    feed could not be fetched or contained no readable iCal data."""
+    try:
+        raw = read_calendar_feed(feed)
+    except urllib.error.HTTPError as exc:
+        return {"ok": False, "count": 0, "events": [], "error": f"HTTP {exc.code} fetching the calendar URL."}
+    except (urllib.error.URLError, ValueError) as exc:
+        return {"ok": False, "count": 0, "events": [], "error": str(exc)}
+    except Exception as exc:  # noqa: BLE001 - never let a bad feed 500 the import
+        return {"ok": False, "count": 0, "events": [], "error": str(exc)}
+    parsed = parse_ical_events(raw)
+    events = []
+    for item in parsed:
+        starts_at = parse_ical_datetime(item.get("DTSTART", ""))
+        events.append({
+            "title": item.get("SUMMARY", feed.title),
+            "starts_at": starts_at.isoformat() if starts_at else None,
+        })
+    events.sort(key=lambda entry: entry["starts_at"] or "")
+    if not events:
+        return {
+            "ok": False,
+            "count": 0,
+            "events": [],
+            "error": "No calendar events were found in the imported data.",
+        }
+    return {"ok": True, "count": len(events), "events": events[:limit], "error": None}
+
+
+# ---------------------------------------------------------------------------
+# Course ↔ GitHub binding (shared by the REST view and the MCP tools).
+# ---------------------------------------------------------------------------
+
+GIT_REPO_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?/[A-Za-z0-9._-]+$")
+
+# Distinguishes "caller did not pass this field" from "caller passed None".
+_UNSET = object()
+
+
+class CourseGitError(ValueError):
+    """Raised for an invalid git-binding request (e.g. a malformed repo
+    name). Callers map this to a 400 / tool error."""
+
+
+def course_git_payload(course):
+    """Owner-facing git-binding state for a course. ``is_bound`` is the
+    simple 'has a repo' flag the repo-selector UI keys off."""
+    return {
+        "provider": course.git_provider,
+        "repo": course.git_repo or "",
+        "branch": course.git_branch or "main",
+        "sync_enabled": course.git_sync_enabled,
+        "sync_timeout_minutes": course.git_sync_timeout_minutes,
+        "is_bound": bool(course.git_repo),
+        "pending_since": course.git_pending_since.isoformat()
+        if course.git_pending_since
+        else None,
+        "last_synced_at": course.git_last_synced_at.isoformat()
+        if course.git_last_synced_at
+        else None,
+        "last_sync_error": course.git_last_sync_error or "",
+    }
+
+
+def _log_course_git(creator, course, operation_type, metadata):
+    CourseOperationLog.objects.create(
+        creator_id=creator,
+        course_id=course,
+        operation_type=operation_type,
+        metadata_json=json.dumps(metadata, sort_keys=True) if metadata else "",
+    )
+
+
+def apply_course_git_binding(
+    creator,
+    course,
+    *,
+    repo=_UNSET,
+    branch=_UNSET,
+    sync_enabled=_UNSET,
+    sync_timeout_minutes=_UNSET,
+):
+    """Bind / re-point / tune a course's GitHub repo. Only passed fields
+    change. Setting a repo arms the lazy-sync debounce and clears any stale
+    error; clearing it disables sync. Writes a GIT_BIND log row and returns
+    the fresh payload. Raises CourseGitError on a malformed repo name."""
+    was_bound = bool(course.git_repo)
+    if repo is not _UNSET:
+        cleaned = (repo or "").strip()
+        if cleaned and not GIT_REPO_RE.match(cleaned):
+            raise CourseGitError(
+                "repo must be a GitHub full name in 'owner/name' form."
+            )
+        course.git_repo = cleaned or None
+    if branch is not _UNSET:
+        course.git_branch = (branch or "").strip() or "main"
+    if sync_enabled is not _UNSET:
+        course.git_sync_enabled = bool(sync_enabled)
+    if sync_timeout_minutes is not _UNSET:
+        minutes = int(sync_timeout_minutes)
+        if minutes < 1 or minutes > 1440:
+            raise CourseGitError("sync_timeout_minutes must be between 1 and 1440.")
+        course.git_sync_timeout_minutes = minutes
+    if course.git_repo:
+        # 0.1.188: only arm the lazy-sync debounce when sync is actually
+        # enabled. Arming it on a sync-disabled binding was harmless
+        # (`flush_due_course_syncs` filters on `git_sync_enabled`) but
+        # reported a permanently "pending" course in the git payload,
+        # which read as a stuck sync.
+        if course.git_sync_enabled:
+            if course.git_pending_since is None:
+                course.git_pending_since = timezone.now()
+        else:
+            course.git_pending_since = None
+        course.git_last_sync_error = None
+    else:
+        course.git_sync_enabled = False
+        course.git_pending_since = None
+    course.save()
+    _log_course_git(
+        creator, course, CourseOperationTypeChoices.GIT_BIND,
+        {
+            "repo": course.git_repo or "",
+            "branch": course.git_branch or "",
+            "sync_enabled": course.git_sync_enabled,
+            "was_bound": was_bound,
+        },
+    )
+    logger.info(
+        "Course git bind: Backend.Courses.Git/bind — course id=%s '%s' "
+        "bound to %s@%s (sync=%s).",
+        course.id, course.title, course.git_repo or "(none)",
+        course.git_branch, course.git_sync_enabled,
+    )
+    return course_git_payload(course)
+
+
+def unlink_course_git(creator, course):
+    """Clear a course's repo binding and disable sync. Writes a GIT_UNLINK
+    log row and returns the fresh payload."""
+    previous_repo = course.git_repo or ""
+    course.git_repo = None
+    course.git_sync_enabled = False
+    course.git_pending_since = None
+    course.git_last_sync_error = None
+    course.save()
+    _log_course_git(
+        creator, course, CourseOperationTypeChoices.GIT_UNLINK,
+        {"repo": previous_repo},
+    )
+    logger.info(
+        "Course git unlink: Backend.Courses.Git/unlink — course id=%s '%s' "
+        "unlinked from %s.",
+        course.id, course.title, previous_repo or "(none)",
+    )
+    return course_git_payload(course)
+
+
 def calendar_week_payload(creator, start_date=None, day_count=DEFAULT_CALENDAR_RANGE_DAYS):
     if day_count not in CALENDAR_RANGE_DAYS:
         day_count = DEFAULT_CALENDAR_RANGE_DAYS
@@ -446,14 +752,21 @@ def calendar_week_payload(creator, start_date=None, day_count=DEFAULT_CALENDAR_R
     days = [start + timedelta(days=index) for index in range(day_count)]
     payload = {day.isoformat(): [] for day in days}
 
+    # One-time events whose date lands inside the window, plus *every*
+    # recurring series (its base occurrence may predate the window) so the
+    # expander below can materialise occurrences that fall inside it.
     planner_rows = PlannerEvent.objects.filter(
         creator_id=creator,
-        event_date__gte=days[0],
-        event_date__lte=days[-1],
         is_completed=False,
+    ).filter(
+        Q(recurrence_freq="N", event_date__gte=days[0], event_date__lte=days[-1])
+        | ~Q(recurrence_freq="N")
     )
     for event in planner_rows:
-        payload[event.event_date.isoformat()].append(planner_event_payload(event) | {"kind": "plan", "source_id": event.id})
+        for occ_date in _expand_occurrence_dates(event, days[0], days[-1]):
+            payload[occ_date.isoformat()].append(
+                _occurrence_payload(event, occ_date) | {"kind": "plan", "source_id": event.id}
+            )
 
     session_rows = NoteActivitySession.objects.filter(
         creator_id=creator,
@@ -508,14 +821,29 @@ def calendar_week_payload(creator, start_date=None, day_count=DEFAULT_CALENDAR_R
             )
 
     # Upcoming, still-open deadlines (any future date) drive the urgency list.
+    today = timezone.localdate()
     deadline_events = {
         event.id: event
         for event in PlannerEvent.objects.filter(
             creator_id=creator,
-            event_date__gte=timezone.localdate(),
+            recurrence_freq="N",
+            event_date__gte=today,
             is_completed=False,
         ).order_by("starts_at", "event_date", "title")[:40]
     }
+    active_deadlines = [
+        planner_deadline_payload(event) for event in deadline_events.values()
+    ]
+    # Recurring series: surface only the single next upcoming occurrence
+    # (within a 400-day horizon) so a weekly class doesn't flood the list.
+    deadline_horizon = today + timedelta(days=400)
+    for event in PlannerEvent.objects.filter(
+        creator_id=creator,
+        is_completed=False,
+    ).exclude(recurrence_freq="N").order_by("event_date", "title"):
+        next_occ = next(_expand_occurrence_dates(event, today, deadline_horizon), None)
+        if next_occ is not None:
+            active_deadlines.append(planner_deadline_payload(event, occ_date=next_occ))
     # Also surface events that were *completed* but still fall inside the
     # currently visible window. Checking an item in the todo list marks it
     # done in place (rendered struck-through) instead of making it vanish,
@@ -526,10 +854,9 @@ def calendar_week_payload(creator, start_date=None, day_count=DEFAULT_CALENDAR_R
         event_date__lte=days[-1],
         is_completed=True,
     ).order_by("event_date", "title")[:40]:
-        deadline_events.setdefault(event.id, event)
-    active_deadlines = [
-        planner_deadline_payload(event) for event in deadline_events.values()
-    ]
+        if event.id not in deadline_events:
+            deadline_events[event.id] = event
+            active_deadlines.append(planner_deadline_payload(event))
     # Open deadlines first (by urgency), completed ones sink to the bottom.
     active_deadlines.sort(
         key=lambda item: (

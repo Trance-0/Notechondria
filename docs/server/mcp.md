@@ -1,7 +1,7 @@
 # `mcp` app
 
 Path: [`backend/mcp/`](../../backend/mcp/).
-Responsibility: Model-Context-Protocol server. 41 tools that wrap
+Responsibility: Model-Context-Protocol server. 48 tools that wrap
 the [`creators`](creators.md) and [`notes`](notes.md) APIs so an
 external LLM client can read and mutate a user's workspace.
 
@@ -19,6 +19,32 @@ Index: [`server/backend.md`](backend.md).
 `path('mcp/', include('mcp.urls'))`. The MCP endpoint is at
 `/mcp/` (no `/api/v1/` prefix, by design — MCP is a separate
 protocol surface).
+
+**Reverse-proxy note (bug fixed in 0.1.160):** any gateway in front
+of the backend must route `/mcp/` explicitly. The Docker full-stack
+gateway (`deployment/docker/nginx/default.conf`) only proxied
+`/api/` + `/admin/`, so `/mcp/` returned the gateway's 404 and the
+MCP server was unreachable on that deployment path even though the
+backend served it. Mirror the `/mcp/` location block when
+configuring any other reverse proxy (Cloudflare, 1Panel, etc.).
+
+## Server instructions (`initialize`)
+
+Both servers return an `instructions` string in the `initialize`
+result: the baseline operating manual in
+`backend/mcp/instructions.py` (data model, workflows, batch
+guidance), with the user's per-account `skill.md`
+(`Creator.mcp_skill_md`) appended under a `## User skill.md` heading
+when present. Parity rule: `cli/notechondria_mcp/instructions.py`
+keeps the identical `BASE_INSTRUCTIONS` text.
+
+## Agent test identity
+
+`python manage.py seed_agent_user` (guarded: `DEBUG=True` or
+`ALLOW_AGENT_SEED=1`) idempotently creates the `agent-tester` user
+and prints a fresh `ntc_` key — the non-interactive path agents use
+against a local stack. See
+[`../testing/agent_remote_testing.md`](../testing/agent_remote_testing.md).
 
 ## Authentication
 
@@ -45,7 +71,7 @@ user; rotating issues a new key and invalidates the old one.
 
 ## Tools (`mcp/tools.py`)
 
-41 tools, registered at import time via `register_tool(name, description,
+48 tools, registered at import time via `register_tool(name, description,
 input_schema, fn)`. Each `fn` has signature `(user, creator, params) ->
 dict` and delegates to the same `notes.services` / model logic the REST
 views use — the MCP layer adds no business rules of its own, so if the
@@ -60,8 +86,13 @@ underlying API would 401/403/404 the tool returns the same error.
 - **Recycle bin**: `list_deleted_notes`, `restore_deleted_note`,
   `empty_recycle_bin`.
 - **Courses**: `list_courses`, `get_course`, `create_course`,
-  `update_course`, `delete_course`, `list_course_notes`,
-  `reorder_courses`, `subscribe_course`, `unsubscribe_course`.
+  `update_course`, `delete_course`, `get_course_git`, `set_course_git`,
+  `import_course_git`, `sync_course_git`, `list_course_notes`, `reorder_courses`,
+  `subscribe_course`, `unsubscribe_course`.
+- **GitHub App binding**: `github_app_status`, `connect_github_app`,
+  `list_github_repos` (install-status, link an installation id, and list
+  the repos the App can reach — the "bind the app to a repo" flow that
+  precedes `set_course_git` + `import_course_git`).
 - **Activity / heatmap**: `get_heatmap`, `get_recent_activity`,
   `get_activity`, `get_activity_week`.
 - **Note sessions**: `list_note_sessions`, `create_note_session`,
@@ -92,9 +123,15 @@ offer identical functionality. Representative mapping:
 | `restore_deleted_note` | `POST notes/<id>/restore/` |
 | `empty_recycle_bin` | `notes/deleted/empty/` |
 | courses CRUD | `courses/[<id>/]` |
+| `get_course_git` / `set_course_git` | `GET` / `PUT` / `DELETE` `courses/<id>/git/` |
+| `import_course_git` | `POST courses/<id>/git/import/` |
+| `sync_course_git` | `POST courses/<id>/git/sync/` |
 | `list_course_notes` | `GET courses/<id>/notes/` |
 | `reorder_courses` | `POST courses/reorder/` |
 | `subscribe_course` / `unsubscribe_course` | `POST` / `DELETE` `courses/<id>/subscribe/` |
+| `github_app_status` | `GET integrations/github/status/` |
+| `connect_github_app` | `POST integrations/github/callback/` |
+| `list_github_repos` | `GET integrations/github/repos/` |
 | `get_heatmap` | `GET heatmap/` |
 | `get_recent_activity` / `get_activity` | `GET activity/` |
 | `get_activity_week` | `GET activity/week/` |
@@ -107,13 +144,15 @@ Result: one gap found and filled. The `list_note_sessions` tool had no
 REST list endpoint (`NoteSessionListCreateApiView` was POST-only); a
 `GET` (with `?note_id=` + `?limit=` filters) was added in 0.1.146. Every
 other tool already had a REST equivalent. The standalone CLI
-(`cli/notechondria_mcp/`) is at **full 41-tool parity** as of 0.1.146.
+(`cli/notechondria_mcp/`) is at **full 48-tool parity** (41 at 0.1.146; +get_course_git/set_course_git at 0.1.171; +import_course_git at 0.1.173; +sync_course_git at 0.1.174; +github_app_status/connect_github_app/list_github_repos at 0.1.175).
 
 ## Tests
 
-`mcp/tests.py` — 51 tests across 4 `TestCase` classes covering:
+`mcp/tests.py` — 53 tests across 4 `TestCase` classes covering:
 API-key auth happy-path and failure modes, every tool's
-request/response shape, and the tool-discovery handshake.
+request/response shape, the tool-discovery handshake, and the
+planner-event window normalization / reopen parity with REST
+(0.1.160).
 
 Run:
 

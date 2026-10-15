@@ -79,15 +79,107 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
           brightness: Brightness.dark,
         ),
       ),
-      home: AppShell(
-        client: _client,
-        onThemeChanged: _handleThemeChanged,
-        onLocaleChanged: _handleLocaleChanged,
-        initialIndex: widget.initialIndex,
-        appTitle: widget.title,
-        visibleIndices: widget.visibleIndices,
-      ),
+      // 0.1.179: real URL routing (no more single-root-route app). Every
+      // surface has a unique, shareable address under the web hash
+      // strategy: `#/` front, `#/notes`, `#/courses[/<slug>]`,
+      // `#/activity`, `#/settings`, and `#/note/<uuid>` for a routed
+      // note page (public notes anonymously; owned/subscribed with auth).
+      onGenerateRoute: _generateRoute,
+      onGenerateInitialRoutes: _generateInitialRoutes,
     );
+  }
+
+  AppShell _buildShell(
+      {int initialIndex = 0,
+      String? initialCourseSlug,
+      String? initialModuleKey}) {
+    return AppShell(
+      client: _client,
+      onThemeChanged: _handleThemeChanged,
+      onLocaleChanged: _handleLocaleChanged,
+      initialIndex: initialIndex,
+      initialCourseSlug: initialCourseSlug,
+      initialModuleKey: initialModuleKey,
+      appTitle: widget.title,
+      visibleIndices: widget.visibleIndices,
+    );
+  }
+
+  Route<dynamic> _generateRoute(RouteSettings settings) {
+    final name = settings.name ?? '/';
+    final segments = Uri.parse(name)
+        .pathSegments
+        .where((segment) => segment.isNotEmpty)
+        .toList(growable: false);
+    // `/note/<uuid>` — the routed note page, pushed on top of the shell.
+    if (segments.length == 2 && segments.first == 'note') {
+      final args = settings.arguments is Map
+          ? Map<String, dynamic>.from(settings.arguments as Map)
+          : const <String, dynamic>{};
+      return MaterialPageRoute<void>(
+        settings: settings,
+        builder: (_) => _NoteRoutePage(
+          client: _client,
+          noteUuid: segments[1],
+          token: args['token']?.toString(),
+          preloaded: args['note'] is Map
+              ? Map<String, dynamic>.from(args['note'] as Map)
+              : null,
+        ),
+      );
+    }
+    // Tab / course-detail routes resolve to the shell.
+    var tab = widget.initialIndex;
+    String? courseSlug;
+    String? moduleKey;
+    if (segments.isNotEmpty) {
+      switch (segments.first) {
+        case 'notes':
+          tab = 1;
+          break;
+        case 'courses':
+          tab = 2;
+          if (segments.length >= 2) {
+            courseSlug = segments[1];
+          }
+          if (segments.length >= 4 && segments[2] == 'm') {
+            moduleKey = segments[3];
+          }
+          break;
+        case 'activity':
+          tab = 3;
+          break;
+        case 'settings':
+          tab = 4;
+          break;
+        default:
+          tab = 0;
+      }
+    }
+    return MaterialPageRoute<void>(
+      settings: settings,
+      builder: (_) => _buildShell(
+          initialIndex: tab,
+          initialCourseSlug: courseSlug,
+          initialModuleKey: moduleKey),
+    );
+  }
+
+  List<Route<dynamic>> _generateInitialRoutes(String initialRoute) {
+    final segments = Uri.parse(initialRoute)
+        .pathSegments
+        .where((segment) => segment.isNotEmpty)
+        .toList(growable: false);
+    if (segments.length == 2 && segments.first == 'note') {
+      // Cold-start note deep link: put the shell underneath so Back (and
+      // the viewer's close button) lands inside the app, not on a blank
+      // page.
+      return <Route<dynamic>>[
+        _generateRoute(const RouteSettings(name: '/')),
+        _generateRoute(RouteSettings(name: initialRoute)),
+      ];
+    }
+    return <Route<dynamic>>[_generateRoute(RouteSettings(name: initialRoute))];
   }
 }
 
@@ -99,6 +191,8 @@ class AppShell extends StatefulWidget {
     this.onThemeChanged,
     this.onLocaleChanged,
     this.initialIndex = 0,
+    this.initialCourseSlug,
+    this.initialModuleKey,
     this.appTitle = 'Notechondria',
     this.visibleIndices = const <int>[0, 1, 2, 3, 4],
   });
@@ -110,6 +204,15 @@ class AppShell extends StatefulWidget {
   /// root `MaterialApp` can rebuild with the chosen locale.
   final void Function(String locale)? onLocaleChanged;
   final int initialIndex;
+
+  /// Deep-link target from a `#/courses/<slug>` URL: after boot, the shell
+  /// opens this course on the Course tab (best-effort — unknown slugs just
+  /// land on the course list).
+  final String? initialCourseSlug;
+
+  /// Optional module deep link (`#/courses/<slug>/m/<key>`): once the
+  /// course's notes load, the matching module opens.
+  final String? initialModuleKey;
   final String appTitle;
   final List<int> visibleIndices;
 
@@ -196,11 +299,15 @@ class _AppShellState extends State<AppShell>
         id: id,
         metadataJson: metadataJson,
       );
-  // AppShellSessionMixin wiring. Portal has no multi-device UI
-  // and doesn't persist the session client-side, so the metadata
-  // and persistSession hooks fall through to the mixin defaults.
-  // The one per-app override is `clearAppSpecificSessionFields`,
-  // which resets `_plannerEvents` on logout.
+  // AppShellSessionMixin wiring. 0.1.182: the portal now persists the
+  // session like the editor — previously every page reload signed the
+  // user out (token was memory-only), which surfaced as "logged in but
+  // no login info shown / no subscribed courses / no course filter".
+  @override
+  Future<void> persistSession(String token, Map<String, dynamic> user) =>
+      _LocalAppStore.saveSession(token, user);
+  @override
+  Future<void> clearPersistedSession() => _LocalAppStore.clearSession();
   @override
   set token(String? value) => _token = value;
   @override
@@ -267,6 +374,14 @@ class _AppShellState extends State<AppShell>
   List<Map<String, dynamic>> _courses = const [];
   List<Map<String, dynamic>> _localCourses = const [];
   List<Map<String, dynamic>> _courseNotes = const [];
+  // Lazy course-notes paging (0.1.185): first page loads with the course,
+  // further pages stream in on scroll. `_courseNotesLoading` gates the
+  // course view behind a progress bar so stale/placeholder content never
+  // renders before real data.
+  bool _courseNotesLoading = false;
+  bool _courseNotesHasMore = false;
+  int _courseNotesOffset = 0;
+  bool _courseNotesLoadingMore = false;
   List<Map<String, dynamic>> _learnerNotes = const [];
   List<Map<String, dynamic>> _localDrafts = const [];
   List<Map<String, dynamic>> _deletedNotes = const [];
@@ -275,6 +390,10 @@ class _AppShellState extends State<AppShell>
   List<Map<String, dynamic>> _localTrashedCourses = const [];
   List<Map<String, dynamic>> _activity = const [];
   List<Map<String, dynamic>> _plannerEvents = const [];
+  // Signed-out / offline planner events, persisted per device
+  // (_LocalAppStore.saveEvents). Merged into the Activity calendar and
+  // todo board next to cloud events; never auto-synced.
+  List<Map<String, dynamic>> _localEvents = const [];
   List<Map<String, dynamic>> _calendarFeeds = const [];
   Map<String, dynamic>? _activityWeek;
   Map<String, dynamic>? _selectedCourse;
@@ -362,10 +481,26 @@ class _AppShellState extends State<AppShell>
     return idx >= 0 ? idx : 0;
   }
 
+  /// URL path for each tab index — keeps the address bar in sync with the
+  /// active tab so every tab has a unique, shareable URL.
+  static const List<String> _tabPaths = [
+    '/',
+    '/notes',
+    '/courses',
+    '/activity',
+    '/settings',
+  ];
+
+  void _syncTabUrl() {
+    final index = _selectedIndex.clamp(0, _tabPaths.length - 1);
+    url_strategy.replaceBrowserPath(_tabPaths[index]);
+  }
+
   void _selectActualIndex(int index) {
     setState(() {
       _selectedIndex = index;
     });
+    _syncTabUrl();
   }
 
   void _handleVisibleDestinationSelected(int visibleIndex) {
@@ -403,10 +538,88 @@ class _AppShellState extends State<AppShell>
     });
     _splashStatus.value = 'Loading local state';
     await _loadLocalState();
+    _splashStatus.value = 'Restoring session';
+    await _restoreSession();
     _splashStatus.value = 'Completing sign-in';
-    await handleOAuthCallback();
+    final freshSignIn = await handleOAuthCallback();
     _splashStatus.value = 'Connecting to server';
     await _loadInitialData();
+    if (freshSignIn) {
+      await _applyKeepOfflineChoice();
+    }
+    await _openInitialCourseDeepLink();
+  }
+
+  /// Honours the sign-in card's "keep offline data after login" choice
+  /// right after a fresh OAuth sign-in (0.1.180). Kept (default): the
+  /// cloud is pulled into the local cache in the background — every local
+  /// save carries a `last_edit` timestamp, and when both sides changed
+  /// the pull's conflict dialog prompts the user to pick which version to
+  /// keep. Unchecked: local drafts are cleared so a shared machine never
+  /// leaks the previous user's offline notes into this account.
+  Future<void> _applyKeepOfflineChoice() async {
+    final keep = _localSettings['keep_offline_data_on_login'] != false;
+    if (!keep) {
+      _localDrafts = [];
+      await saveLocalDrafts(_localDrafts);
+      refreshState();
+      log(
+        level: DebugLogLevel.info,
+        source: 'Portal.Sync.Session/keep_offline',
+        message: 'Local drafts cleared on sign-in: '
+            'Portal.Sync.Session/keep_offline — '
+            '"keep offline data" was unchecked.',
+      );
+      return;
+    }
+    // Background merge; failures only log (never block the session).
+    unawaited(_pullCloudNotesToLocal().then((feedback) {
+      log(
+        level: feedback.isError ? DebugLogLevel.warning : DebugLogLevel.info,
+        source: 'Portal.Sync.Session/keep_offline',
+        message: 'Post-login cloud→local pull: '
+            'Portal.Sync.Session/keep_offline — ${feedback.message}',
+      );
+    }));
+  }
+
+  /// Restores a persisted auth session if one exists (mirrors the
+  /// editor). Validates the stored token against `/auth/session/`; a
+  /// stale token clears the persisted session instead of restoring it.
+  Future<void> _restoreSession() async {
+    final session = await _LocalAppStore.loadSession();
+    if (session == null) return;
+    final token = session['token']?.toString() ?? '';
+    if (token.isEmpty) return;
+    try {
+      final check = await widget.client.checkSession(token);
+      if (check['authenticated'] == true) {
+        await applyAuthPayload(check);
+        return;
+      }
+    } catch (_) {
+      // Token invalid or network down — fall through and clear.
+    }
+    await _LocalAppStore.clearSession();
+  }
+
+  /// Resolves a `#/courses/<slug>` cold-start deep link once the course
+  /// list is loaded. Unknown slugs stay on the course-list tab.
+  Future<void> _openInitialCourseDeepLink() async {
+    final slug = widget.initialCourseSlug;
+    if (slug == null || slug.isEmpty || !mounted) {
+      return;
+    }
+    Map<String, dynamic>? match;
+    for (final course in _courses) {
+      if (course['slug']?.toString() == slug) {
+        match = course;
+        break;
+      }
+    }
+    if (match != null) {
+      await _selectCourse(match);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -490,22 +703,42 @@ class _AppShellState extends State<AppShell>
       },
     );
     if (_showSplash) {
+      // A user-chosen startup image (Preferences → Startup image; local
+      // upload or remote URL) replaces the default reactor splash. It
+      // spans the screen with a fixed aspect ratio (BoxFit.cover).
+      final splashLocal = _localSettings['splash_image_local']?.toString() ?? '';
+      final splashUrl = _localSettings['splash_image_url']?.toString() ?? '';
+      final useCustomSplash = splashLocal.isNotEmpty || splashUrl.isNotEmpty;
       return Stack(
         children: [
           scaffold,
           Positioned.fill(
-            child: SplashScreen(
-              appTitle: l10n.appNamePortal,
-              appVersion: _kAppVersion,
-              loadingStatus: _splashStatus,
-              apiBaseUrl: _localSettings['api_base_url']?.toString(),
-              onFinished: () {
-                setState(() {
-                  _showSplash = false;
-                  if (_isLoading) _isLoading = false;
-                });
-              },
-            ),
+            child: useCustomSplash
+                ? _CustomSplashOverlay(
+                    appTitle: l10n.appNamePortal,
+                    appVersion: _kAppVersion,
+                    localImageUrl: splashLocal,
+                    remoteImageUrl: splashUrl,
+                    loadingStatus: _splashStatus,
+                    onFinished: () {
+                      setState(() {
+                        _showSplash = false;
+                        if (_isLoading) _isLoading = false;
+                      });
+                    },
+                  )
+                : SplashScreen(
+                    appTitle: l10n.appNamePortal,
+                    appVersion: _kAppVersion,
+                    loadingStatus: _splashStatus,
+                    apiBaseUrl: _localSettings['api_base_url']?.toString(),
+                    onFinished: () {
+                      setState(() {
+                        _showSplash = false;
+                        if (_isLoading) _isLoading = false;
+                      });
+                    },
+                  ),
           ),
         ],
       );
@@ -811,6 +1044,10 @@ class _AppShellState extends State<AppShell>
           localCourses: _localCourses,
           selectedCourse: _selectedCourse,
           notes: _courseNotes,
+          notesLoading: _courseNotesLoading,
+          notesHasMore: _courseNotesHasMore,
+          notesLoadingMore: _courseNotesLoadingMore,
+          onLoadMoreNotes: _loadMoreCourseNotes,
           localNotes: _localDrafts,
           isAuthenticated: _token != null && _token!.isNotEmpty,
           canCreateLocalCourses: true,
@@ -822,12 +1059,20 @@ class _AppShellState extends State<AppShell>
           onSubscribe: _subscribeToCourse,
           onUnsubscribe: _unsubscribeFromCourse,
           onFetchNoteDetail: _fetchNoteDetail,
+          onOpenRoutedNote: _openNoteViewer,
+          initialModuleKey: widget.initialModuleKey,
+          onEditCourse: _updateCourseMeta,
+          onTransferCourse: _transferCourseOwnership,
+          onImportCourseFromGit: _importCourseFromGit,
         );
       case 3:
         return _ActivityPage(
           activityWeek: _activityWeek,
           isAuthenticated: _token != null && _token!.isNotEmpty,
-          plannerEvents: _plannerEvents,
+          plannerEvents: [..._localEvents, ..._plannerEvents],
+          courses: (_token == null || _token!.isEmpty)
+              ? _localCourses
+              : [..._localCourses, ..._courses],
           rangeDays: _activityRangeDays,
           onCreatePlannerEvent: _createPlannerEvent,
           onImportCalendar: _importCalendarFeed,
@@ -841,6 +1086,9 @@ class _AppShellState extends State<AppShell>
           ),
           onChangeRange: (days) => _loadActivityWeek(rangeDays: days),
           onTogglePlannerEventCompletion: _togglePlannerEventCompletion,
+          onUpdatePlannerEvent: _updatePlannerEvent,
+          onEditCourse: _updateCourseMeta,
+          onTransferCourse: _transferCourseOwnership,
         );
       case 4:
         return _SettingsPage(
@@ -888,6 +1136,7 @@ class _AppShellState extends State<AppShell>
           localTrashedDraftCount: _localTrashedDrafts.length,
           localTrashedCourseCount: _localTrashedCourses.length,
           onOfflineModeChanged: _setOfflineMode,
+          onApplyLocalSettings: _applyLocalAppSettings,
           localDraftCount: _localDrafts.length,
           localCourseCount: _localCourses.length,
           apiBaseUrl: _localSettings['api_base_url']?.toString() ??
@@ -898,16 +1147,41 @@ class _AppShellState extends State<AppShell>
           uiLogs: uiLogs,
           onRotateApiKey: _token != null
               ? () async {
-                  final result = await widget.client.rotateApiKey(_token!);
-                  final newPrefix = result['api_key_prefix']?.toString() ?? '';
-                  if (newPrefix.isNotEmpty && mounted) {
-                    _settings = {
-                      ..._settings ?? <String, dynamic>{},
-                      'api_key_prefix': newPrefix,
-                    };
-                    refreshState();
+                  try {
+                    final result = await widget.client.rotateApiKey(_token!);
+                    final newPrefix =
+                        result['api_key_prefix']?.toString() ?? '';
+                    if (newPrefix.isNotEmpty && mounted) {
+                      _settings = {
+                        ..._settings ?? <String, dynamic>{},
+                        'api_key_prefix': newPrefix,
+                      };
+                      refreshState();
+                    }
+                    log(
+                      level: DebugLogLevel.info,
+                      source: 'Portal.UI',
+                      message: 'API key rotated: Portal.UI/api_key.rotate — '
+                          'new prefix ${newPrefix.isEmpty ? "<unknown>" : newPrefix}; '
+                          'the previous key is now invalid.',
+                    );
+                    return result;
+                  } catch (e) {
+                    // A stale Casdoor session is the common cause: the app
+                    // renders from local cache so it looks signed in, but
+                    // this direct server call 401s. Log the effective cause
+                    // so the Debug log explains the SnackBar.
+                    log(
+                      level: DebugLogLevel.warning,
+                      source: 'Portal.UI',
+                      message: 'API key was NOT rotated: '
+                          'Portal.UI/api_key.rotate — '
+                          '${e.toString().replaceFirst('Exception: ', '')} '
+                          '(if this is a 401, the sign-in session has '
+                          'expired — sign in again and retry).',
+                    );
+                    rethrow;
                   }
-                  return result;
                 }
               : null,
           onSaveMcpSkill: _token != null
@@ -1087,6 +1361,154 @@ class _WideCourseSidebarSection extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Fullscreen startup overlay showing the user's custom splash image
+/// (local upload via LocalAttachmentStore, else a remote URL) instead of
+/// the default reactor animation. The image spans the whole screen with a
+/// fixed x-y aspect ratio (BoxFit.cover). Auto-dismisses after a short
+/// beat (tap to skip); falls back to a plain surface if the image fails.
+class _CustomSplashOverlay extends StatefulWidget {
+  const _CustomSplashOverlay({
+    required this.appTitle,
+    required this.appVersion,
+    this.localImageUrl = '',
+    this.remoteImageUrl = '',
+    this.loadingStatus,
+    this.onFinished,
+  });
+
+  final String appTitle;
+  final String appVersion;
+  final String localImageUrl;
+  final String remoteImageUrl;
+  final ValueListenable<String>? loadingStatus;
+  final VoidCallback? onFinished;
+
+  @override
+  State<_CustomSplashOverlay> createState() => _CustomSplashOverlayState();
+}
+
+class _CustomSplashOverlayState extends State<_CustomSplashOverlay> {
+  Timer? _timer;
+  double _opacity = 1;
+  Uint8List? _localBytes;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.localImageUrl.isNotEmpty) {
+      LocalAttachmentStore.open()
+          .then((store) => store.getBytes(localUrl: widget.localImageUrl))
+          .then((bytes) {
+        if (mounted) setState(() => _localBytes = bytes);
+      }).catchError((_) {
+        // Missing/corrupt local image → plain surface fallback below.
+      });
+    }
+    _timer = Timer(const Duration(milliseconds: 2400), _dismiss);
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _dismiss() {
+    if (!mounted || _opacity == 0) return;
+    setState(() => _opacity = 0);
+    Timer(const Duration(milliseconds: 350), () {
+      if (mounted) widget.onFinished?.call();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final Widget image;
+    if (_localBytes != null) {
+      image = Image.memory(_localBytes!, fit: BoxFit.cover);
+    } else if (widget.remoteImageUrl.isNotEmpty &&
+        widget.localImageUrl.isEmpty) {
+      image = Image.network(
+        widget.remoteImageUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) =>
+            ColoredBox(color: theme.colorScheme.surface),
+      );
+    } else {
+      image = ColoredBox(color: theme.colorScheme.surface);
+    }
+    return AnimatedOpacity(
+      opacity: _opacity,
+      duration: const Duration(milliseconds: 350),
+      child: GestureDetector(
+        onTap: _dismiss,
+        child: Material(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              image,
+              // Bottom scrim so the title/status stay legible on any image.
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: 140,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.55),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 24,
+                bottom: 24,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      widget.appTitle,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'v${widget.appVersion}',
+                      style: theme.textTheme.labelSmall
+                          ?.copyWith(color: Colors.white70),
+                    ),
+                    if (widget.loadingStatus != null) ...[
+                      const SizedBox(height: 4),
+                      ValueListenableBuilder<String>(
+                        valueListenable: widget.loadingStatus!,
+                        builder: (context, value, _) => Text(
+                          value,
+                          style: theme.textTheme.labelSmall
+                              ?.copyWith(color: Colors.white70),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -628,8 +628,21 @@ class _LearnerNoteCard extends StatelessWidget {
     final authorName = author['username']?.toString() ?? '';
     final avatarFallback =
         authorName.isEmpty ? 'L' : authorName.substring(0, 1);
+    // Prefer the Casdoor avatar, then fall back to the effective/local
+    // image_url — mirrors the (working) settings account card so a note
+    // card's byline shows the same avatar the rest of the app does.
+    // `image_url` is the backend's EFFECTIVE avatar — since 0.1.184 it
+    // points at our own storage once the Casdoor avatar is mirrored
+    // (Casdoor itself serves without CORS headers, which Flutter web
+    // refuses to render). The raw Casdoor URL is the fallback.
     final avatarUrl = _resolveRemoteUrl(
-      author['image_url']?.toString() ?? '',
+      (author['image_url']?.toString().isNotEmpty ?? false)
+          ? author['image_url'].toString()
+          : author['avatar_url']?.toString() ?? '',
+      apiBaseUrl: apiBaseUrl,
+    );
+    final avatarFallbackUrl = _resolveRemoteUrl(
+      author['avatar_url']?.toString() ?? '',
       apiBaseUrl: apiBaseUrl,
     );
     return Card(
@@ -672,6 +685,7 @@ class _LearnerNoteCard extends StatelessWidget {
                       _RemoteAvatar(
                         radius: 18,
                         imageUrl: avatarUrl,
+                        fallbackImageUrl: avatarFallbackUrl,
                         fallbackLabel: avatarFallback,
                       ),
                       const SizedBox(width: 12),
@@ -772,20 +786,6 @@ class _LearnerNoteCard extends StatelessWidget {
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (!isLocalDraft) ...[
-                    const SizedBox(height: 14),
-                    Align(
-                      alignment: Alignment.bottomRight,
-                      child: Text(
-                        AppLocalizations.of(context).feedCourseMetaHint,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),

@@ -9,9 +9,12 @@ class _WideWeekCalendar extends StatefulWidget {
     required this.onShiftStartDay,
     required this.onChangeRange,
     required this.onCreatePlannerEvent,
+    required this.onUpdatePlannerEvent,
+    this.courses = const <Map<String, dynamic>>[],
   });
 
   final List<Map<String, dynamic>> days;
+  final List<Map<String, dynamic>> courses;
   final int rangeDays;
   final Future<void> Function(int direction) onNavigateWeek;
   final Future<void> Function(int dayDelta) onShiftStartDay;
@@ -20,8 +23,13 @@ class _WideWeekCalendar extends StatefulWidget {
     String title,
     DateTime eventDate,
     int difficultyWeight,
-    String description,
-  ) onCreatePlannerEvent;
+    String description, {
+    DateTime? endsAt,
+    int? courseId,
+  }) onCreatePlannerEvent;
+  final Future<void> Function(
+          Map<String, dynamic> event, Map<String, dynamic> changes)
+      onUpdatePlannerEvent;
 
   @override
   State<_WideWeekCalendar> createState() => _WideWeekCalendarState();
@@ -99,12 +107,24 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
       return;
     }
     final startMinutes = _minutesFromLocalY(math.min(startY, endY));
+    // A near-zero drag (a tap) has no meaningful span — fall back to a
+    // default one-hour block; a real drag draws start → end.
+    final rawEndMinutes = _minutesFromLocalY(math.max(startY, endY));
+    final endMinutes =
+        rawEndMinutes - startMinutes < 15 ? startMinutes + 60 : rawEndMinutes;
     final start = DateTime(
       date.year,
       date.month,
       date.day,
       startMinutes ~/ 60,
       startMinutes % 60,
+    );
+    final end = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      (endMinutes ~/ 60).clamp(0, 23),
+      endMinutes % 60,
     );
     if (!mounted) {
       return;
@@ -113,20 +133,62 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
       context,
       widget.onCreatePlannerEvent,
       initialDateTime: start,
+      initialEndDateTime: end,
+      courses: widget.courses,
     );
+  }
+
+  /// Hold / right-click handler for an event tile. Only editable planner
+  /// ("plan"-kind) events open the editor; calendar-feed and note-session
+  /// tiles fall back to their read-only detail sheet.
+  void _handleEventHold(Map<String, dynamic> event) {
+    final kind = event['kind']?.toString() ?? '';
+    if (kind == 'plan' && event['id'] != null) {
+      _showEditPlannerEventDialog(context, event, widget.onUpdatePlannerEvent,
+          courses: widget.courses);
+      return;
+    }
+    _showCalendarEventDetails(context, event);
   }
 
   @override
   void initState() {
     super.initState();
     _animationController = AnimationController(vsync: this);
+    // Keep the red current-time indicator moving: repaint once a minute.
+    _nowTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   void dispose() {
+    _nowTimer?.cancel();
     _animationController.dispose();
     _verticalScrollController.dispose();
     super.dispose();
+  }
+
+  Timer? _nowTimer;
+
+  /// Vertical offset of "now" inside a day column's 24-hour stack.
+  double get _nowOffset {
+    final now = DateTime.now();
+    return ((now.hour * 60 + now.minute) / 60.0) * _hourHeight;
+  }
+
+  String get _nowLabel {
+    final now = DateTime.now();
+    return '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+  }
+
+  bool _isToday(String? rawDate) {
+    final date = DateTime.tryParse(rawDate ?? '');
+    if (date == null) return false;
+    final now = DateTime.now();
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
   }
 
   Future<void> _animateOffset(
@@ -257,6 +319,10 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
     final totalHeight = _hourHeight * 24;
     final theme = Theme.of(context);
     final borderColor = theme.colorScheme.outlineVariant;
+    // The 1-month range renders as a Google Calendar-style month grid
+    // (date cells with a few prioritized event chips), not the hour grid —
+    // 30 hour-columns were unreadably narrow and full of empty space.
+    final isMonth = widget.rangeDays == 30;
     final rangeLabel = days.isEmpty
         ? AppLocalizations.of(context).activityWeekCalendar
         : '${_formatWeekDay(days.first['date']?.toString() ?? '')} - ${_formatWeekDay(days.last['date']?.toString() ?? '')}';
@@ -295,20 +361,26 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                               textAlign: TextAlign.center,
                             ),
                           ),
-                          IconButton(
-                            tooltip: AppLocalizations.of(context).activityZoomOut,
-                            onPressed: _hourHeight <= _minHourHeight
-                                ? null
-                                : () => _zoom(-12),
-                            icon: const Icon(Icons.zoom_out),
-                          ),
-                          IconButton(
-                            tooltip: AppLocalizations.of(context).activityZoomIn,
-                            onPressed: _hourHeight >= _maxHourHeight
-                                ? null
-                                : () => _zoom(12),
-                            icon: const Icon(Icons.zoom_in),
-                          ),
+                          // Zoom controls act on the hour-row height; the
+                          // month grid has no hour rows.
+                          if (!isMonth) ...[
+                            IconButton(
+                              tooltip:
+                                  AppLocalizations.of(context).activityZoomOut,
+                              onPressed: _hourHeight <= _minHourHeight
+                                  ? null
+                                  : () => _zoom(-12),
+                              icon: const Icon(Icons.zoom_out),
+                            ),
+                            IconButton(
+                              tooltip:
+                                  AppLocalizations.of(context).activityZoomIn,
+                              onPressed: _hourHeight >= _maxHourHeight
+                                  ? null
+                                  : () => _zoom(12),
+                              icon: const Icon(Icons.zoom_in),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -328,7 +400,23 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                               : (details) => _handleDragEnd(details, bodyWidth),
                           child: Transform.translate(
                             offset: Offset(_dragOffset, 0),
-                            child: Scrollbar(
+                            child: isMonth
+                                ? _MonthCalendarGrid(
+                                    days: days,
+                                    onEventTap: (event) =>
+                                        _showCalendarEventDetails(
+                                            context, event),
+                                    onEventLongPress: _handleEventHold,
+                                    onCreateForDay: (date) =>
+                                        _showCreatePlannerEventDialog(
+                                      context,
+                                      widget.onCreatePlannerEvent,
+                                      initialDateTime: DateTime(date.year,
+                                          date.month, date.day, 12, 0),
+                                      courses: widget.courses,
+                                    ),
+                                  )
+                                : Scrollbar(
                               controller: _verticalScrollController,
                               thumbVisibility: true,
                               child: SingleChildScrollView(
@@ -338,19 +426,52 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                                   children: [
                                     SizedBox(
                                       width: _labelWidth,
-                                      child: Column(
+                                      child: Stack(
                                         children: [
-                                          const SizedBox(height: 48),
-                                          for (var hour = 0; hour < 24; hour++)
-                                            SizedBox(
-                                              height: _hourHeight,
-                                              child: Align(
-                                                alignment: Alignment.topCenter,
+                                          Column(
+                                            children: [
+                                              const SizedBox(height: 48),
+                                              for (var hour = 0;
+                                                  hour < 24;
+                                                  hour++)
+                                                SizedBox(
+                                                  height: _hourHeight,
+                                                  child: Align(
+                                                    alignment:
+                                                        Alignment.topCenter,
+                                                    child: Text(
+                                                      '${hour.toString().padLeft(2, '0')}:00',
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                          // Red current-time readout on the
+                                          // hour axis, aligned to the now
+                                          // line (48px column header above
+                                          // the 24-hour stack).
+                                          Positioned(
+                                            top: 48 + _nowOffset - 8,
+                                            left: 0,
+                                            right: 4,
+                                            child: IgnorePointer(
+                                              child: Container(
+                                                color: theme
+                                                    .colorScheme.surface
+                                                    .withOpacity(0.85),
                                                 child: Text(
-                                                  '${hour.toString().padLeft(2, '0')}:00',
+                                                  _nowLabel,
+                                                  textAlign: TextAlign.center,
+                                                  style: theme
+                                                      .textTheme.labelSmall
+                                                      ?.copyWith(
+                                                    color: Colors.redAccent,
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
                                                 ),
                                               ),
                                             ),
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -395,7 +516,22 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                                                       child: GestureDetector(
                                                         behavior: HitTestBehavior
                                                             .opaque,
-                                                        onLongPressStart:
+                                                        // Plain vertical
+                                                        // drag draws an
+                                                        // event's time span
+                                                        // (Google Calendar
+                                                        // style). It wins the
+                                                        // gesture arena over
+                                                        // the parent vertical
+                                                        // scroll, so scroll
+                                                        // the grid with the
+                                                        // wheel / scrollbar /
+                                                        // hour-label column.
+                                                        // The outer surface's
+                                                        // horizontal drag
+                                                        // still navigates
+                                                        // weeks.
+                                                        onVerticalDragStart:
                                                             (details) {
                                                           setState(() {
                                                             _createDayIndex =
@@ -408,7 +544,7 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                                                                 .localPosition.dy;
                                                           });
                                                         },
-                                                        onLongPressMoveUpdate:
+                                                        onVerticalDragUpdate:
                                                             (details) {
                                                           if (_createDayIndex !=
                                                               dayIndex) {
@@ -419,7 +555,7 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                                                                 .localPosition.dy;
                                                           });
                                                         },
-                                                        onLongPressEnd: (_) =>
+                                                        onVerticalDragEnd: (_) =>
                                                             _commitCreateDrag(
                                                                 dayIndex),
                                                         child: Stack(
@@ -504,6 +640,52 @@ class _WideWeekCalendarState extends State<_WideWeekCalendar>
                                                                 Map<String,
                                                                     dynamic>.from(
                                                                     event),
+                                                              ),
+                                                              onLongPress: () =>
+                                                                  _handleEventHold(
+                                                                Map<String,
+                                                                    dynamic>.from(
+                                                                    event),
+                                                              ),
+                                                            ),
+                                                          // Google-Calendar
+                                                          // style red "now"
+                                                          // line on today's
+                                                          // column.
+                                                          if (_isToday(days[
+                                                                      dayIndex]
+                                                                  ['date']
+                                                              ?.toString()))
+                                                            Positioned(
+                                                              top: _nowOffset -
+                                                                  1,
+                                                              left: 0,
+                                                              right: 0,
+                                                              child: IgnorePointer(
+                                                                child: Row(
+                                                                  children: [
+                                                                    Container(
+                                                                      width: 8,
+                                                                      height: 8,
+                                                                      decoration:
+                                                                          const BoxDecoration(
+                                                                        color: Colors
+                                                                            .redAccent,
+                                                                        shape: BoxShape
+                                                                            .circle,
+                                                                      ),
+                                                                    ),
+                                                                    Expanded(
+                                                                      child:
+                                                                          Container(
+                                                                        height:
+                                                                            2,
+                                                                        color: Colors
+                                                                            .redAccent,
+                                                                      ),
+                                                                    ),
+                                                                  ],
+                                                                ),
                                                               ),
                                                             ),
                                                         ],
@@ -634,6 +816,11 @@ Future<void> _showCalendarEventDetails(
   final end = DateTime.tryParse(event['ends_at']?.toString() ?? '');
   final description = event['description']?.toString() ?? '';
   final calendarTitle = event['calendar_title']?.toString() ?? '';
+  final course = event['course'] is Map
+      ? Map<String, dynamic>.from(event['course'] as Map)
+      : const <String, dynamic>{};
+  final courseTitle = course['title']?.toString() ?? '';
+  final importance = _eventImportance(event);
   String timeRange() {
     if (start == null) {
       return '';
@@ -670,6 +857,28 @@ Future<void> _showCalendarEventDetails(
                 const Icon(Icons.event, size: 18),
                 const SizedBox(width: 8),
                 Expanded(child: Text(calendarTitle)),
+              ],
+            ),
+          ],
+          if (courseTitle.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.school_outlined, size: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text(courseTitle)),
+              ],
+            ),
+          ],
+          if (event['difficulty_weight'] != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.flag_outlined, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: Text(AppLocalizations.of(context)
+                        .activityWeightN(importance))),
               ],
             ),
           ],
@@ -730,12 +939,14 @@ class _CalendarEventTile extends StatelessWidget {
     required this.vertical,
     required this.slotExtent,
     this.onTap,
+    this.onLongPress,
   });
 
   final Map<String, dynamic> event;
   final bool vertical;
   final double slotExtent;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -750,7 +961,8 @@ class _CalendarEventTile extends StatelessWidget {
     final spanMinutes = math.max(30, endMinutes - startMinutes);
     final offset = (startMinutes / 60.0) * slotExtent;
     final extent = (spanMinutes / 60.0) * slotExtent;
-    final color = _calendarEventColor(event['kind']?.toString() ?? '');
+    final color = _calendarEventColor(event, brightness: Theme.of(context).brightness);
+    final ink = _calendarEventInkFor(color);
 
     if (vertical) {
       return Positioned(
@@ -760,6 +972,8 @@ class _CalendarEventTile extends StatelessWidget {
         height: math.max(24, extent - 4),
         child: GestureDetector(
           onTap: onTap,
+          onLongPress: onLongPress,
+          onSecondaryTap: onLongPress,
           child: Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
@@ -768,13 +982,12 @@ class _CalendarEventTile extends StatelessWidget {
               event['title']?.toString() ?? 'Event',
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
-              // Backgrounds are fixed light pastels, so pin the label to a
-              // dark ink color — the theme's onSurface goes white in dark
-              // mode and would be invisible on these tiles.
-              style: const TextStyle(
+              // Ink is derived from the tile colour's luminance so the label
+              // stays legible on every palette colour, in light or dark theme.
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: _kCalendarEventInk,
+                color: ink,
               ),
             ),
           ),
@@ -786,20 +999,457 @@ class _CalendarEventTile extends StatelessWidget {
   }
 }
 
-/// Fixed dark ink for event tiles painted on light pastel backgrounds so the
-/// label stays legible in both light and dark themes.
+/// Google Calendar-style month grid: weekday header, weeks as rows, each
+/// day cell showing the date number and a few prioritized event chips with
+/// a locale-neutral "+N" overflow. No hour rows / time offsets — the month
+/// range is for scanning what is on each day, not for time-of-day detail.
+class _MonthCalendarGrid extends StatelessWidget {
+  const _MonthCalendarGrid({
+    required this.days,
+    required this.onEventTap,
+    required this.onEventLongPress,
+    required this.onCreateForDay,
+  });
+
+  final List<Map<String, dynamic>> days;
+  final void Function(Map<String, dynamic> event) onEventTap;
+  final void Function(Map<String, dynamic> event) onEventLongPress;
+  final void Function(DateTime day) onCreateForDay;
+
+  /// Orders a day's events for the limited chip slots: open plans first
+  /// (heaviest weight, then earliest start), then feed/session entries,
+  /// completed events always last (rendered dimmed).
+  static List<Map<String, dynamic>> prioritizedDayEvents(
+    List<dynamic> rawEvents,
+  ) {
+    final events = [
+      for (final e in rawEvents) Map<String, dynamic>.from(e as Map),
+    ];
+    int rank(Map<String, dynamic> e) {
+      if (e['is_completed'] == true) return 2;
+      return e['kind']?.toString() == 'plan' ? 0 : 1;
+    }
+
+    int weight(Map<String, dynamic> e) =>
+        int.tryParse(e['difficulty_weight']?.toString() ?? '') ?? 1;
+    DateTime start(Map<String, dynamic> e) =>
+        DateTime.tryParse(e['starts_at']?.toString() ?? '') ?? DateTime(2100);
+    events.sort((a, b) {
+      final byRank = rank(a).compareTo(rank(b));
+      if (byRank != 0) return byRank;
+      final byWeight = weight(b).compareTo(weight(a));
+      if (byWeight != 0) return byWeight;
+      return start(a).compareTo(start(b));
+    });
+    return events;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final borderColor = theme.colorScheme.outlineVariant;
+    final today = _dateOnly(DateTime.now());
+
+    // Lay the rolling 30-day window out on weekday columns: pad the first
+    // row up to the window's starting weekday, then rows of seven.
+    final cells = <DateTime?>[];
+    final firstDate = days.isEmpty
+        ? null
+        : DateTime.tryParse(days.first['date']?.toString() ?? '');
+    if (firstDate != null) {
+      for (var i = 1; i < firstDate.weekday; i++) {
+        cells.add(null);
+      }
+    }
+    final byDate = <String, List<dynamic>>{};
+    for (final day in days) {
+      final raw = day['date']?.toString() ?? '';
+      final parsed = DateTime.tryParse(raw);
+      if (parsed == null) continue;
+      cells.add(_dateOnly(parsed));
+      byDate[raw] = day['events'] as List<dynamic>? ?? const [];
+    }
+    while (cells.isEmpty || cells.length % 7 != 0) {
+      cells.add(null);
+    }
+    final weekCount = cells.length ~/ 7;
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 28,
+          child: Row(
+            children: [
+              for (final label in _kWeekdayAbbrevs)
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      label,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Column(
+            children: [
+              for (var week = 0; week < weekCount; week++)
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (var col = 0; col < 7; col++)
+                        Expanded(
+                          child: _MonthDayCell(
+                            date: cells[week * 7 + col],
+                            events: cells[week * 7 + col] == null
+                                ? const []
+                                : prioritizedDayEvents(byDate[
+                                        cells[week * 7 + col]!
+                                            .toIso8601String()
+                                            .split('T')
+                                            .first] ??
+                                    const []),
+                            isToday: cells[week * 7 + col] == today,
+                            borderColor: borderColor,
+                            onEventTap: onEventTap,
+                            onEventLongPress: onEventLongPress,
+                            onCreateForDay: onCreateForDay,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MonthDayCell extends StatelessWidget {
+  const _MonthDayCell({
+    required this.date,
+    required this.events,
+    required this.isToday,
+    required this.borderColor,
+    required this.onEventTap,
+    required this.onEventLongPress,
+    required this.onCreateForDay,
+  });
+
+  final DateTime? date;
+  final List<Map<String, dynamic>> events;
+  final bool isToday;
+  final Color borderColor;
+  final void Function(Map<String, dynamic> event) onEventTap;
+  final void Function(Map<String, dynamic> event) onEventLongPress;
+  final void Function(DateTime day) onCreateForDay;
+
+  static const double _chipHeight = 18;
+  static const double _chipGap = 2;
+  static const double _dateRowHeight = 24;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cellDate = date;
+    if (cellDate == null) {
+      return Container(
+        decoration: BoxDecoration(
+          border: Border(
+            left: BorderSide(color: borderColor),
+            bottom: BorderSide(color: borderColor),
+          ),
+        ),
+      );
+    }
+    return InkWell(
+      onTap: () => onCreateForDay(cellDate),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            left: BorderSide(color: borderColor),
+            bottom: BorderSide(color: borderColor),
+          ),
+        ),
+        padding: const EdgeInsets.all(2),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final chipBudget = math.max(
+              0,
+              ((constraints.maxHeight - _dateRowHeight) /
+                      (_chipHeight + _chipGap))
+                  .floor(),
+            );
+            final visibleCount =
+                math.min(events.length, math.min(chipBudget, 4));
+            // Reserve the last slot for "+N" when events overflow.
+            final shownEvents = events.length > visibleCount &&
+                    visibleCount > 0
+                ? events.sublist(0, visibleCount - 1)
+                : events.sublist(0, visibleCount);
+            final hiddenCount = events.length - shownEvents.length;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  height: _dateRowHeight,
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: isToday
+                        ? Container(
+                            width: 22,
+                            height: 22,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              '${cellDate.day}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: theme.colorScheme.onPrimary,
+                              ),
+                            ),
+                          )
+                        : Text(
+                            cellDate.day == 1
+                                ? '${cellDate.month}/${cellDate.day}'
+                                : '${cellDate.day}',
+                            style: theme.textTheme.labelMedium,
+                          ),
+                  ),
+                ),
+                for (final event in shownEvents)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: _chipGap),
+                    child: _MonthEventChip(
+                      event: event,
+                      height: _chipHeight,
+                      onTap: () => onEventTap(event),
+                      onLongPress: () => onEventLongPress(event),
+                    ),
+                  ),
+                if (hiddenCount > 0)
+                  SizedBox(
+                    height: _chipHeight,
+                    child: InkWell(
+                      onTap: () => _showMonthDayEventsDialog(
+                        context,
+                        cellDate,
+                        events,
+                        onEventTap,
+                        onEventLongPress,
+                      ),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Text(
+                            '+$hiddenCount',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact single-line event chip for month-grid day cells.
+class _MonthEventChip extends StatelessWidget {
+  const _MonthEventChip({
+    required this.event,
+    required this.height,
+    required this.onTap,
+    this.onLongPress,
+  });
+
+  final Map<String, dynamic> event;
+  final double height;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    final completed = event['is_completed'] == true;
+    final color = _calendarEventColor(event, brightness: Theme.of(context).brightness);
+    final ink = _calendarEventInkFor(color);
+    return InkWell(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      onSecondaryTap: onLongPress,
+      child: Opacity(
+        opacity: completed ? 0.55 : 1,
+        child: Container(
+          height: height,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          alignment: Alignment.centerLeft,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            event['title']?.toString() ?? 'Event',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: ink,
+              decoration: completed ? TextDecoration.lineThrough : null,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Full event list for one month-grid day (the "+N" overflow target).
+Future<void> _showMonthDayEventsDialog(
+  BuildContext context,
+  DateTime date,
+  List<Map<String, dynamic>> events,
+  void Function(Map<String, dynamic> event) onEventTap,
+  void Function(Map<String, dynamic> event) onEventLongPress,
+) async {
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(_formatWeekDay(date.toIso8601String())),
+      content: SizedBox(
+        width: 360,
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            for (final event in events)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: _MonthEventChip(
+                  event: event,
+                  height: 28,
+                  onTap: () {
+                    Navigator.of(dialogContext).pop();
+                    onEventTap(event);
+                  },
+                  onLongPress: () {
+                    Navigator.of(dialogContext).pop();
+                    onEventLongPress(event);
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: Text(AppLocalizations.of(context).commonClose),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Weekday column labels shared by the week header and the month grid.
+const List<String> _kWeekdayAbbrevs = [
+  'Mon',
+  'Tue',
+  'Wed',
+  'Thu',
+  'Fri',
+  'Sat',
+  'Sun',
+];
+
+/// Dark ink for tiles painted on light backgrounds.
 const Color _kCalendarEventInk = Color(0xFF1F2933);
 
-/// Returns the color used for each calendar event type.
-Color _calendarEventColor(String kind) {
-  switch (kind) {
-    case 'plan':
-      return const Color(0xFFDFF6E9);
-    case 'note_session':
-      return const Color(0xFFE0E7FF);
-    default:
-      return const Color(0xFFE0F2FE);
+/// Ink that stays legible on any tile colour (dark ink on light tiles,
+/// white on dark ones) — computed from the background luminance so the
+/// label is never invisible in either theme.
+Color _calendarEventInkFor(Color background) {
+  return background.computeLuminance() > 0.5
+      ? _kCalendarEventInk
+      : Colors.white;
+}
+
+/// Evenly-spread fallback hues for courses that haven't set an explicit
+/// `color_hue`, so different courses still read as distinct classes.
+const List<double> _kCourseHues = [
+  145, // mint-green
+  28, // peach
+  260, // violet
+  330, // rose
+  205, // sky-blue
+  48, // amber
+  175, // teal
+  15, // terracotta
+];
+
+/// The event's importance (difficulty weight) clamped to 1..5.
+int _eventImportance(Map<String, dynamic> event) {
+  final raw = int.tryParse(event['difficulty_weight']?.toString() ?? '') ?? 1;
+  return raw.clamp(1, 5);
+}
+
+/// The hue (0-359) for an event's course: the course's explicit `color_hue`
+/// if set, otherwise a stable hue derived from its id.
+double _courseHueFor(Map<String, dynamic> event) {
+  final course = event['course'];
+  final explicit = (course is Map) ? course['color_hue'] : null;
+  if (explicit is int) {
+    return explicit.toDouble().clamp(0, 359);
   }
+  if (explicit is double) {
+    return explicit.clamp(0, 359);
+  }
+  final courseId = event['course_id'];
+  final seed = (courseId is int) ? courseId.abs() : 0;
+  return _kCourseHues[seed % _kCourseHues.length];
+}
+
+/// Tile colour for a calendar event, in HSV so the three channels carry
+/// meaning: **hue = course** (distinct classes), **saturation = importance**
+/// (heavier events read stronger), and **value = theme** (bright pastels in
+/// light mode, muted in dark). Note sessions and calendar feeds keep their
+/// own fixed hues but still adapt value to the theme.
+Color _calendarEventColor(
+  Map<String, dynamic> event, {
+  Brightness brightness = Brightness.light,
+}) {
+  final isDark = brightness == Brightness.dark;
+  final kind = event['kind']?.toString() ?? '';
+  final value = isDark ? 0.52 : 0.97;
+  if (kind == 'note_session') {
+    return HSVColor.fromAHSV(1, 232, isDark ? 0.45 : 0.16, value).toColor();
+  }
+  if (kind == 'calendar') {
+    return HSVColor.fromAHSV(1, 200, isDark ? 0.45 : 0.16, value).toColor();
+  }
+  final hue = _courseHueFor(event);
+  final importance = _eventImportance(event); // 1..5
+  // Importance drives saturation; keep light mode pastel (lower band).
+  final base = 0.22 + (importance - 1) * 0.15; // 0.22..0.82
+  final saturation = (isDark ? base : base * 0.7).clamp(0.1, 0.9);
+  return HSVColor.fromAHSV(1, hue, saturation.toDouble(), value).toColor();
 }
 
 /// Formats ISO week dates for calendar headers.
@@ -834,9 +1484,13 @@ Future<void> _showCreatePlannerEventDialog(
     String title,
     DateTime eventDate,
     int difficultyWeight,
-    String description,
-  ) onCreatePlannerEvent, {
+    String description, {
+    DateTime? endsAt,
+    int? courseId,
+  }) onCreatePlannerEvent, {
   DateTime? initialDateTime,
+  DateTime? initialEndDateTime,
+  List<Map<String, dynamic>> courses = const <Map<String, dynamic>>[],
 }) async {
   final titleController = TextEditingController();
   final descriptionController = TextEditingController();
@@ -845,7 +1499,18 @@ Future<void> _showCreatePlannerEventDialog(
   var selectedTime = initialDateTime != null
       ? TimeOfDay(hour: initialDateTime.hour, minute: initialDateTime.minute)
       : const TimeOfDay(hour: 14, minute: 0);
+  // End time seeds from a drawn drag (initialEndDateTime) or defaults to
+  // one hour after the start.
+  final seedEnd = initialEndDateTime ??
+      (initialDateTime != null
+          ? initialDateTime.add(const Duration(hours: 1))
+          : null);
+  var selectedEndTime = seedEnd != null
+      ? TimeOfDay(hour: seedEnd.hour, minute: seedEnd.minute)
+      : const TimeOfDay(hour: 15, minute: 0);
   var weight = 1;
+  // null = uncategorized "inbox" (course optional by design).
+  int? selectedCourseId;
   ActionFeedback? feedback;
   var submitting = false;
 
@@ -877,30 +1542,33 @@ Future<void> _showCreatePlannerEventDialog(
                 ),
               ),
               const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.event, size: 16),
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: _dateOnly(DateTime.now()),
+                      lastDate: _dateOnly(DateTime.now())
+                          .add(const Duration(days: 365)),
+                    );
+                    if (picked != null) {
+                      setState(() => selectedDate = _dateOnly(picked));
+                    }
+                  },
+                  label: Text(
+                    selectedDate.toIso8601String().split('T').first,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
-                      onPressed: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: selectedDate,
-                          firstDate: _dateOnly(DateTime.now()),
-                          lastDate: _dateOnly(DateTime.now())
-                              .add(const Duration(days: 365)),
-                        );
-                        if (picked != null) {
-                          setState(() => selectedDate = _dateOnly(picked));
-                        }
-                      },
-                      child: Text(
-                        selectedDate.toIso8601String().split('T').first,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.play_arrow, size: 16),
                       onPressed: () async {
                         final picked = await showTimePicker(
                           context: context,
@@ -910,7 +1578,23 @@ Future<void> _showCreatePlannerEventDialog(
                           setState(() => selectedTime = picked);
                         }
                       },
-                      child: Text(selectedTime.format(context)),
+                      label: Text(selectedTime.format(context)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.stop, size: 16),
+                      onPressed: () async {
+                        final picked = await showTimePicker(
+                          context: context,
+                          initialTime: selectedEndTime,
+                        );
+                        if (picked != null) {
+                          setState(() => selectedEndTime = picked);
+                        }
+                      },
+                      label: Text(selectedEndTime.format(context)),
                     ),
                   ),
                 ],
@@ -936,6 +1620,33 @@ Future<void> _showCreatePlannerEventDialog(
                   border: const OutlineInputBorder(),
                 ),
               ),
+              ...[
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int?>(
+                  value: selectedCourseId,
+                  items: [
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('Inbox (uncategorized)'),
+                    ),
+                    for (final course in courses)
+                      if (course['id'] is int)
+                        DropdownMenuItem<int?>(
+                          value: course['id'] as int,
+                          child: Text(
+                            course['title']?.toString() ?? 'Course',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                  ],
+                  onChanged: (value) =>
+                      setState(() => selectedCourseId = value),
+                  decoration: const InputDecoration(
+                    labelText: 'Course (project)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
               if (feedback != null) ...[
                 const SizedBox(height: 12),
                 FeedbackText(feedback: feedback!),
@@ -956,17 +1667,32 @@ Future<void> _showCreatePlannerEventDialog(
                       submitting = true;
                       feedback = null;
                     });
+                    final start = DateTime(
+                      selectedDate.year,
+                      selectedDate.month,
+                      selectedDate.day,
+                      selectedTime.hour,
+                      selectedTime.minute,
+                    );
+                    var end = DateTime(
+                      selectedDate.year,
+                      selectedDate.month,
+                      selectedDate.day,
+                      selectedEndTime.hour,
+                      selectedEndTime.minute,
+                    );
+                    // Guard against an end at/before the start (the
+                    // backend also forces ends_at > starts_at).
+                    if (!end.isAfter(start)) {
+                      end = start.add(const Duration(hours: 1));
+                    }
                     final result = await onCreatePlannerEvent(
                       titleController.text.trim(),
-                      DateTime(
-                        selectedDate.year,
-                        selectedDate.month,
-                        selectedDate.day,
-                        selectedTime.hour,
-                        selectedTime.minute,
-                      ),
+                      start,
                       weight,
                       descriptionController.text.trim(),
+                      endsAt: end,
+                      courseId: selectedCourseId,
                     );
                     if (!context.mounted) {
                       return;
@@ -992,10 +1718,399 @@ Future<void> _showCreatePlannerEventDialog(
   descriptionController.dispose();
 }
 
+/// Hold-to-edit dialog for an existing planner ("plan"-kind) event. Pre-fills
+/// from `event` and, on save, PATCHes only the writable fields — including
+/// the recurrence rule (does-not-repeat / weekly / monthly / yearly, an
+/// interval, and an optional end on a date or after N occurrences).
+Future<void> _showEditPlannerEventDialog(
+  BuildContext context,
+  Map<String, dynamic> event,
+  Future<void> Function(
+          Map<String, dynamic> event, Map<String, dynamic> changes)
+      onUpdate, {
+  List<Map<String, dynamic>> courses = const <Map<String, dynamic>>[],
+}) async {
+  final l10n = AppLocalizations.of(context);
+  final titleController =
+      TextEditingController(text: event['title']?.toString() ?? '');
+  final descriptionController =
+      TextEditingController(text: event['description']?.toString() ?? '');
+  final start = DateTime.tryParse(event['starts_at']?.toString() ?? '')?.toLocal();
+  final end = DateTime.tryParse(event['ends_at']?.toString() ?? '')?.toLocal();
+  final baseDate = DateTime.tryParse(event['event_date']?.toString() ?? '') ??
+      start ??
+      DateTime.now();
+  var selectedDate = _dateOnly(baseDate);
+  var selectedTime = start != null
+      ? TimeOfDay(hour: start.hour, minute: start.minute)
+      : const TimeOfDay(hour: 14, minute: 0);
+  var selectedEndTime = end != null
+      ? TimeOfDay(hour: end.hour, minute: end.minute)
+      : const TimeOfDay(hour: 15, minute: 0);
+  var weight = (event['difficulty_weight'] as num?)?.toInt() ?? 1;
+  if (weight < 1) {
+    weight = 1;
+  } else if (weight > 5) {
+    weight = 5;
+  }
+  // Current binding; null = uncategorized "inbox". A binding to a course
+  // that is no longer in the picker list falls back to null so the
+  // dropdown's value always matches an item.
+  int? selectedCourseId = (event['course_id'] as num?)?.toInt();
+  if (selectedCourseId != null &&
+      !courses.any((c) => c['id'] == selectedCourseId)) {
+    selectedCourseId = null;
+  }
+  var freq = event['recurrence_freq']?.toString() ?? 'N';
+  if (!const ['N', 'W', 'M', 'Y'].contains(freq)) {
+    freq = 'N';
+  }
+  var interval = (event['recurrence_interval'] as num?)?.toInt() ?? 1;
+  if (interval < 1) {
+    interval = 1;
+  }
+  DateTime? recurrenceEndDate =
+      DateTime.tryParse(event['recurrence_end_date']?.toString() ?? '');
+  var recurrenceCount = (event['recurrence_count'] as num?)?.toInt();
+  // End mode: 0 never, 1 on-date, 2 after-count.
+  var endMode = recurrenceEndDate != null ? 1 : (recurrenceCount != null ? 2 : 0);
+  final intervalController =
+      TextEditingController(text: interval.toString());
+  final countController =
+      TextEditingController(text: (recurrenceCount ?? 1).toString());
+  ActionFeedback? feedback;
+  var submitting = false;
+
+  String freqLabel(String value) {
+    switch (value) {
+      case 'W':
+        return l10n.activityRepeatWeekly;
+      case 'M':
+        return l10n.activityRepeatMonthly;
+      case 'Y':
+        return l10n.activityRepeatYearly;
+      default:
+        return l10n.activityRepeatNever;
+    }
+  }
+
+  await showDialog<void>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        title: Text(l10n.activityEditEvent),
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: InputDecoration(
+                    labelText: l10n.activityEventTitle,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descriptionController,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    labelText: l10n.courseDescriptionLabel,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.event, size: 16),
+                    onPressed: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: selectedDate,
+                        firstDate: _dateOnly(
+                            DateTime.now().subtract(const Duration(days: 365))),
+                        lastDate: _dateOnly(
+                            DateTime.now().add(const Duration(days: 365 * 3))),
+                      );
+                      if (picked != null) {
+                        setState(() => selectedDate = _dateOnly(picked));
+                      }
+                    },
+                    label:
+                        Text(selectedDate.toIso8601String().split('T').first),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.play_arrow, size: 16),
+                        onPressed: () async {
+                          final picked = await showTimePicker(
+                              context: context, initialTime: selectedTime);
+                          if (picked != null) {
+                            setState(() => selectedTime = picked);
+                          }
+                        },
+                        label: Text(selectedTime.format(context)),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.stop, size: 16),
+                        onPressed: () async {
+                          final picked = await showTimePicker(
+                              context: context, initialTime: selectedEndTime);
+                          if (picked != null) {
+                            setState(() => selectedEndTime = picked);
+                          }
+                        },
+                        label: Text(selectedEndTime.format(context)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  value: weight,
+                  items: List.generate(
+                    5,
+                    (index) => DropdownMenuItem<int>(
+                      value: index + 1,
+                      child: Text(l10n.activityWeightN(index + 1)),
+                    ),
+                  ),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => weight = value);
+                    }
+                  },
+                  decoration: InputDecoration(
+                    labelText: l10n.activityDifficulty,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                ...[
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<int?>(
+                    value: selectedCourseId,
+                    items: [
+                      const DropdownMenuItem<int?>(
+                        value: null,
+                        child: Text('Inbox (uncategorized)'),
+                      ),
+                      for (final course in courses)
+                        if (course['id'] is int)
+                          DropdownMenuItem<int?>(
+                            value: course['id'] as int,
+                            child: Text(
+                              course['title']?.toString() ?? 'Course',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                    ],
+                    onChanged: (value) =>
+                        setState(() => selectedCourseId = value),
+                    decoration: const InputDecoration(
+                      labelText: 'Course (project)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+                const Divider(height: 28),
+                DropdownButtonFormField<String>(
+                  value: freq,
+                  items: [
+                    for (final value in const ['N', 'W', 'M', 'Y'])
+                      DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(freqLabel(value)),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => freq = value);
+                    }
+                  },
+                  decoration: InputDecoration(
+                    labelText: l10n.activityRepeatLabel,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                if (freq != 'N') ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: intervalController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: l10n.activityRepeatIntervalLabel,
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<int>(
+                    value: endMode,
+                    items: [
+                      DropdownMenuItem(
+                          value: 0, child: Text(l10n.activityRepeatEndNever)),
+                      DropdownMenuItem(
+                          value: 1, child: Text(l10n.activityRepeatEndOnDate)),
+                      DropdownMenuItem(
+                          value: 2, child: Text(l10n.activityRepeatEndAfter)),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => endMode = value);
+                      }
+                    },
+                    decoration: InputDecoration(
+                      labelText: l10n.activityRepeatEndsLabel,
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                  if (endMode == 1) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.event_busy, size: 16),
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: recurrenceEndDate ??
+                                selectedDate.add(const Duration(days: 30)),
+                            firstDate: selectedDate,
+                            lastDate: _dateOnly(
+                                DateTime.now().add(const Duration(days: 365 * 5))),
+                          );
+                          if (picked != null) {
+                            setState(() => recurrenceEndDate = _dateOnly(picked));
+                          }
+                        },
+                        label: Text(recurrenceEndDate == null
+                            ? l10n.activityRepeatEndOnDate
+                            : recurrenceEndDate!
+                                .toIso8601String()
+                                .split('T')
+                                .first),
+                      ),
+                    ),
+                  ],
+                  if (endMode == 2) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: countController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: l10n.activityRepeatCountLabel,
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ],
+                if (feedback != null) ...[
+                  const SizedBox(height: 12),
+                  FeedbackText(feedback: feedback!),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: submitting ? null : () => Navigator.of(context).pop(),
+            child: Text(l10n.commonCancel),
+          ),
+          FilledButton(
+            onPressed: submitting
+                ? null
+                : () async {
+                    setState(() {
+                      submitting = true;
+                      feedback = null;
+                    });
+                    final startAt = DateTime(
+                      selectedDate.year,
+                      selectedDate.month,
+                      selectedDate.day,
+                      selectedTime.hour,
+                      selectedTime.minute,
+                    );
+                    var endAt = DateTime(
+                      selectedDate.year,
+                      selectedDate.month,
+                      selectedDate.day,
+                      selectedEndTime.hour,
+                      selectedEndTime.minute,
+                    );
+                    if (!endAt.isAfter(startAt)) {
+                      endAt = startAt.add(const Duration(hours: 1));
+                    }
+                    final parsedInterval =
+                        int.tryParse(intervalController.text.trim()) ?? 1;
+                    final parsedCount =
+                        int.tryParse(countController.text.trim()) ?? 1;
+                    final changes = <String, dynamic>{
+                      'title': titleController.text.trim(),
+                      'description': descriptionController.text.trim(),
+                      'event_date':
+                          selectedDate.toIso8601String().split('T').first,
+                      'starts_at': startAt.toUtc().toIso8601String(),
+                      'ends_at': endAt.toUtc().toIso8601String(),
+                      'difficulty_weight': weight,
+                      'recurrence_freq': freq,
+                      'recurrence_interval':
+                          freq == 'N' ? 1 : math.max(1, parsedInterval),
+                      'recurrence_end_date': freq != 'N' && endMode == 1
+                          ? recurrenceEndDate?.toIso8601String().split('T').first
+                          : null,
+                      'recurrence_count': freq != 'N' && endMode == 2
+                          ? math.max(1, parsedCount)
+                          : null,
+                      'course_id': selectedCourseId,
+                    };
+                    try {
+                      await onUpdate(event, changes);
+                    } catch (error) {
+                      if (!context.mounted) {
+                        return;
+                      }
+                      setState(() {
+                        submitting = false;
+                        feedback =
+                            ActionFeedback(message: error.toString(), isError: true);
+                      });
+                      return;
+                    }
+                    if (!context.mounted) {
+                      return;
+                    }
+                    Navigator.of(context).pop();
+                  },
+            child: Text(submitting ? l10n.noteMetaSaving : l10n.commonSave),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  titleController.dispose();
+  descriptionController.dispose();
+  intervalController.dispose();
+  countController.dispose();
+}
+
 /// Opens a local iCal file picker and forwards the result to the callback.
 Future<void> _showImportCalendarDialog(
   BuildContext context,
-  Future<void> Function(String rawIcal, String title, {int? courseId}) onImport,
+  Future<Map<String, dynamic>?> Function(String rawIcal, String title,
+          {int? courseId})
+      onImport,
 ) async {
   final file = await openFile(
     acceptedTypeGroups: [
@@ -1009,13 +2124,121 @@ Future<void> _showImportCalendarDialog(
   if (!context.mounted) {
     return;
   }
-  await onImport(rawIcal, file.name);
+  Map<String, dynamic>? summary;
+  String? failure;
+  try {
+    summary = await onImport(rawIcal, file.name);
+  } catch (error) {
+    failure = error.toString();
+  }
+  if (!context.mounted) {
+    return;
+  }
+  await _showImportResultModal(context, summary, failure, file.name);
+}
+
+/// Result modal shown after an iCal import / subscription: lists the
+/// imported events on success, or the reason it failed. `summary` is the
+/// backend `import_summary` ({ok,count,events,error}); `failure` is a
+/// client-side/transport error (e.g. not signed in).
+Future<void> _showImportResultModal(
+  BuildContext context,
+  Map<String, dynamic>? summary,
+  String? failure,
+  String feedTitle,
+) async {
+  final l10n = AppLocalizations.of(context);
+  final ok = failure == null && (summary?['ok'] == true);
+  final events = (summary?['events'] as List<dynamic>? ?? const [])
+      .map((item) => Map<String, dynamic>.from(item as Map))
+      .toList();
+  final count = (summary?['count'] as num?)?.toInt() ?? events.length;
+  final errorText = failure ?? summary?['error']?.toString();
+  await showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Row(
+        children: [
+          Icon(
+            ok ? Icons.check_circle : Icons.error_outline,
+            color: ok
+                ? Colors.green
+                : Theme.of(context).colorScheme.error,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              ok
+                  ? l10n.activityImportSucceeded
+                  : l10n.activityImportFailed,
+            ),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 360,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (ok) ...[
+              Text(l10n.activityImportedCount(count, feedTitle)),
+              const SizedBox(height: 10),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 260),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final event in events)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('•  '),
+                              Expanded(
+                                child: Text(
+                                  _importEventLabel(event),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ] else
+              Text(errorText ?? l10n.activityImportFailed),
+          ],
+        ),
+      ),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.commonOk),
+        ),
+      ],
+    ),
+  );
+}
+
+String _importEventLabel(Map<String, dynamic> event) {
+  final title = event['title']?.toString() ?? 'Event';
+  final startsAt = event['starts_at']?.toString() ?? '';
+  if (startsAt.isEmpty) {
+    return title;
+  }
+  return '$title — ${_formatDeadlineStamp(startsAt)}';
 }
 
 /// Opens a dialog for subscribing to a remote iCal feed.
 Future<void> _showSubscribeCalendarDialog(
   BuildContext context,
-  Future<void> Function(String title, String url, {int? courseId}) onSubscribe,
+  Future<Map<String, dynamic>?> Function(String title, String url,
+          {int? courseId})
+      onSubscribe,
 ) async {
   final titleController = TextEditingController();
   final urlController = TextEditingController();
@@ -1051,15 +2274,21 @@ Future<void> _showSubscribeCalendarDialog(
         ),
         FilledButton(
           onPressed: () async {
-            await onSubscribe(
-              titleController.text.trim().isEmpty
-                  ? AppLocalizations.of(context).activitySubscribedCalendar
-                  : titleController.text.trim(),
-              urlController.text.trim(),
-            );
-            if (context.mounted) {
-              Navigator.of(context).pop();
+            final feedTitle = titleController.text.trim().isEmpty
+                ? AppLocalizations.of(context).activitySubscribedCalendar
+                : titleController.text.trim();
+            Map<String, dynamic>? summary;
+            String? failure;
+            try {
+              summary = await onSubscribe(feedTitle, urlController.text.trim());
+            } catch (error) {
+              failure = error.toString();
             }
+            if (!context.mounted) {
+              return;
+            }
+            Navigator.of(context).pop();
+            await _showImportResultModal(context, summary, failure, feedTitle);
           },
           child: Text(AppLocalizations.of(context).courseSubscribe),
         ),

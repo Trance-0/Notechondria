@@ -6,6 +6,7 @@ from difflib import SequenceMatcher
 from datetime import datetime, timedelta, time
 
 from django.conf import settings
+from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.db import transaction
 from django.db.models import Count, Q
@@ -64,9 +65,14 @@ from .services import (
     note_preview_lines,
     note_session_payload,
     planner_event_payload,
+    CourseGitError,
+    apply_course_git_binding,
+    course_git_payload,
     record_note_activity,
     restore_note_version,
     snapshot_note_version,
+    summarize_calendar_feed,
+    unlink_course_git,
     version_label,
 )
 
@@ -111,17 +117,25 @@ def absolute_media_url(request, raw_url: str) -> str:
 def creator_summary_payload(creator, request):
     """Author card emitted on every public-facing note / comment surface.
 
-    Avatar resolution mirrors ``creators.api.auth_payload``: prefer the
-    Casdoor remote ``avatar_url`` (cache-busted by ``?v=<sync_ts>`` so a
-    Casdoor-side picture change paints immediately) and only fall back to
-    the locally-uploaded ``image`` when the remote URL is empty. Pre-0.1.120
-    this view read ``creator.image`` only, which meant the user's chosen
-    Casdoor avatar never showed up on a public note's byline even though
-    every other Notechondria surface honoured it.
+    Avatar resolution mirrors ``creators.api.auth_payload``: a fresh
+    Casdoor mirror in our own storage is the effective avatar (Casdoor
+    serves without CORS headers → Flutter web can't render it
+    cross-origin); otherwise the Casdoor URL, then the local upload.
+
+    Performance contract (0.1.185): this runs **per row** on every list
+    surface — it must do ZERO storage or network I/O and ZERO writes.
+    The old version called ``ensure_creator_avatar`` (an R2
+    ``storage.exists()`` HEAD + potential write) per note row: a
+    193-note course spent ~15 s in storage round-trips for one author.
+    Payloads are additionally memoized per request via
+    ``author_payload_cache`` since list rows overwhelmingly share
+    authors.
     """
     if creator is None:
         return None
-    creator = ensure_creator_avatar(creator)
+    cache = getattr(request, "_author_payload_cache", None) if request else None
+    if cache is not None and creator.id in cache:
+        return cache[creator.id]
     username = creator.user_id.username if creator.user_id_id else "unknown"
     display_name = (
         (creator.display_name or "").strip()
@@ -133,19 +147,29 @@ def creator_summary_payload(creator, request):
         or username
     )
     avatar_url = _avatar_cache_bust(creator.avatar_url, creator)
-    image_url = (
-        avatar_url
-        or absolute_media_url(
-            request, creator.image.url if creator.image else "",
-        )
+    stored_url = absolute_media_url(
+        request, creator.image.url if creator.image and creator.image.name else "",
     )
-    return {
+    from creators.utils import mirrored_avatar_is_fresh
+
+    image_url = (
+        stored_url
+        if mirrored_avatar_is_fresh(creator)
+        else (avatar_url or stored_url)
+    )
+    payload = {
         "id": creator.id,
         "username": username,
         "display_name": display_name,
         "image_url": image_url,
         "avatar_url": avatar_url,
     }
+    if request is not None:
+        if cache is None:
+            cache = {}
+            request._author_payload_cache = cache
+        cache[creator.id] = payload
+    return payload
 
 
 def _avatar_cache_bust(url: str, creator) -> str:
@@ -204,6 +228,18 @@ def append_course_operation(creator, course, operation_type, metadata=None):
     )
 
 
+def arm_course_sync(note):
+    """Arm the lazy-sync debounce when a note in a bound, sync-enabled
+    course is edited (the app is a repo text editor; edits accrue and the
+    push fires after the idle timeout). No-op for unbound courses."""
+    course = getattr(note, "course_id", None)
+    if course is None:
+        return
+    from courses.git_service import mark_course_pending
+
+    mark_course_pending(course)
+
+
 def unique_course_slug(title: str, fallback: str = "course") -> str:
     base = slugify(title)[:100] or fallback
     candidate = base
@@ -241,11 +277,21 @@ def note_search_score(note: Note, query: str):
 def can_access_note(request, note: Note) -> bool:
     if note_is_public(note):
         return True
-    return bool(
-        request.user
-        and request.user.is_authenticated
-        and note.creator_id.user_id_id == request.user.id
-    )
+    if not (request.user and request.user.is_authenticated):
+        return False
+    if note.creator_id.user_id_id == request.user.id:
+        return True
+    # 0.1.179: an authenticated user with an ACTIVE subscription to the
+    # note's course may read its private notes too — this is what makes a
+    # shared per-note URL work for subscribed course content. Write access
+    # is still owner-only (checked separately at each write view).
+    if note.course_id_id:
+        return CourseSubscription.objects.filter(
+            course_id=note.course_id_id,
+            creator_id__user_id=request.user.id,
+            is_active=True,
+        ).exists()
+    return False
 
 
 def require_note_access(request, note_id: int) -> Note:
@@ -306,11 +352,18 @@ class NoteSummarySerializer(serializers.ModelSerializer):
     source_note_uuid = serializers.SerializerMethodField()
     cover_image_url = serializers.SerializerMethodField()
 
+    name = serializers.CharField(read_only=True)
+    git_path = serializers.CharField(read_only=True)
+    module = serializers.CharField(read_only=True)
+
     class Meta:
         model = Note
         fields = [
             "id",
             "uuid",
+            "name",
+            "git_path",
+            "module",
             "title",
             "description",
             "excerpt",
@@ -372,6 +425,7 @@ class NoteDetailSerializer(NoteSummarySerializer):
     content = serializers.CharField(read_only=True)
     metadata_json = serializers.CharField(read_only=True)
     custom_meta = serializers.CharField(read_only=True)
+    # `git_path` / `name` are inherited from NoteSummarySerializer.
 
     class Meta(NoteSummarySerializer.Meta):
         fields = NoteSummarySerializer.Meta.fields + [
@@ -402,6 +456,7 @@ class CourseSerializer(serializers.ModelSerializer):
     is_private_subscription = serializers.SerializerMethodField()
     last_opened_at = serializers.SerializerMethodField()
     media = CourseMediaSerializer(source="media_items", many=True, read_only=True)
+    git = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
@@ -413,6 +468,7 @@ class CourseSerializer(serializers.ModelSerializer):
             "description",
             "cover_image_url",
             "icon",
+            "color_hue",
             "sort_order",
             "owner",
             "subscriber_count",
@@ -421,7 +477,21 @@ class CourseSerializer(serializers.ModelSerializer):
             "last_opened_at",
             "recent_notes",
             "media",
+            "git",
         ]
+
+    def get_git(self, obj):
+        # Git binding is private to the course owner; subscribers and
+        # anonymous viewers get null so the repo/branch never leaks.
+        request = self.context.get("request") if self.context else None
+        if (
+            request is None
+            or not request.user.is_authenticated
+            or obj.creator_id is None
+            or obj.creator_id.user_id_id != request.user.id
+        ):
+            return None
+        return course_git_payload(obj)
 
     def get_cover_image_url(self, obj):
         request = self.context.get("request") if self.context else None
@@ -479,6 +549,9 @@ class CourseWriteSerializer(serializers.Serializer):
     description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     client_course_id = serializers.CharField(required=False, allow_blank=True, max_length=64)
     icon = serializers.IntegerField(required=False, allow_null=True)
+    color_hue = serializers.IntegerField(
+        required=False, allow_null=True, min_value=0, max_value=359
+    )
 
 
 class NoteWriteSerializer(serializers.Serializer):
@@ -529,6 +602,13 @@ class PlannerEventWriteSerializer(serializers.Serializer):
     course_id = serializers.IntegerField(required=False, allow_null=True)
     is_completed = serializers.BooleanField(required=False)
     completed_at = serializers.DateTimeField(required=False, allow_null=True)
+    recurrence_freq = serializers.ChoiceField(
+        choices=[("N", "none"), ("W", "weekly"), ("M", "monthly"), ("Y", "yearly")],
+        required=False,
+    )
+    recurrence_interval = serializers.IntegerField(min_value=1, required=False)
+    recurrence_end_date = serializers.DateField(required=False, allow_null=True)
+    recurrence_count = serializers.IntegerField(min_value=1, required=False, allow_null=True)
 
 
 class NoteSessionWriteSerializer(serializers.Serializer):
@@ -574,13 +654,23 @@ class FrontPageApiView(APIView):
     def get(self, request):
         creator = ensure_creator(request.user) if request.user.is_authenticated else None
         subscription_map = active_subscription_map(creator)
+        # 0.1.180: the "recent public courses" carousel only surfaces
+        # courses that actually have public content. Previously it listed
+        # EVERY course row, so stale personal buckets (e.g. the pre-0.1.120
+        # editor "Inbox" template) leaked onto everyone's front page.
         courses = list(
             Course.objects.select_related("creator_id__user_id")
             .prefetch_related("media_items")
-            .annotate(_subscriber_count=Count(
-                "subscriptions", filter=Q(subscriptions__is_active=True),
-            ))
-            .all()
+            .annotate(
+                _subscriber_count=Count(
+                    "subscriptions", filter=Q(subscriptions__is_active=True),
+                ),
+                _public_note_count=Count(
+                    "notes",
+                    filter=Q(notes__is_public=True, notes__deleted_at__isnull=True),
+                ),
+            )
+            .filter(_public_note_count__gt=0)
         )
         courses.sort(key=lambda course: course_sort_key(course, subscription_map))
         carousel_courses = courses[:6]
@@ -609,7 +699,12 @@ class FrontPageApiView(APIView):
             "collections": carousel_data,
         }
         if request.user.is_authenticated:
-            payload["heatmap"] = build_heatmap_payload(ensure_creator(request.user))
+            # A full year of past activity (plus ~4 weeks of planned load)
+            # so a wide window can render more history and fill the row;
+            # the frontend trims to the most-recent weeks that fit.
+            payload["heatmap"] = build_heatmap_payload(
+                ensure_creator(request.user), days_before=364, days_after=28
+            )
             payload["upcoming_events"] = [
                 planner_event_payload(event)
                 for event in PlannerEvent.objects.filter(
@@ -626,6 +721,15 @@ class CourseListApiView(APIView):
 
     def get(self, request):
         creator = ensure_creator(request.user) if request.user.is_authenticated else None
+        # Lazy-on-request sync: flush any of this owner's bound courses
+        # whose debounce has elapsed. Best-effort — never blocks the list.
+        if creator is not None:
+            try:
+                from courses.git_service import flush_due_course_syncs
+
+                flush_due_course_syncs(creator)
+            except Exception:  # noqa: BLE001 - sync must never break course listing
+                logger.exception("Lazy course-git flush failed during course list")
         subscription_map = active_subscription_map(creator)
         courses = list(
             Course.objects.select_related("creator_id__user_id")
@@ -795,6 +899,8 @@ class CourseDetailApiView(APIView):
             course.description = serializer.validated_data.get("description") or ""
         if "icon" in serializer.validated_data:
             course.icon = serializer.validated_data.get("icon")
+        if "color_hue" in serializer.validated_data:
+            course.color_hue = serializer.validated_data.get("color_hue")
         course.save()
         subscription_map = active_subscription_map(creator)
         return Response(
@@ -833,6 +939,243 @@ class CourseDetailApiView(APIView):
         # reassignment needed.
         course.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CourseTransferApiView(APIView):
+    """Owner-only: hand a course to another creator (#11). The recipient is
+    named by username or email. The course's notes keep their own
+    ``creator_id`` (co-authored notes stay with their original authors);
+    only the course's ownership moves. Any GitHub binding is cleared,
+    because it points at the previous owner's repo, which the new owner
+    cannot push to."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, course_id):
+        creator = ensure_creator(request.user)
+        course = get_object_or_404(Course, pk=course_id)
+        if course.creator_id_id != creator.id:
+            return Response(
+                {"detail": (
+                    "Cannot transfer course: "
+                    "Backend.Notes.Courses/transfer — "
+                    "course is owned by a different creator."
+                )},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        target_key = str(
+            request.data.get("target")
+            or request.data.get("username")
+            or request.data.get("email")
+            or ""
+        ).strip()
+        if not target_key:
+            return Response(
+                {"detail": (
+                    "Cannot transfer course: "
+                    "Backend.Notes.Courses/transfer — "
+                    "no target username or email was provided."
+                )},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        target_user = (
+            User.objects.filter(
+                Q(username__iexact=target_key) | Q(email__iexact=target_key)
+            )
+            .order_by("id")
+            .first()
+        )
+        if target_user is None:
+            return Response(
+                {"detail": (
+                    "Cannot transfer course: "
+                    "Backend.Notes.Courses/transfer — "
+                    f"no user matches '{target_key}'."
+                )},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if target_user.id == request.user.id:
+            return Response(
+                {"detail": (
+                    "Cannot transfer course: "
+                    "Backend.Notes.Courses/transfer — "
+                    "you already own this course."
+                )},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        target_creator = ensure_creator(target_user)
+        # Category titles are case-insensitively unique per creator
+        # (mirrors the PATCH guard). Refuse rather than hand the recipient
+        # a colliding pair they then cannot rename cleanly.
+        collision = (
+            Course.objects.filter(
+                creator_id=target_creator, title__iexact=course.title
+            )
+            .exclude(pk=course.pk)
+            .exists()
+        )
+        if collision:
+            return Response(
+                {"detail": (
+                    "Cannot transfer course: "
+                    "Backend.Notes.Courses/transfer — "
+                    f"the recipient already has a category named "
+                    f"'{course.title}'. Rename this course first."
+                )},
+                status=status.HTTP_409_CONFLICT,
+            )
+        previous_owner = creator
+        had_git_repo = bool(course.git_repo)
+        with transaction.atomic():
+            course.creator_id = target_creator
+            # `client_course_id` was the previous owner's device-local id;
+            # it is meaningless to the recipient and would collide with
+            # their unique (creator, client_course_id) key, so drop it.
+            course.client_course_id = None
+            # Clear the GitHub binding: it targets the previous owner's
+            # repo, which the recipient has no push access to.
+            course.git_repo = None
+            course.git_sync_enabled = False
+            course.git_pending_since = None
+            course.git_last_sync_error = None
+            course.save()
+        logger.info(
+            "Course ownership transfer: Backend.Notes.Courses/transfer — "
+            "course id=%s '%s' moved from %s to %s%s.",
+            course.id, course.title,
+            previous_owner.user_id.username, target_user.username,
+            " (git binding cleared)" if had_git_repo else "",
+        )
+        subscription_map = active_subscription_map(target_creator)
+        payload = CourseSerializer(
+            course,
+            context={"request": request, "subscription_map": subscription_map},
+        ).data
+        payload["git_binding_cleared"] = had_git_repo
+        return Response(payload, status=status.HTTP_200_OK)
+
+
+class CourseGitWriteSerializer(serializers.Serializer):
+    """Shapes the git-binding payload; the repo `owner/name` form is
+    validated in the service (`apply_course_git_binding`)."""
+
+    repo = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    branch = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    sync_enabled = serializers.BooleanField(required=False)
+    sync_timeout_minutes = serializers.IntegerField(
+        min_value=1, max_value=1440, required=False
+    )
+
+
+class CourseGitBindingApiView(APIView):
+    """Owner-only CRUD for a course's GitHub binding (the backend stays the
+    source of truth; this only stores where to mirror to and how eagerly).
+
+    - GET returns the binding config.
+    - PUT binds / updates it (repo, branch, sync toggle, debounce minutes)
+      and, when a repo is set, arms the lazy-sync debounce.
+    - DELETE unlinks (clears the repo and disables sync).
+
+    Every mutation writes a CourseOperationLog row so the owner gets the
+    effective import/bind/unlink log they asked for."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def _owned_course(self, request, course_id):
+        creator = ensure_creator(request.user)
+        course = get_object_or_404(Course, pk=course_id)
+        if course.creator_id_id != creator.id:
+            return creator, course, Response(
+                {"detail": (
+                    "Cannot change git binding: "
+                    "Backend.Notes.Courses.Git/bind — "
+                    "category is owned by a different creator."
+                )},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return creator, course, None
+
+    def get(self, request, course_id):
+        _creator, course, error = self._owned_course(request, course_id)
+        if error is not None:
+            return error
+        return Response(course_git_payload(course))
+
+    def put(self, request, course_id):
+        creator, course, error = self._owned_course(request, course_id)
+        if error is not None:
+            return error
+        serializer = CourseGitWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        # Only forward fields the client actually sent (so a bare tweak of
+        # one field doesn't reset the others).
+        kwargs = {key: data[key] for key in (
+            "repo", "branch", "sync_enabled", "sync_timeout_minutes",
+        ) if key in data}
+        try:
+            payload = apply_course_git_binding(creator, course, **kwargs)
+        except CourseGitError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(payload)
+
+    def delete(self, request, course_id):
+        creator, course, error = self._owned_course(request, course_id)
+        if error is not None:
+            return error
+        return Response(unlink_course_git(creator, course))
+
+
+class CourseGitImportApiView(APIView):
+    """Owner-only: pull the bound repo's markdown into this course's notes
+    via the course-repo adapter. Idempotent (notes matched by git_path)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, course_id):
+        from courses.git_service import CourseGitServiceError, import_course_from_repo
+
+        creator = ensure_creator(request.user)
+        course = get_object_or_404(Course, pk=course_id)
+        if course.creator_id_id != creator.id:
+            return Response(
+                {"detail": (
+                    "Cannot import: Backend.Notes.Courses.Git/import — "
+                    "category is owned by a different creator."
+                )},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        try:
+            summary = import_course_from_repo(course)
+        except CourseGitServiceError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(summary)
+
+
+class CourseGitSyncApiView(APIView):
+    """Owner-only: explicitly push this course's notes to its bound repo
+    now (the "sync now" button). Lazy sync also fires this on idle."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, course_id):
+        from courses.git_service import CourseGitServiceError, sync_course_to_repo
+
+        creator = ensure_creator(request.user)
+        course = get_object_or_404(Course, pk=course_id)
+        if course.creator_id_id != creator.id:
+            return Response(
+                {"detail": (
+                    "Cannot sync: Backend.Notes.Courses.Git/sync — "
+                    "category is owned by a different creator."
+                )},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        try:
+            summary = sync_course_to_repo(course)
+        except CourseGitServiceError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(summary)
 
 
 class CourseReorderApiView(APIView):
@@ -898,7 +1241,14 @@ class CourseNotesApiView(APIView):
 
     def get(self, request, course_id):
         course = get_object_or_404(Course, pk=course_id)
-        notes = course.notes.filter(deleted_at__isnull=True).select_related("course_id", "creator_id__user_id").order_by("-last_edit")
+        # 0.1.188: imported courses read top-to-bottom. `sort_order` is 0
+        # for natively-created notes, so those still fall back to pure
+        # recency via the secondary key (unchanged behaviour).
+        notes = (
+            course.notes.filter(deleted_at__isnull=True)
+            .select_related("course_id", "creator_id__user_id")
+            .order_by("sort_order", "-last_edit")
+        )
         if (
             not request.user.is_authenticated
             or course.creator_id is None
@@ -908,6 +1258,34 @@ class CourseNotesApiView(APIView):
             # Pre-0.1.83 promoted "default-course" notes to the public
             # feed; that rule was removed there and never reinstated.
             notes = notes.filter(is_public=True)
+        # 0.1.185: lazy loading for large (e.g. git-imported) courses.
+        # With `limit` the response is a page envelope; without it the
+        # legacy bare list is preserved so older clients keep working.
+        limit = request.query_params.get("limit")
+        if limit is not None:
+            try:
+                page_size = max(1, min(int(limit), 100))
+                offset = max(0, int(request.query_params.get("offset", "0") or 0))
+            except ValueError:
+                return Response(
+                    {"detail": (
+                        "Cannot list category notes: "
+                        "Backend.Notes.Courses/notes — "
+                        "`limit`/`offset` must be integers."
+                    )},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            total = notes.count()
+            rows = notes[offset:offset + page_size]
+            return Response({
+                "results": NoteSummarySerializer(
+                    rows, many=True, context={"request": request},
+                ).data,
+                "total": total,
+                "offset": offset,
+                "limit": page_size,
+                "has_more": offset + page_size < total,
+            })
         return Response(
             NoteSummarySerializer(notes, many=True, context={"request": request}).data
         )
@@ -964,8 +1342,16 @@ class NoteListCreateApiView(APIView):
             # values defensively (treat anything we don't recognize as
             # personal so a stale frontend doesn't break with a 400).
             notes = notes.filter(creator_id=creator)
+        # `course_id=none` (also `null` / `uncategorized`) means "notes in
+        # no category at all" — the editor's Inbox folder (0.1.190).
+        # Previously only a truthy numeric id filtered anything, so the
+        # Inbox, which has no id, fell through to the unfiltered list and
+        # showed every note the user owned, categorised ones included.
         if course_id:
-            notes = notes.filter(course_id_id=course_id)
+            if str(course_id).strip().lower() in ("none", "null", "uncategorized"):
+                notes = notes.filter(course_id__isnull=True)
+            else:
+                notes = notes.filter(course_id_id=course_id)
         if query:
             ranked_notes = []
             for note in notes:
@@ -1072,6 +1458,14 @@ class NoteListCreateApiView(APIView):
             note_word_count(note),
             HeatmapActivityTypeChoices.EDITED if existing is not None else HeatmapActivityTypeChoices.CREATED,
         )
+        # Give the note a stable, course-unique URL name (0.1.177) so it
+        # can be linked and resolved from sibling notes' markdown.
+        if not note.name and note.course_id_id:
+            from .services import ensure_note_name
+            ensure_note_name(note)
+            if note.name:
+                note.save(update_fields=["name"])
+        arm_course_sync(note)
         response_status = status.HTTP_200_OK if existing is not None else status.HTTP_201_CREATED
         logger.info(
             "Note %s: Backend.Notes.Notes/create_or_upsert \u2014 "
@@ -1165,6 +1559,7 @@ class NoteDetailApiView(APIView):
                 max(abs(after_words - before_words), after_words),
                 HeatmapActivityTypeChoices.EDITED,
             )
+        arm_course_sync(note)
         logger.info(
             "Note updated: Backend.Notes.Notes/update \u2014 "
             "creator=%s note_id=%s fields=%s.",
@@ -1301,6 +1696,7 @@ class NoteByUuidApiView(APIView):
             note.save(update_fields=["content", "last_edit"])
             replace_note_blocks(note, note.creator_id, replacement_markdown)
             record_note_activity(note, note_word_count(note), HeatmapActivityTypeChoices.EDITED)
+        arm_course_sync(note)
         data = NoteDetailSerializer(note, context={"request": request}).data
         data["can_edit"] = True
         return Response(data)
@@ -1747,7 +2143,19 @@ class PlannerEventListCreateApiView(APIView):
 
     def get(self, request):
         creator = ensure_creator(request.user)
-        events = PlannerEvent.objects.filter(creator_id=creator, is_completed=False).order_by("event_date", "title")
+        events = PlannerEvent.objects.filter(creator_id=creator)
+        # Opt-in extras so the CLI MCP server can mirror the in-backend
+        # list_events tool; defaults preserve the original contract
+        # (incomplete only, no truncation).
+        if request.query_params.get("include_completed") not in ("1", "true"):
+            events = events.filter(is_completed=False)
+        events = events.order_by("event_date", "title")
+        raw_limit = request.query_params.get("limit")
+        if raw_limit is not None:
+            try:
+                events = events[: max(1, min(int(raw_limit), 200))]
+            except (TypeError, ValueError):
+                pass
         return Response([planner_event_payload(event) for event in events])
 
     def post(self, request):
@@ -1768,6 +2176,10 @@ class PlannerEventListCreateApiView(APIView):
             description=serializer.validated_data.get("description") or "",
             is_completed=serializer.validated_data.get("is_completed", False),
             completed_at=serializer.validated_data.get("completed_at"),
+            recurrence_freq=serializer.validated_data.get("recurrence_freq", "N"),
+            recurrence_interval=serializer.validated_data.get("recurrence_interval", 1),
+            recurrence_end_date=serializer.validated_data.get("recurrence_end_date"),
+            recurrence_count=serializer.validated_data.get("recurrence_count"),
         )
         normalize_planner_event_window(event)
         if event.is_completed and event.completed_at is None:
@@ -1793,6 +2205,10 @@ class PlannerEventDetailApiView(APIView):
             "description",
             "is_completed",
             "completed_at",
+            "recurrence_freq",
+            "recurrence_interval",
+            "recurrence_end_date",
+            "recurrence_count",
         ]:
             if field in serializer.validated_data:
                 setattr(event, field, serializer.validated_data[field])
@@ -1887,7 +2303,12 @@ class CalendarFeedListCreateApiView(APIView):
             raw_ical=serializer.validated_data.get("raw_ical") or "",
             is_enabled=serializer.validated_data.get("is_enabled", True),
         )
-        return Response(CalendarFeedSerializer(feed).data, status=status.HTTP_201_CREATED)
+        # Parse the feed once now so the client can show an import-result
+        # modal (success + a short list of events, or a readable error)
+        # instead of silently rendering zero events.
+        payload = CalendarFeedSerializer(feed).data
+        payload["import_summary"] = summarize_calendar_feed(feed)
+        return Response(payload, status=status.HTTP_201_CREATED)
 
 
 class CalendarFeedDetailApiView(APIView):

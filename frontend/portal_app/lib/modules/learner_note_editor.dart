@@ -529,6 +529,7 @@ class _NoteEditorDialogState extends State<_NoteEditorDialog> {
                 child: MarkdownBody(
                   data: _previewMarkdown(),
                   selectable: true,
+                  styleSheet: _noteMarkdownStyleSheet(context),
                   builders: _markdownBuilders(),
                   sizedImageBuilder: _localAttachmentImageBuilder,
                   inlineSyntaxes: _markdownInlineSyntaxes(),

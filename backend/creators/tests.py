@@ -428,6 +428,69 @@ class GithubSyncTests(TestCase):
         )
 
 
+class OrphanAssetPruneTests(TestCase):
+    """Pure-function coverage for `_orphan_asset_deletions` (#28): decides
+    which `assets/notes/<uuid>/…` blobs to delete on a `prune_orphans`
+    push. No DB / no network."""
+
+    def _fn(self):
+        from creators.services.github_sync import _orphan_asset_deletions
+        return _orphan_asset_deletions
+
+    def _tree(self):
+        # `dead` note was deleted client-side; `live` is still present.
+        return [
+            {'path': 'notes/live.md', 'type': 'blob', 'mode': '100644'},
+            {'path': 'assets/avatar.png', 'type': 'blob', 'mode': '100644'},
+            {'path': 'assets/notes', 'type': 'tree', 'mode': '040000'},
+            {'path': 'assets/notes/live', 'type': 'tree', 'mode': '040000'},
+            {'path': 'assets/notes/live/cover.jpg',
+             'type': 'blob', 'mode': '100644'},
+            {'path': 'assets/notes/dead/cover.png',
+             'type': 'blob', 'mode': '100644'},
+            {'path': 'assets/notes/dead/attachments/a1.bin',
+             'type': 'blob', 'mode': '100644'},
+        ]
+
+    def test_deletes_only_dead_note_asset_blobs(self):
+        deletions = self._fn()(self._tree(), {'live'})
+        paths = {d['path'] for d in deletions}
+        self.assertEqual(paths, {
+            'assets/notes/dead/cover.png',
+            'assets/notes/dead/attachments/a1.bin',
+        })
+        # Every deletion is a null-sha blob entry (the Git Trees delete form).
+        for d in deletions:
+            self.assertIsNone(d['sha'])
+            self.assertEqual(d['type'], 'blob')
+            self.assertEqual(d['mode'], '100644')
+
+    def test_live_assets_avatar_and_notes_are_kept(self):
+        deletions = self._fn()(self._tree(), {'live'})
+        paths = {d['path'] for d in deletions}
+        # A live note's cover, the avatar, notes/, and tree entries survive.
+        self.assertNotIn('assets/notes/live/cover.jpg', paths)
+        self.assertNotIn('assets/avatar.png', paths)
+        self.assertNotIn('notes/live.md', paths)
+        # `tree` entries are never emitted as deletions (only blobs).
+        self.assertNotIn('assets/notes/dead', paths)
+
+    def test_empty_live_set_prunes_all_note_assets(self):
+        deletions = self._fn()(self._tree(), set())
+        paths = {d['path'] for d in deletions}
+        self.assertEqual(paths, {
+            'assets/notes/live/cover.jpg',
+            'assets/notes/dead/cover.png',
+            'assets/notes/dead/attachments/a1.bin',
+        })
+        # Non-note assets (avatar) are still never touched.
+        self.assertNotIn('assets/avatar.png', paths)
+
+    def test_all_live_prunes_nothing(self):
+        deletions = self._fn()(self._tree(), {'live', 'dead'})
+        self.assertEqual(deletions, [])
+
+
 class CasdoorAuthTests(TestCase):
     """Coverage for the Casdoor surface (`creators.casdoor_auth`,
     `CasdoorConfigApiView`, `CasdoorExchangeApiView`,
@@ -915,3 +978,311 @@ class LastSeenVersionsTests(TestCase):
         self.assertEqual(resp2.status_code, 400)
         resp3 = self._patch({'last_seen_versions': {'editor': ''}})
         self.assertEqual(resp3.status_code, 400)
+
+
+class SeedAgentUserCommandTests(TestCase):
+    """The agent-harness seed command: guarded, idempotent, mints a key."""
+
+    def _run(self, **env):
+        import io
+        from unittest import mock
+        from django.core.management import call_command
+        out = io.StringIO()
+        with mock.patch.dict('os.environ', env, clear=False):
+            call_command('seed_agent_user', stdout=out)
+        return out.getvalue()
+
+    def test_refuses_without_debug_or_env_flag(self):
+        from django.core.management.base import CommandError
+        with self.settings(DEBUG=False):
+            with self.assertRaises(CommandError) as ctx:
+                self._run(ALLOW_AGENT_SEED='')
+        self.assertIn('seed_agent_user', str(ctx.exception))
+
+    def test_creates_user_and_prints_key(self):
+        with self.settings(DEBUG=True):
+            output = self._run()
+        self.assertIn('NOTECHONDRIA_API_KEY=ntc_', output)
+        user = User.objects.get(username='agent-tester')
+        self.assertTrue(user.is_active)
+        self.assertFalse(user.has_usable_password())
+        creator = Creator.objects.get(user_id=user)
+        key = output.rsplit('NOTECHONDRIA_API_KEY=', 1)[1].strip()
+        import hashlib
+        self.assertEqual(creator.api_key_hash, hashlib.sha256(key.encode()).hexdigest())
+        self.assertEqual(creator.api_key_prefix, key[:8])
+
+    def test_rerun_is_idempotent_and_rotates_key(self):
+        with self.settings(DEBUG=False):
+            out1 = self._run(ALLOW_AGENT_SEED='1')
+            out2 = self._run(ALLOW_AGENT_SEED='1')
+        key1 = out1.rsplit('NOTECHONDRIA_API_KEY=', 1)[1].strip()
+        key2 = out2.rsplit('NOTECHONDRIA_API_KEY=', 1)[1].strip()
+        self.assertNotEqual(key1, key2)
+        self.assertEqual(User.objects.filter(username='agent-tester').count(), 1)
+        self.assertIn('reused', out2)
+
+
+class CasdoorAvatarClaimSyncTests(TestCase):
+    """The Casdoor JWT avatar sync: reads the standard OIDC `picture`
+    claim as a fallback for the custom `avatar` field, and stores it on
+    `Creator.avatar_url` (0.1.163)."""
+
+    def setUp(self):
+        from creators.utils import ensure_creator
+        self.user = User.objects.create_user(
+            username='avatar-user', email='av@example.com', is_active=True,
+        )
+        self.creator = ensure_creator(self.user)
+
+    def test_avatar_claim_preferred_when_present(self):
+        from creators.casdoor_auth import _sync_creator_from_claims
+        _sync_creator_from_claims(self.creator, {
+            'avatar': 'https://cas/av.png',
+            'picture': 'https://cas/pic.png',
+        })
+        self.creator.refresh_from_db()
+        self.assertEqual(self.creator.avatar_url, 'https://cas/av.png')
+
+    def test_picture_claim_used_when_avatar_absent(self):
+        # Casdoor tokens carry the standard OIDC `picture` by default;
+        # the custom `avatar` field is only present if the operator
+        # enabled it. The sync must still resolve an avatar.
+        from creators.casdoor_auth import _sync_creator_from_claims
+        _sync_creator_from_claims(self.creator, {
+            'picture': 'https://cas/pic.png',
+        })
+        self.creator.refresh_from_db()
+        self.assertEqual(self.creator.avatar_url, 'https://cas/pic.png')
+
+    def test_settings_payload_exposes_local_upload_separately(self):
+        from rest_framework.test import APIClient
+        from rest_framework.authtoken.models import Token
+        # avatar_url set (as if from Casdoor) but no local upload.
+        self.creator.avatar_url = 'https://cas/pic.png'
+        self.creator.save(update_fields=['avatar_url'])
+        token = Token.objects.create(user=self.user)
+        client = APIClient()
+        resp = client.get(
+            '/api/v1/settings/', HTTP_AUTHORIZATION=f'Token {token.key}',
+        )
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        # image_url is the effective avatar (Casdoor wins); image_upload_url
+        # is exposed separately so the SPA can fall back to the local image
+        # (here the default profile image `ensure_creator` attaches) when the
+        # Casdoor avatar fails to load.
+        self.assertEqual(body['avatar_url'], 'https://cas/pic.png')
+        self.assertEqual(body['image_url'], 'https://cas/pic.png')
+        self.assertIn('image_upload_url', body)
+        # A local image always exists (default attached at creator creation),
+        # and it is distinct from the Casdoor avatar_url.
+        self.assertTrue(body['image_upload_url'])
+        self.assertNotEqual(body['image_upload_url'], body['avatar_url'])
+        self.assertIn('/media/', body['image_upload_url'])
+
+
+class AvatarMirrorTests(TestCase):
+    """0.1.184: Casdoor avatars are mirrored into our storage on login
+    (Casdoor serves without CORS headers → Flutter web can't render
+    them), and payloads prefer the mirrored copy."""
+
+    def setUp(self):
+        from django.contrib.auth.models import User as U
+        self.user = U.objects.create_user(username='mirror@example.com', password='pw')
+        from creators.models import Creator as C
+        self.creator = C.objects.create(user_id=self.user)
+        self.creator.avatar_url = 'https://cas.example.com/avatar/me.png'
+        self.creator.save(update_fields=['avatar_url'])
+
+    def _fake_resp(self, status=200, content=b'\x89PNG fake', ctype='image/png'):
+        class R:
+            status_code = status
+            headers = {'content-type': ctype}
+        R.content = content
+        return R()
+
+    def test_mirror_stores_bytes_and_records_source(self):
+        from unittest.mock import patch
+        from creators.utils import mirror_remote_avatar
+
+        with patch('requests.get', return_value=self._fake_resp()):
+            stored = mirror_remote_avatar(self.creator)
+        self.assertTrue(stored)
+        self.creator.refresh_from_db()
+        self.assertEqual(
+            self.creator.avatar_mirrored_from,
+            'https://cas.example.com/avatar/me.png',
+        )
+        # The image field's upload_to callable renames files (profile_latest_*),
+        # so assert on WHERE it landed (our storage), not the filename.
+        self.assertTrue(self.creator.image.name)
+        self.assertIn('user_upload', self.creator.image.name)
+
+    def test_mirror_is_idempotent_per_url(self):
+        from unittest.mock import patch
+        from creators.utils import mirror_remote_avatar
+
+        with patch('requests.get', return_value=self._fake_resp()) as m:
+            self.assertTrue(mirror_remote_avatar(self.creator))
+            self.assertFalse(mirror_remote_avatar(self.creator))
+            self.assertEqual(m.call_count, 1)
+
+    def test_mirror_rejects_non_image(self):
+        from unittest.mock import patch
+        from creators.utils import mirror_remote_avatar
+
+        with patch('requests.get',
+                   return_value=self._fake_resp(ctype='text/html')):
+            self.assertFalse(mirror_remote_avatar(self.creator))
+        self.creator.refresh_from_db()
+        self.assertEqual(self.creator.avatar_mirrored_from, '')
+
+    def test_payload_prefers_mirrored_copy(self):
+        from unittest.mock import patch
+        from creators.utils import mirror_remote_avatar
+        from notes.api import creator_summary_payload
+
+        with patch('requests.get', return_value=self._fake_resp()):
+            mirror_remote_avatar(self.creator)
+        self.creator.refresh_from_db()
+        payload = creator_summary_payload(self.creator, None)
+        # Effective avatar = our stored media (CORS-safe), not the IdP URL.
+        self.assertIn('/media/', payload['image_url'])
+        self.assertFalse(
+            payload['image_url'].startswith('https://cas.example.com/'))
+        self.assertTrue(
+            payload['avatar_url'].startswith('https://cas.example.com/'))
+
+    def test_payload_falls_back_to_casdoor_url_without_mirror(self):
+        from notes.api import creator_summary_payload
+
+        payload = creator_summary_payload(self.creator, None)
+        self.assertTrue(
+            payload['image_url'].startswith('https://cas.example.com/'))
+
+
+class GithubSyncPushConflictTests(TestCase):
+    """0.1.189: the profile-sync push is one atomic Git Data commit and
+    refuses to overwrite a branch that moved since our last push."""
+
+    def setUp(self):
+        from django.contrib.auth.models import User as U
+        from creators.models import Creator as C, GithubIntegration
+        self.user = U.objects.create_user(username='sync@example.com', password='pw')
+        self.creator = C.objects.create(user_id=self.user)
+        self.integration = GithubIntegration.objects.create(
+            creator=self.creator, installation_id='inst-sync',
+            repo_full_name='octo/backup', repo_default_branch='main',
+        )
+
+    def _files(self):
+        from creators.services.github_sync import _RepoFile
+        return [_RepoFile('profile/creator.json', b'{"a":1}')]
+
+    def _fake_transport(self, head_sha, tree_sha='newtree'):
+        """Minimal Git Data API double; records the calls it receives."""
+        calls = {'posts': [], 'patches': []}
+
+        class R:
+            def __init__(self, payload, status=200):
+                self._p, self.status_code, self.text = payload, status, ''
+            def json(self): return self._p
+
+        def get(url, headers=None, timeout=None, params=None):
+            if '/git/ref/heads/' in url:
+                return R({'object': {'sha': head_sha}})
+            if '/git/commits/' in url:
+                return R({'tree': {'sha': 'basetree'}})
+            return R({}, 404)
+
+        def post(url, headers=None, json=None, timeout=None):
+            calls['posts'].append(url)
+            if url.endswith('/git/blobs'):
+                return R({'sha': 'blob1'})
+            if url.endswith('/git/trees'):
+                return R({'sha': tree_sha})
+            if url.endswith('/git/commits'):
+                return R({'sha': 'commit-new'})
+            return R({}, 404)
+
+        def patch(url, headers=None, json=None, timeout=None):
+            calls['patches'].append(url)
+            return R({})
+
+        return get, post, patch, calls
+
+    def test_conflict_when_remote_moved_since_last_push(self):
+        from unittest.mock import patch as mpatch
+        from creators.services.github_sync import commit_and_push, GithubSyncConflict
+
+        self.integration.last_push_sha = 'ours-old'
+        self.integration.save(update_fields=['last_push_sha'])
+        get, post, patch_, calls = self._fake_transport(head_sha='someone-else')
+        with mpatch('creators.services.github_sync._ensure_token', return_value='t'), \
+             mpatch('requests.get', get), mpatch('requests.post', post), \
+             mpatch('requests.patch', patch_):
+            with self.assertRaises(GithubSyncConflict):
+                commit_and_push(self.integration, self._files())
+        # Nothing was written.
+        self.assertEqual(calls['patches'], [])
+
+    def test_force_overwrites_a_moved_branch(self):
+        from unittest.mock import patch as mpatch
+        from creators.services.github_sync import commit_and_push
+
+        self.integration.last_push_sha = 'ours-old'
+        self.integration.save(update_fields=['last_push_sha'])
+        get, post, patch_, calls = self._fake_transport(head_sha='someone-else')
+        with mpatch('creators.services.github_sync._ensure_token', return_value='t'), \
+             mpatch('requests.get', get), mpatch('requests.post', post), \
+             mpatch('requests.patch', patch_):
+            sha = commit_and_push(self.integration, self._files(), force=True)
+        self.assertEqual(sha, 'commit-new')
+        self.assertEqual(len(calls['patches']), 1)
+
+    def test_first_ever_push_has_nothing_to_conflict_with(self):
+        from unittest.mock import patch as mpatch
+        from creators.services.github_sync import commit_and_push
+
+        self.assertEqual(self.integration.last_push_sha, '')
+        get, post, patch_, calls = self._fake_transport(head_sha='whatever')
+        with mpatch('creators.services.github_sync._ensure_token', return_value='t'), \
+             mpatch('requests.get', get), mpatch('requests.post', post), \
+             mpatch('requests.patch', patch_):
+            sha = commit_and_push(self.integration, self._files())
+        self.assertEqual(sha, 'commit-new')
+
+    def test_single_atomic_commit_not_per_file_writes(self):
+        from unittest.mock import patch as mpatch
+        from creators.services.github_sync import commit_and_push, _RepoFile
+
+        files = [_RepoFile(f'notes/{i}.md', b'x') for i in range(12)]
+        get, post, patch_, calls = self._fake_transport(head_sha='head')
+        with mpatch('creators.services.github_sync._ensure_token', return_value='t'), \
+             mpatch('requests.get', get), mpatch('requests.post', post), \
+             mpatch('requests.patch', patch_):
+            commit_and_push(self.integration, files)
+        trees = [u for u in calls['posts'] if u.endswith('/git/trees')]
+        commits = [u for u in calls['posts'] if u.endswith('/git/commits')]
+        # 12 files → exactly one tree, one commit, one ref update.
+        self.assertEqual(len(trees), 1)
+        self.assertEqual(len(commits), 1)
+        self.assertEqual(len(calls['patches']), 1)
+
+    def test_unchanged_tree_makes_no_commit(self):
+        from unittest.mock import patch as mpatch
+        from creators.services.github_sync import commit_and_push
+
+        # Tree resolves to the SAME sha as the base tree → nothing to do.
+        get, post, patch_, calls = self._fake_transport(
+            head_sha='head', tree_sha='basetree')
+        with mpatch('creators.services.github_sync._ensure_token', return_value='t'), \
+             mpatch('requests.get', get), mpatch('requests.post', post), \
+             mpatch('requests.patch', patch_):
+            sha = commit_and_push(self.integration, self._files())
+        self.assertEqual(sha, 'head')
+        self.assertEqual(calls['patches'], [])
+        self.assertNotIn(
+            f'{"https://api.github.com"}/repos/octo/backup/git/commits',
+            calls['posts'])

@@ -16,6 +16,7 @@ import logging
 from .utils import (
     ensure_creator,
     ensure_creator_avatar,
+    mirrored_avatar_is_fresh,
 )
 
 
@@ -113,11 +114,21 @@ def auth_payload(user: User, *, token: str, request=None):
     # Append `?v=<sync_ts>` so a Casdoor-side avatar change paints
     # immediately even when the underlying URL string is unchanged.
     avatar_url = avatar_cache_bust(creator.avatar_url, creator)
+    # Always expose the locally-uploaded avatar separately so the SPA
+    # can fall back to it when the Casdoor `avatar_url` fails to load
+    # (auth server offline / 404). `image_url` stays the "effective"
+    # avatar (Casdoor first, then local) for backward compatibility.
+    image_upload_url = absolute_media_url(
+        request, creator.image.url if creator.image else "",
+    )
+    # 0.1.184: when `image` holds a fresh mirror of the Casdoor avatar,
+    # the EFFECTIVE avatar points at our own storage (proper CORS —
+    # Flutter web can actually render it); the raw Casdoor URL stays in
+    # `avatar_url` for reference/fallback.
     image_url = (
-        avatar_url
-        or absolute_media_url(
-            request, creator.image.url if creator.image else "",
-        )
+        image_upload_url
+        if mirrored_avatar_is_fresh(creator)
+        else (avatar_url or image_upload_url)
     )
     return {
         "token": token,
@@ -134,6 +145,7 @@ def auth_payload(user: User, *, token: str, request=None):
             "social_link": creator.social_link or "",
             "image_url": image_url,
             "avatar_url": avatar_url,
+            "image_upload_url": image_upload_url,
             "editor_mode": creator.editor_mode,
             "theme_preset": creator.theme_preset,
             "theme_mode": creator.theme_mode,
@@ -317,6 +329,7 @@ class SettingsSerializer(serializers.Serializer):
     display_name = serializers.CharField(allow_blank=True, required=False, max_length=255)
     image_url = serializers.CharField(read_only=True)
     avatar_url = serializers.CharField(read_only=True)
+    image_upload_url = serializers.CharField(read_only=True)
     avatar = serializers.ImageField(write_only=True, required=False)
     theme_preset = serializers.CharField(required=False, allow_blank=False, max_length=32)
     theme_mode = serializers.ChoiceField(
@@ -371,12 +384,17 @@ class SettingsSerializer(serializers.Serializer):
         # a sync-timestamp query param so a Casdoor-side picture
         # change paints immediately even when the URL is byte-stable.
         avatar_url = avatar_cache_bust(instance.avatar_url, instance)
+        # See auth_payload: expose the local upload separately so the
+        # SPA can fall back when the Casdoor avatar fails to load.
+        image_upload_url = absolute_media_url(
+            request,
+            instance.image.url if instance.image else "",
+        )
+        # 0.1.184: fresh Casdoor mirror in our storage wins (CORS-safe).
         image_url = (
-            avatar_url
-            or absolute_media_url(
-                request,
-                instance.image.url if instance.image else "",
-            )
+            image_upload_url
+            if mirrored_avatar_is_fresh(instance)
+            else (avatar_url or image_upload_url)
         )
         return {
             "username": instance.user_id.username,
@@ -390,6 +408,7 @@ class SettingsSerializer(serializers.Serializer):
             "display_name": display_name,
             "image_url": image_url,
             "avatar_url": avatar_url,
+            "image_upload_url": image_upload_url,
             "editor_mode": instance.editor_mode,
             "theme_preset": instance.theme_preset,
             "theme_mode": instance.theme_mode,
@@ -718,17 +737,23 @@ class GithubSyncPushApiView(APIView):
     """Push the authenticated user's full server-side data to their
     linked GitHub repo. Returns the resulting commit SHA.
 
-    Accepts an optional ``include_assets`` query string flag (or JSON
-    body field) — when truthy, avatar / cover / attachment bytes are
-    inlined under ``assets/`` in the export so the resulting clone is
-    self-contained. Subject to the per-file and per-push size caps in
-    `creators.services.github_sync`.
+    Accepts optional ``include_assets`` and ``prune_orphans`` flags (query
+    string or JSON body). ``include_assets`` inlines avatar / cover /
+    attachment bytes under ``assets/`` so the clone is self-contained
+    (subject to the size caps in `creators.services.github_sync`).
+    ``prune_orphans`` additionally deletes, in the same commit, any
+    ``assets/notes/<uuid>/…`` blobs left behind by notes that no longer
+    exist.
     """
 
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        from .services.github_sync import GithubSyncError, push_user_data
+        from .services.github_sync import (
+            GithubSyncConflict,
+            GithubSyncError,
+            push_user_data,
+        )
 
         creator = ensure_creator(request.user)
         # Accept the flag from either the query string (for the
@@ -740,14 +765,45 @@ class GithubSyncPushApiView(APIView):
             if hasattr(request, "data") else None
         )
         include_assets = str(raw).lower() in ("1", "true", "yes", "on")
+        raw_force = (
+            request.query_params.get("force")
+            or request.data.get("force")
+            or ""
+        )
+        force = str(raw_force).lower() in ("1", "true", "yes", "on")
+        raw_prune = (
+            request.query_params.get("prune_orphans")
+            or request.data.get("prune_orphans")
+            or ""
+        )
+        prune_orphans = str(raw_prune).lower() in ("1", "true", "yes", "on")
         try:
-            sha = push_user_data(creator, include_assets=include_assets)
+            sha = push_user_data(
+                creator,
+                include_assets=include_assets,
+                force=force,
+                prune_orphans=prune_orphans,
+            )
+        except GithubSyncConflict as exc:
+            # 409, not 400: the request was valid but the remote moved.
+            # The client re-sends with `force` once the user accepts the
+            # overwrite. See GithubSyncConflict for the rationale.
+            return Response(
+                {"detail": str(exc), "conflict": True},
+                status=status.HTTP_409_CONFLICT,
+            )
         except GithubSyncError as exc:
             return Response(
                 {"detail": str(exc)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        return Response({"commit_sha": sha, "include_assets": include_assets})
+        return Response(
+            {
+                "commit_sha": sha,
+                "include_assets": include_assets,
+                "prune_orphans": prune_orphans,
+            }
+        )
 
 
 class GithubSyncReposApiView(APIView):
@@ -763,13 +819,10 @@ class GithubSyncReposApiView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        import requests as http_requests
-
         from .models import GithubIntegration
         from .services.github_sync import (
             GithubSyncError,
-            _ensure_token,
-            _github_headers,
+            list_installation_repositories,
         )
 
         creator = ensure_creator(request.user)
@@ -785,56 +838,16 @@ class GithubSyncReposApiView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            token = _ensure_token(integration)
+            repos = list_installation_repositories(integration)
         except GithubSyncError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        headers = _github_headers(token)
-        repos = []
-        page = 1
-        while True:
-            try:
-                resp = http_requests.get(
-                    "https://api.github.com/installation/repositories",
-                    headers=headers,
-                    params={"per_page": 100, "page": page},
-                    timeout=15,
-                )
-            except http_requests.RequestException as exc:
-                return Response(
-                    {"detail": (
-                        "Cannot list repositories: "
-                        "Backend.Creators.GithubSync/list_repos — "
-                        f"network error contacting GitHub: {exc}."
-                    )},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            if resp.status_code >= 400:
-                return Response(
-                    {"detail": (
-                        "Cannot list repositories: "
-                        "Backend.Creators.GithubSync/list_repos — "
-                        f"GitHub returned {resp.status_code}."
-                    )},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            payload = resp.json() or {}
-            chunk = payload.get("repositories") or []
-            for repo in chunk:
-                repos.append({
-                    "full_name": repo.get("full_name", ""),
-                    "default_branch": repo.get("default_branch", "main"),
-                    "private": bool(repo.get("private", False)),
-                })
-            # GitHub paginates via Link header; falling out when a page
-            # returns fewer than per_page entries is the simpler invariant
-            # and matches the contract of /installation/repositories.
-            if len(chunk) < 100:
-                break
-            page += 1
-            if page > 50:
-                # Defensive cap: 5,000 repos. Anything past that is a
-                # mis-installed App, not a real personal account.
-                break
+            return Response(
+                {"detail": (
+                    "Cannot list repositories: "
+                    "Backend.Creators.GithubSync/list_repos — "
+                    f"{exc}"
+                )},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return Response({"repositories": repos})
 
 
