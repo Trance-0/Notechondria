@@ -57,6 +57,7 @@ Entry points:
 - On GitHub Pages: defaults to `https://notechondria.trance-0.com/api/v1`
 - On local browser full-stack deploy (`localhost` / `127.0.0.1`): defaults to same-origin `${origin}/api/v1`
 - In Docker full-stack deploy: root gateway nginx routes `/api/v1` to the Django backend
+- Local web apps against the remote backend: `scripts/local_remote_deploy.sh up` serves all three on `http://127.0.0.1:9068/` (loopback only) and proxies `/api/` to `https://notechondria.trance-0.com`. Details: [`docs/development/local_dev.md`](docs/development/local_dev.md).
 
 ## Per-app OAuth redirect URIs (since 0.1.90)
 

@@ -1,0 +1,38 @@
+# Gateway for scripts/local_remote_deploy.sh: serves the three locally built
+# web apps on one loopback origin and forwards backend paths to a remote
+# backend. The script publishes this container on 127.0.0.1 only.
+# ${NOTECHONDRIA_REMOTE_ORIGIN} is filled by the nginx image's envsubst step.
+server {
+  listen 80;
+  server_name _;
+  # Relative redirects keep the published host port (nginx would use :80).
+  absolute_redirect off;
+
+  # On localhost/127.0.0.1 the apps always call same-origin /api/v1, so the
+  # backend has to be reachable through this origin.
+  location ~ ^/(api|media|static)/ {
+    proxy_pass ${NOTECHONDRIA_REMOTE_ORIGIN};
+    proxy_http_version 1.1;
+    # The remote ingress routes by Host; a forwarded loopback Host gets a 404.
+    proxy_set_header Host $proxy_host;
+    proxy_ssl_server_name on;
+    proxy_ssl_verify on;
+    proxy_ssl_verify_depth 4;
+    proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
+    proxy_redirect off;
+    client_max_body_size 100M;
+  }
+
+  location /editor/ {
+    proxy_pass http://notechondria-local-editor/;
+  }
+  location /planner/ {
+    proxy_pass http://notechondria-local-planner/;
+  }
+  location /portal/ {
+    proxy_pass http://notechondria-local-portal/;
+  }
+  location = / {
+    return 302 /portal/;
+  }
+}

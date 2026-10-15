@@ -68,8 +68,59 @@ cd frontend/editor_app
 flutter build web --release --no-tree-shake-icons
 # Output: build/web/
 # Serve with any static server:
-cd build/web && python3 -m http.server 8080
+cd build/web && python3 -m http.server --bind 127.0.0.1 8080
 ```
+
+### Web apps against the remote backend (loopback)
+
+One command builds the three web apps from this checkout and serves them
+on `127.0.0.1` against the production backend
+`https://notechondria.trance-0.com`. It needs no local backend, no
+database, and no credentials.
+
+```bash
+scripts/local_remote_deploy.sh up     # build the 3 images one at a time, then (re)start
+scripts/local_remote_deploy.sh down   # stop and remove the containers (images are kept)
+```
+
+- URLs: `http://127.0.0.1:9068/portal/`, `/editor/`, and `/planner/`.
+  `/` redirects to `/portal/`.
+- Containers: `notechondria-local-gateway` (`nginx:1.27-alpine`) is the
+  only published port, and it is bound to `127.0.0.1`. The app
+  containers `notechondria-local-{portal,editor,planner}` publish nothing;
+  they sit on the private `notechondria-local` network.
+- The gateway (`deployment/docker/nginx/local_remote.conf.template`)
+  forwards `/api/`, `/media/`, and `/static/` to the remote. It sends the
+  remote's own Host header (the remote ingress returns 404 for a loopback
+  Host) and verifies the remote's TLS certificate.
+- Why a proxy: on `localhost` / `127.0.0.1` the apps always call
+  same-origin `/api/v1` (`_defaultApiBaseUrl()` in each app's
+  `lib/core/helpers.dart`). The Dockerfile's `FRONTEND_API_BASE_URL`
+  build arg has no effect there.
+- Env vars:
+  - `LOCAL_GATEWAY_HOST_PORT`: default `9068`. The bind address is always
+    `127.0.0.1`. The script refuses a port that is already in use; check
+    with `ss -ltn` (or `netstat -ltn`).
+  - `REMOTE_BACKEND_ORIGIN`: default `https://notechondria.trance-0.com`.
+    Only `scheme://host[:port]` is accepted.
+- Backend-down check: an unreachable origin reuses the cached images and
+  restarts in seconds. The apps should show the offline banner with Work
+  offline / Retry, not a white screen. Run `up` without the variable to
+  go back to the real remote.
+  - `REMOTE_BACKEND_ORIGIN=http://192.0.2.1 scripts/local_remote_deploy.sh up`
+    is a black hole (TEST-NET-1), so requests hang.
+  - `REMOTE_BACKEND_ORIGIN=http://127.0.0.1:9 scripts/local_remote_deploy.sh up`
+    is refused inside the gateway, so it returns an HTML 502.
+- Signed-in use hits production data. The deploy stores no credentials.
+  Tokens stay in the browser's storage for the `127.0.0.1:9068` origin.
+  OAuth redirect URIs are registered per origin, and sign-in from
+  loopback has not been verified.
+- The Docker build does not pass `APP_VERSION`. The apps report the code
+  default (`0.1.21`), so the version banner offers an update that a
+  refresh will not clear.
+- Host budget (see `docs/AGENTS.md`): each Flutter build took about 45 s
+  on a 16-core / 61 GiB host. Builds run one at a time with a 20-minute
+  timeout each. Do not run this on hosts under 16 GB RAM.
 
 ## Backend (Django)
 
@@ -105,7 +156,7 @@ python manage.py createsuperuser
 
 ```bash
 cd backend
-python manage.py runserver 0.0.0.0:9090
+python manage.py runserver 127.0.0.1:9090
 ```
 
 The admin panel is at `http://localhost:9090/admin/`.
