@@ -90,9 +90,12 @@ jobs:
       # (Firefox reported an NS_ERROR loading a font) and never painting
       # ("long loading, nothing returns"). This step now, when the repo
       # variable STRIP_SERVICE_WORKER == 'true':
-      #   1. Removes `serviceWorkerSettings` from `_flutter.loader.load(…)`
-      #      (both the inline-object and minified-variable forms) so no
-      #      new worker is ever registered — every load fetches fresh.
+      #   1. Removes `serviceWorkerSettings` from the `_flutter.loader.load(…)`
+      #      call site (both the inline-object and minified-variable forms)
+      #      so no new worker is ever registered — every load fetches fresh.
+      #      0.1.198: only the call site after the inlined flutter.js is
+      #      edited; 0.1.196 stripped the loader's own parameter too, which
+      #      made load() throw and blanked every app.
       #   2. KEEPS a self-destroying worker at the registered scriptURL so
       #      a browser still holding a stale worker updates to it on its
       #      next navigation, unregisters, and reloads once — instead of
@@ -122,16 +125,34 @@ jobs:
               "  })());\n"
               "});\n"
           )
+          # flutter_bootstrap.js = the SDK's flutter.js inlined verbatim (it
+          # ends with this source-map comment), then the generated
+          # `_flutter.loader.load({...})` call site. Only the call site may
+          # change: the inlined loader's own `async load({serviceWorkerSettings:e,
+          # ...})` signature must survive, or load() throws
+          # "ReferenceError: e is not defined" and the page stays blank
+          # (the 0.1.196/0.1.197 white screen).
+          marker = '//# sourceMappingURL=flutter.js.map'
           for app in ('editor_app', 'planner_app', 'portal_app'):
-              boot = Path(f'frontend/{app}/build/web/flutter_bootstrap.js')
+              web = Path(f'frontend/{app}/build/web')
+              boot = web / 'flutter_bootstrap.js'
               text = boot.read_text()
-              # Drop the serviceWorkerSettings key so the loader never registers.
-              text = re.sub(r"serviceWorkerSettings\s*:\s*\{[^{}]*\}\s*,?", "", text)
-              text = re.sub(r"serviceWorkerSettings\s*:\s*[A-Za-z_$][\w$]*\s*,?", "", text)
-              assert 'serviceWorkerSettings' not in text, f'{app}: strip did not remove serviceWorkerSettings'
-              boot.write_text(text)
+              loader, found, call_site = text.partition(marker)
+              loader += found
+              fail = f'Pages bundle not published: frontend-pages/strip-service-worker ({app})'
+              assert found, f'{fail} - flutter_bootstrap.js has no inlined-loader marker {marker!r}; refusing to strip blindly.'
+              # Byte-identical except flutter.js's trailing newline.
+              assert loader == (web / 'flutter.js').read_text().rstrip('\n'), (
+                  f'{fail} - the inlined loader differs from build/web/flutter.js before stripping.')
+              # Drop the serviceWorkerSettings key from the call site only so the
+              # loader never registers a worker.
+              call_site = re.sub(r"serviceWorkerSettings\s*:\s*\{[^{}]*\}\s*,?", "", call_site)
+              call_site = re.sub(r"serviceWorkerSettings\s*:\s*[A-Za-z_$][\w$]*\s*,?", "", call_site)
+              assert '_flutter.loader.load(' in call_site, f'{fail} - no _flutter.loader.load( call after the inlined loader.'
+              assert 'serviceWorkerSettings' not in call_site, f'{fail} - serviceWorkerSettings survived in the load() call site.'
+              boot.write_text(loader + call_site)
               # Serve a self-destroying worker for already-registered clients.
-              Path(f'frontend/{app}/build/web/flutter_service_worker.js').write_text(self_destroy)
+              (web / 'flutter_service_worker.js').write_text(self_destroy)
           PY
 
       - name: Stage Pages tree
