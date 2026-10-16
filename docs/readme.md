@@ -44,8 +44,26 @@ deployable.
   `http://127.0.0.1:9068/{portal,editor,planner}/` (loopback only) behind
   an nginx gateway that proxies `/api/` to
   `https://notechondria.trance-0.com`. Env vars: `LOCAL_GATEWAY_HOST_PORT`
-  and `REMOTE_BACKEND_ORIGIN`. See
+  and `REMOTE_BACKEND_ORIGIN`. Images carry the repo `VERSION` as
+  `APP_VERSION`, and containers restart with Docker until `down`. Hosts
+  with at least 16 GB RAM only. See
+  [`deployment/local_preview.md`](deployment/local_preview.md) and
   [`development/local_dev.md`](development/local_dev.md).
+
+Bootstrap, in order:
+
+```bash
+git clone --recurse-submodules https://github.com/Trance-0/Notechondria.git
+cd Notechondria
+free -h && nproc && docker ps             # host budget check (docs/AGENTS.md)
+scripts/local_remote_deploy.sh up         # web apps vs. the remote backend
+# or, with a Flutter SDK, one app at a time:
+(cd frontend/editor_app && flutter pub get && flutter run -d chrome --web-port 9060)
+# backend (Python + PostgreSQL), see development/local_dev.md:
+(cd backend && python -m venv .venv && . .venv/bin/activate \
+  && pip install -r requirements.txt && python manage.py migrate \
+  && python manage.py runserver 127.0.0.1:9090)
+```
 
 Quick smoke (all three frontend apps):
 
@@ -57,22 +75,36 @@ done
 
 ### Deployment topology
 
-Five supported paths, each with its own folder under `deployment/`:
+Live today: the frontend and docs on GitHub Pages and the backend on
+Northflank. The other paths are self-host or preview options.
 
+- **GitHub Pages (frontend)** — live at
+  <https://trance-0.github.io/Notechondria/portal/> (also `/editor/`,
+  `/planner/`).
+  [`.github/workflows/frontend-pages.yml`](../.github/workflows/frontend-pages.yml)
+  builds all three apps on push to `main`, with repo-prefixed base hrefs
+  and `APP_VERSION` set from the repo `VERSION`.
+- **GitHub Pages (docs)** — live at
+  <https://trance-0.github.io/Notechondria/docs/>, built by
+  [`.github/workflows/docs-pages.yml`](../.github/workflows/docs-pages.yml)
+  into a disjoint `gh-pages` subtree.
+- **Northflank (backend)** — live at `https://notechondria.trance-0.com`
+  and deploys on commit. See
+  [`deployment/northflank.md`](deployment/northflank.md); template at
+  repo-root `northflank.json`.
 - **Render (backend only, free-tier)** — see
   [`deployment/render_free_tier.md`](deployment/render_free_tier.md).
-- **Northflank (backend only)** — see
-  [`deployment/northflank.md`](deployment/northflank.md). Template at
-  repo-root `northflank.json`.
-- **Jenkins (full-stack self-hosted)** — see
-  [`deployment/deploy.md`](deployment/deploy.md).
-- **Docker (local/self-hosted full stack)** — root
+- **Jenkins (full-stack self-hosted)** — Ubuntu installer
+  `deployment/jenkins/install-jenkins.sh` (Jenkins on `127.0.0.1:8080`),
+  sequential test/backup/deploy stages, and a final
+  `verify_deployment.sh` gate on the gateway routes. See
+  [`deployment/deploy.md`](deployment/deploy.md) and
+  [`../deployment/jenkins/README.md`](../deployment/jenkins/README.md).
+- **Docker (self-hosted full stack)** — root
   [`docker-compose.yml`](../docker-compose.yml).
-- **GitHub Pages (frontend only)** — one workflow under
-  [`.github/workflows/frontend-pages.yml`](../.github/workflows/frontend-pages.yml)
-  builds all three apps. Base-hrefs are repo-prefixed
-  (`/Notechondria/editor/`, `/Notechondria/planner/`,
-  `/Notechondria/portal/`).
+- **Local preview (loopback)** — `scripts/local_remote_deploy.sh up`
+  serves the three apps on `127.0.0.1:9068` against the Northflank
+  backend. See [`deployment/local_preview.md`](deployment/local_preview.md).
 
 ### Frontend API base URL
 
@@ -103,6 +135,13 @@ without a bound:
 
 See the `src/startup/` section of
 [`client/notechondria_shared.md`](client/notechondria_shared.md).
+
+The separate version banner compares the build's `APP_VERSION` with the
+backend handshake. A newer backend shows "A new version is available.
+Refresh to update."; an older backend shows "A new version is rolling
+out". A build without `APP_VERSION` reports `0.1.21` and shows a false
+update banner, so every build path passes it (see
+[`development/local_dev.md`](development/local_dev.md#version-stamping-and-the-version-banner)).
 
 ### Per-app OAuth redirect URIs (since 0.1.90)
 
@@ -195,7 +234,8 @@ on the device stays available after it opens.
 - [`TODO.md`](TODO.md) — active work list (versioning rules inside).
 - [`versions/`](versions/) — per-release changelog (`0.1.x`).
 - [`api/backend_api_spec.md`](api/backend_api_spec.md) — API surface.
-- [`deployment/`](deployment/) — one file per deploy target.
+- [`deployment/`](deployment/) — one file per deploy target, including
+  [`deployment/local_preview.md`](deployment/local_preview.md).
 - [`development/ai_integration.md`](development/ai_integration.md) —
   current AI stub state and the future HTTP-microservice plan.
 - [`development/cross_platform_plan.md`](development/cross_platform_plan.md)
@@ -208,6 +248,6 @@ on the device stays available after it opens.
   - click-run Python backup/restore scripts for PostgreSQL and
   Cloudflare R2 using repo-root `.env`.
 - [`testing/backend_test_plan.md`](testing/backend_test_plan.md).
-- [`../LLM_CHECK.md`](../LLM_CHECK.md) — end-of-round checklist.
+- [`LLM_CHECK.md`](LLM_CHECK.md) — end-of-round checklist.
 - [`../AGENTS.md/AGENTS.md`](../AGENTS.md/AGENTS.md) — shared
   cross-project agent contract (submodule, pinned).

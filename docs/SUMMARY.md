@@ -31,6 +31,7 @@
 - [Docker-compose / Jenkins Full-stack Guide](deployment/deploy.md)
 - [Render Free Tier (Backend)](deployment/render_free_tier.md)
 - [Northflank Free Tier (Backend)](deployment/northflank.md)
+- [Local preview against the remote backend](deployment/local_preview.md)
 
 # Development
 

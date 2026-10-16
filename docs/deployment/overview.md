@@ -73,7 +73,8 @@ meta-refreshes to `/Notechondria/portal/`.
   - `--base-href /Notechondria/<app>/` — required for project sites.
   - `--no-web-resources-cdn` — bundle Flutter runtime locally.
   - `--dart-define=APP_VERSION=$(cat VERSION)` — propagate version
-    to splash screen + debug surface.
+    to the splash screen, debug surface, What's New, and the version
+    banner (which compares it with the backend handshake).
 - **Test gate:** each app's `test/smoke_test.dart` must pass before
   build.
 - **Trigger:** push to `main` + manual `workflow_dispatch`.
@@ -172,6 +173,18 @@ the recipe; treat the steps below as a starting point.
   no override needed — the entrypoint's gunicorn fallback runs.
 - **Untested:** all of the above is paper-only. If you wire it up,
   please file a PR with notes.
+
+## 8. Local preview [Frontend, loopback]
+
+The three web apps built from the current checkout, served on
+`http://127.0.0.1:9068/` and proxied to the production backend. No local
+backend or database. Hosts with at least 16 GB RAM only.
+
+- **Entry point:** [`scripts/local_remote_deploy.sh`](../../scripts/local_remote_deploy.sh) `up` / `down`.
+- **Detailed runbook:** [local_preview.md](local_preview.md).
+- **Version stamp:** the Docker builds take an `APP_VERSION` build arg
+  from `VERSION`, like the Pages workflow's `--dart-define`. Jenkins
+  (`deploy_frontends.sh`) passes it the same way.
 
 ## See also
 

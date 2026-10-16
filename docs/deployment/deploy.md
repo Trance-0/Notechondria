@@ -251,22 +251,25 @@ cd backend
 docker compose --env-file ../.env up --build -d
 ```
 
-Frontend apps are now separate containers. Start each one from its own directory:
+Frontend apps are now separate containers. Start each one from its own
+directory, one at a time. `APP_VERSION` stamps the build with the repo
+`VERSION`; without it the app reports `0.1.21` and shows a false update
+banner (see
+[`development/local_dev.md`](../development/local_dev.md#version-stamping-and-the-version-banner)).
+Each app publishes its own port on `127.0.0.1` only
+(`EDITOR_FRONTEND_HOST_PORT` 9061, `PLANNER_FRONTEND_HOST_PORT` 9062,
+`PORTAL_FRONTEND_HOST_PORT` 9063); public traffic goes through the
+gateway.
 
 ```bash
-cd frontend/editor_app
-docker compose --env-file ../../.env up --build -d
+export APP_VERSION="$(cat VERSION)"
+(cd frontend/editor_app && docker compose --env-file ../../.env up --build -d)
+(cd frontend/planner_app && docker compose --env-file ../../.env up --build -d)
+(cd frontend/portal_app && docker compose --env-file ../../.env up --build -d)
 ```
 
-```bash
-cd frontend/planner_app
-docker compose --env-file ../../.env up --build -d
-```
-
-```bash
-cd frontend/portal_app
-docker compose --env-file ../../.env up --build -d
-```
+To preview only the web apps against the remote backend, with no local
+backend or database, use [`local_preview.md`](local_preview.md).
 
 ## 3) Initialize database
 
@@ -284,20 +287,39 @@ bash deployment/jenkins/scripts/test_backend.sh /workspace/Notechondria /workspa
 
 ## 5) Jenkins pipeline flow
 
-Jenkins now drives the full stack, with backend/frontend test and deploy branches running in parallel.
+Jenkins drives the full stack. On Ubuntu, install and provision it with
+`deployment/jenkins/install-jenkins.sh` (Jenkins on `127.0.0.1:8080`,
+managed `notechondria` job, credentials kept local); see
+[`deployment/jenkins/README.md`](../../deployment/jenkins/README.md). The
+manual setup above is for other hosts.
 
-The pipeline runs in this order:
+The `Jenkinsfile` stages run sequentially, and any failure stops the
+pipeline before the next stage:
 
-1. Checkout source.
-2. Generate `${WORKSPACE}/.env.deploy` from Jenkins-injected environment variables.
-3. Start the `db` service and back up PostgreSQL from the database container.
-4. Run backend tests.
-5. Run backend deploy.
+1. Source snapshot: `checkout scm`, or, when `LOCAL_SOURCE_DIR` is set,
+   `snapshot_source.py` copies Git-visible files without `.env` files,
+   keys, symlinks, or Git metadata.
+2. Prepare environment: `prepare_env.sh` writes `${WORKSPACE}/.env.deploy`
+   from `/var/lib/jenkins/secrets/notechondria-deploy.env` and the
+   injected variables.
+3. Backend tests (`test_backend.sh`).
+4. Frontend tests (`test_frontends.sh`): each app's `frontend_test`
+   Docker target, one at a time.
+5. Database backup (`backup_postgres.sh`, 5-minute timeout) to
+   `/var/lib/jenkins/backups/notechondria`.
+6. Backend deployment (`deploy_backend.sh`).
+7. Frontend deployment (`deploy_frontends.sh`): reads `VERSION`, exports
+   `APP_VERSION`, then builds and starts each per-app compose stack with
+   its own image tag and base href.
+8. Gateway and health verification: `deploy_gateway.sh`, then
+   `verify_deployment.sh`, which requires HTTP success from
+   `/api/v1/handshake/`, `/editor/`, `/planner/`, and `/portal/` on
+   `127.0.0.1:$ROOT_HTTP_PORT` (30 attempts each).
+
+The workspace `.env.deploy` is deleted in the `post { always }` step.
 
 Pipeline behavior:
 
-- Backend and frontend tracks run in parallel.
-- Each branch is wrapped in `catchError(...)` so one side can continue even if the other side fails.
 - The backend deploy script performs a post-start verification pass inside the running app container:
   - `python manage.py migrate --noinput`
   - `python manage.py bootstrap_platform`
@@ -316,6 +338,9 @@ The relevant files are:
 - `deployment/jenkins/scripts/deploy_backend.sh`
 - `deployment/jenkins/scripts/deploy_frontends.sh`
 - `deployment/jenkins/scripts/deploy_gateway.sh`
+- `deployment/jenkins/scripts/verify_deployment.sh`
+- `deployment/jenkins/install-jenkins.sh` (with `configure_host.py`,
+  `verify_jenkins.py`, `snapshot_source.py`, `redact_diagnostics.py`)
 - `deployment/docker/gateway/docker-compose.yml`
 - `deployment/render/scripts/render_backend_start.sh`
 - `docs/deployment/render_free_tier.md`

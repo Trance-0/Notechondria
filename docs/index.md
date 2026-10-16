@@ -16,7 +16,7 @@ Read in order:
 4. [`readme.md`](readme.md) — human-facing project overview.
 5. [`client/`](client/) and [`server/backend.md`](server/backend.md)
    — the per-component deep dives (three frontend apps + backend).
-6. [`../LLM_CHECK.md`](../LLM_CHECK.md) — end-of-round checklist.
+6. [`LLM_CHECK.md`](LLM_CHECK.md) — end-of-round checklist.
 
 ---
 
@@ -88,13 +88,14 @@ docs.
 │                              three apps via path: ../notechondria_shared
 ├── deployment/             ← per-target CI/CD scripts (jenkins/,
 │                             docker/, render/, northflank/)
-├── docs/                   ← this directory
+├── docs/                   ← this directory (incl. LLM_CHECK.md,
+│                             TODO.md, AGENTS.md)
+├── scripts/                ← local_remote_deploy.sh (loopback
+│                             preview) + backup/restore and
+│                             repo-tooling helpers
 ├── sample/                 ← seed course content + media
 ├── course_template/        ← older course template artifacts
-├── LLM_CHECK.md            ← end-of-round checklist and pitfall log
 ├── README.md               ← repo-root overview
-├── TODO.md                 ← (symlink/alias target; live TODO lives
-│                             in docs/TODO.md)
 ├── VERSION                 ← bump third digit per round
 ├── northflank.json         ← Northflank infra template
 ├── render-deploy.sh        ← Render start wrapper
@@ -143,7 +144,9 @@ extract more shared widgets only when a duplication bug actually shows up.
 
 ## 5. Deployment topology (short)
 
-Four supported paths — per-target detail lives in `deployment/`:
+Live: Pages frontend + Pages docs + Northflank backend
+(`https://notechondria.trance-0.com`). Per-target detail lives in
+`deployment/`:
 
 - **Render free-tier (backend only)** —
   [`deployment/render_free_tier.md`](deployment/render_free_tier.md).
@@ -151,11 +154,22 @@ Four supported paths — per-target detail lives in `deployment/`:
   [`deployment/northflank.md`](deployment/northflank.md) +
   repo-root `northflank.json`.
 - **Jenkins (full-stack self-hosted)** —
-  [`deployment/deploy.md`](deployment/deploy.md).
-- **GitHub Pages (frontend only)** —
+  [`deployment/deploy.md`](deployment/deploy.md); Ubuntu installer
+  `deployment/jenkins/install-jenkins.sh`, sequential stages ending in
+  `verify_deployment.sh`.
+- **GitHub Pages (frontend)** —
   [`.github/workflows/frontend-pages.yml`](../.github/workflows/frontend-pages.yml).
+- **GitHub Pages (docs)** —
+  [`.github/workflows/docs-pages.yml`](../.github/workflows/docs-pages.yml).
+- **Local preview (loopback, hosts with at least 16 GB)** —
+  `scripts/local_remote_deploy.sh up|down`, see
+  [`deployment/local_preview.md`](deployment/local_preview.md).
 
 Plus local Docker compose for dev.
+
+Every frontend build path must pass `APP_VERSION` from `VERSION` (Pages:
+`--dart-define`; Docker: the `APP_VERSION` build arg). Without it the apps
+report the `0.1.21` code default and the version banner misfires.
 
 ## 6. Open work / caution list
 
@@ -201,7 +215,8 @@ Plus local Docker compose for dev.
 > / provenance branches. Keep frontend as three standalone Flutter apps
 > under `frontend/editor_app`, `frontend/planner_app`, and
 > `frontend/portal_app`. Keep the Jenkins pipeline full-stack with
-> backend/frontend test and deploy branches running in parallel.
+> sequential test, backup, and deploy stages gated by
+> `verify_deployment.sh`.
 > Verify each app locally with Flutter before claiming success. Run
 > backend tests with
 > `DJANGO_SETTINGS_MODULE=notechondria.settings_test`, keep

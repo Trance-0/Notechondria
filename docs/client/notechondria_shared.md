@@ -111,14 +111,31 @@ in 0.1.67 relies on this pair.
   request is capped at `kBackendStartupTimeout` (10s), and after the first
   timeout the rest of the pass fails fast with a `BackendStartupTimeout`.
   `friendlyError` renders that as the localized "did not respond within 10s"
-  message. Requests outside a pass keep their previous behavior and are
-  unbounded.
+  message. Requests made after the pass keep their previous unbounded
+  behavior. Known gap: because the budget is a zone value, fire-and-forget
+  work started inside the pass (portal's post-OAuth cloud pull, editor's
+  legacy-Inbox migration) inherits the 10s cap and the fail-fast flag
+  (tracked in [`../TODO.md`](../TODO.md)).
+- **Where the fallbacks show up.** The backend-unavailable result is the
+  shared `LoadErrorBanner` over local data, with Work offline and Retry. A
+  startup step that throws shows `StartupFailureView` (Retry, Continue
+  anyway). Before Flutter paints, each app's `web/index.html` shows a
+  `#nc-boot` loading message; it turns into a failure message with Reload
+  when the bootstrap script fails to download, the loader throws, or no
+  frame appears within 20s.
 - **`startup_guard.dart`** — `runGuardedApp` (used by every `main.dart`)
   wraps `runApp` in `runZonedGuarded`, chains `FlutterError.onError` and
   `PlatformDispatcher.instance.onError`, and installs `StartupErrorWidget` as
   a non-blank `ErrorWidget.builder`. An uncaught error before the first frame
   shows `StartupFailureApp`; later ones are only logged, because the shell's
   own fallbacks are on screen by then.
+- **`components/version_update_banner.dart`** (related, not startup) —
+  `VersionUpdateBanner` compares the build's `APP_VERSION` with the
+  handshake `version`: backend newer shows "A new version is available",
+  backend older shows "rolling out", below `min_frontend_version` shows
+  "no longer supported". Every build path must pass `APP_VERSION`, or the
+  `0.1.21` code default triggers a false update banner (see
+  [`../development/local_dev.md`](../development/local_dev.md#version-stamping-and-the-version-banner)).
 
 ## `src/models/`
 

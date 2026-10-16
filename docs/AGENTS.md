@@ -78,6 +78,14 @@ owner pushes, and any check not run locally is called out per
 LLM_CHECK. The docker-compose files stay in the repo for CI and for
 ≥16 GB self-host targets only.
 
+Note (owner request, 2026-10-15): a loopback-only local preview exists,
+`scripts/local_remote_deploy.sh up|down` (runbook:
+`docs/deployment/local_preview.md`). It builds the three web apps one at a
+time and serves them on `127.0.0.1:9068` against the remote backend, with
+no local backend or database. It is for hosts with at least 16 GB RAM only.
+It does not change the live topology above, and every rule in "Host
+resource budget" and the paragraph above still applies to it.
+
 ## Round-end verification convention (owner, urgent)
 
 Because the suites cannot run on this host (no Flutter SDK; host Python

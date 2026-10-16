@@ -1,32 +1,53 @@
 # Notechondria
 
-Notechondria is split into three standalone Flutter frontends plus one Django backend.
+Notechondria is a note-taking and course-planning system: three standalone
+Flutter apps that work offline first and sync through one Django backend.
 
-## Frontends
-- `frontend/editor_app/` — offline-first note editor
+## Components
+- `frontend/editor_app/` — offline-first markdown note editor
 - `frontend/planner_app/` — course/module planner and deadline tracker
-- `frontend/portal_app/` — orchestration shell
+- `frontend/portal_app/` — public front page and orchestration shell
+- `frontend/notechondria_shared/` — shared Flutter package used by all three
+- `backend/` — Django + DRF + PostgreSQL, API under `/api/v1/`
+- `cli/` — stdio MCP server that talks to the REST API
 
-## Backend
-- `backend/` — Django + DRF + PostgreSQL
+## Live
+- Apps (GitHub Pages):
+  [portal](https://trance-0.github.io/Notechondria/portal/),
+  [editor](https://trance-0.github.io/Notechondria/editor/),
+  [planner](https://trance-0.github.io/Notechondria/planner/)
+- Docs: <https://trance-0.github.io/Notechondria/docs/>
+- Backend API (Northflank): `https://notechondria.trance-0.com/api/v1/`;
+  the version probe is
+  <https://notechondria.trance-0.com/api/v1/handshake/>
 
-## Root files
-Only essential root files are kept here:
-- `README.md`
-- `Jenkinsfile`
-- `docker-compose.yml`
-- `render-deploy.sh`
+## Local preview against the remote backend
+Builds the three web apps from this checkout in Docker and serves them on
+loopback, proxying `/api/`, `/media/`, and `/static/` to the production
+backend. No local backend, database, or credentials. Use a host with at
+least 16 GB RAM (see `docs/AGENTS.md`, "Host resource budget").
 
-## Render runtime note
-Render should use the backend runtime files:
-- `backend/runtime.txt`
-- `backend/.python-version`
-- `backend/requirements-render.txt`
+```bash
+scripts/local_remote_deploy.sh up     # build one app at a time, then start
+scripts/local_remote_deploy.sh down   # stop and remove the containers
+```
+
+- `http://127.0.0.1:9068/portal/`, `/editor/`, `/planner/` (bound to
+  `127.0.0.1` only)
+- Builds are stamped with `VERSION`, so no false "new version" banner.
+- Runbook: [`docs/deployment/local_preview.md`](docs/deployment/local_preview.md).
 
 ## Deployment methods
-- `deployment/jenkins/` — full-stack Jenkins deployment
-- `deployment/docker/` — local/self-hosted Docker full stack
-- `deployment/render/` — Render backend + GitHub Pages frontend
+- GitHub Pages — frontend (`.github/workflows/frontend-pages.yml`) and docs
+  (`.github/workflows/docs-pages.yml`), on push to `main`
+- Northflank — backend (`northflank.json`), deploys on commit
+- `deployment/jenkins/` — self-hosted full stack; Ubuntu installer
+  `deployment/jenkins/install-jenkins.sh`
+- `deployment/docker/` — self-hosted Docker full stack and the local
+  preview gateway
+- `deployment/render/` — Render backend (free tier; uses
+  `backend/runtime.txt`, `backend/.python-version`,
+  `backend/requirements-render.txt`)
 
 ## Docs
 
@@ -46,8 +67,8 @@ Entry points:
 - [`docs/server/`](docs/server/) — backend deep dives (overview,
   `creators`, `notes`, `mcp`).
 - [`docs/deployment/`](docs/deployment/) — deploy runbooks
-  (Docker-compose / Render / Northflank / GitHub Pages / Release
-  process).
+  (Docker-compose / Jenkins / Render / Northflank / GitHub Pages / local
+  preview / Release process).
 - [`docs/versions/`](docs/versions/) — per-release changelog
   (`0.1.x` series).
 - [GitHub issues](https://github.com/Trance-0/Notechondria/issues) — active work list;
@@ -96,7 +117,8 @@ Entry points:
 ```bash
 for app in frontend/editor_app frontend/planner_app frontend/portal_app; do
   (cd "$app" && flutter test test/smoke_test.dart -r compact)
-  (cd "$app" && flutter build web --release --base-href "/${app##*/_app}/" --no-web-resources-cdn)
+  (cd "$app" && flutter build web --release --base-href "/$(basename "$app" _app)/" \
+    --no-web-resources-cdn --dart-define=APP_VERSION="$(cat ../../VERSION)")
 done
 ```
 

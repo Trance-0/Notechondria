@@ -479,6 +479,79 @@ in both `backend/mcp/tools.py` and `cli/notechondria_mcp/tools.py`.**
 ### GitHub Sync
 
 
+## Startup fallback follow-ups (open since 0.1.198)
+
+Found in the 0.1.198 white-screen review and the 2026-10-16 local-preview
+round. Not fixed in code yet; file as Issues with
+`scripts/todo_to_issues.py` when picked up.
+
+- [ ] A refused or 5xx backend at cold start still clears the saved
+  session. `catch (_)` then `clearSession()` in
+  `frontend/editor_app/lib/core/auth_flows.dart` (`_restoreSession`) and
+  `frontend/portal_app/lib/core/bootstrap.dart` signs the user out, while a
+  timeout keeps the session, and Retry cannot restore it. Clear only on a
+  real auth rejection (`authenticated != true`, 401/403, or the
+  `token_not_valid` / `invalid token` sentinels).
+- [ ] The 10s startup budget leaks into background work started during
+  startup. It is a zone value, so `unawaited(_pullCloudNotesToLocal())`
+  (portal `core/bootstrap.dart`) and `unawaited(_autoMigrateLegacyInbox())`
+  (editor `core/initial_data.dart`) inherit the cap and the sticky
+  fail-fast flag. Run them outside the budget, then fix
+  `docs/versions/0.1.198.md` and the `send()` doc comment, which say
+  requests outside a pass stay unbounded.
+- [ ] An HTML 502 from a proxy (for example the local preview gateway with
+  a refused upstream) shows "Expected JSON from GET ... but received HTML.
+  Check API_BASE_URL and backend routing." instead of the
+  backend-unavailable banner (`HttpClientInternalsMixin`,
+  `frontend/notechondria_shared/lib/src/http/http_client_internals_mixin.dart`).
+  A 5xx with an HTML body should be treated as the backend being
+  unavailable.
+- [ ] That message also violates AGENTS.md §1.8: it has no consequence and
+  no `Module/process`. Reword it to the
+  "<consequence>: <App>.HTTP/response — <cause>" shape.
+- [ ] `StartupGuard.installErrorHandlers`
+  (`notechondria_shared/lib/src/startup/startup_guard.dart`) logs every
+  `FlutterError` as `Screen element not rendered: <App>.UI/render`, which
+  is wrong for gesture, image-codec, and services errors. Branch on
+  `details.library` or use a neutral consequence.
+- [ ] `friendlyError`'s fallback source `Backend.HTTP/request`
+  (`notechondria_shared/lib/src/utils/friendly_error.dart`) labels
+  client-side failures with a server-side name and is not in the
+  `docs/AGENTS.md` module table. Rename it to a client-side module and
+  register it.
+- [ ] `docs/AGENTS.md` lists the `render` process under `Portal.UI` only,
+  but the code also emits `Editor.UI/render` and `Planner.UI/render`. Add
+  it to those rows or add a shared row.
+- [ ] No automated browser check of the bootstrap JS. CI never executes
+  `flutter_bootstrap.js` or the `#nc-boot` script, which is how the
+  0.1.196 white screen stayed green. Add a headless-browser load of one
+  built app to `frontend-pages.yml`.
+- [ ] Generated l10n was hand-spliced in 0.1.198 because `flutter gen-l10n`
+  fails on the pre-existing `activityWeightN` select placeholder. Fix the
+  placeholder, regenerate, and confirm the committed
+  `app_localizations*.dart` match the ARBs.
+- [ ] Three shared-package tests already fail on `main` (the shared suite
+  is not run in CI): in
+  `frontend/notechondria_shared/test/version_update_banner_test.dart`,
+  "shows localized update banner when backend is newer", "update banner
+  localizes to zh", and "unsupported (below floor) shows update-required,
+  no dismiss". Each exact-text finder matches 0 widgets.
+- [ ] The root `docker-compose.yml` (used by `docker compose up` and
+  `deployment/jenkins/scripts/deploy_full_stack.sh`) does not forward
+  `APP_VERSION`, so its frontends report 0.1.21. Add
+  `APP_VERSION: ${APP_VERSION:-}` to the three frontend build args, and in
+  the same change bind its published ports (`APP_HOST_PORT`,
+  `ROOT_HTTP_PORT`, and any others) to `127.0.0.1`, since that file is for
+  local all-in-one use.
+- [ ] Security: PostgreSQL is published on all host interfaces in
+  `backend/docker-compose.yml` (`${DB_HOST_PORT:-9032}:5432`) and the root
+  `docker-compose.yml`, and the backend's gunicorn port in
+  `backend/docker-compose.yml` (`${BACKEND_HOST_PORT:-9090}:8000`) is too.
+  Change them to `"127.0.0.1:${DB_HOST_PORT:-9032}:5432"` and
+  `"127.0.0.1:${BACKEND_HOST_PORT:-9090}:8000"` (Jenkins reaches `db` over
+  the Compose network), then decide whether `APP_HOST_PORT` and the
+  gateway's `ROOT_HTTP_PORT` should be loopback behind the FRP tunnel.
+
 ## Release / CI
 
 
