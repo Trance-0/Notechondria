@@ -70,6 +70,7 @@ Run from `frontend/`:
 ```bash
 for app in editor_app planner_app portal_app; do
   (cd "$app" && flutter test test/smoke_test.dart -r compact)
-  (cd "$app" && flutter build web --release --base-href "/${app%_app}/" --no-web-resources-cdn)
+  (cd "$app" && flutter build web --release --base-href "/${app%_app}/" --no-web-resources-cdn \
+    --dart-define=APP_VERSION="$(cat ../../VERSION)")
 done
 ```

@@ -8,6 +8,9 @@
 #
 # Env: LOCAL_GATEWAY_HOST_PORT (default 9068, always bound to 127.0.0.1),
 #      REMOTE_BACKEND_ORIGIN (default https://notechondria.trance-0.com).
+# Images are stamped with the repo-root VERSION (APP_VERSION build arg) and
+# containers use --restart unless-stopped so the preview survives a Docker
+# daemon or host restart; `down` removes them for good.
 # Details: docs/development/local_dev.md.
 set -Eeuo pipefail
 export MSYS_NO_PATHCONV=1
@@ -50,6 +53,11 @@ preflight() {
   # The value is substituted into nginx config, so accept only scheme://host[:port].
   [[ "$REMOTE_ORIGIN" =~ ^https?://[A-Za-z0-9.-]+(:[0-9]{1,5})?$ ]] \
     || fail "Local deploy not started: LocalDeploy/preflight — REMOTE_BACKEND_ORIGIN='$REMOTE_ORIGIN' must look like https://host[:port] with no path."
+  # Without a real APP_VERSION the apps ship the Dart default and show a false
+  # "new version" banner against the backend handshake.
+  APP_VERSION="$(tr -d '[:space:]' < "$ROOT_DIR/VERSION" 2>/dev/null || true)"
+  [[ "$APP_VERSION" =~ ^[0-9A-Za-z.+-]+$ ]] \
+    || fail "Local deploy not started: LocalDeploy/preflight — $ROOT_DIR/VERSION is missing, empty, or not a version string ('$APP_VERSION')."
   local own
   own="$(docker port "$GATEWAY" 80/tcp 2>/dev/null || true)"
   if [[ "$own" != "127.0.0.1:$HOST_PORT" ]] && port_in_use "$HOST_PORT"; then
@@ -63,9 +71,10 @@ build_apps() {
   # 127.0.0.1 the apps always call same-origin /api/v1 (_defaultApiBaseUrl in
   # lib/core/helpers.dart), which the gateway forwards to the remote.
   for app in "${APPS[@]}"; do
-    log "Building ${app}_app web image (sequential, timeout ${BUILD_TIMEOUT_SECONDS}s)..."
+    log "Building ${app}_app web image ${APP_VERSION} (sequential, timeout ${BUILD_TIMEOUT_SECONDS}s)..."
     timeout "$BUILD_TIMEOUT_SECONDS" docker build --progress=plain \
       --build-arg "APP_BASE_HREF=/${app}/" \
+      --build-arg "APP_VERSION=${APP_VERSION}" \
       -t "notechondria-local-${app}:latest" \
       -f "$ROOT_DIR/frontend/${app}_app/Dockerfile" "$ROOT_DIR/frontend" \
       || fail "Local deploy not started: LocalDeploy/build — docker build of ${app}_app failed or exceeded ${BUILD_TIMEOUT_SECONDS}s (see the build output above)."
@@ -81,11 +90,13 @@ start_stack() {
     # own /api/ block is unused here, so point it at an IP literal that needs
     # no DNS at nginx startup.
     docker run -d --name "notechondria-local-${app}" --network "$NETWORK" --memory 256m \
+      --restart unless-stopped \
       -e FRONTEND_BACKEND_ORIGIN=http://127.0.0.1:9 \
       "notechondria-local-${app}:latest" >/dev/null \
       || fail "Local deploy not started: LocalDeploy/start — could not start container notechondria-local-${app}."
   done
   docker create --name "$GATEWAY" --network "$NETWORK" --memory 128m \
+    --restart unless-stopped \
     -p "127.0.0.1:${HOST_PORT}:80" \
     -e "NOTECHONDRIA_REMOTE_ORIGIN=${REMOTE_ORIGIN}" \
     "$GATEWAY_IMAGE" >/dev/null \

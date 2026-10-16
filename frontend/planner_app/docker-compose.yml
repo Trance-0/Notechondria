@@ -15,10 +15,11 @@ services:
       args:
         FRONTEND_API_BASE_URL: ${FRONTEND_API_BASE_URL:-http://localhost:9060/api/v1}
         APP_BASE_HREF: ${APP_BASE_HREF:-/}
+        APP_VERSION: ${APP_VERSION:-}
     environment:
       FRONTEND_BACKEND_ORIGIN: ${FRONTEND_BACKEND_ORIGIN:-http://nginx}
     ports:
-      - ${PLANNER_FRONTEND_HOST_PORT:-9062}:80
+      - "127.0.0.1:${PLANNER_FRONTEND_HOST_PORT:-9062}:80"
     networks:
       notechondria-shared:
         aliases:

@@ -8,6 +8,15 @@ NETWORK_SCRIPT="${ROOT_DIR}/deployment/jenkins/scripts/ensure_shared_network.sh"
 
 bash "$NETWORK_SCRIPT" "$ENV_FILE"
 
+# Stamp the builds with the repo VERSION; without it the Dart default ships
+# and the apps show a false "new version" banner against the backend.
+APP_VERSION="$(tr -d '[:space:]' < "$ROOT_DIR/VERSION" 2>/dev/null || true)"
+if [[ ! "$APP_VERSION" =~ ^[0-9A-Za-z.+-]+$ ]]; then
+  printf 'Frontends not deployed: Jenkins.Deploy/frontends — %s/VERSION is missing, empty, or not a version string.\n' "$ROOT_DIR" >&2
+  exit 1
+fi
+export APP_VERSION
+
 for app in editor_app planner_app portal_app; do
   cd "$ROOT_DIR/frontend/$app"
   export FRONTEND_IMAGE="notechondria-${app}:${BUILD_NUMBER:-local}"

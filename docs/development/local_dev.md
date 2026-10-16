@@ -115,12 +115,53 @@ scripts/local_remote_deploy.sh down   # stop and remove the containers (images a
   Tokens stay in the browser's storage for the `127.0.0.1:9068` origin.
   OAuth redirect URIs are registered per origin, and sign-in from
   loopback has not been verified.
-- The Docker build does not pass `APP_VERSION`. The apps report the code
-  default (`0.1.21`), so the version banner offers an update that a
-  refresh will not clear.
+- Restarts: every container runs with `--restart unless-stopped`, so the
+  preview comes back by itself after a Docker daemon or devspace restart.
+  `down` removes the containers, so they stay gone until the next `up`.
 - Host budget (see `docs/AGENTS.md`): each Flutter build took about 45 s
   on a 16-core / 61 GiB host. Builds run one at a time with a 20-minute
   timeout each. Do not run this on hosts under 16 GB RAM.
+
+#### Version stamping and the version banner
+
+Each app compiles its version from
+`String.fromEnvironment('APP_VERSION', defaultValue: '0.1.21')` in
+`lib/core/helpers.dart`. The shared `VersionUpdateBanner` compares that
+value with the `version` field of `/api/v1/handshake/`. The What's New
+dialog and local archive exports use it too.
+
+| Build version vs. backend | Banner |
+| --- | --- |
+| Equal, or either side not numeric | None |
+| Backend newer | "A new version is available. Refresh to update. (vOLD → vNEW)" |
+| Backend older | "A new version is rolling out — some features may be briefly unavailable." |
+| Below the backend's `min_frontend_version` | "This app version is no longer supported. Refresh to update." |
+
+So a backend newer than the build means "update available", and a
+backend older than the build means "rolling out". The banner stays
+hidden while the backend is unreachable.
+
+Every build path must pass the repo-root `VERSION`:
+
+- Pages: `.github/workflows/frontend-pages.yml` passes
+  `--dart-define=APP_VERSION=...`.
+- Docker: each `frontend/<app>_app/Dockerfile` takes an `APP_VERSION`
+  build arg. `scripts/local_remote_deploy.sh` and
+  `deployment/jenkins/scripts/deploy_frontends.sh` (through the per-app
+  `docker-compose.yml`) read `VERSION` and pass it. Both scripts stop
+  before building if `VERSION` is missing or empty.
+- A manual `docker build` without `--build-arg APP_VERSION=...` still
+  works. The Dockerfile then omits the define and prints a warning, and
+  the app reports `0.1.21`. Against a 0.1.198 backend that shows a false
+  "A new version is available ... (v0.1.21 → v0.1.198)" banner, and a
+  refresh does not clear it.
+
+Check what a bundle carries:
+
+```bash
+curl -s http://127.0.0.1:9068/editor/main.dart.js \
+  | grep -oE '"0\.1\.[0-9]+"' | sort | uniq -c | sort -rn | head -1
+```
 
 ## Backend (Django)
 
@@ -206,9 +247,9 @@ docker compose logs -f app
 # Backend only
 docker compose build app nginx && docker compose up -d app nginx
 
-# Frontend only (e.g. editor)
+# Frontend only (e.g. editor); APP_VERSION stamps the build (see above)
 cd frontend/editor_app
-docker compose build && docker compose up -d
+APP_VERSION="$(cat ../../VERSION)" docker compose build && docker compose up -d
 ```
 
 ## Debugging Tips

@@ -13,6 +13,7 @@ Use this checklist at the end of each modification round.
 7. Assuming a host port such as `80`, `443`, `8080`, or any other port is free without first confirming it on the target machine; you do not know the host machine state, so never assign host ports on assumption.
 8. Launching builds/tests/containers beyond what the host can afford (crashed the 3.3 GiB dev host on 2026-07-10 with three parallel Flutter Docker builds + a 7-service stack). Check `free -h` first; take at most 70% of remaining RAM; `--memory`-cap containers; `timeout`-wrap runs; kill anything silent for 5 minutes; run heavy jobs sequentially. See docs/AGENTS.md "Host resource budget".
 9. Post-processing generated web output with whole-file regexes. 0.1.196's Pages service-worker strip also matched the inlined `flutter.js` loader's own `serviceWorkerSettings:e` parameter, so every app threw `ReferenceError: e is not defined` and stayed blank for two releases while CI was green (VM smoke tests never run the bootstrap JS). Scope edits of `flutter_bootstrap.js` to the call site after `//# sourceMappingURL=flutter.js.map`, assert the loader is unchanged, and load the built bundle in a real browser before claiming a web fix.
+10. Building a frontend without `APP_VERSION`. The apps compile `String.fromEnvironment('APP_VERSION', defaultValue: '0.1.21')`, so a Docker or Jenkins build that omits it ships 0.1.21 and the shared version banner shows a false "A new version is available. Refresh to update. (v0.1.21 → v0.1.NNN)" that a refresh never clears (seen on the 0.1.198 local preview). Pass `--dart-define=APP_VERSION` (Pages) or `--build-arg APP_VERSION` (Docker) from `VERSION`, then grep the built `main.dart.js` for the dominant `"0.1.NNN"`.
 
 ## Round-end checklist
 
@@ -28,6 +29,33 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 2026-10-16 (repo tooling + docs, no VERSION bump; stays 0.1.198):
+  APP_VERSION stamping for Docker/Jenkins frontend builds and a local
+  preview redeploy. ROOT CAUSE of the local "v0.1.21 → v0.1.197" banner:
+  `frontend/*/lib/core/helpers.dart` defaults APP_VERSION to 0.1.21 and
+  only the Pages/release workflows passed it. Each app Dockerfile now takes
+  an `APP_VERSION` build arg (empty means the define is omitted, with a
+  §1.8 warning, never an empty string). `scripts/local_remote_deploy.sh`
+  and `deployment/jenkins/scripts/deploy_frontends.sh` read `VERSION` and
+  stop if it is empty; the per-app compose files forward the arg. Local
+  preview containers now use `--restart unless-stopped` (`down` still
+  removes them). SECURITY FIX in a touched file: the per-app compose files
+  published 9061-9063 on all interfaces; they now bind `127.0.0.1` (the
+  Jenkins gateway reaches the apps over the shared network, and
+  `verify_deployment.sh` checks the gateway on 127.0.0.1, so nothing used
+  the wide bind). Verified: sequential rebuild via `up` (exit 0), only
+  `127.0.0.1:9068->80/tcp` published, front-page 200 application/json,
+  each bundle's dominant version "0.1.198" (no "0.1.21"), headless
+  Playwright Chromium renders all three local and all three Pages apps
+  with no banner and no console errors. The empty-VERSION preflight and the
+  Dockerfile's empty-arg branch were checked in isolation. NOT run: a
+  Jenkins pipeline (deploy_frontends.sh syntax-checked only), `docker
+  compose config` (no compose plugin on this host), Flutter analyze/tests
+  (no Dart change). `docker run --memory` caps are still discarded by this
+  kernel. Docs: README, docs/readme.md, docs/index.md,
+  docs/deployment/{local_preview (new),deploy,overview}.md,
+  docs/development/local_dev.md, docs/client/notechondria_shared.md,
+  docs/AGENTS.md (additive note only), docs/TODO.md follow-ups.
 - 0.1.198: INCIDENT FIX (owner-reported white screen) + backend-unavailable
   fallbacks. Root cause `.github/workflows/frontend-pages.yml:130`: the
   0.1.196 strip regex also removed `serviceWorkerSettings:e` from the inlined
