@@ -36,9 +36,120 @@
 
   <title>Notechondria Planner</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    /* Startup fallback (0.1.198): see the #nc-boot block in <body>. */
+    #nc-boot {
+      position: fixed; inset: 0; z-index: 0; box-sizing: border-box;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 12px; padding: 24px; text-align: center;
+      font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: #f8fafc; color: #334155;
+    }
+    #nc-boot[data-state="failed"] { z-index: 2147483646; }
+    #nc-boot p { margin: 0; max-width: 40em; }
+    #nc-boot .nc-boot-title { font-weight: 600; }
+    #nc-boot .nc-boot-spinner {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 3px solid rgba(100, 116, 139, 0.25); border-top-color: #4338CA;
+      animation: nc-boot-spin 0.9s linear infinite;
+    }
+    #nc-boot[data-state="failed"] .nc-boot-spinner { display: none; }
+    #nc-boot .nc-boot-reload {
+      font: inherit; padding: 8px 16px; border: 0; border-radius: 6px;
+      background: #4338CA; color: #fff; cursor: pointer;
+    }
+    #nc-boot .nc-boot-reload:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+    @keyframes nc-boot-spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      #nc-boot .nc-boot-spinner { animation-duration: 3s; }
+    }
+    @media (prefers-color-scheme: dark) {
+      #nc-boot { background: #0f172a; color: #e2e8f0; }
+    }
+  </style>
 </head>
 <body>
-  <script src="flutter_bootstrap.js" async></script>
+  <!-- Startup fallback (0.1.198). The loading indicator sits under Flutter's
+       view, so the first painted frame covers it; it is removed on the
+       `flutter-first-frame` event. If flutter_bootstrap.js cannot be
+       downloaded, the Flutter loader throws, or nothing has rendered after
+       20s, it shows why and offers a reload instead of a blank page (the
+       0.1.196/0.1.197 white screen). Messages follow AGENTS.md 1.8. -->
+  <div id="nc-boot" role="status" aria-live="polite">
+    <div class="nc-boot-spinner" aria-hidden="true"></div>
+    <p class="nc-boot-title">Loading Notechondria Planner&hellip;</p>
+    <p class="nc-boot-detail" hidden></p>
+    <button type="button" class="nc-boot-reload" hidden>Reload</button>
+  </div>
+  <noscript>
+    <p style="font: 15px/1.5 system-ui, sans-serif; padding: 24px;">Notechondria Planner cannot start: web bootstrap / script check &mdash; JavaScript is disabled in this browser. Enable JavaScript and reload the page.</p>
+  </noscript>
+  <script>
+    (function () {
+      var APP = 'Notechondria Planner';
+      var SLOW_MS = 20000;
+      var root = document.getElementById('nc-boot');
+      var done = false;
+      var slowTimer = null;
+      function part(name) { return root.querySelector('.nc-boot-' + name); }
+      function engineStarted() {
+        return !!document.querySelector('flutter-view, flt-glass-pane');
+      }
+      function show(state, title, detail) {
+        if (done) return;
+        root.setAttribute('data-state', state);
+        part('title').textContent = title;
+        part('detail').textContent = detail;
+        part('detail').hidden = false;
+        part('reload').hidden = false;
+      }
+      function onError(event) {
+        var file = (event && event.filename) || '';
+        if (!/flutter(_bootstrap)?\.js|main\.dart\.(m?js|wasm)|canvaskit/.test(file)) return;
+        window.ncBootFailed('Flutter loader',
+          (event.message || 'script error') + ' in ' + file.split('/').pop());
+      }
+      function onRejection(event) {
+        // Once the engine runs, the Dart-side startup guards own failures.
+        if (engineStarted()) return;
+        var reason = event && event.reason;
+        window.ncBootFailed('Flutter loader', 'unhandled promise rejection: ' +
+          (reason && reason.message ? reason.message : String(reason)));
+      }
+      function finish() {
+        if (done) return;
+        done = true;
+        clearTimeout(slowTimer);
+        window.removeEventListener('error', onError);
+        window.removeEventListener('unhandledrejection', onRejection);
+        if (root.parentNode) root.parentNode.removeChild(root);
+      }
+      // Used by the flutter_bootstrap.js <script onerror> below as well.
+      window.ncBootFailed = function (process, cause) {
+        var message = APP + ' could not start: web bootstrap / ' + process +
+          ' \u2014 ' + cause + '. Reload the page; if this keeps happening, ' +
+          'clear this site\u2019s data or try another browser.';
+        if (window.console) console.error(message);
+        show('failed', APP + ' could not start', message);
+      };
+      window.addEventListener('error', onError);
+      window.addEventListener('unhandledrejection', onRejection);
+      window.addEventListener('flutter-first-frame', finish);
+      slowTimer = setTimeout(function () {
+        var stage = engineStarted() ? 'first frame' : 'engine load';
+        var message = APP + ' has not finished loading: web bootstrap / ' +
+          stage + ' \u2014 nothing was rendered within ' + (SLOW_MS / 1000) +
+          's (slow network, blocked script, or unsupported browser). ' +
+          'Keep waiting, or reload the page.';
+        if (window.console) console.warn(message);
+        show('slow', APP + ' is taking longer than expected', message);
+      }, SLOW_MS);
+      part('reload').addEventListener('click', function () {
+        window.location.reload();
+      });
+    })();
+  </script>
+  <script src="flutter_bootstrap.js" async onerror="ncBootFailed('script download', 'flutter_bootstrap.js could not be downloaded (network error or missing file)')"></script>
   <script>
     // Service-worker update toast. When a new build's worker installs
     // while an old one still controls the page (the one-reload-stale
