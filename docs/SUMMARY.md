@@ -42,6 +42,15 @@
 - [Cross-platform reliability and tutorials plan](development/cross_platform_plan.md)
 - [Internationalization (i18n) plan](development/i18n_plan.md)
 - [Canvas-like Calendar Product Concept](development/canvas_like_calendar_mvp.md)
+- [Local folder storage mode (design)](development/local_folder_mode.md)
+  - [Storage modes, startup, and migration](development/local_folder_mode/modes_and_migration.md)
+  - [Storage rules](development/local_folder_mode/storage_rules.md)
+  - [Security and multi-tab behavior](development/local_folder_mode/security_and_tabs.md)
+  - [Feature matrix](development/local_folder_mode/feature_matrix.md)
+  - [Testing](development/local_folder_mode/testing.md)
+  - [Implementation plan](development/local_folder_mode/implementation_plan.md)
+  - [Unverified items and sources](development/local_folder_mode/unverified_and_sources.md)
+  - [Revision logs](development/local_folder_mode/revision_log.md)
 
 # Integrations
 
