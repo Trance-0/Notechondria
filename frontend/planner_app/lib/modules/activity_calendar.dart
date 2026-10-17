@@ -390,150 +390,6 @@ Future<void> _showCreatePlannerEventDialog(
   descriptionController.dispose();
 }
 
-/// Lightweight iCalendar parse result used by the import confirmation dialog.
-class _IcalPreview {
-  _IcalPreview({
-    required this.summary,
-    required this.eventCount,
-    required this.firstStart,
-    required this.lastStart,
-    required this.sampleEvents,
-  });
-
-  final String summary;
-  final int eventCount;
-  final DateTime? firstStart;
-  final DateTime? lastStart;
-  final List<_IcalSampleEvent> sampleEvents;
-}
-
-class _IcalSampleEvent {
-  const _IcalSampleEvent({
-    required this.summary,
-    required this.start,
-  });
-
-  final String summary;
-  final DateTime? start;
-}
-
-/// Parses the subset of iCalendar we care about for the confirmation page.
-/// We only extract SUMMARY and DTSTART since that is enough to show the user
-/// a meaningful preview before committing the import.
-_IcalPreview _parseIcalPreview(String raw) {
-  // Line unfolding per RFC 5545: a leading space/tab on a line continues the
-  // previous line.
-  final normalized = raw.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
-  final rawLines = normalized.split('\n');
-  final lines = <String>[];
-  for (final line in rawLines) {
-    if (line.isEmpty) continue;
-    if ((line.startsWith(' ') || line.startsWith('\t')) && lines.isNotEmpty) {
-      lines[lines.length - 1] = lines.last + line.substring(1);
-    } else {
-      lines.add(line);
-    }
-  }
-
-  String calendarSummary = '';
-  var inEvent = false;
-  var currentSummary = '';
-  DateTime? currentStart;
-  final events = <_IcalSampleEvent>[];
-  DateTime? firstStart;
-  DateTime? lastStart;
-
-  DateTime? parseIcalDate(String rawValue) {
-    // Strip parameters like TZID=...
-    final value = rawValue.trim();
-    if (value.isEmpty) return null;
-    // Formats: 20250401T120000Z, 20250401T120000, 20250401
-    try {
-      if (value.length >= 15 && value.contains('T')) {
-        final year = int.parse(value.substring(0, 4));
-        final month = int.parse(value.substring(4, 6));
-        final day = int.parse(value.substring(6, 8));
-        final hour = int.parse(value.substring(9, 11));
-        final minute = int.parse(value.substring(11, 13));
-        final second = int.parse(value.substring(13, 15));
-        final isUtc = value.endsWith('Z');
-        return isUtc
-            ? DateTime.utc(year, month, day, hour, minute, second)
-            : DateTime(year, month, day, hour, minute, second);
-      }
-      if (value.length == 8) {
-        final year = int.parse(value.substring(0, 4));
-        final month = int.parse(value.substring(4, 6));
-        final day = int.parse(value.substring(6, 8));
-        return DateTime(year, month, day);
-      }
-    } catch (_) {
-      return null;
-    }
-    return null;
-  }
-
-  for (final line in lines) {
-    if (line == 'BEGIN:VEVENT') {
-      inEvent = true;
-      currentSummary = '';
-      currentStart = null;
-      continue;
-    }
-    if (line == 'END:VEVENT') {
-      events.add(
-        _IcalSampleEvent(
-          summary: currentSummary.isEmpty ? '(untitled event)' : currentSummary,
-          start: currentStart,
-        ),
-      );
-      if (currentStart != null) {
-        if (firstStart == null || currentStart.isBefore(firstStart)) {
-          firstStart = currentStart;
-        }
-        if (lastStart == null || currentStart.isAfter(lastStart)) {
-          lastStart = currentStart;
-        }
-      }
-      inEvent = false;
-      continue;
-    }
-    if (inEvent) {
-      if (line.startsWith('SUMMARY')) {
-        final colonAt = line.indexOf(':');
-        if (colonAt >= 0) {
-          currentSummary = line.substring(colonAt + 1).trim();
-        }
-      } else if (line.startsWith('DTSTART')) {
-        final colonAt = line.indexOf(':');
-        if (colonAt >= 0) {
-          currentStart = parseIcalDate(line.substring(colonAt + 1));
-        }
-      }
-    } else if (line.startsWith('X-WR-CALNAME')) {
-      final colonAt = line.indexOf(':');
-      if (colonAt >= 0) {
-        calendarSummary = line.substring(colonAt + 1).trim();
-      }
-    }
-  }
-
-  events.sort((a, b) {
-    if (a.start == null && b.start == null) return 0;
-    if (a.start == null) return 1;
-    if (b.start == null) return -1;
-    return a.start!.compareTo(b.start!);
-  });
-
-  return _IcalPreview(
-    summary: calendarSummary,
-    eventCount: events.length,
-    firstStart: firstStart,
-    lastStart: lastStart,
-    sampleEvents: events.take(5).toList(growable: false),
-  );
-}
-
 /// Returns the first .ics entry from a zip archive (as UTF-8 text), or null
 /// if no .ics files are present.
 String? _extractFirstIcsFromZip(List<int> bytes) {
@@ -551,222 +407,384 @@ String? _extractFirstIcsFromZip(List<int> bytes) {
   return null;
 }
 
-/// Opens a local iCal/zip file picker, parses a preview, and shows a
-/// confirmation page with the event summary before forwarding to the
-/// backend via [onImport]. Accepts both .ics files and .zip archives
+
+/// Opens a local iCal/zip file picker, parses a preview on the device, and
+/// shows a confirmation page with the event summary before handing the
+/// file to [onImport]. Accepts both .ics files and .zip archives
 /// (extracting the first .ics entry from the archive).
+///
+/// 0.1.199: the preview and the import use the same parser
+/// (`parseIcalEvents`), so the previewed count is what gets imported. An
+/// import error stays inside the dialog as copyable inline text; it used
+/// to be a SnackBar raised under the dialog's modal barrier, where it
+/// could be neither read in full nor copied.
 Future<void> _showImportCalendarDialog(
   BuildContext context,
-  Future<void> Function(String rawIcal, String title, {int? courseId}) onImport,
+  Future<ActionFeedback> Function(
+    String rawIcal,
+    String title, {
+    int? courseId,
+    String sourceName,
+  }) onImport,
 ) async {
-  final file = await openFile(
-    acceptedTypeGroups: [
-      const XTypeGroup(label: 'iCal or zip', extensions: ['ics', 'zip'])
-    ],
-  );
-  if (file == null) {
-    return;
-  }
-  String? rawIcal;
-  final lowerName = file.name.toLowerCase();
-  if (lowerName.endsWith('.zip')) {
-    final bytes = await file.readAsBytes();
-    rawIcal = _extractFirstIcsFromZip(bytes);
-    if (rawIcal == null) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('No .ics file found inside the archive.')),
-        );
-      }
+  XFile? file;
+  final String rawIcal;
+  try {
+    file = await openFile(
+      acceptedTypeGroups: [
+        const XTypeGroup(label: 'iCal or zip', extensions: ['ics', 'zip'])
+      ],
+    );
+    if (file == null) {
       return;
     }
-  } else {
-    rawIcal = await file.readAsString();
+    final bytes = await file.readAsBytes();
+    if (file.name.toLowerCase().endsWith('.zip')) {
+      final extracted = _extractFirstIcsFromZip(bytes);
+      if (extracted == null) {
+        if (context.mounted) {
+          showCopyableSnackBar(
+            context,
+            'Calendar not imported: Planner.Sync.Calendar/parse \u2014 '
+            '"${file.name}" contains no .ics file.',
+            isError: true,
+          );
+        }
+        return;
+      }
+      rawIcal = extracted;
+    } else {
+      rawIcal = utf8.decode(bytes, allowMalformed: true);
+    }
+  } catch (error) {
+    if (context.mounted) {
+      showCopyableSnackBar(
+        context,
+        'Calendar not imported: Planner.Sync.Calendar/parse \u2014 '
+        '"${file?.name ?? 'the selected file'}" could not be read '
+        '(${describeRequestFailure(error)}).',
+        isError: true,
+      );
+    }
+    return;
   }
   if (!context.mounted) {
     return;
   }
 
-  final preview = _parseIcalPreview(rawIcal);
-  final defaultTitle = preview.summary.isNotEmpty
-      ? preview.summary
-      : file.name.replaceAll(RegExp(r'\.(ics|zip)$', caseSensitive: false), '');
-  final titleController = TextEditingController(text: defaultTitle);
-  var importing = false;
-
-  await showDialog<void>(
+  final sourceName = file.name;
+  final result = await showDialog<ActionFeedback>(
     context: context,
-    builder: (context) => StatefulBuilder(
-      builder: (context, setState) => AlertDialog(
-        title: const Text('Review calendar import'),
-        content: SizedBox(
-          width: 460,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Source: ${file.name}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '${preview.eventCount} event${preview.eventCount == 1 ? '' : 's'} parsed',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                if (preview.firstStart != null &&
-                    preview.lastStart != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    'Date range: '
-                    '${preview.firstStart!.toIso8601String().split("T").first}'
-                    ' → '
-                    '${preview.lastStart!.toIso8601String().split("T").first}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-                const SizedBox(height: 12),
-                if (preview.sampleEvents.isNotEmpty) ...[
-                  Text(
-                    'Preview (up to 5 events):',
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                  const SizedBox(height: 6),
-                  for (final event in preview.sampleEvents)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('• '),
-                          Expanded(
-                            child: Text(
-                              event.start != null
-                                  ? '${event.summary} — ${event.start!.toIso8601String()}'
-                                  : event.summary,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  const SizedBox(height: 12),
-                ],
-                TextField(
-                  controller: titleController,
-                  decoration: const InputDecoration(
-                    labelText: 'Calendar title',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: importing ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: importing
-                ? null
-                : () async {
-                    setState(() => importing = true);
-                    try {
-                      final title = titleController.text.trim().isEmpty
-                          ? 'Imported calendar'
-                          : titleController.text.trim();
-                      await onImport(rawIcal!, title);
-                      if (context.mounted) {
-                        Navigator.of(context).pop();
-                      }
-                    } catch (error) {
-                      setState(() => importing = false);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Import failed: $error')),
-                        );
-                      }
-                    }
-                  },
-            child: Text(importing ? 'Importing...' : 'Confirm import'),
-          ),
-        ],
-      ),
+    builder: (_) => _ImportCalendarReviewDialog(
+      sourceName: sourceName,
+      rawIcal: rawIcal,
+      preview: parseIcalEvents(rawIcal),
+      onImport: onImport,
     ),
   );
-  titleController.dispose();
+  if (result != null && context.mounted) {
+    showCopyableSnackBar(context, result.message, isError: result.isError);
+  }
 }
 
-/// Opens a dialog for subscribing to a remote iCal feed.
-Future<void> _showSubscribeCalendarDialog(
-  BuildContext context,
-  Future<void> Function(String title, String url, {int? courseId}) onSubscribe,
-) async {
-  final titleController = TextEditingController();
-  final urlController = TextEditingController();
-  await showDialog<void>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Subscribe to calendar'),
+/// Review page of the iCal import. A StatefulWidget so the title
+/// controller is disposed with the route (after its exit animation), not
+/// right after `showDialog` returns. Pops with the successful
+/// [ActionFeedback] (or the kept-locally warning after a failed upload);
+/// an error result stays inline.
+class _ImportCalendarReviewDialog extends StatefulWidget {
+  const _ImportCalendarReviewDialog({
+    required this.sourceName,
+    required this.rawIcal,
+    required this.preview,
+    required this.onImport,
+  });
+
+  final String sourceName;
+  final String rawIcal;
+  final IcalParseResult preview;
+  final Future<ActionFeedback> Function(
+    String rawIcal,
+    String title, {
+    int? courseId,
+    String sourceName,
+  }) onImport;
+
+  @override
+  State<_ImportCalendarReviewDialog> createState() =>
+      _ImportCalendarReviewDialogState();
+}
+
+class _ImportCalendarReviewDialogState
+    extends State<_ImportCalendarReviewDialog> {
+  late final TextEditingController _titleController = TextEditingController(
+    text: widget.preview.calendarName.isNotEmpty
+        ? widget.preview.calendarName
+        : widget.sourceName
+            .replaceAll(RegExp(r'\.(ics|zip)$', caseSensitive: false), ''),
+  );
+  var _importing = false;
+  ActionFeedback? _feedback;
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _confirm() async {
+    setState(() {
+      _importing = true;
+      _feedback = null;
+    });
+    final title = _titleController.text.trim().isEmpty
+        ? 'Imported calendar'
+        : _titleController.text.trim();
+    ActionFeedback result;
+    try {
+      result = await widget.onImport(
+        widget.rawIcal,
+        title,
+        sourceName: widget.sourceName,
+      );
+    } catch (error) {
+      result = ActionFeedback(
+        message: 'Calendar not imported: Planner.Sync.Calendar/import '
+            '\u2014 unexpected error (${describeRequestFailure(error)}).',
+        isError: true,
+      );
+    }
+    if (!mounted) return;
+    // A calendar kept locally after a failed upload is a warning, but it
+    // was imported, so the dialog closes like a success.
+    if (result.isError && result is! _CalendarKeptLocallyFeedback) {
+      setState(() {
+        _importing = false;
+        _feedback = result;
+      });
+      return;
+    }
+    Navigator.of(context).pop(result);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final events = widget.preview.events;
+    final skipped = widget.preview.skipped;
+    String day(DateTime value) =>
+        value.toLocal().toIso8601String().split('T').first;
+    return AlertDialog(
+      title: const Text('Review calendar import'),
       content: SizedBox(
-        width: 380,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(
-                  labelText: 'Title', border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: urlController,
-              decoration: const InputDecoration(
-                labelText: 'iCal URL or Google share link',
-                border: OutlineInputBorder(),
+        width: 460,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Source: ${widget.sourceName}',
+                style: theme.textTheme.bodySmall,
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Supports Google Calendar share links (public URL or cid link) '
-              'and direct .ics URLs from iCloud, Outlook, or any iCal feed. '
-              'For best results, use "Secret address in iCal format" from '
-              'Google Calendar settings.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
+              const SizedBox(height: 8),
+              Text(
+                '${events.length} event${events.length == 1 ? '' : 's'} parsed',
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              if (skipped > 0) ...[
+                const SizedBox(height: 4),
+                Text(
+                  '$skipped skipped (no start time)',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+              if (events.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Date range: ${day(events.first.start)} → '
+                  '${day(events.last.start)}',
+                  style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Preview (up to 5 events):',
+                  style: theme.textTheme.labelLarge,
+                ),
+                const SizedBox(height: 6),
+                for (final event in events.take(5))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('• '),
+                        Expanded(
+                          child: Text(
+                            '${event.summary} — '
+                            '${event.start.toLocal().toIso8601String()}',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+              const SizedBox(height: 12),
+              TextField(
+                controller: _titleController,
+                decoration: const InputDecoration(
+                  labelText: 'Calendar title',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              if (_feedback != null) ...[
+                const SizedBox(height: 12),
+                FeedbackText(feedback: _feedback!),
+              ],
+            ],
+          ),
         ),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: _importing ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
         FilledButton(
-          onPressed: () async {
-            await onSubscribe(
-              titleController.text.trim().isEmpty
-                  ? 'Subscribed calendar'
-                  : titleController.text.trim(),
-              urlController.text.trim(),
-            );
-            if (context.mounted) {
-              Navigator.of(context).pop();
-            }
-          },
-          child: const Text('Subscribe'),
+          onPressed: _importing ? null : _confirm,
+          child: Text(_importing ? 'Importing...' : 'Confirm import'),
         ),
       ],
-    ),
+    );
+  }
+}
+
+/// Opens a dialog for subscribing to a remote iCal feed. Errors (for
+/// example "needs a cloud session" while signed out) stay inline and
+/// copyable; the dialog closes only on success.
+Future<void> _showSubscribeCalendarDialog(
+  BuildContext context,
+  Future<ActionFeedback> Function(String title, String url, {int? courseId})
+      onSubscribe,
+) async {
+  final result = await showDialog<ActionFeedback>(
+    context: context,
+    builder: (_) => _SubscribeCalendarDialog(onSubscribe: onSubscribe),
   );
-  titleController.dispose();
-  urlController.dispose();
+  if (result != null && context.mounted) {
+    showCopyableSnackBar(context, result.message);
+  }
+}
+
+class _SubscribeCalendarDialog extends StatefulWidget {
+  const _SubscribeCalendarDialog({required this.onSubscribe});
+
+  final Future<ActionFeedback> Function(String title, String url,
+      {int? courseId}) onSubscribe;
+
+  @override
+  State<_SubscribeCalendarDialog> createState() =>
+      _SubscribeCalendarDialogState();
+}
+
+class _SubscribeCalendarDialogState extends State<_SubscribeCalendarDialog> {
+  final _titleController = TextEditingController();
+  final _urlController = TextEditingController();
+  var _submitting = false;
+  ActionFeedback? _feedback;
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _urlController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    setState(() {
+      _submitting = true;
+      _feedback = null;
+    });
+    ActionFeedback result;
+    try {
+      result = await widget.onSubscribe(
+        _titleController.text.trim().isEmpty
+            ? 'Subscribed calendar'
+            : _titleController.text.trim(),
+        _urlController.text.trim(),
+      );
+    } catch (error) {
+      result = ActionFeedback(
+        message: 'Calendar not subscribed: Planner.Sync.Calendar/subscribe '
+            '\u2014 unexpected error (${describeRequestFailure(error)}).',
+        isError: true,
+      );
+    }
+    if (!mounted) return;
+    if (result.isError) {
+      setState(() {
+        _submitting = false;
+        _feedback = result;
+      });
+      return;
+    }
+    Navigator.of(context).pop(result);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Subscribe to calendar'),
+      content: SizedBox(
+        width: 380,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: _titleController,
+                decoration: const InputDecoration(
+                    labelText: 'Title', border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _urlController,
+                decoration: const InputDecoration(
+                  labelText: 'iCal URL or Google share link',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Supports Google Calendar share links (public URL or cid '
+                'link) and direct .ics URLs from iCloud, Outlook, or any '
+                'iCal feed. For best results, use "Secret address in iCal '
+                'format" from Google Calendar settings. Subscribing needs a '
+                'cloud session (the server downloads the feed); offline, '
+                'download the .ics file and use Import iCal.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              if (_feedback != null) ...[
+                const SizedBox(height: 12),
+                FeedbackText(feedback: _feedback!),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _submitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _submitting ? null : _submit,
+          child: Text(_submitting ? 'Subscribing...' : 'Subscribe'),
+        ),
+      ],
+    );
+  }
 }

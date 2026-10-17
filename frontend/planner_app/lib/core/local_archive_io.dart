@@ -35,7 +35,9 @@ extension _AppShellLocalArchiveX on _AppShellState {
           drafts: _localDrafts,
           logs: uiLogs,
           plannerEvents: _plannerEvents,
-          calendarFeeds: _calendarFeeds,
+          // Cloud feeds plus calendars imported on this device; the local
+          // ones carry `is_local_feed: true` and restore below.
+          calendarFeeds: [..._calendarFeeds, ..._localCalendarFeeds],
           activityWeek: _activityWeek ?? const {},
         ),
       );
@@ -136,11 +138,15 @@ extension _AppShellLocalArchiveX on _AppShellState {
       }
 
       final counts = parsed.counts;
+      final localFeeds = parsed.calendarFeeds
+          .where((feed) => feed['is_local_feed'] == true)
+          .toList(growable: false);
       final summary = [
         '${counts['courses'] ?? parsed.courses.length} categor(ies)',
         '${counts['drafts'] ?? parsed.drafts.length} draft(s)',
         if ((counts['queued_attachments'] ?? 0) > 0)
           '${counts['queued_attachments']} queued attachment(s)',
+        if (localFeeds.isNotEmpty) '${localFeeds.length} local calendar(s)',
         '${counts['logs'] ?? parsed.logs.length} log line(s)',
       ].join(', ');
       final exporterApp = parsed.manifestApp?.tag ?? 'unknown';
@@ -150,7 +156,8 @@ extension _AppShellLocalArchiveX on _AppShellState {
         message: 'Archive produced by $exporterApp app ($exportedAt) '
             'contains: $summary. '
             'Continuing will REPLACE your current local drafts, '
-            'categories, and cached data with the archive contents.',
+            'categories, imported calendars, and cached data with the '
+            'archive contents.',
         confirmLabel: 'Replace',
         delaySeconds: 5,
       );
@@ -170,6 +177,7 @@ extension _AppShellLocalArchiveX on _AppShellState {
       };
       _localCourses = parsed.courses;
       _localDrafts = parsed.drafts;
+      _localCalendarFeeds = localFeeds;
       uiLogs
         ..clear()
         ..addAll(parsed.logs);
@@ -183,6 +191,7 @@ extension _AppShellLocalArchiveX on _AppShellState {
       await _LocalAppStore.saveCache(_localCache);
       await _LocalAppStore.saveCourses(_localCourses);
       await _LocalAppStore.saveDrafts(_localDrafts);
+      await _LocalAppStore.saveCalendarFeeds(_localCalendarFeeds);
       await _LocalAppStore.saveLogs(uiLogs);
 
       log(

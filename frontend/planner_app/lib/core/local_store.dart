@@ -10,6 +10,7 @@ class _LocalAppSnapshot {
     required this.logs,
     required this.trashedDrafts,
     required this.trashedCourses,
+    required this.calendarFeeds,
   });
 
   final Map<String, dynamic> settings;
@@ -24,6 +25,10 @@ class _LocalAppSnapshot {
   /// key namespace across apps via SharedPreferences.
   final List<Map<String, dynamic>> trashedDrafts;
   final List<Map<String, dynamic>> trashedCourses;
+
+  /// Calendars imported on this device (0.1.199), in the local-archive
+  /// `calendar_feeds.json` shape with `is_local_feed: true`.
+  final List<Map<String, dynamic>> calendarFeeds;
 }
 
 class _LocalAppStore {
@@ -76,6 +81,13 @@ class _LocalAppStore {
   static const String _trashedCoursesKey =
       'notechondria.planner.local_trashed_courses';
 
+  /// Calendars imported while signed out / offline (0.1.199). A bucket of
+  /// its own, not part of `local_cache`: "Clear cached data" and a
+  /// signed-in initial load both rewrite the cache, and local imports must
+  /// survive both. Not in [_migratableKeySuffixes] (no legacy key exists).
+  static const String _calendarFeedsKey =
+      'notechondria.planner.local_calendar_feeds';
+
   /// Days a just-synced draft/course stays in the local recycle bin
   /// before load-time auto-prune. See editor_app version for rationale.
   static const int _trashTtlDays = 30;
@@ -91,6 +103,7 @@ class _LocalAppStore {
       'Categories': sz(_coursesKey),
       'Cached server data': sz(_cacheKey),
       'Recycle bin': sz(_trashedDraftsKey) + sz(_trashedCoursesKey),
+      'Calendars': sz(_calendarFeedsKey),
       'Debug logs': sz(_logsKey),
       'Settings': sz(_settingsKey),
       'Stats': sz(_statsKey),
@@ -157,6 +170,7 @@ class _LocalAppStore {
       logs: _decodeStringList(prefs.getString(_logsKey)),
       trashedDrafts: trashedDrafts,
       trashedCourses: trashedCourses,
+      calendarFeeds: _decodeList(prefs.getString(_calendarFeedsKey)),
     );
   }
 
@@ -218,6 +232,13 @@ class _LocalAppStore {
   ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_trashedCoursesKey, jsonEncode(courses));
+  }
+
+  static Future<void> saveCalendarFeeds(
+    List<Map<String, dynamic>> feeds,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_calendarFeedsKey, jsonEncode(feeds));
   }
 
   static String newDraftId() {

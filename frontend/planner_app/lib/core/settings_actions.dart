@@ -357,7 +357,7 @@ extension _AppShellSettingsActionsX on _AppShellState {
         startDate: effectiveStart.toIso8601String().split('T').first,
       );
       _activityWeekStart = effectiveStart;
-      _activityWeek = week;
+      _activityWeek = _withLocalCalendarEvents(week);
       refreshState();
       log(
         level: DebugLogLevel.debug,

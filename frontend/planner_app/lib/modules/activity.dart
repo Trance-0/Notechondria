@@ -15,10 +15,15 @@ class _ActivityPage extends StatefulWidget {
     this.courses = const <Map<String, dynamic>>[],
     this.onEditCourse,
     this.onTransferCourse,
+    this.hasLocalCalendars = false,
   });
 
   final Map<String, dynamic>? activityWeek;
   final bool isAuthenticated;
+
+  /// True when calendars imported on this device exist (0.1.199), so the
+  /// signed-out empty-state card does not hide their events.
+  final bool hasLocalCalendars;
   final List<Map<String, dynamic>> plannerEvents;
   final List<Map<String, dynamic>> courses;
   final Future<ActionFeedback> Function(
@@ -28,10 +33,14 @@ class _ActivityPage extends StatefulWidget {
     String description, {
     int? courseId,
   }) onCreatePlannerEvent;
-  final Future<void> Function(String rawIcal, String title, {int? courseId})
-      onImportCalendar;
-  final Future<void> Function(String title, String url, {int? courseId})
-      onSubscribeCalendar;
+  final Future<ActionFeedback> Function(
+    String rawIcal,
+    String title, {
+    int? courseId,
+    String sourceName,
+  }) onImportCalendar;
+  final Future<ActionFeedback> Function(String title, String url,
+      {int? courseId}) onSubscribeCalendar;
   final Future<void> Function(int direction) onNavigateWeek;
   final Future<void> Function(int dayDelta) onShiftStartDay;
   final Future<void> Function(Map<String, dynamic> event, bool completed)
@@ -99,8 +108,9 @@ class _ActivityPageState extends State<_ActivityPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isHorizontal = MediaQuery.of(context).size.width >= 960;
-        final hasOfflinePlannerData =
-            plannerEvents.isNotEmpty || deadlines.isNotEmpty;
+        final hasOfflinePlannerData = plannerEvents.isNotEmpty ||
+            deadlines.isNotEmpty ||
+            widget.hasLocalCalendars;
         return Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -538,6 +548,15 @@ class _VerticalWeekBoard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final borderColor = Theme.of(context).colorScheme.outlineVariant;
+    DateTime startOf(Map<String, dynamic> event) =>
+        DateTime.tryParse(event['starts_at']?.toString() ?? '') ??
+        DateTime.fromMillisecondsSinceEpoch(0);
+    final calendarEvents = [
+      for (final day in days)
+        for (final event in day['events'] as List<dynamic>? ?? const [])
+          if (event is Map && event['kind'] == 'calendar')
+            Map<String, dynamic>.from(event),
+    ]..sort((a, b) => startOf(a).compareTo(startOf(b)));
     final rangeLabel = days.isEmpty
         ? 'This week'
         : '${_formatWeekDay(days.first['date']?.toString() ?? '')} - ${_formatWeekDay(days.last['date']?.toString() ?? '')}';
@@ -574,7 +593,13 @@ class _VerticalWeekBoard extends StatelessWidget {
               ],
             ),
           ),
+          if (calendarEvents.isNotEmpty)
+            Flexible(
+              flex: 2,
+              child: _WeekCalendarList(events: calendarEvents),
+            ),
           Expanded(
+            flex: 3,
             child: _DeadlineList(
               deadlines: deadlines,
               plannerEvents: plannerEvents,
@@ -583,6 +608,64 @@ class _VerticalWeekBoard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// "Calendar this week" list above the deadlines in the vertical board
+/// (0.1.199). Shows the week's `kind == 'calendar'` day events (imported
+/// on this device or, signed in, from cloud feeds), which this board
+/// never rendered before.
+class _WeekCalendarList extends StatelessWidget {
+  const _WeekCalendarList({required this.events});
+
+  final List<Map<String, dynamic>> events;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Text(
+            'Calendar this week (${events.length})',
+            style: theme.textTheme.titleSmall
+                ?.copyWith(fontWeight: FontWeight.w700),
+          ),
+        ),
+        Flexible(
+          child: ListView.builder(
+            shrinkWrap: true,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            itemCount: events.length,
+            itemBuilder: (context, index) {
+              final event = events[index];
+              final start =
+                  DateTime.tryParse(event['starts_at']?.toString() ?? '')
+                      ?.toLocal();
+              final day =
+                  start == null ? '' : _formatWeekDay(start.toIso8601String());
+              final when = start == null || event['all_day'] == true
+                  ? day
+                  : '$day ${_formatTime(start)}';
+              final calendar = event['calendar_title']?.toString() ?? '';
+              return ListTile(
+                dense: true,
+                leading: const Icon(Icons.event),
+                title: Text(event['title']?.toString() ?? 'Event'),
+                subtitle: Text(
+                  [when, calendar].where((part) => part.isNotEmpty).join(' · '),
+                ),
+                onTap: () => _showCalendarEventDetails(context, event),
+              );
+            },
+          ),
+        ),
+        const Divider(height: 1),
+      ],
     );
   }
 }
@@ -602,10 +685,14 @@ class _RoundActivityFab extends StatelessWidget {
     String description, {
     int? courseId,
   }) onCreatePlannerEvent;
-  final Future<void> Function(String rawIcal, String title, {int? courseId})
-      onImportCalendar;
-  final Future<void> Function(String title, String url, {int? courseId})
-      onSubscribeCalendar;
+  final Future<ActionFeedback> Function(
+    String rawIcal,
+    String title, {
+    int? courseId,
+    String sourceName,
+  }) onImportCalendar;
+  final Future<ActionFeedback> Function(String title, String url,
+      {int? courseId}) onSubscribeCalendar;
   final List<Map<String, dynamic>> courses;
 
   Future<void> _showMenu(BuildContext context, TapDownDetails? details) async {

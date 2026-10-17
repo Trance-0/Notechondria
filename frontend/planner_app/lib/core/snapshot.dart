@@ -9,6 +9,7 @@ extension _AppShellSnapshotX on _AppShellState {
       'courses': _localCourses,
       'stats': _localStats,
       'cache': _localCache,
+      'calendars': _localCalendarFeeds,
       'logs': uiLogs,
       'session': _token == null
           ? null

@@ -33,6 +33,7 @@ part 'core/http_client_internals.dart';
 part 'core/initial_data.dart';
 part 'core/load_local_state.dart';
 part 'core/local_archive_io.dart';
+part 'core/local_calendar.dart';
 part 'core/local_course_builders.dart';
 part 'core/local_persist.dart';
 part 'core/local_starter.dart';

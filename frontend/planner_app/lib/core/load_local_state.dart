@@ -23,6 +23,8 @@ extension _AppShellLoadLocalStateX on _AppShellState {
     _localTrashedCourses = snapshot.trashedCourses;
     _localStats = snapshot.stats;
     _localCache = snapshot.cache;
+    // Before `_ensureStarterWorkspace`, which builds the offline week.
+    _localCalendarFeeds = snapshot.calendarFeeds;
     _plannerEvents =
         (snapshot.cache['planner_events'] as List<dynamic>? ?? const [])
             .map((item) => Map<String, dynamic>.from(item as Map))

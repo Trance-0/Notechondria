@@ -113,7 +113,12 @@ extension _AppShellInitialDataX on _AppShellState {
       _calendarFeeds = calendarFeeds;
       _learnerNotes = learnerNotes;
       _deletedNotes = deletedNotes;
-      _activityWeek = activityWeek;
+      // Signed out there is no server week to cache, so build the local
+      // one (planner events + imported calendars), as the online
+      // signed-out path does.
+      _activityWeek = (_token == null || _token!.isEmpty)
+          ? _buildOfflineActivityWeek()
+          : _withLocalCalendarEvents(activityWeek);
       _hasMoreLearnerNotes = notePage['has_more'] == true;
       _learnerNotesOffset = learnerNotes.length;
       _errorMessage = null;
@@ -276,7 +281,7 @@ extension _AppShellInitialDataX on _AppShellState {
     _selectedNote = null;
     _plannerEvents = plannerEvents;
     _calendarFeeds = calendarFeeds;
-    _activityWeek = activityWeek;
+    _activityWeek = _withLocalCalendarEvents(activityWeek);
     _hasMoreLearnerNotes = notePage['has_more'] == true;
     _learnerNotesOffset = learnerNotes.length;
     _errorMessage = errors.isEmpty ? null : errors.first;

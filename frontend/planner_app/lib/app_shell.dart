@@ -282,6 +282,9 @@ class _AppShellState extends State<AppShell>
   List<Map<String, dynamic>> _activity = const [];
   List<Map<String, dynamic>> _plannerEvents = const [];
   List<Map<String, dynamic>> _calendarFeeds = const [];
+
+  /// Calendars imported on this device (0.1.199, `core/local_calendar.dart`).
+  List<Map<String, dynamic>> _localCalendarFeeds = const [];
   Map<String, dynamic>? _activityWeek;
   Map<String, dynamic>? _selectedCourse;
   Map<String, dynamic>? _selectedNote;
@@ -773,6 +776,7 @@ class _AppShellState extends State<AppShell>
         return _ActivityPage(
           activityWeek: _activityWeek,
           isAuthenticated: _token != null && _token!.isNotEmpty,
+          hasLocalCalendars: _localCalendarFeeds.isNotEmpty,
           plannerEvents: _plannerEvents,
           courses: (_token == null || _token!.isEmpty)
               ? _localCourses

@@ -53,8 +53,13 @@ extension _AppShellPlannerBuildersX on _AppShellState {
         (_deadlineImportanceWeight() * importance);
   }
 
+  /// Signed-out / offline activity week: seven days from
+  /// [_activityWeekStart] (so week navigation moves it), deadlines from
+  /// the local planner events, and the days filled with locally imported
+  /// calendar events (0.1.199; before, the days were always empty and the
+  /// week was always "today").
   Map<String, dynamic> _buildOfflineActivityWeek() {
-    final base = _dateOnly(DateTime.now());
+    final base = _dateOnly(_activityWeekStart);
     final days = List.generate(7, (index) {
       final day = base.add(Duration(days: index));
       return {
@@ -75,9 +80,9 @@ extension _AppShellPlannerBuildersX on _AppShellState {
         .toList(growable: false)
       ..sort((a, b) => ((b['urgency_score'] as num?)?.toDouble() ?? 0)
           .compareTo((a['urgency_score'] as num?)?.toDouble() ?? 0));
-    return {
+    return _withLocalCalendarEvents({
       'days': days,
       'deadlines': deadlines,
-    };
+    })!;
   }
 }

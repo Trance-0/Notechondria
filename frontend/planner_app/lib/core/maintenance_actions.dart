@@ -259,6 +259,10 @@ extension _AppShellMaintenanceX on _AppShellState {
     _localCourses = const [];
     _localTrashedDrafts = const [];
     _localTrashedCourses = const [];
+    _localCalendarFeeds = const [];
+    _activityWeek = (_token == null || _token!.isEmpty)
+        ? _buildOfflineActivityWeek()
+        : _withLocalCalendarEvents(_activityWeek);
     _selectedNote = null;
     if (_selectedCourse != null && isLocalCourse(_selectedCourse)) {
       _selectedCourse = _chooseDefaultCourse(
@@ -278,6 +282,7 @@ extension _AppShellMaintenanceX on _AppShellState {
     await persistLocalCourses();
     await _persistLocalTrashedDrafts();
     await _persistLocalTrashedCourses();
+    await _LocalAppStore.saveCalendarFeeds(const []);
     await persistLocalStats();
     if (mounted) {
       refreshState();
@@ -286,12 +291,12 @@ extension _AppShellMaintenanceX on _AppShellState {
       level: DebugLogLevel.info,
       source: 'Planner.LocalStore/clear',
       message: 'Local data cleared: Planner.LocalStore/clear \u2014 '
-          'local drafts and local courses wiped.',
+          'local drafts, local courses, and imported calendars wiped.',
     );
     return const ActionFeedback(
         message: 'Local data cleared: '
             'Planner.LocalStore/clear \u2014 '
-            'local drafts and local courses removed.');
+            'local drafts, local courses, and imported calendars removed.');
   }
 
   Future<void> _togglePlannerEventCompletion(

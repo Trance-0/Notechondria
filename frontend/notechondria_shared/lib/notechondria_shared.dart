@@ -29,6 +29,8 @@ export 'src/startup/startup_guard.dart'
 export 'src/components/startup_failure_view.dart' show StartupFailureView;
 export 'src/components/copyable_feedback.dart'
     show CopyMessageButton, copyMessageToClipboard, showCopyableSnackBar;
+export 'src/utils/ical_events.dart'
+    show IcalEvent, IcalParseResult, parseIcalEvents;
 export 'src/startup/startup_log.dart'
     show StartupOutcome, describeRequestFailure;
 export 'src/components/load_error_banner.dart' show LoadErrorBanner;
