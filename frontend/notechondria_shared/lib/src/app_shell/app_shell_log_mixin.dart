@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../components/copyable_feedback.dart';
 import '../components/debug_log.dart';
 
 /// Debug-log mixin shared across `_AppShellState` in editor / planner /
@@ -59,11 +60,12 @@ mixin AppShellLogMixin<W extends StatefulWidget> on State<W> {
   }
 
   /// Convenience `ScaffoldMessenger` wrapper. Shared across every
-  /// action that needs to surface a snackbar-level message.
+  /// action that needs to surface a snackbar-level message. The text is
+  /// selectable and the SnackBar has a Copy action (0.1.199), so every
+  /// message raised through here can be pasted back verbatim.
   void showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    showCopyableSnackBar(context, message);
   }
 
   /// Info-level log line with an empty source tag. Handed as a

@@ -2558,6 +2558,24 @@ abstract class AppLocalizations {
   /// **'Continue anyway'**
   String get startupContinueAnyway;
 
+  /// No description provided for @feedbackCopyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy message'**
+  String get feedbackCopyMessage;
+
+  /// No description provided for @feedbackMessageCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Message copied to clipboard.'**
+  String get feedbackMessageCopied;
+
+  /// No description provided for @feedbackCopyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Message not copied: Shared.Feedback/copy — {cause}'**
+  String feedbackCopyFailed(String cause);
+
   /// No description provided for @versionUpdateAvailable.
   ///
   /// In en, this message translates to:

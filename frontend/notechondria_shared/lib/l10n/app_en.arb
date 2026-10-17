@@ -525,6 +525,14 @@
     }
   },
   "startupContinueAnyway": "Continue anyway",
+  "feedbackCopyMessage": "Copy message",
+  "feedbackMessageCopied": "Message copied to clipboard.",
+  "feedbackCopyFailed": "Message not copied: Shared.Feedback/copy — {cause}",
+  "@feedbackCopyFailed": {
+    "placeholders": {
+      "cause": { "type": "String" }
+    }
+  },
 
   "versionUpdateAvailable": "A new version is available. Refresh to update.",
   "versionDeploying": "A new version is rolling out — some features may be briefly unavailable.",

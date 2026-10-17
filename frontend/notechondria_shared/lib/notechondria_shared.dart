@@ -27,6 +27,8 @@ export 'src/startup/startup_budget.dart'
 export 'src/startup/startup_guard.dart'
     show StartupErrorWidget, StartupFailureApp, StartupGuard, runGuardedApp;
 export 'src/components/startup_failure_view.dart' show StartupFailureView;
+export 'src/components/copyable_feedback.dart'
+    show CopyMessageButton, copyMessageToClipboard, showCopyableSnackBar;
 export 'src/components/load_error_banner.dart' show LoadErrorBanner;
 export 'src/components/wide_course_sidebar_section.dart'
     show WideCourseSidebarSection;

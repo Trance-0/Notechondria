@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../components/casdoor_link_challenge_dialog.dart';
+import '../components/copyable_feedback.dart';
 import '../components/debug_log.dart';
 import 'app_shell_auth_actions_mixin.dart';
 import 'url_strategy.dart' if (dart.library.html) 'url_strategy_web.dart'
@@ -132,13 +133,11 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
             'intent=${decision.intent} aborted: $msg.',
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Casdoor link challenge failed: '
-              '$logAppTag.Auth/casdoor.link_challenge — $msg',
-            ),
-          ),
+        showCopyableSnackBar(
+          context,
+          'Casdoor link challenge failed: '
+          '$logAppTag.Auth/casdoor.link_challenge — $msg',
+          isError: true,
         );
       }
       return false;
@@ -305,15 +304,13 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
               'OAuth callback (user signed out between click and redirect).',
         );
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Casdoor account linking aborted: '
-                '$logAppTag.Auth/casdoor.bind — your session expired '
-                'before the provider redirected back. Sign in first, '
-                'then try linking the account again.',
-              ),
-            ),
+          showCopyableSnackBar(
+            context,
+            'Casdoor account linking aborted: '
+            '$logAppTag.Auth/casdoor.bind — your session expired '
+            'before the provider redirected back. Sign in first, '
+            'then try linking the account again.',
+            isError: true,
           );
         }
         return false;
@@ -327,13 +324,10 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
               'server accepted the bind token.',
         );
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Casdoor account linked: $logAppTag.Auth/casdoor.bind — '
-                'ready to sign in with Casdoor next time.',
-              ),
-            ),
+          showCopyableSnackBar(
+            context,
+            'Casdoor account linked: $logAppTag.Auth/casdoor.bind — '
+            'ready to sign in with Casdoor next time.',
           );
         }
         return true;
@@ -346,13 +340,11 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
               '$logAppTag.Auth/casdoor.bind — $msg.',
         );
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Casdoor account linking failed: '
-                '$logAppTag.Auth/casdoor.bind — $msg.',
-              ),
-            ),
+          showCopyableSnackBar(
+            context,
+            'Casdoor account linking failed: '
+            '$logAppTag.Auth/casdoor.bind — $msg.',
+            isError: true,
           );
         }
         return false;
@@ -399,12 +391,10 @@ mixin AppShellOAuthMixin<W extends StatefulWidget>
             'Casdoor sign-in failed: $logAppTag.Auth/casdoor.callback — $msg.',
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Casdoor sign-in failed: $logAppTag.Auth/casdoor.callback — $msg.',
-            ),
-          ),
+        showCopyableSnackBar(
+          context,
+          'Casdoor sign-in failed: $logAppTag.Auth/casdoor.callback — $msg.',
+          isError: true,
         );
       }
       return false;

@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
+import 'copyable_feedback.dart';
+
 /// Confirmation dialog that disables its destructive button for [delaySeconds]
 /// to give the user a chance to reconsider. Used for clear-data and delete-
 /// category style operations.
@@ -26,6 +29,9 @@ class ConfirmWithDelayDialog extends StatefulWidget {
 class _ConfirmWithDelayDialogState extends State<ConfirmWithDelayDialog> {
   late int _remaining;
   Timer? _timer;
+  // null = not copied yet, true = copied, false = clipboard write failed.
+  bool? _copied;
+  String _copyFailure = '';
 
   @override
   void initState() {
@@ -48,13 +54,42 @@ class _ConfirmWithDelayDialogState extends State<ConfirmWithDelayDialog> {
     super.dispose();
   }
 
+  Future<void> _copyMessage() async {
+    final failure = await writeMessageToClipboard(widget.message);
+    if (!mounted) return;
+    setState(() {
+      _copied = failure == null;
+      _copyFailure = failure ?? '';
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final enabled = _remaining <= 0;
+    final l10n = AppLocalizations.of(context);
+    final copied = _copied;
     return AlertDialog(
       title: Text(widget.title),
-      content: Text(widget.message),
+      // Selectable + a Copy action (0.1.199): the dialog is its own route,
+      // so the page's SelectionArea does not cover it.
+      content: SelectableMessageText(widget.message),
       actions: [
+        Tooltip(
+          message: copied == false
+              ? l10n.feedbackCopyFailed(_copyFailure)
+              : l10n.feedbackCopyMessage,
+          child: TextButton.icon(
+            onPressed: _copyMessage,
+            icon: Icon(copied == null
+                ? Icons.copy_outlined
+                : copied
+                    ? Icons.check
+                    : Icons.error_outline),
+            label: Text(copied == true
+                ? l10n.feedbackMessageCopied
+                : l10n.commonCopy),
+          ),
+        ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
           child: const Text('Cancel'),

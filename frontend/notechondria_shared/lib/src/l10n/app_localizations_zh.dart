@@ -1324,6 +1324,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get startupContinueAnyway => '仍然继续';
 
   @override
+  String get feedbackCopyMessage => '复制消息';
+
+  @override
+  String get feedbackMessageCopied => '消息已复制到剪贴板。';
+
+  @override
+  String feedbackCopyFailed(String cause) {
+    return '消息未复制：Shared.Feedback/copy — $cause';
+  }
+
+  @override
   String get versionUpdateAvailable => '有新版本可用。刷新以更新。';
 
   @override

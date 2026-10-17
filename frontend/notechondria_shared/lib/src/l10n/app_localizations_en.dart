@@ -1387,6 +1387,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get startupContinueAnyway => 'Continue anyway';
 
   @override
+  String get feedbackCopyMessage => 'Copy message';
+
+  @override
+  String get feedbackMessageCopied => 'Message copied to clipboard.';
+
+  @override
+  String feedbackCopyFailed(String cause) {
+    return 'Message not copied: Shared.Feedback/copy — $cause';
+  }
+
+  @override
   String get versionUpdateAvailable =>
       'A new version is available. Refresh to update.';
 

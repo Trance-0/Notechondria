@@ -435,6 +435,9 @@
   "startupFailureTitle": "应用未能完成启动",
   "startupFailureMessage": "应用未能完成启动：{source} — {cause}。请重试，或继续使用本设备上保存的数据。",
   "startupContinueAnyway": "仍然继续",
+  "feedbackCopyMessage": "复制消息",
+  "feedbackMessageCopied": "消息已复制到剪贴板。",
+  "feedbackCopyFailed": "消息未复制：Shared.Feedback/copy — {cause}",
 
   "versionUpdateAvailable": "有新版本可用。刷新以更新。",
   "versionDeploying": "新版本正在发布——部分功能可能暂时不可用。",

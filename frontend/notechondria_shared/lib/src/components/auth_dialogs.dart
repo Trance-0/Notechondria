@@ -8,6 +8,7 @@ import '../app_shell/url_strategy.dart'
 import '../l10n/app_localizations.dart';
 import '../models/action_feedback.dart';
 import '../utils/blur_dialog.dart';
+import 'copyable_feedback.dart';
 import 'phased_status.dart';
 
 /// Formats the login dialog's API-host subtitle. Accepts the full
@@ -410,7 +411,9 @@ class _EmailPasswordDialogState extends State<EmailPasswordDialog> {
   }
 }
 
-/// Inline feedback text for form submissions.
+/// Inline feedback text for form submissions. Selectable, with a Copy
+/// button that copies the full message (0.1.199): dialogs are separate
+/// routes, so a page-level `SelectionArea` never reaches this text.
 class FeedbackText extends StatelessWidget {
   const FeedbackText({super.key, required this.feedback});
 
@@ -418,14 +421,24 @@ class FeedbackText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      feedback.message,
-      style: TextStyle(
-        color: feedback.isError
-            ? const Color(0xFFB91C1C)
-            : const Color(0xFF166534),
-        fontWeight: FontWeight.w600,
-      ),
+    final color = feedback.isError
+        ? const Color(0xFFB91C1C)
+        : const Color(0xFF166534);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: SelectableMessageText(
+            feedback.message,
+            style: TextStyle(color: color, fontWeight: FontWeight.w600),
+          ),
+        ),
+        CopyMessageButton(
+          message: feedback.message,
+          compact: true,
+          color: color,
+        ),
+      ],
     );
   }
 }

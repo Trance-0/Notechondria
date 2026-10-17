@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
 import '../utils/friendly_error.dart';
+import 'copyable_feedback.dart';
 
 /// The connection / load-error bar each app shell shows above its page
 /// when the last data load failed: the backend is unreachable, timed out
@@ -39,6 +40,12 @@ class LoadErrorBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final colorScheme = Theme.of(context).colorScheme;
+    final friendly = friendlyError(l10n, message, source: source);
+    final raw = message.replaceFirst('Exception: ', '').trim();
+    // The copy carries the precise cause too when the friendly sentence
+    // paraphrased it, so a pasted report still names the root cause.
+    final copyText =
+        raw.isEmpty || raw == friendly ? friendly : '$friendly\n$raw';
     return Material(
       color: colorScheme.errorContainer,
       child: Semantics(
@@ -53,10 +60,14 @@ class LoadErrorBanner extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  friendlyError(l10n, message, source: source),
+                child: SelectableMessageText(
+                  friendly,
                   style: TextStyle(color: colorScheme.onErrorContainer),
                 ),
+              ),
+              CopyMessageButton(
+                message: copyText,
+                color: colorScheme.onErrorContainer,
               ),
               if (onWorkOffline != null)
                 TextButton(

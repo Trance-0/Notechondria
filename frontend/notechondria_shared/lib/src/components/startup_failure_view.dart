@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
+import 'copyable_feedback.dart';
 
 /// Full-page fallback shown when an app cannot finish starting (a startup
 /// step threw, or an uncaught error hit before the first frame). Replaces
@@ -53,7 +54,7 @@ class StartupFailureView extends StatelessWidget {
                     style: theme.textTheme.headlineSmall,
                   ),
                   const SizedBox(height: 12),
-                  SelectableText(
+                  SelectableMessageText(
                     l10n.startupFailureMessage(source, cause),
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium,
@@ -67,6 +68,9 @@ class StartupFailureView extends StatelessWidget {
                       FilledButton(
                         onPressed: onRetry,
                         child: Text(l10n.commonRetry),
+                      ),
+                      CopyMessageButton(
+                        message: l10n.startupFailureMessage(source, cause),
                       ),
                       if (onContinue != null)
                         OutlinedButton(
