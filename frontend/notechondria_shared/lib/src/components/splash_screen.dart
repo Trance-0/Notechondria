@@ -19,6 +19,10 @@ import '../reaction_simulator/reaction_view.dart';
 /// to it and pushes known bootstrap phase labels as startup progresses. The
 /// splash localizes those known labels at display time. When omitted the
 /// splash falls back to the localized common loading string.
+///
+/// On web this is the only Flutter loading screen: it takes over from the
+/// matching static header in each app's `web/index.html` (`#nc-boot`)
+/// without an intro fade, so the user sees one loading surface.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({
     super.key,
@@ -55,7 +59,17 @@ class _SplashScreenState extends State<SplashScreen>
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
-    )..forward();
+    );
+    // On web the page's HTML boot surface (#nc-boot in web/index.html)
+    // already shows this header in the same place, so the first Flutter
+    // frame must match it instead of fading in: the handoff on
+    // `flutter-first-frame` is then one continuous loading screen, not a
+    // second one (0.1.199).
+    if (kIsWeb) {
+      _fadeController.value = 1.0;
+    } else {
+      _fadeController.forward();
+    }
   }
 
   @override
@@ -243,7 +257,20 @@ class _LoadingStatusText extends StatelessWidget {
     );
   }
 
+  /// Localizes a status label. A `'<label>: <Module>/<process>'` value
+  /// (set by `AppShellLogMixin.startupStep`, 0.1.199) localizes the label
+  /// and keeps the `Module/process` suffix verbatim, so the splash names
+  /// the exact startup step that is running.
   static String _localizedStatus(String value, AppLocalizations l10n) {
+    final split = value.indexOf(': ');
+    if (split > 0) {
+      final head = _localizedLabel(value.substring(0, split), l10n);
+      return '$head: ${value.substring(split + 2)}';
+    }
+    return _localizedLabel(value, l10n);
+  }
+
+  static String _localizedLabel(String value, AppLocalizations l10n) {
     return switch (value) {
       'Starting editor' => l10n.splashStartingEditor,
       'Starting planner' => l10n.splashStartingPlanner,

@@ -178,7 +178,10 @@ class _AppShellState extends State<AppShell>
   Future<void> saveLocalStats(Map<String, dynamic> v) =>
       _LocalAppStore.saveStats(v);
   @override
-  Future<void> saveLocalLogs(List<String> v) => _LocalAppStore.saveLogs(v);
+  // Gated until `_loadLocalState` has merged the persisted history:
+  // startup records logged before it must not overwrite that history.
+  Future<void> saveLocalLogs(List<String> v) =>
+      _localLogsLoaded ? _LocalAppStore.saveLogs(v) : Future<void>.value();
   // AppShellCourseHelpersMixin wiring (localCourses already provided
   // above for AppShellLocalPersistMixin — same getter satisfies both).
   @override
@@ -318,6 +321,17 @@ class _AppShellState extends State<AppShell>
   int _learnerNotesOffset = 0;
   String _learnerSearchQuery = '';
   Timer? _splashTimer;
+
+  /// True once `_loadLocalState` merged the persisted debug log (0.1.199).
+  bool _localLogsLoaded = false;
+
+  /// Result of the startup handshake (`core/bootstrap.dart`); null when it
+  /// was skipped or startup failed first. Version-banner probes during
+  /// startup and in the minute after it (the banner is rebuilt when the
+  /// splash closes) reuse it instead of sending another handshake.
+  final Completer<HandshakeResult?> _startupHandshake =
+      Completer<HandshakeResult?>();
+  DateTime? _startupHandshakeReuseUntil;
   final ValueNotifier<String> _splashStatus =
       ValueNotifier<String>('Starting editor');
 

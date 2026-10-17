@@ -101,11 +101,22 @@ extension _AppShellSettingsHelpersX on _AppShellState {
   /// Probe the backend's running version + compat floor for the
   /// version-update banner. Returns null when the backend is
   /// unreachable (banner then shows nothing).
+  ///
+  /// Probes made while startup runs, or within a minute of its handshake,
+  /// reuse that result (0.1.199) instead of sending another request; later
+  /// polls, and a start that skipped or failed before the handshake, probe
+  /// live.
   Future<BackendVersionInfo?> _probeBackendVersion() async {
     final url =
         _localSettings['api_base_url']?.toString() ?? _defaultApiBaseUrl();
     try {
-      final result = await widget.client.verifyHandshake(url);
+      HandshakeResult? result;
+      final reuseUntil = _startupHandshakeReuseUntil;
+      if (!_startupHandshake.isCompleted ||
+          (reuseUntil != null && DateTime.now().isBefore(reuseUntil))) {
+        result = await _startupHandshake.future;
+      }
+      result ??= await widget.client.verifyHandshake(url);
       if (!result.ok || result.version.isEmpty) return null;
       return BackendVersionInfo(
         version: result.version,

@@ -10,11 +10,19 @@ part of notechondria_frontend;
 /// [StartupRequestBudget] (see `runWithStartupBudget`): an unresponsive
 /// backend now ends in the banner after [kBackendStartupTimeout] instead
 /// of an empty shell that never finishes loading.
+///
+/// 0.1.199: every step writes structured debug-log records through
+/// `startupStep` (`Portal.Startup/<step>`, with duration and, on failure,
+/// the cause), and the splash shows the running step. Order: local_state,
+/// config, handshake, session_restore, oauth_callback, initial_data.
 extension _AppShellBootstrapX on _AppShellState {
   Future<void> _bootstrapApp() async {
     _startupFailure = null;
     _splashTimer?.cancel();
-    _splashTimer = Timer(const Duration(seconds: 10), () {
+    // Safety net only: startup itself is bounded by the 10s budget, so
+    // the splash normally ends when `_loadInitialData` finishes.
+    _splashTimer =
+        Timer(kBackendStartupTimeout + const Duration(seconds: 2), () {
       if (!mounted) return;
       _isLoading = false;
       _showSplash = false;
@@ -24,14 +32,60 @@ extension _AppShellBootstrapX on _AppShellState {
       await runWithStartupBudget(
         StartupRequestBudget(source: 'Portal.Startup/bootstrap'),
         () async {
-          _splashStatus.value = 'Loading local state';
-          await _loadLocalState();
-          _splashStatus.value = 'Restoring session';
-          await _restoreSession();
-          _splashStatus.value = 'Completing sign-in';
-          final freshSignIn = await handleOAuthCallback();
-          _splashStatus.value = 'Connecting to server';
-          await _loadInitialData();
+          await startupStep<void>(
+            'Portal.Startup/local_state',
+            _loadLocalState,
+            status: _splashStatus,
+            label: 'Loading local state',
+            failureConsequence: 'Local state not loaded',
+            outcome: (_) => (
+              level: DebugLogLevel.info,
+              message: 'Local state loaded: Portal.Startup/local_state '
+                  '\u2014 ${_localDrafts.length} local draft(s), '
+                  '${_localCourses.length} local course(s), '
+                  '${_localEvents.length} local event(s).',
+            ),
+          );
+          _logStartupConfig();
+          await _runStartupHandshake();
+          await startupStep<String>(
+            'Portal.Startup/session_restore',
+            _restoreSession,
+            status: _splashStatus,
+            label: 'Restoring session',
+            failureConsequence: 'Session not restored',
+            outcome: (outcome) => _sessionRestoreOutcome(
+                'Portal.Startup/session_restore', outcome),
+          );
+          final freshSignIn = await startupStep<bool>(
+            'Portal.Startup/oauth_callback',
+            handleOAuthCallback,
+            status: _splashStatus,
+            label: 'Completing sign-in',
+            failureConsequence: 'Sign-in not completed',
+            outcome: (signedIn) => signedIn
+                ? (
+                    level: DebugLogLevel.info,
+                    message: 'Sign-in completed: '
+                        'Portal.Startup/oauth_callback \u2014 the sign-in '
+                        'redirect was exchanged for a session.',
+                  )
+                : (
+                    level: DebugLogLevel.debug,
+                    message: 'No sign-in completed: '
+                        'Portal.Startup/oauth_callback \u2014 the page URL '
+                        'has no usable sign-in code (see any Auth line '
+                        'above for a failed exchange).',
+                  ),
+          );
+          await startupStep<void>(
+            'Portal.Startup/initial_data',
+            _loadInitialData,
+            status: _splashStatus,
+            label: 'Loading public notes data',
+            failureConsequence: 'Cloud data not loaded',
+            outcome: (_) => _initialDataOutcome('Portal.Startup/initial_data'),
+          );
           if (freshSignIn) {
             await _applyKeepOfflineChoice();
           }
@@ -43,12 +97,128 @@ extension _AppShellBootstrapX on _AppShellState {
     }
   }
 
+  /// Logs which API base URL this start uses and why (0.1.199).
+  void _logStartupConfig() {
+    final base = _httpClient?.baseUrl ?? 'no HTTP client';
+    final saved = _localSettings['api_base_url']?.toString() ?? '';
+    final origin = kIsWeb ? '; page origin ${Uri.base.origin}' : '';
+    final offline = _localSettings['offline_mode'] == true;
+    log(
+      level: DebugLogLevel.info,
+      source: 'Portal.Startup/config',
+      message: 'API base resolved: Portal.Startup/config \u2014 $base '
+          '(${saved.isNotEmpty && saved != _defaultApiBaseUrl() ? 'saved setting' : 'default for this page origin'}'
+          '$origin; offline mode ${offline ? 'on' : 'off'}).',
+    );
+  }
+
+  /// The first contact with the backend, logged and bounded by the
+  /// startup budget. Its result also answers the version banner's first
+  /// probe (`_startupHandshake`), so startup sends one handshake, not two.
+  /// A failed handshake does not stop startup: the session restore and
+  /// data load still run (and fail fast once the budget has timed out).
+  Future<void> _runStartupHandshake() async {
+    if (_localSettings['offline_mode'] == true) {
+      log(
+        level: DebugLogLevel.debug,
+        source: 'Portal.Startup/handshake',
+        message: 'Handshake skipped: Portal.Startup/handshake \u2014 '
+            'offline mode is on.',
+      );
+      _completeStartupHandshake(null);
+      return;
+    }
+    final base = _httpClient?.baseUrl ??
+        (_localSettings['api_base_url']?.toString() ?? _defaultApiBaseUrl());
+    try {
+      final result = await startupStep<HandshakeResult>(
+        'Portal.Startup/handshake',
+        () => widget.client.verifyHandshake(base),
+        status: _splashStatus,
+        label: 'Connecting to server',
+        failureConsequence: 'Backend not reachable',
+        outcome: (result) => result.ok
+            ? (
+                level: DebugLogLevel.info,
+                message: 'Backend reachable: Portal.Startup/handshake '
+                    '\u2014 GET $base/handshake/ answered ${result.service} '
+                    'v${result.version} (api ${result.apiVersion}).',
+              )
+            : (
+                level: DebugLogLevel.warning,
+                message: 'Backend not reachable: Portal.Startup/handshake '
+                    '\u2014 ${(result.error ?? 'no detail').replaceFirst(RegExp(r'\.$'), '')}.',
+              ),
+      );
+      _completeStartupHandshake(result);
+    } catch (_) {
+      // Already logged by startupStep; the data load reports the rest.
+      _completeStartupHandshake(null);
+    }
+  }
+
+  void _completeStartupHandshake(HandshakeResult? result) {
+    if (_startupHandshake.isCompleted) return;
+    _startupHandshake.complete(result);
+    if (result != null) {
+      _startupHandshakeReuseUntil =
+          DateTime.now().add(const Duration(minutes: 1));
+    }
+  }
+
+  /// The initial_data outcome record. `_loadInitialData` does not throw
+  /// when cloud requests fail (it falls back to local data and sets
+  /// `_errorMessage`), so a fallback is reported as a WARNING with its
+  /// cause instead of "done".
+  StartupOutcome _initialDataOutcome(String source) {
+    final error = _errorMessage;
+    if (error != null && error.isNotEmpty) {
+      return (
+        level: DebugLogLevel.warning,
+        message: 'Startup finished on local data only: $source \u2014 '
+            '${error.replaceFirst(RegExp(r'\.$'), '')}.',
+      );
+    }
+    return (
+      level: DebugLogLevel.debug,
+      message: _localSettings['offline_mode'] == true
+          ? 'Startup step finished: $source \u2014 offline mode is on; '
+              'rendered from the local cache.'
+          : 'Startup step finished: $source \u2014 every cloud request '
+              'answered.',
+    );
+  }
+
+  /// Turns `_restoreSession`'s outcome into the session_restore record.
+  StartupOutcome _sessionRestoreOutcome(String source, String outcome) {
+    if (outcome == 'no saved session') {
+      return (
+        level: DebugLogLevel.debug,
+        message: 'No saved session: $source \u2014 nothing is stored on '
+            'this device.',
+      );
+    }
+    if (outcome == 'saved session validated') {
+      return (
+        level: DebugLogLevel.info,
+        message: 'Session restored: $source \u2014 saved session validated.',
+      );
+    }
+    return (
+      level: DebugLogLevel.warning,
+      message: outcome.startsWith('saved session kept')
+          ? 'Session not restored yet: $source \u2014 $outcome.'
+          : 'Session not restored: $source \u2014 $outcome.',
+    );
+  }
+
   /// A startup step threw (e.g. a corrupt local cache): show the
   /// [StartupFailureView] instead of a half-initialized shell.
   void _handleBootstrapFailure(Object error, StackTrace stack) {
     final cause = error.toString().replaceFirst('Exception: ', '');
     debugPrint('Notechondria Portal cannot finish starting: '
         'Portal.Startup/bootstrap \u2014 $cause\n$stack');
+    _completeStartupHandshake(null);
     _startupFailure = cause;
     _isLoading = false;
     _showSplash = false;
@@ -56,8 +226,10 @@ extension _AppShellBootstrapX on _AppShellState {
     log(
       level: DebugLogLevel.error,
       source: 'Portal.Startup/bootstrap',
-      message: 'Portal cannot finish starting \u2014 $cause',
+      message: 'Portal cannot finish starting: Portal.Startup/bootstrap '
+          '\u2014 $cause',
     );
+    unawaited(_recoverLogPersistence());
   }
 
   void _retryBootstrap() {
@@ -141,16 +313,19 @@ extension _AppShellBootstrapX on _AppShellState {
   /// A startup timeout keeps the persisted session: it says nothing about
   /// the token, and clearing it would sign the user out because the
   /// server was slow. The banner's Retry restores it later.
-  Future<void> _restoreSession() async {
+  ///
+  /// Returns what happened, for the `Portal.Startup/session_restore` log
+  /// record (0.1.199). It never contains the token or the profile.
+  Future<String> _restoreSession() async {
     final session = await _LocalAppStore.loadSession();
-    if (session == null) return;
+    if (session == null) return 'no saved session';
     final token = session['token']?.toString() ?? '';
-    if (token.isEmpty) return;
+    if (token.isEmpty) return 'no saved session';
     try {
       final check = await widget.client.checkSession(token);
       if (check['authenticated'] == true) {
         await applyAuthPayload(check);
-        return;
+        return 'saved session validated';
       }
     } on BackendStartupTimeout catch (error) {
       log(
@@ -159,11 +334,15 @@ extension _AppShellBootstrapX on _AppShellState {
         message: 'Saved session not restored yet \u2014 $error '
             'The session stays saved; Retry restores it.',
       );
-      return;
-    } catch (_) {
-      // Token invalid or network down — fall through and clear.
+      return 'saved session kept: ${describeRequestFailure(error)}';
+    } catch (error) {
+      // Token invalid or network down — clear (unchanged behavior), but
+      // keep the cause for the startup log.
+      await _LocalAppStore.clearSession();
+      return 'saved session cleared: ${describeRequestFailure(error)}';
     }
     await _LocalAppStore.clearSession();
+    return 'saved session cleared: backend reported it is not authenticated';
   }
 
   /// Resolves a `#/courses/<slug>` cold-start deep link once the course

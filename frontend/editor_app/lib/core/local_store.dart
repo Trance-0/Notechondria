@@ -251,6 +251,12 @@ class _LocalAppStore {
     await prefs.setString(_logsKey, jsonEncode(logs));
   }
 
+  /// The persisted debug log alone, for a start whose full [load] failed.
+  static Future<List<String>> loadLogs() async {
+    final prefs = await SharedPreferences.getInstance();
+    return _decodeStringList(prefs.getString(_logsKey));
+  }
+
   static Future<void> saveTrashedDrafts(
     List<Map<String, dynamic>> drafts,
   ) async {

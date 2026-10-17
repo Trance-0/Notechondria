@@ -474,7 +474,9 @@ extension _AppShellBuildHelpersX on _AppShellState {
               frontendVersion: _kAppVersion,
               probe: _probeBackendVersion,
             ),
-            if (_isLoading) const LinearProgressIndicator(minHeight: 2),
+            // Never under the splash: one loading surface at a time.
+            if (_isLoading && !_showSplash)
+              const LinearProgressIndicator(minHeight: 2),
             if (_errorMessage != null)
               LoadErrorBanner(
                 message: _errorMessage!,

@@ -162,16 +162,19 @@ extension _AppShellAuthFlowsX on _AppShellState {
   /// Restores a persisted auth session if one exists. Validates the
   /// token against the backend via `/auth/session/`; if the token is
   /// stale the persisted session is cleared.
-  Future<void> _restoreSession() async {
+  ///
+  /// Returns what happened, for the `Editor.Startup/session_restore` log
+  /// record (0.1.199). It never contains the token or the profile.
+  Future<String> _restoreSession() async {
     final session = await _LocalAppStore.loadSession();
-    if (session == null) return;
+    if (session == null) return 'no saved session';
     final token = session['token']?.toString() ?? '';
-    if (token.isEmpty) return;
+    if (token.isEmpty) return 'no saved session';
     try {
       final check = await widget.client.checkSession(token);
       if (check['authenticated'] == true) {
         await applyAuthPayload(check);
-        return;
+        return 'saved session validated';
       }
     } on BackendStartupTimeout catch (error) {
       // A startup timeout says nothing about the token; clearing the
@@ -183,10 +186,14 @@ extension _AppShellAuthFlowsX on _AppShellState {
         message: 'Saved session not restored yet \u2014 $error '
             'The session stays saved; Retry restores it.',
       );
-      return;
-    } catch (_) {
-      // Token invalid or network down — fall through and clear.
+      return 'saved session kept: ${describeRequestFailure(error)}';
+    } catch (error) {
+      // Token invalid or network down — clear (unchanged behavior), but
+      // keep the cause for the startup log.
+      await _LocalAppStore.clearSession();
+      return 'saved session cleared: ${describeRequestFailure(error)}';
     }
     await _LocalAppStore.clearSession();
+    return 'saved session cleared: backend reported it is not authenticated';
   }
 }

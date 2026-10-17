@@ -254,16 +254,37 @@ class HttpNotechondriaClient
     final normalized = _normalizeBaseUrl(rawCandidateBaseUrl);
     final target = Uri.parse('$normalized/handshake/');
     try {
-      final response = await _httpClient.get(target, headers: {
-        'Accept': 'application/json'
-      }).timeout(const Duration(seconds: 8));
+      // Through `send` (0.1.199) so the handshake is logged like every
+      // other request. Inside a startup pass the shared budget is the
+      // only bound; elsewhere (Settings, version polls) it keeps its 8s.
+      final response = await send('GET', target, () {
+        final request =
+            _httpClient.get(target, headers: {'Accept': 'application/json'});
+        return currentStartupBudget != null
+            ? request
+            : request.timeout(const Duration(seconds: 8));
+      });
+      if (response.body.trimLeft().startsWith('<')) {
+        return HandshakeResult.failure(
+          'Handshake got HTML instead of JSON from $target '
+          '(HTTP ${response.statusCode}): wrong API base URL or a proxy page.',
+        );
+      }
       if (response.statusCode != 200) {
         return HandshakeResult.failure(
           'Handshake got HTTP ${response.statusCode} from $target. '
           'Expected 200.',
         );
       }
-      final dynamic parsed = jsonDecode(response.body);
+      final dynamic parsed;
+      try {
+        parsed = jsonDecode(response.body);
+      } on FormatException {
+        return HandshakeResult.failure(
+          'Handshake response from $target is not JSON '
+          '(HTTP ${response.statusCode}): wrong API base URL or a proxy page.',
+        );
+      }
       if (parsed is! Map<String, dynamic>) {
         return HandshakeResult.failure(
           'Handshake response was not JSON object. '
@@ -296,11 +317,9 @@ class HttpNotechondriaClient
         minFrontendVersion:
             parsed['min_frontend_version']?.toString() ?? '',
       );
-    } on TimeoutException {
-      return HandshakeResult.failure(
-          'Handshake timed out after 8s hitting $target.');
     } catch (error) {
-      return HandshakeResult.failure('Handshake request failed: $error');
+      return HandshakeResult.failure(
+          'Handshake request failed: ${describeRequestFailure(error)}');
     }
   }
 

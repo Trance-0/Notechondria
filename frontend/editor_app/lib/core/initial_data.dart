@@ -132,28 +132,30 @@ extension _AppShellInitialDataX on _AppShellState {
       _showSplash = false;
       refreshState();
       log(
-        source: 'Editor._loadInitialData',
+        source: 'Editor.Startup/initial_data',
         level: DebugLogLevel.info,
-        message: 'Offline mode: Editor._loadInitialData \u2014 skipped remote '
-            'fetches, rendered from local cache.',
+        message: 'Cloud data not requested: Editor.Startup/initial_data '
+            '\u2014 offline mode is on; rendered from local cache.',
       );
       return;
     }
 
-    _splashStatus.value = 'Loading public notes data';
+    _splashStatus.value =
+        'Loading public notes data: Editor.Startup/initial_data';
     try {
       frontPage = await timed(
-        'Editor._loadInitialData.getFrontPage',
+        'Editor.Startup/initial_data.getFrontPage',
         () => widget.client.getFrontPage(token: _token),
       );
       updatedCache = true;
     } catch (error) {
       errors.add(error.toString().replaceFirst('Exception: ', ''));
     }
-    _splashStatus.value = 'Loading categories';
+    _splashStatus.value =
+        'Loading categories: Editor.Startup/initial_data';
     try {
       courses = (await timed(
-        'Editor._loadInitialData.getCourses',
+        'Editor.Startup/initial_data.getCourses',
         () => widget.client.getCourses(token: _token),
       ))
           .map(decorateRemoteCourse)
@@ -191,7 +193,7 @@ extension _AppShellInitialDataX on _AppShellState {
       } else {
         try {
           courseNotes = await timed(
-            'Editor._loadInitialData.getCourseNotes',
+            'Editor.Startup/initial_data.getCourseNotes',
             () => widget.client.getCourseNotes(
               course['id'] as int,
               token: _token,
@@ -215,7 +217,8 @@ extension _AppShellInitialDataX on _AppShellState {
     } else {
       deletedNotes = const [];
     }
-    _splashStatus.value = 'Loading notes';
+    _splashStatus.value =
+        'Loading notes: Editor.Startup/initial_data';
     final isAuthd = _token != null && _token!.isNotEmpty;
     // #30 (reopen): anonymous / offline users land on the Inbox — their
     // local drafts plus the intro note — NOT the platform's public
@@ -240,7 +243,7 @@ extension _AppShellInitialDataX on _AppShellState {
     if (scope != 'local' && !anonymousInbox) {
       try {
         notePage = await timed(
-          'Editor._loadInitialData.listNotes',
+          'Editor.Startup/initial_data.listNotes',
           () => widget.client.listNotes(
             token: isAuthd ? _token : null,
             limit: 20,
@@ -307,21 +310,21 @@ extension _AppShellInitialDataX on _AppShellState {
       await _persistLocalCache();
     }
     log(
-      source: 'Editor._loadInitialData',
+      source: 'Editor.Startup/initial_data',
       level: errors.isEmpty
           ? DebugLogLevel.info
           : sessionRejected
               ? DebugLogLevel.warning
               : DebugLogLevel.warning,
       message: errors.isEmpty
-          ? 'Initial Editor._loadInitialData data loaded '
-              '(${courses.length} categories, ${learnerNotes.length} notes).'
+          ? 'Cloud data loaded: Editor.Startup/initial_data \u2014 '
+              '${courses.length} categories, ${learnerNotes.length} notes.'
           : sessionRejected
               ? 'Signed out: Editor.Session/reject \u2014 at least two '
                   'authenticated requests were rejected (expired or revoked '
                   'session). Please sign in again.'
-              : 'Initial Editor._loadInitialData load used offline fallback: '
-                  'Editor.Sync.Notes/bootstrap \u2014 ${errors.first}.',
+              : 'Initial load used offline fallback: '
+                  'Editor.Startup/initial_data \u2014 ${errors.first}.',
     );
     if (!sessionRejected && errors.isEmpty) {
       unawaited(_autoMigrateLegacyInbox());

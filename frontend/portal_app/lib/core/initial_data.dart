@@ -99,7 +99,7 @@ extension _AppShellInitialDataX on _AppShellState {
       if (_token != null && _token!.isNotEmpty) {
         try {
           courses = (await timed(
-            'Portal._loadInitialData.getCourses.offline',
+            'Portal.Startup/initial_data.getCourses.offline',
             () => widget.client.getCourses(token: _token),
           ))
               .map(decorateRemoteCourse)
@@ -127,17 +127,17 @@ extension _AppShellInitialDataX on _AppShellState {
       _showSplash = false;
       refreshState();
       log(
-        source: 'Portal._loadInitialData',
+        source: 'Portal.Startup/initial_data',
         level: DebugLogLevel.info,
-        message: 'Offline mode: Portal._loadInitialData \u2014 skipped remote '
-            'fetches, rendered from local cache.',
+        message: 'Cloud data not requested: Portal.Startup/initial_data '
+            '\u2014 offline mode is on; rendered from local cache.',
       );
       return;
     }
 
     try {
       frontPage = await timed(
-        'Portal._loadInitialData.getFrontPage',
+        'Portal.Startup/initial_data.getFrontPage',
         () => widget.client.getFrontPage(token: _token),
       );
       updatedCache = true;
@@ -146,7 +146,7 @@ extension _AppShellInitialDataX on _AppShellState {
     }
     try {
       courses = (await timed(
-        'Portal._loadInitialData.getCourses',
+        'Portal.Startup/initial_data.getCourses',
         () => widget.client.getCourses(token: _token),
       ))
           .map(decorateRemoteCourse)
@@ -157,7 +157,7 @@ extension _AppShellInitialDataX on _AppShellState {
     }
     try {
       activity = await timed(
-        'Portal._loadInitialData.getActivity',
+        'Portal.Startup/initial_data.getActivity',
         () => widget.client.getActivity(token: _token),
       );
       updatedCache = true;
@@ -176,7 +176,7 @@ extension _AppShellInitialDataX on _AppShellState {
       } else {
         try {
           courseNotes = await timed(
-            'Portal._loadInitialData.getCourseNotes',
+            'Portal.Startup/initial_data.getCourseNotes',
             () => widget.client.getCourseNotes(
               selectedCourse['id'] as int,
               token: _token,
@@ -194,7 +194,7 @@ extension _AppShellInitialDataX on _AppShellState {
     if (_token != null && _token!.isNotEmpty) {
       try {
         plannerEvents = await timed(
-          'Portal._loadInitialData.getPlannerEvents',
+          'Portal.Startup/initial_data.getPlannerEvents',
           () => widget.client.getPlannerEvents(_token!),
         );
       } catch (error) {
@@ -202,7 +202,7 @@ extension _AppShellInitialDataX on _AppShellState {
       }
       try {
         calendarFeeds = await timed(
-          'Portal._loadInitialData.getCalendarFeeds',
+          'Portal.Startup/initial_data.getCalendarFeeds',
           () => widget.client.getCalendarFeeds(_token!),
         );
       } catch (error) {
@@ -210,7 +210,7 @@ extension _AppShellInitialDataX on _AppShellState {
       }
       try {
         activityWeek = await timed(
-          'Portal._loadInitialData.getActivityWeek',
+          'Portal.Startup/initial_data.getActivityWeek',
           () => widget.client.getActivityWeek(
             _token!,
             startDate: _activityWeekStart.toIso8601String().split('T').first,
@@ -222,7 +222,7 @@ extension _AppShellInitialDataX on _AppShellState {
       }
       try {
         deletedNotes = await timed(
-          'Portal._loadInitialData.getDeletedNotes',
+          'Portal.Startup/initial_data.getDeletedNotes',
           () => widget.client.getDeletedNotes(_token!),
         );
       } catch (error) {
@@ -230,7 +230,7 @@ extension _AppShellInitialDataX on _AppShellState {
       }
       try {
         notePage = await timed(
-          'Portal._loadInitialData.listNotes',
+          'Portal.Startup/initial_data.listNotes',
           () => widget.client.listNotes(token: _token, limit: 20, offset: 0),
         );
         learnerNotes = (notePage['results'] as List<dynamic>? ?? const [])
@@ -303,17 +303,17 @@ extension _AppShellInitialDataX on _AppShellState {
       await _persistLocalCache();
     }
     log(
-      source: 'Portal._loadInitialData',
+      source: 'Portal.Startup/initial_data',
       level: errors.isEmpty ? DebugLogLevel.info : DebugLogLevel.warning,
       message: errors.isEmpty
-          ? 'Initial Portal._loadInitialData data loaded '
-              '(${courses.length} cloud courses, ${learnerNotes.length} notes).'
+          ? 'Cloud data loaded: Portal.Startup/initial_data \u2014 '
+              '${courses.length} cloud courses, ${learnerNotes.length} notes.'
           : sessionRejected
               ? 'Signed out: Portal.Session/reject \u2014 at least two '
                   'authenticated requests were rejected (expired or revoked '
                   'session). Please sign in again.'
-              : 'Initial Portal._loadInitialData load used offline fallback: '
-                  'Portal.Sync.FrontPage/bootstrap \u2014 ${errors.first}.',
+              : 'Initial load used offline fallback: '
+                  'Portal.Startup/initial_data \u2014 ${errors.first}.',
     );
     if (!sessionRejected) {
       if (!_maybeShowOnboarding()) {

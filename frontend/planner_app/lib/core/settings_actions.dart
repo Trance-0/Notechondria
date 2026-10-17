@@ -79,9 +79,11 @@ extension _AppShellSettingsActionsX on _AppShellState {
       if (client is HttpNotechondriaClient) {
         final handshake = await client.verifyHandshake(nextApiBase);
         if (!handshake.ok) {
+          final cause = (handshake.error ?? 'no reason reported')
+              .replaceFirst(RegExp(r'\.$'), '');
           return ActionFeedback(
-            message:
-                'Backend handshake failed for $nextApiBase: ${handshake.error ?? 'unknown error'}',
+            message: 'API base not changed: Planner.Sync.Settings/save '
+                '\u2014 handshake with $nextApiBase failed: $cause.',
           );
         }
       }

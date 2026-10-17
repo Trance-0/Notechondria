@@ -4,6 +4,10 @@ part of notechondria_frontend;
 extension _AppShellLoadLocalStateX on _AppShellState {
   Future<void> _loadLocalState() async {
     final snapshot = await _LocalAppStore.load();
+    // First, before anything below can throw (a failed settings write or
+    // a corrupt cache value), so a failed start still persists its log
+    // lines.
+    _mergePersistedLogs(snapshot.logs);
     _localSettings = snapshot.settings;
     final storedApiBase = _localSettings['api_base_url']?.toString() ?? '';
     if (kIsWeb &&
@@ -24,12 +28,6 @@ extension _AppShellLoadLocalStateX on _AppShellState {
     _localTrashedCourses = snapshot.trashedCourses;
     _localStats = snapshot.stats;
     _localCache = snapshot.cache;
-    uiLogs
-      ..clear()
-      ..addAll(snapshot.logs);
-    logController.replaceAll(
-      snapshot.logs.map(DebugLogEntry.fromPersistedString),
-    );
     logController.bindCacheProvider(_snapshotLocalStore);
     _frontPage = Map<String, dynamic>.from(
       snapshot.cache['front_page'] as Map? ?? const {},
@@ -62,5 +60,46 @@ extension _AppShellLoadLocalStateX on _AppShellState {
     if (mounted) {
       refreshState();
     }
+  }
+
+  /// Keeps the lines logged earlier in this page session (the startup
+  /// step records written before the local load) above the [persisted]
+  /// history, then opens the log-persistence gate (`_localLogsLoaded`),
+  /// so startup never overwrites the stored history.
+  void _mergePersistedLogs(List<String> persisted) {
+    final known = persisted.toSet();
+    final mergedLogs = [
+      ...uiLogs.where((line) => !known.contains(line)),
+      ...persisted,
+    ].take(uiLogCapacity).toList(growable: false);
+    uiLogs
+      ..clear()
+      ..addAll(mergedLogs);
+    logController.replaceAll(
+      mergedLogs.map(DebugLogEntry.fromPersistedString),
+    );
+    _localLogsLoaded = true;
+    unawaited(persistUiLogs());
+  }
+
+  /// Startup failed before `_loadLocalState` merged the persisted logs
+  /// (`_LocalAppStore.load()` threw). Merge whatever history can still be
+  /// read and open the gate, so this session's failure lines (and every
+  /// Retry) are persisted for the next start.
+  Future<void> _recoverLogPersistence() async {
+    if (_localLogsLoaded) return;
+    var persisted = const <String>[];
+    try {
+      persisted = await _LocalAppStore.loadLogs();
+    } catch (error) {
+      log(
+        level: DebugLogLevel.warning,
+        source: 'Portal.LocalStore/load',
+        message: 'Earlier debug log not restored: Portal.LocalStore/load '
+            '\u2014 ${describeRequestFailure(error)}; this session\'s lines '
+            'are saved on their own.',
+      );
+    }
+    if (!_localLogsLoaded) _mergePersistedLogs(persisted);
   }
 }
