@@ -16,11 +16,13 @@ import 'package:planner_app/main.dart' as app;
 /// unresponsive server), refuses every connection, or answers every
 /// request with empty data plus a valid handshake. Signed-in calendar
 /// tests also use its login answer, its 7-day activity week, and the
-/// recorded calendar-feed POSTs ([failCalendarUpload] refuses those).
+/// recorded calendar-feed POSTs ([failCalendarUpload] refuses those;
+/// [failCalendarRefresh] refuses the feed-list GET).
 class _Backend {
   bool hang = true;
   bool refuse = false;
   bool failCalendarUpload = false;
+  bool failCalendarRefresh = false;
   int requests = 0;
   int handshakes = 0;
   final calendarPosts = <Map<String, dynamic>>[];
@@ -52,6 +54,10 @@ class _Backend {
             http.ClientException('Connection refused', request.url));
       }
       return _json({'id': 7, 'title': 'Phase1 Test Calendar'}, 201);
+    }
+    if (path.endsWith('/calendar-feeds/') && failCalendarRefresh) {
+      return Future.error(
+          http.ClientException('Connection refused', request.url));
     }
     if (path.endsWith('/activity/week/')) {
       final today = DateTime.now();
@@ -551,6 +557,59 @@ void main() {
               '(connection refused).'));
       expect(push.single, isNot(contains('Server request failed')));
       await _pumpSeconds(tester, 11);
+    });
+
+    testWidgets(
+        'signed in, a subscribe whose create succeeds but whose refresh '
+        'fails closes as a success after exactly one create call',
+        (tester) async {
+      SharedPreferences.setMockInitialValues(_seenFirstRun());
+      final backend = _Backend()..hang = false;
+      await _pumpPlanner(tester, backend, initialIndex: 3);
+      await _pumpSeconds(tester, 3);
+      await _signInThenOpenActivity(tester);
+
+      backend.failCalendarRefresh = true;
+      const url = 'https://calendar.example.test/basic.ics';
+      await _openFabMenu(tester);
+      await tester.tap(find.text('Subscribe calendar'));
+      await _pumpShort(tester);
+      await tester.enterText(
+          find.widgetWithText(TextField, 'iCal URL or Google share link'),
+          url);
+      await tester.tap(find.text('Subscribe'));
+      await _pumpShort(tester);
+
+      // Closed as a success, so there is no retry that would register a
+      // second server-side feed.
+      expect(find.text('Subscribe to calendar'), findsNothing);
+      expect(find.textContaining('Calendar not subscribed'), findsNothing);
+      expect(backend.calendarPosts, hasLength(1));
+      expect(backend.calendarPosts.single['source_kind'], 'S');
+      expect(backend.calendarPosts.single['source_url'], url);
+      expect(
+          await _pumpUntilFound(
+              tester,
+              find.descendant(
+                  of: find.byType(SnackBar),
+                  matching: find.textContaining('Calendar subscribed: '
+                      'Planner.Sync.Calendar/subscribe — "Subscribed '
+                      'calendar" feed URL registered.'))),
+          isTrue);
+
+      final prefs = await SharedPreferences.getInstance();
+      final logs = (jsonDecode(prefs.getString('notechondria.planner.local_logs')!)
+              as List<dynamic>)
+          .cast<String>();
+      final refresh =
+          logs.where((l) => l.contains('Calendar list not refreshed'));
+      expect(refresh, hasLength(1), reason: logs.join('\n'));
+      expect(
+          refresh.single,
+          contains('Calendar list not refreshed: '
+              'Planner.Sync.Calendar/refresh — connection refused; the '
+              'subscription itself succeeded.'));
+      await _pumpSeconds(tester, 8);
     });
   });
   group('startup logs and loading surface (0.1.199)', () {

@@ -158,7 +158,6 @@ extension _AppShellCalendarX on _AppShellState {
         'source_url': url,
         'course_id': courseId,
       });
-      await _refreshCalendarState();
     } catch (error) {
       final message = 'Calendar not subscribed: '
           'Planner.Sync.Calendar/subscribe \u2014 '
@@ -178,6 +177,18 @@ extension _AppShellCalendarX on _AppShellState {
       source: 'Planner.Sync.Calendar/subscribe',
       message: message,
     );
+    try {
+      await _refreshCalendarState();
+    } catch (error) {
+      log(
+        level: DebugLogLevel.warning,
+        source: 'Planner.Sync.Calendar/refresh',
+        message: 'Calendar list not refreshed: '
+            'Planner.Sync.Calendar/refresh \u2014 '
+            '${describeRequestFailure(error)}; the subscription itself '
+            'succeeded.',
+      );
+    }
     return ActionFeedback(message: message);
   }
 

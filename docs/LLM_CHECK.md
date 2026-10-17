@@ -33,6 +33,24 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.199 follow-up (2026-10-17, no VERSION bump): Phase 1 review
+  finding 1. ROOT CAUSE: `planner_app/lib/core/calendar.dart:154-172`
+  `_subscribeCalendarFeed` wrapped `createCalendarFeed` and
+  `_refreshCalendarState` in one `try`, so a refresh failure after a
+  successful create returned `Calendar not subscribed:
+  Planner.Sync.Calendar/subscribe — <cause>.` and kept the dialog open; a
+  retry registered a duplicate server-side feed. FIX: the refresh failure
+  is handled on its own, as in `_importCalendarFeed` (WARNING `Calendar
+  list not refreshed: Planner.Sync.Calendar/refresh — <cause>; the
+  subscription itself succeeded.`), and the success result is returned.
+  New planner `smoke_test.dart` case (create OK, feed-list GET refused):
+  one create call, dialog closed; it failed on the unfixed code. VERIFIED
+  (Docker `ghcr.io/cirruslabs/flutter:stable`, Flutter 3.44.0, one
+  container, `--memory 4g` (discarded by this kernel) + `timeout`):
+  planner analyze 0 errors (105 issues, unchanged apart from line
+  shifts); planner tests 15 pass (was 14). NOT RUN: editor, portal, and
+  shared suites (untouched), web builds, CI.
+
 - 0.1.199 (2026-10-16): FIX, owner-reported. (1) Planner "Import failed ...
   no cloud session, sign in first", and the warning could not be copied.
   (2) No useful startup log, and two loading screens. ROOT CAUSES (0.1.198
