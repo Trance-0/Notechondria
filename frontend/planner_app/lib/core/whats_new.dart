@@ -56,6 +56,14 @@ const _kFeatureUpdates = <FeatureUpdate>[
         'tiles are readable in dark mode and tappable for details.',
     icon: Icons.task_alt_outlined,
   ),
+  FeatureUpdate(
+    version: '0.1.199',
+    title: 'Import calendars offline',
+    description: 'Import iCal now works without signing in or a reachable '
+        'server: the file is read on this device and its events stay '
+        'after a reload. Messages and warnings have a Copy button.',
+    icon: Icons.event_available_outlined,
+  ),
 ];
 
 extension _AppShellWhatsNewX on _AppShellState {

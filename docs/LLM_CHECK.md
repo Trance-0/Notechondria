@@ -14,6 +14,10 @@ Use this checklist at the end of each modification round.
 8. Launching builds/tests/containers beyond what the host can afford (crashed the 3.3 GiB dev host on 2026-07-10 with three parallel Flutter Docker builds + a 7-service stack). Check `free -h` first; take at most 70% of remaining RAM; `--memory`-cap containers; `timeout`-wrap runs; kill anything silent for 5 minutes; run heavy jobs sequentially. See docs/AGENTS.md "Host resource budget".
 9. Post-processing generated web output with whole-file regexes. 0.1.196's Pages service-worker strip also matched the inlined `flutter.js` loader's own `serviceWorkerSettings:e` parameter, so every app threw `ReferenceError: e is not defined` and stayed blank for two releases while CI was green (VM smoke tests never run the bootstrap JS). Scope edits of `flutter_bootstrap.js` to the call site after `//# sourceMappingURL=flutter.js.map`, assert the loader is unchanged, and load the built bundle in a real browser before claiming a web fix.
 10. Building a frontend without `APP_VERSION`. The apps compile `String.fromEnvironment('APP_VERSION', defaultValue: '0.1.21')`, so a Docker or Jenkins build that omits it ships 0.1.21 and the shared version banner shows a false "A new version is available. Refresh to update. (v0.1.21 → v0.1.NNN)" that a refresh never clears (seen on the 0.1.198 local preview). Pass `--dart-define=APP_VERSION` (Pages) or `--build-arg APP_VERSION` (Docker) from `VERSION`, then grep the built `main.dart.js` for the dominant `"0.1.NNN"`.
+11. Showing an error in a SnackBar while a dialog is open, or relying on a page-body `SelectionArea` to make messages copyable. The SnackBar is painted under the dialog's modal barrier (0.1.198 planner "Import failed: ... no cloud session" could be neither read in full nor copied), and `SelectionArea` covers neither SnackBars (ScaffoldMessenger) nor dialogs (separate routes). Show dialog errors inline with the shared `FeedbackText`, raise SnackBars through `showCopyableSnackBar` / `showMessage`, and give standalone messages a `CopyMessageButton`.
+12. Sending a request outside `HttpClientInternalsMixin.send`. The 0.1.198 `verifyHandshake` called `_httpClient.get` directly, so the first contact with the backend was never logged and ignored the startup budget, and the startup log could not say whether the backend was reachable. Route every request through `send` (startup steps through `startupStep`), and log causes with `describeRequestFailure`, not `error.runtimeType` (release web builds print `minified:Au`).
+13. Opening a persistence gate late in a load. The first 0.1.199 draft set `_localLogsLoaded` only after the log merge near the end of `_loadLocalState`, so a start that threw earlier (a corrupt cached value) dropped every log write for the session, Retry included: the one case where a stored startup log matters most. Merge the stored history right after the store load, and open the gate in the failure handler too.
+14. Reusing a cause fragment as a whole user-facing message. `HandshakeResult.error` is written as a cause, and Settings showed it as `Backend handshake failed for <url>: <cause>` with no `Module/process`. When a string written as a fragment reaches the UI, wrap it in the full `<consequence>: <Module>/<process> — <cause>` shape at that call site.
 
 ## Round-end checklist
 
@@ -28,6 +32,82 @@ Use this checklist at the end of each modification round.
 - Confirm every host port assignment was explicitly verified for the target machine instead of assuming a common port is available; you have no knowledge of host port availability until it is checked.
 
 ## Current round log
+
+- 0.1.199 (2026-10-16): FIX, owner-reported. (1) Planner "Import failed ...
+  no cloud session, sign in first", and the warning could not be copied.
+  (2) No useful startup log, and two loading screens. ROOT CAUSES (0.1.198
+  line numbers): `planner_app/lib/core/calendar.dart:27-37`
+  `_importCalendarFeed` required a token and only POSTed to the backend;
+  `planner_app/lib/modules/activity_calendar.dart:685-693` showed
+  `Import failed: $error` in a SnackBar under the dialog's modal barrier;
+  the page-body `SelectionArea` covers neither SnackBars nor dialogs. Each
+  `<app>_app/web/index.html:51-56,79` drew a CSS spinner, then the Flutter
+  splash (different layout) faded in; `if (_isLoading)
+  LinearProgressIndicator` was built under the splash (planner
+  `lib/app_shell.dart:665`, editor `lib/core/build_helpers.dart:477`,
+  portal `lib/app_shell.dart:823`) and the 10s splash timer
+  (`lib/core/bootstrap.dart:18`, portal `:17`) could expire before the
+  budget; `verifyHandshake` bypassed `HttpClientInternalsMixin.send`
+  (planner `lib/core/client.dart:257`, editor `lib/core/http_client.dart:59`,
+  portal `lib/core/client.dart:55`); failures logged only
+  `exc=minified:HJ` (`notechondria_shared/lib/src/http/http_client_internals_mixin.dart:134,154`)
+  and the HTML-instead-of-JSON error (`:342`) was never logged; editor
+  `lib/core/auth_flows.dart:187` and portal `lib/core/bootstrap.dart:163`
+  dropped the session-restore cause in `catch (_)`. FIX: shared
+  `parseIcalEvents`, local calendar store
+  (`notechondria.planner.local_calendar_feeds`, local-archive shape) used
+  when signed out, offline, or when the upload fails; URL subscribe stays
+  cloud-only with an inline §1.8 explanation; shared `copyable_feedback.dart`
+  (`CopyMessageButton`, `showCopyableSnackBar`, `SelectableMessageText`)
+  behind `showMessage`, `FeedbackText`, `ConfirmWithDelayDialog`,
+  `LoadErrorBanner`, `StartupFailureView`, and the OAuth errors;
+  `startupStep` + `describeRequestFailure` records for local_state, config,
+  handshake, session_restore, oauth_callback, initial_data in all three
+  apps; handshake through `send` (one handshake per start, reused by the
+  version banner); `#nc-boot` is now a static copy of the splash header and
+  the web splash skips its fade. REVIEW FIXES (second pass): Settings'
+  API-base check says `API base not changed: <App>.Sync.Settings/save —
+  handshake with <url> failed: <cause>.`; the stored log is merged right
+  after the store load and again from `_handleBootstrapFailure`
+  (`_LocalAppStore.loadLogs`), so a failed start persists its lines; the
+  signed-in upload-failure fallback shows as a 10s warning (dialog still
+  closes) and its push log uses the redacted cause; the `initial_data`
+  outcome reports a fallback as WARNING; the `#nc-boot` English-only status
+  is recorded in TODO. VERIFIED (Docker
+  `ghcr.io/cirruslabs/flutter:stable`, Flutter 3.44.0, one container at a
+  time, `--memory 6g` + `timeout`): analyze 0 errors in all four packages,
+  no new issues except one `use_string_in_part_of_directives` info on the
+  new planner part file; tests editor 19, planner 14, portal 16 pass;
+  shared 89 pass plus the 3 `version_update_banner_test.dart` failures that
+  already failed on HEAD (baseline: 67 pass + the same 3). CI-equivalent
+  `smoke_test.dart` runs pass (5 / 13 / 15). Pages-equivalent release builds
+  succeed (base href `/Notechondria/<app>/`, `#nc-boot` without spinner,
+  loader unchanged, bundles `"0.1.199"`). Local preview rebuilt with
+  `scripts/local_remote_deploy.sh up` (only `127.0.0.1:9068` published;
+  front-page 200 JSON; backend 0.1.198, so the expected "A new version is
+  rolling out ... (v0.1.199 -> v0.1.198)" banner shows). Playwright Chromium
+  on the preview: signed-out import of a one-event .ics succeeds, survives
+  a reload, and its SnackBar Copy copies the full message, both with the
+  live backend and with the gateway upstream black-holed
+  (`REMOTE_BACKEND_ORIGIN=http://192.0.2.1`); the empty .ics error is
+  inline, "Copy message" copies it, Tab reaches the button and Enter copies;
+  mouse drag + Ctrl+C copies the text (semantics off). Timed bursts (32
+  frames every 250ms) show one loading surface and no spinner in all three
+  apps, live, in-page black-holed, and gateway black-holed; logs carry step
+  durations and `timeout after 10s (server did not respond)`, and the
+  `initial_data` outcome is a WARNING when black-holed. A refused
+  upstream now shows the 5xx banner (first pass; that path is unchanged
+  by the second pass). NOT RUN / LIMITS: CI itself, Firefox
+  and Safari, iOS/Android, the real Pages deploy, a screen reader. With
+  Flutter semantics enabled, mouse selection + Ctrl+C does not copy (the
+  Copy button does). This kernel discards `docker --memory` and rejects
+  `--cpus` (cgroup v2 threaded), so caps were not enforced
+  (`HostConfig.Memory=0`); runs relied on `timeout` and sequencing. Host:
+  61 GiB / 16 cores, about 56 GiB free. l10n keys were hand-spliced
+  (`flutter gen-l10n` still fails on `activityWeightN`); the generated
+  l10n files were already over the 1000-line cap. Evidence (not
+  committed): `.agents/tasks/phase1-evidence/`, summary in
+  `.agents/tasks/phase1-verification.md`.
 
 - 2026-10-16 (repo tooling + docs, no VERSION bump; stays 0.1.198):
   APP_VERSION stamping for Docker/Jenkins frontend builds and a local

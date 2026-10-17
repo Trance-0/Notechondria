@@ -120,9 +120,13 @@ before committing.
 Each app paints its local data first and never waits on the backend
 without a bound:
 
-- `web/index.html` shows a loading indicator until Flutter's first frame.
-  If the Flutter loader fails to download or throws, or nothing has
-  rendered after 20s, it shows the cause and a Reload button.
+- `web/index.html` shows a static copy of the splash header (no spinner)
+  until Flutter's first frame, and the Flutter splash takes over in the same
+  place, so there is one loading screen (since 0.1.199). The splash names
+  the running step, for example `Connecting to server:
+  Planner.Startup/handshake`. If the Flutter loader fails to download or
+  throws, or nothing has rendered after 20s, the page shows the cause and a
+  Reload button.
 - Backend requests made during startup, the error banner's Retry, and its
   Work offline are capped at 10s, and later requests in the same pass fail
   fast after the first timeout. An unresponsive backend therefore ends in the
@@ -132,6 +136,17 @@ without a bound:
   failure screen with Retry and Continue anyway. Uncaught errors before the
   first frame, and widget build errors, render visible fallbacks instead of
   a blank page.
+- Every startup step (local data, API base, handshake, session restore,
+  sign-in callback, initial data) writes a `<App>.Startup/<step>` record to
+  the debug log (Settings > Debug log) with its duration and, on failure,
+  the cause, such as `timeout after 10s (server did not respond)` or
+  `connection refused`. Messages, banners, and dialog errors are selectable
+  and have a Copy button (since 0.1.199).
+- The planner imports `.ics` files on the device when signed out, offline,
+  or when the server is unreachable, and keeps them across reloads
+  (since 0.1.199; see
+  [`client/planner_app.md`](client/planner_app.md#offline-calendar-import-01199)).
+  Subscribing to a calendar URL still needs a cloud session.
 
 See the `src/startup/` section of
 [`client/notechondria_shared.md`](client/notechondria_shared.md).

@@ -57,6 +57,14 @@ const _kFeatureUpdates = <FeatureUpdate>[
         'the browser won’t evict.',
     icon: Icons.add_to_home_screen,
   ),
+  FeatureUpdate(
+    version: '0.1.199',
+    title: 'Copy any message',
+    description: 'Warnings, errors, and confirmations are selectable and have a '
+        'Copy button, and the debug log now records each startup step '
+        'with its timing.',
+    icon: Icons.copy_all_outlined,
+  ),
 ];
 
 extension _AppShellWhatsNewX on _AppShellState {

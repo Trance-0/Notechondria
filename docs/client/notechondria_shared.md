@@ -96,11 +96,12 @@ in 0.1.67 relies on this pair.
 | `debug_log.dart`, `debug_widgets.dart` | `DebugLogCard`, `ApiDebugCard` | Debug drawer surfaces on the Settings surface. |
 | `error_state.dart` | `ErrorStatePanel` | "Something went wrong" screen with API base URL context. |
 | `load_error_banner.dart` | `LoadErrorBanner` | Since 0.1.198: the connection / load-error bar shared by all three shells (was three copies). Renders the raw error through `friendlyError` (localized AGENTS.md §1.8 text) with Work offline / Retry / Dismiss. |
-| `startup_failure_view.dart` | `StartupFailureView` | Since 0.1.198: full-page fallback when a startup step throws, with the §1.8 cause, Retry, and an optional "Continue anyway". |
+| `startup_failure_view.dart` | `StartupFailureView` | Since 0.1.198: full-page fallback when a startup step throws, with the §1.8 cause, Retry, "Copy message" (0.1.199), and an optional "Continue anyway". |
+| `copyable_feedback.dart` | `CopyMessageButton`, `copyMessageToClipboard`, `showCopyableSnackBar` | Since 0.1.199. Messages must be selectable and copyable, and a page-level `SelectionArea` reaches neither SnackBars (painted by the ScaffoldMessenger) nor dialogs (separate routes). `CopyMessageButton` is an icon button with the tooltip / semantic label "Copy message" that copies the full text and switches to "Message copied to clipboard." (or the `Shared.Feedback/copy` failure). `showCopyableSnackBar` shows the text with a Copy action and a close icon (`persist: false`, 6s, 10s for errors). Message text uses the package-internal `SelectableMessageText`: a `SelectableText` whose words are given to the semantics tree as a label, because on web a bare `SelectableText` is an empty read-only text field to screen readers. Used by `showMessage` (every app's SnackBar helper), `FeedbackText` (inline dialog / form feedback), `ConfirmWithDelayDialog` (Copy action), `LoadErrorBanner` (copies the friendly text plus the raw cause), `StartupFailureView`, and the OAuth mixin's sign-in errors. |
 | `wide_course_sidebar_section.dart` | `WideCourseSidebarSection` | Collapsible "Courses" list in the planner / portal wide sidebar (moved here from two identical private copies in 0.1.198). |
 | `navigation.dart` | Navigation rail / bottom-bar helpers. |
 | `phased_status.dart` | `PhasedStatusIndicator` — replaces a bare spinner with a labelled "Sending request to backend → Waiting for backend response → Applying response" line. Used by `EmailPasswordDialog._submit`. |
-| `splash_screen.dart` | `SplashScreen` | Splash screen backed by `src/reaction_simulator/` since 0.1.128 — a Dart port of the owner's `index` repo reaction simulator (TCA-cycle particles colliding and reacting on a toroidal world; hardcoded 128-particle target, spawn energy ~ N(250000, 60000)). Replaced the hand-drawn `splash_painter.dart` Krebs-cycle painter (deleted). |
+| `splash_screen.dart` | `SplashScreen` | 0.1.199: the status line accepts `'<label>: <Module>/<process>'` (localizes the label, keeps the step name), and on web the header skips its intro fade so the first frame matches each app's `#nc-boot` HTML header (one loading screen at the handoff). Splash screen backed by `src/reaction_simulator/` since 0.1.128 — a Dart port of the owner's `index` repo reaction simulator (TCA-cycle particles colliding and reacting on a toroidal world; hardcoded 128-particle target, spawn energy ~ N(250000, 60000)). Replaced the hand-drawn `splash_painter.dart` Krebs-cycle painter (deleted). |
 
 ## `src/startup/` — startup resilience (since 0.1.198)
 
@@ -120,9 +121,40 @@ in 0.1.67 relies on this pair.
   shared `LoadErrorBanner` over local data, with Work offline and Retry. A
   startup step that throws shows `StartupFailureView` (Retry, Continue
   anyway). Before Flutter paints, each app's `web/index.html` shows a
-  `#nc-boot` loading message; it turns into a failure message with Reload
+  `#nc-boot` loading surface (since 0.1.199 a static copy of the splash
+  header with no spinner, so only one loading screen shows); it turns into
+  a failure message with Reload
   when the bootstrap script fails to download, the loader throws, or no
   frame appears within 20s.
+- **`startup_log.dart`** (0.1.199) — `describeRequestFailure(error)` turns
+  a failed request or step into a specific cause: `timeout after 10s
+  (server did not respond)`, `skipped: an earlier startup request timed out
+  after 10s`, `connection refused`, `DNS lookup failed`, `TLS handshake
+  failed`, `connection reset before a response`, the browser's opaque
+  `network error with no readable response (...)`, `HTML instead of JSON
+  (HTTP 502)`, or the error's first line. It drops URL query strings and
+  redacts `Token` / `Bearer` values. `StartupOutcome` is the
+  `(level, message)` record a step reports.
+- **`AppShellLogMixin.startupStep`** (0.1.199) — each app's
+  `core/bootstrap.dart` runs every cold-start step through it:
+  `local_state`, `config`, `handshake`, `session_restore`,
+  `oauth_callback`, `initial_data` (source `<App>.Startup/<step>`). It logs
+  a DEBUG "started" line and the outcome with its duration, or on a throw
+  `<consequence>: <App>.Startup/<step> — <cause>` before rethrowing, and
+  sets the splash status to `'<label>: <App>.Startup/<step>'`. The
+  `initial_data` outcome is a WARNING `Startup finished on local data
+  only: ...` when the load fell back to local data. Each app's
+  `_loadLocalState` merges the startup lines with the stored log right
+  after the store load (and `_handleBootstrapFailure` does it when that
+  load throws), so a failed start still persists its records. The
+  handshake now goes through `HttpClientInternalsMixin.send`, so it is
+  logged and bounded by the startup budget; its result also answers the
+  version banner's first probe. `send` logs failures as `HTTP request
+  failed: <App>.HTTP/request_failed — GET <host><path> after <n>ms:
+  <cause>.`, startup requests of 3s or more as `<App>.HTTP/slow`, and a
+  non-JSON body as `Server response not usable: <App>.HTTP/response —
+  expected JSON from ... but received HTML (HTTP <n>, <type>, <n>B) ...`.
+  Logs never carry tokens, cookies, or profile data.
 - **`startup_guard.dart`** — `runGuardedApp` (used by every `main.dart`)
   wraps `runApp` in `runZonedGuarded`, chains `FlutterError.onError` and
   `PlatformDispatcher.instance.onError`, and installs `StartupErrorWidget` as
@@ -154,6 +186,7 @@ in 0.1.67 relies on this pair.
 | `compact_timestamp.dart` | "2 min ago" / "yesterday" / "Jan 14" formatting for the sessions list, note cards, etc. |
 | `local_archive.dart` | Zip-based export / import of a workspace snapshot. Shared across apps so planner and portal can import what editor exported. |
 | `local_attachment_store.dart` + `_io.dart` + `_web.dart` | Conditional-import attachment blob store. IO backend writes to `path_provider` app-docs; web backend is in-memory today (IndexedDB persistence tracked in TODO). Used by the 0.1.40+ attachment-CDN work so notes can carry image/file references without sending them to the backend. |
+| `ical_events.dart` | `parseIcalEvents(raw)` (0.1.199): on-device RFC 5545 VEVENT reader for the planner's offline import. Unfolds lines, reads only VEVENT-level properties (not nested VALARM), unescapes text, handles UTC / all-day / floating and `TZID=` (as device-local) times, defaults DTEND to +1h or +1 day, counts events without a readable DTSTART as skipped, and returns `IcalParseResult(calendarName, events, skipped)`. No RRULE expansion. |
 | `ping_backend.dart` | `HttpNotechondriaClient.verifyHandshake` helper — probes `GET /handshake/` on a candidate base URL before Settings commits a new one (0.1.17 design). |
 
 ## `src/notechondria_shared.dart` — export barrel

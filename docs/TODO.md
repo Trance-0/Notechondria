@@ -395,6 +395,30 @@ English (US) + Chinese (Simplified), a Language setting in each app
 
 ## Planner
 
+Recorded in 0.1.199 (owner request for this task; not filed as Issues yet).
+
+- [ ] Upload calendars imported on this device after sign-in
+  (`Planner.Sync.Calendar/push`). Local feeds live in
+  `notechondria.planner.local_calendar_feeds`
+  (`frontend/planner_app/lib/core/local_calendar.dart`) and are never
+  pushed. Rebuild a VCALENDAR from each feed's `events`, push it from
+  `_syncAllLocalData`, and drop the local copy once the server has it.
+- [ ] Offline-created planner events say "queued for sync on next sign-in"
+  (`frontend/planner_app/lib/core/settings_actions.dart`,
+  `_createPlannerEvent`), but nothing pushes them, and a signed-in
+  `_loadInitialData` replaces `_plannerEvents`, after which
+  `_persistLocalCache` overwrites the local ones.
+- [ ] The offline iCal reader (`notechondria_shared/lib/src/utils/ical_events.dart`)
+  does not expand RRULE (a recurring event imports its first occurrence) and
+  reads `TZID=` times as device-local time.
+- [ ] Portal iCal import still needs a cloud session
+  (`frontend/portal_app/lib/modules/activity_week.dart`); split that
+  2300-line file before touching it.
+- [ ] The editor's "no cloud session; sign in first." guards were left out of
+  0.1.199 (Phase 1 covered the planner import only).
+- [ ] Local calendars cannot be edited or removed one by one (the planner
+  has no feed-management UI); "Clear local data" removes all of them.
+
 
 ## Version-update notification (landed 0.1.151–0.1.152)
 
@@ -499,16 +523,23 @@ round. Not fixed in code yet; file as Issues with
   fail-fast flag. Run them outside the budget, then fix
   `docs/versions/0.1.198.md` and the `send()` doc comment, which say
   requests outside a pass stay unbounded.
-- [ ] An HTML 502 from a proxy (for example the local preview gateway with
+- [x] (0.1.199) Verified on the local preview with a refused upstream
+  (`REMOTE_BACKEND_ORIGIN=http://127.0.0.1:9`): the gateway's HTML 502 now
+  shows `Cloud data not loaded: Planner.HTTP/response — the server returned
+  an error (HTTP 5xx). Retry in a moment or work offline.` with Work offline
+  / Retry, because the decode error carries `(HTTP 502, ...)`. Original
+  item: an HTML 502 from a proxy (for example the local preview gateway with
   a refused upstream) shows "Expected JSON from GET ... but received HTML.
   Check API_BASE_URL and backend routing." instead of the
   backend-unavailable banner (`HttpClientInternalsMixin`,
   `frontend/notechondria_shared/lib/src/http/http_client_internals_mixin.dart`).
   A 5xx with an HTML body should be treated as the backend being
   unavailable.
-- [ ] That message also violates AGENTS.md §1.8: it has no consequence and
-  no `Module/process`. Reword it to the
-  "<consequence>: <App>.HTTP/response — <cause>" shape.
+- [x] (0.1.199) That message also violates AGENTS.md §1.8: it has no
+  consequence and no `Module/process`. Reworded to
+  `Server response not usable: <App>.HTTP/response — expected JSON from
+  <method> <url> but received HTML (HTTP <n>, <content-type>, <n>B); check
+  the API base URL and backend routing.` and logged at WARNING.
 - [ ] `StartupGuard.installErrorHandlers`
   (`notechondria_shared/lib/src/startup/startup_guard.dart`) logs every
   `FlutterError` as `Screen element not rendered: <App>.UI/render`, which
@@ -536,6 +567,25 @@ round. Not fixed in code yet; file as Issues with
   "shows localized update banner when backend is newer", "update banner
   localizes to zh", and "unsupported (below floor) shows update-required,
   no dismiss". Each exact-text finder matches 0 widgets.
+- [ ] Direct `showSnackBar(SnackBar(content: Text(...)))` sites outside the
+  shared helpers are still not copyable (0.1.199 converted `showMessage`,
+  `FeedbackText`, `ConfirmWithDelayDialog`, `LoadErrorBanner`,
+  `StartupFailureView`, the OAuth mixin, and the planner's calendar
+  dialogs): 14 in editor, 4 in portal, 4 in
+  `notechondria_shared/lib/src/components/mcp_skill_section.dart`, and the
+  debug log's "Logs copied" note. Route them through `showCopyableSnackBar`.
+- [ ] `#nc-boot` in each `web/index.html` follows `prefers-color-scheme`,
+  while the Flutter splash follows the app's saved theme, so a forced light
+  or dark theme flashes at the handoff. The portal's custom startup image
+  likewise appears only after the HTML header. Its status line is
+  English-only ("Starting Notechondria <App>"), so zh users see it switch
+  to the localized splash text at the handoff; pick the string from
+  `navigator.language` (or the saved locale) in the inline script.
+- [ ] Docker on the dev host discards `--memory` ("kernel does not support
+  memory limit capabilities") and rejects `--cpus` (cgroup v2 in threaded
+  mode), so the preview's `--memory 256m` / `128m` and the verification
+  containers' caps are not enforced (`docker inspect` shows
+  `HostConfig.Memory=0`). Runs rely on `timeout` and sequential jobs.
 - [ ] The root `docker-compose.yml` (used by `docker compose up` and
   `deployment/jenkins/scripts/deploy_full_stack.sh`) does not forward
   `APP_VERSION`, so its frontends report 0.1.21. Add

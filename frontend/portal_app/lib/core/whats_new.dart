@@ -88,6 +88,14 @@ const _kFeatureUpdates = <FeatureUpdate>[
         'width on both phone and desktop instead of overflowing.',
     icon: Icons.grid_view_outlined,
   ),
+  FeatureUpdate(
+    version: '0.1.199',
+    title: 'Copy any message',
+    description: 'Warnings, errors, and confirmations are selectable and have a '
+        'Copy button, and the debug log now records each startup step '
+        'with its timing.',
+    icon: Icons.copy_all_outlined,
+  ),
 ];
 
 extension _AppShellWhatsNewX on _AppShellState {

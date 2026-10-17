@@ -147,7 +147,7 @@ This project's canonical module / process names are:
 | Module (dotted) | Surface | Example processes |
 |---|---|---|
 | `Editor.Auth` | editor_app auth flows | `restore`, `login`, `oauth.callback`, `logout`, `bind`, `register`, `verify`, `password.reset` |
-| `Editor.Sync.Settings` | editor settings sync | `bootstrap`, `save`, `push`, `pull` |
+| `Editor.Sync.Settings` / `Planner.Sync.Settings` / `Portal.Sync.Settings` | per-app settings sync (`core/settings_actions.dart`; `save` includes the API-base handshake check) | `bootstrap`, `save`, `push`, `pull` |
 | `Editor.Sync.Courses` | editor category sync | `create`, `update`, `delete`, `reorder`, `push`, `pull` |
 | `Editor.Sync.Notes` | editor note sync | `list`, `load`, `save`, `delete`, `pull_public` |
 | `Editor.LocalStore` | editor local persistence | `load`, `save`, `clear`, `seed_starter` |
@@ -155,16 +155,18 @@ This project's canonical module / process names are:
 | `Editor.UI` | editor user-visible actions | `open_note`, `switch_course`, `feedback` |
 | `Planner.Auth` | planner_app auth flows | same verbs as `Editor.Auth` |
 | `Planner.Sync.Events` | planner event/course sync | same verbs |
+| `Planner.Sync.Calendar` | planner calendar feeds (`core/calendar.dart`, `core/local_calendar.dart`) | `import`, `parse`, `push`, `pull`, `subscribe`, `refresh`, `toggle`, `delete` |
 | `Planner.LocalStore` | planner local persistence | same verbs |
 | `Planner.UI` | planner user-visible actions | same verbs |
 | `Portal.Auth` | portal_app auth flows | same verbs as `Editor.Auth` |
 | `Portal.Sync.FrontPage` | portal front-page sync | `pull` |
 | `Portal.LocalStore` | portal local persistence | same verbs |
 | `Portal.UI` | portal user-visible actions | same verbs, plus `render` (the shared `StartupErrorWidget`, all apps) |
-| `Editor.Startup` / `Planner.Startup` / `Portal.Startup` | cold start and its fallbacks (`core/bootstrap.dart`, `runGuardedApp`) | `bootstrap`, `retry`, `work_offline`, `initial_data`, `zone`, `uncaught_error` |
-| `Editor.HTTP` / `Planner.HTTP` / `Portal.HTTP` | per-app HTTP layer (`HttpClientInternalsMixin.send`) | `request`, `response`, `request_failed` |
+| `Editor.Startup` / `Planner.Startup` / `Portal.Startup` | cold start and its fallbacks (`core/bootstrap.dart`, `runGuardedApp`) | `bootstrap`, `retry`, `work_offline`, `local_state`, `config`, `handshake`, `session_restore`, `oauth_callback`, `initial_data`, `zone`, `uncaught_error` |
+| `Editor.HTTP` / `Planner.HTTP` / `Portal.HTTP` | per-app HTTP layer (`HttpClientInternalsMixin.send`) | `request`, `response`, `request_failed`, `slow` |
 | `Shared.AuthDialog` | `notechondria_shared` auth dialog stack | `login.submit`, `register.submit`, `verify.submit`, `reset.request`, `reset.confirm` |
 | `Shared.DebugLog` | shared debug log card / terminal | `ls`, `cd`, `clear`, `copy`, `unknown_command` |
+| `Shared.Feedback` | shared copyable feedback (`CopyMessageButton`, `showCopyableSnackBar`) | `copy` |
 | `Backend.Creators.Auth` | `backend/creators/api.py` auth endpoints | `register`, `login`, `verify`, `bind`, `oauth.google`, `oauth.github`, `password.reset` |
 | `Backend.Creators.Settings` | creators settings endpoints | `get`, `update` |
 | `Backend.Notes.Courses` | `backend/notes/api.py` course endpoints | `list`, `create`, `update`, `delete`, `reorder` |
