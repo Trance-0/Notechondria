@@ -6,6 +6,12 @@ import 'package:http/http.dart' as http;
 import '../components/debug_log.dart';
 import '../models/api_debug_snapshot.dart';
 import '../startup/startup_budget.dart';
+import '../startup/startup_log.dart';
+
+/// A startup request at or above this duration logs an `HTTP/slow`
+/// warning (0.1.199), so a backend that answers just inside the startup
+/// budget is visible in the debug log.
+const int _kSlowStartupRequestMs = 3000;
 
 /// Internal HTTP plumbing for each app's `HttpNotechondriaClient`.
 /// Owns the four headline helpers from `docs/TODO.md` plus their
@@ -124,14 +130,26 @@ mixin HttpClientInternalsMixin {
             '$method ${uri.path} → ${response.statusCode} '
             '(${elapsedMs}ms, ${response.bodyBytes.length}B).',
       );
+      if (budget != null && elapsedMs >= _kSlowStartupRequestMs) {
+        logger?.call(
+          DebugLogLevel.warning,
+          '$tag.HTTP/slow',
+          'HTTP response slow: $tag.HTTP/slow — $method ${uri.path} took '
+              '${elapsedMs}ms during startup '
+              '(limit ${budget.timeout.inSeconds}s).',
+        );
+      }
       return response;
     } catch (error) {
       final elapsedMs = DateTime.now().difference(started).inMilliseconds;
+      // Host + path only: query strings can carry search terms or
+      // tokens, and the cause text is redacted by describeRequestFailure.
+      final cause = describeRequestFailure(error);
       logger?.call(
         DebugLogLevel.warning,
         '$tag.HTTP/request_failed',
         'HTTP request failed: $tag.HTTP/request_failed — '
-            '$method ${uri.path} (${elapsedMs}ms, exc=${error.runtimeType}).',
+            '$method ${uri.authority}${uri.path} after ${elapsedMs}ms: $cause.',
       );
       _recordDebugSnapshot(ApiDebugSnapshot(
         recordedAt: DateTime.now(),
@@ -150,8 +168,8 @@ mixin HttpClientInternalsMixin {
       // network-unreachable message; keep it in the cause.
       throw Exception(
         'Server request failed: $tag.HTTP/request — client failed to '
-        'fetch $method $uri before a response arrived '
-        '(${error.runtimeType}).',
+        'fetch $method ${_withoutQuery(uri)} before a response arrived '
+        '($cause).',
       );
     }
   }
@@ -216,7 +234,14 @@ mixin HttpClientInternalsMixin {
             ? 'The response body looks like HTML, not JSON.'
             : 'The response body is not valid JSON.',
       ));
-      throw Exception(_formatDecodeError(uri, response, looksLikeHtml));
+      final message =
+          _formatDecodeError(uri, method, response, contentType, looksLikeHtml);
+      logger?.call(
+        DebugLogLevel.warning,
+        '$httpLogTagPrefix.HTTP/response',
+        message,
+      );
+      throw Exception(message);
     }
     _recordDebugSnapshot(ApiDebugSnapshot(
       recordedAt: DateTime.now(),
@@ -332,17 +357,31 @@ mixin HttpClientInternalsMixin {
     return '${compact.substring(0, 240)}...';
   }
 
+  /// §1.8 message for a body that is not JSON, typically a proxy's HTML
+  /// error page (e.g. a gateway 502) or a static host answering an API
+  /// path with index.html. Before 0.1.199 it read "Expected JSON from ...
+  /// but received HTML" with no module/process and was never logged.
   String _formatDecodeError(
     Uri uri,
+    String method,
     http.Response response,
+    String contentType,
     bool looksLikeHtml,
   ) {
-    final target = '${response.request?.method ?? 'REQUEST'} ${uri.toString()}';
-    if (looksLikeHtml) {
-      return 'Expected JSON from $target but received HTML. '
-          'Check API_BASE_URL and backend routing.';
-    }
-    return 'Expected JSON from $target but received an invalid response.';
+    final tag = httpLogTagPrefix;
+    final kind = looksLikeHtml ? 'HTML' : 'an invalid body';
+    final type = contentType.isEmpty ? 'no content-type' : contentType;
+    return 'Server response not usable: $tag.HTTP/response — expected JSON '
+        'from $method ${_withoutQuery(uri)} but received $kind '
+        '(HTTP ${response.statusCode}, $type, '
+        '${response.bodyBytes.length}B); check the API base URL and '
+        'backend routing.';
+  }
+
+  String _withoutQuery(Uri uri) {
+    final text = uri.toString();
+    final cut = text.indexOf(RegExp('[?#]'));
+    return cut < 0 ? text : text.substring(0, cut);
   }
 
   void _recordDebugSnapshot(ApiDebugSnapshot snapshot) {

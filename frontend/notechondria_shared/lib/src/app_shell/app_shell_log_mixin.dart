@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../components/copyable_feedback.dart';
 import '../components/debug_log.dart';
+import '../startup/startup_log.dart';
 
 /// Debug-log mixin shared across `_AppShellState` in editor / planner /
 /// portal apps. Owns the `uiLogs` ring buffer + the `DebugLogController`
@@ -98,6 +99,61 @@ mixin AppShellLogMixin<W extends StatefulWidget> on State<W> {
     }
     refreshState();
     unawaited(persistUiLogs());
+  }
+
+  /// Runs one cold-start step and writes structured startup records
+  /// (0.1.199): a DEBUG "started" line, then the outcome line with its
+  /// duration. [source] is the step's `<App>.Startup/<process>`.
+  ///
+  /// When [label] is set (an existing splash key such as `Connecting to
+  /// server`) and [status] is the splash notifier, the splash shows
+  /// `'<label>: <source>'`, i.e. the localized label plus the step name.
+  /// On success the outcome line is [outcome]'s record, or a DEBUG
+  /// "finished" line. On a throw it logs ERROR `<failureConsequence>:
+  /// <source> — <cause>` (cause from `describeRequestFailure`, so no
+  /// token or query string is logged) and rethrows, so the caller's
+  /// fallback (startup failure view, banner) still runs.
+  Future<T> startupStep<T>(
+    String source,
+    Future<T> Function() body, {
+    ValueNotifier<String>? status,
+    String? label,
+    StartupOutcome Function(T value)? outcome,
+    String failureConsequence = 'Startup step failed',
+  }) async {
+    if (label != null && status != null) status.value = '$label: $source';
+    log(
+      source: source,
+      level: DebugLogLevel.debug,
+      message: 'Startup step started: $source \u2014 '
+          '${label ?? 'running'}.',
+    );
+    final start = DateTime.now();
+    try {
+      final value = await body();
+      final elapsed = DateTime.now().difference(start).inMilliseconds;
+      final result = outcome?.call(value) ??
+          (
+            level: DebugLogLevel.debug,
+            message: 'Startup step finished: $source \u2014 done.',
+          );
+      log(
+        source: source,
+        level: result.level,
+        message: result.message,
+        durationMs: elapsed,
+      );
+      return value;
+    } catch (error) {
+      log(
+        source: source,
+        level: DebugLogLevel.error,
+        message: '$failureConsequence: $source \u2014 '
+            '${describeRequestFailure(error)}.',
+        durationMs: DateTime.now().difference(start).inMilliseconds,
+      );
+      rethrow;
+    }
   }
 
   /// Wraps a backend call so its duration is recorded in the debug
