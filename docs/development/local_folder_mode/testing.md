@@ -81,8 +81,11 @@ JavaScript return-value bug of 2.5; 8.3 covers that in Chromium.
   - a throwing `BroadcastChannel` listener reaches the zone's error
     handler.
 
-  The first two fail if the grant callback is bound with a guarded
-  (`void`) wrapper, so they are the regression test for 2.5.
+  Checked in Phase 1a by swapping in a guarded (`void`) wrapper in a
+  scratch copy: the first, third, and fourth tests fail (the lock is
+  released before the operation's first `await`), so they are the
+  regression test for 2.5. The second passes either way, because a
+  guarded wrapper releases the lock even earlier.
 - Where it runs: in a Docker container with the Flutter SDK (the version
   CI pins) and Playwright's Chromium, with `CHROME_EXECUTABLE` pointing at
   that Chromium. `docs/AGENTS.md` allows Flutter containers only on hosts
@@ -94,6 +97,24 @@ JavaScript return-value bug of 2.5; 8.3 covers that in Chromium.
   only the VM tests and the manual checks in 8.6, and say so in the
   round summary. GitHub CI does not run these tests unless the owner adds
   a Chrome job (Q13).
+- Working recipe (Phase 1a, Flutter 3.44.0, Chromium 131): a derived
+  image `FROM mcr.microsoft.com/playwright/python:v1.49.1-noble` with
+  `COPY --from=ghcr.io/cirruslabs/flutter:stable /sdks/flutter /sdks/flutter`,
+  `apt-get install unzip xz-utils`, `flutter precache --web` at build
+  time, and `CHROME_EXECUTABLE` set to a two-line wrapper that runs
+  `/ms-playwright/chromium-1148/chrome-linux/chrome --no-sandbox "$@"`
+  (the container runs as root). The repo is copied to a scratch
+  directory and mounted there, never read-write. Run, with no `-p`
+  mapping: `docker run --rm --memory 6g -v <scratch>:/work ...
+  flutter test --platform chrome --dart-define=NOTECHONDRIA_TEST_OPFS_FOLDER=true test/local_folder_opfs_test.dart`.
+  The network stays on because the web test runner runs `pub get` for
+  `flutter_tools`; with `--network none` it stops with "Failed to update
+  packages". Sampling `/proc/net/tcp` during the run showed only
+  `127.0.0.1` listeners (the test server and Chrome's DevTools port).
+  On this host `docker run --cpus` fails (cgroup v2 in threaded mode)
+  and `--memory` is accepted but not enforced ("Limitation discarded"),
+  so the bound is the `timeout` wrapper and one container at a time.
+  Result: 7 of 7 passed; the whole container run took about 25 s.
 - Unreachable in production: the flag is a compile-time constant, and the
   release builds pass only `APP_VERSION`
   (`.github/workflows/frontend-pages.yml:63,73,83`,
@@ -131,7 +152,7 @@ the same request.
   `backend/build/contract_responses/`, which an `actions/upload-artifact`
   step publishes, so a fixture can be refreshed from CI without a local
   backend. The fixture directory joins the workflow's `paths:` filter
-  (`.github/workflows/backend-tests.yml:15-18`), so a fixture-only change
+  (`.github/workflows/backend-tests.yml:16-19`), so a fixture-only change
   runs the test.
 - **Routes the backend does not have** (`GET /auth/session/`,
   `POST /auth/logout/`, Q17) get no recorder. Their shapes come from the

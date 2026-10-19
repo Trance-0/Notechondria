@@ -1,6 +1,8 @@
 # Local folder storage mode (design)
 
-Status: design only. Nothing here is implemented. Written against `main`
+Status: Phase 1a (the storage core under
+`frontend/notechondria_shared/lib/src/local_folder/`, section 9.2) is
+implemented; no app is wired to it yet. Written against `main`
 at VERSION 0.1.199. Citations were first pinned at `6cd1f3be` and are
 re-pinned at HEAD `48988a20`. Between the two commits only
 `frontend/planner_app/lib/core/calendar.dart` and
@@ -182,6 +184,12 @@ is the first call of its own click handler:
      Only after the picker returns does the app read the picked folder's
      `manifest.json` and check its `folder_id` (2.9).
 
+T3: on origins without the notice, the "Remember this folder on this
+browser" checkbox sits in the pick flow and in the status card, unchecked
+by default (2.10). "Use the connected folder '<name>'" takes the
+Reconnect path when a remembered handle exists and the "Choose again"
+path otherwise, with its `folder_id` checks and the 2.10 rule 3 push.
+
 Messages for unqualified browsers (AGENTS.md 1.8 shape; module rows in 9.4):
 
 - `noDirectoryPicker`: "Local folder mode unavailable: Shared.LocalFolder/qualify — this browser does not provide window.showDirectoryPicker (File System Access API). Firefox and Safari do not offer it."
@@ -214,7 +222,7 @@ Sources are listed in section 11.2. BCD is MDN browser-compat-data 8.1.6
 | `FileSystemObserver` shipped on desktop Chrome 133 (not Android); BCD: Chrome 133, Edge 133, Opera 118, experimental, not standards-track | Verified, Chrome 133 release notes, blink-dev Intent to Ship, BCD |
 | `FileSystemHandle.move()`: Chrome 102, file handles only (directory moves unsupported) | Verified, BCD note. Overwrite behavior **unverified** (U5) |
 | `FileSystemHandle.isSameEntry()`: Baseline, widely available since March 2023 | Verified, MDN `isSameEntry` |
-| Web Locks: Chrome 69, Firefox 96, Safari 15.4; locks are scoped to the origin and queue across tabs; `request()` takes `mode: 'exclusive'` (default) or `'shared'` (readers-writer) and an abort `signal` usable as a timeout | Verified, BCD and MDN Web Locks. That a tab's locks are released when it closes or its renderer crashes is **unverified** (U18); the journal (3.4.1) relies on it only to let another tab roll forward |
+| Web Locks: Chrome 69, Firefox 96, Safari 15.4; locks are scoped to the origin and queue across tabs; `request()` takes `mode: 'exclusive'` (default) or `'shared'` (readers-writer) and an abort `signal` usable as a timeout | Verified, BCD and MDN Web Locks. Release when a tab closes is specified (Web Locks spec 2.6); release when its renderer crashes is **unverified** (U18). The journal (3.4.1) relies on it only to let another tab roll forward |
 | `navigator.userAgentData` (`brands`, `mobile`): Chrome 90; not Firefox or Safari | Verified, BCD |
 | `package:web` 1.1.1 (locked in `frontend/*/pubspec.lock`, transitive) binds `getFileHandle`, `getDirectoryHandle`, `removeEntry`, `createWritable`, `isSameEntry`, `StorageManager.getDirectory`, `LockManager.request`. It does **not** bind `showDirectoryPicker`, `queryPermission`, `requestPermission`, `entries`/`values`, the `mode` member of `FileSystemCreateWritableOptions` (it has only `keepExistingData`), `Navigator.userAgentData`, or `FileSystemObserver` (its API page returns 404) | Verified against the pub.dev API pages for 1.1.1. The missing members need small `@JS` extension types (9.2 `js_bindings_web.dart`) |
 | `package:web` callbacks are not bound to the current zone, unlike `dart:html`; dart.dev recommends `Zone.current.bindUnaryCallback(...)` before `.toJS` | Verified, dart.dev package:web page. Design rule in 2.5 |
@@ -929,4 +937,5 @@ so that this document stays under the 1000-line cap:
   revision 1;
 - 12.2 design review 2 (N1 to N16), one line per finding, the items
   resolved differently from the review's wording, and the other changes
-  made while verifying.
+  made while verifying;
+- 12.3 design review 3 (T3 to T8), resolved in Phase 1a.

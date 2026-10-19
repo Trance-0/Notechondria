@@ -46,7 +46,9 @@ single exclusive hold of the folder lock (6.2 R1):
 1. Re-read from disk every file the operation rewrites, `manifest.json`
    included (6.2 R2). The in-memory index is never the base of a write.
 2. Write `.notechondria/journal/<op-id>.json`:
-   `{"schema_version": 1, "op_id", "app", "created_at", "writes": [{"path", "text", "expect"}], "removals": [{"path", "expect"}]}`.
+   `{"schema_version": 1, "op_id", "app", "created_at", "writes": [{"path", "text", "expect"}], "removals": [{"path", "expect", "directory"}]}`,
+   where `"directory": true` marks a recursive directory removal and is
+   omitted for files.
    `writes` carries the full new text of every text file the operation
    changes, note bodies included. `expect` is present only for note
    bodies (`notes/*.md`, `trash/notes/*.md`): the `size` and
@@ -80,6 +82,12 @@ interrupted and replayed. Rules:
   tabs wait at most 5 s and fail cleanly, 6.2 R5).
 - Leftover records are replayed one at a time in `op-id` order, each to
   completion before the next.
+- A replay skips a write whose target already holds the journaled text.
+  Two files may have been changed by the replay itself, so they are
+  merged instead of overwritten: `manifest.json` keeps every counter at
+  least at its value on disk, and `history/<hex>/index.json` keeps the
+  entries this record's replay saved (same `op_id`), then prunes its pools
+  again.
 - **External edits during replay.** A record left by a crash can be
   replayed long after the crash, and the user may have edited a note in
   another editor in between. Before the replay rewrites or removes a note
@@ -308,6 +316,10 @@ folder's per-day counts in `planner/heatmap.json` stay as they were.
   Scan cost for large folders is **unverified** (U6); the scan reports
   progress at least every 2 seconds. Startup uses the stored index and
   verifies it after the startup pass (2.9).
+- A journal record cannot carry the body's new `lastModified`, so after a
+  journaled body write the writer stamps the sidecar's `md_size` and
+  `md_last_modified` from a fresh stat, in the same exclusive hold
+  (`stampNoteSidecar`).
 - Before overwriting a note, the backend compares the file's current
   `lastModified` and size with the sidecar's `md_last_modified` and
   `md_size`. If they differ, the external version is first saved as a

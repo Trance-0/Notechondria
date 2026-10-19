@@ -48,7 +48,8 @@ built and therefore before any request:
 
 In folder mode the folder state starts as `opening`, and the
 `local_folder` step (2.9) opens the folder. After that the mode changes
-only on Connect, Disconnect, and "Switch to this folder" (2.9). The folder
+only on Connect and Disconnect; "Switch to this folder" (2.9) changes the
+folder, not the mode. The folder
 state (`opening`, `needsPick`, `needsPermission`, `scanning`, `active`,
 `error`, `disconnected`) never changes routing. `StorageModeClient.send`
 applies four rules:
@@ -112,6 +113,11 @@ applies four rules:
      this browser keeps access to '<name>' for one page load only
      (session-only mode), so it has to be chosen again. Click Choose
      '<name>' again."
+     With "Remember this folder" on and the IndexedDB record missing (T3):
+     "Folder not open: Shared.LocalFolder/restore_handle — this browser
+     was set to remember '<name>', but its saved folder handle is missing
+     (browser site data was cleared, or the handle was never stored), so
+     it has to be chosen again. Click Choose '<name>' again."
    - `needsPermission`: "Folder access lost: Shared.LocalFolder/permission
      — the browser no longer grants read and write access to '<name>'
      (NotAllowedError, or access revoked while the tab was in the
@@ -303,7 +309,12 @@ portal `:173-187`).
 The connection is recorded once per browser in
 `notechondria.shared.storage_mode`, in `shared_preferences`, which on web
 is origin-wide localStorage:
-`{"mode": "folder", "folder_id", "folder_name", "connected_by", "connected_at"}`.
+`{"mode": "folder", "folder_id", "folder_name", "connected_by", "connected_at", "remember"}`.
+`remember` is the "Remember this folder" choice (T3, `StorageModeRecord`);
+its default, `rememberDefaultForOrigin`, is off on every origin known
+today, because the 6.1 residual risk applies on `*.github.io`, the
+loopback preview, and any self-host, and an origin cannot show that it
+serves no uploads. A record without the key reads as off.
 Sessions are per app (`notechondria.<app>.*`; editor
 `core/local_store.dart:33-47` explains the prefixes). The editor and the
 portal persist their cloud session (`:275-285`); the planner keeps it in

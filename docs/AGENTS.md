@@ -162,11 +162,17 @@ This project's canonical module / process names are:
 | `Portal.Sync.FrontPage` | portal front-page sync | `pull` |
 | `Portal.LocalStore` | portal local persistence | same verbs |
 | `Portal.UI` | portal user-visible actions | same verbs, plus `render` (the shared `StartupErrorWidget`, all apps) |
-| `Editor.Startup` / `Planner.Startup` / `Portal.Startup` | cold start and its fallbacks (`core/bootstrap.dart`, `runGuardedApp`) | `bootstrap`, `retry`, `work_offline`, `local_state`, `config`, `handshake`, `session_restore`, `oauth_callback`, `initial_data`, `zone`, `uncaught_error` |
+| `Editor.Startup` / `Planner.Startup` / `Portal.Startup` | cold start and its fallbacks (`core/bootstrap.dart`, `runGuardedApp`) | `bootstrap`, `retry`, `work_offline`, `local_state`, `config`, `handshake`, `session_restore`, `oauth_callback`, `initial_data`, `zone`, `uncaught_error`, `local_folder` |
 | `Editor.HTTP` / `Planner.HTTP` / `Portal.HTTP` | per-app HTTP layer (`HttpClientInternalsMixin.send`) | `request`, `response`, `request_failed`, `slow` |
 | `Shared.AuthDialog` | `notechondria_shared` auth dialog stack | `login.submit`, `register.submit`, `verify.submit`, `reset.request`, `reset.confirm` |
 | `Shared.DebugLog` | shared debug log card / terminal | `ls`, `cd`, `clear`, `copy`, `unknown_command` |
 | `Shared.Feedback` | shared copyable feedback (`CopyMessageButton`, `showCopyableSnackBar`) | `copy` |
+| `Shared.LocalFolder` | `notechondria_shared` local-folder controller (`src/local_folder/`): qualification, picker, permissions, handle store, scan, lock, change channel | `qualify`, `pick`, `connect`, `permission`, `restore_handle`, `scan`, `rescan`, `observe`, `lock`, `read`, `write`, `journal`, `version_check`, `disconnect` |
+| `Shared.LocalFolder.Backend` | in-page `/api/v1` implementation (`LocalFolderTransport`, router, handlers) | `route`, `unsupported`, `notes`, `courses`, `planner`, `calendar.fetch`, `attachments`, `settings`, `search`, `front_page` |
+| `Shared.LocalFolder.Archive` | folder and `.nchron` bridge | `import`, `export`, `validate` |
+| `Shared.LocalFolder.GitHub` | token-based GitHub calls from the browser | `token`, `repos`, `push`, `course_import` |
+| `Shared.Credentials` | in-browser store for credentials of browser-to-third-party features | `store`, `load`, `clear` |
+| `Portal.Sync.Events` | portal planner-event sync (`core/settings_actions.dart`, `core/maintenance_actions.dart`) and the folder connect-time push | `create`, `toggle`, `edit`, `push` |
 | `Backend.Creators.Auth` | `backend/creators/api.py` auth endpoints | `register`, `login`, `verify`, `bind`, `oauth.google`, `oauth.github`, `password.reset` |
 | `Backend.Creators.Settings` | creators settings endpoints | `get`, `update` |
 | `Backend.Notes.Courses` | `backend/notes/api.py` course endpoints | `list`, `create`, `update`, `delete`, `reorder` |
@@ -193,7 +199,12 @@ Preserved parser sentinels (verbatim substrings that must survive any
 rewrite, documented here so future agents don't strip them):
 
 - `invalid token` / `authentication credentials were not provided` /
-  `token_not_valid` — editor `_loadInitialData` session-rejection detector.
+  `token_not_valid` / `session rejected:` — the session-rejection
+  detectors in each app's `core/initial_data.dart` (two hits in one load
+  clear the session). `shapedErrorMessage` prefixes `session rejected:`
+  onto every 401 body without an em-dash. No local-folder message may
+  contain any of the four (design `docs/development/local_folder_mode.md`
+  2.5; checked by `test/local_folder/messages_test.dart`).
 - `not_registered` / `No account found` — OAuth registration prompt.
 - `bind` — backend account-binding tests in
   `backend/creators/tests.py::test_*_bind*`.

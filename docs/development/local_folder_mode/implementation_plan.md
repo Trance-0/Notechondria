@@ -57,7 +57,29 @@ ships, nothing can write the key for it, so no feature flag is needed
    the mode key. The Chromium lock tests in
    `test/local_folder_opfs_test.dart` (8.3). Hand-written fixtures for
    these routes and Q14's backend contract test (8.4). No app wiring in
-   any app.
+   any app. Phase 1 decisions (design review 3 T7): (a) one session-key
+   table keyed by app id, `kAppSessionKeys` in `local_folder_boot.dart`;
+   (b) `decideStorageMode` takes `isWeb` from the `LocalFolderPlatform`
+   that `forTest` receives; (c) the session mixin reaches the controller
+   through an abstract `LocalFolderController? get localFolder` that each
+   shell implements (null until its wiring phase), a one-line app edit
+   allowed in Phase 1; (d) the `external_edit`/`concurrent_edit` snapshot
+   writer and the two-pool prune are Phase 1 (`folder_snapshots.dart`);
+   (e) `.notechondria/index.json` is a derived cache with
+   `schema_version` 1, `layout_version`, `folder_id`, `generated_at`, and
+   per-path entries (schema in `folder_index.dart`), and any other index is
+   ignored and rescanned; (f) F18 template restore answers 501 in folder
+   mode and its callback is gated with `_cloudOnly(...)`, so the GitHub card
+   is not the only gated control; (g) a granted handle without
+   `manifest.json` is `error` with "Folder not opened:
+   Shared.LocalFolder/scan — '<name>' has no manifest.json (<cause>) ...";
+   (h) a lock wait cut short by the request deadline answers with the 2.9
+   deadline message ("waiting for the folder lock"), and only a full 5 s
+   wait uses R5's; (i) in `disconnected`, a GET gets "Folder data not
+   loaded: Shared.LocalFolder/disconnect — '<name>' was disconnected in
+   this tab; the app reloads its browser-local data instead."; (j) when
+   both 3.8 checks trip on one PATCH, one `external_edit` snapshot is
+   taken.
 2. **Content.** Attachments, covers, avatar, `folderAwareImageProvider`,
    promotion-failure handling and "Copy browser attachments into the
    folder", history and snapshots (`external_edit`, `concurrent_edit`, in
@@ -129,6 +151,10 @@ portal build compile (dart.dev recommends this condition over
 | `../components/local_folder_status_card.dart` | Settings card: folder counts and bytes (F48), Rescan, Reconnect, Export, Check for updates, Disconnect, cloud-only list, busy and precedence lines | 280 | 1 |
 | `../components/local_folder_reconnect_view.dart` | Startup reconnect view with "Reconnect" and "Choose again", the refusal messages with "Switch to this folder", and the one-line banners (main 2.10 rule 5) | 220 | 1 |
 | `../utils/folder_aware_image.dart` | `folderAwareImageProvider` | 70 | 2 |
+| `folder_snapshots.dart` | History index, the folder-only snapshot writer, and the two-pool prune (3.8), moved into Phase 1 by T7(d) | 265 | 1 |
+| `folder_identity.dart`, `folder_scanner.dart` | The scan of `folder_index.dart`, split out: duplicate identities and adoption as journaled fixes (3.7), and the paged scan with the R4 re-check | 314 + 249 | 1 |
+| `folder_messages.dart` | Every 1.8 message of the module and the session-sentinel check (2.5) | 268 | 1 |
+| `local_folder_platform.dart` | `LocalFolderPlatform` and `FolderPicker`, the seam `forTest` and the web check use (T7(b)); `folder_fs_stub.dart` stubs the whole platform, so one conditional import pair serves fs, picker, handle store, locks, channel, and probe | 46 | 1 |
 | `frontend/notechondria_shared/lib/local_folder_testing.dart` | Exports the memory fakes for tests only | 15 | 1 |
 | `frontend/{editor,planner,portal}_app/lib/core/local_folder_connect.dart` | Per-app startup step, the session keys passed to `decideStorageMode`, precedence, connect push (token set before the course push, main 7.1), `_cloudOnly(...)` callback gate | 90, 180, 160 | 2, 3, 3 |
 | `frontend/notechondria_shared/test/local_folder/*.dart` | Unit tests incl. `folder_journal_test.dart` and `concurrency_test.dart`, each file under 500 lines | 1,700 total | 1-5 |
@@ -151,6 +177,7 @@ Zone wrapper per JavaScript callback (main 2.5):
 | `focus` and `visibilitychange` listeners | `change_channel_web.dart` | the captured zone's `bindUnaryCallbackGuarded<Event>` | Void listeners |
 | Lock-wait timeout | `folder_lock_web.dart` | none: `AbortSignal.timeout(ms)` | No Dart callback |
 | Picker, permission, and file promises | `folder_fs_web.dart`, `folder_pick_flow.dart` | none: `JSPromise.toDart`, awaited in Dart | The continuation is a Dart future, already bound to the awaiting zone |
+| IndexedDB request `onsuccess`, `onerror`, `onupgradeneeded`; transaction `oncomplete`, `onerror`, `onabort` (T5) | `handle_store_web.dart` (Phase 1), `credential_store_web.dart` (Phase 5) | the captured zone's `bindUnaryCallbackGuarded<Event>` (`bindListener`) | Void listeners. Bodies only complete a `Completer`, except `onupgradeneeded`, which creates the object store synchronously, because the upgrade transaction is active only while that event is dispatched |
 
 ## 9.3 Changed files
 
@@ -158,7 +185,7 @@ Current sizes matter because of the 1000-line cap (AGENTS.md 1.6).
 
 | File (current lines) | Change | Net |
 |---|---|---|
-| `frontend/notechondria_shared/pubspec.yaml` | Add `web: ^1.1.1` as a direct dependency (locked transitively today) | +1 |
+| `frontend/notechondria_shared/pubspec.yaml` | Add `web: ^1.1.1` as a direct dependency (locked transitively today), and raise the SDK floor to `>=3.4.0` so the hand-written bindings can use extension types (`web` 1.1.1 itself needs `^3.4.0`; the lock already resolves Dart `>=3.10.3`) | +1, 1 changed |
 | `frontend/notechondria_shared/lib/notechondria_shared.dart` (123) | Exports after the `local_attachment_store` block (`:57-62`) | +14 |
 | `frontend/notechondria_shared/lib/src/components/auth_dialogs.dart` (444) | `localFolderOption` slot | +15 |
 | `frontend/notechondria_shared/lib/src/http/http_client_internals_mixin.dart` (407) | Skip the startup budget for requests a `LocalRoutingClient` answers locally (`:120-124`, main 2.7) | +6 |
@@ -182,7 +209,7 @@ Current sizes matter because of the 1000-line cap (AGENTS.md 1.6).
 | `frontend/planner_app/lib/components/note_viewer.dart` (138), `frontend/portal_app/lib/components/note_viewer.dart` (154) | `sizedImageBuilder: _localAttachmentImageBuilder` on `MarkdownBody` (`:116`, `:122`) | +1 each |
 | Settings entry points: editor `settings_build.dart:129-136`, planner `settings.dart:445-450` (936), portal `settings_build.dart:162-167` | Pass `localFolderOption`; insert the status card | +3 each |
 | `frontend/*/test/smoke_test.dart` (244, 767, 314) | Call `registerLocalFolderSmokeTests()` | +2 each |
-| `.github/workflows/backend-tests.yml` | Add the fixture directory to `paths:` (`:15-18`) and an `actions/upload-artifact` step for `backend/build/contract_responses/` (main 8.4) | +6 |
+| `.github/workflows/backend-tests.yml` | Add the fixture directory to `paths:` (`:16-19`) and an `actions/upload-artifact` step for `backend/build/contract_responses/` (main 8.4) | +6 |
 
 GitHub card gate (until Phase 5). The three build sites pass
 `githubSyncCardBuilder: _token != null ? () => GithubSyncExperimentalCard(...) : null`,

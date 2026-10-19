@@ -139,3 +139,17 @@ Also changed while verifying:
 - Two notes from the review that were not findings: 2.6 now names the
   portal's remote startup image as a request that leaves the page, and
   2.9's folder wording covers the `_initialDataOutcome` log line.
+
+## 12.3 Design review 3, resolved in Phase 1a
+
+Review: `.agents/tasks/design-review-3.json` and
+`.agents/tasks/design-review-3.md` (verdict APPROVED, LOW findings T1 to
+T8). T1 (Phase 3), T2 (Phase 2), and T4 (Phase 2) stay with their phases.
+
+| ID | Resolution | Where |
+|---|---|---|
+| T3 | `remember` stored in the shared key, default off on every origin known today; second `needsPick` wording for a missing record; checkbox placement and "Use the connected folder" routing stated | 1.3, 2.8 rule 4, 2.10; `local_folder_boot.dart`, `handle_store.dart`, `folder_messages.dart` |
+| T5 | IndexedDB callbacks added to the zone-wrapper table, guarded, with the `onupgradeneeded` exception | 9.2; `handle_store_web.dart` |
+| T7 | (a) to (j) decided in one list | 9.1 Phase 1; (a, b, d, e, g, h, i, j) coded in Phase 1a, (c, f) land with the app wiring and handlers |
+| T8 | U18 row, the "mode changes" sentence, and the `backend-tests.yml:16-19` citations | 1.4, 2.8, 8.4, 9.3 |
+

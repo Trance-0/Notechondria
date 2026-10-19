@@ -61,6 +61,51 @@ export 'src/utils/local_attachment_store.dart'
         LocalAttachmentStore,
         LocalAttachmentStoreException;
 
+export 'src/local_folder/folder_fs.dart'
+    show FolderErrorKind, FolderFs, FolderFsException, FolderPermission;
+export 'src/local_folder/folder_messages.dart'
+    show
+        LocalFolderLogLevel,
+        LocalFolderLogSink,
+        LocalFolderMessages,
+        kSessionRejectionSentinels;
+export 'src/local_folder/folder_pick_flow.dart'
+    show
+        ConnectPick,
+        PickCancelled,
+        PickFailed,
+        PickLooksLikeCopy,
+        PickMayBeCopy,
+        PickOpened,
+        PickOutcome,
+        PickRefused;
+export 'src/local_folder/handle_store.dart'
+    show needsSharedOriginNotice, rememberDefaultForOrigin;
+export 'src/local_folder/local_folder_boot.dart'
+    show
+        LocalFolderBoot,
+        LocalFolderBootSnapshot,
+        StorageMode,
+        StorageModeDecision,
+        StorageModeRecord,
+        decideStorageMode,
+        kLocalFolderNoticeAckKey,
+        kSharedStorageModeKey;
+export 'src/local_folder/local_folder_controller.dart'
+    show
+        DisconnectReason,
+        LocalFolderController,
+        LocalFolderFailure,
+        LocalFolderState;
+export 'src/local_folder/local_folder_platform.dart'
+    show FolderPicker, LocalFolderPlatform, probeLocalFolderSupport;
+export 'src/local_folder/qualification.dart'
+    show
+        LocalFolderGap,
+        LocalFolderQualification,
+        kLocalFolderFallbackLine,
+        localFolderGapMessage;
+export 'src/local_folder/secret_denylist.dart' show isSecretKey, stripSecrets;
 export 'src/components/auth_dialogs.dart'
     show AuthHub, EmailPasswordDialog, FeedbackText;
 export 'src/components/casdoor_link_challenge_dialog.dart'
