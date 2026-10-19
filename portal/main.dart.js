@@ -46049,12 +46049,9 @@ for(;;){if(!(n<p&&o<s))break
 m=a[o].toLowerCase()
 if(!B.c.f7(q,m,n))break
 n+=m.length;++o}if(n===p)return o-b}return 0},
-bzF(a,b){var s,r,q,p,o
-for(s=a.length,r=0,q="";r<s;){p=A.bUF(a,r,b)
-if(p===0){q+=a[r];++r
-continue}o=r+p
-q=q+a[r]+"\u2060"+B.c.T(a,r+1,o)
-r=o}return q.charCodeAt(0)==0?q:q},
+bzF(a,b){var s,r,q
+for(s=a.length,r=0,q="";r<s;++r){q+=a[r]
+if(A.bUF(a,r,b)>0)q+="\u2060"}return q.charCodeAt(0)==0?q:q},
 bl1(a){var s,r,q
 if(a.length===0)return""
 s=A.ha(a)
