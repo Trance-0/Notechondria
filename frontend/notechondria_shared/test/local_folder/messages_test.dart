@@ -53,6 +53,7 @@ final List<String> _allMessages = [
   LocalFolderMessages.connectNonEmpty('Documents', 1200),
   LocalFolderMessages.versionChecked('https://host', '0.1.200'),
   LocalFolderMessages.versionCheckFailed('https://host', 'HTTP 502'),
+  LocalFolderMessages.versionCheckAnsweredLocally('http://192.168.1.10:8000'),
   ..._backendDetails,
 ];
 
@@ -124,6 +125,29 @@ void main() {
       expect(scrubSessionSentinels(kelvin), isNot(kelvin));
     }
     expect(scrubSessionSentinels(kelvin).replaceAll('\u2060', ''), kelvin);
+    // P1A-7: the lower-case form and a mixed-case one, as the review asked.
+    for (final text in ['invalid to\u212Aen', 'INVALID TO\u212AEN', 'x Invalid To\u212Aen y']) {
+      final scrubbed = scrubSessionSentinels(text);
+      expect(containsSessionRejectionSentinel(scrubbed), isFalse, reason: text);
+      expect(scrubbed.replaceAll('\u2060', ''), text);
+    }
+  });
+
+  test('overlapping sentinels are all broken', () {
+    // "invalid token" ends inside "token_not_valid"; breaking only the first
+    // match would leave the second whole.
+    for (final text in [
+      'invalid token_not_valid',
+      'Invalid Token_Not_Valid',
+      'session rejected: invalid token',
+    ]) {
+      final scrubbed = scrubSessionSentinels(text);
+      expect(containsSessionRejectionSentinel(scrubbed), isFalse, reason: text);
+      expect(scrubbed.replaceAll('\u2060', ''), text);
+      expect(scrubSessionSentinels(scrubbed), scrubbed, reason: 'idempotent');
+    }
+    final route = scrubRouteDetail('/permissionforbidden/not authenticated 403:/');
+    expect(containsDeepLinkPrivateNoteMarker(route), isFalse, reason: route);
   });
 
   test('router and handler details carry no deep-link marker (T2)', () {

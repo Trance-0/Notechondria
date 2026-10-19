@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../folder_fs.dart';
+import '../folder_index.dart';
 import '../folder_journal.dart';
 import '../folder_layout.dart';
 import '../folder_messages.dart';
@@ -10,8 +11,10 @@ import '../router.dart';
 // Folder records the Phase 1 handlers share, and the backend payload shapes
 // they answer with: NoteSummarySerializer, NoteDetailSerializer,
 // CourseSerializer, and creator_summary_payload (backend/notes/api.py).
-// Handlers read from disk inside their hold (6.2 R2); the in-memory index
-// is never the base of an answer that a write follows.
+// A handler locates notes through the in-memory index (`lookup.dart`) and
+// re-reads from disk, inside its hold, the note it serves and every file it
+// rewrites (6.2 R2). List summaries come from the index entries, which hold
+// the summary fields (P1B-1); the index is never the base of a write.
 
 const String kProfileCreatorPath = 'profile/creator.json';
 const String kProfileSettingsPath = 'profile/settings.json';
@@ -121,6 +124,57 @@ class NoteRecord {
   JournalExpect get expect => JournalExpect.of(stat);
 }
 
+/// A note as the index knows it: its body entry and its sidecar entry. The
+/// summary of a note read from disk is built through this type too, so a
+/// list row and a detail answer cannot drift apart.
+class IndexedNote {
+  const IndexedNote(this.body, this.sidecar);
+
+  /// The entries of a note just read from disk. The sidecar's size and
+  /// `lastModified` are not known here and are not used by a summary.
+  factory IndexedNote.of(NoteRecord n) => IndexedNote(
+      indexNoteBody(n.path, n.stat, n.note),
+      indexSidecar(n.sidecarPath, const FolderStat(size: 0, lastModified: 0),
+          n.sidecar));
+
+  final IndexedFile body;
+  final IndexedFile sidecar;
+
+  String? _text(IndexedFile f, String key) => jsonString(f.summary[key]);
+
+  String get path => body.path;
+  String get sidecarPath => sidecar.path;
+  bool get trashed => body.kind == IndexedKind.trashNote;
+  int get id => sidecar.id!;
+  String get uuid => sidecar.uuid ?? body.uuid!;
+  String get title => body.title ?? noteStemOf(path);
+  String? get courseSlug => body.courseSlug;
+  bool get isPublic => body.isPublic ?? false;
+  String get editorMode => _text(body, 'editor_mode') ?? 'P';
+  String? get lastEdit => _text(body, 'last_edit');
+  String? get dateCreated => _text(body, 'date_created');
+
+  /// Null for an empty body (the summary then uses the description).
+  String? get excerpt => _text(body, 'excerpt');
+  List<String> get previewLines => [
+        for (final line in jsonList(body.summary['preview_lines']))
+          if (line is String) line,
+      ];
+  String get description => _text(sidecar, 'description') ?? '';
+  String get name => _text(sidecar, 'name') ?? '';
+  String get noteType => _text(sidecar, 'note_type') ?? 'N';
+  String? get sourceNoteUuid => _text(sidecar, 'source_note_uuid');
+  String get coverImageUrl => _text(sidecar, 'cover_image_url') ?? '';
+  String? get clientDraftId => _text(sidecar, 'client_draft_id');
+  String? get deletedAt => _text(sidecar, 'deleted_at');
+
+  /// `last_edit`, or the body's `lastModified` when the frontmatter has none.
+  String get lastEditOrModified => lastEdit ?? isoOfMillis(body.lastModified);
+}
+
+/// The note at [path] with its sidecar (stat, body, sidecar: three file
+/// calls), or null when either is missing, the sidecar has no id, or the
+/// note has no UUID.
 Future<NoteRecord?> readNoteAt(FolderFs fs, String path,
     {Set<String> skip = const {}}) async {
   final sidecarPath = sidecarPathForBody(path);
@@ -136,26 +190,6 @@ Future<NoteRecord?> readNoteAt(FolderFs fs, String path,
   return NoteRecord(
       path: path, text: text, stat: stat, note: note, sidecar: sidecar);
 }
-
-Future<List<NoteRecord>> readNotes(FolderFs fs,
-    {bool trashed = false, Set<String> skip = const {}}) async {
-  final dir = trashed ? kTrashNotesDir : kNotesDir;
-  final out = <NoteRecord>[];
-  for (final e in await listOrEmpty(fs, dir)) {
-    if (!e.isFile || !e.name.endsWith('.md')) continue;
-    final record = await readNoteAt(fs, joinFolderPath(dir, e.name), skip: skip);
-    if (record != null) out.add(record);
-  }
-  return out;
-}
-
-/// Live and trashed notes, for lookups that may hit either.
-Future<List<NoteRecord>> readAllNotes(FolderFs fs,
-        {Set<String> skip = const {}}) async =>
-    [
-      ...await readNotes(fs, skip: skip),
-      ...await readNotes(fs, trashed: true, skip: skip),
-    ];
 
 /// `profile/creator.json`, `profile/settings.json`, `profile/skill.md`.
 class FolderProfile {
@@ -206,60 +240,43 @@ class FolderProfile {
       };
 }
 
-/// The backend's `excerpt` (NoteSummarySerializer.get_excerpt).
-String noteExcerpt(String content, String description) {
-  if (content.isNotEmpty) {
-    var lines = content.trim();
-    if (lines.startsWith('# ')) {
-      final i = lines.indexOf('\n');
-      lines = i < 0 ? '' : lines.substring(i + 1).trim();
-    }
-    return lines.length <= 220 ? lines : lines.substring(0, 220);
-  }
-  return description.length <= 220 ? description : description.substring(0, 220);
-}
-
-/// `note_preview_lines` (backend/notes/services.py:309).
-List<String> notePreviewLines(String content, {int limit = 3}) {
-  final lines = [
-    for (final l in content.split('\n'))
-      if (l.trim().isNotEmpty) l.trim(),
-  ];
-  if (lines.isNotEmpty && lines.first.startsWith('# ')) lines.removeAt(0);
-  return lines.take(limit).toList();
-}
-
-/// `NoteSummarySerializer` for a folder note.
-Map<String, Object?> noteSummary(
-    NoteRecord n, CourseLookup courses, Map<String, Object?> author) {
-  final fm = n.frontmatter;
-  final course = fm.courseSlug == null ? null : courses.bySlug[fm.courseSlug];
-  final modified = isoOfMillis(n.stat.lastModified);
-  final description = n.sidecar.description ?? '';
+/// `NoteSummarySerializer` for a folder note, from its index entries.
+Map<String, Object?> indexedNoteSummary(
+    IndexedNote n, CourseLookup courses, Map<String, Object?> author) {
+  final slug = n.courseSlug;
+  final course = slug == null ? null : courses.bySlug[slug];
+  final modified = isoOfMillis(n.body.lastModified);
+  final description = n.description;
   return {
     'id': n.id,
     'uuid': n.uuid,
-    'name': jsonString(n.sidecar.extra['name']) ?? '',
+    'name': n.name,
     'git_path': '',
     'module': '',
-    'title': fm.title,
+    'title': n.title,
     'description': description,
-    'excerpt': noteExcerpt(n.note.body, description),
-    'preview_lines': notePreviewLines(n.note.body),
-    'editor_mode': fm.editorMode,
-    'note_type': jsonString(n.sidecar.noteType) ?? 'N',
-    'is_public': fm.isPublic,
-    'last_edit': fm.lastEdit ?? modified,
-    'date_created': fm.dateCreated ?? fm.lastEdit ?? modified,
+    'excerpt': n.excerpt ??
+        (description.length <= 220 ? description : description.substring(0, 220)),
+    'preview_lines': n.previewLines,
+    'editor_mode': n.editorMode,
+    'note_type': n.noteType,
+    'is_public': n.isPublic,
+    'last_edit': n.lastEdit ?? modified,
+    'date_created': n.dateCreated ?? n.lastEdit ?? modified,
     'course_id': course?.id,
     'course': course == null
         ? null
         : {'id': course.id, 'title': course.title, 'slug': course.slug},
     'author': author,
-    'source_note_uuid': n.sidecar.sourceNoteUuid,
-    'cover_image_url': n.sidecar.coverImageUrl,
+    'source_note_uuid': n.sourceNoteUuid,
+    'cover_image_url': n.coverImageUrl,
   };
 }
+
+/// `NoteSummarySerializer` for a note read from disk.
+Map<String, Object?> noteSummary(
+        NoteRecord n, CourseLookup courses, Map<String, Object?> author) =>
+    indexedNoteSummary(IndexedNote.of(n), courses, author);
 
 /// `NoteDetailSerializer`: the summary plus the body. `blocks` is empty;
 /// the apps read `content` first (editor `core/note_crud.dart:615`).
@@ -298,26 +315,44 @@ Map<String, Object?> coursePayload(CourseRecord c,
     };
 
 /// Notes newest first by `last_edit`, as the backend's `-last_edit`.
-int byLastEditDesc(NoteRecord a, NoteRecord b) {
-  final ea = a.frontmatter.lastEdit ?? isoOfMillis(a.stat.lastModified);
-  final eb = b.frontmatter.lastEdit ?? isoOfMillis(b.stat.lastModified);
-  return eb.compareTo(ea);
+int byLastEditDesc(IndexedNote a, IndexedNote b) =>
+    b.lastEditOrModified.compareTo(a.lastEditOrModified);
+
+/// The live notes of the index (and, with [trashed], the trashed ones), as
+/// [readNoteAt] accepts them: a body whose sidecar has an id, and a UUID;
+/// none at a path of [skip]. In path order, live before trashed.
+List<IndexedNote> indexedNotes(FolderIndex index,
+    {bool live = true, bool trashed = false, Set<String> skip = const {}}) {
+  final out = <IndexedNote>[];
+  for (final f in index.files.values) {
+    final wanted = f.kind == IndexedKind.note
+        ? live
+        : (f.kind == IndexedKind.trashNote && trashed);
+    if (!wanted) continue;
+    final side = index.files[sidecarPathForBody(f.path)];
+    if (side == null || side.id == null || (side.uuid ?? f.uuid) == null) {
+      continue;
+    }
+    if (skip.contains(f.path) || skip.contains(side.path)) continue;
+    out.add(IndexedNote(f, side));
+  }
+  return out..sort((a, b) => a.path.compareTo(b.path));
 }
 
-/// Course payloads with their five newest notes (`recent_notes`).
+/// Course payloads with their five newest notes (`recent_notes`), from the
+/// index (P1B-1).
 Future<List<Map<String, Object?>>> coursePayloads(LocalHandlerContext ctx,
     List<CourseRecord> courses) async {
   final profile = await FolderProfile.read(ctx.fs, folderName: ctx.folderName);
   final lookup = CourseLookup(courses);
-  final notes = await readNotes(ctx.fs, skip: ctx.skipPaths)
+  final notes = indexedNotes(ctx.index, skip: ctx.skipPaths)
     ..sort(byLastEditDesc);
   return [
     for (final c in courses)
       coursePayload(c,
           recentNotes: [
-            for (final n
-                in notes.where((n) => n.frontmatter.courseSlug == c.slug).take(5))
-              noteSummary(n, lookup, profile.author),
+            for (final n in notes.where((n) => n.courseSlug == c.slug).take(5))
+              indexedNoteSummary(n, lookup, profile.author),
           ],
           owner: profile.author),
   ];

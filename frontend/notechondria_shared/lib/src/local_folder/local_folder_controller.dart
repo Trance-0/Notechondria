@@ -373,6 +373,19 @@ class LocalFolderController extends ChangeNotifier {
         },
       );
 
+  /// Applies changes to the in-memory index: this tab's own writes, and
+  /// files a handler re-read (6.2 R2, P1B-1). `index.json` on disk is
+  /// rewritten only by scans; a rescan replaces the whole index.
+  void updateIndex(Map<String, IndexedFile?> changes,
+      {Iterable<String> removedDirs = const []}) {
+    if (changes.isEmpty && removedDirs.isEmpty) return;
+    final base = _index ??
+        FolderIndex(
+            folderId: _record?.folderId ?? '', generatedAt: '', files: const {});
+    _index = base.withChanges(changes, removedDirs: removedDirs);
+    notifyListeners();
+  }
+
   /// Rescan (6.4) and the verification rescan after startup (2.9). Keeps
   /// the state `active`; a failure moves it as [reportFolderError] does.
   Future<ScanResult?> rescan({Set<String> changedPaths = const {}}) async {

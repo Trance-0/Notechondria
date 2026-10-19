@@ -5,6 +5,7 @@ import '../folder_layout.dart';
 import '../folder_messages.dart';
 import '../note_codec.dart';
 import '../router.dart';
+import 'lookup.dart';
 import 'notes.dart' show frontmatterWith;
 import 'records.dart';
 
@@ -47,7 +48,7 @@ Future<String> uniqueCourseSlug(FolderFs fs, String title) async {
 }
 
 Future<CourseRecord> _courseById(LocalHandlerContext ctx, int id) async {
-  for (final c in await readCourses(ctx.fs, skip: ctx.skipPaths)) {
+  for (final c in await readCourses(ctx.fs, skip: lookupSkip(ctx))) {
     if (c.id == id) return c;
   }
   throw LocalHttpError(404, LocalFolderMessages.courseNotFound(id));
@@ -76,6 +77,7 @@ int? _hue(BodyFields b) {
 Future<LocalResponse> _list(LocalHandlerContext ctx) async {
   final courses = await readCourses(ctx.fs, skip: ctx.skipPaths)
     ..sort(compareCourses);
+  await refreshNoteListing(ctx, skip: ctx.skipPaths);
   return LocalResponse(200, await coursePayloads(ctx, courses));
 }
 
@@ -151,8 +153,11 @@ Future<LocalResponse> _update(LocalHandlerContext ctx) async {
   return LocalResponse(200, await _payload(ctx, updated));
 }
 
-Future<LocalResponse> _detail(LocalHandlerContext ctx) async => LocalResponse(
-    200, await _payload(ctx, await _courseById(ctx, ctx.request.intParam('id'))));
+Future<LocalResponse> _detail(LocalHandlerContext ctx) async {
+  final course = await _courseById(ctx, ctx.request.intParam('id'));
+  await refreshNoteListing(ctx, skip: ctx.skipPaths);
+  return LocalResponse(200, await _payload(ctx, course));
+}
 
 Future<LocalResponse> _open(LocalHandlerContext ctx) async {
   final course = await _courseById(ctx, ctx.request.intParam('id'));
@@ -196,14 +201,15 @@ Future<LocalResponse> _reorder(LocalHandlerContext ctx) async {
 
 Future<LocalResponse> _courseNotes(LocalHandlerContext ctx) async {
   final course = await _courseById(ctx, ctx.request.intParam('id'));
-  final notes = (await readNotes(ctx.fs, skip: ctx.skipPaths))
-      .where((n) => n.frontmatter.courseSlug == course.slug)
+  await refreshNoteListing(ctx, skip: ctx.skipPaths);
+  final notes = indexedNotes(ctx.index, skip: ctx.skipPaths)
+      .where((n) => n.courseSlug == course.slug)
       .toList()
     ..sort(byLastEditDesc);
   final profile = await FolderProfile.read(ctx.fs, folderName: ctx.folderName);
   final lookup = CourseLookup(await readCourses(ctx.fs, skip: ctx.skipPaths));
-  List<Map<String, Object?>> rows(Iterable<NoteRecord> list) =>
-      [for (final n in list) noteSummary(n, lookup, profile.author)];
+  List<Map<String, Object?>> rows(Iterable<IndexedNote> list) =>
+      [for (final n in list) indexedNoteSummary(n, lookup, profile.author)];
   final b = BodyFields(ctx.request.query,
       consequence: 'Category notes not listed', process: 'courses');
   final limit = b.integer('limit');
@@ -239,24 +245,31 @@ Future<void> _detachRecords(LocalHandlerContext ctx, String path, int id) async 
 /// `trash/notes/` lose `course_slug`, then `planner/events.json` and
 /// `planner/feeds.json` lose `course_id`, then the course file goes. An
 /// interrupted delete leaves the course in place; repeating it continues.
+/// The first chunk refreshes the note listing; each chunk then takes the
+/// next notes the index places in the course and re-reads them (P1B-1).
 Future<LocalResponse> _delete(LocalHandlerContext ctx) async {
   final id = ctx.request.intParam('id');
   final first = await ctx.chunk(() async {
     final course = await _courseById(ctx, id);
-    final total = (await readAllNotes(ctx.fs))
-        .where((n) => n.frontmatter.courseSlug == course.slug)
+    await refreshNoteListing(ctx, trashed: true);
+    final total = indexedNotes(ctx.index, trashed: true)
+        .where((n) => n.courseSlug == course.slug)
         .length;
     return (course: course, total: total);
   });
   final course = first.course;
   final label = "Deleting category '${course.title}'";
+  final tried = <String>{};
   var done = 0;
   try {
     while (await ctx.chunk(() async {
-      final named = (await readAllNotes(ctx.fs))
-          .where((n) => n.frontmatter.courseSlug == course.slug)
-          .take(kCourseDeleteChunk)
-          .toList();
+      final named = await findNotes(ctx,
+          where: (n) => n.courseSlug == course.slug,
+          verify: (n) => n.frontmatter.courseSlug == course.slug,
+          trashed: true,
+          limit: kCourseDeleteChunk,
+          tried: tried,
+          refreshOnMiss: false);
       if (named.isEmpty) return false;
       await ctx.commit(ctx.journal.newRecord([
         for (final n in named)

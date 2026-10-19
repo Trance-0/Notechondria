@@ -7,7 +7,7 @@ import 'note_codec.dart';
 // left its schema to the implementer:
 //
 // {
-//   "schema_version": 1,          // this file's format; other values -> rescan
+//   "schema_version": 2,          // this file's format; other values -> rescan
 //   "layout_version": 1,          // manifest layout it was built from
 //   "folder_id": "<uuid>",        // a copied index of another folder is ignored
 //   "generated_at": "<RFC 3339>",
@@ -17,11 +17,19 @@ import 'note_codec.dart';
 // }
 //
 // Kinds and their extra keys: `note` and `trash_note` (uuid, title,
-// course_slug, is_public), `sidecar` (uuid, id), `course` (id, slug, title,
+// course_slug, is_public, and a `summary` with editor_mode, last_edit,
+// date_created, excerpt, preview_lines), `sidecar` (uuid, id, and a
+// `summary` with description, name, note_type, source_note_uuid,
+// cover_image_url, client_draft_id, deleted_at), `course` (id, slug, title,
 // client_course_id), `records` (planner/*.json: max_id, needs_ids),
 // `history` and `attachments` (max_id), and `file` (anything else).
+//
+// Schema 2 added the `summary` keys, the fields of the backend's note
+// summary, so the list routes answer from the index instead of reading
+// every note inside a lock hold (phase 1b review P1B-1, 6.2 R4). A schema 1
+// index is ignored and the folder is scanned again.
 
-const int kFolderIndexSchemaVersion = 1;
+const int kFolderIndexSchemaVersion = 2;
 
 enum IndexedKind {
   note,
@@ -91,6 +99,7 @@ class IndexedFile {
     this.clientCourseId,
     this.maxId,
     this.needsIds = false,
+    this.summary = const {},
   });
 
   factory IndexedFile.fromJson(String path, Map<String, Object?> json) {
@@ -113,6 +122,10 @@ class IndexedFile {
       clientCourseId: json['client_course_id'] as String?,
       maxId: json['max_id'] as int?,
       needsIds: json['needs_ids'] == true,
+      summary: json['summary'] is Map
+          ? Map<String, Object?>.unmodifiable(
+              Map<String, Object?>.from(json['summary'] as Map))
+          : const {},
     );
   }
 
@@ -134,6 +147,10 @@ class IndexedFile {
   /// A record in the file has no id or repeats one (3.7).
   final bool needsIds;
 
+  /// Note bodies and sidecars: the note summary fields the list routes
+  /// answer with (see the schema above). JSON values only.
+  final Map<String, Object?> summary;
+
   Map<String, Object?> toJson() => {
         'size': size,
         'last_modified': lastModified,
@@ -147,6 +164,7 @@ class IndexedFile {
         if (clientCourseId != null) 'client_course_id': clientCourseId,
         if (maxId != null) 'max_id': maxId,
         if (needsIds) 'needs_ids': true,
+        if (summary.isNotEmpty) 'summary': summary,
       };
 }
 
@@ -252,6 +270,29 @@ class FolderIndex {
         'generated_at': generatedAt,
         'files': {for (final e in files.entries) e.key: e.value.toJson()},
       });
+
+  /// This index with [changes] applied (a null value drops the entry) and
+  /// every entry under [removedDirs] dropped. [generatedAt] keeps the time
+  /// of the last scan; only scans write `index.json`.
+  FolderIndex withChanges(Map<String, IndexedFile?> changes,
+      {Iterable<String> removedDirs = const []}) {
+    final next = Map<String, IndexedFile>.of(files);
+    for (final dir in removedDirs) {
+      next.removeWhere((path, _) => path.startsWith('$dir/'));
+    }
+    changes.forEach((path, entry) {
+      if (entry == null) {
+        next.remove(path);
+      } else {
+        next[path] = entry;
+      }
+    });
+    return FolderIndex(
+        folderId: folderId,
+        generatedAt: generatedAt,
+        files: next,
+        layoutVersion: layoutVersion);
+  }
 }
 
 Future<FolderIndex?> readFolderIndex(FolderFs fs,
@@ -287,6 +328,79 @@ String? recordListKeyOf(Map<dynamic, dynamic> json) {
   return null;
 }
 
+/// The backend's `excerpt` of a non-empty body
+/// (NoteSummarySerializer.get_excerpt); null for an empty body, whose
+/// excerpt is the first 220 characters of the description.
+String? bodyExcerpt(String content) {
+  if (content.isEmpty) return null;
+  var lines = content.trim();
+  if (lines.startsWith('# ')) {
+    final i = lines.indexOf('\n');
+    lines = i < 0 ? '' : lines.substring(i + 1).trim();
+  }
+  return lines.length <= 220 ? lines : lines.substring(0, 220);
+}
+
+/// `note_preview_lines` (backend/notes/services.py:309).
+List<String> notePreviewLines(String content, {int limit = 3}) {
+  final lines = [
+    for (final l in content.split('\n'))
+      if (l.trim().isNotEmpty) l.trim(),
+  ];
+  if (lines.isNotEmpty && lines.first.startsWith('# ')) lines.removeAt(0);
+  return lines.take(limit).toList();
+}
+
+/// The index entry of a note body (`notes/` or `trash/notes/`), with the
+/// summary fields its frontmatter and body give.
+IndexedFile indexNoteBody(String path, FolderStat stat, DecodedNote note) {
+  final fm = note.frontmatter;
+  final excerpt = bodyExcerpt(note.body);
+  return IndexedFile(
+    path: path,
+    size: stat.size,
+    lastModified: stat.lastModified,
+    kind: indexedKindOf(path),
+    uuid: fm.uuid,
+    title: fm.title,
+    courseSlug: fm.courseSlug,
+    isPublic: fm.isPublic,
+    summary: {
+      'editor_mode': fm.editorMode,
+      if (fm.lastEdit != null) 'last_edit': fm.lastEdit,
+      if (fm.dateCreated != null) 'date_created': fm.dateCreated,
+      if (excerpt != null) 'excerpt': excerpt,
+      'preview_lines': notePreviewLines(note.body),
+    },
+  );
+}
+
+/// The index entry of a `.meta.json` sidecar; [sidecar] is null when the
+/// text is not a JSON object.
+IndexedFile indexSidecar(String path, FolderStat stat, NoteSidecar? sidecar) {
+  final fields = <String, String?>{
+    'description': sidecar?.description,
+    'name': jsonString(sidecar?.extra['name']),
+    'note_type': jsonString(sidecar?.noteType),
+    'source_note_uuid': sidecar?.sourceNoteUuid,
+    'cover_image_url': sidecar?.coverImageUrl,
+    'client_draft_id': sidecar?.clientDraftId,
+    'deleted_at': sidecar?.deletedAt,
+  };
+  return IndexedFile(
+    path: path,
+    size: stat.size,
+    lastModified: stat.lastModified,
+    kind: IndexedKind.sidecar,
+    uuid: sidecar?.uuid,
+    id: sidecar?.id,
+    summary: {
+      for (final e in fields.entries)
+        if (e.value != null) e.key: e.value,
+    },
+  );
+}
+
 /// Parses one file into its index entry.
 IndexedFile indexFile(String path, FolderStat stat, String? text) {
   final kind = indexedKindOf(path);
@@ -296,27 +410,9 @@ IndexedFile indexFile(String path, FolderStat stat, String? text) {
   switch (kind) {
     case IndexedKind.note:
     case IndexedKind.trashNote:
-      final note = decodeNoteFile(text, path: path).frontmatter;
-      return IndexedFile(
-        path: path,
-        size: stat.size,
-        lastModified: stat.lastModified,
-        kind: kind,
-        uuid: note.uuid,
-        title: note.title,
-        courseSlug: note.courseSlug,
-        isPublic: note.isPublic,
-      );
+      return indexNoteBody(path, stat, decodeNoteFile(text, path: path));
     case IndexedKind.sidecar:
-      final sidecar = decodeSidecar(text);
-      return IndexedFile(
-        path: path,
-        size: stat.size,
-        lastModified: stat.lastModified,
-        kind: kind,
-        uuid: sidecar?.uuid,
-        id: sidecar?.id,
-      );
+      return indexSidecar(path, stat, decodeSidecar(text));
     case IndexedKind.course:
       final json = decodeJsonObject(text);
       if (json == null) return plain(kind);

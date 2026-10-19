@@ -142,5 +142,21 @@ void main() {
       expect(ping.detail, 'pong from notechondria-local-folder');
       expect(inner.requests, hasLength(1));
     });
+
+    test('a handshake this page answered is not a cloud version (P1B-2)',
+        () async {
+      // Plain http to a LAN self-host fails the passthrough rules, so the
+      // transport answers the handshake with this build's own version.
+      final inner = RecordingClient();
+      final (c, _) = await folderApp();
+      final client = StorageModeClient(
+          mode: () => StorageMode.folder, local: c.transport, inner: inner);
+      const lan = 'http://192.168.1.10:8000';
+      final check = await checkCloudVersion(client: client, apiBaseUrl: lan);
+      expect(check.ok, isFalse);
+      expect(check.version, isNull);
+      expect(check.message, LocalFolderMessages.versionCheckAnsweredLocally(lan));
+      expect(inner.requests, isEmpty);
+    });
   });
 }

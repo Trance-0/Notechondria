@@ -189,3 +189,18 @@ kept and the design text changed in the same commit:
 | UI text | The option, status card, and reconnect view use English constants; the ARB rows of 9.3 move to Phase 2, when the editor shows the option, because `flutter gen-l10n` fails on the existing `activityWeightN` placeholder (`docs/TODO.md`). The status card has no Export and the option no "Start from an archive" until the Phase 4 bridge | 9.3; `components/local_folder_*.dart` |
 | Fixtures | Each fixture holds `_source`, `_setup` (`empty`, `course_and_note`, `trashed_note`), the request with `{course_id}`, `{note_id}`, `{note_uuid}` placeholders, `status`, and `body`; `_folder_omits` lists dotted key paths the folder leaves out (F08), and `_backend_route: false` marks session and logout (Q17) | 8.4 |
 
+## 12.5 Phase 1 review follow-ups (after 0.1.200, before Phase 2)
+
+The Phase 1b review (`.agents/tasks/phase1b-review.json`, P1B-1 to
+P1B-5) and the open item of the 1a review (P1A-7), resolved before Phase
+2 shows the option. The option is still hidden, so no app changes.
+
+| ID | Resolution | Where |
+|---|---|---|
+| P1B-1 | Handlers locate notes through the in-memory index and re-read only the note they serve or rewrite. Index `schema_version` 2 adds a `summary` to note body and sidecar entries (the fields of the backend's note summary), so the list routes read no note file; a search reads only the bodies its title and description miss, 32 at a time. The list routes, and any lookup that misses, first list `notes/` (and `trash/notes/`) and index only the files the index lacks. This tab's writes update the in-memory index from the text they wrote and a fresh stat; `index.json` stays scan-written. Chromium, 2,000 notes on OPFS: a single-note GET took 27 ms (21 ms hold) and a PATCH 59 ms (56 ms hold); 0.1.200 answered the same GET with the 8 s deadline's 503 after an 11 s hold. A search took 1.3 s, so it passes the 2 s hold target near 3,000 notes (Phase 2 search port, `docs/TODO.md`) | 3.8, 6.2 R2 R4, 8.3; `folder_index.dart`, `handlers/lookup.dart`, `handlers/{records,notes,courses,trash}.dart`, `transport.dart`, `local_folder_controller.dart` |
+| P1B-2 | `checkCloudVersion` treats an answer carrying `x-notechondria-backend: local-folder` as not checked: "Cloud version not checked: Shared.LocalFolder/version_check — folder mode sends the update check only to an https URL or a loopback http URL, so GET <host>/api/v1/handshake/ was answered in this page and nothing was sent." | 2.8 rule 3; `storage_mode_client.dart`, `folder_messages.dart` |
+| P1B-3 | Write lookups of notes and courses ignore the skip set of a failed roll-forward (`lookupSkip`), so `commit` and `writeText` answer `writeBlockedByJournal` instead of a 404 or a second note for the same `client_draft_id` | 6.2 R3; `handlers/lookup.dart`, `handlers/notes.dart`, `handlers/courses.dart` |
+| P1B-4 | The transport passes every 404 and 501 detail, router or handler, through `scrubRouteDetail` | 2.5; `transport.dart` |
+| P1B-5 | Tests for the session mixin's folder branches (`applyAuthPayload`, the `logout()` guard, `disconnectFolder()`, `cloudOnly`, `cloudOnlyAction`), a throwing `prepare`, the write-start deadline, and the transport-level R3 path | 8.1; `test/local_folder/app_wiring_test.dart`, `transport_test.dart` |
+| P1A-7 | Closed in 0.1.200 by the per-character fold (12.4); the review's `invalid to\u212Aen` case is now in `messages_test.dart`. The scrub now resumes at the second character of a match instead of after the whole match, so overlapping sentinels ("invalid token_not_valid") are all broken | 2.5; `folder_messages.dart` |
+

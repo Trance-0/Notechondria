@@ -4,10 +4,12 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 import 'folder_fs.dart';
+import 'folder_index.dart';
 import 'folder_journal.dart';
 import 'folder_layout.dart';
 import 'folder_lock.dart';
 import 'folder_messages.dart';
+import 'folder_scanner.dart' show isIndexedPath;
 import 'handlers/auth_settings.dart';
 import 'handlers/courses.dart';
 import 'handlers/notes.dart';
@@ -33,7 +35,7 @@ LocalBackendRouter phaseOneRouter() => LocalBackendRouter([
 
 const Map<String, String> _kResponseHeaders = {
   'content-type': 'application/json',
-  'x-notechondria-backend': 'local-folder',
+  kLocalBackendHeader: kLocalBackendHeaderValue,
 };
 
 /// A deadline passed; [cause] is one of the 2.9 causes.
@@ -215,11 +217,19 @@ class LocalFolderTransport extends http.BaseClient {
         headers: _kResponseHeaders);
   }
 
-  /// Every detail goes through the sentinel scrub (2.5).
+  /// Every detail goes through the sentinel scrub (2.5); every 404 and 501,
+  /// from the router or thrown by a handler, also through the deep-link
+  /// marker scrub, because they may interpolate the request path (12.4,
+  /// P1B-4).
   http.StreamedResponse _detail(
           http.BaseRequest request, int status, String detail) =>
-      _encode(request,
-          LocalResponse(status, {'detail': scrubSessionSentinels(detail)}));
+      _encode(
+          request,
+          LocalResponse(status, {
+            'detail': status == 404 || status == 501
+                ? scrubRouteDetail(detail)
+                : scrubSessionSentinels(detail),
+          }));
 }
 
 class _Context implements LocalHandlerContext {
@@ -260,6 +270,34 @@ class _Context implements LocalHandlerContext {
   @override
   DateTime now() => _controller.now();
 
+  @override
+  FolderIndex get index =>
+      _controller.index ??
+      FolderIndex(folderId: '', generatedAt: '', files: const {});
+
+  @override
+  void updateIndex(Map<String, IndexedFile?> changes) =>
+      _controller.updateIndex(changes);
+
+  /// P1B-1: the index entries of the paths this request wrote (from the
+  /// text it wrote and a fresh stat) and removed.
+  Future<void> _reindex(Map<String, String> written,
+      {Iterable<String> removed = const [],
+      Iterable<String> removedDirs = const []}) async {
+    final changes = <String, IndexedFile?>{
+      for (final path in removed)
+        if (isIndexedPath(path)) path: null,
+    };
+    for (final e in written.entries) {
+      if (!isIndexedPath(e.key)) continue;
+      final stat = await fs.stat(e.key);
+      changes[e.key] = stat == null
+          ? null
+          : indexFile(e.key, stat, indexReadsContent(e.key) ? e.value : null);
+    }
+    _controller.updateIndex(changes, removedDirs: removedDirs);
+  }
+
   /// 2.9: a write that has not started by the deadline changes nothing;
   /// once it has started it runs to the end.
   void _beforeWrite(Iterable<String> paths) {
@@ -281,12 +319,22 @@ class _Context implements LocalHandlerContext {
     for (final w in record.writes) {
       if (isNoteBodyPath(w.path)) await stampNoteSidecar(fs, w.path);
     }
+    await _reindex({for (final w in record.writes) w.path: w.text},
+        removed: [
+          for (final r in record.removals)
+            if (!r.directory) r.path,
+        ],
+        removedDirs: [
+          for (final r in record.removals)
+            if (r.directory) r.path,
+        ]);
   }
 
   @override
   Future<void> writeText(String path, String text) async {
     _beforeWrite([path]);
     await fs.writeText(path, text);
+    await _reindex({path: text});
   }
 
   @override

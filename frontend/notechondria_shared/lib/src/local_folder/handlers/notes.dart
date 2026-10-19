@@ -1,14 +1,17 @@
+import '../folder_fs.dart';
 import '../folder_journal.dart';
 import '../folder_layout.dart';
 import '../folder_messages.dart';
 import '../folder_snapshots.dart';
 import '../note_codec.dart';
 import '../router.dart';
+import 'lookup.dart';
 import 'records.dart';
 
 // Note and uuid routes (4.1 "Notes"): list, create with the
 // `client_draft_id` upsert, detail, update with the 3.8 snapshot check,
-// and delete to the trash with comment privatization (3.5).
+// and delete to the trash with comment privatization (3.5). Notes are
+// located through the index and re-read one by one (`lookup.dart`, P1B-1).
 
 String _now(LocalHandlerContext ctx) => ctx.now().toUtc().toIso8601String();
 
@@ -86,18 +89,14 @@ Future<Map<String, Object?>> servedDetail(
 
 Future<NoteRecord> _liveById(LocalHandlerContext ctx) async {
   final id = ctx.request.intParam('id');
-  for (final n in await readNotes(ctx.fs, skip: ctx.skipPaths)) {
-    if (n.id == id) return n;
-  }
-  throw LocalHttpError(404, LocalFolderMessages.noteNotFound(id));
+  return await noteById(ctx, id) ??
+      (throw LocalHttpError(404, LocalFolderMessages.noteNotFound(id)));
 }
 
 Future<NoteRecord> _liveByUuid(LocalHandlerContext ctx) async {
   final uuid = ctx.request.params['uuid']!;
-  for (final n in await readNotes(ctx.fs, skip: ctx.skipPaths)) {
-    if (n.uuid == uuid) return n;
-  }
-  throw LocalHttpError(404, LocalFolderMessages.noteUuidNotFound(uuid));
+  return await noteByUuid(ctx, uuid) ??
+      (throw LocalHttpError(404, LocalFolderMessages.noteUuidNotFound(uuid)));
 }
 
 Future<LocalResponse> _detail(LocalHandlerContext ctx, NoteRecord n) async {
@@ -120,38 +119,54 @@ Future<LocalResponse> _list(LocalHandlerContext ctx) async {
   final query = (q['q'] ?? '').trim().toLowerCase();
   final courseParam = (q['course_id'] ?? '').trim().toLowerCase();
   final courses = CourseLookup(await readCourses(ctx.fs, skip: ctx.skipPaths));
-  var notes = await readNotes(ctx.fs, skip: ctx.skipPaths);
+  await refreshNoteListing(ctx, skip: ctx.skipPaths);
+  var notes = indexedNotes(ctx.index, skip: ctx.skipPaths);
   final days = _windowDays[(q['window'] ?? 'all').trim().toLowerCase()];
   if (days != null) {
     final since = ctx.now().toUtc().subtract(Duration(days: days)).toIso8601String();
-    notes = notes.where((n) => (n.frontmatter.dateCreated ?? since).compareTo(since) >= 0).toList();
+    notes = notes.where((n) => (n.dateCreated ?? since).compareTo(since) >= 0).toList();
   }
-  if (scope == 'private') notes = notes.where((n) => !n.frontmatter.isPublic).toList();
-  if (scope == 'public') notes = notes.where((n) => n.frontmatter.isPublic).toList();
+  if (scope == 'private') notes = notes.where((n) => !n.isPublic).toList();
+  if (scope == 'public') notes = notes.where((n) => n.isPublic).toList();
   if (scope == 'all') ctx.log(LocalFolderLogLevel.info, LocalFolderMessages.publicNotesNotSearched);
   if (courseParam.isNotEmpty) {
     if (const {'none', 'null', 'uncategorized'}.contains(courseParam)) {
-      notes = notes
-          .where((n) => !courses.bySlug.containsKey(n.frontmatter.courseSlug))
-          .toList();
+      notes = notes.where((n) => !courses.bySlug.containsKey(n.courseSlug)).toList();
     } else {
       final slug = courses.byId[int.tryParse(courseParam)]?.slug;
-      notes = notes.where((n) => slug != null && n.frontmatter.courseSlug == slug).toList();
+      notes = notes.where((n) => slug != null && n.courseSlug == slug).toList();
     }
   }
-  int created(NoteRecord a, NoteRecord b) {
-    final c = (a.frontmatter.dateCreated ?? '').compareTo(b.frontmatter.dateCreated ?? '');
+  int created(IndexedNote a, IndexedNote b) {
+    final c = (a.dateCreated ?? '').compareTo(b.dateCreated ?? '');
     return c != 0 ? c : a.id.compareTo(b.id);
   }
 
   if (query.isNotEmpty) {
     // Phase 1: substring match, title hits first; the note_search_score
-    // port is Phase 2 (9.1).
-    int rank(NoteRecord n) => n.frontmatter.title.toLowerCase().contains(query) ? 2 : 1;
-    notes = notes.where((n) {
-      final text = '${n.frontmatter.title}\n${n.sidecar.description ?? ''}\n${n.note.body}';
-      return text.toLowerCase().contains(query);
-    }).toList()
+    // port is Phase 2 (9.1). Title and description come from the index; a
+    // body is read only for a note they do not match, in parallel batches.
+    int rank(IndexedNote n) => n.title.toLowerCase().contains(query) ? 2 : 1;
+    String head(IndexedNote n) => '${n.title}\n${n.description}';
+    final hits = <String>{};
+    final misses = <IndexedNote>[];
+    for (final n in notes) {
+      if (head(n).toLowerCase().contains(query)) {
+        hits.add(n.path);
+      } else {
+        misses.add(n);
+      }
+    }
+    final texts = await readInBatches(
+        misses, (IndexedNote n) => readTextOrNull(ctx.fs, n.path));
+    for (var i = 0; i < misses.length; i++) {
+      final n = misses[i];
+      final text = texts[i];
+      if (text == null) continue;
+      final body = decodeNoteFile(text, path: n.path).body;
+      if ('${head(n)}\n$body'.toLowerCase().contains(query)) hits.add(n.path);
+    }
+    notes = notes.where((n) => hits.contains(n.path)).toList()
       ..sort((a, b) {
         final r = rank(b).compareTo(rank(a));
         return r != 0 ? r : byLastEditDesc(a, b);
@@ -162,8 +177,8 @@ Future<LocalResponse> _list(LocalHandlerContext ctx) async {
     notes.sort((a, b) => created(b, a));
   }
   final profile = await FolderProfile.read(ctx.fs, folderName: ctx.folderName);
-  List<Map<String, Object?>> rows(Iterable<NoteRecord> list) =>
-      [for (final n in list) noteSummary(n, courses, profile.author)];
+  List<Map<String, Object?>> rows(Iterable<IndexedNote> list) =>
+      [for (final n in list) indexedNoteSummary(n, courses, profile.author)];
   if (limit == null) return LocalResponse(200, rows(notes));
   final size = limit.clamp(1, 100);
   final start = offset < 0 ? 0 : offset;
@@ -216,12 +231,16 @@ Future<LocalResponse> _create(LocalHandlerContext ctx) async {
   final sourceUuid = b.string('source_note_uuid');
   if (sourceUuid != null && !isUuid(sourceUuid)) throw b.bad('source_note_uuid must be a UUID');
   final now = _now(ctx);
-  NoteRecord? existing;
-  if (clientDraftId != null) {
-    for (final n in await readAllNotes(ctx.fs, skip: ctx.skipPaths)) {
-      if (n.sidecar.clientDraftId == clientDraftId) existing = n;
-    }
-  }
+  // Live notes come before trashed ones and the last match wins, as with
+  // the full read of 0.1.200. No skip set: a note a stuck journal record
+  // names is found, and the write is refused (P1B-3), not duplicated.
+  final existing = clientDraftId == null
+      ? null
+      : (await findNotes(ctx,
+              where: (n) => n.clientDraftId == clientDraftId,
+              verify: (n) => n.sidecar.clientDraftId == clientDraftId,
+              trashed: true))
+          .lastOrNull;
   if (existing != null) {
     final n = existing;
     final livePath = noteBodyPath(n.stem);
@@ -262,8 +281,7 @@ Future<LocalResponse> _create(LocalHandlerContext ctx) async {
   final uuid = newUuidV4();
   final path = noteBodyPath(uuidHex(uuid));
   var source = sourceUuid?.toLowerCase();
-  if (source != null &&
-      !(await readNotes(ctx.fs)).any((n) => n.uuid == source)) {
+  if (source != null && await noteByUuid(ctx, source) == null) {
     source = null;
   }
   final fm = NoteFrontmatter(
@@ -329,8 +347,11 @@ Future<LocalResponse> _delete(LocalHandlerContext ctx, NoteRecord n) async {
     JournalWrite(sidecarPathForBody(trashPath),
         sidecarWith(n.sidecar, {'deleted_at': now}).encode()),
   ];
-  for (final c in await readNotes(ctx.fs)) {
-    if (c.sidecar.sourceNoteUuid != n.uuid || !c.frontmatter.isPublic) continue;
+  final comments = await findNotes(ctx,
+      where: (c) => c.sourceNoteUuid == n.uuid && c.isPublic,
+      verify: (c) =>
+          c.sidecar.sourceNoteUuid == n.uuid && c.frontmatter.isPublic);
+  for (final c in comments) {
     writes.add(JournalWrite(c.path,
         encodeNoteFile(frontmatterWith(c.frontmatter, isPublic: false), c.note.body,
             path: c.path),

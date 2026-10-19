@@ -344,6 +344,20 @@ folder's per-day counts in `planner/heatmap.json` stay as they were.
   Scan cost for large folders is **unverified** (U6); the scan reports
   progress at least every 2 seconds. Startup uses the stored index and
   verifies it after the startup pass (2.9).
+- Handlers locate notes through the in-memory index and answer the list
+  routes from it (12.5). Each note body and sidecar entry carries the
+  fields of the backend's note summary (index `schema_version` 2), so
+  `GET /notes/`, course `recent_notes`, course notes, and the trash list
+  read no note file; a search reads only the bodies whose title and
+  description do not match. A single-note request re-reads only that
+  note, plus every file it rewrites (6.2 R2). The index lacks notes that
+  another tab or an outside program added since this tab's last scan, so
+  the list routes, and any lookup that misses, first list `notes/` (and
+  `trash/notes/`) and read only the files the index lacks. This tab's own
+  writes update the in-memory index; `index.json` is rewritten only by
+  scans. An edit another tab saves to an existing note appears in this
+  tab's lists after its next rescan (from Phase 4, its change message);
+  a single-note request always serves what is on disk.
 - A journal record cannot carry the body's new `lastModified`, so after a
   journaled body write the writer stamps the sidecar's `md_size` and
   `md_last_modified` from a fresh stat, in the same exclusive hold

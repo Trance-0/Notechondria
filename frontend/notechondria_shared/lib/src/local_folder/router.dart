@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'folder_fs.dart';
+import 'folder_index.dart';
 import 'folder_journal.dart';
 import 'folder_lock.dart';
 import 'folder_messages.dart';
@@ -8,6 +9,10 @@ import 'folder_messages.dart';
 // The in-page `/api/v1` router (main 2.5, 4.1): the `(method, path)` table,
 // `/api/v1/` segment matching, and the 501 and 404 fallbacks. Handlers live
 // in `handlers/`; `LocalFolderTransport` decodes requests and runs them.
+
+/// The header every in-page answer carries, and its value (main 2.5).
+const String kLocalBackendHeader = 'x-notechondria-backend';
+const String kLocalBackendHeaderValue = 'local-folder';
 
 /// One uploaded file of a multipart request.
 class LocalUpload {
@@ -105,17 +110,28 @@ abstract class LocalHandlerContext {
   String get folderName;
 
   /// Paths of a pending journal record that failed to roll forward; reads
-  /// skip them (6.2 R3).
+  /// skip them (6.2 R3). Write lookups do not, so [commit] and [writeText]
+  /// refuse a write that touches one (P1B-3).
   Set<String> get skipPaths;
   DateTime now();
+
+  /// The controller's in-memory index (6.2 R2): a cache for locating notes
+  /// and for list summaries, never the base of a write. [commit] and
+  /// [writeText] keep it current for this tab's own writes.
+  FolderIndex get index;
+
+  /// Replaces index entries (a null value drops one) after a handler
+  /// re-read files the index had out of date or did not have.
+  void updateIndex(Map<String, IndexedFile?> changes);
 
   /// Per note UUID, the body `lastModified` this tab last served (3.8).
   Map<String, int> get servedLastModified;
 
   /// Journal commit (3.4.1 steps 2 to 5) under the current exclusive hold,
-  /// then the `md_size`/`md_last_modified` stamp of each body it wrote.
-  /// Before the first write it checks the 7 s write deadline (2.9) and the
-  /// pending paths of a failed roll-forward.
+  /// then the `md_size`/`md_last_modified` stamp of each body it wrote and
+  /// the index entries of every path it wrote or removed. Before the first
+  /// write it checks the 7 s write deadline (2.9) and the pending paths of
+  /// a failed roll-forward.
   Future<void> commit(JournalRecord record);
 
   /// A single-file write under the current exclusive hold, with the same

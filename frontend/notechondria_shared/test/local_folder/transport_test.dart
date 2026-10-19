@@ -6,9 +6,11 @@ import 'package:http/http.dart' as http;
 import 'package:notechondria_shared/local_folder_testing.dart';
 import 'package:notechondria_shared/src/components/debug_log.dart';
 import 'package:notechondria_shared/src/http/http_client_internals_mixin.dart';
+import 'package:notechondria_shared/src/local_folder/folder_layout.dart';
 import 'package:notechondria_shared/src/local_folder/folder_lock.dart';
 import 'package:notechondria_shared/src/local_folder/folder_messages.dart';
 import 'package:notechondria_shared/src/local_folder/local_folder_controller.dart';
+import 'package:notechondria_shared/src/local_folder/router.dart';
 import 'package:notechondria_shared/src/local_folder/transport.dart';
 import 'package:notechondria_shared/src/models/api_debug_snapshot.dart';
 import 'package:notechondria_shared/src/startup/startup_budget.dart';
@@ -224,6 +226,21 @@ void main() {
       expect(detailOf(a), startsWith('Feature not available yet: '));
     });
 
+    test('a handler 501 is route-scrubbed like the router\'s (P1B-4)',
+        () async {
+      final (c, _) = await folderApp();
+      const base = 'https://x.example/permission/forbidden/api/v1';
+      final avatar = http.MultipartRequest('PATCH', Uri.parse('$base/settings/'))
+        ..files.add(http.MultipartFile.fromBytes('avatar', [1], filename: 'a.png'));
+      final r = await http.Response.fromStream(await c.transport.send(avatar));
+      expect(r.statusCode, 501);
+      final d = detailOf(r);
+      expect(containsDeepLinkPrivateNoteMarker(d), isFalse, reason: d);
+      expect(d.replaceAll('\u2060', ''),
+          LocalFolderMessages.laterRelease(
+              'Avatar upload', 'PATCH', '/permission/forbidden/api/v1/settings/'));
+    });
+
     test('a body that is not JSON answers 400 with a 1.8 detail', () async {
       final (c, _) = await folderApp();
       final request = http.Request('POST', Uri.parse('$kApiBase/notes/'))
@@ -232,6 +249,77 @@ void main() {
       final r = await http.Response.fromStream(await c.transport.send(request));
       expect(r.statusCode, 400);
       expect(detailOf(r), contains('Shared.LocalFolder.Backend/route — '));
+    });
+  });
+
+  group('write start and failed roll-forward (2.9, 6.2 R3)', () {
+    test('a write that has not started by the deadline changes nothing',
+        () async {
+      final (c, fs) = await folderApp();
+      final t = LocalFolderTransport(c,
+          writeDeadline: const Duration(milliseconds: 40),
+          router: LocalBackendRouter([
+            LocalRoute('POST', 'late', (ctx) async {
+              await Future<void>.delayed(const Duration(milliseconds: 80));
+              await ctx.writeText('profile/late.txt', 'x');
+              return const LocalResponse(200, {});
+            }),
+            LocalRoute('POST', 'started', (ctx) async {
+              await ctx.writeText('profile/a.txt', 'a');
+              await Future<void>.delayed(const Duration(milliseconds: 80));
+              await ctx.writeText('profile/b.txt', 'b');
+              return const LocalResponse(200, {});
+            }),
+          ]));
+      final late = await callApi(c, 'POST', '/late/', client: t);
+      expect(late.statusCode, 503);
+      expect(detailOf(late),
+          LocalFolderMessages.writeDeadline('POST', '/api/v1/late/', kDeadlineCauseStalled));
+      expect(fs.exists('profile/late.txt'), isFalse);
+      // Once the first write started, the request runs to the end.
+      expect((await callApi(c, 'POST', '/started/', client: t)).statusCode, 200);
+      expect(fs.exists('profile/b.txt'), isTrue);
+    });
+
+    test('writes to a note a stuck record names answer the journal 503',
+        () async {
+      final (c, fs) = await folderApp();
+      final note = await createNote(c, extra: {'client_draft_id': 'd1'});
+      final other = await createNote(c, title: 'Other');
+      final path = noteBodyPath(uuidHex('${note['uuid']}'));
+      final before = fs.textOf(path);
+      // A newer build's record cannot roll forward (FolderJournalTooNew),
+      // so the paths it names stay pending (R3).
+      const opId = '0000000000001-0001-deadbeef';
+      await fs.writeText('$kJournalDir/$opId.json', encodeFolderJson({
+        'schema_version': 2,
+        'op_id': opId,
+        'app': 'editor',
+        'created_at': '2026-10-19T00:00:00Z',
+        'writes': [{'path': path, 'text': 'from a newer build'}],
+        'removals': [],
+      }));
+      final writes = <(String, String, Object?)>[
+        ('PATCH', '/notes/${note['id']}/', {'content': 'new'}),
+        ('PATCH', '/notes/uuid/${note['uuid']}/', {'content': 'new'}),
+        ('DELETE', '/notes/${note['id']}/', null),
+        ('POST', '/notes/', {'title': 'Again', 'client_draft_id': 'd1'}),
+      ];
+      for (final (method, p, json) in writes) {
+        final r = await callApi(c, method, p, json: json);
+        expect(r.statusCode, 503, reason: '$method $p ${r.body}');
+        expect(detailOf(r), LocalFolderMessages.writeBlockedByJournal);
+      }
+      expect(fs.textOf(path), before);
+      expect(decodeFolderManifest(fs.textOf(kManifestPath)!).counter('note'), 2,
+          reason: 'the draft upsert did not create a second note');
+      // Reads skip the pending note; other notes are read and written.
+      expect((await callApi(c, 'GET', '/notes/${note['id']}/')).statusCode, 404);
+      expect(listOf(await callApi(c, 'GET', '/notes/')).map((n) => n['id']),
+          [other['id']]);
+      final ok = await callApi(c, 'PATCH', '/notes/${other['id']}/',
+          json: {'content': 'saved'});
+      expect(ok.statusCode, 200, reason: ok.body);
     });
   });
 

@@ -124,6 +124,16 @@ JavaScript return-value bug of 2.5; 8.3 covers that in Chromium.
   and `--memory` is accepted but not enforced ("Limitation discarded"),
   so the bound is the `timeout` wrapper and one container at a time.
   Result: 7 of 7 passed; the whole container run took about 25 s.
+- Timing check (phase 1b review P1B-1, 12.5):
+  `test/local_folder_opfs_timing_test.dart` seeds 2,000 notes on OPFS,
+  opens the folder with the real Web Locks wrapper, and times each route
+  through the transport, reading the lock holds from `onHold`. It fails
+  when a single-note GET or PATCH (by id or UUID) takes, or holds the
+  lock for, 2 s or more (`kFolderLockHoldTarget`, 6.2 R4), and prints the
+  other routes' numbers. It runs in the same container command, after
+  the OPFS test file. 0.1.200's full reads answered a single-note GET with
+  the 8 s read deadline's 503 (hold 11 s); the numbers after the change
+  are in 12.5.
 - Unreachable in production: the flag is a compile-time constant, and the
   release builds pass only `APP_VERSION`
   (`.github/workflows/frontend-pages.yml:63,73,83`,

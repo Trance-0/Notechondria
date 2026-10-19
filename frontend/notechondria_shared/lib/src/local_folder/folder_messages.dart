@@ -53,21 +53,14 @@ int _markerLengthAt(String text, int start, List<String> markers) {
   return 0;
 }
 
+/// Writes a word joiner after the first character of every marker match.
+/// The scan resumes at the next character, not after the match, so a marker
+/// that overlaps another ("invalid token_not_valid") is broken too.
 String _breakMarkers(String text, List<String> markers) {
   final out = StringBuffer();
-  var i = 0;
-  while (i < text.length) {
-    final length = _markerLengthAt(text, i, markers);
-    if (length == 0) {
-      out.write(text[i]);
-      i++;
-      continue;
-    }
-    out
-      ..write(text[i])
-      ..write('\u2060')
-      ..write(text.substring(i + 1, i + length));
-    i += length;
+  for (var i = 0; i < text.length; i++) {
+    out.write(text[i]);
+    if (_markerLengthAt(text, i, markers) > 0) out.write('\u2060');
   }
   return out.toString();
 }
@@ -382,6 +375,14 @@ abstract final class LocalFolderMessages {
   static String versionCheckFailed(String host, String cause) =>
       'Cloud version not checked: Shared.LocalFolder/version_check — GET '
       '$host/api/v1/handshake/ failed ($cause); no account data was sent.';
+
+  /// P1B-2: the saved URL failed the passthrough rules, so this page
+  /// answered the handshake itself; its version is not the cloud's.
+  static String versionCheckAnsweredLocally(String host) =>
+      'Cloud version not checked: Shared.LocalFolder/version_check — folder '
+      'mode sends the update check only to an https URL or a loopback http '
+      'URL, so GET $host/api/v1/handshake/ was answered in this page and '
+      'nothing was sent.';
 
   // --- In-page backend: routes and fallbacks (2.8 rule 2, 4.1) ---
 

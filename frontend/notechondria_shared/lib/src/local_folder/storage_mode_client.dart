@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import 'folder_messages.dart';
 import 'local_folder_boot.dart';
+import 'router.dart' show kLocalBackendHeader, kLocalBackendHeaderValue;
 
 // Routing by storage mode (modes and migration 2.8): in folder mode every
 // request through the app client is answered in the page, whatever its
@@ -133,7 +134,10 @@ class CloudVersionCheck {
 /// "Check for updates" (Q9): one unauthenticated `GET /handshake/` to the
 /// saved cloud URL through [client] (the app's `StorageModeClient`), read
 /// only for `version` and `min_frontend_version`, with the 8 s handshake
-/// bound of the apps.
+/// bound of the apps. An answer from this page (a saved URL that fails the
+/// passthrough rules, such as plain http to a LAN host) carries
+/// `x-notechondria-backend: local-folder` and counts as not checked
+/// (P1B-2).
 Future<CloudVersionCheck> checkCloudVersion({
   required http.Client client,
   required String apiBaseUrl,
@@ -150,6 +154,12 @@ Future<CloudVersionCheck> checkCloudVersion({
     try {
       final response = await client
           .get(uri, headers: {'Accept': 'application/json'}).timeout(timeout);
+      if (response.headers[kLocalBackendHeader] == kLocalBackendHeaderValue) {
+        return CloudVersionCheck(
+            ok: false,
+            message: scrubSessionSentinels(
+                LocalFolderMessages.versionCheckAnsweredLocally(host)));
+      }
       if (response.statusCode != 200) {
         return failed('HTTP ${response.statusCode}');
       }

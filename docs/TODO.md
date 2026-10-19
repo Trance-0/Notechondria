@@ -618,25 +618,36 @@ the differences the code made from the design are in `revision_log.md`
   and the inert `cloudOnly` gates.
 - [ ] Phase 0 spike on desktop Chrome (U1, U3, U5, U7, U10, U17, U18):
   run before Phase 2 ships the option.
-- [ ] Phase 1b review follow-ups (`.agents/tasks/phase1b-review.json`),
-  all to land before Phase 2 shows the option:
+- [x] Phase 1b review follow-ups (`.agents/tasks/phase1b-review.json`),
+  landed before Phase 2 shows the option (design `revision_log.md` 12.5):
   - P1B-1 (MEDIUM): note and course lookups read every note inside the
-    lock (`handlers/notes.dart:87-101`, `handlers/records.dart:140-158`,
-    `:308-324`). Locate records through the in-memory index, re-read only
-    the files served or rewritten, and add a Chromium timing check over a
-    few thousand notes.
-  - P1B-2: "Check for updates" treats a locally answered handshake
-    (`x-notechondria-backend: local-folder`) as a cloud answer
-    (`storage_mode_client.dart:137-176`).
-  - P1B-3: after a failed roll-forward, write lookups use the skip set, so
-    a PATCH or DELETE answers 404 and a draft upsert creates a duplicate
-    note instead of `writeBlockedByJournal`.
-  - P1B-4: apply `scrubRouteDetail` to every 404 and 501 detail in
+    lock. Lookups now go through the in-memory index (schema 2 holds the
+    note summary fields) and re-read only the note served or rewritten.
+    Chromium timing over 2,000 OPFS notes
+    (`test/local_folder_opfs_timing_test.dart`): single-note GET 27 ms,
+    PATCH 59 ms; 0.1.200 answered the same GET with a 503 after 8 s.
+  - P1B-2: "Check for updates" no longer counts a locally answered
+    handshake (`x-notechondria-backend: local-folder`) as a cloud answer.
+  - P1B-3: after a failed roll-forward, write lookups skip nothing, so a
+    PATCH, DELETE, or draft upsert of the pending note answers
+    `writeBlockedByJournal`.
+  - P1B-4: `scrubRouteDetail` on every 404 and 501 detail in
     `LocalFolderTransport._detail`.
-  - P1B-5: tests for the inert folder branches (`applyAuthPayload` folder
-    payload, `logout` guard, `disconnectFolder`, `cloudOnlyAction`, a
-    throwing `prepare`, the 7 s write start, the transport R3 path).
-  - P1A-7 (LOW): Unicode case gap in `scrubSessionSentinels`.
+  - P1B-5: tests for the inert folder branches, a throwing `prepare`, the
+    7 s write start, and the transport R3 path.
+  - P1A-7 (LOW): closed in 0.1.200; the `invalid to\u212Aen` test added,
+    and overlapping sentinels are now broken too.
+- [ ] Phase 2 search: Phase 1's substring search reads every body its
+  title and description miss, in batches of 32. Over 2,000 OPFS notes in
+  headless Chromium it held the shared lock 1.3 s, so it passes R4's 2 s
+  target near 3,000 notes. The `note_search_score` port should bound it
+  (body cache, or chunked holds within the 8 s read deadline).
+- [ ] Scan page size: a 500-entry scan page held the lock up to 1,993 ms
+  in the same run (R4 target 2 s); consider a time-bounded page before
+  folders of that size are common.
+- [ ] Other tabs' edits to existing notes reach this tab's list summaries
+  only after its next rescan until Phase 4's change messages; new and
+  removed notes are picked up by the listing each list route runs.
 - [ ] Phase 2, editor: attachments, covers, avatar,
   `folderAwareImageProvider`, promotion failures and "Copy browser
   attachments into the folder", history and snapshot routes, sessions, the

@@ -5,6 +5,7 @@ import '../folder_layout.dart';
 import '../folder_messages.dart';
 import '../note_codec.dart';
 import '../router.dart';
+import 'lookup.dart';
 import 'notes.dart' show frontmatterWith, servedDetail, sidecarWith;
 import 'records.dart';
 
@@ -13,16 +14,18 @@ import 'records.dart';
 // history, assets, sessions, and comment links, one trashed note per chunk.
 
 Future<LocalResponse> _list(LocalHandlerContext ctx) async {
-  final trashed = await readNotes(ctx.fs, trashed: true, skip: ctx.skipPaths);
+  await refreshNoteListing(ctx, live: false, trashed: true, skip: ctx.skipPaths);
+  final trashed =
+      indexedNotes(ctx.index, live: false, trashed: true, skip: ctx.skipPaths);
   final profile = await FolderProfile.read(ctx.fs, folderName: ctx.folderName);
   final courses = CourseLookup(await readCourses(ctx.fs, skip: ctx.skipPaths));
-  String deletedAt(NoteRecord n) =>
-      n.sidecar.deletedAt ?? isoOfMillis(n.stat.lastModified);
+  String deletedAt(IndexedNote n) =>
+      n.deletedAt ?? isoOfMillis(n.body.lastModified);
   trashed.sort((a, b) => deletedAt(b).compareTo(deletedAt(a)));
   return LocalResponse(200, [
     for (final n in trashed)
       {
-        ...noteSummary(n, courses, profile.author),
+        ...indexedNoteSummary(n, courses, profile.author),
         'deleted_at': deletedAt(n),
         'recycle_bin_entry_id': n.id,
       },
@@ -31,12 +34,10 @@ Future<LocalResponse> _list(LocalHandlerContext ctx) async {
 
 Future<LocalResponse> _restore(LocalHandlerContext ctx) async {
   final id = ctx.request.intParam('id');
-  final matches = (await readNotes(ctx.fs, trashed: true, skip: ctx.skipPaths))
-      .where((t) => t.id == id);
-  if (matches.isEmpty) {
+  final n = await noteById(ctx, id, live: false, trashed: true);
+  if (n == null) {
     throw LocalHttpError(404, LocalFolderMessages.trashedNoteNotFound(id));
   }
-  final n = matches.first;
   final livePath = noteBodyPath(n.stem);
   if (await ctx.fs.stat(livePath) != null) {
     throw LocalHttpError(
@@ -83,8 +84,12 @@ Future<void> _purge(LocalHandlerContext ctx, NoteRecord n) async {
   final writes = <JournalWrite>[];
   final sessions = await _sessionsWithout(ctx.fs, n);
   if (sessions != null) writes.add(JournalWrite(kPlannerSessionsPath, sessions));
-  for (final c in await readAllNotes(ctx.fs)) {
-    if (c.path == n.path || c.sidecar.sourceNoteUuid != n.uuid) continue;
+  final comments = await findNotes(ctx,
+      where: (c) => c.path != n.path && c.sourceNoteUuid == n.uuid,
+      verify: (c) => c.sidecar.sourceNoteUuid == n.uuid,
+      trashed: true,
+      refreshOnMiss: false);
+  for (final c in comments) {
     writes.add(JournalWrite(
         c.sidecarPath, sidecarWith(c.sidecar, {'source_note_uuid': null}).encode()));
   }
@@ -101,19 +106,28 @@ Future<void> _purge(LocalHandlerContext ctx, NoteRecord n) async {
   ]));
 }
 
+/// One trashed note per chunk (R4). The first chunk refreshes the listing of
+/// both note directories; each chunk then takes the next trashed note of
+/// the index and re-reads it (P1B-1).
 Future<LocalResponse> _empty(LocalHandlerContext ctx) async {
-  final total = await ctx.chunk(
-      () async => (await readNotes(ctx.fs, trashed: true)).length);
+  final total = await ctx.chunk(() async {
+    await refreshNoteListing(ctx, trashed: true);
+    return indexedNotes(ctx.index, live: false, trashed: true).length;
+  });
   var count = 0;
   final seen = <String>{};
   try {
     while (await ctx.chunk(() async {
-      final trashed = (await readNotes(ctx.fs, trashed: true))
-          .where((n) => !seen.contains(n.path))
-          .toList();
-      if (trashed.isEmpty) return false;
-      final n = trashed.first;
-      seen.add(n.path);
+      final next = await findNotes(ctx,
+          where: (_) => true,
+          verify: (_) => true,
+          live: false,
+          trashed: true,
+          limit: 1,
+          tried: seen,
+          refreshOnMiss: false);
+      if (next.isEmpty) return false;
+      final n = next.single;
       await _purge(ctx, n);
       count++;
       ctx.setBusy(LocalFolderMessages.folderBusy('write', 'Emptying the trash',

@@ -31,6 +31,12 @@ const List<String> kScanDirectories = [
 
 const List<String> kScanRootFiles = [kManifestPath, kReadmePath, kRecycleBinPath];
 
+/// Whether a scan indexes [path]: a root file of [kScanRootFiles] or a file
+/// under one of [kScanDirectories].
+bool isIndexedPath(String path) =>
+    kScanRootFiles.contains(path) ||
+    kScanDirectories.any((dir) => path.startsWith('$dir/'));
+
 class ScanProgress {
   const ScanProgress(this.done, this.total);
   final int done;

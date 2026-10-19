@@ -125,15 +125,23 @@ release the lock before the operation's first `await`.
   `planner/events.json`, `planner/sessions.json`, `planner/feeds.json`,
   `planner/heatmap.json`, the note's `attachments.json`, and
   `history/<hex>/index.json`. The in-memory index is a read cache for GET
-  handlers and never the base of a write. A late or lost change message
-  can therefore delay another tab's refresh, but it cannot lose an update.
+  handlers and never the base of a write. Handlers also locate through it
+  the notes they read or rewrite, and then re-read those files (3.8). A
+  late or lost change message can therefore delay another tab's refresh,
+  but it cannot lose an update.
 - **R3 Journals before reads.** A GET handler or scan page that finds a
   non-empty `.notechondria/journal/` releases its shared hold, takes the
   exclusive lock, re-lists the journal, rolls forward what is still there
   (3.4.1), takes the shared lock again, and then serves. If roll-forward
   fails, the reader skips every path the pending record names. A write
   step of the scan (counter raise, identity fix) that finds roll-forward
-  failing skips itself when it touches one of those paths.
+  failing skips itself when it touches one of those paths. A request
+  that writes one of them answers 503 with "Change not saved:
+  Shared.LocalFolder/journal — an earlier change to these files is not
+  finished; Reconnect or Rescan finishes it first." Write handlers look
+  notes and courses up without the skip set, so a PATCH, DELETE, or
+  draft upsert of a pending note gets that answer, never a 404 or a
+  second note (12.5).
 - **R4 Bounded holds.** One hold targets at most 2 s
   (`kFolderLockHoldTarget`) and 50 file writes. An operation that can
   exceed that runs as a sequence of separately locked and journaled
