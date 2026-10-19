@@ -114,6 +114,14 @@ export 'src/local_folder/storage_mode_client.dart'
         checkCloudVersion,
         runCloudVersionCheck;
 export 'src/local_folder/transport.dart' show LocalFolderTransport;
+export 'src/utils/folder_aware_image.dart'
+    show
+        FolderImage,
+        FolderImageException,
+        folderAwareImageProvider,
+        folderAwareSvg,
+        folderPathForUrl,
+        isFolderUrl;
 export 'src/local_folder/handlers/auth_settings.dart'
     show kLocalFolderToken, kPerDeviceSettingKeys;
 export 'src/components/local_folder_sign_in_option.dart'
