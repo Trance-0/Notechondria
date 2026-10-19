@@ -16,6 +16,12 @@ This directory contains the three standalone Notechondria frontend apps.
   `StartupRequestBudget` (10s-bounded startup requests), `LoadErrorBanner`,
   and `StartupFailureView`. Any new startup network call must run inside
   the app's startup budget (`core/bootstrap.dart`).
+  Since 0.1.200 it also holds the in-page local folder backend
+  (`src/local_folder/`, design `docs/development/local_folder_mode.md`):
+  transport, router, handlers, and the sign-in option, status card, and
+  reconnect view. No app shows the option or reads the folder mode yet;
+  each app is wired in its phase (editor Phase 2, planner and portal
+  Phase 3).
 - `README.md` — concise human overview
 
 ## Current progress

@@ -737,7 +737,7 @@ class HttpNotechondriaClient
         ),
       );
     final streamed = await send(
-        'PATCH', uri, () => request.send().then(http.Response.fromStream));
+        'PATCH', uri, () => _httpClient.send(request).then(http.Response.fromStream));
     return Map<String, dynamic>.from(
       await decode(streamed, uri: uri, method: 'PATCH'),
     );
@@ -772,7 +772,7 @@ class HttpNotechondriaClient
         ),
       );
     final streamed = await send(
-        'POST', uri, () => request.send().then(http.Response.fromStream));
+        'POST', uri, () => _httpClient.send(request).then(http.Response.fromStream));
     return Map<String, dynamic>.from(
       await decode(streamed, uri: uri, method: 'POST'),
     );
@@ -822,7 +822,7 @@ class HttpNotechondriaClient
         ),
       );
     final streamed = await send(
-        'POST', uri, () => request.send().then(http.Response.fromStream));
+        'POST', uri, () => _httpClient.send(request).then(http.Response.fromStream));
     return Map<String, dynamic>.from(
       await decode(streamed, uri: uri, method: 'POST'),
     );
@@ -860,7 +860,7 @@ class HttpNotechondriaClient
         ),
       );
     final streamed = await send(
-        'POST', uri, () => request.send().then(http.Response.fromStream));
+        'POST', uri, () => _httpClient.send(request).then(http.Response.fromStream));
     return Map<String, dynamic>.from(
       await decode(streamed, uri: uri, method: 'POST'),
     );

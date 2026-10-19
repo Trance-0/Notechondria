@@ -693,7 +693,8 @@ extension _AppShellBuildHelpersX on _AppShellState {
                   }
                 }
               : null,
-          githubSyncCardBuilder: _token != null
+          // Folder mode sends no GitHub status request until Phase 5 (9.3).
+          githubSyncCardBuilder: cloudOnly(_token != null
               ? () => GithubSyncExperimentalCard(
                     appId: 'editor',
                     onLoadStatus: () => widget.client.githubSyncStatus(_token!),
@@ -722,7 +723,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
                     onDisconnect: () =>
                         widget.client.githubSyncDisconnect(_token!),
                   )
-              : null,
+              : null),
           onRestoreDeletedNote: _restoreDeletedNote,
           onEmptyDeletedNotes: _emptyDeletedNotes,
           onCopyLogs: _copyFrontendLogs,
@@ -730,7 +731,8 @@ extension _AppShellBuildHelpersX on _AppShellState {
           onSyncLocalData: _syncAllLocalData,
           onPullCloudData: _pullCloudNotesToLocal,
           onClearLocalData: _clearLocalData,
-          onRestoreTemplateCourses: _restoreTemplateCourses,
+          onRestoreTemplateCourses: cloudOnlyAction(_restoreTemplateCourses,
+              LocalFolderMessages.templateCoursesNotRestored),
           onRestoreLocalStarterTemplate: _restoreLocalStarterTemplate,
           onExportLocalData: _exportLocalArchive,
           onRestoreFromLocalImport: _restoreFromLocalImport,

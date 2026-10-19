@@ -237,6 +237,9 @@ class _AppShellState extends State<AppShell>
   AuthClient get authClient => widget.client;
   @override
   String get logAppTag => 'Portal';
+  // Local folder controller: none until the portal's wiring (Phase 3).
+  @override
+  LocalFolderController? get localFolder => null;
   @override
   String? get token => _token;
   @override

@@ -156,7 +156,8 @@ extension _AppShellBuildPageX on _AppShellState {
           onPullCloudData: _pullCloudNotesToLocal,
           onClearLocalCache: _clearLocalCache,
           onClearLocalData: _clearLocalData,
-          onRestoreTemplateCourses: _restoreTemplateCourses,
+          onRestoreTemplateCourses: cloudOnlyAction(_restoreTemplateCourses,
+              LocalFolderMessages.templateCoursesNotRestored),
           onOpenLocalRecycleBin: _openLocalRecycleBinDialog,
           localTrashedDraftCount: _localTrashedDrafts.length,
           localTrashedCourseCount: _localTrashedCourses.length,
@@ -237,7 +238,8 @@ extension _AppShellBuildPageX on _AppShellState {
                   }
                 }
               : null,
-          githubSyncCardBuilder: _token != null
+          // Folder mode sends no GitHub status request until Phase 5 (9.3).
+          githubSyncCardBuilder: cloudOnly(_token != null
               ? () => GithubSyncExperimentalCard(
                     appId: 'portal',
                     onLoadStatus: () => widget.client.githubSyncStatus(_token!),
@@ -266,7 +268,7 @@ extension _AppShellBuildPageX on _AppShellState {
                     onDisconnect: () =>
                         widget.client.githubSyncDisconnect(_token!),
                   )
-              : null,
+              : null),
           onExportLocalData: _exportLocalArchive,
           onRestoreFromLocalImport: _restoreFromLocalImport,
         );

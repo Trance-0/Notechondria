@@ -1,6 +1,10 @@
 import 'package:flutter/widgets.dart';
 
 import '../components/debug_log.dart';
+import '../local_folder/folder_messages.dart';
+import '../local_folder/local_folder_boot.dart' show StorageMode;
+import '../local_folder/local_folder_controller.dart';
+import '../models/action_feedback.dart';
 import 'auth_client.dart';
 import '../utils/local_data_ownership.dart';
 
@@ -121,6 +125,30 @@ mixin AppShellSessionMixin<W extends StatefulWidget> on State<W> {
 
   /// Per-app forwarder to the State's `_syncAllLocalDrafts`.
   Future<void> syncAllLocalDrafts();
+
+  /// The app's local folder controller (local folder design 2.7, design
+  /// review 3 T7(c)). Each shell implements it; it is null until the app's
+  /// wiring phase (9.1), so every folder branch below is inert until then.
+  LocalFolderController? get localFolder;
+
+  /// Whether this app answers its requests from a local folder (2.8).
+  bool get inFolderMode => localFolder?.storageMode == StorageMode.folder;
+
+  /// The 9.1 gate for a control whose route is cloud-only or arrives in a
+  /// later phase: [value] in browser-local and cloud mode, null in folder
+  /// mode, so the settings pages hide or disable the control.
+  T? cloudOnly<T extends Object>(T? value) => inFolderMode ? null : value;
+
+  /// [cloudOnly] for a required action callback (T7(f), the template
+  /// restore): in folder mode the action answers [folderMessage] and sends
+  /// no request.
+  Future<ActionFeedback> Function() cloudOnlyAction(
+    Future<ActionFeedback> Function() action,
+    String folderMessage,
+  ) =>
+      () async => inFolderMode
+          ? ActionFeedback(message: folderMessage, isError: true)
+          : action();
 
   // ---- Hooks for per-app session-shape divergences --------------
 
@@ -296,8 +324,13 @@ mixin AppShellSessionMixin<W extends StatefulWidget> on State<W> {
     settings = serverSettings;
     applySessionMetadata(payload);
     refreshState();
-    await persistSession(token, user);
-    final foreignLocalData = await _reconcileLocalDataOwner(user);
+    // A folder session (2.7) is never persisted (startup derives it from
+    // the storage mode key) and never stamps `local_data_owner`, so a later
+    // cloud sign-in does not treat this browser's data as foreign.
+    final isFolder = user['is_local_folder'] == true;
+    if (!isFolder) await persistSession(token, user);
+    final foreignLocalData =
+        isFolder ? false : await _reconcileLocalDataOwner(user);
     await applyLocalAppSettings({
       'theme_preset': serverSettings['theme_preset']?.toString() ??
           localSettings['theme_preset'],
@@ -345,8 +378,48 @@ mixin AppShellSessionMixin<W extends StatefulWidget> on State<W> {
           'authenticated as $displayName.',
     );
     if (mounted) {
-      showMessage('Signed in as $displayName.');
+      final name = localFolder?.folderName ?? '';
+      showMessage(!isFolder
+          ? 'Signed in as $displayName.'
+          : scrubSessionSentinels(payload['folder_session'] == 'restore'
+              ? LocalFolderMessages.folderSessionRestored(name)
+              : LocalFolderMessages.folderSessionStarted(name)));
     }
+  }
+
+  /// Disconnect (local folder design 2.10 rule 4), never a cloud logout:
+  /// the controller makes the folder state `disconnected` first, so queued
+  /// requests get a 503; then the in-memory folder token and profile are
+  /// cleared; then the shared key and handle record go; only then does the
+  /// storage mode switch, and the app reloads its browser-local data. It
+  /// never calls `authClient.logout` or `clearPersistedSession()`.
+  Future<void> disconnectFolder() async {
+    final folder = localFolder;
+    final name = folder?.folderName ?? '';
+    Future<void> clearSession() async {
+      token = null;
+      profile = null;
+      settings = null;
+      deletedNotes = const [];
+      clearSessionMetadata();
+      clearAppSpecificSessionFields();
+      refreshState();
+    }
+
+    if (folder == null) {
+      await clearSession();
+    } else {
+      await folder.disconnect(clearSession: clearSession);
+    }
+    await loadInitialData();
+    final message =
+        scrubSessionSentinels(LocalFolderMessages.folderDisconnected(name));
+    log(
+      level: DebugLogLevel.info,
+      source: 'Shared.LocalFolder/disconnect',
+      message: message,
+    );
+    if (mounted) showMessage(message);
   }
 
   /// Tears down the current session: best-effort cloud logout, then
@@ -357,6 +430,11 @@ mixin AppShellSessionMixin<W extends StatefulWidget> on State<W> {
   Future<void> logout() async {
     final currentToken = token;
     if (currentToken == null || currentToken.isEmpty) return;
+    // A folder session signs out by disconnecting the folder (2.10 rule 4).
+    if (profile?['is_local_folder'] == true) {
+      await disconnectFolder();
+      return;
+    }
     try {
       await authClient.logout(currentToken);
     } catch (error) {

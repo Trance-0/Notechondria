@@ -134,6 +134,9 @@ class _AppShellState extends State<AppShell>
   AuthClient get authClient => widget.client;
   @override
   String get logAppTag => 'Planner';
+  // Local folder controller: none until the planner's wiring (Phase 3).
+  @override
+  LocalFolderController? get localFolder => null;
   @override
   String? get token => _token;
   @override
@@ -851,7 +854,8 @@ class _AppShellState extends State<AppShell>
           onPullCloudData: _pullCloudNotesToLocal,
           onClearLocalCache: _clearLocalCache,
           onClearLocalData: _clearLocalData,
-          onRestoreTemplateCourses: _restoreTemplateCourses,
+          onRestoreTemplateCourses: cloudOnlyAction(_restoreTemplateCourses,
+              LocalFolderMessages.templateCoursesNotRestored),
           onOpenLocalRecycleBin: _openLocalRecycleBinDialog,
           localTrashedDraftCount: _localTrashedDrafts.length,
           localTrashedCourseCount: _localTrashedCourses.length,
@@ -894,7 +898,8 @@ class _AppShellState extends State<AppShell>
                   }
                 }
               : null,
-          githubSyncCardBuilder: _token != null
+          // Folder mode sends no GitHub status request until Phase 5 (9.3).
+          githubSyncCardBuilder: cloudOnly(_token != null
               ? () => GithubSyncExperimentalCard(
                     appId: 'planner',
                     onLoadStatus: () => widget.client.githubSyncStatus(_token!),
@@ -923,7 +928,7 @@ class _AppShellState extends State<AppShell>
                     onDisconnect: () =>
                         widget.client.githubSyncDisconnect(_token!),
                   )
-              : null,
+              : null),
         );
       default:
         return const SizedBox.shrink();

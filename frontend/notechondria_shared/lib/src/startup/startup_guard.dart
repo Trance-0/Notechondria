@@ -22,19 +22,27 @@ import '../l10n/app_localizations.dart';
 /// [appModule] is the module prefix used in messages (`Editor`, `Planner`,
 /// `Portal`); [buildApp] creates the root widget and is called again by
 /// the fallback's Retry.
+///
+/// [prepare], when given, is awaited inside the zone after
+/// `WidgetsFlutterBinding.ensureInitialized()` and before the first
+/// `runApp`, for work the root widget needs synchronously, such as
+/// `LocalFolderBoot.preload` (local folder design 2.8). Without it the
+/// launch stays synchronous, as before.
 void runGuardedApp({
   required String appModule,
   required String appTitle,
   required Widget Function() buildApp,
+  Future<void> Function()? prepare,
 }) {
   final guard = StartupGuard(
     appModule: appModule,
     appTitle: appTitle,
     buildApp: buildApp,
   );
-  runZonedGuarded(() {
+  runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
     guard.installErrorHandlers();
+    if (prepare != null) await prepare();
     guard.launch();
   }, guard.handleUncaughtError);
 }

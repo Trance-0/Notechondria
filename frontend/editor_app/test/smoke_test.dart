@@ -10,6 +10,8 @@ import 'package:notechondria_shared/notechondria_shared.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:editor_app/main.dart' as app;
 
+import 'local_folder_smoke.dart';
+
 /// Fake backend for the startup-fallback tests: either never answers
 /// (an unresponsive server) or answers every request with empty data.
 class _Backend {
@@ -81,6 +83,7 @@ List<String> _mockClipboard(WidgetTester tester) {
 const String _secretToken = 'phase1-secret-token';
 
 void main() {
+  registerLocalFolderSmokeTests();
   testWidgets('editor app boots with starter offline content', (tester) async {
     SharedPreferences.setMockInitialValues({});
     // main() installs the startup ErrorWidget.builder; flutter_test
