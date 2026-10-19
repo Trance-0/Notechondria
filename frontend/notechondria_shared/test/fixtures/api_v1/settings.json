@@ -1,0 +1,40 @@
+{
+  "_source": "backend/creators/api.py SettingsSerializer.to_representation (:395-428) through SettingsApiView.get (:566); checked against backend/creators/tests.py settings tests. The folder omits the per-device keys of F08 (decision D2), listed in _folder_omits.",
+  "_setup": "empty",
+  "_folder_omits": [
+    "theme_preset", "theme_mode", "api_base_url",
+    "app_settings.theme_preset", "app_settings.theme_mode", "app_settings.api_base_url"
+  ],
+  "request": {"method": "GET", "path": "/api/v1/settings/"},
+  "status": 200,
+  "body": {
+    "username": "contract",
+    "first_name": "",
+    "last_name": "",
+    "email": "contract@example.com",
+    "is_staff": false,
+    "is_superuser": false,
+    "motto": "",
+    "social_link": "",
+    "display_name": "contract",
+    "image_url": "",
+    "avatar_url": "",
+    "image_upload_url": "",
+    "editor_mode": "P",
+    "theme_preset": "teal",
+    "theme_mode": "S",
+    "api_key_prefix": "",
+    "api_base_url": "http://localhost:9080/api/v1",
+    "mcp_skill_md": "",
+    "uncategorized_folder_name": "Inbox",
+    "casdoor_linked": false,
+    "casdoor_profile_synced_at": null,
+    "app_settings": {
+      "api_base_url": "http://localhost:9080/api/v1",
+      "theme_mode": "S",
+      "theme_preset": "teal"
+    },
+    "app_settings_updated_at": null,
+    "last_seen_versions": {}
+  }
+}

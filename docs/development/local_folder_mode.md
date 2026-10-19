@@ -1,8 +1,9 @@
 # Local folder storage mode (design)
 
-Status: Phase 1a (the storage core under
-`frontend/notechondria_shared/lib/src/local_folder/`, section 9.2) is
-implemented; no app is wired to it yet. Written against `main`
+Status: Phase 1 (foundation, section 9.1) is implemented in 0.1.200:
+the storage core, transport, router, Phase 1 handlers, and widgets under
+`frontend/notechondria_shared/lib/src/`. No app is wired to it yet and no
+app shows the option; the differences from this text are in 12.4. Written against `main`
 at VERSION 0.1.199. Citations were first pinned at `6cd1f3be` and are
 re-pinned at HEAD `48988a20`. Between the two commits only
 `frontend/planner_app/lib/core/calendar.dart` and
@@ -426,7 +427,11 @@ four substrings. Details also interpolate folder names and browser error
 text, which could contain one (a folder named "Invalid token"), so every
 assembled detail goes through `scrubSessionSentinels`, which puts a
 zero-width word joiner (U+2060) after the first letter of each match; the
-text reads the same.
+text reads the same. It folds each character with `toLowerCase`, as the
+detectors do. The router's 501 and 404 details interpolate the request
+path, so they go through `scrubRouteDetail`, which also breaks the
+editor's deep-link markers (`permission`, `forbidden`, `not
+authenticated`, ` 403 `, `403:`; design review 3 T2).
 
 ### 2.6 How "dashboard for local services" is met
 

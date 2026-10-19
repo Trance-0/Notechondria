@@ -1,0 +1,35 @@
+{
+  "_source": "backend/notes/api.py NoteDetailApiView.patch (:1499-1570): NoteDetailSerializer (:423) without can_edit; checked against backend/notes/tests.py note update tests.",
+  "_setup": "course_and_note",
+  "request": {
+    "method": "PATCH",
+    "path": "/api/v1/notes/{note_id}/",
+    "body": {"title": "Edited", "content": "# Edited\n\nNew body", "is_public": true}
+  },
+  "status": 200,
+  "body": {
+    "id": 1,
+    "uuid": "00000000-0000-4000-8000-000000000001",
+    "name": "contract-note",
+    "git_path": "",
+    "module": "",
+    "title": "Edited",
+    "description": "",
+    "excerpt": "New body",
+    "preview_lines": ["New body"],
+    "editor_mode": "P",
+    "note_type": "N",
+    "is_public": true,
+    "last_edit": "2026-10-19T00:00:00Z",
+    "date_created": "2026-10-19T00:00:00Z",
+    "course_id": 1,
+    "course": {"id": 1, "title": "Contract course", "slug": "contract-course"},
+    "author": {"id": 1, "username": "contract", "display_name": "contract", "image_url": "", "avatar_url": ""},
+    "source_note_uuid": null,
+    "cover_image_url": "",
+    "blocks": [],
+    "content": "# Edited\n\nNew body",
+    "metadata_json": "",
+    "custom_meta": ""
+  }
+}

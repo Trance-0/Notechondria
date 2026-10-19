@@ -1,0 +1,7 @@
+{
+  "_source": "backend/creators/api.py CasdoorConfigApiView.get (:860-875): the unconfigured answer, as with no CASDOOR_* variables (settings_test).",
+  "_setup": "empty",
+  "request": {"method": "GET", "path": "/api/v1/auth/casdoor/config/"},
+  "status": 200,
+  "body": {"configured": false}
+}

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../components/debug_log.dart';
+import '../local_folder/storage_mode_client.dart' show LocalRoutingClient;
 import '../models/api_debug_snapshot.dart';
 import '../startup/startup_budget.dart';
 import '../startup/startup_log.dart';
@@ -117,7 +118,13 @@ mixin HttpClientInternalsMixin {
           '$method ${uri.path}'
           '${requestBytes > 0 ? " (${requestBytes}B payload)" : ""}.',
     );
-    final budget = currentStartupBudget;
+    // Requests answered in the page (local folder mode) are not network
+    // calls, so the startup budget does not apply to them; the transport
+    // bounds their waits itself (local folder design 2.7, 2.9).
+    final Object client = httpClient;
+    final local =
+        client is LocalRoutingClient && client.routesLocally(method, uri);
+    final budget = local ? null : currentStartupBudget;
     try {
       final response = budget == null
           ? await operation()

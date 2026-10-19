@@ -1,0 +1,52 @@
+{
+  "_source": "backend/notes/api.py NoteListCreateApiView.post (:1393-1485), 201 with NoteDetailSerializer (:423); checked against backend/notes/tests.py note create and client_draft_id upsert tests.",
+  "_setup": "course_and_note",
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/notes/",
+    "body": {
+      "title": "Created note",
+      "content": "# Created note\n\nText",
+      "course_id": "{course_id}",
+      "client_draft_id": "draft-7",
+      "editor_mode": "G"
+    }
+  },
+  "status": 201,
+  "body": {
+    "id": 2,
+    "uuid": "00000000-0000-4000-8000-000000000002",
+    "name": "created-note",
+    "git_path": "",
+    "module": "",
+    "title": "Created note",
+    "description": "",
+    "excerpt": "Text",
+    "preview_lines": ["Text"],
+    "editor_mode": "G",
+    "note_type": "N",
+    "is_public": false,
+    "last_edit": "2026-10-19T00:00:00Z",
+    "date_created": "2026-10-19T00:00:00Z",
+    "course_id": 1,
+    "course": {"id": 1, "title": "Contract course", "slug": "contract-course"},
+    "author": {"id": 1, "username": "contract", "display_name": "contract", "image_url": "", "avatar_url": ""},
+    "source_note_uuid": null,
+    "cover_image_url": "",
+    "blocks": [
+      {
+        "id": 3,
+        "block_type": "T",
+        "text": "Created note",
+        "args": "",
+        "is_AI_generated": false,
+        "image_url": "",
+        "date_created": "2026-10-19T00:00:00Z",
+        "last_edit": "2026-10-19T00:00:00Z"
+      }
+    ],
+    "content": "# Created note\n\nText",
+    "metadata_json": "",
+    "custom_meta": ""
+  }
+}

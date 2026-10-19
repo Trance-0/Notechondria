@@ -1,0 +1,31 @@
+{
+  "_source": "backend/notes/api.py CourseReorderApiView.post (:1187-1237): the owner's courses with CourseSerializer (:450), sorted by course_sort_key (:206).",
+  "_setup": "course_and_note",
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/courses/reorder/",
+    "body": {"course_ids": ["{course_id}"]}
+  },
+  "status": 200,
+  "body": [
+    {
+      "id": 1,
+      "client_course_id": null,
+      "slug": "contract-course",
+      "title": "Contract course",
+      "description": "",
+      "cover_image_url": "",
+      "icon": null,
+      "color_hue": null,
+      "sort_order": 1,
+      "owner": {"id": 1, "username": "contract", "display_name": "contract", "image_url": "", "avatar_url": ""},
+      "subscriber_count": 0,
+      "is_subscribed": false,
+      "is_private_subscription": false,
+      "last_opened_at": null,
+      "recent_notes": [],
+      "media": [],
+      "git": null
+    }
+  ]
+}

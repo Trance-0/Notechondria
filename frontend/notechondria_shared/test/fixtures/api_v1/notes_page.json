@@ -1,0 +1,35 @@
+{
+  "_source": "backend/notes/api.py NoteListCreateApiView.get (:1300-1391), the page envelope the editor's listNotes requests (limit, offset, scope), rows from NoteSummarySerializer (:344); checked against backend/notes/tests.py note list tests.",
+  "_setup": "course_and_note",
+  "request": {"method": "GET", "path": "/api/v1/notes/?limit=20&offset=0&scope=personal"},
+  "status": 200,
+  "body": {
+    "results": [
+      {
+        "id": 1,
+        "uuid": "00000000-0000-4000-8000-000000000001",
+        "name": "contract-note",
+        "git_path": "",
+        "module": "",
+        "title": "Contract note",
+        "description": "",
+        "excerpt": "Body",
+        "preview_lines": ["Body"],
+        "editor_mode": "P",
+        "note_type": "N",
+        "is_public": false,
+        "last_edit": "2026-10-19T00:00:00Z",
+        "date_created": "2026-10-19T00:00:00Z",
+        "course_id": 1,
+        "course": {"id": 1, "title": "Contract course", "slug": "contract-course"},
+        "author": {"id": 1, "username": "contract", "display_name": "contract", "image_url": "", "avatar_url": ""},
+        "source_note_uuid": null,
+        "cover_image_url": ""
+      }
+    ],
+    "total": 1,
+    "offset": 0,
+    "limit": 20,
+    "has_more": false
+  }
+}

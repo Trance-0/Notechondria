@@ -163,6 +163,18 @@ the same request.
   backend. The fixture directory joins the workflow's `paths:` filter
   (`.github/workflows/backend-tests.yml:16-19`), so a fixture-only change
   runs the test.
+- **Format (0.1.200).** Each file holds `_source`, `_setup` (`empty`,
+  `course_and_note`, or `trashed_note`, seeded the same way through the
+  API on both sides), `request` (`method`, `path`, optional `body`, with
+  `{course_id}`, `{note_id}`, and `{note_uuid}` replaced by the seeded
+  ids), `status`, and `body`. `_folder_omits` lists dotted key paths the
+  folder leaves out on purpose (the per-device settings of F08, also
+  inside `app_settings`), and `_backend_route: false` marks the two routes
+  below. Null on either side is compatible, and list elements are compared
+  when both lists are non-empty. The Dart side is
+  `test/local_folder/fixtures_contract_test.dart`. Phase 1 has 21
+  fixtures; Q14's test passed against all 19 backend routes in a
+  `python:3.11-slim` container before the first push (12.4).
 - **Routes the backend does not have** (`GET /auth/session/`,
   `POST /auth/logout/`, Q17) get no recorder. Their shapes come from the
   client code that parses them. `_restoreSession` reads `authenticated`
@@ -205,7 +217,12 @@ called from `smoke_test.dart`'s `main`, so the CI file grows by two lines
 - **Phases.** The editor file lands in Phase 1 with client-level checks
   (`HttpNotechondriaClient(httpClient: controller.httpClient)` built
   inside the same zone) and gains the app-level checks in Phase 2; the
-  planner and portal files land in Phase 3.
+  planner and portal files land in Phase 3. The Phase 1 file (0.1.200)
+  has three checks: note create, edit, delete, restore, and empty trash in
+  the folder, with the handshake, `ping`, and a multipart upload (501
+  until Phase 2) answered in the page; revoked mid-session; and the
+  passthrough. Each asserts what reached the recorder, with
+  `HttpOverrides.global` failing any `dart:io` client.
 
 - Editor: create a note and find `notes/<hex>.md` with frontmatter and a
   sidecar; edit, delete to `trash/notes/`, restore; upload an attachment

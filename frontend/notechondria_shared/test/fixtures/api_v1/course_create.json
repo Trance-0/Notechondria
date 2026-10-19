@@ -1,0 +1,29 @@
+{
+  "_source": "backend/notes/api.py CourseListApiView.post (:751-831), 201 with CourseSerializer (:450); checked against backend/notes/tests.py course create and duplicate-title tests.",
+  "_setup": "empty",
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/courses/",
+    "body": {"title": "Second course", "description": "d", "client_course_id": "local-7"}
+  },
+  "status": 201,
+  "body": {
+    "id": 2,
+    "client_course_id": "local-7",
+    "slug": "second-course",
+    "title": "Second course",
+    "description": "d",
+    "cover_image_url": "",
+    "icon": null,
+    "color_hue": null,
+    "sort_order": 0,
+    "owner": {"id": 1, "username": "contract", "display_name": "contract", "image_url": "", "avatar_url": ""},
+    "subscriber_count": 0,
+    "is_subscribed": false,
+    "is_private_subscription": false,
+    "last_opened_at": null,
+    "recent_notes": [],
+    "media": [],
+    "git": null
+  }
+}

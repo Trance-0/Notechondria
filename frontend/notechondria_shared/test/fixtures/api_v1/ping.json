@@ -1,0 +1,11 @@
+{
+  "_source": "backend/notechondria/api_views.py ping() (:217); the payload is pong, service, timestamp. Values are sanitized.",
+  "_setup": "empty",
+  "request": {"method": "GET", "path": "/api/v1/ping/"},
+  "status": 200,
+  "body": {
+    "pong": true,
+    "service": "notechondria-backend",
+    "timestamp": "2026-10-19T00:00:00+00:00"
+  }
+}

@@ -66,9 +66,11 @@ applies four rules:
 3. **The one passthrough**, for the manual "Check for updates" button in
    the status card (Q9). A request goes to the inner client only when all
    of these hold:
-   - it was issued inside `runCloudVersionCheck(...)`, a zone value that
-     only that button's `onPressed` sets (the zone mechanism of
-     `runWithStartupBudget`, `startup_budget.dart:105-127`);
+   - it was issued inside `runCloudVersionCheck(apiBaseUrl, ...)`, a zone
+     value that only that button's `onPressed` sets (the zone mechanism of
+     `runWithStartupBudget`, `startup_budget.dart:105-127`); the value is
+     the saved `api_base_url` the checks below compare with, because the
+     transport does not read the app's settings;
    - the method is `GET`, with no body and no query string;
    - the path ends with `/api/v1/handshake/`;
    - the scheme is `https`, or `http` with a loopback host;

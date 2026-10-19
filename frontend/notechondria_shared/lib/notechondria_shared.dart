@@ -106,6 +106,22 @@ export 'src/local_folder/qualification.dart'
         kLocalFolderFallbackLine,
         localFolderGapMessage;
 export 'src/local_folder/secret_denylist.dart' show isSecretKey, stripSecrets;
+export 'src/local_folder/storage_mode_client.dart'
+    show
+        CloudVersionCheck,
+        LocalRoutingClient,
+        StorageModeClient,
+        checkCloudVersion,
+        runCloudVersionCheck;
+export 'src/local_folder/transport.dart' show LocalFolderTransport;
+export 'src/local_folder/handlers/auth_settings.dart'
+    show kLocalFolderToken, kPerDeviceSettingKeys;
+export 'src/components/local_folder_sign_in_option.dart'
+    show LocalFolderSignInOption;
+export 'src/components/local_folder_status_card.dart'
+    show LocalFolderStatusCard;
+export 'src/components/local_folder_reconnect_view.dart'
+    show LocalFolderChangeBanner, LocalFolderReconnectView;
 export 'src/components/auth_dialogs.dart'
     show AuthHub, EmailPasswordDialog, FeedbackText;
 export 'src/components/casdoor_link_challenge_dialog.dart'

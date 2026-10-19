@@ -44,6 +44,42 @@ final List<String> _allMessages = [
   LocalFolderMessages.folderBusy('journal', 'Emptying the trash', 2, 5),
   LocalFolderMessages.bootNotChecked('Editor', 'SecurityError'),
   for (final gap in LocalFolderGap.values) localFolderGapMessage(gap),
+  // Phase 1b: sessions, connect, the passthrough, and the backend.
+  LocalFolderMessages.cloudSessionWins('Editor', 'alice', 'Notes'),
+  LocalFolderMessages.folderSessionStarted('Notes'),
+  LocalFolderMessages.folderSessionRestored('Notes'),
+  LocalFolderMessages.folderDisconnected('Notes'),
+  LocalFolderMessages.sharedOriginNotice('https://trance-0.github.io'),
+  LocalFolderMessages.connectNonEmpty('Documents', 1200),
+  LocalFolderMessages.versionChecked('https://host', '0.1.200'),
+  LocalFolderMessages.versionCheckFailed('https://host', 'HTTP 502'),
+  ..._backendDetails,
+];
+
+/// Details the router and handlers answer with; the editor's deep-link
+/// handler must not read any of them as "private note" (T2).
+final List<String> _backendDetails = [
+  LocalFolderMessages.notApiRoute('GET', '/media/a.png'),
+  LocalFolderMessages.routeUnsupported('GET', '/api/v1/blocks/1/'),
+  LocalFolderMessages.laterRelease('Note history', 'GET', '/api/v1/notes/1/history/'),
+  LocalFolderMessages.requestFailed('GET', '/api/v1/notes/', 'StateError'),
+  LocalFolderMessages.writeBlockedByJournal,
+  LocalFolderMessages.casdoorSignIn,
+  LocalFolderMessages.emailSignIn,
+  LocalFolderMessages.accountLinking,
+  LocalFolderMessages.accountNotCreated,
+  LocalFolderMessages.courseNotSubscribed,
+  LocalFolderMessages.courseNotTransferred,
+  LocalFolderMessages.githubAppUnavailable,
+  LocalFolderMessages.mcpUnavailable,
+  LocalFolderMessages.templateCoursesNotRestored,
+  LocalFolderMessages.publicNotesNotSearched,
+  LocalFolderMessages.noteUuidNotFound('11111111-2222-4333-8444-555555555555'),
+  LocalFolderMessages.noteNotFound(3),
+  LocalFolderMessages.trashedNoteNotFound(3),
+  LocalFolderMessages.courseNotFound(3),
+  LocalFolderMessages.courseTitleTaken('Bio'),
+  LocalFolderMessages.invalidField('Note not saved', 'notes', 'title is required'),
 ];
 
 void main() {
@@ -75,6 +111,29 @@ void main() {
     for (final m in _allMessages) {
       expect(scrubSessionSentinels(m), m, reason: m);
     }
+  });
+
+  test('the scrub folds case as the detectors do (U+212A KELVIN SIGN)', () {
+    const kelvin = 'Invalid to\u212Aen in TO\u212AEN_NOT_VALID';
+    // The detectors lower-case with toLowerCase; whatever it maps U+212A
+    // to, the scrubbed text must not count as a hit.
+    expect(containsSessionRejectionSentinel(scrubSessionSentinels(kelvin)),
+        isFalse);
+    if ('\u212A'.toLowerCase() == 'k') {
+      expect(containsSessionRejectionSentinel(kelvin), isTrue);
+      expect(scrubSessionSentinels(kelvin), isNot(kelvin));
+    }
+    expect(scrubSessionSentinels(kelvin).replaceAll('\u2060', ''), kelvin);
+  });
+
+  test('router and handler details carry no deep-link marker (T2)', () {
+    for (final d in _backendDetails) {
+      expect(containsDeepLinkPrivateNoteMarker(d), isFalse, reason: d);
+    }
+    final path = scrubRouteDetail(LocalFolderMessages.routeUnsupported(
+        'GET', '/api/v1/Permission/forbidden/ 403 /403:/invalid token/'));
+    expect(containsDeepLinkPrivateNoteMarker(path), isFalse, reason: path);
+    expect(containsSessionRejectionSentinel(path), isFalse, reason: path);
   });
 
   test('no message says "timed out", which friendlyError would rewrite', () {

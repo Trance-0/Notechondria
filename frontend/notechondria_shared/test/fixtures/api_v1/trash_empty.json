@@ -1,0 +1,7 @@
+{
+  "_source": "backend/notes/api.py DeletedNoteEmptyApiView.delete (:1951-1966): count and deleted_count; checked against backend/notes/tests.py empty-trash tests.",
+  "_setup": "trashed_note",
+  "request": {"method": "DELETE", "path": "/api/v1/notes/deleted/empty/"},
+  "status": 200,
+  "body": {"count": 1, "deleted_count": 1}
+}

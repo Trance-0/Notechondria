@@ -49,6 +49,16 @@ class PickMayBeCopy extends PickOutcome {
   final String message;
 }
 
+/// The message an outcome shows, or null for one that needs none.
+String? pickOutcomeMessage(PickOutcome outcome) => switch (outcome) {
+      PickOpened() || PickCancelled() => null,
+      PickFailed(:final message) ||
+      PickRefused(:final message) ||
+      PickLooksLikeCopy(:final message) ||
+      PickMayBeCopy(:final message) =>
+        message,
+    };
+
 /// A folder picked for a first connect (1.3 step 3).
 class ConnectPick {
   const ConnectPick({

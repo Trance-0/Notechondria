@@ -20,25 +20,73 @@ bool containsSessionRejectionSentinel(String text) {
   return kSessionRejectionSentinels.any(lower.contains);
 }
 
-final List<RegExp> _sentinelPatterns = [
-  for (final s in kSessionRejectionSentinels)
-    RegExp(RegExp.escape(s), caseSensitive: false),
+/// The substrings the editor's deep-link handler reads as "private note,
+/// sign in" when no token is set (editor `core/auth_flows.dart`, design
+/// review 3 T2). The router's 501 and 404 details avoid them.
+const List<String> kDeepLinkPrivateNoteMarkers = <String>[
+  'permission',
+  'forbidden',
+  'not authenticated',
+  ' 403 ',
+  '403:',
 ];
+
+bool containsDeepLinkPrivateNoteMarker(String text) {
+  final lower = text.toLowerCase();
+  return kDeepLinkPrivateNoteMarkers.any(lower.contains);
+}
+
+/// Length of the marker that starts at [start] in [text], comparing each
+/// character as `toLowerCase` maps it (the detectors' folding), or 0.
+int _markerLengthAt(String text, int start, List<String> markers) {
+  for (final marker in markers) {
+    var i = start;
+    var matched = 0;
+    while (matched < marker.length && i < text.length) {
+      final lowered = text[i].toLowerCase();
+      if (!marker.startsWith(lowered, matched)) break;
+      matched += lowered.length;
+      i++;
+    }
+    if (matched == marker.length) return i - start;
+  }
+  return 0;
+}
+
+String _breakMarkers(String text, List<String> markers) {
+  final out = StringBuffer();
+  var i = 0;
+  while (i < text.length) {
+    final length = _markerLengthAt(text, i, markers);
+    if (length == 0) {
+      out.write(text[i]);
+      i++;
+      continue;
+    }
+    out
+      ..write(text[i])
+      ..write('\u2060')
+      ..write(text.substring(i + 1, i + length));
+    i += length;
+  }
+  return out.toString();
+}
 
 /// Breaks every session-rejection sentinel in [text], in any letter case,
 /// with a word joiner (U+2060, zero width) after its first letter. The
 /// message builders contain no sentinel, but the folder names and browser
 /// error texts they interpolate might (a folder named "Invalid token"),
-/// so every assembled 503 detail goes through this (2.5). The text looks
-/// the same.
-String scrubSessionSentinels(String text) {
-  var out = text;
-  for (final pattern in _sentinelPatterns) {
-    out = out.replaceAllMapped(
-        pattern, (m) => '${m[0]!.substring(0, 1)}\u2060${m[0]!.substring(1)}');
-  }
-  return out;
-}
+/// so every assembled detail goes through this (2.5). The text looks the
+/// same. Characters are folded with `toLowerCase`, as the detectors fold
+/// them, so a non-ASCII capital that lowers to an ASCII letter (U+212A
+/// KELVIN SIGN lowers to `k`) is caught too.
+String scrubSessionSentinels(String text) =>
+    _breakMarkers(text, kSessionRejectionSentinels);
+
+/// [scrubSessionSentinels] plus the deep-link markers, for the router's
+/// 501 and 404 details, which interpolate the request path.
+String scrubRouteDetail(String text) => _breakMarkers(
+    text, [...kSessionRejectionSentinels, ...kDeepLinkPrivateNoteMarkers]);
 
 enum LocalFolderLogLevel { info, warning, error }
 
@@ -290,4 +338,157 @@ abstract final class LocalFolderMessages {
       'Local folder not checked: $appModule.Startup/local_folder — browser '
       'storage could not be read ($cause); starting in browser-local or '
       'cloud mode.';
+
+  /// 2.10 rule 2: a saved cloud session wins over the connected folder.
+  static String cloudSessionWins(String appModule, String user, String name) =>
+      'Local folder not used: $appModule.Startup/local_folder — this app is '
+      "signed in to the Notechondria cloud as '$user', which takes precedence "
+      "over the folder '$name' connected on this browser. Sign out here to "
+      'use the folder.';
+
+  // --- Sessions, connect, and disconnect (2.7, 2.10, 6.1) ---
+
+  static String folderSessionStarted(String name) =>
+      "Folder session started: Shared.LocalFolder/pick — using '$name'; no "
+      'account is used and no data is sent to the Notechondria server.';
+
+  static String folderSessionRestored(String name) =>
+      'Folder session started: Shared.LocalFolder/restore_handle — reopened '
+      "'$name' from this browser.";
+
+  static String folderDisconnected(String name) =>
+      "Folder disconnected: Shared.LocalFolder/disconnect — '$name' is no "
+      'longer used in this tab; the app shows its browser-local data again.';
+
+  /// 6.1 mitigation 2, shown before the first connect on a shared origin.
+  static String sharedOriginNotice(String origin) =>
+      'Folder access is shared with this web address: Shared.LocalFolder/pick '
+      '— $origin also hosts other projects, and any page there could use a '
+      'folder you grant. Pick a dedicated, empty folder, or use the local '
+      'preview or desktop build.';
+
+  /// 6.1 mitigation 3: a non-empty folder without a manifest.
+  static String connectNonEmpty(String name, int entries) =>
+      "Folder not empty: Shared.LocalFolder/connect — '$name' has "
+      '${formatEntryCount(entries)} entries and no manifest.json. Connect it '
+      'only if it is a folder you set aside for Notechondria.';
+
+  // --- Check for updates, the one passthrough (2.8 rule 3, Q9) ---
+
+  static String versionChecked(String host, String version) =>
+      'Cloud version checked: Shared.LocalFolder/version_check — GET '
+      '$host/api/v1/handshake/ answered $version; no account data was sent.';
+
+  static String versionCheckFailed(String host, String cause) =>
+      'Cloud version not checked: Shared.LocalFolder/version_check — GET '
+      '$host/api/v1/handshake/ failed ($cause); no account data was sent.';
+
+  // --- In-page backend: routes and fallbacks (2.8 rule 2, 4.1) ---
+
+  static String notApiRoute(String method, String path) =>
+      'Request not answered: Shared.LocalFolder.Backend/route — $method '
+      '$path is not an /api/v1 route, and folder mode sends nothing to the '
+      'network.';
+
+  /// The 501 fallback for an /api/v1 route without a folder handler.
+  static String routeUnsupported(String method, String path) =>
+      'Request not answered: Shared.LocalFolder.Backend/unsupported — '
+      '$method $path has no folder handler in this release, and folder mode '
+      'sends nothing to the network.';
+
+  /// 501 for a route whose folder handler lands in a later phase (9.1).
+  static String laterRelease(String feature, String method, String path) =>
+      'Feature not available yet: Shared.LocalFolder.Backend/unsupported — '
+      '$feature in folder mode arrives in a later release ($method $path); '
+      'nothing was sent to the network.';
+
+  static String requestFailed(String method, String path, String cause) =>
+      'Request not answered: Shared.LocalFolder.Backend/route — $method '
+      '$path failed in the folder backend ($cause).';
+
+  /// A write after a failed roll-forward that touches a pending path.
+  static const String writeBlockedByJournal =
+      'Change not saved: Shared.LocalFolder/journal — an earlier change to '
+      'these files is not finished; Reconnect or Rescan finishes it first.';
+
+  // Class (c) features (4.2): the route answers 501 with these details.
+
+  static const String casdoorSignIn = 'Cloud sign-in unavailable in folder '
+      'mode: Shared.LocalFolder.Backend/unsupported — Casdoor sign-in needs '
+      'the Notechondria server, which holds the OAuth client secret. '
+      'Disconnect the folder to sign in.';
+
+  static const String emailSignIn = 'Cloud sign-in unavailable in folder '
+      'mode: Shared.LocalFolder.Backend/unsupported — email/password sign-in '
+      'needs the Notechondria server, which holds the accounts. Disconnect '
+      'the folder to sign in.';
+
+  static const String accountLinking = 'Cloud sign-in unavailable in folder '
+      'mode: Shared.LocalFolder.Backend/unsupported — account linking needs '
+      'the Notechondria server, which holds the accounts. Disconnect the '
+      'folder to link accounts.';
+
+  static const String accountNotCreated = 'Account not created: '
+      'Shared.LocalFolder.Backend/unsupported — registration, verification, '
+      'and password reset are Casdoor flows for Notechondria cloud accounts, '
+      'and a local folder needs no account. Disconnect the folder to register '
+      'or reset a password.';
+
+  static const String courseNotSubscribed = 'Course not subscribed: '
+      'Shared.LocalFolder.Backend/unsupported — subscribing reads another '
+      "user's course from the Notechondria server; a local folder holds only "
+      'your data.';
+
+  static const String courseNotTransferred = 'Course not transferred: '
+      "Shared.LocalFolder.Backend/unsupported — the recipient's account lives "
+      'on the Notechondria server.';
+
+  static const String githubAppUnavailable = 'GitHub App connection '
+      'unavailable in folder mode: Shared.LocalFolder.GitHub/token — '
+      "installing the Notechondria GitHub App needs the server's App private "
+      'key. Paste a fine-grained personal access token instead.';
+
+  static const String mcpUnavailable = 'MCP access unavailable in folder '
+      'mode: Shared.LocalFolder.Backend/unsupported — agents connect to an MCP '
+      'server URL, and a web page cannot accept incoming connections. Your '
+      'skill.md is still saved in the folder.';
+
+  /// T7(f): F18's server template catalog.
+  static const String templateCoursesNotRestored = 'Template courses not '
+      'restored: Shared.LocalFolder.Backend/unsupported — the template catalog '
+      'is installed by the Notechondria server; a local folder starts with '
+      'only your own courses.';
+
+  static const String publicNotesNotSearched = 'Public notes not searched: '
+      "Shared.LocalFolder.Backend/search — other users' public notes live on "
+      "the Notechondria server; showing this folder's notes only.";
+
+  // --- Handler answers (4.1) ---
+
+  /// F28: an unknown UUID, which may be another user's shared note.
+  static String noteUuidNotFound(String uuid) =>
+      'Note not found in folder: Shared.LocalFolder.Backend/notes — $uuid is '
+      'not in this folder; shared links of other users open from the '
+      'Notechondria server.';
+
+  static String noteNotFound(int id) =>
+      'Note not found in folder: Shared.LocalFolder.Backend/notes — note $id '
+      'is not in this folder.';
+
+  static String trashedNoteNotFound(int id) =>
+      'Note not restored: Shared.LocalFolder.Backend/notes — note $id is not '
+      "in this folder's trash.";
+
+  static String courseNotFound(int id) =>
+      'Category not found in folder: Shared.LocalFolder.Backend/courses — '
+      'category $id is not in this folder.';
+
+  static String courseTitleTaken(String title) =>
+      'Category not saved: Shared.LocalFolder.Backend/courses — a category '
+      "named '$title' already exists in this folder.";
+
+  /// A request body field that fails validation (400).
+  static String invalidField(
+          String consequence, String process, String cause) =>
+      '$consequence: Shared.LocalFolder.Backend/$process — $cause.';
 }

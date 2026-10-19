@@ -166,3 +166,26 @@ P1A-6), resolved in the same phase:
 | P1A-5 | `scrubSessionSentinels` on every assembled detail; the 1b transport applies it to handler details too | 2.5; `folder_messages.dart`, `local_folder_controller.dart` |
 | P1A-6 | The per-app connect row no longer lists session keys (T7(a)) | 9.2 |
 
+## 12.4 Phase 1b (0.1.200): where the code differs from the design
+
+Phase 1b landed the transport, `StorageModeClient`, router, the Phase 1
+handlers, the fixtures and Q14's recorder, the three widgets, and the
+plumbing. Where the code and the earlier text disagreed, the code was
+kept and the design text changed in the same commit:
+
+| Item | Code (0.1.200) | Where |
+|---|---|---|
+| T7(c) | Every shell implements `LocalFolderController? get localFolder => null`; the session mixin carries `disconnectFolder()`, the `logout()` guard, the folder session messages, and the skipped `persistSession` and owner stamp | 2.7, 9.1; `app_shell_session_mixin.dart`, three `app_shell.dart` |
+| T7(f) and the GitHub gate | The gates are `cloudOnly(...)` and `cloudOnlyAction(...)` on the shared session mixin, not a per-app `_cloudOnly(...)`, and they land in Phase 1 at the three build sites, inert while `localFolder` is null. `onRestoreTemplateCourses` is a required callback whose portal reader is the 1029-line `settings_pages.dart`, so `cloudOnlyAction` keeps the button and answers the 501 message without a request instead of passing null | 9.1, 9.3; editor `core/build_helpers.dart`, planner `app_shell.dart`, portal `core/build_page.dart` |
+| New file | `handlers/records.dart`: course, note, profile, and recycle-bin records and the serializer-shaped payloads the four handler files share | 9.2 |
+| Passthrough | `runCloudVersionCheck(apiBaseUrl, body)` carries the saved cloud URL as the zone value, because the transport does not know the app's settings; `checkCloudVersion` is the status card's call | 2.8 rule 3; `storage_mode_client.dart` |
+| Route details | 501 and 404 details go through `scrubRouteDetail`, which also breaks the editor deep-link markers (`permission`, `forbidden`, `not authenticated`, ` 403 `, `403:`), because they interpolate the request path (T2) | 2.5; `folder_messages.dart`, `router.dart` |
+| P1A review LOW | `scrubSessionSentinels` folds each character with `toLowerCase`, as the detectors do, so U+212A KELVIN SIGN no longer slips past it | 2.5; `folder_messages.dart` |
+| Errors | Only `NotAllowedError` and a root `NotFoundError` change the folder state (`needsPermission`, `error`); any other `FolderFs` failure of one request answers 500 and leaves the folder open | 2.8 rule 4; `transport.dart` |
+| Search | Phase 1 `q` is a substring match with title hits first, and `sort=popular` sorts as `newest`; the `note_search_score` port stays in Phase 2 | F25; `handlers/notes.dart` |
+| Course open | F15 answers 200 for the folder's own course with `last_opened_at` in the course file; the backend answers 404 without a subscription, so the route has no fixture | F15; `handlers/courses.dart` |
+| Empty trash | One trashed note per chunk (R4 allows batching while the hold stays under 2 s) | 6.2 R4; `handlers/trash.dart` |
+| Handshake | `capabilities` keeps the backend's keys; `planner`, `calendar_feeds`, `attachments`, and `mcp` are 0 until their phases | F46; `handlers/auth_settings.dart` |
+| UI text | The option, status card, and reconnect view use English constants; the ARB rows of 9.3 move to Phase 2, when the editor shows the option, because `flutter gen-l10n` fails on the existing `activityWeightN` placeholder (`docs/TODO.md`). The status card has no Export and the option no "Start from an archive" until the Phase 4 bridge | 9.3; `components/local_folder_*.dart` |
+| Fixtures | Each fixture holds `_source`, `_setup` (`empty`, `course_and_note`, `trashed_note`), the request with `{course_id}`, `{note_id}`, `{note_uuid}` placeholders, `status`, and `body`; `_folder_omits` lists dotted key paths the folder leaves out (F08), and `_backend_route: false` marks session and logout (Q17) | 8.4 |
+

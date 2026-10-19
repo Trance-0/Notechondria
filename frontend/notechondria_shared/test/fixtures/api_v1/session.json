@@ -1,0 +1,35 @@
+{
+  "_source": "No backend route (backend/notechondria/api_urls.py:64-136, Q17). Shape from the clients that parse it: editor core/auth_flows.dart:174-177 and portal core/bootstrap.dart:325-328 read authenticated and pass the map to applyAuthPayload, which reads token and user (app_shell_session_mixin.dart). user holds the GET /settings/ keys plus is_local_folder (design 8.4).",
+  "_setup": "empty",
+  "_backend_route": false,
+  "request": {"method": "GET", "path": "/api/v1/auth/session/"},
+  "status": 200,
+  "body": {
+    "authenticated": true,
+    "token": "local-folder",
+    "user": {
+      "username": "local-folder",
+      "first_name": "",
+      "last_name": "",
+      "email": "",
+      "is_staff": false,
+      "is_superuser": false,
+      "motto": "",
+      "social_link": "",
+      "display_name": "local-folder",
+      "image_url": "",
+      "avatar_url": "",
+      "image_upload_url": "",
+      "editor_mode": "P",
+      "api_key_prefix": "",
+      "mcp_skill_md": "",
+      "uncategorized_folder_name": "Inbox",
+      "casdoor_linked": false,
+      "casdoor_profile_synced_at": null,
+      "app_settings": {},
+      "app_settings_updated_at": null,
+      "last_seen_versions": {},
+      "is_local_folder": true
+    }
+  }
+}

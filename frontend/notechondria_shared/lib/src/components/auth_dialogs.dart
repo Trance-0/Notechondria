@@ -53,7 +53,13 @@ class AuthHub extends StatelessWidget {
     this.onCasdoorLogin,
     this.casdoorOrgLoginUrl,
     this.apiBaseUrl,
+    this.localFolderOption,
   });
+
+  /// Rendered between the Casdoor CTAs and the email/password expander:
+  /// the `LocalFolderSignInOption` on web builds of an app that ships
+  /// folder mode, null otherwise (local folder design 1.3).
+  final Widget? localFolderOption;
 
   /// The currently-configured API base URL. The login dialog shows its
   /// host as a subtitle so the user can confirm which backend they're
@@ -98,6 +104,7 @@ class AuthHub extends StatelessWidget {
           onLogin: onLogin,
           onCasdoorLogin: onCasdoorLogin,
           casdoorOrgLoginUrl: casdoorOrgLoginUrl,
+          localFolderOption: localFolderOption,
           openDialog: _openDialog,
         ),
       ),
@@ -117,9 +124,11 @@ class _AuthHubBody extends StatefulWidget {
     this.onCasdoorLogin,
     this.casdoorOrgLoginUrl,
     this.apiBaseUrl,
+    this.localFolderOption,
   });
 
   final String? apiBaseUrl;
+  final Widget? localFolderOption;
   final Future<void> Function(BuildContext, Widget) openDialog;
   final Future<ActionFeedback> Function(String email, String password) onLogin;
   final VoidCallback? onCasdoorLogin;
@@ -200,6 +209,10 @@ class _AuthHubBodyState extends State<_AuthHubBody> {
               label: Text(l10n.authSignUpCasdoor),
             ),
           ),
+        ],
+        if (widget.localFolderOption != null) ...[
+          const SizedBox(height: 12),
+          widget.localFolderOption!,
         ],
         const SizedBox(height: 6),
         Align(

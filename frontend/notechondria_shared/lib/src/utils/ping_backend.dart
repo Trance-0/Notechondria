@@ -21,7 +21,12 @@ import '../components/debug_log.dart' show PingResult;
 /// Times out after 10 seconds. A slow response that exceeds that
 /// comes back as `ok=false` so the terminal can show the failure
 /// without hanging the debug log card.
-Future<PingResult> pingBackend(String? apiBaseUrl) async {
+///
+/// [client] is the app's `http.Client`. In local folder mode it is the
+/// `StorageModeClient`, so the in-page backend answers the ping and
+/// nothing reaches the network (local folder design 2.7). Without it the
+/// top-level `http.get` is used, as before.
+Future<PingResult> pingBackend(String? apiBaseUrl, {http.Client? client}) async {
   if (apiBaseUrl == null || apiBaseUrl.trim().isEmpty) {
     return const PingResult(
       ok: false,
@@ -35,7 +40,8 @@ Future<PingResult> pingBackend(String? apiBaseUrl) async {
   final uri = Uri.parse('$base/ping/');
   final started = DateTime.now();
   try {
-    final response = await http.get(uri, headers: {
+    final get = client?.get ?? http.get;
+    final response = await get(uri, headers: {
       'Accept': 'application/json'
     }).timeout(const Duration(seconds: 10));
     final latency = DateTime.now().difference(started).inMilliseconds;

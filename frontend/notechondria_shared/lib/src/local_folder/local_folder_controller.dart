@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'change_channel.dart';
@@ -14,6 +15,8 @@ import 'folder_pick_flow.dart';
 import 'folder_scanner.dart';
 import 'local_folder_boot.dart';
 import 'local_folder_platform.dart';
+import 'storage_mode_client.dart';
+import 'transport.dart';
 
 /// Folder state (main 2.5). It never changes routing (2.8).
 enum LocalFolderState {
@@ -147,9 +150,39 @@ class LocalFolderController extends ChangeNotifier {
   FolderLocks get locks => platform.locks;
   String get folderName => _record?.folderName ?? _folder?.name ?? '';
   String get lockName => folderLockName(_record?.folderId ?? '');
+  DateTime now() => _now();
+
+  LocalFolderTransport? _transport;
+  StorageModeClient? _httpClient;
+  String? _busy;
+  bool _enterFolderOnActive = false;
+
+  /// The in-page `/api/v1` backend (main 2.5).
+  LocalFolderTransport get transport =>
+      _transport ??= LocalFolderTransport(this);
+
+  /// The app's `http.Client` (`StorageModeClient`), created on first use
+  /// over `http.Client()`, so in tests its inner client is the zone's
+  /// (8.5).
+  http.Client get httpClient => _httpClient ??=
+      StorageModeClient(mode: () => _mode, local: transport);
+
+  /// "Folder busy: ..." while a chunked operation runs (6.2 R4).
+  String? get busyLine => _busy;
+
+  void setBusy(String? line) {
+    if (_busy == line) return;
+    _busy = line;
+    notifyListeners();
+  }
 
   void _setState(LocalFolderState next) {
     _state = next;
+    if (next == LocalFolderState.active && _enterFolderOnActive) {
+      _enterFolderOnActive = false;
+      _mode = StorageMode.folder;
+      _disconnectReason = null;
+    }
     notifyListeners();
   }
 
@@ -527,6 +560,79 @@ class LocalFolderController extends ChangeNotifier {
     await _openGranted();
   }
 
+  // --- the connected folder from browser-local mode (1.3, T3) ---
+
+  /// Loads the remembered handle into page memory, without asking the
+  /// browser anything, so "Use the connected folder" can call
+  /// `requestPermission` as its first call.
+  Future<void> preloadRememberedHandle() async {
+    final record = _record;
+    if (_folder != null || record == null || !record.remember) return;
+    try {
+      _folder = await platform.handleStore.load(record.folderId);
+    } catch (_) {
+      _folder = null;
+    }
+    notifyListeners();
+  }
+
+  /// "Use the connected folder '<name>'": the Reconnect path when a
+  /// remembered handle is in memory ([preloadRememberedHandle]), else
+  /// "Choose again" with its folder_id checks. The mode becomes `folder`
+  /// when the folder reaches `active`.
+  Future<PickOutcome> useConnectedFolder() async {
+    final handle = _folder;
+    if (handle == null) {
+      _enterFolderOnActive = true;
+      final outcome = await chooseAgain();
+      // "Switch to this folder" and the copy questions wait for the next
+      // click, which reaches `active` through the same flag.
+      final waits = outcome is PickLooksLikeCopy ||
+          outcome is PickMayBeCopy ||
+          (outcome is PickRefused && outcome.canSwitch);
+      if (!waits) _enterFolderOnActive = false;
+      return outcome;
+    }
+    final Future<FolderPermission> pending = handle.requestPermission();
+    _enterFolderOnActive = true;
+    try {
+      if (await pending == FolderPermission.granted) {
+        _setState(LocalFolderState.opening);
+        await _openGranted();
+      }
+    } catch (error) {
+      reportFolderError(error, process: 'permission');
+    }
+    if (_state == LocalFolderState.active) return const PickOpened();
+    _enterFolderOnActive = false;
+    return PickFailed(_failure?.message ??
+        scrubSessionSentinels(LocalFolderMessages.needsPermission(folderName)));
+  }
+
+  /// T3: the "Remember this folder on this browser" choice, from the pick
+  /// flow or the status card.
+  Future<void> setRemember(bool remember) async {
+    final record = _record;
+    if (record == null || record.remember == remember) return;
+    final next = StorageModeRecord(
+      folderId: record.folderId,
+      folderName: record.folderName,
+      connectedBy: record.connectedBy,
+      connectedAt: record.connectedAt,
+      remember: remember,
+    );
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(kSharedStorageModeKey, next.encode());
+    final folder = _folder;
+    if (remember && folder != null) {
+      await platform.handleStore.save(record.folderId, folder);
+    } else if (!remember) {
+      await _forgetHandle(record.folderId);
+    }
+    _record = next;
+    notifyListeners();
+  }
+
   // --- connect and disconnect (1.3, 2.10) ---
 
   /// First connect: the picker is the first call; the picked folder is only
@@ -646,6 +752,7 @@ class LocalFolderController extends ChangeNotifier {
   void dispose() {
     _subscription?.cancel();
     _channel.close();
+    _httpClient?.close();
     super.dispose();
   }
 }

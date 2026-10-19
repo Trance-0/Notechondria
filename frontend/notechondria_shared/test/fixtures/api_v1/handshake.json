@@ -1,0 +1,28 @@
+{
+  "_source": "backend/notechondria/api_views.py handshake() (:253) with HANDSHAKE_CAPABILITIES (:31), _build_metadata (:196), _storage_info (:236); checked against backend/notechondria tests of the handshake view. Values are sanitized.",
+  "_setup": "empty",
+  "request": {"method": "GET", "path": "/api/v1/handshake/"},
+  "status": 200,
+  "body": {
+    "service": "notechondria-backend",
+    "api_version": "v1",
+    "version": "0.1.200",
+    "min_frontend_version": "0.1.150",
+    "capabilities": {
+      "auth": 1,
+      "notes": 1,
+      "courses": 1,
+      "planner": 1,
+      "calendar_feeds": 1,
+      "attachments": 1,
+      "mcp": 1
+    },
+    "build": {
+      "version": "0.1.200",
+      "commit": "0000000",
+      "build_time": "2026-10-19T00:00:00Z",
+      "deploy_target": ""
+    },
+    "storage": {"backend": "local-disk", "label": "Local disk"}
+  }
+}

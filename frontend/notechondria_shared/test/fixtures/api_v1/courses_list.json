@@ -1,0 +1,49 @@
+{
+  "_source": "backend/notes/api.py CourseListApiView.get (:722) with CourseSerializer (:450) and NoteSummarySerializer (:344) in recent_notes; checked against backend/notes/tests.py course list tests. Values are sanitized.",
+  "_setup": "course_and_note",
+  "request": {"method": "GET", "path": "/api/v1/courses/"},
+  "status": 200,
+  "body": [
+    {
+      "id": 1,
+      "client_course_id": null,
+      "slug": "contract-course",
+      "title": "Contract course",
+      "description": "",
+      "cover_image_url": "",
+      "icon": null,
+      "color_hue": null,
+      "sort_order": 0,
+      "owner": {"id": 1, "username": "contract", "display_name": "contract", "image_url": "", "avatar_url": ""},
+      "subscriber_count": 0,
+      "is_subscribed": false,
+      "is_private_subscription": false,
+      "last_opened_at": null,
+      "recent_notes": [
+        {
+          "id": 1,
+          "uuid": "00000000-0000-4000-8000-000000000001",
+          "name": "contract-note",
+          "git_path": "",
+          "module": "",
+          "title": "Contract note",
+          "description": "",
+          "excerpt": "Body",
+          "preview_lines": ["Body"],
+          "editor_mode": "P",
+          "note_type": "N",
+          "is_public": false,
+          "last_edit": "2026-10-19T00:00:00Z",
+          "date_created": "2026-10-19T00:00:00Z",
+          "course_id": 1,
+          "course": {"id": 1, "title": "Contract course", "slug": "contract-course"},
+          "author": {"id": 1, "username": "contract", "display_name": "contract", "image_url": "", "avatar_url": ""},
+          "source_note_uuid": null,
+          "cover_image_url": ""
+        }
+      ],
+      "media": [],
+      "git": null
+    }
+  ]
+}

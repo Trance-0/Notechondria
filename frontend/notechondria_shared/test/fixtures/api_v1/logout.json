@@ -1,0 +1,8 @@
+{
+  "_source": "No backend route (Q17). The editor decodes the answer and discards it (editor core/http_client.dart logout), so the folder answers an empty object (design 8.4).",
+  "_setup": "empty",
+  "_backend_route": false,
+  "request": {"method": "POST", "path": "/api/v1/auth/logout/"},
+  "status": 200,
+  "body": {}
+}
