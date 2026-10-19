@@ -10,8 +10,11 @@ import 'folder_layout.dart';
 import 'folder_lock.dart';
 import 'folder_messages.dart';
 import 'folder_scanner.dart' show isIndexedPath;
+import 'handlers/activity.dart';
+import 'handlers/attachments.dart';
 import 'handlers/auth_settings.dart';
 import 'handlers/courses.dart';
+import 'handlers/history_sessions.dart';
 import 'handlers/notes.dart';
 import 'handlers/trash.dart';
 import 'local_folder_controller.dart';
@@ -25,12 +28,16 @@ import 'router.dart';
 // with `x-notechondria-backend: local-folder`. No request reaches the
 // network from here.
 
-/// Every Phase 1 route (9.1).
-LocalBackendRouter phaseOneRouter() => LocalBackendRouter([
+/// Every route the folder answers (9.1): Phase 1, and the Phase 2 content
+/// routes (attachments, covers, history, sessions, front page, heatmap).
+LocalBackendRouter localFolderRouter() => LocalBackendRouter([
       ...authSettingsRoutes(),
       ...courseRoutes(),
       ...trashRoutes(),
       ...noteRoutes(),
+      ...attachmentRoutes(),
+      ...historySessionRoutes(),
+      ...activityRoutes(),
     ]);
 
 const Map<String, String> _kResponseHeaders = {
@@ -103,7 +110,7 @@ class LocalFolderTransport extends http.BaseClient {
     LocalBackendRouter? router,
     this.readDeadline = kFolderReadDeadline,
     this.writeDeadline = kFolderWriteDeadline,
-  }) : router = router ?? phaseOneRouter();
+  }) : router = router ?? localFolderRouter();
 
   final LocalFolderController controller;
   final LocalBackendRouter router;
@@ -340,6 +347,13 @@ class _Context implements LocalHandlerContext {
     _beforeWrite([path]);
     await fs.writeText(path, text);
     await _reindex({path: text});
+  }
+
+  @override
+  Future<void> writeBytes(String path, Uint8List bytes) async {
+    _beforeWrite([path]);
+    await fs.writeBytes(path, bytes);
+    await _reindex({path: ''});
   }
 
   @override

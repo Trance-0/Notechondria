@@ -1,0 +1,49 @@
+{
+  "_source": "backend/notes/api.py NoteCoverImageApiView.post (:2617-2657): field `cover`, answering NoteSummarySerializer (:344). The folder's cover_image_url is an nc-folder: URL with a ?v= cache buster.",
+  "_setup": "course_and_note",
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/notes/{note_id}/cover/",
+    "files": {
+      "cover": {
+        "filename": "cover.png",
+        "content_type": "image/png",
+        "base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+      }
+    }
+  },
+  "status": 200,
+  "body": {
+    "id": 1,
+    "uuid": "00000000-0000-4000-8000-000000000001",
+    "name": "contract-note",
+    "git_path": "",
+    "module": "",
+    "title": "Contract note",
+    "description": "",
+    "excerpt": "Body",
+    "preview_lines": [
+      "Body"
+    ],
+    "editor_mode": "P",
+    "note_type": "N",
+    "is_public": false,
+    "last_edit": "2026-10-19T00:00:00Z",
+    "date_created": "2026-10-19T00:00:00Z",
+    "course_id": 1,
+    "course": {
+      "id": 1,
+      "title": "Contract course",
+      "slug": "contract-course"
+    },
+    "author": {
+      "id": 1,
+      "username": "contract",
+      "display_name": "contract",
+      "image_url": "",
+      "avatar_url": ""
+    },
+    "source_note_uuid": null,
+    "cover_image_url": "nc-folder:///assets/notes/00000000000040008000000000000001/cover.png?v=1792022400000"
+  }
+}

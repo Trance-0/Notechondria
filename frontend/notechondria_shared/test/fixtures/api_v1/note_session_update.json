@@ -1,0 +1,23 @@
+{
+  "_source": "backend/notes/api.py NoteSessionDetailApiView.patch (:2265-2274), answering note_session_payload (backend/notes/services.py:367-378).",
+  "_setup": "note_with_session",
+  "request": {
+    "method": "PATCH",
+    "path": "/api/v1/note-sessions/{session_id}/",
+    "body": {
+      "summary": "Done",
+      "ended_at": "2026-10-19T01:00:00Z"
+    }
+  },
+  "status": 200,
+  "body": {
+    "id": 1,
+    "title": "Contract note",
+    "kind": "note_session",
+    "note_id": 1,
+    "course_id": 1,
+    "summary": "Done",
+    "starts_at": "2026-10-19T00:00:00Z",
+    "ends_at": "2026-10-19T01:00:00Z"
+  }
+}

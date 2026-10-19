@@ -144,6 +144,12 @@ abstract class LocalHandlerContext {
   /// checks as [commit].
   Future<void> writeText(String path, String text);
 
+  /// A binary file (attachment, cover, avatar; 3.6) under the current
+  /// exclusive hold, with the same checks as [commit]. Callers write the
+  /// bytes before the JSON that names them, so an interruption leaves at
+  /// most an unreferenced file, never a record without its file.
+  Future<void> writeBytes(String path, Uint8List bytes);
+
   /// One chunk of a chunked operation (6.2 R4): an exclusive hold of its
   /// own with roll-forward first. Only routes marked `chunked` call it.
   Future<T> chunk<T>(Future<T> Function() step);
@@ -241,7 +247,7 @@ _Fallback _later(String pattern, String feature, {Set<String>? methods}) =>
     _Fallback(methods, pattern,
         (m, p) => LocalFolderMessages.laterRelease(feature, m, p));
 
-/// The (c) routes of 4.1 and the routes of Phases 2 to 5. Every detail
+/// The (c) routes of 4.1 and the routes of Phases 3 to 5. Every detail
 /// contains "—" and no session-rejection sentinel or deep-link marker.
 final List<_Fallback> _fallbacks = [
   _serverOnly({'POST'}, 'auth/login', LocalFolderMessages.emailSignIn),
@@ -260,22 +266,10 @@ final List<_Fallback> _fallbacks = [
       LocalFolderMessages.templateCoursesNotRestored),
   _serverOnly(null, 'integrations/github/callback',
       LocalFolderMessages.githubAppUnavailable),
-  _later('front-page', 'The front page'),
-  _later('notes/{id}/history', 'Note history'),
-  _later('notes/{id}/snapshot', 'Note history'),
-  _later('notes/{id}/restore/{version}', 'Note history'),
-  _later('note-sessions', 'Study sessions'),
-  _later('note-sessions/{id}', 'Study sessions'),
-  _later('notes/{id}/attachments', 'Attachments'),
-  _later('notes/{id}/attachments/{aid}', 'Attachments'),
-  _later('notes/uuid/{uuid}/attachments', 'Attachments'),
-  _later('notes/uuid/{uuid}/attachments/{aid}', 'Attachments'),
-  _later('notes/{id}/cover', 'Note covers'),
   _later('planner-events', 'Planner events'),
   _later('planner-events/{id}', 'Planner events'),
   _later('activity', 'The deadline list'),
   _later('activity/week', 'The week view'),
-  _later('heatmap', 'The activity heatmap'),
   _later('calendar-feeds', 'Calendar feeds'),
   _later('calendar-feeds/{id}', 'Calendar feeds'),
   _later('courses/{id}/git', 'Course repository sync'),

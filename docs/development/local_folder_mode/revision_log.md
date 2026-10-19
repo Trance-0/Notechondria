@@ -218,3 +218,26 @@ where it could be out of date. Its fixes:
 | L2A-6 | Not bounded yet: the first list after an open and a listing that finds many new files run in one hold. Measured 1,733 ms for 2,000 stored notes and 626 ms for 300 new ones, so about 2,300 stored notes or 900 new files pass the 2 s target. Read batches of 128 instead of 32 changed little (1,615 ms). Tracked in `docs/TODO.md` for Phase 4's paged rescans | 6.2 R4; `docs/TODO.md` |
 | L2A-7 | The Chromium timing test asserts every timed step's hold against `kFolderLockHoldTarget`; testing.md 8.3 names the numbers that are only printed | 8.3; `test/local_folder_opfs_timing_test.dart` |
 
+
+## 12.6 Phase 2 shared content routes: where the code differs from the design
+
+Phase 2 added the shared routes the editor needs before it shows the
+option: attachments (id and uuid routes), covers, the avatar, history,
+snapshots, version restore, study sessions, the `note_search_score` port,
+the front page, and the heatmap, plus `folderAwareImageProvider` and
+`folderAwareSvg`. Deferred items are in `docs/TODO.md` ("Deferred from
+Phase 2").
+
+| Item | Code | Where |
+|---|---|---|
+| Image provider | `folderAwareImageProvider(url, folder:)` returns `FolderImage` (bytes read through the controller's `FolderFs`, decoded as `MemoryImage` decodes) for `nc-folder:` and `NetworkImage` otherwise; `folderAwareSvg` uses `SvgPicture.memory` or `SvgPicture.network` (T4). Only paths under `assets/` are read; a `?v=` query is dropped from the path and kept in the cache key. `flutter_svg` becomes a direct dependency of the shared package (the three apps already had it) | 3.6, 9.2; `utils/folder_aware_image.dart`, `pubspec.yaml` |
+| Upload writes | `LocalHandlerContext.writeBytes` writes an attachment, cover, or avatar file (replace-on-close, 3.4) before the journaled JSON that names it, so an interruption leaves at most an unreferenced file | 3.4.1, 3.6; `router.dart`, `transport.dart`, `handlers/attachments.dart` |
+| Attachment names | Stored names keep letters, digits, `.`, `_`, and `-` (others become `_`), lose a leading dot, are capped at 120 characters, and get `-2`, `-3` on a clash; `attachments.json` also keeps `original_filename`, which the payload answers. Size caps are the backend's: 20 MB per attachment, 5 MB per cover; the avatar, which has no backend cap, uses 20 MB | 3.6; `handlers/attachments.dart` |
+| Covers and avatar | `assets/notes/<hex>/cover.<ext>` and `assets/avatar.<ext>`; the stored URL carries `?v=<ms>` so a replaced file is not served from the image cache, and a replaced file with another extension is removed in the same journal record. The backend also bumps `last_edit` on a cover change; the folder leaves the note body alone | 3.6, F09, F34 |
+| History | `GET /notes/{id}/history/` lists both retention pools, newest first (at most 24 entries); the backend answers its 12 newest. Each index entry also keeps the sidecar's `description` and `metadata_json`, so a restore brings them back; a folder-only snapshot has neither, and the note keeps its own | 3.8, F23; `handlers/history_sessions.dart`, `folder_snapshots.dart` |
+| Sessions | `planner/sessions.json` records carry `note_uuid` besides `note_id`, so empty trash finds them; `course_id` is derived from the note when answering. `GET /note-sessions/` (filter `note_id`, `limit` up to 200) is answered too | 3.5, F24 |
+| Search | `q` ranks with the `note_search_score` port and `SequenceMatcher.ratio` (autojunk on, no junk elements), so fuzzy hits ("n1" for "n17") now match as in the backend. Every score needs the note content, so a search reads every body (Phase 1 read only those the title and description missed). Parity is checked against CPython 3.9 `difflib` values to 1e-12 | F25, U12; `search_score.dart`, `handlers/notes.dart` |
+| Heatmap | `planner/heatmap.json` is `{"schema_version": 1, "days": {"YYYY-MM-DD": {"created_notes": n, "peak_words": m}}}`, written in the create journal record of each new note with a word count above 0 (content, else description, else title, as `note_word_count` counts the blocks). Draft upserts are edits, which `build_heatmap_payload` does not count. The day is the device's local day | F38, 3.5; `handlers/activity.dart`, `handlers/notes.dart` |
+| Front page | Carousel and collections: the folder's courses that hold at least one live note (the backend: at least one public note), in course order, at most 6; recent and recommended notes: every live note by `last_edit` (D1); `upcoming_events` from `planner/events.json` without `client_local_id`. `GET /heatmap/` (182 days each way) is answered too | F44; `handlers/activity.dart` |
+| Handshake | `capabilities.attachments` is 1 | F46; `handlers/auth_settings.dart` |
+| Fixtures | 14 new fixtures. Setups `note_with_attachment`, `note_with_snapshot`, and `note_with_session` add `{attachment_id}`, `{version_id}`, `{session_id}`; a request with `files` (field to `filename`, `content_type`, `base64`) is sent as multipart with its `fields`, by both the Dart test and `backend/notes/test_api_contract.py` | 8.4; `test/fixtures/api_v1/` |

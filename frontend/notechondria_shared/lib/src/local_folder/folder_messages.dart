@@ -494,6 +494,19 @@ abstract final class LocalFolderMessages {
       'Category not saved: Shared.LocalFolder.Backend/courses — a category '
       "named '$title' already exists in this folder.";
 
+  static String attachmentNotFound(int noteId, int attachmentId) =>
+      'Attachment not found in folder: Shared.LocalFolder.Backend/attachments '
+      '— attachment $attachmentId is not attached to note $noteId in this '
+      'folder.';
+
+  static String versionNotFound(int noteId, int versionId) =>
+      'Note version not restored: Shared.LocalFolder.Backend/notes — version '
+      '$versionId is not in the history of note $noteId in this folder.';
+
+  static String sessionNotFound(int id) =>
+      'Study session not found in folder: Shared.LocalFolder.Backend/planner '
+      '— session $id is not in this folder.';
+
   /// A request body field that fails validation (400).
   static String invalidField(
           String consequence, String process, String cause) =>

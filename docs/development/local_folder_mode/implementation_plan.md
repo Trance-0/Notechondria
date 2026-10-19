@@ -133,20 +133,20 @@ portal build compile (dart.dev recommends this condition over
 | `folder_journal.dart`, `folder_journal_record.dart` | Write-ahead records with `expect`, ordered apply, removals last, roll-forward with re-check and the replay external-edit check (3.4.1); the record format and op ids are in their own file, re-exported | 230 | 1 |
 | `note_codec.dart` | Frontmatter, sidecar, link rewriting | 260 | 1 |
 | `folder_index.dart` | Read-only cache, `.notechondria/index.json` (schema 2: note summary fields, 12.5), the entries of note bodies and sidecars, `withChanges` and `IndexChangeLog` for the in-memory updates (12.5) | 501 | 1 |
-| `transport.dart` | `LocalFolderTransport extends http.BaseClient`: JSON and multipart decode, lock mode per method, the `opening` hold, 503 states, read and write deadlines from request start (2.9), `scrubSessionSentinels` on every detail it assembles and `scrubRouteDetail` on every 404 and 501 (2.5, 12.5), the in-memory index entries of each write, response; only lost access changes the folder state (12.4) | 368 | 1 |
+| `transport.dart` | `LocalFolderTransport extends http.BaseClient`: JSON and multipart decode, lock mode per method, the `opening` hold, 503 states, read and write deadlines from request start (2.9), `scrubSessionSentinels` on every detail it assembles and `scrubRouteDetail` on every 404 and 501 (2.5, 12.5), the in-memory index entries of each write, binary writes for uploads (12.6), response; only lost access changes the folder state (12.4) | 382 | 1 |
 | `storage_mode_client.dart` | `StorageModeClient` and `LocalRoutingClient`: mode routing and the handshake passthrough (2.8), `runCloudVersionCheck(apiBaseUrl, body)` carrying the saved URL, and `checkCloudVersion` for the status card, which counts a handshake this page answered as not checked (12.5) | 183 | 1 |
 | `secret_denylist.dart` | Whole-key denylist with suffixes and `*_path` exemption (main 5) | 50 | 1 |
-| `router.dart` | `(method, path)` table, `/api/v1/` segment matching, and the 501/404 fallbacks, whose details pass `scrubRouteDetail` (sentinels and the editor's deep-link markers, T2); the handler context interface, with the index and its unverified entries | 319 | 1 |
+| `router.dart` | `(method, path)` table, `/api/v1/` segment matching, and the 501/404 fallbacks, whose details pass `scrubRouteDetail` (sentinels and the editor's deep-link markers, T2); the handler context interface, with the index and its unverified entries | 313 | 1 |
 | `handlers/records.dart` | Course, note, profile, and recycle-bin records, `IndexedNote`, and the serializer-shaped payloads the handler files share (12.4, 12.5) | 431 | 1 |
 | `handlers/lookup.dart` | Index-backed note lookups with one re-read each, the listing refresh for notes the index lacks and for stored entries not yet compared with the disk, the sidecar check on re-read, the body re-stat of course delete, the write lookups' skip rule, batched reads (6.2 R2, R3; 12.5) | 220 | 1 |
-| `handlers/auth_settings.dart` | Handshake, settings with the per-device key filter (F08), session (shape in 8.4), logout, Casdoor config | 240 | 1 |
+| `handlers/auth_settings.dart` | Handshake, settings with the per-device key filter (F08) and the multipart avatar (F09, 12.6), session (shape in 8.4), logout, Casdoor config | 248 | 1-2 |
 | `handlers/courses.dart` | Course routes; chunked course delete over notes, trashed notes, events, and feeds, after a stat of every note body (3.5, 12.5) | 318 | 1 |
-| `handlers/notes.dart` | Note and uuid routes, the 3.8 snapshot check (T7(j)), comment privatization on delete | 396 | 1-2 |
+| `handlers/notes.dart` | Note and uuid routes, the 3.8 snapshot check (T7(j)), comment privatization on delete, the `note_search_score` ranking and the heatmap row of each created note (12.6) | 410 | 1-2 |
 | `handlers/trash.dart` | Trash list, restore, empty trash with the cascade (3.5) | 147 | 1 |
-| `handlers/history_sessions.dart` | History, snapshots, sessions, retention in two pools (3.8) | 260 | 2 |
-| `handlers/attachments.dart` | Attachments, covers, avatar | 260 | 2 |
-| `search_score.dart` | Port of `note_search_score` including a `SequenceMatcher` ratio | 160 | 2 |
-| `handlers/activity.dart` | Week view, heatmap, front page | 320 | 2-3 |
+| `handlers/history_sessions.dart` | History, snapshots, version restore with a `before_restore` snapshot, sessions (list, start, update), retention in two pools (3.8) | 304 | 2 |
+| `handlers/attachments.dart` | Attachments (id and uuid routes), covers, the avatar file, file-name sanitizing, the backend's size caps (3.6, 12.6) | 298 | 2 |
+| `search_score.dart` | Port of `note_search_score` including a `SequenceMatcher` ratio (autojunk on, no junk), checked against CPython `difflib` values (12.6) | 123 | 2 |
+| `handlers/activity.dart` | Front page and heatmap (Phase 2, 12.6); week view (Phase 3) | 174 | 2-3 |
 | `handlers/planner.dart` | Events, recurrence, deadlines, `client_local_id` upsert | 400 | 3 |
 | `handlers/calendar.dart` | Feeds, iCal storage, URL fetch, URL normalization, `client_local_id` upsert | 280 | 3 |
 | `pushed_items_store.dart` | Per-app 30-day recovery list for pushed planner items (main 7.1) | 80 | 3 |
@@ -157,10 +157,10 @@ portal build compile (dart.dev recommends this condition over
 | `../components/local_folder_sign_in_option.dart` | Option widget for `AuthHub`, notice dialog, gesture order (main 1.3); English text until Phase 2 (12.4) | 265 | 1 |
 | `../components/local_folder_status_card.dart` | Settings card: folder counts and bytes (F48), Rescan, Reconnect, Check for updates, Disconnect, cloud-only list, busy and precedence lines; Export with the Phase 4 bridge | 244 | 1, 4 |
 | `../components/local_folder_reconnect_view.dart` | Startup reconnect view with "Reconnect" and "Choose again", the refusal messages with "Switch to this folder", and the one-line banners (main 2.10 rule 5) | 245 | 1 |
-| `../utils/folder_aware_image.dart` | `folderAwareImageProvider` | 70 | 2 |
-| `folder_snapshots.dart` | History index, the folder-only snapshot writer, and the two-pool prune (3.8), moved into Phase 1 by T7(d) | 273 | 1 |
+| `../utils/folder_aware_image.dart` | `folderAwareImageProvider` (`FolderImage` for `nc-folder:`, `NetworkImage` otherwise) and `folderAwareSvg` (`SvgPicture.memory` or `.network`, T4); reads only under `assets/`. Adds `flutter_svg` to the shared pubspec (12.6) | 265 | 2 |
+| `folder_snapshots.dart` | History index, the snapshot writer (its plans also serve the Phase 2 snapshot and restore routes), and the two-pool prune (3.8), moved into Phase 1 by T7(d) | 277 | 1 |
 | `folder_identity.dart`, `folder_scanner.dart` | The scan of `folder_index.dart`, split out: duplicate identities and adoption as journaled fixes (3.7), and the paged scan with the R4 re-check | 334 + 269 | 1 |
-| `folder_messages.dart` | Every 1.8 message of the module, the session-sentinel check, `scrubSessionSentinels`, and `scrubRouteDetail` (2.5) | 501 | 1 |
+| `folder_messages.dart` | Every 1.8 message of the module, the session-sentinel check, `scrubSessionSentinels`, and `scrubRouteDetail` (2.5) | 514 | 1 |
 | `local_folder_platform.dart` | `LocalFolderPlatform` and `FolderPicker`, the seam `forTest` and the web check use (T7(b)); `folder_fs_stub.dart` stubs the whole platform, so one conditional import pair serves fs, picker, handle store, locks, channel, and probe | 46 | 1 |
 | `frontend/notechondria_shared/lib/local_folder_testing.dart` | Exports the memory fakes for tests only | 15 | 1 |
 | `frontend/{editor,planner,portal}_app/lib/core/local_folder_connect.dart` | Per-app startup step, precedence, connect push (token set before the course push, main 7.1); the callback gate is the shared mixin's `cloudOnly(...)` (12.4) | 90, 180, 160 | 2, 3, 3 |

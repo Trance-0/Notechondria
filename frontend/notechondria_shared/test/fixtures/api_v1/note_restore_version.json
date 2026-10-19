@@ -1,0 +1,46 @@
+{
+  "_source": "backend/notes/api.py NoteRestoreApiView.post (:1906-1921): a before_restore snapshot, restore_note_version (backend/notes/services.py:347-353), answering NoteDetailSerializer (:423) without can_edit.",
+  "_setup": "note_with_snapshot",
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/notes/{note_id}/restore/{version_id}/"
+  },
+  "status": 200,
+  "body": {
+    "id": 1,
+    "uuid": "00000000-0000-4000-8000-000000000001",
+    "name": "contract-note",
+    "git_path": "",
+    "module": "",
+    "title": "Contract note",
+    "description": "",
+    "excerpt": "Body",
+    "preview_lines": [
+      "Body"
+    ],
+    "editor_mode": "P",
+    "note_type": "N",
+    "is_public": false,
+    "last_edit": "2026-10-19T00:00:00Z",
+    "date_created": "2026-10-19T00:00:00Z",
+    "course_id": 1,
+    "course": {
+      "id": 1,
+      "title": "Contract course",
+      "slug": "contract-course"
+    },
+    "author": {
+      "id": 1,
+      "username": "contract",
+      "display_name": "contract",
+      "image_url": "",
+      "avatar_url": ""
+    },
+    "source_note_uuid": null,
+    "cover_image_url": "",
+    "blocks": [],
+    "content": "# Contract note\n\nBody",
+    "metadata_json": "",
+    "custom_meta": ""
+  }
+}

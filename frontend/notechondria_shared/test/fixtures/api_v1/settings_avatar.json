@@ -1,0 +1,57 @@
+{
+  "_source": "backend/creators/api.py SettingsApiView.patch (:575) with the multipart `avatar` field (SettingsSerializer.avatar :333, saved at :536-537), answering SettingsSerializer.to_representation (:395-428). The folder stores assets/avatar.<ext> and answers an nc-folder: image_url; it omits the per-device keys of F08.",
+  "_setup": "empty",
+  "_folder_omits": [
+    "theme_preset",
+    "theme_mode",
+    "api_base_url",
+    "app_settings.theme_preset",
+    "app_settings.theme_mode",
+    "app_settings.api_base_url"
+  ],
+  "request": {
+    "method": "PATCH",
+    "path": "/api/v1/settings/",
+    "fields": {
+      "motto": "Local first"
+    },
+    "files": {
+      "avatar": {
+        "filename": "avatar.png",
+        "content_type": "image/png",
+        "base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+      }
+    }
+  },
+  "status": 200,
+  "body": {
+    "username": "contract",
+    "first_name": "",
+    "last_name": "",
+    "email": "contract@example.com",
+    "is_staff": false,
+    "is_superuser": false,
+    "motto": "Local first",
+    "social_link": "",
+    "display_name": "contract",
+    "image_url": "nc-folder:///assets/avatar.png?v=1792022400000",
+    "avatar_url": "",
+    "image_upload_url": "nc-folder:///assets/avatar.png?v=1792022400000",
+    "editor_mode": "P",
+    "theme_preset": "teal",
+    "theme_mode": "S",
+    "api_key_prefix": "",
+    "api_base_url": "http://localhost:9080/api/v1",
+    "mcp_skill_md": "",
+    "uncategorized_folder_name": "Inbox",
+    "casdoor_linked": false,
+    "casdoor_profile_synced_at": null,
+    "app_settings": {
+      "api_base_url": "http://localhost:9080/api/v1",
+      "theme_mode": "S",
+      "theme_preset": "teal"
+    },
+    "app_settings_updated_at": null,
+    "last_seen_versions": {}
+  }
+}

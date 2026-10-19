@@ -11,14 +11,18 @@ uploads, so a fixture can be refreshed from CI without a local backend.
 Keys starting with `_` are fixture metadata. `_setup` names the seed data,
 `_backend_route: false` marks a route the backend does not have (Q17), and
 `{course_id}`, `{note_id}`, `{note_uuid}` in a request are replaced with
-the seeded ids.
+the seeded ids (plus `{attachment_id}`, `{version_id}`, `{session_id}` for
+the setups that add one). A request with `files` (field -> filename,
+content_type, base64) is sent as multipart together with its `fields`.
 """
 
+import base64
 import json
 from pathlib import Path
 
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
@@ -46,6 +50,20 @@ def _substitute(value, ids):
     if isinstance(value, dict):
         return {key: _substitute(item, ids) for key, item in value.items()}
     return value
+
+
+# A 1x1 PNG, so image fields (avatar, cover) accept the upload.
+PNG_1X1 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+)
+
+
+def _upload(spec):
+    return SimpleUploadedFile(
+        spec["filename"],
+        base64.b64decode(spec["base64"]),
+        content_type=spec.get("content_type") or "application/octet-stream",
+    )
 
 
 def shape_errors(live, fixture, at):
@@ -109,7 +127,26 @@ class ApiContractFixtureTests(TestCase):
         ).json()
         if setup == "trashed_note":
             self.api.delete(f"/api/v1/notes/{note['id']}/")
-        return {"course_id": course["id"], "note_id": note["id"], "note_uuid": note["uuid"]}
+        ids = {"course_id": course["id"], "note_id": note["id"], "note_uuid": note["uuid"]}
+        if setup == "note_with_attachment":
+            attachment = self.api.post(
+                f"/api/v1/notes/{note['id']}/attachments/",
+                {"file": _upload({"filename": "contract.png", "content_type": "image/png",
+                                  "base64": PNG_1X1})},
+                format="multipart",
+            ).json()
+            ids["attachment_id"] = attachment["id"]
+        elif setup == "note_with_snapshot":
+            version = self.api.post(
+                f"/api/v1/notes/{note['id']}/snapshot/", {"reason": "manual"}, format="json"
+            ).json()
+            ids["version_id"] = version["id"]
+        elif setup == "note_with_session":
+            session = self.api.post(
+                "/api/v1/note-sessions/", {"note_id": note["id"]}, format="json"
+            ).json()
+            ids["session_id"] = session["id"]
+        return ids
 
     def test_fixtures_match_live_responses(self):
         fixtures = sorted(FIXTURE_DIR.glob("*.json"))
@@ -126,7 +163,15 @@ class ApiContractFixtureTests(TestCase):
                 url = _substitute(request["path"], ids)
                 body = _substitute(request.get("body"), ids)
                 call = getattr(self.api, method)
-                response = call(url, body, format="json") if body is not None else call(url)
+                if request.get("files"):
+                    data = dict(_substitute(request.get("fields") or {}, ids))
+                    for field, spec in request["files"].items():
+                        data[field] = _upload(spec)
+                    response = call(url, data, format="multipart")
+                elif body is not None:
+                    response = call(url, body, format="json")
+                else:
+                    response = call(url)
                 live = response.json() if response.content else None
                 (RESPONSE_DIR / path.name).write_text(
                     json.dumps(

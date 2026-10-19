@@ -68,6 +68,23 @@ Future<http.Response> callApi(
 
 Object? bodyOf(http.Response r) => r.body.isEmpty ? null : jsonDecode(r.body);
 
+/// One multipart request through the controller's transport; [files] maps
+/// a field to its file name and bytes.
+Future<http.Response> callMultipart(
+  LocalFolderController c,
+  String method,
+  String path, {
+  Map<String, String> fields = const {},
+  Map<String, (String, List<int>)> files = const {},
+}) async {
+  final request = http.MultipartRequest(method, Uri.parse('$kApiBase$path'))
+    ..headers['Authorization'] = 'Token local-folder'
+    ..fields.addAll(fields);
+  files.forEach((field, f) => request.files
+      .add(http.MultipartFile.fromBytes(field, f.$2, filename: f.$1)));
+  return http.Response.fromStream(await c.transport.send(request));
+}
+
 Map<String, Object?> mapOf(http.Response r) =>
     Map<String, Object?>.from(bodyOf(r) as Map);
 

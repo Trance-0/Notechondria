@@ -1,0 +1,305 @@
+{
+  "_source": "backend/notes/api.py FrontPageApiView.get (:654-716) for a signed-in user: CourseSerializer (:450) carousel, NoteSummarySerializer (:344) notes, build_heatmap_payload (backend/notes/services.py:112-178, days_before=364, days_after=28), planner_event_payload (:182). The backend lists public notes only; the folder lists every own note (feature_matrix F44, decision D1).",
+  "_setup": "course_and_note",
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/front-page/"
+  },
+  "status": 200,
+  "body": {
+    "default_course": {
+      "id": 1,
+      "client_course_id": null,
+      "slug": "contract-course",
+      "title": "Contract course",
+      "description": "",
+      "cover_image_url": "",
+      "icon": null,
+      "color_hue": null,
+      "sort_order": 0,
+      "owner": {
+        "id": 1,
+        "username": "contract",
+        "display_name": "contract",
+        "image_url": "",
+        "avatar_url": ""
+      },
+      "subscriber_count": 0,
+      "is_subscribed": false,
+      "is_private_subscription": false,
+      "last_opened_at": null,
+      "recent_notes": [
+        {
+          "id": 1,
+          "uuid": "00000000-0000-4000-8000-000000000001",
+          "name": "contract-note",
+          "git_path": "",
+          "module": "",
+          "title": "Contract note",
+          "description": "",
+          "excerpt": "Body",
+          "preview_lines": [
+            "Body"
+          ],
+          "editor_mode": "P",
+          "note_type": "N",
+          "is_public": false,
+          "last_edit": "2026-10-19T00:00:00Z",
+          "date_created": "2026-10-19T00:00:00Z",
+          "course_id": 1,
+          "course": {
+            "id": 1,
+            "title": "Contract course",
+            "slug": "contract-course"
+          },
+          "author": {
+            "id": 1,
+            "username": "contract",
+            "display_name": "contract",
+            "image_url": "",
+            "avatar_url": ""
+          },
+          "source_note_uuid": null,
+          "cover_image_url": ""
+        }
+      ],
+      "media": [],
+      "git": null
+    },
+    "carousel_courses": [
+      {
+        "id": 1,
+        "client_course_id": null,
+        "slug": "contract-course",
+        "title": "Contract course",
+        "description": "",
+        "cover_image_url": "",
+        "icon": null,
+        "color_hue": null,
+        "sort_order": 0,
+        "owner": {
+          "id": 1,
+          "username": "contract",
+          "display_name": "contract",
+          "image_url": "",
+          "avatar_url": ""
+        },
+        "subscriber_count": 0,
+        "is_subscribed": false,
+        "is_private_subscription": false,
+        "last_opened_at": null,
+        "recent_notes": [
+          {
+            "id": 1,
+            "uuid": "00000000-0000-4000-8000-000000000001",
+            "name": "contract-note",
+            "git_path": "",
+            "module": "",
+            "title": "Contract note",
+            "description": "",
+            "excerpt": "Body",
+            "preview_lines": [
+              "Body"
+            ],
+            "editor_mode": "P",
+            "note_type": "N",
+            "is_public": false,
+            "last_edit": "2026-10-19T00:00:00Z",
+            "date_created": "2026-10-19T00:00:00Z",
+            "course_id": 1,
+            "course": {
+              "id": 1,
+              "title": "Contract course",
+              "slug": "contract-course"
+            },
+            "author": {
+              "id": 1,
+              "username": "contract",
+              "display_name": "contract",
+              "image_url": "",
+              "avatar_url": ""
+            },
+            "source_note_uuid": null,
+            "cover_image_url": ""
+          }
+        ],
+        "media": [],
+        "git": null
+      }
+    ],
+    "recent_notes": [
+      {
+        "id": 1,
+        "uuid": "00000000-0000-4000-8000-000000000001",
+        "name": "contract-note",
+        "git_path": "",
+        "module": "",
+        "title": "Contract note",
+        "description": "",
+        "excerpt": "Body",
+        "preview_lines": [
+          "Body"
+        ],
+        "editor_mode": "P",
+        "note_type": "N",
+        "is_public": false,
+        "last_edit": "2026-10-19T00:00:00Z",
+        "date_created": "2026-10-19T00:00:00Z",
+        "course_id": 1,
+        "course": {
+          "id": 1,
+          "title": "Contract course",
+          "slug": "contract-course"
+        },
+        "author": {
+          "id": 1,
+          "username": "contract",
+          "display_name": "contract",
+          "image_url": "",
+          "avatar_url": ""
+        },
+        "source_note_uuid": null,
+        "cover_image_url": ""
+      }
+    ],
+    "recommended_notes": [
+      {
+        "id": 1,
+        "uuid": "00000000-0000-4000-8000-000000000001",
+        "name": "contract-note",
+        "git_path": "",
+        "module": "",
+        "title": "Contract note",
+        "description": "",
+        "excerpt": "Body",
+        "preview_lines": [
+          "Body"
+        ],
+        "editor_mode": "P",
+        "note_type": "N",
+        "is_public": false,
+        "last_edit": "2026-10-19T00:00:00Z",
+        "date_created": "2026-10-19T00:00:00Z",
+        "course_id": 1,
+        "course": {
+          "id": 1,
+          "title": "Contract course",
+          "slug": "contract-course"
+        },
+        "author": {
+          "id": 1,
+          "username": "contract",
+          "display_name": "contract",
+          "image_url": "",
+          "avatar_url": ""
+        },
+        "source_note_uuid": null,
+        "cover_image_url": ""
+      }
+    ],
+    "collections": [
+      {
+        "id": 1,
+        "client_course_id": null,
+        "slug": "contract-course",
+        "title": "Contract course",
+        "description": "",
+        "cover_image_url": "",
+        "icon": null,
+        "color_hue": null,
+        "sort_order": 0,
+        "owner": {
+          "id": 1,
+          "username": "contract",
+          "display_name": "contract",
+          "image_url": "",
+          "avatar_url": ""
+        },
+        "subscriber_count": 0,
+        "is_subscribed": false,
+        "is_private_subscription": false,
+        "last_opened_at": null,
+        "recent_notes": [
+          {
+            "id": 1,
+            "uuid": "00000000-0000-4000-8000-000000000001",
+            "name": "contract-note",
+            "git_path": "",
+            "module": "",
+            "title": "Contract note",
+            "description": "",
+            "excerpt": "Body",
+            "preview_lines": [
+              "Body"
+            ],
+            "editor_mode": "P",
+            "note_type": "N",
+            "is_public": false,
+            "last_edit": "2026-10-19T00:00:00Z",
+            "date_created": "2026-10-19T00:00:00Z",
+            "course_id": 1,
+            "course": {
+              "id": 1,
+              "title": "Contract course",
+              "slug": "contract-course"
+            },
+            "author": {
+              "id": 1,
+              "username": "contract",
+              "display_name": "contract",
+              "image_url": "",
+              "avatar_url": ""
+            },
+            "source_note_uuid": null,
+            "cover_image_url": ""
+          }
+        ],
+        "media": [],
+        "git": null
+      }
+    ],
+    "heatmap": {
+      "today": "2026-10-19",
+      "start_date": "2025-10-20",
+      "end_date": "2026-11-16",
+      "days_before": 364,
+      "days_after": 28,
+      "cells": [
+        {
+          "date": "2025-10-20",
+          "kind": "past",
+          "past_value": 0,
+          "future_value": 0,
+          "intensity": 0,
+          "is_today": false
+        }
+      ],
+      "max_past_value": 1,
+      "max_future_value": 0
+    },
+    "upcoming_events": [
+      {
+        "id": 1,
+        "title": "Exam",
+        "event_date": "2026-10-25",
+        "starts_at": "2026-10-25T12:00:00Z",
+        "ends_at": "2026-10-25T13:00:00Z",
+        "difficulty_weight": 3,
+        "description": "",
+        "course_id": 1,
+        "course": {
+          "id": 1,
+          "title": "Contract course",
+          "slug": "contract-course",
+          "color_hue": 200
+        },
+        "is_completed": false,
+        "completed_at": null,
+        "recurrence_freq": "N",
+        "recurrence_interval": 1,
+        "recurrence_end_date": null,
+        "recurrence_count": null
+      }
+    ]
+  }
+}

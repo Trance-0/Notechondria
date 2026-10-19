@@ -1,0 +1,20 @@
+{
+  "_source": "backend/notes/api.py NoteAttachmentByUuidApiView.get (:2551-2554): the uuid route of attachments_list.json.",
+  "_setup": "note_with_attachment",
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/notes/uuid/{note_uuid}/attachments/"
+  },
+  "status": 200,
+  "body": [
+    {
+      "id": 1,
+      "note_id": 1,
+      "original_filename": "contract.png",
+      "file_size": 70,
+      "content_type": "image/png",
+      "url": "nc-folder:///assets/notes/00000000000040008000000000000001/attachments/contract.png",
+      "date_created": "2026-10-19T00:00:00Z"
+    }
+  ]
+}

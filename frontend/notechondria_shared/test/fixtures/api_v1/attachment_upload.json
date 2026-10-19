@@ -1,0 +1,25 @@
+{
+  "_source": "backend/notes/api.py NoteAttachmentApiView.post (:2479-2507) answering attachment_payload (:2459-2468), 201. The folder's url is an nc-folder: URL (storage_rules 3.6); the backend's is an absolute /media/ URL.",
+  "_setup": "course_and_note",
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/notes/{note_id}/attachments/",
+    "files": {
+      "file": {
+        "filename": "contract.png",
+        "content_type": "image/png",
+        "base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+      }
+    }
+  },
+  "status": 201,
+  "body": {
+    "id": 1,
+    "note_id": 1,
+    "original_filename": "contract.png",
+    "file_size": 70,
+    "content_type": "image/png",
+    "url": "nc-folder:///assets/notes/00000000000040008000000000000001/attachments/contract.png",
+    "date_created": "2026-10-19T00:00:00Z"
+  }
+}

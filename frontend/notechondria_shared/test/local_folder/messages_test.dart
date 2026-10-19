@@ -82,6 +82,12 @@ final List<String> _backendDetails = [
   LocalFolderMessages.courseNotFound(3),
   LocalFolderMessages.courseTitleTaken('Bio'),
   LocalFolderMessages.invalidField('Note not saved', 'notes', 'title is required'),
+  // Phase 2 content routes.
+  LocalFolderMessages.attachmentNotFound(3, 7),
+  LocalFolderMessages.versionNotFound(3, 9),
+  LocalFolderMessages.sessionNotFound(4),
+  LocalFolderMessages.invalidField(
+      'Attachment not saved', 'attachments', 'the request has no `file` part'),
 ];
 
 void main() {

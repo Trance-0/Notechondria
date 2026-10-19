@@ -1,0 +1,22 @@
+{
+  "_source": "backend/notes/api.py NoteSessionListCreateApiView.post (:2246-2260), answering note_session_payload (backend/notes/services.py:367-378), 201.",
+  "_setup": "course_and_note",
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/note-sessions/",
+    "body": {
+      "note_id": "{note_id}"
+    }
+  },
+  "status": 201,
+  "body": {
+    "id": 1,
+    "title": "Contract note",
+    "kind": "note_session",
+    "note_id": 1,
+    "course_id": 1,
+    "summary": "",
+    "starts_at": "2026-10-19T00:00:00Z",
+    "ends_at": "2026-10-19T00:15:00Z"
+  }
+}

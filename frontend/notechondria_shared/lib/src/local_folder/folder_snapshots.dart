@@ -202,7 +202,9 @@ class FolderSnapshotWriter {
   /// Plans a snapshot from the current disk state (manifest and history
   /// index re-read from disk, 6.2 R2). Counters are first raised to
   /// [counterFloor], so a journal replay can issue an id above the ones
-  /// its record journaled but has not written yet (3.4.1).
+  /// its record journaled but has not written yet (3.4.1). [extra] lands in
+  /// the index entry (the sidecar `description` and `metadata_json` that a
+  /// `NoteVersion` keeps besides the note file).
   Future<SnapshotPlan> plan({
     required String noteUuid,
     required String reason,
@@ -210,6 +212,7 @@ class FolderSnapshotWriter {
     required String notePath,
     String? opId,
     Map<String, int> counterFloor = const {},
+    Map<String, Object?> extra = const {},
   }) async {
     final manifest = await readFolderManifest(fs);
     if (manifest == null) {
@@ -228,6 +231,7 @@ class FolderSnapshotWriter {
       createdAt: now.toUtc().toIso8601String(),
       title: decodeNoteFile(text, path: notePath).frontmatter.title,
       opId: opId,
+      extra: extra,
     );
     final existing = await readIndex(hex);
     final result = pruneHistory([...?existing?.versions, entry]);

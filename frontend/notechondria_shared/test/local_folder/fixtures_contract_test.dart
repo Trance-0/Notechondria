@@ -16,7 +16,9 @@ import 'backend_harness.dart';
 const String _fixtureDir = 'test/fixtures/api_v1';
 
 /// Seeds the folder as the fixture's `_setup` names; returns placeholder
-/// values for `{course_id}`, `{note_id}`, and `{note_uuid}`.
+/// values for `{course_id}`, `{note_id}`, and `{note_uuid}`, plus
+/// `{attachment_id}`, `{version_id}`, or `{session_id}` for the setups that
+/// add one. A request with `files` is sent as multipart, with its `fields`.
 Future<Map<String, Object>> _setup(LocalFolderController c, String setup) async {
   if (setup == 'empty') return {};
   final course = mapOf(await callApi(c, 'POST', '/courses/',
@@ -28,12 +30,29 @@ Future<Map<String, Object>> _setup(LocalFolderController c, String setup) async 
   if (setup == 'trashed_note') {
     expect((await callApi(c, 'DELETE', '/notes/${note['id']}/')).statusCode, 204);
   }
-  return {
+  final ids = <String, Object>{
     'course_id': course['id']!,
     'note_id': note['id']!,
     'note_uuid': note['uuid']!,
   };
+  if (setup == 'note_with_attachment') {
+    final r = await callMultipart(c, 'POST', '/notes/${note['id']}/attachments/',
+        files: {'file': ('contract.png', _png)});
+    ids['attachment_id'] = mapOf(r)['id']!;
+  } else if (setup == 'note_with_snapshot') {
+    final r = await callApi(c, 'POST', '/notes/${note['id']}/snapshot/',
+        json: {'reason': 'manual'});
+    ids['version_id'] = mapOf(r)['id']!;
+  } else if (setup == 'note_with_session') {
+    final r = await callApi(c, 'POST', '/note-sessions/',
+        json: {'note_id': note['id']});
+    ids['session_id'] = mapOf(r)['id']!;
+  }
+  return ids;
 }
+
+final List<int> _png = base64Decode(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==');
 
 Object? _substitute(Object? value, Map<String, Object> ids) {
   if (value is String) {
@@ -108,9 +127,24 @@ void main() {
       final ids = await _setup(c, '${fixture['_setup'] ?? 'empty'}');
       final request = fixture['request'] as Map<String, dynamic>;
       final path = '${_substitute(request['path'], ids)}';
-      final r = await callApi(c, '${request['method']}',
-          path.replaceFirst('/api/v1', ''),
-          json: _substitute(request['body'], ids));
+      final files = request['files'] as Map<String, dynamic>?;
+      final r = files == null
+          ? await callApi(c, '${request['method']}',
+              path.replaceFirst('/api/v1', ''),
+              json: _substitute(request['body'], ids))
+          : await callMultipart(
+              c, '${request['method']}', path.replaceFirst('/api/v1', ''),
+              fields: {
+                for (final e in (request['fields'] as Map? ?? const {}).entries)
+                  '${e.key}': '${e.value}',
+              },
+              files: {
+                for (final e in files.entries)
+                  e.key: (
+                    '${(e.value as Map)['filename']}',
+                    base64Decode('${(e.value as Map)['base64']}'),
+                  ),
+              });
       expect(r.statusCode, fixture['status'], reason: r.body);
       expectSameShape(bodyOf(r), fixture['body'], name, omit: {
         for (final k in fixture['_folder_omits'] as List? ?? const []) '$k',

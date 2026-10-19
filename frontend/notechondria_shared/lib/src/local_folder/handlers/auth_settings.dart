@@ -1,8 +1,8 @@
 import '../folder_journal.dart';
 import '../folder_layout.dart';
-import '../folder_messages.dart';
 import '../router.dart';
 import '../secret_denylist.dart';
+import 'attachments.dart' show storeAvatar;
 import 'records.dart';
 
 // Handshake, ping, settings (with the per-device key filter, F08), session
@@ -53,7 +53,7 @@ Map<String, Object?> localHandshake(
         'courses': 1,
         'planner': 0,
         'calendar_feeds': 0,
-        'attachments': 0,
+        'attachments': 1,
         'mcp': 0,
       },
       'build': {
@@ -111,12 +111,10 @@ const Map<String, int?> _creatorStringFields = {
 
 Future<LocalResponse> _patchSettings(LocalHandlerContext ctx) async {
   final request = ctx.request;
-  if (request.files.isNotEmpty) {
-    throw LocalHttpError(
-        501,
-        LocalFolderMessages.laterRelease(
-            'Avatar upload', request.method, request.path));
-  }
+  // F09: the multipart avatar field, as `SettingsSerializer.avatar`; other
+  // file parts are ignored, as the serializer ignores unknown fields.
+  final avatar =
+      request.files.where((f) => f.field == 'avatar').firstOrNull;
   final raw = request.body;
   for (final key in kPerDeviceSettingKeys) {
     raw.remove(key);
@@ -162,6 +160,14 @@ Future<LocalResponse> _patchSettings(LocalHandlerContext ctx) async {
     };
   }
   final skill = body.string('mcp_skill_md');
+  // Bytes first, after every field validated, then the profile that names
+  // them (3.6); the previous avatar file goes in the same journal record.
+  String? oldAvatar;
+  if (avatar != null) {
+    final stored = await storeAvatar(ctx, avatar, p.field('image_url'));
+    creator['image_url'] = stored.url;
+    oldAvatar = stored.oldPath;
+  }
   final writes = <JournalWriteSpec>[];
   // Section 5: the secret denylist applies to every write under profile/.
   final creatorText = encodeFolderJson(stripSecrets(
@@ -177,7 +183,8 @@ Future<LocalResponse> _patchSettings(LocalHandlerContext ctx) async {
   if (skill != null && skill != p.skill) {
     writes.add((path: kProfileSkillPath, text: skill));
   }
-  await commitWrites(ctx, writes);
+  await commitWrites(ctx, writes,
+      removals: [if (oldAvatar != null) JournalRemoval(oldAvatar)]);
   final updated = await FolderProfile.read(ctx.fs, folderName: ctx.folderName);
   return LocalResponse(200, settingsPayload(updated));
 }
@@ -225,16 +232,17 @@ List<LocalRoute> authSettingsRoutes() => [
 
 typedef JournalWriteSpec = ({String path, String text});
 
-/// One file through [LocalHandlerContext.writeText], several through one
-/// journal record (3.4.1); nothing for none.
+/// One file through [LocalHandlerContext.writeText], several (or any with
+/// [removals]) through one journal record (3.4.1); nothing for none.
 Future<void> commitWrites(
-    LocalHandlerContext ctx, List<JournalWriteSpec> writes) async {
-  if (writes.isEmpty) return;
-  if (writes.length == 1) {
+    LocalHandlerContext ctx, List<JournalWriteSpec> writes,
+    {List<JournalRemoval> removals = const []}) async {
+  if (writes.isEmpty && removals.isEmpty) return;
+  if (writes.length == 1 && removals.isEmpty) {
     await ctx.writeText(writes.single.path, writes.single.text);
     return;
   }
   await ctx.commit(ctx.journal.newRecord([
     for (final w in writes) JournalWrite(w.path, w.text),
-  ]));
+  ], removals));
 }

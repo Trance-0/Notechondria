@@ -159,7 +159,7 @@ void main() {
         expect(detailOf(r), e.value, reason: e.key);
       }
       for (final path in [
-        '/notes/1/history/',
+        '/activity/week/',
         '/planner-events/',
         '/permission-forbidden/403:/',
         '/integrations/github/status/',
@@ -211,9 +211,9 @@ void main() {
   });
 
   group('request decoding', () {
-    test('multipart settings: fields are read, an avatar file answers 501',
+    test('multipart settings: fields are read, an avatar file is stored',
         () async {
-      final (c, _) = await folderApp();
+      final (c, fs) = await folderApp();
       final fields = http.MultipartRequest('PATCH', Uri.parse('$kApiBase/settings/'))
         ..fields['motto'] = 'Local first';
       final r = await http.Response.fromStream(await c.transport.send(fields));
@@ -222,23 +222,32 @@ void main() {
       final avatar = http.MultipartRequest('PATCH', Uri.parse('$kApiBase/settings/'))
         ..files.add(http.MultipartFile.fromBytes('avatar', [1, 2, 3], filename: 'a.png'));
       final a = await http.Response.fromStream(await c.transport.send(avatar));
-      expect(a.statusCode, 501);
-      expect(detailOf(a), startsWith('Feature not available yet: '));
+      expect(a.statusCode, 200, reason: a.body);
+      expect('${mapOf(a)['image_url']}', startsWith('nc-folder:///assets/avatar.png?v='));
+      expect(fs.paths, contains('assets/avatar.png'));
     });
 
     test('a handler 501 is route-scrubbed like the router\'s (P1B-4)',
         () async {
       final (c, _) = await folderApp();
+      final t = LocalFolderTransport(c,
+          router: LocalBackendRouter([
+            LocalRoute(
+                'GET',
+                'later',
+                (ctx) async => throw LocalHttpError(
+                    501,
+                    LocalFolderMessages.laterRelease(
+                        'X', ctx.request.method, ctx.request.path))),
+          ]));
       const base = 'https://x.example/permission/forbidden/api/v1';
-      final avatar = http.MultipartRequest('PATCH', Uri.parse('$base/settings/'))
-        ..files.add(http.MultipartFile.fromBytes('avatar', [1], filename: 'a.png'));
-      final r = await http.Response.fromStream(await c.transport.send(avatar));
+      final r = await callApi(c, 'GET', '/later/', client: t, base: base);
       expect(r.statusCode, 501);
       final d = detailOf(r);
       expect(containsDeepLinkPrivateNoteMarker(d), isFalse, reason: d);
       expect(d.replaceAll('\u2060', ''),
           LocalFolderMessages.laterRelease(
-              'Avatar upload', 'PATCH', '/permission/forbidden/api/v1/settings/'));
+              'X', 'GET', '/permission/forbidden/api/v1/later/'));
     });
 
     test('a body that is not JSON answers 400 with a 1.8 detail', () async {

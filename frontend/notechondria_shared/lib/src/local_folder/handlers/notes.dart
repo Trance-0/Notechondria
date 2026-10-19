@@ -5,6 +5,8 @@ import '../folder_messages.dart';
 import '../folder_snapshots.dart';
 import '../note_codec.dart';
 import '../router.dart';
+import '../search_score.dart';
+import 'activity.dart' show heatmapWithCreatedNote, localDay;
 import 'lookup.dart';
 import 'records.dart';
 
@@ -143,34 +145,36 @@ Future<LocalResponse> _list(LocalHandlerContext ctx) async {
   }
 
   if (query.isNotEmpty) {
-    // Phase 1: substring match, title hits first; the note_search_score
-    // port is Phase 2 (9.1). Title and description come from the index; a
-    // body is read only for a note they do not match, in parallel batches.
-    int rank(IndexedNote n) => n.title.toLowerCase().contains(query) ? 2 : 1;
-    String head(IndexedNote n) => '${n.title}\n${n.description}';
-    final hits = <String>{};
-    final misses = <IndexedNote>[];
-    for (final n in notes) {
-      if (head(n).toLowerCase().contains(query)) {
-        hits.add(n.path);
-      } else {
-        misses.add(n);
-      }
-    }
+    // F25: the backend's note_search_score (search_score.dart). Every
+    // score reads the note's content, so each body is read, in parallel
+    // batches; order is score, then newest last_edit, then title.
     final texts = await readInBatches(
-        misses, (IndexedNote n) => readTextOrNull(ctx.fs, n.path));
-    for (var i = 0; i < misses.length; i++) {
-      final n = misses[i];
+        notes, (IndexedNote n) => readTextOrNull(ctx.fs, n.path));
+    final ranked = <(double, int, IndexedNote)>[];
+    for (var i = 0; i < notes.length; i++) {
+      final n = notes[i];
       final text = texts[i];
       if (text == null) continue;
-      final body = decodeNoteFile(text, path: n.path).body;
-      if ('${head(n)}\n$body'.toLowerCase().contains(query)) hits.add(n.path);
+      final score = noteSearchScore(
+          title: n.title,
+          description: n.description,
+          content: decodeNoteFile(text, path: n.path).body,
+          query: q['q'] ?? '');
+      if (score == null) continue;
+      final edited = DateTime.tryParse(n.lastEditOrModified)
+              ?.millisecondsSinceEpoch ??
+          n.body.lastModified;
+      ranked.add((score.$1, edited, n));
     }
-    notes = notes.where((n) => hits.contains(n.path)).toList()
-      ..sort((a, b) {
-        final r = rank(b).compareTo(rank(a));
-        return r != 0 ? r : byLastEditDesc(a, b);
-      });
+    ranked.sort((a, b) {
+      final s = b.$1.compareTo(a.$1);
+      if (s != 0) return s;
+      final t = b.$2.compareTo(a.$2);
+      return t != 0
+          ? t
+          : a.$3.title.toLowerCase().compareTo(b.$3.title.toLowerCase());
+    });
+    notes = [for (final r in ranked) r.$3];
   } else if (sort == 'oldest') {
     notes.sort(created);
   } else {
@@ -299,10 +303,20 @@ Future<LocalResponse> _create(LocalHandlerContext ctx) async {
     description: description,
     wordCount: wordCountOf(content),
   );
+  // F38: `record_note_activity(note, note_word_count(note), CREATED)`; the
+  // backend counts the blocks built from content, else description, else
+  // title.
+  final heatmap = await heatmapWithCreatedNote(
+      ctx.fs,
+      localDay(ctx.now()),
+      wordCountOf(content.isNotEmpty
+          ? content
+          : (description.isNotEmpty ? description : title)));
   await ctx.commit(ctx.journal.newRecord([
     JournalWrite(path, encodeNoteFile(fm, content, path: path)),
     JournalWrite(sidecarPathForBody(path), sidecar.encode()),
     JournalWrite(kManifestPath, updated.encode()),
+    if (heatmap != null) JournalWrite(kPlannerHeatmapPath, heatmap),
   ]));
   return LocalResponse(201, await servedDetail(ctx, path));
 }

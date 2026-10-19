@@ -652,11 +652,12 @@ the differences the code made from the design are in `revision_log.md`
   - L2A-5: course delete stats every note body before it selects by
     `course_slug`.
   - L2A-7: the Chromium timing test asserts every route's hold.
-- [ ] Phase 2 search: Phase 1's substring search reads every body its
-  title and description miss, in batches of 32. Over 2,000 OPFS notes in
-  headless Chromium it held the shared lock 1.2 to 1.3 s, so it passes
-  R4's 2 s target near 3,000 notes. The `note_search_score` port should
-  bound it (body cache, or chunked holds within the 8 s read deadline).
+- [ ] Search hold: Phase 1's substring search read every body its title
+  and description missed, in batches of 32, and held the shared lock 1.2
+  to 1.3 s over 2,000 OPFS notes in headless Chromium. The Phase 2
+  `note_search_score` port reads every body (each score needs the
+  content) and was not timed in Chromium. Bound it (body cache, or
+  chunked holds within the 8 s read deadline).
 - [ ] Scan page size: a 500-entry page of the first full scan held the
   lock 1,993 ms, then 2,087 ms and 2,228 ms in later runs over the same
   2,000 OPFS notes, above R4's 2 s target. Use a time-bounded page
@@ -687,6 +688,27 @@ the differences the code made from the design are in `revision_log.md`
   `#/notes/<uuid>` in `needsPick`/`needsPermission`, T2). The ARB strings
   for the option, card, and view (English constants in 0.1.200). Then
   show the option in the editor.
+- [ ] Deferred from Phase 2 (shared content routes; design
+  `revision_log.md` 12.6):
+  - Search ranking parity: the port matches CPython `difflib` to 1e-12 on
+    ASCII, CJK, accented, and emoji cases, but Dart's `toLowerCase` and
+    `\s` differ from Python's `str.lower` and `re` `\s` on a few code
+    points (for example U+0130, U+001C to U+001F), and the backend scores
+    stored `content` with absolute `/media/` URLs where the folder has
+    `nc-folder:` URLs.
+  - Heatmap edge cases: notes added by hand, adopted by a scan, or
+    imported count on no day; the day is the device's local day, not the
+    server's `TIME_ZONE`; recurring planner events are not expanded (as
+    in the backend).
+  - Cover upload does not bump the note's `last_edit` (the backend
+    does); the folder leaves the note body alone.
+  - History lists both retention pools (up to 24 versions); the backend
+    answers 12.
+  - Chromium/OPFS: binary writes (`writeBytes`) of attachments, covers,
+    and the avatar, and `FolderImage` reads, are tested over
+    `MemoryFolderFs` only.
+  - The full-scan longest hold (2,087 ms, see "Scan page size") is
+    unchanged by Phase 2.
 - [ ] Phase 3, planner and portal: events and recurrence, deadlines, week
   view, heatmap, calendar import and URL fetch with the CORS fallback,
   the `client_local_id` upsert and the connect-time push with the 30-day

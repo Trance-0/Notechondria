@@ -1,0 +1,23 @@
+{
+  "_source": "backend/notes/api.py NoteSnapshotApiView.post (:1888-1900): snapshot_note_version (backend/notes/services.py:324-336), answering NoteVersionSerializer (:573-581), 201.",
+  "_setup": "course_and_note",
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/notes/{note_id}/snapshot/",
+    "body": {
+      "reason": "manual"
+    }
+  },
+  "status": 201,
+  "body": {
+    "id": 1,
+    "title": "Contract note",
+    "description": "",
+    "content": "# Contract note\n\nBody",
+    "metadata_json": "",
+    "editor_mode": "P",
+    "reason": "manual",
+    "label": "2026-10-19 00:00",
+    "date_created": "2026-10-19T00:00:00Z"
+  }
+}

@@ -95,7 +95,9 @@ void main() {
       expect(counting.bodyReads, flushed ? isEmpty : {_md(note)});
       expect(listOf(await callApi(b, 'GET', '/notes/?q=fresh')).map((r) => r['id']),
           [note['id']]);
-      expect(listOf(await callApi(b, 'GET', '/notes/?q=old title')), isEmpty);
+      // The old description is gone from disk ('old title' would still
+      // match 'fresh title' by the backend's fuzzy ratio, 0.6).
+      expect(listOf(await callApi(b, 'GET', '/notes/?q=old')), isEmpty);
       expect(
           listOf(await callApi(b, 'GET', '/courses/${course['id']}/notes/'))
               .map((r) => r['id']),

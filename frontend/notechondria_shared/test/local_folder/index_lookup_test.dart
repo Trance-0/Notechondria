@@ -69,11 +69,14 @@ void main() {
     expect(listOf(await callApi(b, 'GET', '/courses/')), isEmpty);
     expect(counting.bodyReads, isEmpty);
     counting.reads.clear();
-    // A search reads a body only where the title and description miss.
-    expect(listOf(await callApi(b, 'GET', '/notes/?q=n17')).single['id'], target['id']);
-    expect(counting.bodyReads, hasLength(29));
-    expect(counting.bodyReads, isNot(contains(_md(target))));
-    expect(listOf(await callApi(b, 'GET', '/notes/?q=edited')).single['id'], target['id']);
+    // A search scores every note with note_search_score (F25), which reads
+    // each body; the exact title hit ranks first, fuzzy hits ('n1', 'n7')
+    // follow, as in the backend.
+    final hits = listOf(await callApi(b, 'GET', '/notes/?q=n17'));
+    expect(hits.first['id'], target['id']);
+    expect(counting.bodyReads, hasLength(30));
+    expect(listOf(await callApi(b, 'GET', '/notes/?q=edited')).first['id'],
+        target['id']);
   });
 
   test('notes another tab created or deleted are found and listed', () async {
