@@ -1,0 +1,537 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Implementation plan - Notechondria Documentation</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../../favicon.svg">
+        <link rel="shortcut icon" href="../../favicon.png">
+        <link rel="stylesheet" href="../../css/variables.css">
+        <link rel="stylesheet" href="../../css/general.css">
+        <link rel="stylesheet" href="../../css/chrome.css">
+        <link rel="stylesheet" href="../../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../../highlight.css">
+        <link rel="stylesheet" href="../../tomorrow-night.css">
+        <link rel="stylesheet" href="../../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "navy";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../../index.html">Project Overview</a></li><li class="chapter-item expanded affix "><a href="../../index.html">Long-Form Agent Handoff</a></li><li class="chapter-item expanded affix "><a href="../../TODO.html">TODO</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">Client (frontend apps)</li><li class="chapter-item expanded "><a href="../../client/editor_app.html"><strong aria-hidden="true">1.</strong> Editor app</a></li><li class="chapter-item expanded "><a href="../../client/planner_app.html"><strong aria-hidden="true">2.</strong> Planner app</a></li><li class="chapter-item expanded "><a href="../../client/portal_app.html"><strong aria-hidden="true">3.</strong> Portal app</a></li><li class="chapter-item expanded "><a href="../../client/notechondria_shared.html"><strong aria-hidden="true">4.</strong> notechondria_shared package</a></li><li class="chapter-item expanded affix "><li class="part-title">Server (backend)</li><li class="chapter-item expanded "><a href="../../server/backend.html"><strong aria-hidden="true">5.</strong> Backend overview</a></li><li class="chapter-item expanded "><a href="../../server/creators.html"><strong aria-hidden="true">6.</strong> creators app</a></li><li class="chapter-item expanded "><a href="../../server/notes.html"><strong aria-hidden="true">7.</strong> notes app</a></li><li class="chapter-item expanded "><a href="../../server/mcp.html"><strong aria-hidden="true">8.</strong> mcp app</a></li><li class="chapter-item expanded affix "><li class="part-title">API</li><li class="chapter-item expanded "><a href="../../api/backend_api_spec.html"><strong aria-hidden="true">9.</strong> Backend API Specification</a></li><li class="chapter-item expanded affix "><li class="part-title">Deployment</li><li class="chapter-item expanded "><a href="../../deployment/overview.html"><strong aria-hidden="true">10.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../../deployment/release.html"><strong aria-hidden="true">11.</strong> Release process (tag → GitHub Release)</a></li><li class="chapter-item expanded "><a href="../../deployment/deploy.html"><strong aria-hidden="true">12.</strong> Docker-compose / Jenkins Full-stack Guide</a></li><li class="chapter-item expanded "><a href="../../deployment/render_free_tier.html"><strong aria-hidden="true">13.</strong> Render Free Tier (Backend)</a></li><li class="chapter-item expanded "><a href="../../deployment/northflank.html"><strong aria-hidden="true">14.</strong> Northflank Free Tier (Backend)</a></li><li class="chapter-item expanded "><a href="../../deployment/local_preview.html"><strong aria-hidden="true">15.</strong> Local preview against the remote backend</a></li><li class="chapter-item expanded affix "><li class="part-title">Development</li><li class="chapter-item expanded "><a href="../../development/local_dev.html"><strong aria-hidden="true">16.</strong> Local Development Guide</a></li><li class="chapter-item expanded "><a href="../../development/python_environments.html"><strong aria-hidden="true">17.</strong> Python Environments</a></li><li class="chapter-item expanded "><a href="../../development/ai_integration.html"><strong aria-hidden="true">18.</strong> AI Integration (stub status and forward plan)</a></li><li class="chapter-item expanded "><a href="../../development/storage_model.html"><strong aria-hidden="true">19.</strong> Storage model (Django + frontend offline)</a></li><li class="chapter-item expanded "><a href="../../development/cross_platform_plan.html"><strong aria-hidden="true">20.</strong> Cross-platform reliability and tutorials plan</a></li><li class="chapter-item expanded "><a href="../../development/i18n_plan.html"><strong aria-hidden="true">21.</strong> Internationalization (i18n) plan</a></li><li class="chapter-item expanded "><a href="../../development/canvas_like_calendar_mvp.html"><strong aria-hidden="true">22.</strong> Canvas-like Calendar Product Concept</a></li><li class="chapter-item expanded "><a href="../../development/local_folder_mode.html"><strong aria-hidden="true">23.</strong> Local folder storage mode (design)</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../development/local_folder_mode/modes_and_migration.html"><strong aria-hidden="true">23.1.</strong> Storage modes, startup, and migration</a></li><li class="chapter-item expanded "><a href="../../development/local_folder_mode/storage_rules.html"><strong aria-hidden="true">23.2.</strong> Storage rules</a></li><li class="chapter-item expanded "><a href="../../development/local_folder_mode/security_and_tabs.html"><strong aria-hidden="true">23.3.</strong> Security and multi-tab behavior</a></li><li class="chapter-item expanded "><a href="../../development/local_folder_mode/feature_matrix.html"><strong aria-hidden="true">23.4.</strong> Feature matrix</a></li><li class="chapter-item expanded "><a href="../../development/local_folder_mode/testing.html"><strong aria-hidden="true">23.5.</strong> Testing</a></li><li class="chapter-item expanded "><a href="../../development/local_folder_mode/implementation_plan.html" class="active"><strong aria-hidden="true">23.6.</strong> Implementation plan</a></li><li class="chapter-item expanded "><a href="../../development/local_folder_mode/unverified_and_sources.html"><strong aria-hidden="true">23.7.</strong> Unverified items and sources</a></li><li class="chapter-item expanded "><a href="../../development/local_folder_mode/revision_log.html"><strong aria-hidden="true">23.8.</strong> Revision logs</a></li></ol></li><li class="chapter-item expanded "><li class="part-title">Integrations</li><li class="chapter-item expanded "><a href="../../integrations/github_app_integration.html"><strong aria-hidden="true">24.</strong> GitHub App Integration</a></li><li class="chapter-item expanded "><a href="../../integrations/github-sync.html"><strong aria-hidden="true">25.</strong> GitHub Sync (experimental)</a></li><li class="chapter-item expanded "><a href="../../integrations/casdoor-migration.html"><strong aria-hidden="true">26.</strong> Casdoor migration plan</a></li><li class="chapter-item expanded "><a href="../../integrations/mcp-cli-migration.html"><strong aria-hidden="true">27.</strong> MCP → CLI migration proposal</a></li><li class="chapter-item expanded "><a href="../../integrations/veronica-7-migration.html"><strong aria-hidden="true">28.</strong> Veronica-7 course migration runbook</a></li><li class="chapter-item expanded "><a href="../../integrations/casdoor-setup.html"><strong aria-hidden="true">29.</strong> Casdoor login setup runbook</a></li><li class="chapter-item expanded affix "><li class="part-title">Operations</li><li class="chapter-item expanded "><a href="../../operations/postgres_migration.html"><strong aria-hidden="true">30.</strong> PostgreSQL Migration</a></li><li class="chapter-item expanded "><a href="../../operations/local_backup_restore.html"><strong aria-hidden="true">31.</strong> Local Backup and Restore Scripts</a></li><li class="chapter-item expanded affix "><li class="part-title">Testing</li><li class="chapter-item expanded "><a href="../../testing/backend_test_plan.html"><strong aria-hidden="true">32.</strong> Backend Test Plan</a></li><li class="chapter-item expanded "><a href="../../testing/agent_remote_testing.html"><strong aria-hidden="true">33.</strong> Agent Remote Testing</a></li><li class="chapter-item expanded affix "><li class="part-title">Versions</li><li class="chapter-item expanded "><a href="../../versions/0.1.200.html"><strong aria-hidden="true">34.</strong> 0.1.200 - Local folder mode: foundation (option not shown yet)</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.199.html"><strong aria-hidden="true">35.</strong> 0.1.199 - Fix: offline calendar import, copyable warnings, startup logs, one loading screen</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.198.html"><strong aria-hidden="true">36.</strong> 0.1.198 - Fix: white screen on all Pages apps + backend-unavailable fallbacks</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.197.html"><strong aria-hidden="true">37.</strong> 0.1.197 - Note-conflict resolver: side-by-side diff</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.196.html"><strong aria-hidden="true">38.</strong> 0.1.196 - Fix: web apps stuck on load — strip the deprecated service worker</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.195.html"><strong aria-hidden="true">39.</strong> 0.1.195 - Editor Settings: "Settings" no longer shown twice</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.194.html"><strong aria-hidden="true">40.</strong> 0.1.194 - GitHub sync: prune orphaned note assets</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.193.html"><strong aria-hidden="true">41.</strong> 0.1.193 - Course ownership transfer</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.192.html"><strong aria-hidden="true">42.</strong> 0.1.192 - Offline cache is owner-scoped (no cross-user leak)</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.191.html"><strong aria-hidden="true">43.</strong> 0.1.191 - Editor Inbox default for offline / signed-out users</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.190.html"><strong aria-hidden="true">44.</strong> 0.1.190 - Editor Inbox shows only uncategorized notes</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.189.html"><strong aria-hidden="true">45.</strong> 0.1.189 - GitHub sync: no more silent overwrites (atomic push + conflict gate)</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.188.html"><strong aria-hidden="true">46.</strong> 0.1.188 - Imported-course reading order + bind pending-state fix</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.187.html"><strong aria-hidden="true">47.</strong> 0.1.187 - Fix Casdoor login: hash fragment leaked into redirect_uri</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.186.html"><strong aria-hidden="true">48.</strong> 0.1.186 - In-note navigation from courses + URLs for every full-screen surface</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.185.html"><strong aria-hidden="true">49.</strong> 0.1.185 - Course loading: 16s → sub-second (storage N+1 + lazy pages)</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.184.html"><strong aria-hidden="true">50.</strong> 0.1.184 - Casdoor avatar mirroring (CORS root cause) + editor sidebar scope</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.183.html"><strong aria-hidden="true">51.</strong> 0.1.183 - CI fix + course dropdown in event dialogs across apps</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.182.html"><strong aria-hidden="true">52.</strong> 0.1.182 - Portal session persistence (root cause) + course/avatar fix round</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.181.html"><strong aria-hidden="true">53.</strong> 0.1.181 - Now-line, working ctrl+scroll zoom, event↔course binding</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.180.html"><strong aria-hidden="true">54.</strong> 0.1.180 - Startup image, keep-offline login merge, course edit entry, starter cleanup</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.179.html"><strong aria-hidden="true">55.</strong> 0.1.179 - Portal URL routing: unique, shareable addresses for every surface</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.178.html"><strong aria-hidden="true">56.</strong> 0.1.178 - Calendar/course feature batch: foundations + modules + event colours</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.177.html"><strong aria-hidden="true">57.</strong> 0.1.177 - Portal UI bug batch + note names / in-course links</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.176.html"><strong aria-hidden="true">58.</strong> 0.1.176 - Fix: course sync as ONE atomic commit (Git Data API)</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.175.html"><strong aria-hidden="true">59.</strong> 0.1.175 - GitHub App binding over MCP/CLI + Veronica-7 adapter validation</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.174.html"><strong aria-hidden="true">60.</strong> 0.1.174 - course git sync (notes → repo), lazy-on-request</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.173.html"><strong aria-hidden="true">61.</strong> 0.1.173 - course git import (repo → notes) via the adapter</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.172.html"><strong aria-hidden="true">62.</strong> 0.1.172 - course-repo adapter: config format + parser + presets</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.171.html"><strong aria-hidden="true">63.</strong> 0.1.171 - MCP/CLI course-git tools + git-binding logic factored into services</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.170.html"><strong aria-hidden="true">64.</strong> 0.1.170 - course↔GitHub binding: backend config endpoints + owner-only exposure</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.169.html"><strong aria-hidden="true">65.</strong> 0.1.169 - activity course (category) filter</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.168.html"><strong aria-hidden="true">66.</strong> 0.1.168 - build fix: thread onEventLongPress through _MonthDayCell</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.167.html"><strong aria-hidden="true">67.</strong> 0.1.167 - activity events: per-course colours, hold-to-edit, recurrence dialog</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.166.html"><strong aria-hidden="true">68.</strong> 0.1.166 - activity import feedback (backend summary + portal result modal)</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.165.html"><strong aria-hidden="true">69.</strong> 0.1.165 - CI green: stdlib-only CLI client + corrected avatar settings test</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.164.html"><strong aria-hidden="true">70.</strong> 0.1.164 - recurring events (backend + MCP/CLI), course git-binding data model</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.163.html"><strong aria-hidden="true">71.</strong> 0.1.163 - drag-to-draw events, heatmap auto-fit, Casdoor avatar fallback</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.162.html"><strong aria-hidden="true">72.</strong> 0.1.162 - offline activities, month grid view, debug-log order, rotation logging</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.161.html"><strong aria-hidden="true">73.</strong> 0.1.161 - Pages CI split, backend-tests CI, no-local-containers rule</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.160.html"><strong aria-hidden="true">74.</strong> 0.1.160 - MCP agent enablement: gateway route, task parity, instructions, CLI batch</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.159.html"><strong aria-hidden="true">75.</strong> 0.1.159 - Docker frontend build fix + agent harness + portal plan</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.158.html"><strong aria-hidden="true">76.</strong> 0.1.158 - activity calendar, calendar logging, planner events, cover upload, guest feed</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.157.html"><strong aria-hidden="true">77.</strong> 0.1.157 - portal i18n: settings menu + subpage titles</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.156.html"><strong aria-hidden="true">78.</strong> 0.1.156 - portal i18n: block editor + activity/calendar</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.155.html"><strong aria-hidden="true">79.</strong> 0.1.155 - portal i18n: learner feed + note-metadata dialog</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.154.html"><strong aria-hidden="true">80.</strong> 0.1.154 - portal: editable API URL (signed-out) + front/course i18n</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.153.html"><strong aria-hidden="true">81.</strong> 0.1.153 - "Work offline" escape on the connection-error bar</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.152.html"><strong aria-hidden="true">82.</strong> 0.1.152 - version-update notification banner (frontend)</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.151.html"><strong aria-hidden="true">83.</strong> 0.1.151 - handshake exposes min_frontend_version (compat floor)</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.150.html"><strong aria-hidden="true">84.</strong> 0.1.150 - i18n: friendly localized UI-level error warnings</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.149.html"><strong aria-hidden="true">85.</strong> 0.1.149 - i18n fixes: clear-all-data button + onboarding tour content</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.148.html"><strong aria-hidden="true">86.</strong> 0.1.148 - i18n Phase 4 (part 2): auth dialogs localized</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.147.html"><strong aria-hidden="true">87.</strong> 0.1.147 - i18n Phase 4 (part 1): shared-widget chrome localized</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.146.html"><strong aria-hidden="true">88.</strong> 0.1.146 - MCP Phase 3: full CLI tool parity (41/41) + note-sessions GET</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.145.html"><strong aria-hidden="true">89.</strong> 0.1.145 - MCP Phase 1: API gap audit + docs/server/mcp.md fix</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.144.html"><strong aria-hidden="true">90.</strong> 0.1.144 - storage-usage card in planner + portal</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.143.html"><strong aria-hidden="true">91.</strong> 0.1.143 - i18n Phase 2/3: Language setting in planner + portal</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.142.html"><strong aria-hidden="true">92.</strong> 0.1.142 - share-link deep-link fix + i18n note viewer/editor menus</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.141.html"><strong aria-hidden="true">93.</strong> 0.1.141 - i18n Phase 1c: navigation + home feed translated</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.140.html"><strong aria-hidden="true">94.</strong> 0.1.140 - i18n Phase 1b: editor settings + debug-log menu translated</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.139.html"><strong aria-hidden="true">95.</strong> 0.1.139 - splash particle density scales with screen size</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.138.html"><strong aria-hidden="true">96.</strong> 0.1.138 - standalone MCP CLI skeleton (cli/) — Phase 2</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.137.html"><strong aria-hidden="true">97.</strong> 0.1.137 - cleanup_inbox_courses --include-ownerless + live DB sweep</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.136.html"><strong aria-hidden="true">98.</strong> 0.1.136 - Local-data storage visualization (editor) + handshake storage field</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.135.html"><strong aria-hidden="true">99.</strong> 0.1.135 - MCP → standalone CLI migration proposal</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.134.html"><strong aria-hidden="true">100.</strong> 0.1.134 - planner Activity view works offline (no sign-in required)</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.133.html"><strong aria-hidden="true">101.</strong> 0.1.133 - i18n Phase 1: infrastructure + editor language switcher</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.132.html"><strong aria-hidden="true">102.</strong> 0.1.132 - i18n plan + architecture doc</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.131.html"><strong aria-hidden="true">103.</strong> 0.1.131 - remove legacy "Inbox" categories (duplicate-Inbox bug)</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.130.html"><strong aria-hidden="true">104.</strong> 0.1.130 - first-run onboarding tour</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.129.html"><strong aria-hidden="true">105.</strong> 0.1.129 - per-app icons, in-app install nudge, legacy storage cleanup</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.128.html"><strong aria-hidden="true">106.</strong> 0.1.128 - reaction-simulator splash, OAuth callback app routing, install docs</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.127.html"><strong aria-hidden="true">107.</strong> 0.1.127 - storage namespacing fix, Casdoor password sync, What's-New overlay, mobile web shell</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.126.html"><strong aria-hidden="true">108.</strong> 0.1.126 - cross-platform survey: mobile web gaps, auth-corruption root cause, tutorials plan</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.125.html"><strong aria-hidden="true">109.</strong> 0.1.125 - editor deep links, debug log filters, and Inbox migration</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.124.html"><strong aria-hidden="true">110.</strong> 0.1.124 - main-branch direct-work rule</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.123.html"><strong aria-hidden="true">111.</strong> 0.1.123 - editor private subscriptions + Apple Journal ZIP import</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.122.html"><strong aria-hidden="true">112.</strong> 0.1.122 - click-run database and R2 backup scripts</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.121.html"><strong aria-hidden="true">113.</strong> 0.1.121 - editor debug-log source filters + portable archive goal</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.120.html"><strong aria-hidden="true">114.</strong> 0.1.120 — editor signed-out auth widget unified onto shared AuthHub</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.119.html"><strong aria-hidden="true">115.</strong> 0.1.119 — OIDC profile refresh + display_name/avatar_url + drop SocialAccount + Casdoor Manage button + settings menu consistency</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.118.html"><strong aria-hidden="true">116.</strong> 0.1.118 — gitea-style Casdoor link-challenge flow (bind existing or create new with chosen password)</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.117.html"><strong aria-hidden="true">117.</strong> 0.1.117 — fix post-Casdoor 401 storm: SPA + backend agree on Bearer scheme; auth diagnostic logs</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.116.html"><strong aria-hidden="true">118.</strong> 0.1.116 — signin URL back to org name; "Login via third party" gone; portal Debug menu de-duplicated</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.115.html"><strong aria-hidden="true">119.</strong> 0.1.115 — bump backend Docker base from Python 3.9.18 to 3.11.4</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.114.html"><strong aria-hidden="true">120.</strong> 0.1.114 — unblock backend Docker build: requests~=2.33.0 to satisfy casdoor 1.41</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.113.html"><strong aria-hidden="true">121.</strong> 0.1.113 — Backend prints build provenance at every worker boot</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.112.html"><strong aria-hidden="true">122.</strong> 0.1.112 — Casdoor signin URL uses CASDOOR_APP_NAME (not org name)</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.111.html"><strong aria-hidden="true">123.</strong> 0.1.111 — Restore email/username + password login (Casdoor-down fallback)</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.110.html"><strong aria-hidden="true">124.</strong> 0.1.110 — Casdoor JWT claim mapping + group ACL (Nextcloud user_oidc-style)</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.109.html"><strong aria-hidden="true">125.</strong> 0.1.109 — Inbox unsubscribe works offline + no 3s delay; Casdoor signin_url moved to org-themed page</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.108.html"><strong aria-hidden="true">126.</strong> 0.1.108 — Inbox always visible + Casdoor login always available</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.107.html"><strong aria-hidden="true">127.</strong> 0.1.107 — sidebar pin diagnostic dedupe + richer payload + Restore-Inbox refreshState fix</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.106.html"><strong aria-hidden="true">128.</strong> 0.1.106 — drop invitation codes, email-verification codes, sessions, change-password / change-email; SMTP code path retired</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.105.html"><strong aria-hidden="true">129.</strong> 0.1.105 — four user-reported bug fixes</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.104.html"><strong aria-hidden="true">130.</strong> 0.1.104 — handshake auto-derives version + commit + build_time; sidebar Inbox restored for signed-out users; Casdoor probe failures now logged</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.103.html"><strong aria-hidden="true">131.</strong> 0.1.103 — in-app signup gone; "Login via third party" + Casdoor signup link</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.102.html"><strong aria-hidden="true">132.</strong> 0.1.102 — local Inbox stays pinned across boots</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.101.html"><strong aria-hidden="true">133.</strong> 0.1.101 — Casdoor cutover + portal settings parity + Inbox fix</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.100.html"><strong aria-hidden="true">134.</strong> 0.1.100 — docs site fixed + Casdoor setup runbook + sample.env refresh</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.99.html"><strong aria-hidden="true">135.</strong> 0.1.99 — Casdoor as the primary auth surface</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.98.html"><strong aria-hidden="true">136.</strong> 0.1.98 — Casdoor bind / unlink (post-phase-3 hardening)</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.97.html"><strong aria-hidden="true">137.</strong> 0.1.97 — Casdoor migration phase 3 (Flutter SDK leg)</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.96.html"><strong aria-hidden="true">138.</strong> 0.1.96 — Casdoor migration phase 2 (JWT auth + exchange endpoint)</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.95.html"><strong aria-hidden="true">139.</strong> 0.1.95 — handshake version fix + Casdoor migration plan + MCP smoke test</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.94.html"><strong aria-hidden="true">140.</strong> 0.1.94 — GitHub Sync static-asset bundling (push + restore round-trip)</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.93.html"><strong aria-hidden="true">141.</strong> 0.1.93 — GitHub Sync push pipeline (JWT signing, repo picker, restore CLI)</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.92.html"><strong aria-hidden="true">142.</strong> 0.1.92 — shared CustomMetaListEditor in all three note-metadata dialogs + docs sync</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.91.html"><strong aria-hidden="true">143.</strong> 0.1.91 — settings UI parity: MCP skill + GitHub Sync into portal/planner</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.90.html"><strong aria-hidden="true">144.</strong> 0.1.90 — per-app OAuth redirect, MCP skill.md, custom note meta, experimental GitHub sync</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.89.html"><strong aria-hidden="true">145.</strong> 0.1.89 — offline-mode gates + planner export/import + cross-app tests</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.88.html"><strong aria-hidden="true">146.</strong> 0.1.88 — attachment UUID routing + IndexedDB web backend + storage-budget UI</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.87.html"><strong aria-hidden="true">147.</strong> 0.1.87 — portal Settings parity + editor bug fixes</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.86.html"><strong aria-hidden="true">148.</strong> 0.1.86</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.85.html"><strong aria-hidden="true">149.</strong> 0.1.85</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.84.html"><strong aria-hidden="true">150.</strong> 0.1.84</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.83.html"><strong aria-hidden="true">151.</strong> 0.1.83</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.82.html"><strong aria-hidden="true">152.</strong> 0.1.82</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.81.html"><strong aria-hidden="true">153.</strong> 0.1.81</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.80.html"><strong aria-hidden="true">154.</strong> 0.1.80</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.79.html"><strong aria-hidden="true">155.</strong> 0.1.79</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.78.html"><strong aria-hidden="true">156.</strong> 0.1.78</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.77.html"><strong aria-hidden="true">157.</strong> 0.1.77</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.76.html"><strong aria-hidden="true">158.</strong> 0.1.76</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.75.html"><strong aria-hidden="true">159.</strong> 0.1.75</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.74.html"><strong aria-hidden="true">160.</strong> 0.1.74</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.73.html"><strong aria-hidden="true">161.</strong> 0.1.73</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.72.html"><strong aria-hidden="true">162.</strong> 0.1.72</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.71.html"><strong aria-hidden="true">163.</strong> 0.1.71</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.70.html"><strong aria-hidden="true">164.</strong> 0.1.70</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.69.html"><strong aria-hidden="true">165.</strong> 0.1.69</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.68.html"><strong aria-hidden="true">166.</strong> 0.1.68</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.67.html"><strong aria-hidden="true">167.</strong> 0.1.67</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.66.html"><strong aria-hidden="true">168.</strong> 0.1.66</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.65.html"><strong aria-hidden="true">169.</strong> 0.1.65</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.64.html"><strong aria-hidden="true">170.</strong> 0.1.64</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.63.html"><strong aria-hidden="true">171.</strong> 0.1.63</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.62.html"><strong aria-hidden="true">172.</strong> 0.1.62</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.61.html"><strong aria-hidden="true">173.</strong> 0.1.61</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.60.html"><strong aria-hidden="true">174.</strong> 0.1.60</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.59.html"><strong aria-hidden="true">175.</strong> 0.1.59</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.58.html"><strong aria-hidden="true">176.</strong> 0.1.58</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.57.html"><strong aria-hidden="true">177.</strong> 0.1.57</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.56.html"><strong aria-hidden="true">178.</strong> 0.1.56</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.55.html"><strong aria-hidden="true">179.</strong> 0.1.55</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.54.html"><strong aria-hidden="true">180.</strong> 0.1.54</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.53.html"><strong aria-hidden="true">181.</strong> 0.1.53</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.52.html"><strong aria-hidden="true">182.</strong> 0.1.52</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.51.html"><strong aria-hidden="true">183.</strong> 0.1.51</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.50.html"><strong aria-hidden="true">184.</strong> 0.1.50</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.49.html"><strong aria-hidden="true">185.</strong> 0.1.49</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.48.html"><strong aria-hidden="true">186.</strong> 0.1.48</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.47.html"><strong aria-hidden="true">187.</strong> 0.1.47</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.46.html"><strong aria-hidden="true">188.</strong> 0.1.46</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.45.html"><strong aria-hidden="true">189.</strong> 0.1.45</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.44.html"><strong aria-hidden="true">190.</strong> 0.1.44</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.43.html"><strong aria-hidden="true">191.</strong> 0.1.43</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.42.html"><strong aria-hidden="true">192.</strong> 0.1.42</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.41.html"><strong aria-hidden="true">193.</strong> 0.1.41</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.40.html"><strong aria-hidden="true">194.</strong> 0.1.40</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.39.html"><strong aria-hidden="true">195.</strong> 0.1.39</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.38.html"><strong aria-hidden="true">196.</strong> 0.1.38</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.37.html"><strong aria-hidden="true">197.</strong> 0.1.37</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.36.html"><strong aria-hidden="true">198.</strong> 0.1.36</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.35.html"><strong aria-hidden="true">199.</strong> 0.1.35</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.34.html"><strong aria-hidden="true">200.</strong> 0.1.34</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.33.html"><strong aria-hidden="true">201.</strong> 0.1.33</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.32.html"><strong aria-hidden="true">202.</strong> 0.1.32</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.31.html"><strong aria-hidden="true">203.</strong> 0.1.31</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.30.html"><strong aria-hidden="true">204.</strong> 0.1.30</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.29.html"><strong aria-hidden="true">205.</strong> 0.1.29</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.28.html"><strong aria-hidden="true">206.</strong> 0.1.28</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.27.html"><strong aria-hidden="true">207.</strong> 0.1.27</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.26.html"><strong aria-hidden="true">208.</strong> 0.1.26</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.25.html"><strong aria-hidden="true">209.</strong> 0.1.25</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.24.html"><strong aria-hidden="true">210.</strong> 0.1.24</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.23.html"><strong aria-hidden="true">211.</strong> 0.1.23</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.22.html"><strong aria-hidden="true">212.</strong> 0.1.22</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.21.html"><strong aria-hidden="true">213.</strong> 0.1.21</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.20.html"><strong aria-hidden="true">214.</strong> 0.1.20</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.19.html"><strong aria-hidden="true">215.</strong> 0.1.19</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.18.html"><strong aria-hidden="true">216.</strong> 0.1.18</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.17.html"><strong aria-hidden="true">217.</strong> 0.1.17</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.16.html"><strong aria-hidden="true">218.</strong> 0.1.16</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.15.html"><strong aria-hidden="true">219.</strong> 0.1.15</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.14.html"><strong aria-hidden="true">220.</strong> 0.1.14</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.13.html"><strong aria-hidden="true">221.</strong> 0.1.13</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.12.html"><strong aria-hidden="true">222.</strong> 0.1.12</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.11.html"><strong aria-hidden="true">223.</strong> 0.1.11</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.10.html"><strong aria-hidden="true">224.</strong> 0.1.10</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.9.html"><strong aria-hidden="true">225.</strong> 0.1.9</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.8.html"><strong aria-hidden="true">226.</strong> 0.1.8</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.7.html"><strong aria-hidden="true">227.</strong> 0.1.7</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.6.html"><strong aria-hidden="true">228.</strong> 0.1.6</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.5.html"><strong aria-hidden="true">229.</strong> 0.1.5</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.4.html"><strong aria-hidden="true">230.</strong> 0.1.4</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.3.html"><strong aria-hidden="true">231.</strong> 0.1.3</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.2.html"><strong aria-hidden="true">232.</strong> 0.1.2</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.1.html"><strong aria-hidden="true">233.</strong> 0.1.1</a></li><li class="chapter-item expanded "><a href="../../versions/0.1.0.html"><strong aria-hidden="true">234.</strong> 0.1.0</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Notechondria Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria/edit/codex/docs/./development/local_folder_mode/implementation_plan.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="local-folder-storage-mode-phases-and-file-plan"><a class="header" href="#local-folder-storage-mode-phases-and-file-plan">Local folder storage mode: phases and file plan</a></h1>
+<p>Part of the design in <a href="../local_folder_mode.html"><code>../local_folder_mode.md</code></a>
+(section 9). Same conventions: repo-root-relative paths, line counts and
+<code>file:line</code> at HEAD <code>48988a20</code> (VERSION 0.1.199). Section numbers are
+global: 2.8 to 2.10 and 7 are in <code>modes_and_migration.md</code>, 3.4 to 3.8 in
+<code>storage_rules.md</code>, 4 in <code>feature_matrix.md</code>, 6 in <code>security_and_tabs.md</code>,
+8 in <code>testing.md</code>, 11 in <code>unverified_and_sources.md</code>, and 12 in
+<code>revision_log.md</code>.
+Sizes are estimates.</p>
+<h2 id="91-phases"><a class="header" href="#91-phases">9.1 Phases</a></h2>
+<p>Each phase is one or more normal rounds: VERSION bump,
+<code>docs/versions/&lt;v&gt;.md</code> plus its <code>docs/SUMMARY.md</code> entry, and the
+<code>docs/LLM_CHECK.md</code> round log (<code>docs/AGENTS.md</code>, round-end convention).</p>
+<p>An app's wiring lands in the phase that ships its sign-in option: its
+<code>local_folder</code> startup step, <code>prepare: LocalFolderBoot.preload</code> in
+<code>main.dart</code>, the controller and <code>StorageModeClient</code> default client in
+<code>_NotechondriaAppState</code> with the <code>NotechondriaApp(localFolder:)</code> test
+seam, the settings gating (including <code>onPing</code> and the GitHub card gate),
+and its app-level smoke checks. An app without that wiring ignores
+the shared mode key (main 2.10 rule 1), so it never calls a folder route
+that does not exist yet. Within a wired app, every control whose route
+arrives in a later phase or is cloud-only is gated with <code>cloudOnly(...)</code>
+(<code>cloudOnlyAction(...)</code> for a required action callback), the shared
+session mixin's helpers; the GitHub card is gated until Phase 5 (9.3),
+and F18's template restore stays gated (T7(f)). Both gates were placed
+in Phase 1 and stay inert until an app's <code>localFolder</code> is set (12.4). The
+editor gets its option at the end of Phase
+2, the planner and portal at the end of Phase 3. Until an app's option
+ships, nothing can write the key for it, so no feature flag is needed
+(AGENTS.md 1.2).</p>
+<ol start="0">
+<li><strong>Spike, nothing merged.</strong> Resolve U1, U3, U5, U7, U10, U17, and U18
+(section 11.1) in a throwaway build on desktop Chrome.</li>
+<li><strong>Foundation.</strong> <code>FolderFs</code> (web, memory, stub), JS bindings with the
+per-callback zone wrappers (main 2.5), qualification, handle store,
+the pick flow (the <code>isSameEntry</code> copy check, "Choose again" with its
+<code>folder_id</code> checks and "Switch to this folder"), lock (shared and
+exclusive modes), controller (with the <code>opening</code> and <code>needsPick</code>
+states), <code>LocalFolderBoot</code> and the <code>runGuardedApp(prepare:)</code> hook,
+journal (with <code>expect</code> and the replay check), layout and index
+(chunked scans, duplicate identities), note codec, transport (the
+<code>opening</code> hold, 503 states, read and write deadlines from request
+start), <code>StorageModeClient</code> (routing and the handshake passthrough),
+router, handlers for handshake, settings (with the per-device key
+filter), session, Casdoor config, courses (delete over notes, trashed
+notes, events, and feeds), notes, and trash (with the cascade); the
+secret denylist; the <code>AuthHub</code> slot, sign-in option, status card
+(with folder counts and bytes), reconnect view, and banners. The
+startup-budget condition in <code>HttpClientInternalsMixin.send</code> and
+<code>disconnectFolder()</code> in the session mixin. Behavior-preserving fixes
+for all three apps: the multipart <code>_httpClient.send(request)</code> sites
+and the optional <code>pingBackend</code> client. Editor smoke checks at the
+client level: the editor's real <code>HttpNotechondriaClient</code> over the
+controller's <code>StorageModeClient</code> and <code>MemoryFolderPlatform</code>, inside
+<code>http.runWithClient</code>, with no app wiring, so the shell cannot yet read
+the mode key. The Chromium lock tests in
+<code>test/local_folder_opfs_test.dart</code> (8.3). Hand-written fixtures for
+these routes and Q14's backend contract test (8.4). No app wiring in
+any app. Phase 1 decisions (design review 3 T7): (a) one session-key
+table keyed by app id, <code>kAppSessionKeys</code> in <code>local_folder_boot.dart</code>;
+(b) <code>decideStorageMode</code> takes <code>isWeb</code> from the <code>LocalFolderPlatform</code>
+that <code>forTest</code> receives; (c) the session mixin reaches the controller
+through an abstract <code>LocalFolderController? get localFolder</code> that each
+shell implements (null until its wiring phase), a one-line app edit
+allowed in Phase 1; (d) the <code>external_edit</code>/<code>concurrent_edit</code> snapshot
+writer and the two-pool prune are Phase 1 (<code>folder_snapshots.dart</code>);
+(e) <code>.notechondria/index.json</code> is a derived cache with
+<code>schema_version</code> 1, <code>layout_version</code>, <code>folder_id</code>, <code>generated_at</code>, and
+per-path entries (schema in <code>folder_index.dart</code>), and any other index is
+ignored and rescanned; (f) F18 template restore answers 501 in folder
+mode and its callback is gated with <code>cloudOnlyAction(...)</code>, so the GitHub card
+is not the only gated control; (g) a granted handle without
+<code>manifest.json</code> is <code>error</code> with "Folder not opened:
+Shared.LocalFolder/scan — '<name>' has no manifest.json (<cause>) ...";
+(h) a lock wait cut short by the request deadline answers with the 2.9
+deadline message ("waiting for the folder lock"), and only a full 5 s
+wait uses R5's; (i) in <code>disconnected</code>, a GET gets "Folder data not
+loaded: Shared.LocalFolder/disconnect — '<name>' was disconnected in
+this tab; the app reloads its browser-local data instead."; (j) when
+both 3.8 checks trip on one PATCH, one <code>external_edit</code> snapshot is
+taken. Landed in 0.1.200 (the Phase 1a storage core, then Phase 1b),
+with the option hidden in every app; the differences from this text
+are listed in 12.4.</li>
+<li><strong>Content.</strong> Attachments, covers, avatar, <code>folderAwareImageProvider</code>,
+promotion-failure handling and "Copy browser attachments into the
+folder", history and snapshots (<code>external_edit</code>, <code>concurrent_edit</code>, in
+their own pool), sessions, search port, front page. Editor wiring (as
+listed above) and its app-level smoke checks. Show the option in the
+editor.</li>
+<li><strong>Planner.</strong> Events and recurrence, deadlines, week view, heatmap,
+calendar import, URL fetch with the CORS fallback, the
+<code>client_local_id</code> upsert, and the connect-time push of browser-local
+courses, events, and feeds with the recovery list (main 7.1). Planner
+and portal wiring (as listed above), the <code>sizedImageBuilder</code> line in
+both note viewers, the portal's <code>_NoteRoutePage</code> controller and
+reconnect view, and their smoke files. Show the option in the planner
+and portal.</li>
+<li><strong>Interchange and multi-tab.</strong> <code>.nchron</code> bridge (new <code>folder_id</code> on
+restore, chunked import), change channel, <code>FileSystemObserver</code> and
+focus rescans, "adopt a GitHub data-sync clone". No handle handoff
+(main 6.2).</li>
+<li><strong>GitHub (b).</strong> Credential store and token-based status, repos, push,
+and course repo bind and import. The GitHub card's <code>cloudOnly(...)</code>
+gate is replaced by the token-based card in folder mode.</li>
+</ol>
+<h2 id="92-new-files"><a class="header" href="#92-new-files">9.2 New files</a></h2>
+<p>All under <code>frontend/notechondria_shared/lib/src/local_folder/</code> unless the
+path says otherwise. Web-only files are selected with
+<code>if (dart.library.js_interop)</code> against a stub, so VM tests and the native
+portal build compile (dart.dev recommends this condition over
+<code>dart.library.html</code>).</p>
+<div class="table-wrapper"><table><thead><tr><th>File</th><th>Purpose</th><th>Lines</th><th>Phase</th></tr></thead><tbody>
+<tr><td><code>folder_fs.dart</code></td><td><code>FolderFs</code> interface and error types</td><td>90</td><td>1</td></tr>
+<tr><td><code>folder_fs_stub.dart</code></td><td>Non-web stub; every call reports "unsupported"</td><td>30</td><td>1</td></tr>
+<tr><td><code>folder_fs_web.dart</code></td><td>File System Access implementation over <code>package:web</code></td><td>320</td><td>1</td></tr>
+<tr><td><code>js_bindings_web.dart</code></td><td><code>@JS</code> extension types for what <code>package:web</code> 1.1.1 lacks: <code>showDirectoryPicker</code>, <code>queryPermission</code>, <code>requestPermission</code>, async <code>values()</code>, the <code>mode</code> member of the <code>createWritable</code> options, <code>Navigator.userAgentData</code>, and <code>FileSystemObserver</code>; plus the two zone helpers of main 2.5, <code>bindListener</code> (guarded, for void listeners) and <code>bindLockCallback</code> (non-guarded, returns the operation's promise)</td><td>170</td><td>1</td></tr>
+<tr><td><code>folder_fs_memory.dart</code></td><td>In-memory fake with injectable failures, <code>revoke()</code>/<code>grant()</code>, and crash points</td><td>200</td><td>1</td></tr>
+<tr><td><code>memory_platform.dart</code></td><td><code>MemoryHandleStore</code>, <code>MemoryFolderPicker</code>, and the <code>MemoryFolderPlatform</code> bundle for <code>LocalFolderController.forTest</code> (8.2)</td><td>120</td><td>1</td></tr>
+<tr><td><code>qualification.dart</code>, <code>qualification_web.dart</code></td><td>Probe and gap messages (main 1.2, 1.3)</td><td>70 + 90</td><td>1</td></tr>
+<tr><td><code>handle_store.dart</code>, <code>handle_store_web.dart</code></td><td>Remembered handle in IndexedDB via <code>package:web</code>, since <code>idb_shim</code> storing a raw JS handle is <strong>unverified</strong> (U2)</td><td>20 + 110</td><td>1</td></tr>
+<tr><td><code>folder_pick_flow.dart</code></td><td>"Choose again": the <code>folder_id</code> checks, the two refusals, and "Switch to this folder" (2.9); the copy check with <code>isSameEntry</code> and the remembered-handle probe (3.7)</td><td>200</td><td>1</td></tr>
+<tr><td><code>folder_lock.dart</code>, <code>folder_lock_web.dart</code></td><td>Web Locks wrapper: shared and exclusive modes, <code>AbortSignal.timeout(min(5 s, time left))</code>, the grant callback through <code>bindLockCallback</code>, handling of the released promise, hold-time logging; in-process <code>MemoryFolderLocks</code> for tests (6.2)</td><td>80 + 140</td><td>1</td></tr>
+<tr><td><code>local_folder_boot.dart</code></td><td><code>LocalFolderBoot.preload</code> for <code>runGuardedApp(prepare:)</code>, the snapshot, and <code>decideStorageMode</code> with each app's session keys (2.8)</td><td>90</td><td>1</td></tr>
+<tr><td><code>local_folder_controller.dart</code></td><td>Storage mode, folder state machine (including <code>opening</code> and <code>needsPick</code>), connect, reconnect, choose again, switch, disconnect in the order of 2.10 rule 4, scan scheduling, captured zone, <code>httpClient</code> (the app's <code>StorageModeClient</code>), the busy line, "Use the connected folder", and the remember choice</td><td>758</td><td>1</td></tr>
+<tr><td><code>folder_layout.dart</code></td><td>Paths, manifest, ID counters and their raises</td><td>180</td><td>1</td></tr>
+<tr><td><code>folder_journal.dart</code>, <code>folder_journal_record.dart</code></td><td>Write-ahead records with <code>expect</code>, ordered apply, removals last, roll-forward with re-check and the replay external-edit check (3.4.1); the record format and op ids are in their own file, re-exported</td><td>230</td><td>1</td></tr>
+<tr><td><code>note_codec.dart</code></td><td>Frontmatter, sidecar, link rewriting</td><td>260</td><td>1</td></tr>
+<tr><td><code>folder_index.dart</code></td><td>Read-only cache, <code>.notechondria/index.json</code>, paged scans, duplicate identities (3.7)</td><td>280</td><td>1</td></tr>
+<tr><td><code>transport.dart</code></td><td><code>LocalFolderTransport extends http.BaseClient</code>: JSON and multipart decode, lock mode per method, the <code>opening</code> hold, 503 states, read and write deadlines from request start (2.9), <code>scrubSessionSentinels</code> on every detail it assembles (2.5), response; only lost access changes the folder state (12.4)</td><td>315</td><td>1</td></tr>
+<tr><td><code>storage_mode_client.dart</code></td><td><code>StorageModeClient</code> and <code>LocalRoutingClient</code>: mode routing and the handshake passthrough (2.8), <code>runCloudVersionCheck(apiBaseUrl, body)</code> carrying the saved URL, and <code>checkCloudVersion</code> for the status card</td><td>173</td><td>1</td></tr>
+<tr><td><code>secret_denylist.dart</code></td><td>Whole-key denylist with suffixes and <code>*_path</code> exemption (main 5)</td><td>50</td><td>1</td></tr>
+<tr><td><code>router.dart</code></td><td><code>(method, path)</code> table, <code>/api/v1/</code> segment matching, and the 501/404 fallbacks, whose details pass <code>scrubRouteDetail</code> (sentinels and the editor's deep-link markers, T2); the handler context interface</td><td>297</td><td>1</td></tr>
+<tr><td><code>handlers/records.dart</code></td><td>Course, note, profile, and recycle-bin records and the serializer-shaped payloads the handler files share (12.4)</td><td>396</td><td>1</td></tr>
+<tr><td><code>handlers/auth_settings.dart</code></td><td>Handshake, settings with the per-device key filter (F08), session (shape in 8.4), logout, Casdoor config</td><td>240</td><td>1</td></tr>
+<tr><td><code>handlers/courses.dart</code></td><td>Course routes; chunked course delete over notes, trashed notes, events, and feeds (3.5)</td><td>295</td><td>1</td></tr>
+<tr><td><code>handlers/notes.dart</code></td><td>Note and uuid routes, the 3.8 snapshot check (T7(j)), comment privatization on delete</td><td>373</td><td>1-2</td></tr>
+<tr><td><code>handlers/trash.dart</code></td><td>Trash list, restore, empty trash with the cascade (3.5)</td><td>133</td><td>1</td></tr>
+<tr><td><code>handlers/history_sessions.dart</code></td><td>History, snapshots, sessions, retention in two pools (3.8)</td><td>260</td><td>2</td></tr>
+<tr><td><code>handlers/attachments.dart</code></td><td>Attachments, covers, avatar</td><td>260</td><td>2</td></tr>
+<tr><td><code>search_score.dart</code></td><td>Port of <code>note_search_score</code> including a <code>SequenceMatcher</code> ratio</td><td>160</td><td>2</td></tr>
+<tr><td><code>handlers/activity.dart</code></td><td>Week view, heatmap, front page</td><td>320</td><td>2-3</td></tr>
+<tr><td><code>handlers/planner.dart</code></td><td>Events, recurrence, deadlines, <code>client_local_id</code> upsert</td><td>400</td><td>3</td></tr>
+<tr><td><code>handlers/calendar.dart</code></td><td>Feeds, iCal storage, URL fetch, URL normalization, <code>client_local_id</code> upsert</td><td>280</td><td>3</td></tr>
+<tr><td><code>pushed_items_store.dart</code></td><td>Per-app 30-day recovery list for pushed planner items (main 7.1)</td><td>80</td><td>3</td></tr>
+<tr><td><code>folder_archive_bridge.dart</code></td><td>Folder and <code>.nchron</code> in both directions, new <code>folder_id</code> on restore, chunked import</td><td>340</td><td>4</td></tr>
+<tr><td><code>change_channel.dart</code>, <code>change_channel_web.dart</code></td><td><code>BroadcastChannel</code>: the connect, disconnect, and switch messages (Phase 1, for the 2.10 rule 5 banners and the 2.9 switch notice), then change messages, <code>FileSystemObserver</code>, and focus rescans (Phase 4). No handle handoff (6.2)</td><td>20 + 190</td><td>1, 4</td></tr>
+<tr><td><code>github_token_client.dart</code>, <code>handlers/github.dart</code></td><td><code>api.github.com</code> calls and the GitHub routes</td><td>260 + 220</td><td>5</td></tr>
+<tr><td><code>credential_store.dart</code>, <code>credential_store_web.dart</code></td><td>Memory and opt-in IndexedDB credential store</td><td>80 + 90</td><td>5</td></tr>
+<tr><td><code>../components/local_folder_sign_in_option.dart</code></td><td>Option widget for <code>AuthHub</code>, notice dialog, gesture order (main 1.3); English text until Phase 2 (12.4)</td><td>265</td><td>1</td></tr>
+<tr><td><code>../components/local_folder_status_card.dart</code></td><td>Settings card: folder counts and bytes (F48), Rescan, Reconnect, Check for updates, Disconnect, cloud-only list, busy and precedence lines; Export with the Phase 4 bridge</td><td>244</td><td>1, 4</td></tr>
+<tr><td><code>../components/local_folder_reconnect_view.dart</code></td><td>Startup reconnect view with "Reconnect" and "Choose again", the refusal messages with "Switch to this folder", and the one-line banners (main 2.10 rule 5)</td><td>245</td><td>1</td></tr>
+<tr><td><code>../utils/folder_aware_image.dart</code></td><td><code>folderAwareImageProvider</code></td><td>70</td><td>2</td></tr>
+<tr><td><code>folder_snapshots.dart</code></td><td>History index, the folder-only snapshot writer, and the two-pool prune (3.8), moved into Phase 1 by T7(d)</td><td>273</td><td>1</td></tr>
+<tr><td><code>folder_identity.dart</code>, <code>folder_scanner.dart</code></td><td>The scan of <code>folder_index.dart</code>, split out: duplicate identities and adoption as journaled fixes (3.7), and the paged scan with the R4 re-check</td><td>334 + 258</td><td>1</td></tr>
+<tr><td><code>folder_messages.dart</code></td><td>Every 1.8 message of the module, the session-sentinel check, <code>scrubSessionSentinels</code>, and <code>scrubRouteDetail</code> (2.5)</td><td>494</td><td>1</td></tr>
+<tr><td><code>local_folder_platform.dart</code></td><td><code>LocalFolderPlatform</code> and <code>FolderPicker</code>, the seam <code>forTest</code> and the web check use (T7(b)); <code>folder_fs_stub.dart</code> stubs the whole platform, so one conditional import pair serves fs, picker, handle store, locks, channel, and probe</td><td>46</td><td>1</td></tr>
+<tr><td><code>frontend/notechondria_shared/lib/local_folder_testing.dart</code></td><td>Exports the memory fakes for tests only</td><td>15</td><td>1</td></tr>
+<tr><td><code>frontend/{editor,planner,portal}_app/lib/core/local_folder_connect.dart</code></td><td>Per-app startup step, precedence, connect push (token set before the course push, main 7.1); the callback gate is the shared mixin's <code>cloudOnly(...)</code> (12.4)</td><td>90, 180, 160</td><td>2, 3, 3</td></tr>
+<tr><td><code>frontend/notechondria_shared/test/local_folder/*.dart</code></td><td>Unit tests incl. <code>folder_journal_test.dart</code> and <code>concurrency_test.dart</code>, each file under 500 lines</td><td>1,700 total</td><td>1-5</td></tr>
+<tr><td><code>frontend/notechondria_shared/test/local_folder_opfs_test.dart</code></td><td>Chromium OPFS and Web Locks tests (8.3); run in the 16 GB container, not in CI</td><td>300</td><td>1, 2, 4</td></tr>
+<tr><td><code>frontend/notechondria_shared/test/fixtures/api_v1/*.json</code></td><td>Hand-written from the serializers, each with <code>_source</code> (8.4)</td><td>n/a</td><td>1-3</td></tr>
+<tr><td><code>backend/notes/test_api_contract.py</code></td><td>Q14's CI recorder: compares each fixture with the live response and writes the responses for the artifact (8.4)</td><td>200</td><td>1</td></tr>
+<tr><td><code>frontend/{editor,planner,portal}_app/test/local_folder_smoke.dart</code></td><td>Smoke checks inside <code>http.runWithClient</code> (main 8.5)</td><td>260 each</td><td>1-3</td></tr>
+</tbody></table>
+</div>
+<p>Shared library code totals about 8,500 lines in 46 files, of which about
+335 are the test fakes and their export; the three per-app connect files
+add about 430. The largest file is about 400 lines.</p>
+<p>Zone wrapper per JavaScript callback (main 2.5):</p>
+<div class="table-wrapper"><table><thead><tr><th>Callback</th><th>File</th><th>Wrapper</th><th>Why</th></tr></thead><tbody>
+<tr><td><code>navigator.locks.request</code> grant callback</td><td><code>folder_lock_web.dart</code></td><td><code>Zone.current.bindUnaryCallback&lt;JSPromise&lt;JSAny?&gt;, Lock?&gt;</code> (non-guarded), in the requesting zone; the body runs the operation in a try/catch, completes the caller's <code>Completer</code>, and returns that <code>Future&lt;void&gt;</code> as <code>.toJS</code></td><td>The lock is held until the returned promise settles; a <code>void</code> return releases it in an upcoming microtask (Web Locks spec 2.4)</td></tr>
+<tr><td><code>BroadcastChannel</code> <code>onmessage</code> (changes, connect, disconnect, switch)</td><td><code>change_channel_web.dart</code></td><td>the captured zone's <code>bindUnaryCallbackGuarded&lt;MessageEvent&gt;</code></td><td>Void listener; an error reaches <code>runGuardedApp</code>, and a refresh never runs in a startup budget</td></tr>
+<tr><td><code>FileSystemObserver</code> callback</td><td><code>change_channel_web.dart</code></td><td>the captured zone's <code>bindBinaryCallbackGuarded</code> (records, observer)</td><td>Void listener with two arguments</td></tr>
+<tr><td><code>focus</code> and <code>visibilitychange</code> listeners</td><td><code>change_channel_web.dart</code></td><td>the captured zone's <code>bindUnaryCallbackGuarded&lt;Event&gt;</code></td><td>Void listeners</td></tr>
+<tr><td>Lock-wait timeout</td><td><code>folder_lock_web.dart</code></td><td>none: <code>AbortSignal.timeout(ms)</code></td><td>No Dart callback</td></tr>
+<tr><td>Picker, permission, and file promises</td><td><code>folder_fs_web.dart</code>, <code>folder_pick_flow.dart</code></td><td>none: <code>JSPromise.toDart</code>, awaited in Dart</td><td>The continuation is a Dart future, already bound to the awaiting zone</td></tr>
+<tr><td>IndexedDB request <code>onsuccess</code>, <code>onerror</code>, <code>onupgradeneeded</code>; transaction <code>oncomplete</code>, <code>onerror</code>, <code>onabort</code> (T5)</td><td><code>handle_store_web.dart</code> (Phase 1), <code>credential_store_web.dart</code> (Phase 5)</td><td>the captured zone's <code>bindUnaryCallbackGuarded&lt;Event&gt;</code> (<code>bindListener</code>)</td><td>Void listeners. Bodies only complete a <code>Completer</code>, except <code>onupgradeneeded</code>, which creates the object store synchronously, because the upgrade transaction is active only while that event is dispatched</td></tr>
+</tbody></table>
+</div>
+<h2 id="93-changed-files"><a class="header" href="#93-changed-files">9.3 Changed files</a></h2>
+<p>Current sizes matter because of the 1000-line cap (AGENTS.md 1.6).</p>
+<div class="table-wrapper"><table><thead><tr><th>File (current lines)</th><th>Change</th><th>Net</th></tr></thead><tbody>
+<tr><td><code>frontend/notechondria_shared/pubspec.yaml</code></td><td>Add <code>web: ^1.1.1</code> as a direct dependency (locked transitively today), and raise the SDK floor to <code>&gt;=3.4.0</code> so the hand-written bindings can use extension types (<code>web</code> 1.1.1 itself needs <code>^3.4.0</code>; the lock already resolves Dart <code>&gt;=3.10.3</code>)</td><td>+1, 1 changed</td></tr>
+<tr><td><code>frontend/notechondria_shared/lib/notechondria_shared.dart</code> (123)</td><td>Exports after the <code>local_attachment_store</code> block (<code>:57-62</code>)</td><td>+14</td></tr>
+<tr><td><code>frontend/notechondria_shared/lib/src/components/auth_dialogs.dart</code> (444)</td><td><code>localFolderOption</code> slot</td><td>+15</td></tr>
+<tr><td><code>frontend/notechondria_shared/lib/src/http/http_client_internals_mixin.dart</code> (407)</td><td>Skip the startup budget for requests a <code>LocalRoutingClient</code> answers locally (<code>:120-124</code>, main 2.7)</td><td>+6</td></tr>
+<tr><td><code>frontend/notechondria_shared/lib/src/app_shell/app_shell_session_mixin.dart</code> (451)</td><td>Folder payload: skip the owner stamp and <code>persistSession</code>, the 1.8 folder-session messages, <code>disconnectFolder()</code>, and the <code>logout()</code> guard (main 2.7)</td><td>+40</td></tr>
+<tr><td><code>frontend/notechondria_shared/lib/src/utils/ping_backend.dart</code> (76)</td><td>Optional <code>http.Client</code></td><td>+5</td></tr>
+<tr><td><code>frontend/notechondria_shared/lib/src/startup/startup_guard.dart</code> (202)</td><td>Optional <code>prepare</code> callback, awaited inside the zone after <code>ensureInitialized()</code> and the error handlers, and before <code>launch()</code> (<code>:25-40</code>, main 2.8); done in 0.1.200, unused until an app's wiring</td><td>+8</td></tr>
+<tr><td><code>frontend/notechondria_shared/lib/src/components/note_cover_image.dart</code> (205)</td><td>Use <code>folderAwareImageProvider</code> at <code>:53</code></td><td>+2</td></tr>
+<tr><td><code>frontend/notechondria_shared/lib/l10n/app_en.arb</code> (694), <code>app_zh.arb</code> (554)</td><td>About 45 strings each; moved to Phase 2, when the editor shows the option (12.4)</td><td>+90 each</td></tr>
+<tr><td><code>frontend/editor_app/lib/app_shell.dart</code> (824), <code>frontend/planner_app/lib/app_shell.dart</code> (932), <code>frontend/portal_app/lib/app_shell.dart</code> (882)</td><td>Controller owner (main 2.5, 2.7): <code>NotechondriaApp.localFolder</code>; in <code>_NotechondriaAppState</code> the <code>_localFolder</code> field next to <code>_client</code> and the <code>_client</code> default over <code>_localFolder.httpClient</code> (editor <code>:52-53</code>, planner <code>:38-39</code>, portal <code>:38-39</code>); <code>AppShell.localFolder</code>, passed at <code>home: AppShell(</code> (editor <code>:94</code>, planner <code>:82</code>) and in the portal's <code>_buildShell</code> (<code>:92-105</code>); portal only: <code>_NoteRoutePage(localFolder: ...)</code> at <code>:121</code>. Phase 1 (0.1.200) added only <code>LocalFolderController? get localFolder =&gt; null</code> to each <code>_AppShellState</code> (T7(c), +3 each)</td><td>+9 each (portal +10)</td></tr>
+<tr><td><code>frontend/planner_app/lib/app_shell.dart</code> (932, same file)</td><td>Folder gating where the pages are built: <code>offlineMode: false</code> for the learner page (<code>:770</code>), and in <code>_SettingsPage(...)</code> (<code>:814</code> onward) the Casdoor, login, API-key, and pull-cloud callbacks (<code>:814-858</code>) and <code>onOfflineModeChanged</code> (<code>:858</code>) wrapped in <code>cloudOnly(...)</code>, with the folder Disconnect passed as <code>onLogout</code>; <code>githubSyncCardBuilder</code> (<code>:897</code>) wrapped in <code>cloudOnly(...)</code> until Phase 5; <code>onPing</code> passed (main 2.7). Done in Phase 1, inert: the GitHub builder and <code>onRestoreTemplateCourses: cloudOnlyAction(...)</code> (T7(f))</td><td>+12</td></tr>
+<tr><td><code>frontend/editor_app/lib/core/build_helpers.dart</code> (855)</td><td>The same gating: learner <code>offlineMode</code> at <code>:595</code>, <code>_SettingsPage(...)</code> callbacks at <code>:599-627</code>, <code>onOfflineModeChanged</code> at <code>:746</code>, <code>githubSyncCardBuilder</code> at <code>:696</code> (until Phase 5), <code>onPing</code>. Done in Phase 1, inert: the GitHub builder and the template restore</td><td>+14</td></tr>
+<tr><td><code>frontend/portal_app/lib/core/build_page.dart</code> (277)</td><td>The same gating: learner <code>offlineMode</code> at <code>:63</code>, <code>_SettingsPage(...)</code> at <code>:119-176</code> (<code>onOfflineModeChanged</code> at <code>:163</code>), <code>githubSyncCardBuilder</code> at <code>:240</code> (until Phase 5), <code>onPing</code>. Done in Phase 1, inert: the GitHub builder and the template restore</td><td>+14</td></tr>
+<tr><td><code>_SettingsPage</code> in editor <code>frontend/editor_app/lib/modules/settings.dart</code> (827), planner <code>frontend/planner_app/lib/modules/settings.dart</code> (936), portal <code>frontend/portal_app/lib/modules/settings.dart</code> (788)</td><td><code>Future&lt;PingResult&gt; Function()? onPing</code> field and parameter; the ping call sites (editor <code>modules/settings_build.dart:326</code>, planner <code>modules/settings.dart:645</code>, portal <code>modules/settings.dart:475</code>) become <code>onPing: widget.onPing ?? () =&gt; pingBackend(widget.apiBaseUrl)</code></td><td>+2 each; call sites 0</td></tr>
+<tr><td><code>frontend/portal_app/lib/components/note_route_page.dart</code> (121)</td><td><code>localFolder</code> parameter, a listener, <code>LocalFolderReconnectView</code> while the folder is pending, and <code>_load()</code> again on <code>active</code> (main 2.7)</td><td>+15</td></tr>
+<tr><td><code>frontend/editor_app/lib/core/http_client.dart</code> (918), <code>frontend/planner_app/lib/core/client.dart</code> (961), <code>frontend/portal_app/lib/core/client.dart</code> (865)</td><td><code>_httpClient.send(request)</code> at the multipart sites; done in 0.1.200</td><td>0</td></tr>
+<tr><td><code>frontend/*/lib/core/bootstrap.dart</code> (285, 244, 366)</td><td>The <code>local_folder</code> step, splash re-arm on progress, skipped steps in folder mode, folder labels (main 2.9)</td><td>+25 each</td></tr>
+<tr><td><code>frontend/*/lib/main.dart</code> (93, 78, 84)</td><td><code>part 'core/local_folder_connect.dart';</code> and <code>prepare: LocalFolderBoot.preload</code> in <code>runGuardedApp(...)</code></td><td>+2 each</td></tr>
+<tr><td><code>frontend/*/lib/core/initial_data.dart</code> (339, 314, 325)</td><td>Treat <code>offline_mode</code> as false in folder mode</td><td>+3 each</td></tr>
+<tr><td><code>frontend/*/lib/core/local_persist.dart</code> (91, 28, 27)</td><td>Skip <code>_persistLocalCache</code> in folder mode</td><td>+2 each</td></tr>
+<tr><td><code>frontend/*/lib/core/helpers.dart</code> (954, 466, 510), <code>frontend/*/lib/components/avatar.dart</code> (161, 92, 110), <code>frontend/editor_app/lib/modules/settings_build.dart</code> (455), <code>frontend/portal_app/lib/modules/settings_build.dart</code> (515)</td><td><code>folderAwareImageProvider</code> at the sites in main 3.6</td><td>+1 to +2 each</td></tr>
+<tr><td><code>frontend/planner_app/lib/components/note_viewer.dart</code> (138), <code>frontend/portal_app/lib/components/note_viewer.dart</code> (154)</td><td><code>sizedImageBuilder: _localAttachmentImageBuilder</code> on <code>MarkdownBody</code> (<code>:116</code>, <code>:122</code>)</td><td>+1 each</td></tr>
+<tr><td>Settings entry points: editor <code>settings_build.dart:129-136</code>, planner <code>settings.dart:445-450</code> (936), portal <code>settings_build.dart:162-167</code></td><td>Pass <code>localFolderOption</code>; insert the status card</td><td>+3 each</td></tr>
+<tr><td><code>frontend/*/test/smoke_test.dart</code> (244, 767, 314)</td><td>Call <code>registerLocalFolderSmokeTests()</code>; the editor's since 0.1.200</td><td>+2 each</td></tr>
+<tr><td><code>.github/workflows/backend-tests.yml</code></td><td>Add the fixture directory to <code>paths:</code> (<code>:16-19</code>) and an <code>actions/upload-artifact</code> step for <code>backend/build/contract_responses/</code> (main 8.4); done in 0.1.200</td><td>+6</td></tr>
+</tbody></table>
+</div>
+<p>GitHub card gate (until Phase 5). The three build sites pass
+<code>githubSyncCardBuilder: _token != null ? () =&gt; GithubSyncExperimentalCard(...) : null</code>,
+and in folder mode <code>_token</code> is <code>local-folder</code>, so without the gate the
+card would load <code>/integrations/github/status/</code> in <code>initState</code>
+(<code>frontend/notechondria_shared/lib/src/components/mcp_skill_section.dart:249-252</code>)
+and show a 501 before Phase 5 adds the handler. With the builder wrapped
+in <code>cloudOnly(...)</code>, it is null in folder mode: the editor and planner
+fall back to the callback-less card (<code>modules/settings_pages.dart:787-788</code>,
+<code>modules/settings.dart:528-529</code>), whose <code>_refreshStatus</code> returns without
+a request (<code>mcp_skill_section.dart:267-271</code>), and the portal omits the
+card (<code>modules/settings_pages.dart:711</code>).</p>
+<p>Files near the cap:</p>
+<ul>
+<li><code>frontend/planner_app/lib/app_shell.dart</code>: 932 + 9 + 12 = about 953,
+under the cap; 937 after Phase 1. The gate helpers <code>cloudOnly(...)</code> and
+<code>cloudOnlyAction(...)</code> live in the shared session mixin, not in
+<code>app_shell.dart</code>. If the
+implementing round finds the gating needs more lines, it moves the
+<code>case 3:</code> <code>_SettingsPage(...)</code> builder (<code>:813-927</code>) into a new
+<code>frontend/planner_app/lib/core/settings_page_builder.dart</code> part in the
+same round, as the editor (<code>core/build_helpers.dart</code>) and portal
+(<code>core/build_page.dart</code>) already keep theirs outside <code>app_shell.dart</code>.</li>
+<li><code>frontend/editor_app/lib/core/build_helpers.dart</code>: 855 + 14 = about 869.</li>
+<li><code>frontend/editor_app/lib/core/helpers.dart</code>: 954 + 2 = about 956.</li>
+<li><code>frontend/planner_app/lib/core/client.dart</code> (961) and
+<code>frontend/editor_app/lib/core/http_client.dart</code> (918): line-neutral.</li>
+<li><code>frontend/planner_app/lib/modules/settings.dart</code>: 936 + 3 + 2 = 941.</li>
+</ul>
+<p>Files to leave alone: <code>frontend/portal_app/lib/modules/settings_pages.dart</code>
+(1029 lines, already over the cap; any edit would force a split in the
+same round; its switches already go inert on a null callback, <code>:185</code>,
+<code>:649</code>; it builds <code>StorageUsageCard</code> at <code>:793</code> and omits a null GitHub
+card builder at <code>:711</code>, so neither the F48 counts nor the GitHub card
+gate touch it), <code>frontend/notechondria_shared/lib/src/components/storage_usage_card.dart</code>
+(the folder counts go to the status card, F48),
+<code>frontend/portal_app/lib/components/custom_splash_overlay.dart</code>
+(the startup image is never an <code>nc-folder:</code> URL, main 3.6),
+<code>frontend/editor_app/lib/modules/learner.dart</code> (962), and the generated
+<code>frontend/notechondria_shared/lib/src/l10n/app_localizations.dart</code>
+(3247 lines; regenerated from the ARB files, already over the cap).</p>
+<h2 id="94-new-docsagentsmd-module-rows-and-sentinel"><a class="header" href="#94-new-docsagentsmd-module-rows-and-sentinel">9.4 New <code>docs/AGENTS.md</code> module rows and sentinel</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Module (dotted)</th><th>Surface</th><th>Example processes</th></tr></thead><tbody>
+<tr><td><code>Shared.LocalFolder</code></td><td><code>notechondria_shared</code> local-folder controller: qualification, picker, permissions, handle store, scan, lock, change channel</td><td><code>qualify</code>, <code>pick</code>, <code>connect</code>, <code>permission</code>, <code>restore_handle</code>, <code>scan</code>, <code>rescan</code>, <code>observe</code>, <code>lock</code>, <code>read</code>, <code>write</code>, <code>journal</code>, <code>version_check</code>, <code>disconnect</code></td></tr>
+<tr><td><code>Shared.LocalFolder.Backend</code></td><td>In-page <code>/api/v1</code> implementation (<code>LocalFolderTransport</code>, router, handlers)</td><td><code>route</code>, <code>unsupported</code>, <code>notes</code>, <code>courses</code>, <code>planner</code>, <code>calendar.fetch</code>, <code>attachments</code>, <code>settings</code>, <code>search</code>, <code>front_page</code></td></tr>
+<tr><td><code>Shared.LocalFolder.Archive</code></td><td>Folder and <code>.nchron</code> bridge</td><td><code>import</code>, <code>export</code>, <code>validate</code></td></tr>
+<tr><td><code>Shared.LocalFolder.GitHub</code></td><td>Token-based GitHub calls from the browser</td><td><code>token</code>, <code>repos</code>, <code>push</code>, <code>course_import</code></td></tr>
+<tr><td><code>Shared.Credentials</code></td><td>In-browser store for (b) credentials</td><td><code>store</code>, <code>load</code>, <code>clear</code></td></tr>
+<tr><td><code>Portal.Sync.Events</code></td><td>portal planner-event sync (<code>core/settings_actions.dart</code>, <code>core/maintenance_actions.dart</code>) and the connect-time push (main 7.1)</td><td><code>create</code>, <code>toggle</code>, <code>edit</code>, <code>push</code></td></tr>
+</tbody></table>
+</div>
+<p>Also:</p>
+<ul>
+<li>Add <code>local_folder</code> to the processes of the
+<code>Editor.Startup / Planner.Startup / Portal.Startup</code> row.</li>
+<li>Add <code>session rejected:</code> to the preserved parser sentinels next to
+<code>invalid token</code>, <code>authentication credentials were not provided</code>, and
+<code>token_not_valid</code>. All three detectors count it (editor
+<code>frontend/editor_app/lib/core/initial_data.dart:284</code>, planner
+<code>frontend/planner_app/lib/core/initial_data.dart:266</code>, portal
+<code>frontend/portal_app/lib/core/initial_data.dart:274</code>), and
+<code>shapedErrorMessage</code> produces it for every 401 without an em-dash
+(<code>frontend/notechondria_shared/lib/src/http/http_client_internals_mixin.dart:323-324</code>).
+No folder message may contain any of the four (main 2.5).</li>
+<li><code>Portal.Sync.Events</code> is already emitted without a row: <code>create</code>
+(<code>frontend/portal_app/lib/core/settings_actions.dart:259</code>, <code>:265</code>),
+<code>toggle</code> (<code>core/maintenance_actions.dart:334-351</code>), and <code>edit</code>
+(<code>:378-391</code>). Main 7.1 adds <code>push</code>. The planner's 7.1 lines use the
+existing <code>Planner.Sync.Events</code> row.</li>
+<li>Two existing gaps in the table, noticed while writing this:
+<code>Shared.LocalArchive/read</code> is emitted
+(<code>frontend/notechondria_shared/lib/src/utils/local_archive.dart:258-296</code>)
+but has no row, and <code>Shared.AuthDialog</code> has a row but no emitter.</li>
+</ul>
+<h2 id="95-docs-to-update-in-the-implementing-rounds"><a class="header" href="#95-docs-to-update-in-the-implementing-rounds">9.5 Docs to update in the implementing rounds</a></h2>
+<ul>
+<li><code>docs/AGENTS.md</code>: rows and the sentinel above.</li>
+<li><code>docs/SUMMARY.md</code>: entries for this design and its eight parts, next to
+the other <code>development/</code> entries (<code>:38-44</code>).</li>
+<li><code>docs/development/storage_model.md</code>: add the folder tier to the TL;DR
+table and the frontend storage section.</li>
+<li><code>docs/export_format_v1.md</code>: document the optional <code>folder/</code> subtree and
+fix the two doc-versus-code differences (main 3.3).</li>
+<li><code>docs/integrations/github-sync.md</code>: the token path in folder mode and the
+shared layout.</li>
+<li><code>docs/deployment/local_preview.md</code>: recommend the loopback origin for
+folder mode.</li>
+<li><code>docs/api/backend_api_spec.md</code>: refresh against
+<code>backend/notechondria/api_urls.py</code>, since the fixtures and handlers treat
+it as the contract (Q14).</li>
+<li><code>README.md</code>, <code>docs/readme.md</code>, <code>frontend/AGENTS.md</code> ("Current shape"):
+a new storage tier is a material change (AGENTS.md 2.6).</li>
+<li><code>docs/TODO.md</code>: track phases and the planner push items it already lists
+(<code>docs/TODO.md:400-410</code>).</li>
+<li><code>docs/versions/&lt;v&gt;.md</code> and <code>docs/LLM_CHECK.md</code> each round.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../../development/local_folder_mode/testing.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../../development/local_folder_mode/unverified_and_sources.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../../development/local_folder_mode/testing.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../../development/local_folder_mode/unverified_and_sources.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../../elasticlunr.min.js"></script>
+        <script src="../../mark.min.js"></script>
+        <script src="../../searcher.js"></script>
+
+        <script src="../../clipboard.min.js"></script>
+        <script src="../../highlight.js"></script>
+        <script src="../../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

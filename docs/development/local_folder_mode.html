@@ -1,0 +1,1179 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Local folder storage mode (design) - Notechondria Documentation</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "navy";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../index.html">Project Overview</a></li><li class="chapter-item expanded affix "><a href="../index.html">Long-Form Agent Handoff</a></li><li class="chapter-item expanded affix "><a href="../TODO.html">TODO</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">Client (frontend apps)</li><li class="chapter-item expanded "><a href="../client/editor_app.html"><strong aria-hidden="true">1.</strong> Editor app</a></li><li class="chapter-item expanded "><a href="../client/planner_app.html"><strong aria-hidden="true">2.</strong> Planner app</a></li><li class="chapter-item expanded "><a href="../client/portal_app.html"><strong aria-hidden="true">3.</strong> Portal app</a></li><li class="chapter-item expanded "><a href="../client/notechondria_shared.html"><strong aria-hidden="true">4.</strong> notechondria_shared package</a></li><li class="chapter-item expanded affix "><li class="part-title">Server (backend)</li><li class="chapter-item expanded "><a href="../server/backend.html"><strong aria-hidden="true">5.</strong> Backend overview</a></li><li class="chapter-item expanded "><a href="../server/creators.html"><strong aria-hidden="true">6.</strong> creators app</a></li><li class="chapter-item expanded "><a href="../server/notes.html"><strong aria-hidden="true">7.</strong> notes app</a></li><li class="chapter-item expanded "><a href="../server/mcp.html"><strong aria-hidden="true">8.</strong> mcp app</a></li><li class="chapter-item expanded affix "><li class="part-title">API</li><li class="chapter-item expanded "><a href="../api/backend_api_spec.html"><strong aria-hidden="true">9.</strong> Backend API Specification</a></li><li class="chapter-item expanded affix "><li class="part-title">Deployment</li><li class="chapter-item expanded "><a href="../deployment/overview.html"><strong aria-hidden="true">10.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../deployment/release.html"><strong aria-hidden="true">11.</strong> Release process (tag → GitHub Release)</a></li><li class="chapter-item expanded "><a href="../deployment/deploy.html"><strong aria-hidden="true">12.</strong> Docker-compose / Jenkins Full-stack Guide</a></li><li class="chapter-item expanded "><a href="../deployment/render_free_tier.html"><strong aria-hidden="true">13.</strong> Render Free Tier (Backend)</a></li><li class="chapter-item expanded "><a href="../deployment/northflank.html"><strong aria-hidden="true">14.</strong> Northflank Free Tier (Backend)</a></li><li class="chapter-item expanded "><a href="../deployment/local_preview.html"><strong aria-hidden="true">15.</strong> Local preview against the remote backend</a></li><li class="chapter-item expanded affix "><li class="part-title">Development</li><li class="chapter-item expanded "><a href="../development/local_dev.html"><strong aria-hidden="true">16.</strong> Local Development Guide</a></li><li class="chapter-item expanded "><a href="../development/python_environments.html"><strong aria-hidden="true">17.</strong> Python Environments</a></li><li class="chapter-item expanded "><a href="../development/ai_integration.html"><strong aria-hidden="true">18.</strong> AI Integration (stub status and forward plan)</a></li><li class="chapter-item expanded "><a href="../development/storage_model.html"><strong aria-hidden="true">19.</strong> Storage model (Django + frontend offline)</a></li><li class="chapter-item expanded "><a href="../development/cross_platform_plan.html"><strong aria-hidden="true">20.</strong> Cross-platform reliability and tutorials plan</a></li><li class="chapter-item expanded "><a href="../development/i18n_plan.html"><strong aria-hidden="true">21.</strong> Internationalization (i18n) plan</a></li><li class="chapter-item expanded "><a href="../development/canvas_like_calendar_mvp.html"><strong aria-hidden="true">22.</strong> Canvas-like Calendar Product Concept</a></li><li class="chapter-item expanded "><a href="../development/local_folder_mode.html" class="active"><strong aria-hidden="true">23.</strong> Local folder storage mode (design)</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../development/local_folder_mode/modes_and_migration.html"><strong aria-hidden="true">23.1.</strong> Storage modes, startup, and migration</a></li><li class="chapter-item expanded "><a href="../development/local_folder_mode/storage_rules.html"><strong aria-hidden="true">23.2.</strong> Storage rules</a></li><li class="chapter-item expanded "><a href="../development/local_folder_mode/security_and_tabs.html"><strong aria-hidden="true">23.3.</strong> Security and multi-tab behavior</a></li><li class="chapter-item expanded "><a href="../development/local_folder_mode/feature_matrix.html"><strong aria-hidden="true">23.4.</strong> Feature matrix</a></li><li class="chapter-item expanded "><a href="../development/local_folder_mode/testing.html"><strong aria-hidden="true">23.5.</strong> Testing</a></li><li class="chapter-item expanded "><a href="../development/local_folder_mode/implementation_plan.html"><strong aria-hidden="true">23.6.</strong> Implementation plan</a></li><li class="chapter-item expanded "><a href="../development/local_folder_mode/unverified_and_sources.html"><strong aria-hidden="true">23.7.</strong> Unverified items and sources</a></li><li class="chapter-item expanded "><a href="../development/local_folder_mode/revision_log.html"><strong aria-hidden="true">23.8.</strong> Revision logs</a></li></ol></li><li class="chapter-item expanded "><li class="part-title">Integrations</li><li class="chapter-item expanded "><a href="../integrations/github_app_integration.html"><strong aria-hidden="true">24.</strong> GitHub App Integration</a></li><li class="chapter-item expanded "><a href="../integrations/github-sync.html"><strong aria-hidden="true">25.</strong> GitHub Sync (experimental)</a></li><li class="chapter-item expanded "><a href="../integrations/casdoor-migration.html"><strong aria-hidden="true">26.</strong> Casdoor migration plan</a></li><li class="chapter-item expanded "><a href="../integrations/mcp-cli-migration.html"><strong aria-hidden="true">27.</strong> MCP → CLI migration proposal</a></li><li class="chapter-item expanded "><a href="../integrations/veronica-7-migration.html"><strong aria-hidden="true">28.</strong> Veronica-7 course migration runbook</a></li><li class="chapter-item expanded "><a href="../integrations/casdoor-setup.html"><strong aria-hidden="true">29.</strong> Casdoor login setup runbook</a></li><li class="chapter-item expanded affix "><li class="part-title">Operations</li><li class="chapter-item expanded "><a href="../operations/postgres_migration.html"><strong aria-hidden="true">30.</strong> PostgreSQL Migration</a></li><li class="chapter-item expanded "><a href="../operations/local_backup_restore.html"><strong aria-hidden="true">31.</strong> Local Backup and Restore Scripts</a></li><li class="chapter-item expanded affix "><li class="part-title">Testing</li><li class="chapter-item expanded "><a href="../testing/backend_test_plan.html"><strong aria-hidden="true">32.</strong> Backend Test Plan</a></li><li class="chapter-item expanded "><a href="../testing/agent_remote_testing.html"><strong aria-hidden="true">33.</strong> Agent Remote Testing</a></li><li class="chapter-item expanded affix "><li class="part-title">Versions</li><li class="chapter-item expanded "><a href="../versions/0.1.200.html"><strong aria-hidden="true">34.</strong> 0.1.200 - Local folder mode: foundation (option not shown yet)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.199.html"><strong aria-hidden="true">35.</strong> 0.1.199 - Fix: offline calendar import, copyable warnings, startup logs, one loading screen</a></li><li class="chapter-item expanded "><a href="../versions/0.1.198.html"><strong aria-hidden="true">36.</strong> 0.1.198 - Fix: white screen on all Pages apps + backend-unavailable fallbacks</a></li><li class="chapter-item expanded "><a href="../versions/0.1.197.html"><strong aria-hidden="true">37.</strong> 0.1.197 - Note-conflict resolver: side-by-side diff</a></li><li class="chapter-item expanded "><a href="../versions/0.1.196.html"><strong aria-hidden="true">38.</strong> 0.1.196 - Fix: web apps stuck on load — strip the deprecated service worker</a></li><li class="chapter-item expanded "><a href="../versions/0.1.195.html"><strong aria-hidden="true">39.</strong> 0.1.195 - Editor Settings: "Settings" no longer shown twice</a></li><li class="chapter-item expanded "><a href="../versions/0.1.194.html"><strong aria-hidden="true">40.</strong> 0.1.194 - GitHub sync: prune orphaned note assets</a></li><li class="chapter-item expanded "><a href="../versions/0.1.193.html"><strong aria-hidden="true">41.</strong> 0.1.193 - Course ownership transfer</a></li><li class="chapter-item expanded "><a href="../versions/0.1.192.html"><strong aria-hidden="true">42.</strong> 0.1.192 - Offline cache is owner-scoped (no cross-user leak)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.191.html"><strong aria-hidden="true">43.</strong> 0.1.191 - Editor Inbox default for offline / signed-out users</a></li><li class="chapter-item expanded "><a href="../versions/0.1.190.html"><strong aria-hidden="true">44.</strong> 0.1.190 - Editor Inbox shows only uncategorized notes</a></li><li class="chapter-item expanded "><a href="../versions/0.1.189.html"><strong aria-hidden="true">45.</strong> 0.1.189 - GitHub sync: no more silent overwrites (atomic push + conflict gate)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.188.html"><strong aria-hidden="true">46.</strong> 0.1.188 - Imported-course reading order + bind pending-state fix</a></li><li class="chapter-item expanded "><a href="../versions/0.1.187.html"><strong aria-hidden="true">47.</strong> 0.1.187 - Fix Casdoor login: hash fragment leaked into redirect_uri</a></li><li class="chapter-item expanded "><a href="../versions/0.1.186.html"><strong aria-hidden="true">48.</strong> 0.1.186 - In-note navigation from courses + URLs for every full-screen surface</a></li><li class="chapter-item expanded "><a href="../versions/0.1.185.html"><strong aria-hidden="true">49.</strong> 0.1.185 - Course loading: 16s → sub-second (storage N+1 + lazy pages)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.184.html"><strong aria-hidden="true">50.</strong> 0.1.184 - Casdoor avatar mirroring (CORS root cause) + editor sidebar scope</a></li><li class="chapter-item expanded "><a href="../versions/0.1.183.html"><strong aria-hidden="true">51.</strong> 0.1.183 - CI fix + course dropdown in event dialogs across apps</a></li><li class="chapter-item expanded "><a href="../versions/0.1.182.html"><strong aria-hidden="true">52.</strong> 0.1.182 - Portal session persistence (root cause) + course/avatar fix round</a></li><li class="chapter-item expanded "><a href="../versions/0.1.181.html"><strong aria-hidden="true">53.</strong> 0.1.181 - Now-line, working ctrl+scroll zoom, event↔course binding</a></li><li class="chapter-item expanded "><a href="../versions/0.1.180.html"><strong aria-hidden="true">54.</strong> 0.1.180 - Startup image, keep-offline login merge, course edit entry, starter cleanup</a></li><li class="chapter-item expanded "><a href="../versions/0.1.179.html"><strong aria-hidden="true">55.</strong> 0.1.179 - Portal URL routing: unique, shareable addresses for every surface</a></li><li class="chapter-item expanded "><a href="../versions/0.1.178.html"><strong aria-hidden="true">56.</strong> 0.1.178 - Calendar/course feature batch: foundations + modules + event colours</a></li><li class="chapter-item expanded "><a href="../versions/0.1.177.html"><strong aria-hidden="true">57.</strong> 0.1.177 - Portal UI bug batch + note names / in-course links</a></li><li class="chapter-item expanded "><a href="../versions/0.1.176.html"><strong aria-hidden="true">58.</strong> 0.1.176 - Fix: course sync as ONE atomic commit (Git Data API)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.175.html"><strong aria-hidden="true">59.</strong> 0.1.175 - GitHub App binding over MCP/CLI + Veronica-7 adapter validation</a></li><li class="chapter-item expanded "><a href="../versions/0.1.174.html"><strong aria-hidden="true">60.</strong> 0.1.174 - course git sync (notes → repo), lazy-on-request</a></li><li class="chapter-item expanded "><a href="../versions/0.1.173.html"><strong aria-hidden="true">61.</strong> 0.1.173 - course git import (repo → notes) via the adapter</a></li><li class="chapter-item expanded "><a href="../versions/0.1.172.html"><strong aria-hidden="true">62.</strong> 0.1.172 - course-repo adapter: config format + parser + presets</a></li><li class="chapter-item expanded "><a href="../versions/0.1.171.html"><strong aria-hidden="true">63.</strong> 0.1.171 - MCP/CLI course-git tools + git-binding logic factored into services</a></li><li class="chapter-item expanded "><a href="../versions/0.1.170.html"><strong aria-hidden="true">64.</strong> 0.1.170 - course↔GitHub binding: backend config endpoints + owner-only exposure</a></li><li class="chapter-item expanded "><a href="../versions/0.1.169.html"><strong aria-hidden="true">65.</strong> 0.1.169 - activity course (category) filter</a></li><li class="chapter-item expanded "><a href="../versions/0.1.168.html"><strong aria-hidden="true">66.</strong> 0.1.168 - build fix: thread onEventLongPress through _MonthDayCell</a></li><li class="chapter-item expanded "><a href="../versions/0.1.167.html"><strong aria-hidden="true">67.</strong> 0.1.167 - activity events: per-course colours, hold-to-edit, recurrence dialog</a></li><li class="chapter-item expanded "><a href="../versions/0.1.166.html"><strong aria-hidden="true">68.</strong> 0.1.166 - activity import feedback (backend summary + portal result modal)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.165.html"><strong aria-hidden="true">69.</strong> 0.1.165 - CI green: stdlib-only CLI client + corrected avatar settings test</a></li><li class="chapter-item expanded "><a href="../versions/0.1.164.html"><strong aria-hidden="true">70.</strong> 0.1.164 - recurring events (backend + MCP/CLI), course git-binding data model</a></li><li class="chapter-item expanded "><a href="../versions/0.1.163.html"><strong aria-hidden="true">71.</strong> 0.1.163 - drag-to-draw events, heatmap auto-fit, Casdoor avatar fallback</a></li><li class="chapter-item expanded "><a href="../versions/0.1.162.html"><strong aria-hidden="true">72.</strong> 0.1.162 - offline activities, month grid view, debug-log order, rotation logging</a></li><li class="chapter-item expanded "><a href="../versions/0.1.161.html"><strong aria-hidden="true">73.</strong> 0.1.161 - Pages CI split, backend-tests CI, no-local-containers rule</a></li><li class="chapter-item expanded "><a href="../versions/0.1.160.html"><strong aria-hidden="true">74.</strong> 0.1.160 - MCP agent enablement: gateway route, task parity, instructions, CLI batch</a></li><li class="chapter-item expanded "><a href="../versions/0.1.159.html"><strong aria-hidden="true">75.</strong> 0.1.159 - Docker frontend build fix + agent harness + portal plan</a></li><li class="chapter-item expanded "><a href="../versions/0.1.158.html"><strong aria-hidden="true">76.</strong> 0.1.158 - activity calendar, calendar logging, planner events, cover upload, guest feed</a></li><li class="chapter-item expanded "><a href="../versions/0.1.157.html"><strong aria-hidden="true">77.</strong> 0.1.157 - portal i18n: settings menu + subpage titles</a></li><li class="chapter-item expanded "><a href="../versions/0.1.156.html"><strong aria-hidden="true">78.</strong> 0.1.156 - portal i18n: block editor + activity/calendar</a></li><li class="chapter-item expanded "><a href="../versions/0.1.155.html"><strong aria-hidden="true">79.</strong> 0.1.155 - portal i18n: learner feed + note-metadata dialog</a></li><li class="chapter-item expanded "><a href="../versions/0.1.154.html"><strong aria-hidden="true">80.</strong> 0.1.154 - portal: editable API URL (signed-out) + front/course i18n</a></li><li class="chapter-item expanded "><a href="../versions/0.1.153.html"><strong aria-hidden="true">81.</strong> 0.1.153 - "Work offline" escape on the connection-error bar</a></li><li class="chapter-item expanded "><a href="../versions/0.1.152.html"><strong aria-hidden="true">82.</strong> 0.1.152 - version-update notification banner (frontend)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.151.html"><strong aria-hidden="true">83.</strong> 0.1.151 - handshake exposes min_frontend_version (compat floor)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.150.html"><strong aria-hidden="true">84.</strong> 0.1.150 - i18n: friendly localized UI-level error warnings</a></li><li class="chapter-item expanded "><a href="../versions/0.1.149.html"><strong aria-hidden="true">85.</strong> 0.1.149 - i18n fixes: clear-all-data button + onboarding tour content</a></li><li class="chapter-item expanded "><a href="../versions/0.1.148.html"><strong aria-hidden="true">86.</strong> 0.1.148 - i18n Phase 4 (part 2): auth dialogs localized</a></li><li class="chapter-item expanded "><a href="../versions/0.1.147.html"><strong aria-hidden="true">87.</strong> 0.1.147 - i18n Phase 4 (part 1): shared-widget chrome localized</a></li><li class="chapter-item expanded "><a href="../versions/0.1.146.html"><strong aria-hidden="true">88.</strong> 0.1.146 - MCP Phase 3: full CLI tool parity (41/41) + note-sessions GET</a></li><li class="chapter-item expanded "><a href="../versions/0.1.145.html"><strong aria-hidden="true">89.</strong> 0.1.145 - MCP Phase 1: API gap audit + docs/server/mcp.md fix</a></li><li class="chapter-item expanded "><a href="../versions/0.1.144.html"><strong aria-hidden="true">90.</strong> 0.1.144 - storage-usage card in planner + portal</a></li><li class="chapter-item expanded "><a href="../versions/0.1.143.html"><strong aria-hidden="true">91.</strong> 0.1.143 - i18n Phase 2/3: Language setting in planner + portal</a></li><li class="chapter-item expanded "><a href="../versions/0.1.142.html"><strong aria-hidden="true">92.</strong> 0.1.142 - share-link deep-link fix + i18n note viewer/editor menus</a></li><li class="chapter-item expanded "><a href="../versions/0.1.141.html"><strong aria-hidden="true">93.</strong> 0.1.141 - i18n Phase 1c: navigation + home feed translated</a></li><li class="chapter-item expanded "><a href="../versions/0.1.140.html"><strong aria-hidden="true">94.</strong> 0.1.140 - i18n Phase 1b: editor settings + debug-log menu translated</a></li><li class="chapter-item expanded "><a href="../versions/0.1.139.html"><strong aria-hidden="true">95.</strong> 0.1.139 - splash particle density scales with screen size</a></li><li class="chapter-item expanded "><a href="../versions/0.1.138.html"><strong aria-hidden="true">96.</strong> 0.1.138 - standalone MCP CLI skeleton (cli/) — Phase 2</a></li><li class="chapter-item expanded "><a href="../versions/0.1.137.html"><strong aria-hidden="true">97.</strong> 0.1.137 - cleanup_inbox_courses --include-ownerless + live DB sweep</a></li><li class="chapter-item expanded "><a href="../versions/0.1.136.html"><strong aria-hidden="true">98.</strong> 0.1.136 - Local-data storage visualization (editor) + handshake storage field</a></li><li class="chapter-item expanded "><a href="../versions/0.1.135.html"><strong aria-hidden="true">99.</strong> 0.1.135 - MCP → standalone CLI migration proposal</a></li><li class="chapter-item expanded "><a href="../versions/0.1.134.html"><strong aria-hidden="true">100.</strong> 0.1.134 - planner Activity view works offline (no sign-in required)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.133.html"><strong aria-hidden="true">101.</strong> 0.1.133 - i18n Phase 1: infrastructure + editor language switcher</a></li><li class="chapter-item expanded "><a href="../versions/0.1.132.html"><strong aria-hidden="true">102.</strong> 0.1.132 - i18n plan + architecture doc</a></li><li class="chapter-item expanded "><a href="../versions/0.1.131.html"><strong aria-hidden="true">103.</strong> 0.1.131 - remove legacy "Inbox" categories (duplicate-Inbox bug)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.130.html"><strong aria-hidden="true">104.</strong> 0.1.130 - first-run onboarding tour</a></li><li class="chapter-item expanded "><a href="../versions/0.1.129.html"><strong aria-hidden="true">105.</strong> 0.1.129 - per-app icons, in-app install nudge, legacy storage cleanup</a></li><li class="chapter-item expanded "><a href="../versions/0.1.128.html"><strong aria-hidden="true">106.</strong> 0.1.128 - reaction-simulator splash, OAuth callback app routing, install docs</a></li><li class="chapter-item expanded "><a href="../versions/0.1.127.html"><strong aria-hidden="true">107.</strong> 0.1.127 - storage namespacing fix, Casdoor password sync, What's-New overlay, mobile web shell</a></li><li class="chapter-item expanded "><a href="../versions/0.1.126.html"><strong aria-hidden="true">108.</strong> 0.1.126 - cross-platform survey: mobile web gaps, auth-corruption root cause, tutorials plan</a></li><li class="chapter-item expanded "><a href="../versions/0.1.125.html"><strong aria-hidden="true">109.</strong> 0.1.125 - editor deep links, debug log filters, and Inbox migration</a></li><li class="chapter-item expanded "><a href="../versions/0.1.124.html"><strong aria-hidden="true">110.</strong> 0.1.124 - main-branch direct-work rule</a></li><li class="chapter-item expanded "><a href="../versions/0.1.123.html"><strong aria-hidden="true">111.</strong> 0.1.123 - editor private subscriptions + Apple Journal ZIP import</a></li><li class="chapter-item expanded "><a href="../versions/0.1.122.html"><strong aria-hidden="true">112.</strong> 0.1.122 - click-run database and R2 backup scripts</a></li><li class="chapter-item expanded "><a href="../versions/0.1.121.html"><strong aria-hidden="true">113.</strong> 0.1.121 - editor debug-log source filters + portable archive goal</a></li><li class="chapter-item expanded "><a href="../versions/0.1.120.html"><strong aria-hidden="true">114.</strong> 0.1.120 — editor signed-out auth widget unified onto shared AuthHub</a></li><li class="chapter-item expanded "><a href="../versions/0.1.119.html"><strong aria-hidden="true">115.</strong> 0.1.119 — OIDC profile refresh + display_name/avatar_url + drop SocialAccount + Casdoor Manage button + settings menu consistency</a></li><li class="chapter-item expanded "><a href="../versions/0.1.118.html"><strong aria-hidden="true">116.</strong> 0.1.118 — gitea-style Casdoor link-challenge flow (bind existing or create new with chosen password)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.117.html"><strong aria-hidden="true">117.</strong> 0.1.117 — fix post-Casdoor 401 storm: SPA + backend agree on Bearer scheme; auth diagnostic logs</a></li><li class="chapter-item expanded "><a href="../versions/0.1.116.html"><strong aria-hidden="true">118.</strong> 0.1.116 — signin URL back to org name; "Login via third party" gone; portal Debug menu de-duplicated</a></li><li class="chapter-item expanded "><a href="../versions/0.1.115.html"><strong aria-hidden="true">119.</strong> 0.1.115 — bump backend Docker base from Python 3.9.18 to 3.11.4</a></li><li class="chapter-item expanded "><a href="../versions/0.1.114.html"><strong aria-hidden="true">120.</strong> 0.1.114 — unblock backend Docker build: requests~=2.33.0 to satisfy casdoor 1.41</a></li><li class="chapter-item expanded "><a href="../versions/0.1.113.html"><strong aria-hidden="true">121.</strong> 0.1.113 — Backend prints build provenance at every worker boot</a></li><li class="chapter-item expanded "><a href="../versions/0.1.112.html"><strong aria-hidden="true">122.</strong> 0.1.112 — Casdoor signin URL uses CASDOOR_APP_NAME (not org name)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.111.html"><strong aria-hidden="true">123.</strong> 0.1.111 — Restore email/username + password login (Casdoor-down fallback)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.110.html"><strong aria-hidden="true">124.</strong> 0.1.110 — Casdoor JWT claim mapping + group ACL (Nextcloud user_oidc-style)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.109.html"><strong aria-hidden="true">125.</strong> 0.1.109 — Inbox unsubscribe works offline + no 3s delay; Casdoor signin_url moved to org-themed page</a></li><li class="chapter-item expanded "><a href="../versions/0.1.108.html"><strong aria-hidden="true">126.</strong> 0.1.108 — Inbox always visible + Casdoor login always available</a></li><li class="chapter-item expanded "><a href="../versions/0.1.107.html"><strong aria-hidden="true">127.</strong> 0.1.107 — sidebar pin diagnostic dedupe + richer payload + Restore-Inbox refreshState fix</a></li><li class="chapter-item expanded "><a href="../versions/0.1.106.html"><strong aria-hidden="true">128.</strong> 0.1.106 — drop invitation codes, email-verification codes, sessions, change-password / change-email; SMTP code path retired</a></li><li class="chapter-item expanded "><a href="../versions/0.1.105.html"><strong aria-hidden="true">129.</strong> 0.1.105 — four user-reported bug fixes</a></li><li class="chapter-item expanded "><a href="../versions/0.1.104.html"><strong aria-hidden="true">130.</strong> 0.1.104 — handshake auto-derives version + commit + build_time; sidebar Inbox restored for signed-out users; Casdoor probe failures now logged</a></li><li class="chapter-item expanded "><a href="../versions/0.1.103.html"><strong aria-hidden="true">131.</strong> 0.1.103 — in-app signup gone; "Login via third party" + Casdoor signup link</a></li><li class="chapter-item expanded "><a href="../versions/0.1.102.html"><strong aria-hidden="true">132.</strong> 0.1.102 — local Inbox stays pinned across boots</a></li><li class="chapter-item expanded "><a href="../versions/0.1.101.html"><strong aria-hidden="true">133.</strong> 0.1.101 — Casdoor cutover + portal settings parity + Inbox fix</a></li><li class="chapter-item expanded "><a href="../versions/0.1.100.html"><strong aria-hidden="true">134.</strong> 0.1.100 — docs site fixed + Casdoor setup runbook + sample.env refresh</a></li><li class="chapter-item expanded "><a href="../versions/0.1.99.html"><strong aria-hidden="true">135.</strong> 0.1.99 — Casdoor as the primary auth surface</a></li><li class="chapter-item expanded "><a href="../versions/0.1.98.html"><strong aria-hidden="true">136.</strong> 0.1.98 — Casdoor bind / unlink (post-phase-3 hardening)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.97.html"><strong aria-hidden="true">137.</strong> 0.1.97 — Casdoor migration phase 3 (Flutter SDK leg)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.96.html"><strong aria-hidden="true">138.</strong> 0.1.96 — Casdoor migration phase 2 (JWT auth + exchange endpoint)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.95.html"><strong aria-hidden="true">139.</strong> 0.1.95 — handshake version fix + Casdoor migration plan + MCP smoke test</a></li><li class="chapter-item expanded "><a href="../versions/0.1.94.html"><strong aria-hidden="true">140.</strong> 0.1.94 — GitHub Sync static-asset bundling (push + restore round-trip)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.93.html"><strong aria-hidden="true">141.</strong> 0.1.93 — GitHub Sync push pipeline (JWT signing, repo picker, restore CLI)</a></li><li class="chapter-item expanded "><a href="../versions/0.1.92.html"><strong aria-hidden="true">142.</strong> 0.1.92 — shared CustomMetaListEditor in all three note-metadata dialogs + docs sync</a></li><li class="chapter-item expanded "><a href="../versions/0.1.91.html"><strong aria-hidden="true">143.</strong> 0.1.91 — settings UI parity: MCP skill + GitHub Sync into portal/planner</a></li><li class="chapter-item expanded "><a href="../versions/0.1.90.html"><strong aria-hidden="true">144.</strong> 0.1.90 — per-app OAuth redirect, MCP skill.md, custom note meta, experimental GitHub sync</a></li><li class="chapter-item expanded "><a href="../versions/0.1.89.html"><strong aria-hidden="true">145.</strong> 0.1.89 — offline-mode gates + planner export/import + cross-app tests</a></li><li class="chapter-item expanded "><a href="../versions/0.1.88.html"><strong aria-hidden="true">146.</strong> 0.1.88 — attachment UUID routing + IndexedDB web backend + storage-budget UI</a></li><li class="chapter-item expanded "><a href="../versions/0.1.87.html"><strong aria-hidden="true">147.</strong> 0.1.87 — portal Settings parity + editor bug fixes</a></li><li class="chapter-item expanded "><a href="../versions/0.1.86.html"><strong aria-hidden="true">148.</strong> 0.1.86</a></li><li class="chapter-item expanded "><a href="../versions/0.1.85.html"><strong aria-hidden="true">149.</strong> 0.1.85</a></li><li class="chapter-item expanded "><a href="../versions/0.1.84.html"><strong aria-hidden="true">150.</strong> 0.1.84</a></li><li class="chapter-item expanded "><a href="../versions/0.1.83.html"><strong aria-hidden="true">151.</strong> 0.1.83</a></li><li class="chapter-item expanded "><a href="../versions/0.1.82.html"><strong aria-hidden="true">152.</strong> 0.1.82</a></li><li class="chapter-item expanded "><a href="../versions/0.1.81.html"><strong aria-hidden="true">153.</strong> 0.1.81</a></li><li class="chapter-item expanded "><a href="../versions/0.1.80.html"><strong aria-hidden="true">154.</strong> 0.1.80</a></li><li class="chapter-item expanded "><a href="../versions/0.1.79.html"><strong aria-hidden="true">155.</strong> 0.1.79</a></li><li class="chapter-item expanded "><a href="../versions/0.1.78.html"><strong aria-hidden="true">156.</strong> 0.1.78</a></li><li class="chapter-item expanded "><a href="../versions/0.1.77.html"><strong aria-hidden="true">157.</strong> 0.1.77</a></li><li class="chapter-item expanded "><a href="../versions/0.1.76.html"><strong aria-hidden="true">158.</strong> 0.1.76</a></li><li class="chapter-item expanded "><a href="../versions/0.1.75.html"><strong aria-hidden="true">159.</strong> 0.1.75</a></li><li class="chapter-item expanded "><a href="../versions/0.1.74.html"><strong aria-hidden="true">160.</strong> 0.1.74</a></li><li class="chapter-item expanded "><a href="../versions/0.1.73.html"><strong aria-hidden="true">161.</strong> 0.1.73</a></li><li class="chapter-item expanded "><a href="../versions/0.1.72.html"><strong aria-hidden="true">162.</strong> 0.1.72</a></li><li class="chapter-item expanded "><a href="../versions/0.1.71.html"><strong aria-hidden="true">163.</strong> 0.1.71</a></li><li class="chapter-item expanded "><a href="../versions/0.1.70.html"><strong aria-hidden="true">164.</strong> 0.1.70</a></li><li class="chapter-item expanded "><a href="../versions/0.1.69.html"><strong aria-hidden="true">165.</strong> 0.1.69</a></li><li class="chapter-item expanded "><a href="../versions/0.1.68.html"><strong aria-hidden="true">166.</strong> 0.1.68</a></li><li class="chapter-item expanded "><a href="../versions/0.1.67.html"><strong aria-hidden="true">167.</strong> 0.1.67</a></li><li class="chapter-item expanded "><a href="../versions/0.1.66.html"><strong aria-hidden="true">168.</strong> 0.1.66</a></li><li class="chapter-item expanded "><a href="../versions/0.1.65.html"><strong aria-hidden="true">169.</strong> 0.1.65</a></li><li class="chapter-item expanded "><a href="../versions/0.1.64.html"><strong aria-hidden="true">170.</strong> 0.1.64</a></li><li class="chapter-item expanded "><a href="../versions/0.1.63.html"><strong aria-hidden="true">171.</strong> 0.1.63</a></li><li class="chapter-item expanded "><a href="../versions/0.1.62.html"><strong aria-hidden="true">172.</strong> 0.1.62</a></li><li class="chapter-item expanded "><a href="../versions/0.1.61.html"><strong aria-hidden="true">173.</strong> 0.1.61</a></li><li class="chapter-item expanded "><a href="../versions/0.1.60.html"><strong aria-hidden="true">174.</strong> 0.1.60</a></li><li class="chapter-item expanded "><a href="../versions/0.1.59.html"><strong aria-hidden="true">175.</strong> 0.1.59</a></li><li class="chapter-item expanded "><a href="../versions/0.1.58.html"><strong aria-hidden="true">176.</strong> 0.1.58</a></li><li class="chapter-item expanded "><a href="../versions/0.1.57.html"><strong aria-hidden="true">177.</strong> 0.1.57</a></li><li class="chapter-item expanded "><a href="../versions/0.1.56.html"><strong aria-hidden="true">178.</strong> 0.1.56</a></li><li class="chapter-item expanded "><a href="../versions/0.1.55.html"><strong aria-hidden="true">179.</strong> 0.1.55</a></li><li class="chapter-item expanded "><a href="../versions/0.1.54.html"><strong aria-hidden="true">180.</strong> 0.1.54</a></li><li class="chapter-item expanded "><a href="../versions/0.1.53.html"><strong aria-hidden="true">181.</strong> 0.1.53</a></li><li class="chapter-item expanded "><a href="../versions/0.1.52.html"><strong aria-hidden="true">182.</strong> 0.1.52</a></li><li class="chapter-item expanded "><a href="../versions/0.1.51.html"><strong aria-hidden="true">183.</strong> 0.1.51</a></li><li class="chapter-item expanded "><a href="../versions/0.1.50.html"><strong aria-hidden="true">184.</strong> 0.1.50</a></li><li class="chapter-item expanded "><a href="../versions/0.1.49.html"><strong aria-hidden="true">185.</strong> 0.1.49</a></li><li class="chapter-item expanded "><a href="../versions/0.1.48.html"><strong aria-hidden="true">186.</strong> 0.1.48</a></li><li class="chapter-item expanded "><a href="../versions/0.1.47.html"><strong aria-hidden="true">187.</strong> 0.1.47</a></li><li class="chapter-item expanded "><a href="../versions/0.1.46.html"><strong aria-hidden="true">188.</strong> 0.1.46</a></li><li class="chapter-item expanded "><a href="../versions/0.1.45.html"><strong aria-hidden="true">189.</strong> 0.1.45</a></li><li class="chapter-item expanded "><a href="../versions/0.1.44.html"><strong aria-hidden="true">190.</strong> 0.1.44</a></li><li class="chapter-item expanded "><a href="../versions/0.1.43.html"><strong aria-hidden="true">191.</strong> 0.1.43</a></li><li class="chapter-item expanded "><a href="../versions/0.1.42.html"><strong aria-hidden="true">192.</strong> 0.1.42</a></li><li class="chapter-item expanded "><a href="../versions/0.1.41.html"><strong aria-hidden="true">193.</strong> 0.1.41</a></li><li class="chapter-item expanded "><a href="../versions/0.1.40.html"><strong aria-hidden="true">194.</strong> 0.1.40</a></li><li class="chapter-item expanded "><a href="../versions/0.1.39.html"><strong aria-hidden="true">195.</strong> 0.1.39</a></li><li class="chapter-item expanded "><a href="../versions/0.1.38.html"><strong aria-hidden="true">196.</strong> 0.1.38</a></li><li class="chapter-item expanded "><a href="../versions/0.1.37.html"><strong aria-hidden="true">197.</strong> 0.1.37</a></li><li class="chapter-item expanded "><a href="../versions/0.1.36.html"><strong aria-hidden="true">198.</strong> 0.1.36</a></li><li class="chapter-item expanded "><a href="../versions/0.1.35.html"><strong aria-hidden="true">199.</strong> 0.1.35</a></li><li class="chapter-item expanded "><a href="../versions/0.1.34.html"><strong aria-hidden="true">200.</strong> 0.1.34</a></li><li class="chapter-item expanded "><a href="../versions/0.1.33.html"><strong aria-hidden="true">201.</strong> 0.1.33</a></li><li class="chapter-item expanded "><a href="../versions/0.1.32.html"><strong aria-hidden="true">202.</strong> 0.1.32</a></li><li class="chapter-item expanded "><a href="../versions/0.1.31.html"><strong aria-hidden="true">203.</strong> 0.1.31</a></li><li class="chapter-item expanded "><a href="../versions/0.1.30.html"><strong aria-hidden="true">204.</strong> 0.1.30</a></li><li class="chapter-item expanded "><a href="../versions/0.1.29.html"><strong aria-hidden="true">205.</strong> 0.1.29</a></li><li class="chapter-item expanded "><a href="../versions/0.1.28.html"><strong aria-hidden="true">206.</strong> 0.1.28</a></li><li class="chapter-item expanded "><a href="../versions/0.1.27.html"><strong aria-hidden="true">207.</strong> 0.1.27</a></li><li class="chapter-item expanded "><a href="../versions/0.1.26.html"><strong aria-hidden="true">208.</strong> 0.1.26</a></li><li class="chapter-item expanded "><a href="../versions/0.1.25.html"><strong aria-hidden="true">209.</strong> 0.1.25</a></li><li class="chapter-item expanded "><a href="../versions/0.1.24.html"><strong aria-hidden="true">210.</strong> 0.1.24</a></li><li class="chapter-item expanded "><a href="../versions/0.1.23.html"><strong aria-hidden="true">211.</strong> 0.1.23</a></li><li class="chapter-item expanded "><a href="../versions/0.1.22.html"><strong aria-hidden="true">212.</strong> 0.1.22</a></li><li class="chapter-item expanded "><a href="../versions/0.1.21.html"><strong aria-hidden="true">213.</strong> 0.1.21</a></li><li class="chapter-item expanded "><a href="../versions/0.1.20.html"><strong aria-hidden="true">214.</strong> 0.1.20</a></li><li class="chapter-item expanded "><a href="../versions/0.1.19.html"><strong aria-hidden="true">215.</strong> 0.1.19</a></li><li class="chapter-item expanded "><a href="../versions/0.1.18.html"><strong aria-hidden="true">216.</strong> 0.1.18</a></li><li class="chapter-item expanded "><a href="../versions/0.1.17.html"><strong aria-hidden="true">217.</strong> 0.1.17</a></li><li class="chapter-item expanded "><a href="../versions/0.1.16.html"><strong aria-hidden="true">218.</strong> 0.1.16</a></li><li class="chapter-item expanded "><a href="../versions/0.1.15.html"><strong aria-hidden="true">219.</strong> 0.1.15</a></li><li class="chapter-item expanded "><a href="../versions/0.1.14.html"><strong aria-hidden="true">220.</strong> 0.1.14</a></li><li class="chapter-item expanded "><a href="../versions/0.1.13.html"><strong aria-hidden="true">221.</strong> 0.1.13</a></li><li class="chapter-item expanded "><a href="../versions/0.1.12.html"><strong aria-hidden="true">222.</strong> 0.1.12</a></li><li class="chapter-item expanded "><a href="../versions/0.1.11.html"><strong aria-hidden="true">223.</strong> 0.1.11</a></li><li class="chapter-item expanded "><a href="../versions/0.1.10.html"><strong aria-hidden="true">224.</strong> 0.1.10</a></li><li class="chapter-item expanded "><a href="../versions/0.1.9.html"><strong aria-hidden="true">225.</strong> 0.1.9</a></li><li class="chapter-item expanded "><a href="../versions/0.1.8.html"><strong aria-hidden="true">226.</strong> 0.1.8</a></li><li class="chapter-item expanded "><a href="../versions/0.1.7.html"><strong aria-hidden="true">227.</strong> 0.1.7</a></li><li class="chapter-item expanded "><a href="../versions/0.1.6.html"><strong aria-hidden="true">228.</strong> 0.1.6</a></li><li class="chapter-item expanded "><a href="../versions/0.1.5.html"><strong aria-hidden="true">229.</strong> 0.1.5</a></li><li class="chapter-item expanded "><a href="../versions/0.1.4.html"><strong aria-hidden="true">230.</strong> 0.1.4</a></li><li class="chapter-item expanded "><a href="../versions/0.1.3.html"><strong aria-hidden="true">231.</strong> 0.1.3</a></li><li class="chapter-item expanded "><a href="../versions/0.1.2.html"><strong aria-hidden="true">232.</strong> 0.1.2</a></li><li class="chapter-item expanded "><a href="../versions/0.1.1.html"><strong aria-hidden="true">233.</strong> 0.1.1</a></li><li class="chapter-item expanded "><a href="../versions/0.1.0.html"><strong aria-hidden="true">234.</strong> 0.1.0</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Notechondria Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/Trance-0/Notechondria/edit/codex/docs/./development/local_folder_mode.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="local-folder-storage-mode-design"><a class="header" href="#local-folder-storage-mode-design">Local folder storage mode (design)</a></h1>
+<p>Status: Phase 1 (foundation, section 9.1) is implemented in 0.1.200:
+the storage core, transport, router, Phase 1 handlers, and widgets under
+<code>frontend/notechondria_shared/lib/src/</code>. No app is wired to it yet and no
+app shows the option; the differences from this text are in 12.4. Written against <code>main</code>
+at VERSION 0.1.199. Citations were first pinned at <code>6cd1f3be</code> and are
+re-pinned at HEAD <code>48988a20</code>. Between the two commits only
+<code>frontend/planner_app/lib/core/calendar.dart</code> and
+<code>frontend/planner_app/test/smoke_test.dart</code> changed, and their citations
+are updated. Browser facts were re-checked on 2026-10-17 against the
+sources in section 11.2. Paths are repo-root-relative. Anything not
+confirmed is marked <strong>unverified</strong> and collected in section 11.1. Items
+that need an owner decision are in section 10. Section 12 maps each
+finding of design reviews 1 and 2 to the section that resolves it.</p>
+<p>The design spans nine files, all under the 1000-line cap:</p>
+<ul>
+<li>this document: sections 1, 2.1 to 2.7, 3.1 to 3.3, 4 and 9 (summaries),
+5, and 10, with pointers for 11 and 12;</li>
+<li><a href="local_folder_mode/modes_and_migration.html"><code>local_folder_mode/modes_and_migration.md</code></a>:
+2.8 to 2.10 (routing by storage mode, startup, which apps use the
+folder) and 7 (migration and mode switching);</li>
+<li><a href="local_folder_mode/storage_rules.html"><code>local_folder_mode/storage_rules.md</code></a>:
+3.4 to 3.8 (writes and journal, delete and trash, attachments, IDs,
+rescans);</li>
+<li><a href="local_folder_mode/feature_matrix.html"><code>local_folder_mode/feature_matrix.md</code></a>:
+section 4;</li>
+<li><a href="local_folder_mode/security_and_tabs.html"><code>local_folder_mode/security_and_tabs.md</code></a>:
+section 6 (shared origin, locking, permissions);</li>
+<li><a href="local_folder_mode/testing.html"><code>local_folder_mode/testing.md</code></a>:
+section 8;</li>
+<li><a href="local_folder_mode/implementation_plan.html"><code>local_folder_mode/implementation_plan.md</code></a>:
+section 9;</li>
+<li><a href="local_folder_mode/unverified_and_sources.html"><code>local_folder_mode/unverified_and_sources.md</code></a>:
+section 11 (unverified items and sources);</li>
+<li><a href="local_folder_mode/revision_log.html"><code>local_folder_mode/revision_log.md</code></a>:
+section 12 (revision logs for design reviews 1 and 2).</li>
+</ul>
+<p>Section numbers are global: a reference such as "6.2 R4" or "3.4.1"
+means that section in whichever file holds it.</p>
+<p>Owner request (intent): add an option in the login window that checks for
+a qualified Chrome; if qualified, use a local folder as a pure local file
+backend; support all features; the frontend reads and renders content
+locally and acts only as a dashboard for local services.</p>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li><strong>Qualification</strong> is feature detection (<code>showDirectoryPicker</code>,
+<code>isSecureContext</code>, permission and iteration methods, Web Locks, not
+mobile). Brands from <code>navigator.userAgentData</code> are only a label. Native
+builds hide the option.</li>
+<li><strong>Architecture: option A.</strong> A shared, in-page local backend implements
+the <code>/api/v1</code> routes the apps already call. It plugs in as the
+<code>http.Client</code> that <code>HttpClientInternalsMixin.send</code> operations call, so
+existing app code paths run unchanged against a folder. While an app is
+in folder mode, every request through its client is answered in the
+page. Routing follows the app's storage mode, not the request host or
+the folder's permission state, and the mode is decided synchronously
+before the first request (2.8).</li>
+<li><strong>Folder layout</strong> extends the GitHub data-sync layout
+(<code>backend/creators/services/github_sync.py:11-28</code>): one <code>.md</code> file plus a
+<code>.meta.json</code> sidecar per note, JSON for everything else, attachments as
+real files, and a <code>manifest.json</code> with a layout version. A <code>.nchron</code>
+export carries both the v1 buckets and a verbatim copy of the folder.</li>
+<li><strong>Multi-tab safety:</strong> every write re-reads its files from disk under an
+exclusive Web Lock, multi-file writes go through a journal, and reads
+take the lock in shared mode (6.2).</li>
+<li><strong>Feature matrix</strong> (section 4): 44 features work fully locally (a),
+5 work by calling a third party from the browser (b), 13 need a server
+(c). One listed area (AI/LLM) has no feature today and is not counted.</li>
+<li><strong>Main risk:</strong> the Pages origin <code>https://trance-0.github.io</code> is shared
+with other Trance-0 Pages projects (section 6.1). Same-origin code can
+reach a granted folder. v1 therefore passes no folder handle between
+tabs on any origin; each app tab opens the folder itself (6.2). A
+dedicated origin removes the other projects, but the loopback preview
+and the Docker self-host still serve uploaded <code>/media/</code> files on the
+app origin (6.1).</li>
+</ul>
+<h2 id="1-qualification-check-in-the-login-window"><a class="header" href="#1-qualification-check-in-the-login-window">1. Qualification check in the login window</a></h2>
+<h3 id="11-the-login-window-today"><a class="header" href="#11-the-login-window-today">1.1 The login window today</a></h3>
+<ul>
+<li>There is no modal login dialog. The shared signed-out surface is
+<code>AuthHub</code>, an inline <code>Card</code>
+(<code>frontend/notechondria_shared/lib/src/components/auth_dialogs.dart:49-106</code>).
+Only the email and password form opens as a dialog, through
+<code>showBlurDialog</code> (<code>auth_dialogs.dart:82-87</code>). The doc comment at
+<code>auth_dialogs.dart:30-48</code> lists its three CTAs: Casdoor SSO, the Casdoor
+org-login link, and the collapsed email/password fallback.</li>
+<li>Per-app entry points:
+<ul>
+<li>Editor: <code>_buildSignedOutAccount</code> returns <code>AuthHub(...)</code>
+(<code>frontend/editor_app/lib/modules/settings_build.dart:129-136</code>). The
+callbacks come from <code>_SettingsPage(...)</code> in
+<code>frontend/editor_app/lib/core/build_helpers.dart:598-612</code>.</li>
+<li>Planner: the "Login and sync" card shows <code>AuthHub(</code> inside
+<code>if (!_isAuthenticated)</code>
+(<code>frontend/planner_app/lib/modules/settings.dart:442-450</code>), wired from
+<code>frontend/planner_app/lib/app_shell.dart:815-831</code>.</li>
+<li>Portal: <code>_buildSignedOutAccount</code>
+(<code>frontend/portal_app/lib/modules/settings_build.dart:156-175</code>) shows
+<code>AuthHub</code> (<code>:162-167</code>) and a "Keep offline data after login"
+checkbox, wired from <code>frontend/portal_app/lib/core/build_page.dart:120-133</code>.</li>
+</ul>
+</li>
+<li><code>docs/AGENTS.md</code> lists <code>Shared.AuthDialog</code> (<code>login.submit</code>, ...), but no
+Dart code emits that source. Auth messages use <code>&lt;App&gt;.Auth/*</code> from the
+shared mixins, for example
+<code>frontend/notechondria_shared/lib/src/app_shell/app_shell_auth_actions_mixin.dart:31-44</code>.</li>
+<li>There is no storage-mode enum. Signed out means the token is null or empty
+(<code>frontend/notechondria_shared/lib/src/app_shell/app_shell_session_mixin.dart:66-75</code>).
+Offline mode is the boolean <code>offline_mode</code> in local settings, default
+<code>false</code> (<code>frontend/editor_app/lib/core/local_store.dart:147</code>).</li>
+</ul>
+<h3 id="12-capability-probe"><a class="header" href="#12-capability-probe">1.2 Capability probe</a></h3>
+<p>A new <code>probeLocalFolderSupport()</code> returns a <code>LocalFolderQualification</code>
+(<code>qualified</code>, ordered <code>gaps</code>, <code>browserLabel</code>). It runs at build time with no
+user gesture and no prompt, on web builds only (1.3).</p>
+<div class="table-wrapper"><table><thead><tr><th>Gap id</th><th>Check (all via <code>dart:js_interop</code>)</th><th>Why it matters</th></tr></thead><tbody>
+<tr><td><code>noDirectoryPicker</code></td><td><code>window.showDirectoryPicker</code> is a function</td><td>The only way to obtain a user-visible folder handle</td></tr>
+<tr><td><code>insecureContext</code></td><td><code>window.isSecureContext == true</code></td><td>The File System Access API is secure-context only (MDN, 11.2)</td></tr>
+<tr><td><code>noPermissionApi</code></td><td><code>queryPermission</code> and <code>requestPermission</code> exist on <code>FileSystemHandle.prototype</code></td><td>Needed to re-grant a stored handle (section 6.3)</td></tr>
+<tr><td><code>noDirectoryIteration</code></td><td><code>values</code> (or <code>entries</code>) exists on <code>FileSystemDirectoryHandle.prototype</code></td><td>Needed to scan the folder</td></tr>
+<tr><td><code>noWebLocks</code></td><td><code>navigator.locks</code> exists</td><td>Needed to serialize writes across tabs (section 6.2)</td></tr>
+<tr><td><code>mobile</code></td><td><code>navigator.userAgentData.mobile == true</code>; when <code>userAgentData</code> is absent, the UA regex <code>iphone|ipad|ipod|android|mobile</code></td><td>v1 is desktop-only (open question Q2)</td></tr>
+</tbody></table>
+</div>
+<ul>
+<li><code>navigator.userAgentData.brands</code> is read only for <code>browserLabel</code> (for
+example "Google Chrome 1xx") in logs and the status card. It never gates
+the option, so Edge, Opera, and Brave with the API flag enabled qualify
+on capability alone. Brave ships the API behind a flag (Chrome docs,
+11.2).</li>
+<li>The existing <code>isMobileWebBrowser()</code>
+(<code>frontend/notechondria_shared/lib/src/utils/web_install_env_web.dart:13-18</code>)
+cannot be reused as is: it returns <code>false</code> for an installed mobile PWA
+(<code>:16-17</code>). The probe needs a plain device check.</li>
+<li>The picker needs transient user activation (MDN, 11.2). The order of
+gestures is fixed in 1.3. That Flutter web keeps activation through
+<code>onPressed</code> is <strong>unverified</strong> (U3); <code>file_selector</code> opening an
+<code>&lt;input type=file&gt;</code> from <code>onPressed</code> suggests it does.</li>
+</ul>
+<h3 id="13-the-option-and-its-states"><a class="header" href="#13-the-option-and-its-states">1.3 The option and its states</a></h3>
+<p><code>AuthHub</code> gains one optional slot, <code>Widget? localFolderOption</code>, rendered
+between the Casdoor CTAs and the email/password expander. Each app passes
+the shared <code>LocalFolderSignInOption</code> widget on web builds and <code>null</code> on
+native builds. A slot keeps the shared widget generic, as
+<code>frontend/AGENTS.md</code> (development rule 3) asks.</p>
+<div class="table-wrapper"><table><thead><tr><th>State</th><th>What the user sees</th></tr></thead><tbody>
+<tr><td>Qualified, not connected</td><td>Enabled button "Use a local folder (no account)" and one line: "Notes, courses, and planner data are saved as files in a folder you choose. No account is needed, and none of this data is sent to the Notechondria server."</td></tr>
+<tr><td>Qualified, a folder is already connected on this browser (2.10)</td><td>The same button, labeled "Use the connected folder '<name>'"</td></tr>
+<tr><td>Unqualified</td><td>The same button, disabled, followed by a copyable <code>FeedbackText</code> message for the first gap and the fallback line below</td></tr>
+<tr><td>Folder mode active</td><td><code>AuthHub</code> is not shown (the app is in a signed-in state). Settings show a <code>LocalFolderStatusCard</code> instead (section 2.7)</td></tr>
+<tr><td>Native build (the portal desktop build)</td><td>Nothing: the slot is <code>null</code>, so no button and no message. The qualification messages name browsers and would mislead there. Folder mode for native builds is Q11</td></tr>
+</tbody></table>
+</div>
+<p>Gesture order, so that each browser call that needs transient activation
+is the first call of its own click handler:</p>
+<ol>
+<li>If the shared-origin notice (6.1 mitigation 2) has not been
+acknowledged on this browser
+(<code>notechondria.shared.local_folder_notice_ack</code>), the option's
+<code>onPressed</code> only opens the notice dialog. The dialog holds the
+"Remember this folder on this browser" checkbox (6.1 mitigation 1) and
+a "Choose folder" button. That button's <code>onPressed</code> calls
+<code>showDirectoryPicker</code> before any <code>await</code>.</li>
+<li>Once the notice is acknowledged (and on origins that need none), the
+option's <code>onPressed</code> calls <code>showDirectoryPicker</code> first. Every
+directory picker in the app passes
+<code>{id: 'notechondria-folder', mode: 'readwrite'}</code>, so a later "Choose
+'<name>' again" opens where the folder was chosen (MDN <code>id</code> option).</li>
+<li>When the picked folder is empty, the app shows "Start empty" and
+"Start from an archive". "Start from an archive" opens the <code>.nchron</code>
+file picker as the first call of its own <code>onPressed</code>. The file picker
+is never chained after the directory picker within one gesture.</li>
+<li>The reconnect view (2.9, 6.3) has two buttons, and each one's browser
+call is the first call of its <code>onPressed</code>:
+<ul>
+<li>"Reconnect '<name>'", shown when a handle exists and its grant
+expired, calls <code>requestPermission({mode: 'readwrite'})</code>;</li>
+<li>"Choose '<name>' again", shown when there is no handle (session-only
+mode after every reload and in every new tab), calls
+<code>showDirectoryPicker({id: 'notechondria-folder', mode: 'readwrite'})</code>.
+Only after the picker returns does the app read the picked folder's
+<code>manifest.json</code> and check its <code>folder_id</code> (2.9).</li>
+</ul>
+</li>
+</ol>
+<p>T3: on origins without the notice, the "Remember this folder on this
+browser" checkbox sits in the pick flow and in the status card, unchecked
+by default (2.10). "Use the connected folder '<name>'" takes the
+Reconnect path when a remembered handle exists and the "Choose again"
+path otherwise, with its <code>folder_id</code> checks and the 2.10 rule 3 push.</p>
+<p>Messages for unqualified browsers (AGENTS.md 1.8 shape; module rows in 9.4):</p>
+<ul>
+<li><code>noDirectoryPicker</code>: "Local folder mode unavailable: Shared.LocalFolder/qualify — this browser does not provide window.showDirectoryPicker (File System Access API). Firefox and Safari do not offer it."</li>
+<li><code>insecureContext</code>: "Local folder mode unavailable: Shared.LocalFolder/qualify — the page is not a secure context (window.isSecureContext is false). Open the app over https or from http://127.0.0.1."</li>
+<li><code>noPermissionApi</code> / <code>noDirectoryIteration</code>: "Local folder mode unavailable: Shared.LocalFolder/qualify — this browser exposes the folder picker but not FileSystemHandle.requestPermission (or directory iteration), so a folder could not be reopened or scanned."</li>
+<li><code>noWebLocks</code>: "Local folder mode unavailable: Shared.LocalFolder/qualify — navigator.locks (Web Locks API) is missing, so two tabs could corrupt the folder."</li>
+<li><code>mobile</code>: "Local folder mode unavailable: Shared.LocalFolder/qualify — a mobile browser was detected (navigator.userAgentData.mobile, or the user agent when that is missing). Folder mode is desktop-only in this release."</li>
+</ul>
+<p>Fallback line, shown under every message: "Keep working signed out in
+browser-local mode and back up with the local-data export (.nchron), or use
+the Notechondria desktop build." The desktop build exists for the portal
+only (<code>.github/workflows/portal-release.yml:131-156</code>), and it stores data
+through <code>shared_preferences</code>, not in a folder (folder mode for it is Q11).</p>
+<h3 id="14-platform-facts-used-by-this-design"><a class="header" href="#14-platform-facts-used-by-this-design">1.4 Platform facts used by this design</a></h3>
+<p>Sources are listed in section 11.2. BCD is MDN browser-compat-data 8.1.6
+(timestamp 2026-10-15).</p>
+<div class="table-wrapper"><table><thead><tr><th>Fact</th><th>Status and source</th></tr></thead><tbody>
+<tr><td><code>showDirectoryPicker</code>: Chrome 86, Edge 86, Opera 72, Chrome Android 132, WebView Android 132; not Firefox or Safari</td><td>Verified, BCD. The brief said "Opera 86+" and "Chrome on Android only has OPFS"; both are out of date. Chrome's own Q1 2025 post says the API reached Android in Chrome 132</td></tr>
+<tr><td>Picker needs a secure context and transient user activation; <code>mode: 'readwrite'</code>, <code>id</code>, <code>startIn</code> options; <code>AbortError</code> for sensitive folders</td><td>Verified, MDN <code>showDirectoryPicker</code></td></tr>
+<tr><td>Restricted folders, for example "core operating system folders like Windows, the macOS Library folders"</td><td>Verified, Chrome File System Access article. The home directory root being blocked is <strong>unverified</strong> (U4)</td></tr>
+<tr><td><code>queryPermission</code>/<code>requestPermission</code>: Chrome 86 desktop, Chrome Android 109; not Firefox or Safari</td><td>Verified, BCD</td></tr>
+<tr><td><code>removeEntry(name, {recursive})</code>, <code>entries</code>/<code>values</code>, <code>getFileHandle</code>/<code>getDirectoryHandle({create})</code>: Chrome 86, Firefox 111, Safari 15.2</td><td>Verified, BCD and MDN <code>removeEntry</code></td></tr>
+<tr><td><code>createWritable()</code> writes to a temporary file, flushed on <code>close()</code>; <code>keepExistingData</code> defaults to false; <code>mode: 'exclusive'</code> (Chrome 121) vs default <code>'siloed'</code>, where "the last writer opened has its data written"</td><td>Verified, MDN <code>createWritable</code> and BCD. Chrome's swap-file name <code>&lt;name&gt;.crswap</code> is <strong>unverified</strong> (U17)</td></tr>
+<tr><td>Handles can be stored in IndexedDB; Chrome 122+ offers "Allow on every visit" when a stored handle calls <code>requestPermission()</code> on a later visit; installed apps persist the grant automatically; otherwise access lasts until the last tab of the origin closes</td><td>Verified, Chrome persistent-permissions post</td></tr>
+<tr><td>Chrome also revokes a granted handle's access when the tab has been in the background for a while (the one-time-permission logic); a later <code>requestPermission()</code> on that handle can show the three-way prompt. After more than three denials or dismissals that prompt stops and the regular one shows</td><td>Verified, Chrome persistent-permissions post</td></tr>
+<tr><td><code>FileSystemObserver</code> shipped on desktop Chrome 133 (not Android); BCD: Chrome 133, Edge 133, Opera 118, experimental, not standards-track</td><td>Verified, Chrome 133 release notes, blink-dev Intent to Ship, BCD</td></tr>
+<tr><td><code>FileSystemHandle.move()</code>: Chrome 102, file handles only (directory moves unsupported)</td><td>Verified, BCD note. Overwrite behavior <strong>unverified</strong> (U5)</td></tr>
+<tr><td><code>FileSystemHandle.isSameEntry()</code>: Baseline, widely available since March 2023</td><td>Verified, MDN <code>isSameEntry</code></td></tr>
+<tr><td>Web Locks: Chrome 69, Firefox 96, Safari 15.4; locks are scoped to the origin and queue across tabs; <code>request()</code> takes <code>mode: 'exclusive'</code> (default) or <code>'shared'</code> (readers-writer) and an abort <code>signal</code> usable as a timeout</td><td>Verified, BCD and MDN Web Locks. Release when a tab closes is specified (Web Locks spec 2.6); release when its renderer crashes is <strong>unverified</strong> (U18). The journal (3.4.1) relies on it only to let another tab roll forward</td></tr>
+<tr><td><code>navigator.userAgentData</code> (<code>brands</code>, <code>mobile</code>): Chrome 90; not Firefox or Safari</td><td>Verified, BCD</td></tr>
+<tr><td><code>package:web</code> 1.1.1 (locked in <code>frontend/*/pubspec.lock</code>, transitive) binds <code>getFileHandle</code>, <code>getDirectoryHandle</code>, <code>removeEntry</code>, <code>createWritable</code>, <code>isSameEntry</code>, <code>StorageManager.getDirectory</code>, <code>LockManager.request</code>. It does <strong>not</strong> bind <code>showDirectoryPicker</code>, <code>queryPermission</code>, <code>requestPermission</code>, <code>entries</code>/<code>values</code>, the <code>mode</code> member of <code>FileSystemCreateWritableOptions</code> (it has only <code>keepExistingData</code>), <code>Navigator.userAgentData</code>, or <code>FileSystemObserver</code> (its API page returns 404)</td><td>Verified against the pub.dev API pages for 1.1.1. The missing members need small <code>@JS</code> extension types (9.2 <code>js_bindings_web.dart</code>)</td></tr>
+<tr><td><code>package:web</code> callbacks are not bound to the current zone, unlike <code>dart:html</code>; dart.dev recommends <code>Zone.current.bindUnaryCallback(...)</code> before <code>.toJS</code></td><td>Verified, dart.dev package:web page. Design rule in 2.5</td></tr>
+<tr><td><code>Zone.bindUnaryCallback&lt;R, T&gt;</code> returns <code>ZoneUnaryCallback&lt;R, T&gt;</code> (keeps the return value); <code>Zone.bindUnaryCallbackGuarded&lt;T&gt;</code> returns <code>void Function(T)</code></td><td>Verified, api.dart.dev <code>Zone</code> pages. A <code>void</code> lock callback would release the lock at once (2.5)</td></tr>
+<tr><td>Web Locks: the lock is held until the callback's returned promise settles; a non-promise return "is wrapped in a promise that is immediately resolved", so the lock is released "in an upcoming microtask"</td><td>Verified, Web Locks spec section 2.4 note and section 4.4 ("Resolve waiting with r")</td></tr>
+<tr><td>For web-vs-native conditional imports, Dart now recommends <code>dart.library.js_interop</code> over <code>dart.library.html</code></td><td>Verified, dart.dev package:web migration page</td></tr>
+</tbody></table>
+</div>
+<p>Correction to the brief: <code>storage_estimate_web.dart</code> does not use
+<code>package:web</code>. It imports <code>dart:html</code>
+(<code>frontend/notechondria_shared/lib/src/utils/storage_estimate_web.dart:1-2</code>),
+selected by <code>if (dart.library.html)</code>
+(<code>frontend/notechondria_shared/lib/src/components/storage_usage_card.dart:5-6</code>).
+Every web file in the repo uses <code>dart:html</code> today. The new module follows
+the shape of that file (one stub plus one web file selected by a conditional
+import, best-effort calls that never throw past the boundary) but uses
+<code>package:web</code> and <code>dart:js_interop</code>, because <code>dart:html</code> has no File System
+Access bindings and is deprecated. That requires adding <code>web</code> as a direct
+dependency of <code>frontend/notechondria_shared/pubspec.yaml</code>.</p>
+<h2 id="2-architecture"><a class="header" href="#2-architecture">2. Architecture</a></h2>
+<h3 id="21-seams-that-exist-today"><a class="header" href="#21-seams-that-exist-today">2.1 Seams that exist today</a></h3>
+<ul>
+<li><code>HttpClientInternalsMixin.send(method, uri, operation, {requestBytes})</code>
+(<code>frontend/notechondria_shared/lib/src/http/http_client_internals_mixin.dart:105-175</code>)
+logs <code>&lt;App&gt;.HTTP/request|response|slow|request_failed</code>, applies the
+startup budget, and returns the raw <code>http.Response</code>. <code>decode</code>
+(<code>:186</code>) turns it into JSON or throws a shaped error. A <code>detail</code> that
+already contains "—" is passed through verbatim (<code>:320-321</code>).</li>
+<li>The <code>operation</code> closures call the injected <code>http.Client</code>: editor
+<code>frontend/editor_app/lib/core/http_client_internals.dart:28-78</code>, planner
+<code>frontend/planner_app/lib/core/http_client_internals.dart:22-72</code>, portal
+<code>frontend/portal_app/lib/core/http_client_internals.dart:22-90</code> (plus <code>_put</code>).</li>
+<li>Each app builds <code>HttpNotechondriaClient({http.Client? httpClient})</code> with
+<code>httpClient ?? http.Client()</code> (<code>frontend/editor_app/lib/core/http_client.dart:7-9</code>,
+<code>frontend/planner_app/lib/core/client.dart:209-211</code>,
+<code>frontend/portal_app/lib/core/client.dart:7-9</code>). The root
+<code>_NotechondriaAppState</code> (not <code>AppShell</code>) caches one instance,
+<code>widget.client ?? HttpNotechondriaClient()</code>
+(<code>frontend/editor_app/lib/app_shell.dart:52-53</code>,
+<code>frontend/planner_app/lib/app_shell.dart:38-39</code>,
+<code>frontend/portal_app/lib/app_shell.dart:38-39</code>).</li>
+<li>The smoke tests already swap the transport:
+<code>HttpNotechondriaClient(httpClient: MockClient(backend.handle))</code>
+(<code>frontend/editor_app/test/smoke_test.dart:50-57</code>).</li>
+<li>Bypasses of the injected client:
+<ul>
+<li>Multipart uploads call <code>request.send()</code>, which creates its own
+<code>Client()</code> (package:http <code>BaseRequest.send</code> docs). There are 8 sites:
+editor <code>http_client.dart:740,775,825,863</code>, planner <code>client.dart:883,927</code>,
+portal <code>client.dart:787,831</code>.</li>
+<li><code>pingBackend</code> calls top-level <code>http.get</code>
+(<code>frontend/notechondria_shared/lib/src/utils/ping_backend.dart:24-38</code>).</li>
+<li>Browser navigations: the Casdoor redirect, the GitHub App install popup
+(<code>frontend/notechondria_shared/lib/src/components/mcp_skill_section.dart:417</code>),
+and <code>Image.network</code> for media URLs (section 3.6).</li>
+</ul>
+</li>
+</ul>
+<p>So the real seam is the <code>http.Client</code> behind <code>send()</code>. Implementing an
+<code>http.BaseClient</code> there keeps <code>send()</code> logging, the startup budget, and
+<code>decode()</code> unchanged.</p>
+<h3 id="22-options"><a class="header" href="#22-options">2.2 Options</a></h3>
+<ul>
+<li><strong>A. Route-level local backend (chosen).</strong> A shared
+<code>LocalFolderTransport extends http.BaseClient</code> decodes each request
+(JSON or <code>http.MultipartRequest</code>), dispatches <code>(method, path)</code> to
+handlers that implement the <code>/api/v1</code> contract over the folder, and
+returns JSON responses with the backend's shapes and status codes.</li>
+<li><strong>B. Storage adapter under each app's local store.</strong> Keep the apps in
+signed-out or offline mode and replace the SharedPreferences backing of
+each <code>_LocalAppStore</code> (for example <code>frontend/editor_app/lib/core/local_store.dart:33-139</code>)
+and <code>AppShellLocalPersistMixin</code>
+(<code>frontend/notechondria_shared/lib/src/app_shell/app_shell_local_persist_mixin.dart:46-92</code>)
+with folder files.</li>
+<li>A'. Dart-interface variant of A: implement each app's
+<code>NotechondriaClient</code> directly (<code>frontend/editor_app/lib/core/client.dart:6</code>,
+<code>frontend/planner_app/lib/core/client.dart:4</code>,
+<code>frontend/portal_app/lib/core/client_base.dart:4</code>). Rejected: the three
+interfaces differ, so this needs three implementations, and it skips the
+HTTP logging and decode path.</li>
+<li>C. Host the local backend in a SharedWorker so one process serves all
+tabs. Rejected for v1: it needs a separate dart2js entrypoint and a
+shared script path in the Pages tree (a CI change). Web Locks give the
+needed write serialization without it.</li>
+<li>D. A localhost daemon speaking <code>/api/v1</code>. Not designed here (no network
+listener by default); see section 2.6 and Q1.</li>
+</ul>
+<h3 id="23-comparison"><a class="header" href="#23-comparison">2.3 Comparison</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Criterion</th><th>A: local <code>/api/v1</code></th><th>B: store adapter</th></tr></thead><tbody>
+<tr><td>Coverage of "all features"</td><td>Every storage-backed feature already has a cloud code path; implementing the route covers it in all three apps at once</td><td>Only what offline mode covers today: drafts, local courses, local events, local calendar feeds, local trash. History, sessions, attachments list/delete, covers, heatmap, activity week, and server search have no offline path. Planner offline events are not even pushed today (<code>docs/TODO.md:406-410</code>)</td></tr>
+<tr><td>Size of change</td><td>One new shared module (about 8,500 lines in about 46 files, section 9.2) plus small per-app edits</td><td>Many small edits in every <code>if (!signedIn || offline)</code> branch of three apps, plus new offline implementations for each missing feature, triplicated</td></tr>
+<tr><td>Testability</td><td>Pure Dart. The router can be driven through <code>MockClient</code>-style injection and an in-memory filesystem in VM tests, the same way the smoke tests run today</td><td>Needs widget-level tests per app per feature</td></tr>
+<tr><td>Contract drift with the backend</td><td>Real risk: handlers must mirror serializer shapes, validation, and rules such as upsert by <code>client_draft_id</code> (<code>backend/notes/api.py:1399-1420</code>). Mitigated by fixtures (section 8.4)</td><td>Low drift with the backend, but drift between three app copies</td></tr>
+<tr><td>Multi-tab safety</td><td>One choke point; every request takes the folder lock in the right mode</td><td>Writes are spread across per-app persisters</td></tr>
+<tr><td>Human-readable folder</td><td>Layout is free; it follows the server data model</td><td>Tends to mirror the bucket JSON (<code>drafts.json</code> as one file) unless a mapping layer is added, which recreates A</td></tr>
+</tbody></table>
+</div>
+<h3 id="24-decision"><a class="header" href="#24-decision">2.4 Decision</a></h3>
+<p>Choose <strong>A</strong>. It is the only option that reaches every storage-backed
+feature without rewriting three apps' offline branches, it has a single
+place to enforce locking and atomic writes, and it can be tested in the VM
+with the injection the smoke tests already use. The cost is contract
+drift, which section 8.4 contains with recorded response fixtures. Design
+review 1 did not find A unsound; its routing finding (H1) is fixed in 2.8.</p>
+<h3 id="25-components-and-request-flow"><a class="header" href="#25-components-and-request-flow">2.5 Components and request flow</a></h3>
+<p>New shared module <code>frontend/notechondria_shared/lib/src/local_folder/</code>:</p>
+<ul>
+<li><code>FolderFs</code>: a small interface (<code>readText</code>, <code>readBytes</code>, <code>writeText</code>,
+<code>writeBytes</code>, <code>list</code>, <code>stat</code>, <code>remove</code>). Implementations: the web
+File System Access backend, an in-memory fake for tests, and a stub for
+non-web builds.</li>
+<li><code>LocalFolderController</code> (a <code>ChangeNotifier</code>): the app's storage mode
+(<code>browserOrCloud</code> or <code>folder</code>, decided before the first request, 2.8)
+and, separately, the folder state (<code>opening</code>, <code>needsPick</code>,
+<code>needsPermission</code>, <code>scanning</code>, <code>active</code>, <code>error</code>, <code>disconnected</code>). It
+owns the handle, the permission checks, the in-memory index (a read
+cache only, 6.2 R2), the lock, the change channel, and the app's
+<code>StorageModeClient</code> (<code>httpClient</code>, created on first use over
+<code>http.Client()</code>).
+<ul>
+<li>
+<p>Owner. There is one controller per app instance. <code>_NotechondriaAppState</code>
+creates it as a <code>late final</code> field next to <code>_client</code> (editor
+<code>app_shell.dart:52-53</code>, planner <code>:38-39</code>, portal <code>:38-39</code>) and passes
+it to <code>AppShell</code> and, in the portal, to <code>_NoteRoutePage</code>
+(<code>frontend/portal_app/lib/components/note_route_page.dart:11-23</code>),
+which uses the client outside any <code>AppShell</code>. <code>AppShell</code> does not
+create it: the client is built before any shell exists, and the
+portal builds one shell per route (<code>portal app_shell.dart:92-105</code>,
+<code>:161</code>). Wiring is in 2.7.</p>
+</li>
+<li>
+<p>Zone binding. The controller is created during the root widget's
+first build, inside <code>runGuardedApp</code>'s zone and before <code>_bootstrapApp</code>
+enters a startup budget, and captures <code>Zone.current</code> then.
+<code>package:web</code> does not bind callbacks to a zone (1.4), so every Dart
+function passed to JavaScript is bound before <code>.toJS</code>. The wrapper
+depends on what JavaScript does with the return value (table in 9.2):</p>
+<ul>
+<li>Void listeners (<code>BroadcastChannel</code> messages, <code>FileSystemObserver</code>,
+<code>focus</code>, <code>visibilitychange</code>) use the captured zone's
+<code>bindUnaryCallbackGuarded</code> (<code>bindBinaryCallbackGuarded</code> for the
+observer's two arguments). An exception then reaches
+<code>runGuardedApp</code>'s handler, and a refresh fired later never runs
+inside a startup budget.</li>
+<li>The <code>locks.request</code> callback must return the operation's promise.
+The browser holds the lock until that promise settles, and when the
+callback returns a non-promise it releases the lock "in an upcoming
+microtask" (Web Locks spec, section 2.4 note). A guarded wrapper
+returns <code>void Function(T)</code> (api.dart.dev), which JavaScript sees as
+<code>undefined</code>, so it would release every lock before the operation's
+first <code>await</code>, and the bug would compile silently. The callback is
+therefore bound with the non-guarded
+<code>Zone.current.bindUnaryCallback&lt;JSPromise&lt;JSAny?&gt;, Lock?&gt;</code>, in the
+zone of the request that asked for the lock, because it continues
+that request. Its body runs the operation inside a try/catch,
+completes the caller's <code>Completer</code> with the result or the error,
+and returns that block's <code>Future&lt;void&gt;</code> as <code>.toJS</code>. The promise
+therefore always resolves, and the lock is released exactly when
+the operation ends.</li>
+<li>Lock-wait timeouts use <code>AbortSignal.timeout(ms)</code> (bound in
+<code>package:web</code> 1.1.1), which takes no Dart callback.</li>
+</ul>
+<p>Chromium tests for the lock wrapper are in 8.3; the VM fakes cannot
+show this bug.</p>
+</li>
+</ul>
+</li>
+<li><code>LocalFolderTransport extends http.BaseClient</code>: request decode, the
+folder lock (shared for GET, exclusive otherwise, 6.2 R1), dispatch,
+response encode. Responses carry <code>content-type: application/json</code> and
+<code>x-notechondria-backend: local-folder</code>. While the folder state is
+<code>opening</code> it holds requests; outside <code>active</code> it answers 503 (2.8
+rule 4). Deadlines run from request start (2.9).</li>
+<li><code>LocalBackendRouter</code> and handlers per area (notes, trash, courses,
+planner, calendar, attachments, settings and auth, GitHub).</li>
+<li><code>StorageModeClient extends http.BaseClient</code>: routes by storage mode
+(2.8). The (b) handlers make their third-party calls (GitHub, calendar
+URLs) through a separate plain <code>http.Client</code> owned by the transport.</li>
+</ul>
+<p>Flow: UI action, app method (for example <code>createNote</code>), <code>_post</code>,
+<code>send()</code> (logging), <code>_httpClient.post</code>, <code>StorageModeClient</code>,
+<code>LocalFolderTransport</code>, router, handler, <code>FolderFs</code>, JSON response,
+<code>decode()</code>, back to the unchanged app code.</p>
+<p>Unsupported routes (class (c), section 4) answer HTTP 501 with
+<code>{"detail": "&lt;section 1.8 message&gt;"}</code>. Folder errors use 501
+(unsupported) or 503 (folder unavailable) and never 401 or 403. The
+transport ignores the <code>Authorization</code> value, because the folder has one
+user, so no route answers 401. Every detail contains "—", so
+<code>shapedErrorMessage</code> passes it through verbatim
+(<code>http_client_internals_mixin.dart:320-321</code>). No detail may contain any of
+the four substrings the session-rejection detectors count:</p>
+<ul>
+<li>the three <code>docs/AGENTS.md</code> sentinels, <code>invalid token</code>,
+<code>authentication credentials were not provided</code>, and <code>token_not_valid</code>;</li>
+<li><code>session rejected:</code>, which <code>shapedErrorMessage</code> prefixes onto every 401
+body without an em-dash (<code>:323-324</code>).</li>
+</ul>
+<p>The detectors are editor <code>frontend/editor_app/lib/core/initial_data.dart:279-290</code>,
+planner <code>frontend/planner_app/lib/core/initial_data.dart:261-267</code>, and
+portal <code>frontend/portal_app/lib/core/initial_data.dart:269-275</code>. Two hits
+in one load clear the session, so a stray 401 in folder mode would sign
+the user out. A unit test checks every folder detail string against the
+four substrings. Details also interpolate folder names and browser error
+text, which could contain one (a folder named "Invalid token"), so every
+assembled detail goes through <code>scrubSessionSentinels</code>, which puts a
+zero-width word joiner (U+2060) after the first letter of each match; the
+text reads the same. It folds each character with <code>toLowerCase</code>, as the
+detectors do. The router's 501 and 404 details interpolate the request
+path, so they go through <code>scrubRouteDetail</code>, which also breaks the
+editor's deep-link markers (<code>permission</code>, <code>forbidden</code>, <code>not authenticated</code>, <code>403</code>, <code>403:</code>; design review 3 T2).</p>
+<h3 id="26-how-dashboard-for-local-services-is-met"><a class="header" href="#26-how-dashboard-for-local-services-is-met">2.6 How "dashboard for local services" is met</a></h3>
+<p>The local backend is the service. It owns IDs, validation, trash, history,
+recurrence expansion, search ranking, and activity aggregation, which are
+the same responsibilities the Django backend has. The UI keeps calling the
+same <code>/api/v1</code> contract and only reads and renders responses.</p>
+<p>In folder mode no note, course, planner, profile, or settings data goes to
+the Notechondria server: every request through the app's HTTP client is
+answered in the page (2.8). The requests that still leave the page carry
+no folder data: the manual "Check for updates" handshake (2.8 rule 3);
+the browser's own loads of absolute <code>https</code> image URLs that a note body
+or an adopted profile already contains (F32); and the portal's startup
+image when the user set it to a remote URL, a per-device preference
+(<code>frontend/portal_app/lib/components/custom_splash_overlay.dart:67-79</code>,
+F63). Class (b) calls go straight to the named third party (GitHub, a
+calendar host).</p>
+<p>The service lives inside each app's page rather than in a separate
+process. Because it speaks the backend contract, the same router could
+later run in a localhost daemon or in the desktop build, with the UI
+pointed at it through the existing API base URL setting. Whether the owner
+meant such a separate process is open question Q1. This design does not
+open any network listener.</p>
+<h3 id="27-changes-outside-the-new-module"><a class="header" href="#27-changes-outside-the-new-module">2.7 Changes outside the new module</a></h3>
+<ul>
+<li>
+<p>Default client and controller, in <code>_NotechondriaAppState</code> (editor
+<code>app_shell.dart:52-53</code>, planner <code>:38-39</code>, portal <code>:38-39</code>):</p>
+<pre><code class="language-dart">late final LocalFolderController _localFolder =
+    widget.localFolder ?? LocalFolderController.forApp('portal'); // or 'editor', 'planner'
+late final NotechondriaClient _client = widget.client ??
+    HttpNotechondriaClient(httpClient: _localFolder.httpClient);
+</code></pre>
+<ul>
+<li><code>LocalFolderController.forApp</code> takes the storage mode from
+<code>LocalFolderBoot.snapshot</code> (2.8). Without a snapshot (today's widget
+tests) or on a native build, the mode is <code>browserOrCloud</code>.</li>
+<li><code>NotechondriaApp</code> gains <code>LocalFolderController? localFolder</code>, the
+app-level test seam. Folder smoke tests pass a controller built over
+<code>MemoryFolderPlatform</code> (8.2) and no <code>client</code>, so the production line
+above runs in tests and its inner <code>http.Client()</code> resolves to the
+test's recorder (8.5).</li>
+<li><code>_localFolder</code> goes to <code>AppShell(localFolder: ...)</code> (editor <code>:94</code>,
+planner <code>:82</code>, portal <code>_buildShell</code> at <code>:92-105</code>) and to the portal's
+<code>_NoteRoutePage(localFolder: ...)</code> (<code>:121</code>).</li>
+<li><code>main.dart</code> passes <code>prepare: LocalFolderBoot.preload</code> to
+<code>runGuardedApp</code> (2.8).</li>
+</ul>
+<p>Each app gets these lines in the phase that ships its option (2.10).</p>
+</li>
+<li>
+<p>Portal note route. <code>_NoteRoutePage</code> listens to the controller. In
+folder mode, while the folder state is <code>needsPick</code>, <code>needsPermission</code>,
+or <code>error</code>, it shows <code>LocalFolderReconnectView</code> instead of its error
+text. When the state becomes <code>active</code> and no note is shown, it calls
+<code>_load()</code> again (<code>components/note_route_page.dart:33-53</code>). A cold
+<code>#/note/&lt;uuid&gt;</code> start therefore renders the folder note once the folder
+opens, even when the user has to choose it again first.</p>
+</li>
+<li>
+<p>Multipart: replace <code>request.send()</code> with <code>_httpClient.send(request)</code> at
+the 8 sites in 2.1 (one line each), so uploads reach the transport and
+test clients.</p>
+</li>
+<li>
+<p>No base-URL override. The first draft set the base URL to
+<code>https://local-folder.invalid/api/v1</code> in folder mode as a fail-closed
+backstop. That is dropped, because it could not hold:
+<code>_loadInitialData</code>, <code>_applyLocalAppSettings</code>, and <code>_loadLocalState</code>
+reset the base URL from <code>_localSettings['api_base_url']</code> on every load
+(editor <code>core/initial_data.dart:19-21</code>, <code>core/settings_helpers.dart:50-52</code>,
+<code>core/load_local_state.dart:56-58</code>; planner <code>:10</code>, <code>:39</code>, <code>:53</code>; portal
+<code>:10</code>, <code>:39</code>, <code>:50</code>); <code>applyAuthPayload</code> runs both of the first two
+(<code>app_shell_session_mixin.dart:301-316</code>); and RFC 6761 only says
+resolvers SHOULD fail <code>.invalid</code> names, while an explicit HTTP proxy
+still receives the request. Routing by storage mode (2.8) ignores the
+host, so every <code>updateBaseUrl</code> caller can keep pointing the client at
+the saved cloud URL without effect. That saved URL is what the manual
+update check uses.</p>
+</li>
+<li>
+<p>Startup budget. <code>HttpClientInternalsMixin.send</code> (<code>:120-124</code>) applies the
+startup budget only to requests that the <code>StorageModeClient</code> sends to
+the network. It asks through a small <code>LocalRoutingClient</code> interface
+(<code>routesLocally(method, uri)</code>). Requests answered in the page are not
+network calls, so the <code>frontend/AGENTS.md</code> rule that startup network
+calls run inside the budget still holds. The transport bounds waiting
+for local requests itself (2.9), but not a disk that stalls inside a
+hold, so this exemption is required, not a convenience.</p>
+</li>
+<li>
+<p><code>pingBackend</code> (<code>ping_backend.dart:24-38</code>) takes an optional
+<code>http.Client</code>. Its three callers pass only <code>widget.apiBaseUrl</code>, so
+today <code>ping</code> always calls top-level <code>http.get</code>: editor
+<code>modules/settings_build.dart:326</code>, planner <code>modules/settings.dart:645</code>,
+portal <code>modules/settings.dart:475</code>. Each <code>_SettingsPage</code> gains
+<code>Future&lt;PingResult&gt; Function()? onPing</code>, and the call becomes
+<code>onPing: widget.onPing ?? () =&gt; pingBackend(widget.apiBaseUrl)</code>. The
+shell passes <code>onPing: () =&gt; pingBackend(&lt;api base&gt;, client: widget.localFolder.httpClient)</code>
+where it builds <code>_SettingsPage(...)</code>. <code>ping</code> then goes through
+<code>StorageModeClient</code>: the local backend answers it in folder mode, and
+the network does otherwise, as today.</p>
+</li>
+<li>
+<p>Startup: a <code>local_folder</code> step, described in 2.9.</p>
+</li>
+<li>
+<p>In folder mode <code>offline_mode</code> is ignored and its switches are disabled
+(<code>frontend/editor_app/lib/modules/settings_pages.dart:254-268</code>, the
+shared <code>AppPreferencesCard</code> <code>offlineMode</code> parameter at
+<code>frontend/notechondria_shared/lib/src/settings/app_preferences_card.dart:50-51</code>)
+by passing <code>onOfflineModeChanged: null</code> (9.3). The learner pages get
+<code>offlineMode: false</code> (editor <code>core/build_helpers.dart:595</code>, planner
+<code>app_shell.dart:770</code>, portal <code>core/build_page.dart:63</code>). Offline mode
+would only stop local reads.</p>
+</li>
+<li>
+<p><code>_persistLocalCache</code> is skipped in folder mode. Caching folder payloads
+in localStorage duplicates data into a 5 MiB per-origin quota (MDN storage
+quotas) that all apps on the origin share.</p>
+</li>
+<li>
+<p>Settings, signed-in block: a shared <code>LocalFolderStatusCard</code> (folder name,
+permission state, last scan, folder file counts and bytes from the index
+(F48), Rescan, Reconnect or Choose again, Export, Check
+for updates, Disconnect, and a collapsed "Cloud-only features" list with
+the class (c) messages) replaces the profile/Casdoor/API-key rows. The
+class (c) controls are disabled by passing null callbacks where
+<code>_SettingsPage(...)</code> is built: editor <code>core/build_helpers.dart:599-627</code>
+and <code>:746</code>, planner <code>app_shell.dart:814-858</code>, portal
+<code>core/build_page.dart:119-176</code>. The settings pages already hide or
+disable a control whose callback is null (editor
+<code>modules/settings_pages.dart:245</code>, portal <code>modules/settings_pages.dart:185</code>
+and <code>:649</code>). So the portal's <code>settings_pages.dart</code> (1029 lines, already
+over the cap) does not change, and the planner's <code>settings.dart</code> (936
+lines) grows by about 5 lines, the one-line card insert plus the
+<code>onPing</code> field (9.3); the card itself lives in the shared package.</p>
+</li>
+<li>
+<p><code>app_shell_session_mixin.dart</code>:</p>
+<ul>
+<li><code>_reconcileLocalDataOwner</code> must not stamp <code>local_data_owner</code> for the
+folder payload (it carries <code>is_local_folder: true</code>), otherwise a later
+cloud sign-in would treat the browser-local data as foreign
+(<code>app_shell_session_mixin.dart:404</code>).</li>
+<li><code>persistSession</code> is skipped for it, so the editor and portal never
+restore a folder session from localStorage; startup derives it from
+the mode key (2.9).</li>
+<li>The "Signed in as" message (<code>:348</code>) becomes, after a connect,
+"Folder session started: Shared.LocalFolder/pick — using '<name>'; no
+account is used and no data is sent to the Notechondria server." At
+startup it is "Folder session started: Shared.LocalFolder/restore_handle
+— reopened '<name>' from this browser."</li>
+<li>A new <code>disconnectFolder()</code> serves Disconnect (2.10). It clears the
+in-memory folder token before the storage mode switches (2.10 rule 4),
+so no request carrying <code>Token local-folder</code> can reach the network.
+<code>logout()</code> (<code>:357-388</code>) delegates to it when the profile has
+<code>is_local_folder: true</code>, so a folder session never reaches
+<code>authClient.logout</code> or <code>clearPersistedSession()</code> (<code>:361</code>, <code>:378</code>).</li>
+</ul>
+</li>
+</ul>
+<h3 id="28-to-210-storage-modes-startup-and-which-apps-use-the-folder"><a class="header" href="#28-to-210-storage-modes-startup-and-which-apps-use-the-folder">2.8 to 2.10 Storage modes, startup, and which apps use the folder</a></h3>
+<p>These sections are in
+<a href="local_folder_mode/modes_and_migration.html"><code>local_folder_mode/modes_and_migration.md</code></a>:</p>
+<ul>
+<li>2.8 routing by storage mode: the mode is decided synchronously before
+the first request, from preloaded <code>SharedPreferences</code>; in folder mode
+every request through the app client is answered in the page, whatever
+its host; the transport holds requests while the folder is <code>opening</code>
+and answers 503 with a 1.8 detail in the other non-<code>active</code> states; the
+one passthrough is an unauthenticated <code>GET /handshake/</code> for "Check for
+updates";</li>
+<li>2.9 the <code>local_folder</code> startup step: index fast path, splash re-arm,
+the pending paths that complete the pass ("Reconnect" for an expired
+grant, "Choose again" with <code>folder_id</code> checks when there is no handle),
+Reconnect outside the startup budget, deadlines measured from request
+start, and folder wording;</li>
+<li>2.10 which apps use the folder: per-phase opt-in, cloud-session
+precedence, <code>disconnectFolder()</code> and its order, and what other tabs
+show.</li>
+</ul>
+<h2 id="3-folder-layout"><a class="header" href="#3-folder-layout">3. Folder layout</a></h2>
+<h3 id="31-tree"><a class="header" href="#31-tree">3.1 Tree</a></h3>
+<p>The layout is a superset of the GitHub data-sync layout
+(<code>backend/creators/services/github_sync.py:11-28</code>,
+<code>docs/integrations/github-sync.md:39-62</code>), which already follows the
+portable-archive rule in <code>docs/client/editor_app.md:14-18,50-53</code>
+(Markdown for prose, JSON/frontmatter for metadata, media as normal files;
+"local folder flows" are listed there as an adapter of the same shape).</p>
+<pre><code>&lt;chosen folder&gt;/
+├── manifest.json               required; see 3.2
+├── README.md                   written once at init; never parsed
+├── profile/
+│   ├── creator.json            same keys as github_sync._profile_files (:116-158)
+│   ├── settings.json           {app_settings, app_settings_updated_at}
+│   └── skill.md                MCP skill text
+├── courses/
+│   └── &lt;slug&gt;.json             one per course (github_sync._course_files :160-181, plus color_hue)
+├── notes/
+│   ├── &lt;stem&gt;.md               YAML frontmatter + Markdown body
+│   └── &lt;stem&gt;.meta.json        sidecar: ids, metadata_json, custom_meta, client_draft_id, ...
+├── history/
+│   └── &lt;note-uuid-hex&gt;/
+│       ├── index.json          versions: id, reason, label, created_at
+│       └── &lt;version-id&gt;.md     snapshot body
+├── planner/
+│   ├── events.json             planner events (shape of services.planner_event_payload :182)
+│   ├── feeds.json              calendar feeds without raw_ical
+│   ├── feeds/&lt;feed-id&gt;.ics     raw iCal of imported or last-fetched feeds
+│   ├── sessions.json           note study sessions
+│   └── heatmap.json            per-day activity counts
+├── assets/
+│   ├── avatar.&lt;ext&gt;
+│   └── notes/&lt;note-uuid-hex&gt;/
+│       ├── cover.&lt;ext&gt;
+│       ├── attachments.json    id, uuid, filename, content_type, size_bytes, created_at
+│       └── attachments/&lt;sanitized original filename&gt;
+├── recycle_bin.json            pointer list, as in the GitHub layout
+├── trash/
+│   └── notes/&lt;stem&gt;.md + &lt;stem&gt;.meta.json   (sidecar carries deleted_at)
+└── .notechondria/
+    ├── index.json              derived cache; safe to delete
+    ├── import.json             progress of an unfinished archive import (6.2 R4)
+    └── journal/&lt;op-id&gt;.json    write-ahead records for multi-file operations (3.4.1)
+</code></pre>
+<ul>
+<li><code>&lt;stem&gt;</code> is <code>&lt;note-uuid-hex&gt;</code> for notes the app creates, the same name
+<code>github_sync._note_files</code> uses (<code>:184-242</code>). Notes added by hand with any
+file name are adopted: the app writes a sidecar next to the file and
+never renames it. Two files that claim one UUID are handled in 3.7.</li>
+<li>Attachments keep their original (sanitized) file names so a user can
+find them in a file manager. The GitHub layout uses
+<code>attachments/&lt;attachment-uuid&gt;.&lt;ext&gt;</code> (<code>github_sync.py:282-286</code>); the
+GitHub push in folder mode maps names, and the backend restore script
+does not restore assets anyway (<code>backend/scripts/github_sync_restore.py:21-24</code>).</li>
+<li>Chrome's write swap files (<code>&lt;name&gt;.crswap</code>, 3.4) can appear next to any
+file while it is written. Nothing in the app reads, counts, exports, or
+deletes them.</li>
+<li>Debug logs and per-device preferences (theme, locale, API base URL, the
+portal startup image) stay in browser storage. They describe the
+device, not the data (decision D2, section 10). The folder settings
+handler drops these keys from every <code>PATCH /settings/</code> and never
+returns them, so the reused settings push cannot write the cloud API
+URL into <code>profile/settings.json</code> (F08).</li>
+</ul>
+<h3 id="32-file-formats"><a class="header" href="#32-file-formats">3.2 File formats</a></h3>
+<ul>
+<li><code>manifest.json</code>:
+<code>{"format": "notechondria-folder", "layout_version": 1, "folder_id": "&lt;uuid&gt;", "created_at": "&lt;RFC 3339&gt;", "created_by_app_version": "0.1.NNN", "id_counters": {"course": 0, "note": 0, "version": 0, "session": 0, "event": 0, "feed": 0, "attachment": 0}, "github_sync_schema_version": 1}</code>,
+plus <code>restored_from_folder_id</code> after a <code>.nchron</code> restore (3.3). Each
+counter holds the last ID issued; the rules are in 3.7.
+The app refuses a folder whose <code>layout_version</code> is newer than it
+supports: "Folder not opened: Shared.LocalFolder/scan — manifest.json
+layout_version 2 is newer than this build supports (1). Update the app."</li>
+<li>Note <code>.md</code>: frontmatter keys follow <code>github_sync._note_files</code>
+(<code>title</code>, <code>uuid</code>, <code>course_slug</code>, <code>is_public</code>, <code>editor_mode</code>,
+<code>last_edit</code>, <code>date_created</code>) using the same quoted-scalar subset it
+writes. On read, <code>title</code>, <code>course_slug</code>, <code>is_public</code>, and the body are
+authoritative, so a user can edit them in any editor. Other keys are
+regenerated on write. Custom meta is read from the sidecar only, because
+<code>github_sync</code> spreads custom keys into the frontmatter after the system
+keys (<code>:200-209</code>) and a custom key could shadow a system key.</li>
+<li>Note <code>.meta.json</code>: <code>schema_version</code>, <code>id</code>, <code>uuid</code>, <code>sharing_id</code>,
+<code>metadata_json</code>, <code>custom_meta</code>, <code>client_draft_id</code>, <code>note_type</code>,
+<code>source_note_uuid</code>, <code>cover_image_url</code> (the sidecar fields of
+<code>github_sync.py:224-241</code>), plus <code>description</code>, <code>word_count</code>, and the
+<code>md_size</code> and <code>md_last_modified</code> seen at the last write (used in 3.8).</li>
+<li><code>planner/events.json</code> and <code>planner/feeds.json</code> records may carry
+<code>client_local_id</code>, the browser-local ID they were pushed from (7.1).</li>
+<li>Every JSON file carries <code>schema_version: 1</code>, as <code>github_sync</code> does.</li>
+<li>Markdown links to attachments are stored on disk as relative paths
+(<code>../assets/notes/&lt;hex&gt;/attachments/&lt;name&gt;</code>), so the file renders in
+ordinary Markdown viewers. The note codec rewrites them to the
+<code>nc-folder:</code> scheme on read and back on write (3.6).</li>
+</ul>
+<h3 id="33-interchange-with-nchron-export-format-v1-and-github-sync"><a class="header" href="#33-interchange-with-nchron-export-format-v1-and-github-sync">3.3 Interchange with <code>.nchron</code> (export format v1) and GitHub sync</a></h3>
+<p>The v1 archive is a dump of <code>_LocalAppStore</code> buckets
+(<code>docs/export_format_v1.md:8-29</code>; writer
+<code>frontend/notechondria_shared/lib/src/utils/local_archive.dart:135-246</code>).
+The folder is shaped like the server data instead. Two rules make them
+interchangeable:</p>
+<ol>
+<li><strong>Folder to <code>.nchron</code>.</strong> The export writes the normal v1 bucket files,
+derived from the folder (<code>drafts.json</code> holds every live note as a local
+draft with <code>client_draft_id = fld_&lt;uuid-hex&gt;</code>, <code>courses.json</code> the
+courses, <code>planner_events.json</code> and <code>calendar_feeds.json</code> the planner
+data, <code>attachments/&lt;client-id&gt;/&lt;file&gt;</code> the bytes). It also adds an
+optional <code>folder/</code> subtree with a verbatim copy of the folder, minus
+<code>.notechondria/</code> and <code>*.crswap</code>. <code>readLocalArchive</code> builds a name map
+and looks up only known entries (<code>local_archive.dart:273-275</code>), so v1
+readers ignore <code>folder/</code>, and <code>docs/export_format_v1.md:39-43</code> allows
+extra optional files without a version bump (decision D3). The copy
+repeats attachment bytes that the v1 <code>attachments/</code> entries already
+hold, so attachment-heavy archives are about twice as large.</li>
+<li><strong><code>.nchron</code> to folder.</strong> If <code>folder/</code> is present, restore it verbatim
+into an empty folder (lossless round trip), with one exception: the
+restore writes a new <code>folder_id</code> and keeps the original as
+<code>restored_from_folder_id</code>. A restored folder therefore never shares a
+lock name or a remembered-handle key with its source (3.7). Otherwise
+map buckets to records the way the post-login push does (section 7.1).
+Either way the import runs in chunks and writes <code>manifest.json</code> last
+(6.2 R4).</li>
+</ol>
+<p>So folder, zip, folder is lossless; browser-local, zip, folder keeps
+everything browser-local mode has; folder, zip, browser-local keeps notes,
+courses, and planner data but drops history and sessions, which
+browser-local mode does not model. Attachments on that last path are U16:
+the base64-to-<code>LocalAttachmentStore</code> move runs once per browser
+(<code>frontend/editor_app/lib/core/local_persist.dart:51-55</code>), so imported
+bytes may stay in the localStorage drafts bucket.</p>
+<p>Because the folder is a superset of the GitHub data-sync layout, a cloned
+data-sync repository can be opened as a folder (Phase 4 "adopt" action,
+ID rules in 3.7), and the folder can be pushed to GitHub with the same
+layout (feature F49).</p>
+<p>Two doc-versus-code differences in <code>docs/export_format_v1.md</code> should be
+fixed when the bridge lands: the collision suffix is <code>__$i</code> in code
+(<code>local_archive.dart:179</code>) but <code>-&lt;index&gt;</code> in the doc (<code>:96</code>), and the doc
+says import first wipes local state (<code>:151-152</code>) while the editor import only
+replaces six buckets (<code>frontend/editor_app/lib/core/local_archive_io.dart:178-200</code>).</p>
+<h3 id="34-to-38-storage-rules"><a class="header" href="#34-to-38-storage-rules">3.4 to 3.8 Storage rules</a></h3>
+<p>These sections are in
+<a href="local_folder_mode/storage_rules.html"><code>local_folder_mode/storage_rules.md</code></a>:</p>
+<ul>
+<li>3.4 writes: replace-on-close, swap files, and the write-ahead journal
+with its roll-forward rules and crash tests (3.4.1);</li>
+<li>3.5 delete and trash semantics matched to the backend, including the
+empty-trash cascade and comment privatization;</li>
+<li>3.6 attachments and media: the <code>nc-folder:</code> scheme, the folder-aware
+image provider and builder (including the planner and portal note
+viewers), and promotion failures;</li>
+<li>3.7 IDs: counters, duplicate identities, adopt, and folder identity;</li>
+<li>3.8 index, external and concurrent edits, retention, and rescans.</li>
+</ul>
+<h2 id="4-feature-matrix"><a class="header" href="#4-feature-matrix">4. Feature matrix</a></h2>
+<p>The full matrix is in
+<a href="local_folder_mode/feature_matrix.html"><code>local_folder_mode/feature_matrix.md</code></a>:
+4.1 lists the 66 method and path pairs the apps call with their
+folder-mode handling, 4.2 classifies 63 features (F01 to F63), and 4.3
+gives the counts. Result: 44 features work fully locally (a), 5 call a
+third party from the browser (b: F32 remote images, F42 CORS-enabled
+calendar URLs, F49 GitHub data-sync push, F51 course repo bind and import,
+F52 course repo sync), and 13 need a server (c: F01 Casdoor SSO, F02
+email/password login, F03 account linking, F04 registration and reset,
+F16 course subscriptions, F17 course transfer, F26 cross-user search, F28
+other users' shared notes, F29 public sharing, F43 calendar URLs without
+CORS, F45 public discovery, F50 GitHub App install, F53 MCP endpoint).
+F55 (AI/LLM) has no feature today and is not counted. Every (c) has a
+server-held secret, server-held accounts, cross-user or public data, or a
+connection the browser cannot make as its cause; none is a limit of the
+folder. Every (c) row has a 1.8 message and a fallback.</p>
+<h2 id="5-secrets"><a class="header" href="#5-secrets">5. Secrets</a></h2>
+<ul>
+<li>Credentials are never written to the folder, to a <code>.nchron</code> export, or
+to logs. The folder may sit in a cloud-synced directory, and an archive
+is a file users share. <code>local_archive.dart</code> strips nothing itself; its
+comment makes stripping the caller's job (<code>local_archive.dart:67-68</code>).</li>
+<li>The folder bridge (9.2) applies a key denylist to every JSON object it
+exports (the v1 buckets and the <code>folder/</code> copy), to the GitHub push, and
+to every write under <code>profile/</code>. Matching rule: keys are compared
+case-insensitively as whole keys, never as substrings.
+<ul>
+<li>Stripped: the exact keys <code>token</code>, <code>pat</code>, <code>secret</code>, <code>password</code>,
+<code>passphrase</code>, <code>authorization</code>, <code>cookie</code>, <code>credential</code>, <code>credentials</code>,
+<code>api_key</code>, and <code>apikey</code>, and any key ending in <code>_token</code>, <code>_secret</code>,
+<code>_password</code>, or <code>_key</code>. The suffixes cover <code>access_token</code>,
+<code>refresh_token</code>, <code>github_token</code>, <code>client_secret</code>, and <code>private_key</code>.</li>
+<li>Exempt: <code>path</code> and any key ending in <code>_path</code>. <code>.nchron</code> attachment
+pointers use <code>path</code> (<code>local_archive.dart:350-355</code>), and app data also
+uses <code>source_path</code> and <code>git_path</code>.</li>
+<li>Test, both directions: a fixture with every key the bridge writes
+today plus the stripped list, nested at several depths. Every
+stripped key must be gone, and <code>path</code>, <code>source_path</code>, <code>git_path</code>,
+<code>patch</code>, <code>pattern</code>, <code>tokens_used</code>, and <code>keyboard_layout</code> must
+survive. A new benign key that ends in <code>_key</code> fails the test and must
+be added to an explicit exempt list.</li>
+</ul>
+</li>
+<li>The only (b) features that need a credential are F49, F51, and F52, which
+use a GitHub fine-grained personal access token. F32 and F42 need none.
+F55 does not exist; a future LLM key would use the same store.</li>
+<li>How the user supplies it: in folder mode the GitHub card shows a token
+field and a link to GitHub's fine-grained token page, with the scope the
+App uses today (one repository, Contents read and write, Metadata read;
+<code>docs/integrations/github-sync.md:33-37</code>). The token is checked with one
+<code>GET https://api.github.com/user</code> before it is kept. Log lines name the
+outcome and never the token, its prefix, or its length:
+<ul>
+<li>"GitHub token stored for this session: Shared.LocalFolder.GitHub/token
+— GET https://api.github.com/user accepted it as '<login>'; it is kept
+in memory only." (or "remembered on this browser" with the opt-in)</li>
+<li>"GitHub token not stored: Shared.LocalFolder.GitHub/token — GET
+https://api.github.com/user answered <status>."</li>
+<li>"GitHub push unavailable: Shared.LocalFolder.GitHub/token — no
+fine-grained token is set for this session; paste one in the GitHub
+card."</li>
+</ul>
+</li>
+<li>Where it lives (owner decision Q6):</li>
+</ul>
+<div class="table-wrapper"><table><thead><tr><th>Option</th><th>Exposure</th><th>Cost</th></tr></thead><tbody>
+<tr><td>Memory only (recommended default)</td><td>Gone on reload; reachable by same-origin script only while the page runs</td><td>Re-enter once per session</td></tr>
+<tr><td>"Remember on this browser": IndexedDB record through <code>Shared.Credentials</code></td><td>Readable by any same-origin page (6.1), the same exposure today's cloud session token has in localStorage (<code>frontend/editor_app/lib/core/local_store.dart:275-285</code>)</td><td>None</td></tr>
+<tr><td>Remembered and encrypted with a passphrase (WebCrypto PBKDF2 and AES-GCM)</td><td>Protects the stored copy at rest; does not stop a same-origin script that hooks the running page</td><td>Passphrase prompt each session</td></tr>
+<tr><td>Desktop build with an OS keychain plugin</td><td>Outside the browser</td><td>Only with Q11</td></tr>
+</tbody></table>
+</div>
+<h2 id="6-security-and-multi-tab-behavior"><a class="header" href="#6-security-and-multi-tab-behavior">6. Security and multi-tab behavior</a></h2>
+<p>This section is in
+<a href="local_folder_mode/security_and_tabs.html"><code>local_folder_mode/security_and_tabs.md</code></a>:</p>
+<ul>
+<li>6.1 the shared Pages origin: assessment, mitigations (including no
+handle handoff in v1 on any origin), and the residual risk, which on
+the loopback preview and the Docker self-host includes same-origin
+<code>/media/</code> uploads;</li>
+<li>6.2 one folder for three apps: how each tab opens the folder without a
+handoff, lock rules R1 to R5 (lock modes, read-modify-write from disk,
+journals before reads, bounded holds and chunking, bounded waits), the
+change channel, and the two-transport tests;</li>
+<li>6.3 permission revoked (including Chrome's background auto-revocation),
+no handle in session-only mode, folder moved or deleted;</li>
+<li>6.4 rescans and external edits.</li>
+</ul>
+<h2 id="7-migration-and-mode-switching"><a class="header" href="#7-migration-and-mode-switching">7. Migration and mode switching</a></h2>
+<p>This section is in
+<a href="local_folder_mode/modes_and_migration.html"><code>local_folder_mode/modes_and_migration.md</code></a>:</p>
+<ul>
+<li>7.1 browser-local data into a folder, per app and once per folder:
+courses first with a course-ID map, events and feeds with a
+<code>client_local_id</code> insert-if-absent upsert, then drafts through
+<code>applyAuthPayload</code>; pushed browser copies stay recoverable for 30 days;</li>
+<li>7.2 archives, with their own picker button;</li>
+<li>7.3 switching modes without data loss.</li>
+</ul>
+<h2 id="8-testing-strategy"><a class="header" href="#8-testing-strategy">8. Testing strategy</a></h2>
+<p>This section is in
+<a href="local_folder_mode/testing.html"><code>local_folder_mode/testing.md</code></a>:</p>
+<ul>
+<li>8.1 layers: unit tests (journal crash tests, two-transport concurrency,
+duplicate identities, denylist, detail sentinels, routing table), CI
+smoke tests, OPFS and Web Locks tests in a Playwright/Chromium
+container on a host with at least 16 GB RAM (not GitHub CI unless the
+owner adds a job, Q13), and manual checks;</li>
+<li>8.2 the <code>MemoryFolderFs</code>, <code>MemoryFolderLocks</code>, and <code>MemoryFolderPlatform</code>
+fakes;</li>
+<li>8.3 the compile-time OPFS test hook, the lock tests, and where they run;</li>
+<li>8.4 contract fixtures: hand-written in Phase 1, checked in CI by Q14's
+backend test;</li>
+<li>8.5 smoke checks, all inside <code>http.runWithClient</code> with a failing
+recorder: "revoked mid-session" (zero requests reach the recorder),
+the passthrough, startup bounds, cold portal deep links, "Choose
+again", cloud-session precedence, Disconnect order, and folder images
+in the planner and portal viewers;</li>
+<li>8.6 manual owner checks on desktop Chrome.</li>
+</ul>
+<h2 id="9-implementation-phases-and-file-plan"><a class="header" href="#9-implementation-phases-and-file-plan">9. Implementation phases and file plan</a></h2>
+<p>See <a href="local_folder_mode/implementation_plan.html"><code>local_folder_mode/implementation_plan.md</code></a>:
+9.1 phases 0 to 5 (spike, foundation, content, planner, interchange and
+multi-tab, GitHub), 9.2 about 46 new shared files totaling about 8,500
+library lines (largest about 400) with <code>dart.library.js_interop</code>
+conditional imports so VM tests and the native portal build compile, and
+the zone wrapper for each JavaScript callback, 9.3 changed files
+with their current sizes against the 1000-line cap, 9.4 the new
+<code>docs/AGENTS.md</code> rows (<code>Shared.LocalFolder</code>, <code>Shared.LocalFolder.Backend</code>,
+<code>Shared.LocalFolder.Archive</code>, <code>Shared.LocalFolder.GitHub</code>,
+<code>Shared.Credentials</code>, <code>Portal.Sync.Events</code>, plus a <code>local_folder</code> startup
+process) and the
+<code>session rejected:</code> sentinel, and 9.5 the docs to update. No app honors
+the shared mode key or shows the option before its routes exist: the
+editor from Phase 2, the planner and portal from Phase 3 (2.10 rule 1).
+Within a wired app, the GitHub card stays gated until Phase 5.</p>
+<h2 id="10-open-questions-and-decisions"><a class="header" href="#10-open-questions-and-decisions">10. Open questions and decisions</a></h2>
+<h3 id="101-open-questions-for-the-owner"><a class="header" href="#101-open-questions-for-the-owner">10.1 Open questions for the owner</a></h3>
+<p>Each has a recommended default that the design assumes until answered.</p>
+<div class="table-wrapper"><table><thead><tr><th>#</th><th>Question</th><th>Recommended default</th></tr></thead><tbody>
+<tr><td>Q1</td><td>Did "dashboard for local services" mean a separate local service process (a localhost daemon) rather than an in-page backend?</td><td>In-page backend (this design). The router speaks <code>/api/v1</code>, so a daemon or the desktop build can host it later; no network listener now</td></tr>
+<tr><td>Q2</td><td>Chrome on Android has had the File System Access API since 132 (BCD; Chrome Q1 2025 post). Keep mobile excluded?</td><td>Exclude in v1; Android picker and permission behavior is untested (U14) and <code>FileSystemObserver</code> is desktop-only</td></tr>
+<tr><td>Q3</td><td>On <code>*.github.io</code>, persist the folder handle in IndexedDB?</td><td>Session only, with an unchecked "Remember this folder" opt-in and the warning in 6.1. Cost: each app asks for the folder once per page load, through "Choose '<name>' again" (2.9)</td></tr>
+<tr><td>Q4</td><td>Serve the apps from a dedicated origin (custom domain for the Notechondria Pages site)?</td><td>Recommended; needs DNS and a base-href change in <code>frontend-pages.yml</code>, so it is a separate round. It removes the other Pages projects from the origin; uploaded <code>/media/</code> files share an origin only where the app and the backend do, as on the loopback preview and the self-host (6.1, Q19)</td></tr>
+<tr><td>Q5</td><td>One folder shared by editor, planner, and portal, with an app's live cloud session taking precedence over it (2.10)?</td><td>Shared; a live cloud session wins and the app shows the notice</td></tr>
+<tr><td>Q6</td><td>Where do credentials for (b) features live?</td><td>Memory only, opt-in "remember on this browser" (section 5)</td></tr>
+<tr><td>Q7</td><td>Is a user-supplied fine-grained token acceptable for GitHub in folder mode?</td><td>Yes; the GitHub App flow stays cloud-only (F50)</td></tr>
+<tr><td>Q8</td><td>Add an anonymous backend proxy for calendar URLs without CORS?</td><td>No; it reintroduces the server and an open fetch proxy. Use file import</td></tr>
+<tr><td>Q9</td><td>Version banner in folder mode?</td><td>Hidden; a manual "Check for updates" in the status card sends one unauthenticated <code>GET /handshake/</code> to the saved cloud URL (2.8 rule 3)</td></tr>
+<tr><td>Q11</td><td>Folder mode for the native desktop build through <code>dart:io</code> (it would also fetch calendar URLs without CORS)?</td><td>Follow-up after v1; until then the option is hidden on native builds (1.3)</td></tr>
+<tr><td>Q12</td><td>Full-fidelity "move folder to cloud"?</td><td>Follow-up; interim paths in 7.3</td></tr>
+<tr><td>Q13</td><td>Add a CI step that fails if the OPFS test-hook marker is in a release bundle, and a Chrome-platform test job?</td><td>Add the grep guard. No Chrome job: OPFS tests run in the Playwright/Chromium container on a host with at least 16 GB RAM (8.3)</td></tr>
+<tr><td>Q14</td><td>Add a backend test that checks the contract fixtures against the live serializers?</td><td>Yes, in Phase 1: it fails on a key or JSON-type difference and uploads the live responses as a CI artifact, so fixtures can be refreshed without a local backend (8.4)</td></tr>
+<tr><td>Q17</td><td>The apps call <code>GET /auth/session/</code> and <code>POST /auth/logout/</code>, which the backend does not route (<code>backend/notechondria/api_urls.py:64-136</code>). Intended?</td><td>Out of scope here; the folder backend answers both. Track separately</td></tr>
+<tr><td>Q18</td><td>Connecting moves this browser's drafts into the 30-day local recycle bin and its pushed planner items into a 30-day recovery list (7.1). Keep, or leave browser copies visible?</td><td>Keep the moves; visible copies would show every pushed portal event twice (<code>frontend/portal_app/lib/core/build_page.dart:97</code>)</td></tr>
+<tr><td>Q19</td><td>On origins that serve both the apps and backend <code>/media/</code> (the loopback preview, the Docker self-host), serve uploads so they cannot run as same-origin pages (another host, <code>Content-Disposition: attachment</code>, or <code>Content-Security-Policy: sandbox</code>)?</td><td>Track as separate backend hardening; it also protects the cloud session token the editor and portal keep in localStorage today (6.1)</td></tr>
+</tbody></table>
+</div>
+<h3 id="102-decisions-formerly-questions"><a class="header" href="#102-decisions-formerly-questions">10.2 Decisions (formerly questions)</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>#</th><th>Decision</th><th>Basis</th></tr></thead><tbody>
+<tr><td>D1 (was Q10)</td><td>The folder front page includes private notes</td><td>It is the user's own dashboard (F44)</td></tr>
+<tr><td>D2 (was Q15)</td><td>Debug logs and per-device preferences (theme, locale, API base URL, portal startup image) stay in browser storage, not the folder. Theme is per device in folder mode, so F08 syncs <code>app_settings</code> without these keys</td><td>They describe the device, not the data (3.1, F08, F63)</td></tr>
+<tr><td>D3 (was Q16)</td><td><code>.nchron</code> gains the optional <code>folder/</code> subtree without a format bump</td><td><code>docs/export_format_v1.md:39-43</code> allows extra optional files; cost: attachment bytes appear twice (3.3)</td></tr>
+</tbody></table>
+</div>
+<h2 id="11-unverified-items-and-sources"><a class="header" href="#11-unverified-items-and-sources">11. Unverified items and sources</a></h2>
+<p>Section 11 is in
+<a href="local_folder_mode/unverified_and_sources.html"><code>local_folder_mode/unverified_and_sources.md</code></a>:
+11.1 lists every item marked <strong>unverified</strong> (U1 to U18, with the ones
+closed or no longer needed), and 11.2 the sources checked on 2026-10-17,
+including the package archives and specs read for revision 2.</p>
+<h2 id="12-revision-logs"><a class="header" href="#12-revision-logs">12. Revision logs</a></h2>
+<p>Section 12 is in
+<a href="local_folder_mode/revision_log.html"><code>local_folder_mode/revision_log.md</code></a>,
+so that this document stays under the 1000-line cap:</p>
+<ul>
+<li>12.1 design review 1 (H1, M1 to M10, L1 to L11), kept as written at
+revision 1;</li>
+<li>12.2 design review 2 (N1 to N16), one line per finding, the items
+resolved differently from the review's wording, and the other changes
+made while verifying;</li>
+<li>12.3 design review 3 (T3 to T8), resolved in Phase 1a.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../development/canvas_like_calendar_mvp.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../development/local_folder_mode/modes_and_migration.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../development/canvas_like_calendar_mvp.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../development/local_folder_mode/modes_and_migration.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
