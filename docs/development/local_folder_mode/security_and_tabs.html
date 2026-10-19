@@ -310,8 +310,13 @@ and sidecar, <code>manifest.json</code> (ID counters), <code>recycle_bin.json</c
 <code>planner/events.json</code>, <code>planner/sessions.json</code>, <code>planner/feeds.json</code>,
 <code>planner/heatmap.json</code>, the note's <code>attachments.json</code>, and
 <code>history/&lt;hex&gt;/index.json</code>. The in-memory index is a read cache for GET
-handlers and never the base of a write. A late or lost change message
-can therefore delay another tab's refresh, but it cannot lose an update.</p>
+handlers and never the base of a write. Handlers also locate through it
+the notes they read or rewrite, and then re-read those files (3.8). A
+write that rewrites several notes selects them by a field that never
+changes, or after a stat of every candidate, and checks the rest on
+disk, so a stale entry cannot hide a target (12.5). A late or lost
+change message can therefore delay another tab's refresh, but it cannot
+lose an update.</p>
 </li>
 <li>
 <p><strong>R3 Journals before reads.</strong> A GET handler or scan page that finds a
@@ -320,7 +325,13 @@ exclusive lock, re-lists the journal, rolls forward what is still there
 (3.4.1), takes the shared lock again, and then serves. If roll-forward
 fails, the reader skips every path the pending record names. A write
 step of the scan (counter raise, identity fix) that finds roll-forward
-failing skips itself when it touches one of those paths.</p>
+failing skips itself when it touches one of those paths. A request
+that writes one of them answers 503 with "Change not saved:
+Shared.LocalFolder/journal — an earlier change to these files is not
+finished; Reconnect or Rescan finishes it first." Write handlers look
+notes and courses up without the skip set, so a PATCH, DELETE, or
+draft upsert of a pending note gets that answer, never a 404 or a
+second note (12.5).</p>
 </li>
 <li>
 <p><strong>R4 Bounded holds.</strong> One hold targets at most 2 s

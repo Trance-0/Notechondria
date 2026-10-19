@@ -558,6 +558,40 @@ progress at least every 2 seconds. Startup uses the stored index and
 verifies it after the startup pass (2.9).</p>
 </li>
 <li>
+<p>Handlers locate notes through the in-memory index and answer the list
+routes from it (12.5). Each note body and sidecar entry carries the
+fields of the backend's note summary (index <code>schema_version</code> 2), so
+<code>GET /notes/</code>, course <code>recent_notes</code>, course notes, and the trash list
+read no note file; a search reads only the bodies whose title and
+description do not match. A single-note request re-reads only that
+note, plus every file it rewrites (6.2 R2). The index lacks notes that
+another tab or an outside program added since this tab's last scan, so
+the list routes, and any lookup that misses, first list <code>notes/</code> (and
+<code>trash/notes/</code>) and read only the files the index lacks.</p>
+</li>
+<li>
+<p>This tab's own writes update the in-memory index, and the controller
+writes it to <code>index.json</code> one second after the first write of a burst,
+under the exclusive lock (<code>flushIndex</code>, 12.5), so a reload starts from
+them and permanently deleted notes leave the file. A scan also writes
+it, after applying the changes this tab made while the scan ran.
+Startup goes <code>active</code> on the stored index (2.9), but no list answers
+from a stored note entry before comparing it with the disk: the first
+listing that meets an entry loaded from <code>index.json</code> stats the file
+and reads it again only when its size or <code>lastModified</code> changed. A
+re-read note whose sidecar id, UUID, or summary fields differ from its
+entry gets a fresh sidecar entry. Cascades pick their targets by fields
+that never change (UUID, <code>source_note_uuid</code>, <code>client_draft_id</code>) and
+check the rest on disk; course delete first stats every note body,
+because <code>course_slug</code> can change in any tab (12.5).</p>
+</li>
+<li>
+<p>What stays delayed: an edit another tab or an outside program saves to
+an existing note after this tab compared it reaches this tab's lists at
+its next rescan (from Phase 4, its change message), or when this tab
+reads that note. A single-note request always serves what is on disk.</p>
+</li>
+<li>
 <p>A journal record cannot carry the body's new <code>lastModified</code>, so after a
 journaled body write the writer stamps the sidecar's <code>md_size</code> and
 <code>md_last_modified</code> from a fresh stat, in the same exclusive hold

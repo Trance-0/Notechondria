@@ -1293,37 +1293,84 @@ and the inert <code>cloudOnly</code> gates.</li>
 <li><input disabled="" type="checkbox"/>
 Phase 0 spike on desktop Chrome (U1, U3, U5, U7, U10, U17, U18):
 run before Phase 2 ships the option.</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Phase 1b review follow-ups (<code>.agents/tasks/phase1b-review.json</code>),
-all to land before Phase 2 shows the option:
+landed before Phase 2 shows the option (design <code>revision_log.md</code> 12.5):
 <ul>
 <li>P1B-1 (MEDIUM): note and course lookups read every note inside the
-lock (<code>handlers/notes.dart:87-101</code>, <code>handlers/records.dart:140-158</code>,
-<code>:308-324</code>). Locate records through the in-memory index, re-read only
-the files served or rewritten, and add a Chromium timing check over a
-few thousand notes.</li>
-<li>P1B-2: "Check for updates" treats a locally answered handshake
-(<code>x-notechondria-backend: local-folder</code>) as a cloud answer
-(<code>storage_mode_client.dart:137-176</code>).</li>
-<li>P1B-3: after a failed roll-forward, write lookups use the skip set, so
-a PATCH or DELETE answers 404 and a draft upsert creates a duplicate
-note instead of <code>writeBlockedByJournal</code>.</li>
-<li>P1B-4: apply <code>scrubRouteDetail</code> to every 404 and 501 detail in
+lock. Lookups now go through the in-memory index (schema 2 holds the
+note summary fields) and re-read only the note served or rewritten.
+Chromium timing over 2,000 OPFS notes
+(<code>test/local_folder_opfs_timing_test.dart</code>): single-note GET 27 ms,
+PATCH 59 ms; 0.1.200 answered the same GET with a 503 after 8 s.</li>
+<li>P1B-2: "Check for updates" no longer counts a locally answered
+handshake (<code>x-notechondria-backend: local-folder</code>) as a cloud answer.</li>
+<li>P1B-3: after a failed roll-forward, write lookups skip nothing, so a
+PATCH, DELETE, or draft upsert of the pending note answers
+<code>writeBlockedByJournal</code>.</li>
+<li>P1B-4: <code>scrubRouteDetail</code> on every 404 and 501 detail in
 <code>LocalFolderTransport._detail</code>.</li>
-<li>P1B-5: tests for the inert folder branches (<code>applyAuthPayload</code> folder
-payload, <code>logout</code> guard, <code>disconnectFolder</code>, <code>cloudOnlyAction</code>, a
-throwing <code>prepare</code>, the 7 s write start, the transport R3 path).</li>
-<li>P1A-7 (LOW): Unicode case gap in <code>scrubSessionSentinels</code>.</li>
+<li>P1B-5: tests for the inert folder branches, a throwing <code>prepare</code>, the
+7 s write start, and the transport R3 path.</li>
+<li>P1A-7 (LOW): closed in 0.1.200; the <code>invalid to\u212Aen</code> test added,
+and overlapping sentinels are now broken too.</li>
 </ul>
 </li>
+<li><input disabled="" type="checkbox" checked=""/>
+Loop 2a review follow-ups (<code>.agents/tasks/review-2a.json</code>, design
+<code>revision_log.md</code> 12.5):
+<ul>
+<li>L2A-1 (MEDIUM): <code>index.json</code> was written only by scans and trusted
+on open, so a reload listed pre-edit rows. The in-memory index is now
+flushed to <code>index.json</code> 1 s after this tab's first write of a burst,
+and stored note entries are compared with the disk by the first
+listing that meets them.</li>
+<li>L2A-2: a rescan keeps the index changes this tab made while it ran.</li>
+<li>L2A-3: a re-read note whose sidecar differs from its entry gets a
+fresh entry (another tab's description edit, a renumbered id).</li>
+<li>L2A-4: note delete picks comments by <code>source_note_uuid</code> and checks
+<code>is_public</code> on disk.</li>
+<li>L2A-5: course delete stats every note body before it selects by
+<code>course_slug</code>.</li>
+<li>L2A-7: the Chromium timing test asserts every route's hold.</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox"/>
+Phase 2 search: Phase 1's substring search reads every body its
+title and description miss, in batches of 32. Over 2,000 OPFS notes in
+headless Chromium it held the shared lock 1.2 to 1.3 s, so it passes
+R4's 2 s target near 3,000 notes. The <code>note_search_score</code> port should
+bound it (body cache, or chunked holds within the 8 s read deadline).</li>
+<li><input disabled="" type="checkbox"/>
+Scan page size: a 500-entry page of the first full scan held the
+lock 1,993 ms, then 2,087 ms and 2,228 ms in later runs over the same
+2,000 OPFS notes, above R4's 2 s target. Use a time-bounded page
+before folders of that size are common (the timing test only prints
+this number).</li>
+<li><input disabled="" type="checkbox"/>
+L2A-6, Phase 4: the first list after an open from <code>index.json</code>
+stats every stored note entry in one hold (1,733 ms for 2,000 notes),
+and a listing that finds many new files reads them in one hold (626 ms
+for 300). About 2,300 stored notes or 900 new files pass the 2 s
+target. Bound both per hold and leave the rest to Phase 4's paged
+rescans and change path.</li>
+<li><input disabled="" type="checkbox"/>
+Other tabs' and outside programs' edits to an existing note made
+after this tab compared it reach this tab's lists at its next rescan,
+or when this tab reads that note, until Phase 4's change messages. A
+note another tab's identity fix renumbered answers 404 by its new id
+until its old id is asked for or a rescan runs. Course delete stats
+every note before its detach chunks, so a note moved into the course
+between that pass and its chunk keeps the slug.</li>
 <li><input disabled="" type="checkbox"/>
 Phase 2, editor: attachments, covers, avatar,
 <code>folderAwareImageProvider</code>, promotion failures and "Copy browser
 attachments into the folder", history and snapshot routes, sessions, the
 <code>note_search_score</code> port (Phase 1 searches by substring), the front page.
 Editor wiring: <code>core/local_folder_connect.dart</code>, the <code>local_folder</code>
-startup step, <code>prepare: LocalFolderBoot.preload</code>, the controller and
-default client in <code>_NotechondriaAppState</code>, the settings gating with
+startup step and the verification rescan after the startup pass
+(<code>controller.rescan()</code>, 2.9 step 3), <code>prepare: LocalFolderBoot.preload</code>,
+the controller and default client in <code>_NotechondriaAppState</code>, the settings gating with
 <code>onPing</code>, the status card, and app-level smoke checks (cold
 <code>#/notes/&lt;uuid&gt;</code> in <code>needsPick</code>/<code>needsPermission</code>, T2). The ARB strings
 for the option, card, and view (English constants in 0.1.200). Then
@@ -7068,6 +7115,40 @@ progress at least every 2 seconds. Startup uses the stored index and
 verifies it after the startup pass (2.9).</p>
 </li>
 <li>
+<p>Handlers locate notes through the in-memory index and answer the list
+routes from it (12.5). Each note body and sidecar entry carries the
+fields of the backend's note summary (index <code>schema_version</code> 2), so
+<code>GET /notes/</code>, course <code>recent_notes</code>, course notes, and the trash list
+read no note file; a search reads only the bodies whose title and
+description do not match. A single-note request re-reads only that
+note, plus every file it rewrites (6.2 R2). The index lacks notes that
+another tab or an outside program added since this tab's last scan, so
+the list routes, and any lookup that misses, first list <code>notes/</code> (and
+<code>trash/notes/</code>) and read only the files the index lacks.</p>
+</li>
+<li>
+<p>This tab's own writes update the in-memory index, and the controller
+writes it to <code>index.json</code> one second after the first write of a burst,
+under the exclusive lock (<code>flushIndex</code>, 12.5), so a reload starts from
+them and permanently deleted notes leave the file. A scan also writes
+it, after applying the changes this tab made while the scan ran.
+Startup goes <code>active</code> on the stored index (2.9), but no list answers
+from a stored note entry before comparing it with the disk: the first
+listing that meets an entry loaded from <code>index.json</code> stats the file
+and reads it again only when its size or <code>lastModified</code> changed. A
+re-read note whose sidecar id, UUID, or summary fields differ from its
+entry gets a fresh sidecar entry. Cascades pick their targets by fields
+that never change (UUID, <code>source_note_uuid</code>, <code>client_draft_id</code>) and
+check the rest on disk; course delete first stats every note body,
+because <code>course_slug</code> can change in any tab (12.5).</p>
+</li>
+<li>
+<p>What stays delayed: an edit another tab or an outside program saves to
+an existing note after this tab compared it reaches this tab's lists at
+its next rescan (from Phase 4, its change message), or when this tab
+reads that note. A single-note request always serves what is on disk.</p>
+</li>
+<li>
 <p>A journal record cannot carry the body's new <code>lastModified</code>, so after a
 journaled body write the writer stamps the sidecar's <code>md_size</code> and
 <code>md_last_modified</code> from a fresh stat, in the same exclusive hold
@@ -7258,8 +7339,13 @@ and sidecar, <code>manifest.json</code> (ID counters), <code>recycle_bin.json</c
 <code>planner/events.json</code>, <code>planner/sessions.json</code>, <code>planner/feeds.json</code>,
 <code>planner/heatmap.json</code>, the note's <code>attachments.json</code>, and
 <code>history/&lt;hex&gt;/index.json</code>. The in-memory index is a read cache for GET
-handlers and never the base of a write. A late or lost change message
-can therefore delay another tab's refresh, but it cannot lose an update.</p>
+handlers and never the base of a write. Handlers also locate through it
+the notes they read or rewrite, and then re-read those files (3.8). A
+write that rewrites several notes selects them by a field that never
+changes, or after a stat of every candidate, and checks the rest on
+disk, so a stale entry cannot hide a target (12.5). A late or lost
+change message can therefore delay another tab's refresh, but it cannot
+lose an update.</p>
 </li>
 <li>
 <p><strong>R3 Journals before reads.</strong> A GET handler or scan page that finds a
@@ -7268,7 +7354,13 @@ exclusive lock, re-lists the journal, rolls forward what is still there
 (3.4.1), takes the shared lock again, and then serves. If roll-forward
 fails, the reader skips every path the pending record names. A write
 step of the scan (counter raise, identity fix) that finds roll-forward
-failing skips itself when it touches one of those paths.</p>
+failing skips itself when it touches one of those paths. A request
+that writes one of them answers 503 with "Change not saved:
+Shared.LocalFolder/journal — an earlier change to these files is not
+finished; Reconnect or Rescan finishes it first." Write handlers look
+notes and courses up without the skip set, so a PATCH, DELETE, or
+draft upsert of a pending note gets that answer, never a 404 or a
+second note (12.5).</p>
 </li>
 <li>
 <p><strong>R4 Bounded holds.</strong> One hold targets at most 2 s
@@ -7636,6 +7728,24 @@ On this host <code>docker run --cpus</code> fails (cgroup v2 in threaded mode)
 and <code>--memory</code> is accepted but not enforced ("Limitation discarded"),
 so the bound is the <code>timeout</code> wrapper and one container at a time.
 Result: 7 of 7 passed; the whole container run took about 25 s.</p>
+</li>
+<li>
+<p>Timing check (phase 1b review P1B-1, 12.5):
+<code>test/local_folder_opfs_timing_test.dart</code> seeds 2,000 notes on OPFS,
+opens the folder with the real Web Locks wrapper, and times each route
+through the transport, reading the lock holds from <code>onHold</code>. It fails
+when any timed step holds the lock for 2 s or more
+(<code>kFolderLockHoldTarget</code>, 6.2 R4): the single-note GET and PATCH by id
+and UUID, the first list after the open from <code>index.json</code> (which stats
+every stored entry), the note page, all notes, search, courses, the
+draft upsert, note delete, the <code>index.json</code> flush, course delete (which
+stats every note body), and a page with 300 notes the index lacks. The
+single-note routes must also answer within 2 s. Only printed, not
+checked: the seed time, the first open's full scan and its longest
+hold, and the open from <code>index.json</code>. It runs in the same container
+command, after the OPFS test file. 0.1.200's full reads answered a
+single-note GET with the 8 s read deadline's 503 (hold 11 s); the
+numbers after the change are in 12.5.</p>
 </li>
 <li>
 <p>Unreachable in production: the flag is a compile-time constant, and the
@@ -8010,20 +8120,21 @@ portal build compile (dart.dev recommends this condition over
 <tr><td><code>folder_pick_flow.dart</code></td><td>"Choose again": the <code>folder_id</code> checks, the two refusals, and "Switch to this folder" (2.9); the copy check with <code>isSameEntry</code> and the remembered-handle probe (3.7)</td><td>200</td><td>1</td></tr>
 <tr><td><code>folder_lock.dart</code>, <code>folder_lock_web.dart</code></td><td>Web Locks wrapper: shared and exclusive modes, <code>AbortSignal.timeout(min(5 s, time left))</code>, the grant callback through <code>bindLockCallback</code>, handling of the released promise, hold-time logging; in-process <code>MemoryFolderLocks</code> for tests (6.2)</td><td>80 + 140</td><td>1</td></tr>
 <tr><td><code>local_folder_boot.dart</code></td><td><code>LocalFolderBoot.preload</code> for <code>runGuardedApp(prepare:)</code>, the snapshot, and <code>decideStorageMode</code> with each app's session keys (2.8)</td><td>90</td><td>1</td></tr>
-<tr><td><code>local_folder_controller.dart</code></td><td>Storage mode, folder state machine (including <code>opening</code> and <code>needsPick</code>), connect, reconnect, choose again, switch, disconnect in the order of 2.10 rule 4, scan scheduling, captured zone, <code>httpClient</code> (the app's <code>StorageModeClient</code>), the busy line, "Use the connected folder", and the remember choice</td><td>758</td><td>1</td></tr>
+<tr><td><code>local_folder_controller.dart</code></td><td>Storage mode, folder state machine (including <code>opening</code> and <code>needsPick</code>), connect, reconnect, choose again, switch, disconnect in the order of 2.10 rule 4, scan scheduling, captured zone, <code>httpClient</code> (the app's <code>StorageModeClient</code>), the busy line, "Use the connected folder", the remember choice, the in-memory index updates, the unverified entries of a stored index, the changes made during a scan, and the coalesced <code>index.json</code> flush (12.5)</td><td>892</td><td>1</td></tr>
 <tr><td><code>folder_layout.dart</code></td><td>Paths, manifest, ID counters and their raises</td><td>180</td><td>1</td></tr>
 <tr><td><code>folder_journal.dart</code>, <code>folder_journal_record.dart</code></td><td>Write-ahead records with <code>expect</code>, ordered apply, removals last, roll-forward with re-check and the replay external-edit check (3.4.1); the record format and op ids are in their own file, re-exported</td><td>230</td><td>1</td></tr>
 <tr><td><code>note_codec.dart</code></td><td>Frontmatter, sidecar, link rewriting</td><td>260</td><td>1</td></tr>
-<tr><td><code>folder_index.dart</code></td><td>Read-only cache, <code>.notechondria/index.json</code>, paged scans, duplicate identities (3.7)</td><td>280</td><td>1</td></tr>
-<tr><td><code>transport.dart</code></td><td><code>LocalFolderTransport extends http.BaseClient</code>: JSON and multipart decode, lock mode per method, the <code>opening</code> hold, 503 states, read and write deadlines from request start (2.9), <code>scrubSessionSentinels</code> on every detail it assembles (2.5), response; only lost access changes the folder state (12.4)</td><td>315</td><td>1</td></tr>
-<tr><td><code>storage_mode_client.dart</code></td><td><code>StorageModeClient</code> and <code>LocalRoutingClient</code>: mode routing and the handshake passthrough (2.8), <code>runCloudVersionCheck(apiBaseUrl, body)</code> carrying the saved URL, and <code>checkCloudVersion</code> for the status card</td><td>173</td><td>1</td></tr>
+<tr><td><code>folder_index.dart</code></td><td>Read-only cache, <code>.notechondria/index.json</code> (schema 2: note summary fields, 12.5), the entries of note bodies and sidecars, <code>withChanges</code> and <code>IndexChangeLog</code> for the in-memory updates (12.5)</td><td>501</td><td>1</td></tr>
+<tr><td><code>transport.dart</code></td><td><code>LocalFolderTransport extends http.BaseClient</code>: JSON and multipart decode, lock mode per method, the <code>opening</code> hold, 503 states, read and write deadlines from request start (2.9), <code>scrubSessionSentinels</code> on every detail it assembles and <code>scrubRouteDetail</code> on every 404 and 501 (2.5, 12.5), the in-memory index entries of each write, response; only lost access changes the folder state (12.4)</td><td>368</td><td>1</td></tr>
+<tr><td><code>storage_mode_client.dart</code></td><td><code>StorageModeClient</code> and <code>LocalRoutingClient</code>: mode routing and the handshake passthrough (2.8), <code>runCloudVersionCheck(apiBaseUrl, body)</code> carrying the saved URL, and <code>checkCloudVersion</code> for the status card, which counts a handshake this page answered as not checked (12.5)</td><td>183</td><td>1</td></tr>
 <tr><td><code>secret_denylist.dart</code></td><td>Whole-key denylist with suffixes and <code>*_path</code> exemption (main 5)</td><td>50</td><td>1</td></tr>
-<tr><td><code>router.dart</code></td><td><code>(method, path)</code> table, <code>/api/v1/</code> segment matching, and the 501/404 fallbacks, whose details pass <code>scrubRouteDetail</code> (sentinels and the editor's deep-link markers, T2); the handler context interface</td><td>297</td><td>1</td></tr>
-<tr><td><code>handlers/records.dart</code></td><td>Course, note, profile, and recycle-bin records and the serializer-shaped payloads the handler files share (12.4)</td><td>396</td><td>1</td></tr>
+<tr><td><code>router.dart</code></td><td><code>(method, path)</code> table, <code>/api/v1/</code> segment matching, and the 501/404 fallbacks, whose details pass <code>scrubRouteDetail</code> (sentinels and the editor's deep-link markers, T2); the handler context interface, with the index and its unverified entries</td><td>319</td><td>1</td></tr>
+<tr><td><code>handlers/records.dart</code></td><td>Course, note, profile, and recycle-bin records, <code>IndexedNote</code>, and the serializer-shaped payloads the handler files share (12.4, 12.5)</td><td>431</td><td>1</td></tr>
+<tr><td><code>handlers/lookup.dart</code></td><td>Index-backed note lookups with one re-read each, the listing refresh for notes the index lacks and for stored entries not yet compared with the disk, the sidecar check on re-read, the body re-stat of course delete, the write lookups' skip rule, batched reads (6.2 R2, R3; 12.5)</td><td>220</td><td>1</td></tr>
 <tr><td><code>handlers/auth_settings.dart</code></td><td>Handshake, settings with the per-device key filter (F08), session (shape in 8.4), logout, Casdoor config</td><td>240</td><td>1</td></tr>
-<tr><td><code>handlers/courses.dart</code></td><td>Course routes; chunked course delete over notes, trashed notes, events, and feeds (3.5)</td><td>295</td><td>1</td></tr>
-<tr><td><code>handlers/notes.dart</code></td><td>Note and uuid routes, the 3.8 snapshot check (T7(j)), comment privatization on delete</td><td>373</td><td>1-2</td></tr>
-<tr><td><code>handlers/trash.dart</code></td><td>Trash list, restore, empty trash with the cascade (3.5)</td><td>133</td><td>1</td></tr>
+<tr><td><code>handlers/courses.dart</code></td><td>Course routes; chunked course delete over notes, trashed notes, events, and feeds, after a stat of every note body (3.5, 12.5)</td><td>318</td><td>1</td></tr>
+<tr><td><code>handlers/notes.dart</code></td><td>Note and uuid routes, the 3.8 snapshot check (T7(j)), comment privatization on delete</td><td>396</td><td>1-2</td></tr>
+<tr><td><code>handlers/trash.dart</code></td><td>Trash list, restore, empty trash with the cascade (3.5)</td><td>147</td><td>1</td></tr>
 <tr><td><code>handlers/history_sessions.dart</code></td><td>History, snapshots, sessions, retention in two pools (3.8)</td><td>260</td><td>2</td></tr>
 <tr><td><code>handlers/attachments.dart</code></td><td>Attachments, covers, avatar</td><td>260</td><td>2</td></tr>
 <tr><td><code>search_score.dart</code></td><td>Port of <code>note_search_score</code> including a <code>SequenceMatcher</code> ratio</td><td>160</td><td>2</td></tr>
@@ -8040,13 +8151,14 @@ portal build compile (dart.dev recommends this condition over
 <tr><td><code>../components/local_folder_reconnect_view.dart</code></td><td>Startup reconnect view with "Reconnect" and "Choose again", the refusal messages with "Switch to this folder", and the one-line banners (main 2.10 rule 5)</td><td>245</td><td>1</td></tr>
 <tr><td><code>../utils/folder_aware_image.dart</code></td><td><code>folderAwareImageProvider</code></td><td>70</td><td>2</td></tr>
 <tr><td><code>folder_snapshots.dart</code></td><td>History index, the folder-only snapshot writer, and the two-pool prune (3.8), moved into Phase 1 by T7(d)</td><td>273</td><td>1</td></tr>
-<tr><td><code>folder_identity.dart</code>, <code>folder_scanner.dart</code></td><td>The scan of <code>folder_index.dart</code>, split out: duplicate identities and adoption as journaled fixes (3.7), and the paged scan with the R4 re-check</td><td>334 + 258</td><td>1</td></tr>
-<tr><td><code>folder_messages.dart</code></td><td>Every 1.8 message of the module, the session-sentinel check, <code>scrubSessionSentinels</code>, and <code>scrubRouteDetail</code> (2.5)</td><td>494</td><td>1</td></tr>
+<tr><td><code>folder_identity.dart</code>, <code>folder_scanner.dart</code></td><td>The scan of <code>folder_index.dart</code>, split out: duplicate identities and adoption as journaled fixes (3.7), and the paged scan with the R4 re-check</td><td>334 + 269</td><td>1</td></tr>
+<tr><td><code>folder_messages.dart</code></td><td>Every 1.8 message of the module, the session-sentinel check, <code>scrubSessionSentinels</code>, and <code>scrubRouteDetail</code> (2.5)</td><td>501</td><td>1</td></tr>
 <tr><td><code>local_folder_platform.dart</code></td><td><code>LocalFolderPlatform</code> and <code>FolderPicker</code>, the seam <code>forTest</code> and the web check use (T7(b)); <code>folder_fs_stub.dart</code> stubs the whole platform, so one conditional import pair serves fs, picker, handle store, locks, channel, and probe</td><td>46</td><td>1</td></tr>
 <tr><td><code>frontend/notechondria_shared/lib/local_folder_testing.dart</code></td><td>Exports the memory fakes for tests only</td><td>15</td><td>1</td></tr>
 <tr><td><code>frontend/{editor,planner,portal}_app/lib/core/local_folder_connect.dart</code></td><td>Per-app startup step, precedence, connect push (token set before the course push, main 7.1); the callback gate is the shared mixin's <code>cloudOnly(...)</code> (12.4)</td><td>90, 180, 160</td><td>2, 3, 3</td></tr>
 <tr><td><code>frontend/notechondria_shared/test/local_folder/*.dart</code></td><td>Unit tests incl. <code>folder_journal_test.dart</code> and <code>concurrency_test.dart</code>, each file under 500 lines</td><td>1,700 total</td><td>1-5</td></tr>
 <tr><td><code>frontend/notechondria_shared/test/local_folder_opfs_test.dart</code></td><td>Chromium OPFS and Web Locks tests (8.3); run in the 16 GB container, not in CI</td><td>300</td><td>1, 2, 4</td></tr>
+<tr><td><code>frontend/notechondria_shared/test/local_folder_opfs_timing_test.dart</code></td><td>Chromium timing check over 2,000 OPFS notes (8.3, 12.5); same container, not in CI</td><td>230</td><td>1</td></tr>
 <tr><td><code>frontend/notechondria_shared/test/fixtures/api_v1/*.json</code></td><td>Hand-written from the serializers, each with <code>_source</code> (8.4)</td><td>n/a</td><td>1-3</td></tr>
 <tr><td><code>backend/notes/test_api_contract.py</code></td><td>Q14's CI recorder: compares each fixture with the live response and writes the responses for the artifact (8.4)</td><td>200</td><td>1</td></tr>
 <tr><td><code>frontend/{editor,planner,portal}_app/test/local_folder_smoke.dart</code></td><td>Smoke checks inside <code>http.runWithClient</code> (main 8.5)</td><td>260 each</td><td>1-3</td></tr>
@@ -8479,6 +8591,32 @@ kept and the design text changed in the same commit:</p>
 <tr><td>Handshake</td><td><code>capabilities</code> keeps the backend's keys; <code>planner</code>, <code>calendar_feeds</code>, <code>attachments</code>, and <code>mcp</code> are 0 until their phases</td><td>F46; <code>handlers/auth_settings.dart</code></td></tr>
 <tr><td>UI text</td><td>The option, status card, and reconnect view use English constants; the ARB rows of 9.3 move to Phase 2, when the editor shows the option, because <code>flutter gen-l10n</code> fails on the existing <code>activityWeightN</code> placeholder (<code>docs/TODO.md</code>). The status card has no Export and the option no "Start from an archive" until the Phase 4 bridge</td><td>9.3; <code>components/local_folder_*.dart</code></td></tr>
 <tr><td>Fixtures</td><td>Each fixture holds <code>_source</code>, <code>_setup</code> (<code>empty</code>, <code>course_and_note</code>, <code>trashed_note</code>), the request with <code>{course_id}</code>, <code>{note_id}</code>, <code>{note_uuid}</code> placeholders, <code>status</code>, and <code>body</code>; <code>_folder_omits</code> lists dotted key paths the folder leaves out (F08), and <code>_backend_route: false</code> marks session and logout (Q17)</td><td>8.4</td></tr>
+</tbody></table>
+</div>
+<h2 id="125-phase-1-review-follow-ups-after-01200-before-phase-2"><a class="header" href="#125-phase-1-review-follow-ups-after-01200-before-phase-2">12.5 Phase 1 review follow-ups (after 0.1.200, before Phase 2)</a></h2>
+<p>The Phase 1b review (<code>.agents/tasks/phase1b-review.json</code>, P1B-1 to
+P1B-5) and the open item of the 1a review (P1A-7), resolved before Phase
+2 shows the option. The option is still hidden, so no app changes.</p>
+<div class="table-wrapper"><table><thead><tr><th>ID</th><th>Resolution</th><th>Where</th></tr></thead><tbody>
+<tr><td>P1B-1</td><td>Handlers locate notes through the in-memory index and re-read only the note they serve or rewrite. Index <code>schema_version</code> 2 adds a <code>summary</code> to note body and sidecar entries (the fields of the backend's note summary), so the list routes read no note file; a search reads only the bodies its title and description miss, 32 at a time. The list routes, and any lookup that misses, first list <code>notes/</code> (and <code>trash/notes/</code>) and index only the files the index lacks. This tab's writes update the in-memory index from the text they wrote and a fresh stat, and reach <code>index.json</code> through the coalesced flush of L2A-1 below. Chromium, 2,000 notes on OPFS: a single-note GET took 27 ms (21 ms hold) and a PATCH 59 ms (56 ms hold); 0.1.200 answered the same GET with the 8 s deadline's 503 after an 11 s hold. A search took 1.3 s, so it passes the 2 s hold target near 3,000 notes (Phase 2 search port, <code>docs/TODO.md</code>)</td><td>3.8, 6.2 R2 R4, 8.3; <code>folder_index.dart</code>, <code>handlers/lookup.dart</code>, <code>handlers/{records,notes,courses,trash}.dart</code>, <code>transport.dart</code>, <code>local_folder_controller.dart</code></td></tr>
+<tr><td>P1B-2</td><td><code>checkCloudVersion</code> treats an answer carrying <code>x-notechondria-backend: local-folder</code> as not checked: "Cloud version not checked: Shared.LocalFolder/version_check — folder mode sends the update check only to an https URL or a loopback http URL, so GET <host>/api/v1/handshake/ was answered in this page and nothing was sent."</td><td>2.8 rule 3; <code>storage_mode_client.dart</code>, <code>folder_messages.dart</code></td></tr>
+<tr><td>P1B-3</td><td>Write lookups of notes and courses ignore the skip set of a failed roll-forward (<code>lookupSkip</code>), so <code>commit</code> and <code>writeText</code> answer <code>writeBlockedByJournal</code> instead of a 404 or a second note for the same <code>client_draft_id</code></td><td>6.2 R3; <code>handlers/lookup.dart</code>, <code>handlers/notes.dart</code>, <code>handlers/courses.dart</code></td></tr>
+<tr><td>P1B-4</td><td>The transport passes every 404 and 501 detail, router or handler, through <code>scrubRouteDetail</code></td><td>2.5; <code>transport.dart</code></td></tr>
+<tr><td>P1B-5</td><td>Tests for the session mixin's folder branches (<code>applyAuthPayload</code>, the <code>logout()</code> guard, <code>disconnectFolder()</code>, <code>cloudOnly</code>, <code>cloudOnlyAction</code>), a throwing <code>prepare</code>, the write-start deadline, and the transport-level R3 path</td><td>8.1; <code>test/local_folder/app_wiring_test.dart</code>, <code>transport_test.dart</code></td></tr>
+<tr><td>P1A-7</td><td>Closed in 0.1.200 by the per-character fold (12.4); the review's <code>invalid to\u212Aen</code> case is now in <code>messages_test.dart</code>. The scrub now resumes at the second character of a match instead of after the whole match, so overlapping sentinels ("invalid token_not_valid") are all broken</td><td>2.5; <code>folder_messages.dart</code></td></tr>
+</tbody></table>
+</div>
+<p>The review of these changes (<code>.agents/tasks/review-2a.json</code>, L2A-1 to
+L2A-7) found that the index, now the source of list rows, was trusted
+where it could be out of date. Its fixes:</p>
+<div class="table-wrapper"><table><thead><tr><th>ID</th><th>Resolution</th><th>Where</th></tr></thead><tbody>
+<tr><td>L2A-1</td><td><code>index.json</code> follows this tab's writes: <code>flushIndex</code> writes the in-memory index under the exclusive lock one second after the first write of a burst (<code>kIndexFlushDelay</code>), so a reload starts from them and permanently deleted notes leave the file; a failed write logs "Folder index not saved: Shared.LocalFolder/write — ..." and is retried after the next write. Startup still goes <code>active</code> on the stored index (2.9), but its note body and sidecar entries start unverified: the first listing that meets one stats the file and reads it again only when its size or <code>lastModified</code> changed, and course payloads run that listing too. Chromium, 2,000 OPFS notes: the first list after an open from <code>index.json</code> held the lock 1,733 ms (later lists 92 ms), the flush 113 ms</td><td>3.8, 6.2 R1; <code>local_folder_controller.dart</code>, <code>handlers/lookup.dart</code>, <code>handlers/courses.dart</code>, <code>folder_index.dart</code>, <code>transport.dart</code>, <code>router.dart</code></td></tr>
+<tr><td>L2A-2</td><td>A rescan records the index changes this tab makes while it runs and applies them to its entries in its final exclusive hold, before <code>index.json</code> is written, and again for changes made after that hold</td><td>3.8; <code>local_folder_controller.dart</code>, <code>folder_scanner.dart</code>, <code>folder_index.dart</code></td></tr>
+<tr><td>L2A-3</td><td>A re-read note whose sidecar id, UUID, or summary fields differ from its entry gets a fresh sidecar entry (one stat, only on a difference), so another tab's description edit reaches the list and a renumbered id is found once the old id is asked for</td><td>3.7, 3.8; <code>handlers/lookup.dart</code></td></tr>
+<tr><td>L2A-4</td><td>Note delete selects comments by <code>source_note_uuid</code> only and checks <code>is_public</code> on disk</td><td>3.5, 6.2 R2; <code>handlers/notes.dart</code></td></tr>
+<tr><td>L2A-5</td><td>Course delete stats every note body (500 per hold) before it selects by <code>course_slug</code>, and indexes again each body that changed. Chromium, 2,000 notes: 11 holds, the longest 217 ms, 969 ms in all</td><td>3.5, 6.2 R2 R4; <code>handlers/courses.dart</code>, <code>handlers/lookup.dart</code></td></tr>
+<tr><td>L2A-6</td><td>Not bounded yet: the first list after an open and a listing that finds many new files run in one hold. Measured 1,733 ms for 2,000 stored notes and 626 ms for 300 new ones, so about 2,300 stored notes or 900 new files pass the 2 s target. Read batches of 128 instead of 32 changed little (1,615 ms). Tracked in <code>docs/TODO.md</code> for Phase 4's paged rescans</td><td>6.2 R4; <code>docs/TODO.md</code></td></tr>
+<tr><td>L2A-7</td><td>The Chromium timing test asserts every timed step's hold against <code>kFolderLockHoldTarget</code>; testing.md 8.3 names the numbers that are only printed</td><td>8.3; <code>test/local_folder_opfs_timing_test.dart</code></td></tr>
 </tbody></table>
 </div><div style="break-before: page; page-break-before: always;"></div><h1 id="github-app-integration-guide"><a class="header" href="#github-app-integration-guide">GitHub App Integration Guide</a></h1>
 <p>This project supports a GitHub App integration path for repo import/sync workflows.</p>

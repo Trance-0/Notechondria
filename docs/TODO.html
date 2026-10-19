@@ -840,37 +840,84 @@ and the inert <code>cloudOnly</code> gates.</li>
 <li><input disabled="" type="checkbox"/>
 Phase 0 spike on desktop Chrome (U1, U3, U5, U7, U10, U17, U18):
 run before Phase 2 ships the option.</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Phase 1b review follow-ups (<code>.agents/tasks/phase1b-review.json</code>),
-all to land before Phase 2 shows the option:
+landed before Phase 2 shows the option (design <code>revision_log.md</code> 12.5):
 <ul>
 <li>P1B-1 (MEDIUM): note and course lookups read every note inside the
-lock (<code>handlers/notes.dart:87-101</code>, <code>handlers/records.dart:140-158</code>,
-<code>:308-324</code>). Locate records through the in-memory index, re-read only
-the files served or rewritten, and add a Chromium timing check over a
-few thousand notes.</li>
-<li>P1B-2: "Check for updates" treats a locally answered handshake
-(<code>x-notechondria-backend: local-folder</code>) as a cloud answer
-(<code>storage_mode_client.dart:137-176</code>).</li>
-<li>P1B-3: after a failed roll-forward, write lookups use the skip set, so
-a PATCH or DELETE answers 404 and a draft upsert creates a duplicate
-note instead of <code>writeBlockedByJournal</code>.</li>
-<li>P1B-4: apply <code>scrubRouteDetail</code> to every 404 and 501 detail in
+lock. Lookups now go through the in-memory index (schema 2 holds the
+note summary fields) and re-read only the note served or rewritten.
+Chromium timing over 2,000 OPFS notes
+(<code>test/local_folder_opfs_timing_test.dart</code>): single-note GET 27 ms,
+PATCH 59 ms; 0.1.200 answered the same GET with a 503 after 8 s.</li>
+<li>P1B-2: "Check for updates" no longer counts a locally answered
+handshake (<code>x-notechondria-backend: local-folder</code>) as a cloud answer.</li>
+<li>P1B-3: after a failed roll-forward, write lookups skip nothing, so a
+PATCH, DELETE, or draft upsert of the pending note answers
+<code>writeBlockedByJournal</code>.</li>
+<li>P1B-4: <code>scrubRouteDetail</code> on every 404 and 501 detail in
 <code>LocalFolderTransport._detail</code>.</li>
-<li>P1B-5: tests for the inert folder branches (<code>applyAuthPayload</code> folder
-payload, <code>logout</code> guard, <code>disconnectFolder</code>, <code>cloudOnlyAction</code>, a
-throwing <code>prepare</code>, the 7 s write start, the transport R3 path).</li>
-<li>P1A-7 (LOW): Unicode case gap in <code>scrubSessionSentinels</code>.</li>
+<li>P1B-5: tests for the inert folder branches, a throwing <code>prepare</code>, the
+7 s write start, and the transport R3 path.</li>
+<li>P1A-7 (LOW): closed in 0.1.200; the <code>invalid to\u212Aen</code> test added,
+and overlapping sentinels are now broken too.</li>
 </ul>
 </li>
+<li><input disabled="" type="checkbox" checked=""/>
+Loop 2a review follow-ups (<code>.agents/tasks/review-2a.json</code>, design
+<code>revision_log.md</code> 12.5):
+<ul>
+<li>L2A-1 (MEDIUM): <code>index.json</code> was written only by scans and trusted
+on open, so a reload listed pre-edit rows. The in-memory index is now
+flushed to <code>index.json</code> 1 s after this tab's first write of a burst,
+and stored note entries are compared with the disk by the first
+listing that meets them.</li>
+<li>L2A-2: a rescan keeps the index changes this tab made while it ran.</li>
+<li>L2A-3: a re-read note whose sidecar differs from its entry gets a
+fresh entry (another tab's description edit, a renumbered id).</li>
+<li>L2A-4: note delete picks comments by <code>source_note_uuid</code> and checks
+<code>is_public</code> on disk.</li>
+<li>L2A-5: course delete stats every note body before it selects by
+<code>course_slug</code>.</li>
+<li>L2A-7: the Chromium timing test asserts every route's hold.</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox"/>
+Phase 2 search: Phase 1's substring search reads every body its
+title and description miss, in batches of 32. Over 2,000 OPFS notes in
+headless Chromium it held the shared lock 1.2 to 1.3 s, so it passes
+R4's 2 s target near 3,000 notes. The <code>note_search_score</code> port should
+bound it (body cache, or chunked holds within the 8 s read deadline).</li>
+<li><input disabled="" type="checkbox"/>
+Scan page size: a 500-entry page of the first full scan held the
+lock 1,993 ms, then 2,087 ms and 2,228 ms in later runs over the same
+2,000 OPFS notes, above R4's 2 s target. Use a time-bounded page
+before folders of that size are common (the timing test only prints
+this number).</li>
+<li><input disabled="" type="checkbox"/>
+L2A-6, Phase 4: the first list after an open from <code>index.json</code>
+stats every stored note entry in one hold (1,733 ms for 2,000 notes),
+and a listing that finds many new files reads them in one hold (626 ms
+for 300). About 2,300 stored notes or 900 new files pass the 2 s
+target. Bound both per hold and leave the rest to Phase 4's paged
+rescans and change path.</li>
+<li><input disabled="" type="checkbox"/>
+Other tabs' and outside programs' edits to an existing note made
+after this tab compared it reach this tab's lists at its next rescan,
+or when this tab reads that note, until Phase 4's change messages. A
+note another tab's identity fix renumbered answers 404 by its new id
+until its old id is asked for or a rescan runs. Course delete stats
+every note before its detach chunks, so a note moved into the course
+between that pass and its chunk keeps the slug.</li>
 <li><input disabled="" type="checkbox"/>
 Phase 2, editor: attachments, covers, avatar,
 <code>folderAwareImageProvider</code>, promotion failures and "Copy browser
 attachments into the folder", history and snapshot routes, sessions, the
 <code>note_search_score</code> port (Phase 1 searches by substring), the front page.
 Editor wiring: <code>core/local_folder_connect.dart</code>, the <code>local_folder</code>
-startup step, <code>prepare: LocalFolderBoot.preload</code>, the controller and
-default client in <code>_NotechondriaAppState</code>, the settings gating with
+startup step and the verification rescan after the startup pass
+(<code>controller.rescan()</code>, 2.9 step 3), <code>prepare: LocalFolderBoot.preload</code>,
+the controller and default client in <code>_NotechondriaAppState</code>, the settings gating with
 <code>onPing</code>, the status card, and app-level smoke checks (cold
 <code>#/notes/&lt;uuid&gt;</code> in <code>needsPick</code>/<code>needsPermission</code>, T2). The ARB strings
 for the option, card, and view (English constants in 0.1.200). Then
