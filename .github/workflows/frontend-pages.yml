@@ -82,6 +82,14 @@ jobs:
         working-directory: frontend/portal_app
         run: flutter build web --release --base-href /Notechondria/portal/ --no-web-resources-cdn --dart-define=APP_VERSION=${{ steps.appversion.outputs.value }}
 
+      # Local folder storage core (design 8.1, review 3 T6): journal crash and
+      # roll-forward, two-writer, identity, denylist, and storage-mode tests.
+      # `flutter test` resolves packages itself; an explicit `pub get` here
+      # exits 1 on the shared package's l10n generation with Flutter 3.44.
+      - name: Test notechondria_shared local folder
+        working-directory: frontend/notechondria_shared
+        run: flutter test test/local_folder/ -r compact
+
       # 0.1.196: service workers stripped (STRIP_SERVICE_WORKER=true).
       # This Flutter SDK deprecated its service worker and now ships a
       # *self-destroying* `flutter_service_worker.js`, yet the bootstrap

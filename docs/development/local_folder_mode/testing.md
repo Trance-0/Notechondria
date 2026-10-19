@@ -20,9 +20,17 @@ main document unless they start with 8. Sections 2.8 to 2.10 and 7 are in
    (5), the per-device settings filter (F08), the detail-sentinel check
    (2.5), `decideStorageMode` over seeded `SharedPreferences` (2.8), the
    `opening` hold and the deadlines (2.9), and the `StorageModeClient`
-   routing table (2.8). The shared package's tests
-   are not run by CI (`docs/AGENTS.md`, round-end convention), so anything
-   that must be CI-checked also appears in a smoke test.
+   routing table (2.8). T6 (design review 3) is resolved by a CI step:
+   `.github/workflows/frontend-pages.yml` runs
+   `flutter test test/local_folder/ -r compact` from
+   `frontend/notechondria_shared` ("Test notechondria_shared local
+   folder", after the three app builds, in the job that already installs
+   Flutter), so the journal, concurrency, identity, denylist, and
+   storage-mode tests gate every Pages deploy. The step relies on
+   `flutter test` resolving packages: an explicit `flutter pub get` in
+   that package exits 1 on its l10n generation with Flutter 3.44
+   ("Placeholders used in selects must be of type 'String'"). The rest
+   of the shared package's tests stay out of CI.
 2. Per-app smoke tests (CI), 8.5.
 3. OPFS and Web Locks integration tests in Chromium (8.3), run in a
    Docker container with the Flutter SDK and Playwright's Chromium, on a

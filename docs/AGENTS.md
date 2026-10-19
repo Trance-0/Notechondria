@@ -128,8 +128,9 @@ GitHub REST API (unauthenticated, ~60 req/hr):
   once cancelled a build and left a stale bundle (0.1.190), so always
   confirm the dominant `0.1.NNN` in the bundle matches `VERSION`. CI's
   `Test <app>` step runs only `test/smoke_test.dart`, so any logic that
-  must be CI-checked belongs there (the shared package's own tests are
-  not CI-run).
+  must be CI-checked belongs there. Of the shared package's own tests,
+  only `test/local_folder/` is CI-run (the `Test notechondria_shared
+  local folder` step).
 
 ## §1.7 compliance — canonical module / process names
 

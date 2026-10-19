@@ -150,6 +150,7 @@ T8). T1 (Phase 3), T2 (Phase 2), and T4 (Phase 2) stay with their phases.
 |---|---|---|
 | T3 | `remember` stored in the shared key, default off on every origin known today; second `needsPick` wording for a missing record; checkbox placement and "Use the connected folder" routing stated | 1.3, 2.8 rule 4, 2.10; `local_folder_boot.dart`, `handle_store.dart`, `folder_messages.dart` |
 | T5 | IndexedDB callbacks added to the zone-wrapper table, guarded, with the `onupgradeneeded` exception | 9.2; `handle_store_web.dart` |
+| T6 | `flutter test test/local_folder/` runs in `frontend-pages.yml` | 8.1 |
 | T7 | (a) to (j) decided in one list | 9.1 Phase 1; (a, b, d, e, g, h, i, j) coded in Phase 1a, (c, f) land with the app wiring and handlers |
 | T8 | U18 row, the "mode changes" sentence, and the `backend-tests.yml:16-19` citations | 1.4, 2.8, 8.4, 9.3 |
 
