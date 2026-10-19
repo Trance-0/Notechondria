@@ -618,6 +618,25 @@ the differences the code made from the design are in `revision_log.md`
   and the inert `cloudOnly` gates.
 - [ ] Phase 0 spike on desktop Chrome (U1, U3, U5, U7, U10, U17, U18):
   run before Phase 2 ships the option.
+- [ ] Phase 1b review follow-ups (`.agents/tasks/phase1b-review.json`),
+  all to land before Phase 2 shows the option:
+  - P1B-1 (MEDIUM): note and course lookups read every note inside the
+    lock (`handlers/notes.dart:87-101`, `handlers/records.dart:140-158`,
+    `:308-324`). Locate records through the in-memory index, re-read only
+    the files served or rewritten, and add a Chromium timing check over a
+    few thousand notes.
+  - P1B-2: "Check for updates" treats a locally answered handshake
+    (`x-notechondria-backend: local-folder`) as a cloud answer
+    (`storage_mode_client.dart:137-176`).
+  - P1B-3: after a failed roll-forward, write lookups use the skip set, so
+    a PATCH or DELETE answers 404 and a draft upsert creates a duplicate
+    note instead of `writeBlockedByJournal`.
+  - P1B-4: apply `scrubRouteDetail` to every 404 and 501 detail in
+    `LocalFolderTransport._detail`.
+  - P1B-5: tests for the inert folder branches (`applyAuthPayload` folder
+    payload, `logout` guard, `disconnectFolder`, `cloudOnlyAction`, a
+    throwing `prepare`, the 7 s write start, the transport R3 path).
+  - P1A-7 (LOW): Unicode case gap in `scrubSessionSentinels`.
 - [ ] Phase 2, editor: attachments, covers, avatar,
   `folderAwareImageProvider`, promotion failures and "Copy browser
   attachments into the folder", history and snapshot routes, sessions, the
