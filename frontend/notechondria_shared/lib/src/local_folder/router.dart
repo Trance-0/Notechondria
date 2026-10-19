@@ -120,9 +120,15 @@ abstract class LocalHandlerContext {
   /// [writeText] keep it current for this tab's own writes.
   FolderIndex get index;
 
+  /// Whether the entry at [path] came from `index.json` and has not been
+  /// compared with the disk yet; list routes check such entries first (3.8).
+  bool isUnverified(String path);
+
   /// Replaces index entries (a null value drops one) after a handler
-  /// re-read files the index had out of date or did not have.
-  void updateIndex(Map<String, IndexedFile?> changes);
+  /// re-read files the index had out of date or did not have; [verified]
+  /// paths were compared with the disk and kept.
+  void updateIndex(Map<String, IndexedFile?> changes,
+      {Iterable<String> verified = const []});
 
   /// Per note UUID, the body `lastModified` this tab last served (3.8).
   Map<String, int> get servedLastModified;

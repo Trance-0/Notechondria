@@ -116,10 +116,14 @@ class FolderScanner {
 
   /// Scans the folder; unchanged files ([previous] has the same size and
   /// `lastModified`) are not read again. [changedPaths] are re-checked at
-  /// the end like duplicate UUIDs (change messages, Phase 4).
+  /// the end like duplicate UUIDs (change messages, Phase 4). [beforeWrite]
+  /// runs in the final exclusive hold, before `index.json` is written, and
+  /// may change the scanned entries: the controller applies there the index
+  /// changes this tab made between pages (L2A-2).
   Future<ScanResult> scan({
     FolderIndex? previous,
     Set<String> changedPaths = const {},
+    void Function(Map<String, IndexedFile> files)? beforeWrite,
   }) async {
     final before = previous?.files ?? const <String, IndexedFile>{};
     final files = <String, IndexedFile>{};
@@ -196,13 +200,14 @@ class FolderScanner {
       });
     }
 
-    final index = FolderIndex(
-      folderId: folderId,
-      generatedAt: _now().toUtc().toIso8601String(),
-      files: files,
-    );
-    await locks.run(lockName, FolderLockMode.exclusive,
-        () => fs.writeText(kIndexPath, index.encode()));
+    final generatedAt = _now().toUtc().toIso8601String();
+    final index = await locks.run(lockName, FolderLockMode.exclusive, () async {
+      beforeWrite?.call(files);
+      final index =
+          FolderIndex(folderId: folderId, generatedAt: generatedAt, files: files);
+      await fs.writeText(kIndexPath, index.encode());
+      return index;
+    });
     return ScanResult(
         index: index, fixes: applied, dropped: dropped, countersRaised: raised);
   }

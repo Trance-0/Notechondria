@@ -303,6 +303,12 @@ abstract final class LocalFolderMessages {
       'Folder ID counters raised: Shared.LocalFolder/scan — manifest.json '
       'counters were below IDs found on disk ($kinds).';
 
+  /// L2A-1: the coalesced write of `.notechondria/index.json` failed.
+  static String indexNotSaved(String cause) =>
+      'Folder index not saved: Shared.LocalFolder/write — writing '
+      '.notechondria/index.json failed ($cause); the next write tries again, '
+      'and the next open compares every note with the disk.';
+
   static String journalIncomplete(String opId, String app, String cause) =>
       'Folder change not finished: Shared.LocalFolder/journal — $opId from '
       '$app is incomplete ($cause); the notes it touches are hidden until '

@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:notechondria_shared/local_folder_testing.dart';
 import 'package:notechondria_shared/src/local_folder/folder_fs.dart';
@@ -15,52 +13,6 @@ import 'folder_fixtures.dart';
 // request re-reads only the note it serves or rewrites, the list routes
 // answer from the index, and notes another tab added or removed are still
 // found or dropped.
-
-/// Records which files are read, over a [MemoryFolderFs].
-class _CountingFs implements FolderFs {
-  _CountingFs(this.inner);
-  final MemoryFolderFs inner;
-  final List<String> reads = [];
-
-  /// Note bodies read since the last [reads] clear.
-  Set<String> get bodyReads => {...reads.where(isNoteBodyPath)};
-
-  @override
-  String get name => inner.name;
-  @override
-  Future<String> readText(String path) {
-    reads.add(path);
-    return inner.readText(path);
-  }
-
-  @override
-  Future<Uint8List> readBytes(String path) {
-    reads.add(path);
-    return inner.readBytes(path);
-  }
-
-  @override
-  Future<void> writeText(String path, String text) => inner.writeText(path, text);
-  @override
-  Future<void> writeBytes(String path, Uint8List bytes) =>
-      inner.writeBytes(path, bytes);
-  @override
-  Future<List<FolderEntry>> list(String directory) => inner.list(directory);
-  @override
-  Future<FolderStat?> stat(String path) => inner.stat(path);
-  @override
-  Future<void> remove(String path, {bool recursive = false}) =>
-      inner.remove(path, recursive: recursive);
-  @override
-  Future<FolderPermission> queryPermission({bool write = true}) =>
-      inner.queryPermission(write: write);
-  @override
-  Future<FolderPermission> requestPermission({bool write = true}) =>
-      inner.requestPermission(write: write);
-  @override
-  Future<bool> isSameEntry(FolderFs other) =>
-      inner.isSameEntry(other is _CountingFs ? other.inner : other);
-}
 
 String _md(Map<String, Object?> note, {bool trashed = false}) =>
     noteBodyPath(uuidHex('${note['uuid']}'), trashed: trashed);
@@ -98,7 +50,7 @@ void main() {
     final p = MemoryFolderPlatform();
     final (a, fs) = await folderApp(platform: p);
     final notes = [for (var i = 0; i < 30; i++) await createNote(a, title: 'n$i')];
-    final counting = _CountingFs(fs);
+    final counting = CountingFolderFs(fs);
     final b = await _openTab(p.anotherTab(), counting);
     final target = notes[17];
     counting.reads.clear();

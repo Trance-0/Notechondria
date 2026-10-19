@@ -28,6 +28,12 @@ import 'note_codec.dart';
 // summary, so the list routes answer from the index instead of reading
 // every note inside a lock hold (phase 1b review P1B-1, 6.2 R4). A schema 1
 // index is ignored and the folder is scanned again.
+//
+// Writers: a scan, at its end, and the controller's coalesced flush of the
+// in-memory index after this tab's writes (`flushIndex`, loop 2a review
+// L2A-1), both under the exclusive lock (R1). `generated_at` is the time of
+// the last scan. Entries read from the file are compared with the disk
+// before a list route answers from them (3.8).
 
 const int kFolderIndexSchemaVersion = 2;
 
@@ -273,20 +279,11 @@ class FolderIndex {
 
   /// This index with [changes] applied (a null value drops the entry) and
   /// every entry under [removedDirs] dropped. [generatedAt] keeps the time
-  /// of the last scan; only scans write `index.json`.
+  /// of the last scan.
   FolderIndex withChanges(Map<String, IndexedFile?> changes,
       {Iterable<String> removedDirs = const []}) {
     final next = Map<String, IndexedFile>.of(files);
-    for (final dir in removedDirs) {
-      next.removeWhere((path, _) => path.startsWith('$dir/'));
-    }
-    changes.forEach((path, entry) {
-      if (entry == null) {
-        next.remove(path);
-      } else {
-        next[path] = entry;
-      }
-    });
+    applyIndexChanges(next, changes, removedDirs: removedDirs);
     return FolderIndex(
         folderId: folderId,
         generatedAt: generatedAt,
@@ -294,6 +291,49 @@ class FolderIndex {
         layoutVersion: layoutVersion);
   }
 }
+
+/// Applies [changes] to [files] in place (a null value drops the entry),
+/// after dropping every entry under [removedDirs].
+void applyIndexChanges(
+    Map<String, IndexedFile> files, Map<String, IndexedFile?> changes,
+    {Iterable<String> removedDirs = const []}) {
+  for (final dir in removedDirs) {
+    files.removeWhere((path, _) => path.startsWith('$dir/'));
+  }
+  changes.forEach((path, entry) {
+    if (entry == null) {
+      files.remove(path);
+    } else {
+      files[path] = entry;
+    }
+  });
+}
+
+/// Index changes in the order they were made: what this tab changed while a
+/// scan ran, applied to the scan's result (L2A-2).
+class IndexChangeLog {
+  final List<(Map<String, IndexedFile?>, List<String>)> _entries = [];
+
+  int get length => _entries.length;
+
+  void add(Map<String, IndexedFile?> changes, Iterable<String> removedDirs) =>
+      _entries.add((Map.of(changes), List.of(removedDirs)));
+
+  /// Applies the entries from [from] on, in order, to [files].
+  void applyTo(Map<String, IndexedFile> files, {int from = 0}) {
+    for (final (changes, dirs) in _entries.skip(from)) {
+      applyIndexChanges(files, changes, removedDirs: dirs);
+    }
+  }
+}
+
+/// Whether two entries of one sidecar give the same answers: id, UUID, and
+/// summary fields (L2A-3). Size and `lastModified` are not compared.
+bool sameSidecarFields(IndexedFile a, IndexedFile b) =>
+    a.id == b.id &&
+    a.uuid == b.uuid &&
+    a.summary.length == b.summary.length &&
+    a.summary.entries.every((e) => b.summary[e.key] == e.value);
 
 Future<FolderIndex?> readFolderIndex(FolderFs fs,
     {required String folderId}) async {

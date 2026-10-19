@@ -1,9 +1,13 @@
 // Chromium timing check for the index-backed note lookups (phase 1b review
-// P1B-1): 2,000 notes on OPFS through the 8.3 hook, the real Web Locks
-// wrapper, and the in-page transport. A single-note GET or PATCH must hold
-// the folder lock for less than R4's 2 s target (6.2 R4,
-// `kFolderLockHoldTarget`). Every other route is timed and printed, so the
-// numbers can be recorded. Runs with the OPFS test:
+// P1B-1, loop 2a review L2A-1 and L2A-7): 2,000 notes on OPFS through the
+// 8.3 hook, the real Web Locks wrapper, and the in-page transport. Every
+// route below, the first list after an open from `index.json` (which
+// compares every stored entry with the disk), the `index.json` flush, and
+// a course delete (which stats every note body) must hold the folder lock
+// for less than R4's 2 s target (6.2 R4, `kFolderLockHoldTarget`); a
+// single-note GET or PATCH must also answer within it. The seed, scan, and
+// open times and the scan's longest hold are only printed. Runs with the
+// OPFS test:
 //
 //   flutter test --platform chrome \
 //     --dart-define=NOTECHONDRIA_TEST_OPFS_FOLDER=true \
@@ -15,6 +19,7 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:notechondria_shared/local_folder_testing.dart';
@@ -97,8 +102,7 @@ Future<List<({int id, String uuid})>> _seed(
 }
 
 void main() {
-  test('single-note GET and PATCH over 2,000 OPFS notes stay within R4',
-      () async {
+  test('routes over 2,000 OPFS notes hold the lock within R4', () async {
     final folderId = newUuidV4();
     final fs = await openOpfsTestFolder('timing-$folderId');
     final seedWatch = Stopwatch()..start();
@@ -119,15 +123,20 @@ void main() {
         WebFolderLocks(onHold: (_, __, held) => holds.add(held)));
     platform.handleStore.records[folderId] = fs;
     Future<(LocalFolderController, Duration)> open() async {
+      // The flush is timed on its own below, so no timer flush lands inside
+      // a timed route.
       final c = LocalFolderController.forTest(
-          app: 'editor', platform: platform, boot: LocalFolderBoot.snapshot);
+          app: 'editor',
+          platform: platform,
+          boot: LocalFolderBoot.snapshot,
+          indexFlushDelay: const Duration(hours: 1));
       final w = Stopwatch()..start();
       await c.open();
       return (c, w.elapsed);
     }
 
     Duration longest() => holds.fold(Duration.zero, (a, b) => a > b ? a : b);
-    final (scanned, scanTime) = await open();
+    final (scanned, scanTime) = await open(); // no index.json yet: full scan
     expect(scanned.state, LocalFolderState.active);
     scanned.dispose();
     final scanHold = longest();
@@ -162,6 +171,10 @@ void main() {
         json: {'content': 'Edited body.'});
     await timed('PATCH note by uuid', 'PATCH', '/notes/uuid/${target.uuid}/',
         json: {'title': 'Renamed note'});
+    // The first list after the open from index.json stats every stored
+    // note entry (L2A-1).
+    await timed('GET notes page, first list after open', 'GET',
+        '/notes/?limit=20&offset=0');
     await timed('GET notes page', 'GET', '/notes/?limit=20&offset=0');
     await timed('GET all notes', 'GET', '/notes/');
     await timed('GET notes search', 'GET', '/notes/?q=renamed');
@@ -169,6 +182,18 @@ void main() {
     await timed('POST note with draft id', 'POST', '/notes/',
         json: {'title': 'New', 'content': 'x', 'client_draft_id': 'timing-1'});
     await timed('DELETE note', 'DELETE', '/notes/${notes.first.id}/');
+    holds.clear();
+    final flushWatch = Stopwatch()..start();
+    await c.flushIndex();
+    flushWatch.stop();
+    results['index.json flush'] =
+        (status: 200, total: flushWatch.elapsed, hold: longest());
+    print('[P1B-1 timing] index.json flush: ${flushWatch.elapsedMilliseconds} '
+        'ms, longest hold ${longest().inMilliseconds} ms (${holds.length} holds)');
+    final course = await callApi(c, 'POST', '/courses/', json: {'title': 'Timing'});
+    expect(course.statusCode, 201, reason: course.body);
+    final courseId = (jsonDecode(course.body) as Map)['id'];
+    await timed('DELETE course, stats every note', 'DELETE', '/courses/$courseId/');
     // Notes the index lacks (another tab's, or written since the last
     // scan): the list's listing reads only those.
     for (var start = 0; start < 300; start += 50) {
@@ -194,11 +219,12 @@ void main() {
     ]) {
       final r = results[label]!;
       expect(r.status, 200, reason: label);
-      expect(r.hold, lessThan(kFolderLockHoldTarget), reason: label);
       expect(r.total, lessThan(kFolderLockHoldTarget), reason: label);
     }
+    // L2A-7: every route's hold, not only the single-note ones.
     for (final e in results.entries) {
       expect(e.value.status, anyOf(200, 201, 204), reason: e.key);
+      expect(e.value.hold, lessThan(kFolderLockHoldTarget), reason: e.key);
     }
   }, timeout: const Timeout(Duration(minutes: 15)));
 }

@@ -347,8 +347,10 @@ Future<LocalResponse> _delete(LocalHandlerContext ctx, NoteRecord n) async {
     JournalWrite(sidecarPathForBody(trashPath),
         sidecarWith(n.sidecar, {'deleted_at': now}).encode()),
   ];
+  // `source_note_uuid` is set only at creation, so the index may select by
+  // it; `is_public` can change in any tab and is checked on disk (L2A-4).
   final comments = await findNotes(ctx,
-      where: (c) => c.sourceNoteUuid == n.uuid && c.isPublic,
+      where: (c) => c.sourceNoteUuid == n.uuid,
       verify: (c) =>
           c.sidecar.sourceNoteUuid == n.uuid && c.frontmatter.isPublic);
   for (final c in comments) {

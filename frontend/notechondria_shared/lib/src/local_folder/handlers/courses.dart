@@ -54,9 +54,17 @@ Future<CourseRecord> _courseById(LocalHandlerContext ctx, int id) async {
   throw LocalHttpError(404, LocalFolderMessages.courseNotFound(id));
 }
 
+/// Course payloads after the listing refresh, so `recent_notes` never
+/// answers from an index entry not yet compared with the disk (L2A-1).
+Future<List<Map<String, Object?>>> _payloads(
+    LocalHandlerContext ctx, List<CourseRecord> courses) async {
+  await refreshNoteListing(ctx, skip: ctx.skipPaths);
+  return coursePayloads(ctx, courses);
+}
+
 Future<Map<String, Object?>> _payload(
         LocalHandlerContext ctx, CourseRecord course) async =>
-    (await coursePayloads(ctx, [course])).single;
+    (await _payloads(ctx, [course])).single;
 
 void _checkTitle(List<CourseRecord> courses, String title,
     {CourseRecord? except}) {
@@ -77,8 +85,7 @@ int? _hue(BodyFields b) {
 Future<LocalResponse> _list(LocalHandlerContext ctx) async {
   final courses = await readCourses(ctx.fs, skip: ctx.skipPaths)
     ..sort(compareCourses);
-  await refreshNoteListing(ctx, skip: ctx.skipPaths);
-  return LocalResponse(200, await coursePayloads(ctx, courses));
+  return LocalResponse(200, await _payloads(ctx, courses));
 }
 
 Future<LocalResponse> _create(LocalHandlerContext ctx) async {
@@ -155,7 +162,6 @@ Future<LocalResponse> _update(LocalHandlerContext ctx) async {
 
 Future<LocalResponse> _detail(LocalHandlerContext ctx) async {
   final course = await _courseById(ctx, ctx.request.intParam('id'));
-  await refreshNoteListing(ctx, skip: ctx.skipPaths);
   return LocalResponse(200, await _payload(ctx, course));
 }
 
@@ -196,7 +202,7 @@ Future<LocalResponse> _reorder(LocalHandlerContext ctx) async {
     await ctx.commit(ctx.journal.newRecord(writes));
   }
   final sorted = byId.values.toList()..sort(compareCourses);
-  return LocalResponse(200, await coursePayloads(ctx, sorted));
+  return LocalResponse(200, await _payloads(ctx, sorted));
 }
 
 Future<LocalResponse> _courseNotes(LocalHandlerContext ctx) async {
@@ -245,23 +251,27 @@ Future<void> _detachRecords(LocalHandlerContext ctx, String path, int id) async 
 /// `trash/notes/` lose `course_slug`, then `planner/events.json` and
 /// `planner/feeds.json` lose `course_id`, then the course file goes. An
 /// interrupted delete leaves the course in place; repeating it continues.
-/// The first chunk refreshes the note listing; each chunk then takes the
-/// next notes the index places in the course and re-reads them (P1B-1).
+/// The first chunk refreshes the note listing, the next ones stat every
+/// note body so that a note another tab moved into the course is indexed
+/// with it (L2A-5), and each chunk then takes the next notes the index
+/// places in the course and re-reads them (P1B-1).
 Future<LocalResponse> _delete(LocalHandlerContext ctx) async {
   final id = ctx.request.intParam('id');
-  final first = await ctx.chunk(() async {
+  final course = await ctx.chunk(() async {
     final course = await _courseById(ctx, id);
     await refreshNoteListing(ctx, trashed: true);
-    final total = indexedNotes(ctx.index, trashed: true)
-        .where((n) => n.courseSlug == course.slug)
-        .length;
-    return (course: course, total: total);
+    return course;
   });
-  final course = first.course;
   final label = "Deleting category '${course.title}'";
+  final checked = <String>{};
   final tried = <String>{};
   var done = 0;
   try {
+    while (await ctx.chunk(() async =>
+        await restatNoteBodies(ctx, checked: checked, trashed: true) > 0)) {}
+    final total = indexedNotes(ctx.index, trashed: true)
+        .where((n) => n.courseSlug == course.slug)
+        .length;
     while (await ctx.chunk(() async {
       final named = await findNotes(ctx,
           where: (n) => n.courseSlug == course.slug,
@@ -282,7 +292,7 @@ Future<LocalResponse> _delete(LocalHandlerContext ctx) async {
       ]));
       done += named.length;
       ctx.setBusy(LocalFolderMessages.folderBusy(
-          'write', label, done, first.total < done ? done : first.total));
+          'write', label, done, total < done ? done : total));
       return true;
     })) {}
     for (final path in const [kPlannerEventsPath, kPlannerFeedsPath]) {

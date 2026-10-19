@@ -1,4 +1,6 @@
 // Shared fixtures for the local folder unit tests (not a test file).
+import 'dart:typed_data';
+
 import 'package:notechondria_shared/local_folder_testing.dart';
 import 'package:notechondria_shared/src/local_folder/folder_fs.dart';
 import 'package:notechondria_shared/src/local_folder/folder_journal.dart';
@@ -78,3 +80,49 @@ Map<String, String> folderTexts(MemoryFolderFs fs) => {
       for (final p in fs.paths)
         if (!p.startsWith('$kJournalDir/')) p: fs.textOf(p)!,
     };
+
+/// Records which files are read, over a [MemoryFolderFs].
+class CountingFolderFs implements FolderFs {
+  CountingFolderFs(this.inner);
+  final MemoryFolderFs inner;
+  final List<String> reads = [];
+
+  /// Note bodies read since the last [reads] clear.
+  Set<String> get bodyReads => {...reads.where(isNoteBodyPath)};
+
+  @override
+  String get name => inner.name;
+  @override
+  Future<String> readText(String path) {
+    reads.add(path);
+    return inner.readText(path);
+  }
+
+  @override
+  Future<Uint8List> readBytes(String path) {
+    reads.add(path);
+    return inner.readBytes(path);
+  }
+
+  @override
+  Future<void> writeText(String path, String text) => inner.writeText(path, text);
+  @override
+  Future<void> writeBytes(String path, Uint8List bytes) =>
+      inner.writeBytes(path, bytes);
+  @override
+  Future<List<FolderEntry>> list(String directory) => inner.list(directory);
+  @override
+  Future<FolderStat?> stat(String path) => inner.stat(path);
+  @override
+  Future<void> remove(String path, {bool recursive = false}) =>
+      inner.remove(path, recursive: recursive);
+  @override
+  Future<FolderPermission> queryPermission({bool write = true}) =>
+      inner.queryPermission(write: write);
+  @override
+  Future<FolderPermission> requestPermission({bool write = true}) =>
+      inner.requestPermission(write: write);
+  @override
+  Future<bool> isSameEntry(FolderFs other) =>
+      inner.isSameEntry(other is CountingFolderFs ? other.inner : other);
+}

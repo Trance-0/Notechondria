@@ -353,11 +353,25 @@ folder's per-day counts in `planner/heatmap.json` stay as they were.
   note, plus every file it rewrites (6.2 R2). The index lacks notes that
   another tab or an outside program added since this tab's last scan, so
   the list routes, and any lookup that misses, first list `notes/` (and
-  `trash/notes/`) and read only the files the index lacks. This tab's own
-  writes update the in-memory index; `index.json` is rewritten only by
-  scans. An edit another tab saves to an existing note appears in this
-  tab's lists after its next rescan (from Phase 4, its change message);
-  a single-note request always serves what is on disk.
+  `trash/notes/`) and read only the files the index lacks.
+- This tab's own writes update the in-memory index, and the controller
+  writes it to `index.json` one second after the first write of a burst,
+  under the exclusive lock (`flushIndex`, 12.5), so a reload starts from
+  them and permanently deleted notes leave the file. A scan also writes
+  it, after applying the changes this tab made while the scan ran.
+  Startup goes `active` on the stored index (2.9), but no list answers
+  from a stored note entry before comparing it with the disk: the first
+  listing that meets an entry loaded from `index.json` stats the file
+  and reads it again only when its size or `lastModified` changed. A
+  re-read note whose sidecar id, UUID, or summary fields differ from its
+  entry gets a fresh sidecar entry. Cascades pick their targets by fields
+  that never change (UUID, `source_note_uuid`, `client_draft_id`) and
+  check the rest on disk; course delete first stats every note body,
+  because `course_slug` can change in any tab (12.5).
+- What stays delayed: an edit another tab or an outside program saves to
+  an existing note after this tab compared it reaches this tab's lists at
+  its next rescan (from Phase 4, its change message), or when this tab
+  reads that note. A single-note request always serves what is on disk.
 - A journal record cannot carry the body's new `lastModified`, so after a
   journaled body write the writer stamps the sidecar's `md_size` and
   `md_last_modified` from a fresh stat, in the same exclusive hold

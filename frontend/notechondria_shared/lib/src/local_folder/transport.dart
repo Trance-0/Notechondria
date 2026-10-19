@@ -276,11 +276,16 @@ class _Context implements LocalHandlerContext {
       FolderIndex(folderId: '', generatedAt: '', files: const {});
 
   @override
-  void updateIndex(Map<String, IndexedFile?> changes) =>
-      _controller.updateIndex(changes);
+  bool isUnverified(String path) => _controller.isUnverified(path);
+
+  @override
+  void updateIndex(Map<String, IndexedFile?> changes,
+          {Iterable<String> verified = const []}) =>
+      _controller.updateIndex(changes, verified: verified);
 
   /// P1B-1: the index entries of the paths this request wrote (from the
-  /// text it wrote and a fresh stat) and removed.
+  /// text it wrote and a fresh stat) and removed. They reach `index.json`
+  /// through the controller's coalesced flush (L2A-1).
   Future<void> _reindex(Map<String, String> written,
       {Iterable<String> removed = const [],
       Iterable<String> removedDirs = const []}) async {
@@ -295,7 +300,7 @@ class _Context implements LocalHandlerContext {
           ? null
           : indexFile(e.key, stat, indexReadsContent(e.key) ? e.value : null);
     }
-    _controller.updateIndex(changes, removedDirs: removedDirs);
+    _controller.updateIndex(changes, removedDirs: removedDirs, written: true);
   }
 
   /// 2.9: a write that has not started by the deadline changes nothing;

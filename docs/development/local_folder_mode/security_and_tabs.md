@@ -127,8 +127,11 @@ release the lock before the operation's first `await`.
   `history/<hex>/index.json`. The in-memory index is a read cache for GET
   handlers and never the base of a write. Handlers also locate through it
   the notes they read or rewrite, and then re-read those files (3.8). A
-  late or lost change message can therefore delay another tab's refresh,
-  but it cannot lose an update.
+  write that rewrites several notes selects them by a field that never
+  changes, or after a stat of every candidate, and checks the rest on
+  disk, so a stale entry cannot hide a target (12.5). A late or lost
+  change message can therefore delay another tab's refresh, but it cannot
+  lose an update.
 - **R3 Journals before reads.** A GET handler or scan page that finds a
   non-empty `.notechondria/journal/` releases its shared hold, takes the
   exclusive lock, re-lists the journal, rolls forward what is still there

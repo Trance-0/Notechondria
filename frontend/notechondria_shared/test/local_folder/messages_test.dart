@@ -36,6 +36,7 @@ final List<String> _allMessages = [
   LocalFolderMessages.noteAdopted('notes/a.md', 1, 'u1'),
   LocalFolderMessages.noteDropped('notes/a.md'),
   LocalFolderMessages.countersRaised('note 0 -> 4'),
+  LocalFolderMessages.indexNotSaved('NotAllowedError'),
   LocalFolderMessages.journalIncomplete('op', 'editor', 'NotAllowedError'),
   LocalFolderMessages.journalIncomplete(
       'op', 'editor', LocalFolderMessages.journalTooNewCause(2, 1)),

@@ -128,12 +128,18 @@ JavaScript return-value bug of 2.5; 8.3 covers that in Chromium.
   `test/local_folder_opfs_timing_test.dart` seeds 2,000 notes on OPFS,
   opens the folder with the real Web Locks wrapper, and times each route
   through the transport, reading the lock holds from `onHold`. It fails
-  when a single-note GET or PATCH (by id or UUID) takes, or holds the
-  lock for, 2 s or more (`kFolderLockHoldTarget`, 6.2 R4), and prints the
-  other routes' numbers. It runs in the same container command, after
-  the OPFS test file. 0.1.200's full reads answered a single-note GET with
-  the 8 s read deadline's 503 (hold 11 s); the numbers after the change
-  are in 12.5.
+  when any timed step holds the lock for 2 s or more
+  (`kFolderLockHoldTarget`, 6.2 R4): the single-note GET and PATCH by id
+  and UUID, the first list after the open from `index.json` (which stats
+  every stored entry), the note page, all notes, search, courses, the
+  draft upsert, note delete, the `index.json` flush, course delete (which
+  stats every note body), and a page with 300 notes the index lacks. The
+  single-note routes must also answer within 2 s. Only printed, not
+  checked: the seed time, the first open's full scan and its longest
+  hold, and the open from `index.json`. It runs in the same container
+  command, after the OPFS test file. 0.1.200's full reads answered a
+  single-note GET with the 8 s read deadline's 503 (hold 11 s); the
+  numbers after the change are in 12.5.
 - Unreachable in production: the flag is a compile-time constant, and the
   release builds pass only `APP_VERSION`
   (`.github/workflows/frontend-pages.yml:63,73,83`,

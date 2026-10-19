@@ -637,24 +637,52 @@ the differences the code made from the design are in `revision_log.md`
     7 s write start, and the transport R3 path.
   - P1A-7 (LOW): closed in 0.1.200; the `invalid to\u212Aen` test added,
     and overlapping sentinels are now broken too.
+- [x] Loop 2a review follow-ups (`.agents/tasks/review-2a.json`, design
+  `revision_log.md` 12.5):
+  - L2A-1 (MEDIUM): `index.json` was written only by scans and trusted
+    on open, so a reload listed pre-edit rows. The in-memory index is now
+    flushed to `index.json` 1 s after this tab's first write of a burst,
+    and stored note entries are compared with the disk by the first
+    listing that meets them.
+  - L2A-2: a rescan keeps the index changes this tab made while it ran.
+  - L2A-3: a re-read note whose sidecar differs from its entry gets a
+    fresh entry (another tab's description edit, a renumbered id).
+  - L2A-4: note delete picks comments by `source_note_uuid` and checks
+    `is_public` on disk.
+  - L2A-5: course delete stats every note body before it selects by
+    `course_slug`.
+  - L2A-7: the Chromium timing test asserts every route's hold.
 - [ ] Phase 2 search: Phase 1's substring search reads every body its
   title and description miss, in batches of 32. Over 2,000 OPFS notes in
-  headless Chromium it held the shared lock 1.3 s, so it passes R4's 2 s
-  target near 3,000 notes. The `note_search_score` port should bound it
-  (body cache, or chunked holds within the 8 s read deadline).
-- [ ] Scan page size: a 500-entry scan page held the lock up to 1,993 ms
-  in the same run (R4 target 2 s); consider a time-bounded page before
-  folders of that size are common.
-- [ ] Other tabs' edits to existing notes reach this tab's list summaries
-  only after its next rescan until Phase 4's change messages; new and
-  removed notes are picked up by the listing each list route runs.
+  headless Chromium it held the shared lock 1.2 to 1.3 s, so it passes
+  R4's 2 s target near 3,000 notes. The `note_search_score` port should
+  bound it (body cache, or chunked holds within the 8 s read deadline).
+- [ ] Scan page size: a 500-entry page of the first full scan held the
+  lock 1,993 ms, then 2,087 ms and 2,228 ms in later runs over the same
+  2,000 OPFS notes, above R4's 2 s target. Use a time-bounded page
+  before folders of that size are common (the timing test only prints
+  this number).
+- [ ] L2A-6, Phase 4: the first list after an open from `index.json`
+  stats every stored note entry in one hold (1,733 ms for 2,000 notes),
+  and a listing that finds many new files reads them in one hold (626 ms
+  for 300). About 2,300 stored notes or 900 new files pass the 2 s
+  target. Bound both per hold and leave the rest to Phase 4's paged
+  rescans and change path.
+- [ ] Other tabs' and outside programs' edits to an existing note made
+  after this tab compared it reach this tab's lists at its next rescan,
+  or when this tab reads that note, until Phase 4's change messages. A
+  note another tab's identity fix renumbered answers 404 by its new id
+  until its old id is asked for or a rescan runs. Course delete stats
+  every note before its detach chunks, so a note moved into the course
+  between that pass and its chunk keeps the slug.
 - [ ] Phase 2, editor: attachments, covers, avatar,
   `folderAwareImageProvider`, promotion failures and "Copy browser
   attachments into the folder", history and snapshot routes, sessions, the
   `note_search_score` port (Phase 1 searches by substring), the front page.
   Editor wiring: `core/local_folder_connect.dart`, the `local_folder`
-  startup step, `prepare: LocalFolderBoot.preload`, the controller and
-  default client in `_NotechondriaAppState`, the settings gating with
+  startup step and the verification rescan after the startup pass
+  (`controller.rescan()`, 2.9 step 3), `prepare: LocalFolderBoot.preload`,
+  the controller and default client in `_NotechondriaAppState`, the settings gating with
   `onPing`, the status card, and app-level smoke checks (cold
   `#/notes/<uuid>` in `needsPick`/`needsPermission`, T2). The ARB strings
   for the option, card, and view (English constants in 0.1.200). Then
