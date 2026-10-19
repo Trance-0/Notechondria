@@ -16,6 +16,9 @@ on:
     paths:
       - 'backend/**'
       - 'cli/**'
+      # Local folder contract fixtures, checked by notes/test_api_contract.py
+      # (design docs/development/local_folder_mode/testing.md 8.4, Q14).
+      - 'frontend/notechondria_shared/test/fixtures/api_v1/**'
       - '.github/workflows/backend-tests.yml'
   workflow_dispatch:
 
@@ -43,6 +46,18 @@ jobs:
         env:
           DJANGO_SETTINGS_MODULE: notechondria.settings_test
         run: python manage.py test
+
+      # The live answers the contract test recorded for each fixture, from
+      # the test database's seeded account only (no credentials), so a
+      # fixture can be refreshed without a local backend.
+      - name: Upload contract responses
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-responses
+          path: backend/build/contract_responses/
+          if-no-files-found: ignore
+          retention-days: 14
 
   cli-tests:
     runs-on: ubuntu-latest
