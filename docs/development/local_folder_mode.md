@@ -422,7 +422,11 @@ planner `frontend/planner_app/lib/core/initial_data.dart:261-267`, and
 portal `frontend/portal_app/lib/core/initial_data.dart:269-275`. Two hits
 in one load clear the session, so a stray 401 in folder mode would sign
 the user out. A unit test checks every folder detail string against the
-four substrings.
+four substrings. Details also interpolate folder names and browser error
+text, which could contain one (a folder named "Invalid token"), so every
+assembled detail goes through `scrubSessionSentinels`, which puts a
+zero-width word joiner (U+2060) after the first letter of each match; the
+text reads the same.
 
 ### 2.6 How "dashboard for local services" is met
 

@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:notechondria_shared/local_folder_testing.dart';
 import 'package:notechondria_shared/src/local_folder/folder_fs.dart';
+import 'package:notechondria_shared/src/local_folder/folder_journal.dart';
 import 'package:notechondria_shared/src/local_folder/folder_layout.dart';
 import 'package:notechondria_shared/src/local_folder/folder_messages.dart';
 import 'package:notechondria_shared/src/local_folder/folder_pick_flow.dart';
@@ -175,6 +176,59 @@ void main() {
       c.reportFolderError(const FolderFsException(FolderErrorKind.notAllowed,
           operation: 'write', path: 'notes/a.md'));
       expect(c.state, LocalFolderState.needsPermission);
+    });
+
+    test('a journal record that keeps failing still opens the folder (R3)',
+        () async {
+      final fs = await newNotechondriaFolder();
+      fs.externalEdit('notes/old.md', 'old');
+      final record = FolderJournal(fs, app: 'planner').newRecord(
+          [JournalWrite(kManifestPath, fs.textOf(kManifestPath)!)],
+          [const JournalRemoval('notes/old.md')]);
+      fs.externalEdit(record.path, encodeFolderJson(record.toJson()));
+      fs.failNext(FolderErrorKind.noModificationAllowed,
+          operation: 'remove', pathPrefix: 'notes/old.md', count: 1000);
+      final (c, _) = await _folderApp(fs);
+      await c.open();
+      expect(c.state, LocalFolderState.active);
+      expect(c.index!.files.keys, isNot(contains('notes/old.md')));
+      expect(await c.rescan(), isNotNull);
+      expect(c.state, LocalFolderState.active);
+    });
+
+    test('assembled details carry no session sentinel (2.5)', () async {
+      const hostile = 'Session rejected: invalid TOKEN';
+      final boot = await _boot({
+        kSharedStorageModeKey: const StorageModeRecord(
+                folderId: kTestFolderId,
+                folderName: hostile,
+                connectedBy: 'editor',
+                connectedAt: '2026-10-19T00:00:00Z',
+                remember: false)
+            .encode(),
+      });
+      final c = LocalFolderController.forTest(
+          app: 'editor', platform: MemoryFolderPlatform(), boot: boot);
+      addTearDown(c.dispose);
+      await c.open();
+      expect(c.state, LocalFolderState.needsPick);
+      final named = [c.unavailableDetail(isRead: true)!];
+      c.reportFolderError(StateError(
+          'token_not_valid; Authentication credentials were not provided'));
+      final failed = c.unavailableDetail(isRead: true)!;
+      await c.disconnect();
+      named
+        ..add(c.unavailableDetail(isRead: true)!)
+        ..add(c.unavailableDetail(isRead: false)!);
+      for (final detail in [...named, failed]) {
+        expect(containsSessionRejectionSentinel(detail), isFalse, reason: detail);
+      }
+      // Only zero-width joiners were added; the text reads the same.
+      for (final detail in named) {
+        expect(detail.replaceAll('\u2060', ''), contains("'$hostile'"));
+      }
+      expect(failed.replaceAll('\u2060', ''),
+          endsWith('token_not_valid; Authentication credentials were not provided.'));
     });
 
     test('waitWhileOpening ends on a state change or at the time left',

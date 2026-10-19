@@ -125,10 +125,10 @@ portal build compile (dart.dev recommends this condition over
 | `local_folder_boot.dart` | `LocalFolderBoot.preload` for `runGuardedApp(prepare:)`, the snapshot, and `decideStorageMode` with each app's session keys (2.8) | 90 | 1 |
 | `local_folder_controller.dart` | Storage mode, folder state machine (including `opening` and `needsPick`), connect, reconnect, choose again, switch, disconnect in the order of 2.10 rule 4, scan scheduling, captured zone, and `httpClient` (the app's `StorageModeClient`) | 380 | 1 |
 | `folder_layout.dart` | Paths, manifest, ID counters and their raises | 180 | 1 |
-| `folder_journal.dart` | Write-ahead records with `expect`, ordered apply, removals last, roll-forward with re-check and the replay external-edit check (3.4.1) | 230 | 1 |
+| `folder_journal.dart`, `folder_journal_record.dart` | Write-ahead records with `expect`, ordered apply, removals last, roll-forward with re-check and the replay external-edit check (3.4.1); the record format and op ids are in their own file, re-exported | 230 | 1 |
 | `note_codec.dart` | Frontmatter, sidecar, link rewriting | 260 | 1 |
 | `folder_index.dart` | Read-only cache, `.notechondria/index.json`, paged scans, duplicate identities (3.7) | 280 | 1 |
-| `transport.dart` | `LocalFolderTransport extends http.BaseClient`: JSON and multipart decode, lock mode per method, the `opening` hold, 503 states, read and write deadlines from request start (2.9), response | 280 | 1 |
+| `transport.dart` | `LocalFolderTransport extends http.BaseClient`: JSON and multipart decode, lock mode per method, the `opening` hold, 503 states, read and write deadlines from request start (2.9), `scrubSessionSentinels` on every detail it assembles (2.5), response | 280 | 1 |
 | `storage_mode_client.dart` | `StorageModeClient` and `LocalRoutingClient`: mode routing and the handshake passthrough (2.8) | 110 | 1 |
 | `secret_denylist.dart` | Whole-key denylist with suffixes and `*_path` exemption (main 5) | 50 | 1 |
 | `router.dart` | `(method, path)` table, `/api/v1/` segment matching, and the 501/404 fallbacks | 170 | 1 |
@@ -151,12 +151,12 @@ portal build compile (dart.dev recommends this condition over
 | `../components/local_folder_status_card.dart` | Settings card: folder counts and bytes (F48), Rescan, Reconnect, Export, Check for updates, Disconnect, cloud-only list, busy and precedence lines | 280 | 1 |
 | `../components/local_folder_reconnect_view.dart` | Startup reconnect view with "Reconnect" and "Choose again", the refusal messages with "Switch to this folder", and the one-line banners (main 2.10 rule 5) | 220 | 1 |
 | `../utils/folder_aware_image.dart` | `folderAwareImageProvider` | 70 | 2 |
-| `folder_snapshots.dart` | History index, the folder-only snapshot writer, and the two-pool prune (3.8), moved into Phase 1 by T7(d) | 265 | 1 |
-| `folder_identity.dart`, `folder_scanner.dart` | The scan of `folder_index.dart`, split out: duplicate identities and adoption as journaled fixes (3.7), and the paged scan with the R4 re-check | 314 + 249 | 1 |
-| `folder_messages.dart` | Every 1.8 message of the module and the session-sentinel check (2.5) | 268 | 1 |
+| `folder_snapshots.dart` | History index, the folder-only snapshot writer, and the two-pool prune (3.8), moved into Phase 1 by T7(d) | 273 | 1 |
+| `folder_identity.dart`, `folder_scanner.dart` | The scan of `folder_index.dart`, split out: duplicate identities and adoption as journaled fixes (3.7), and the paged scan with the R4 re-check | 334 + 258 | 1 |
+| `folder_messages.dart` | Every 1.8 message of the module, the session-sentinel check, and `scrubSessionSentinels` (2.5) | 293 | 1 |
 | `local_folder_platform.dart` | `LocalFolderPlatform` and `FolderPicker`, the seam `forTest` and the web check use (T7(b)); `folder_fs_stub.dart` stubs the whole platform, so one conditional import pair serves fs, picker, handle store, locks, channel, and probe | 46 | 1 |
 | `frontend/notechondria_shared/lib/local_folder_testing.dart` | Exports the memory fakes for tests only | 15 | 1 |
-| `frontend/{editor,planner,portal}_app/lib/core/local_folder_connect.dart` | Per-app startup step, the session keys passed to `decideStorageMode`, precedence, connect push (token set before the course push, main 7.1), `_cloudOnly(...)` callback gate | 90, 180, 160 | 2, 3, 3 |
+| `frontend/{editor,planner,portal}_app/lib/core/local_folder_connect.dart` | Per-app startup step, precedence, connect push (token set before the course push, main 7.1), `_cloudOnly(...)` callback gate | 90, 180, 160 | 2, 3, 3 |
 | `frontend/notechondria_shared/test/local_folder/*.dart` | Unit tests incl. `folder_journal_test.dart` and `concurrency_test.dart`, each file under 500 lines | 1,700 total | 1-5 |
 | `frontend/notechondria_shared/test/local_folder_opfs_test.dart` | Chromium OPFS and Web Locks tests (8.3); run in the 16 GB container, not in CI | 300 | 1, 2, 4 |
 | `frontend/notechondria_shared/test/fixtures/api_v1/*.json` | Hand-written from the serializers, each with `_source` (8.4) | n/a | 1-3 |

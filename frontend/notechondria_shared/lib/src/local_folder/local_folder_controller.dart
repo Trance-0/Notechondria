@@ -159,8 +159,15 @@ class LocalFolderController extends ChangeNotifier {
   }
 
   /// The 503 detail for the current state (2.8 rule 4, T3, T7(i)), or null
-  /// in `active` and `opening` (the transport holds requests then).
+  /// in `active` and `opening` (the transport holds requests then). Folder
+  /// names and causes are interpolated, so the detail is scrubbed of the
+  /// session-rejection sentinels (2.5).
   String? unavailableDetail({required bool isRead}) {
+    final detail = _unavailableDetail(isRead: isRead);
+    return detail == null ? null : scrubSessionSentinels(detail);
+  }
+
+  String? _unavailableDetail({required bool isRead}) {
     final name = folderName;
     switch (_state) {
       case LocalFolderState.active:

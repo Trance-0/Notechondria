@@ -5,6 +5,7 @@ import 'package:notechondria_shared/local_folder_testing.dart';
 import 'package:notechondria_shared/src/local_folder/folder_fs.dart';
 import 'package:notechondria_shared/src/local_folder/folder_journal.dart';
 import 'package:notechondria_shared/src/local_folder/folder_layout.dart';
+import 'package:notechondria_shared/src/local_folder/folder_lock.dart';
 import 'package:notechondria_shared/src/local_folder/folder_snapshots.dart';
 import 'package:notechondria_shared/src/local_folder/note_codec.dart';
 
@@ -221,6 +222,32 @@ void main() {
       expect(await _journal(fs).listPending(), isEmpty);
       expect(logs.single, startsWith('Folder change discarded: Shared.LocalFolder/journal — '));
     });
+
+    test("a newer build's record stays and fails roll-forward (R3)", () async {
+      final fs = await newNotechondriaFolder();
+      final journal = _journal(fs);
+      final record = journal.newRecord([const JournalWrite('notes/a.md', 'new')],
+          [const JournalRemoval('notes/b.md')]);
+      await fs.writeText(record.path,
+          encodeFolderJson({...record.toJson(), 'schema_version': 2, 'later': 1}));
+      final logs = <String>[];
+      final rolled = await rollForwardUnderLock(
+          locks: MemoryFolderLocks(),
+          lockName: folderLockName(kTestFolderId),
+          journal: _journal(fs, logs));
+      expect(rolled.failure, isA<FolderJournalTooNew>());
+      expect(rolled.failedOpId, record.opId);
+      expect(await journal.listPending(), [record.opId]);
+      expect(fs.exists('notes/a.md'), isFalse);
+      expect(await journal.pendingPaths(), {'notes/a.md', 'notes/b.md'});
+      expect(
+          logs.single,
+          'Folder change not finished: Shared.LocalFolder/journal — '
+          '${record.opId} from editor is incomplete (record schema_version 2 '
+          'is above 1, the newest this build reads; update the app to finish '
+          'it); the notes it touches are hidden until Reconnect or Rescan '
+          'finishes it.');
+    });
   });
 
   group('the expect check (N15)', () {
@@ -296,6 +323,57 @@ void main() {
       expect(fs.textOf(historyBodyPath(uuidHex(_uuid), index.versions.single.id)),
           edited);
     });
+
+    // A PATCH that journals a concurrent_edit snapshot (SnapshotPlan) issues
+    // version 1 in its record; the replay's external_edit must not reuse it.
+    Future<void> patchWithSnapshot({int? crashInReplay}) async {
+      final fs = await newNotechondriaFolder();
+      await createNoteOp(fs, _journal(fs), uuid: _uuid);
+      final hex = uuidHex(_uuid);
+      final path = noteBodyPath(hex);
+      final served = fs.textOf(path)!;
+      final plan = await FolderSnapshotWriter(fs).plan(
+          noteUuid: _uuid,
+          reason: 'concurrent_edit',
+          text: served,
+          notePath: path);
+      final journal = _journal(fs);
+      final journaled = noteText(_uuid, 'Note', 'Journaled');
+      final record = journal.newRecord([
+        JournalWrite(path, journaled,
+            expect: JournalExpect.of((await fs.stat(path))!)),
+        JournalWrite(plan.bodyPath, plan.bodyText),
+        JournalWrite(plan.indexPath, plan.indexText),
+        JournalWrite(kManifestPath, plan.manifestText),
+      ], [
+        for (final p in plan.prunedBodies) JournalRemoval(p),
+      ]);
+      expect(await _crashAt(fs, 1, () => journal.commit(record)), isTrue);
+      final external = noteText(_uuid, 'Note', 'Edited after the crash');
+      fs.externalEdit(path, external);
+      if (crashInReplay != null) {
+        expect(await _crashAt(fs, crashInReplay, () => _journal(fs).rollForward()),
+            isTrue);
+      }
+      await _journal(fs).rollForward();
+      expect(fs.textOf(path), journaled);
+      final index = decodeHistoryIndex(fs.textOf(historyIndexPath(hex))!)!;
+      final ids = {for (final v in index.versions) v.reason: v.id};
+      expect(index.versions, hasLength(2));
+      expect(ids['concurrent_edit'], plan.entry.id);
+      expect(ids['external_edit'], greaterThan(plan.entry.id));
+      expect(fs.textOf(historyBodyPath(hex, plan.entry.id)), served);
+      expect(fs.textOf(historyBodyPath(hex, ids['external_edit']!)), external);
+      expect((await readFolderManifest(fs))!.counter('version'),
+          ids['external_edit']);
+      expect(await _journal(fs).listPending(), isEmpty);
+    }
+
+    test('a replay snapshot never reuses a version id the record issued',
+        () => patchWithSnapshot());
+
+    test('the same after a crash between the snapshot and the body write',
+        () => patchWithSnapshot(crashInReplay: 3));
 
     test('a journaled manifest never lowers a counter the replay raised',
         () async {

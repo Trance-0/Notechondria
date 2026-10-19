@@ -37,6 +37,8 @@ final List<String> _allMessages = [
   LocalFolderMessages.noteDropped('notes/a.md'),
   LocalFolderMessages.countersRaised('note 0 -> 4'),
   LocalFolderMessages.journalIncomplete('op', 'editor', 'NotAllowedError'),
+  LocalFolderMessages.journalIncomplete(
+      'op', 'editor', LocalFolderMessages.journalTooNewCause(2, 1)),
   LocalFolderMessages.journalUnreadable('op', 'bad JSON'),
   LocalFolderMessages.externalEditSaved('notes/a.md', 3),
   LocalFolderMessages.folderBusy('journal', 'Emptying the trash', 2, 5),
@@ -58,6 +60,21 @@ void main() {
     }
     expect(containsSessionRejectionSentinel('Session rejected: x'), isTrue);
     expect(kSessionRejectionSentinels, contains('session rejected:'));
+  });
+
+  test('scrubSessionSentinels breaks every sentinel in any case, invisibly',
+      () {
+    for (final s in kSessionRejectionSentinels) {
+      for (final text in ['x $s y', s.toUpperCase(), '$s$s']) {
+        final scrubbed = scrubSessionSentinels(text);
+        expect(containsSessionRejectionSentinel(scrubbed), isFalse,
+            reason: text);
+        expect(scrubbed.replaceAll('\u2060', ''), text);
+      }
+    }
+    for (final m in _allMessages) {
+      expect(scrubSessionSentinels(m), m, reason: m);
+    }
   });
 
   test('no message says "timed out", which friendlyError would rewrite', () {

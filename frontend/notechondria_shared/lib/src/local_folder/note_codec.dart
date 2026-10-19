@@ -282,22 +282,24 @@ class NoteSidecar {
       'md_last_modified',
       'deleted_at',
     };
+    // Sidecars may be edited by hand (3.8): a wrong-typed value reads as
+    // absent, so one bad field never stops a scan.
     final uuid = json['uuid'];
     return NoteSidecar(
-      id: json['id'] is int ? json['id'] as int : null,
+      id: jsonInt(json['id']),
       uuid: uuid is String && isUuid(uuid) ? uuid.toLowerCase() : null,
       sharingId: json['sharing_id'],
       metadataJson: json['metadata_json'],
       customMeta: json['custom_meta'],
-      clientDraftId: json['client_draft_id'] as String?,
+      clientDraftId: jsonString(json['client_draft_id']),
       noteType: json['note_type'],
-      sourceNoteUuid: json['source_note_uuid'] as String?,
-      coverImageUrl: (json['cover_image_url'] as String?) ?? '',
-      description: json['description'] as String?,
-      wordCount: json['word_count'] as int?,
-      mdSize: json['md_size'] as int?,
-      mdLastModified: json['md_last_modified'] as int?,
-      deletedAt: json['deleted_at'] as String?,
+      sourceNoteUuid: jsonString(json['source_note_uuid']),
+      coverImageUrl: jsonString(json['cover_image_url']) ?? '',
+      description: jsonString(json['description']),
+      wordCount: jsonInt(json['word_count']),
+      mdSize: jsonInt(json['md_size']),
+      mdLastModified: jsonInt(json['md_last_modified']),
+      deletedAt: jsonString(json['deleted_at']),
       extra: {
         for (final e in json.entries)
           if (!known.contains(e.key)) e.key: e.value,

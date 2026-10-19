@@ -154,3 +154,15 @@ T8). T1 (Phase 3), T2 (Phase 2), and T4 (Phase 2) stay with their phases.
 | T7 | (a) to (j) decided in one list | 9.1 Phase 1; (a, b, d, e, g, h, i, j) coded in Phase 1a, (c, f) land with the app wiring and handlers |
 | T8 | U18 row, the "mode changes" sentence, and the `backend-tests.yml:16-19` citations | 1.4, 2.8, 8.4, 9.3 |
 
+Phase 1a code review (`.agents/tasks/phase1a-review.json`, P1A-1 to
+P1A-6), resolved in the same phase:
+
+| ID | Resolution | Where |
+|---|---|---|
+| P1A-1 | The replay's `external_edit` snapshot is numbered above the counters the record journals, so it never shares an id with a version the record issued | 3.4.1; `folder_journal.dart`, `folder_snapshots.dart` |
+| P1A-2 | Wrong-typed fields in hand-edited sidecars, course files, history indexes, and the manifest read as absent | 3.8; `note_codec.dart`, `folder_index.dart`, `folder_snapshots.dart`, `folder_layout.dart` |
+| P1A-3 | The scan's counter raise and identity fixes take the R3 path when roll-forward fails | 3.4.1, 6.2 R3; `folder_scanner.dart`, `folder_identity.dart` |
+| P1A-4 | Unreadable records are deleted (now stated); a newer `schema_version` stays and fails roll-forward | 3.4.1; `folder_journal.dart` |
+| P1A-5 | `scrubSessionSentinels` on every assembled detail; the 1b transport applies it to handler details too | 2.5; `folder_messages.dart`, `local_folder_controller.dart` |
+| P1A-6 | The per-app connect row no longer lists session keys (T7(a)) | 9.2 |
+

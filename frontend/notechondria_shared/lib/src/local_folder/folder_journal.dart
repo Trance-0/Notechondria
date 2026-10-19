@@ -1,141 +1,18 @@
 import 'dart:convert';
-import 'dart:math';
 
 import 'folder_fs.dart';
+import 'folder_journal_record.dart';
 import 'folder_layout.dart';
 import 'folder_lock.dart';
 import 'folder_messages.dart';
 import 'folder_snapshots.dart';
 import 'note_codec.dart';
 
-// Write-ahead journal for multi-file operations (storage rules 3.4.1).
+export 'folder_journal_record.dart';
 
-/// Size and `lastModified` of a note body as the operation read it (N15).
-class JournalExpect {
-  const JournalExpect({required this.size, required this.lastModified});
-
-  factory JournalExpect.of(FolderStat stat) =>
-      JournalExpect(size: stat.size, lastModified: stat.lastModified);
-
-  final int size;
-  final int lastModified;
-
-  Map<String, Object?> toJson() => {'size': size, 'lastModified': lastModified};
-
-  static JournalExpect? fromJson(Object? json) {
-    if (json is! Map) return null;
-    final size = json['size'];
-    final lastModified = json['lastModified'];
-    if (size is! int || lastModified is! int) return null;
-    return JournalExpect(size: size, lastModified: lastModified);
-  }
-}
-
-class JournalWrite {
-  const JournalWrite(this.path, this.text, {this.expect});
-
-  final String path;
-
-  /// Full new text of the file.
-  final String text;
-
-  /// Only for note bodies (`notes/*.md`, `trash/notes/*.md`) that existed.
-  final JournalExpect? expect;
-}
-
-class JournalRemoval {
-  const JournalRemoval(this.path, {this.expect, this.directory = false});
-
-  final String path;
-  final JournalExpect? expect;
-
-  /// Removed with `removeEntry(name, {recursive: true})`, after every file.
-  final bool directory;
-}
-
-/// `.notechondria/journal/<op-id>.json`.
-class JournalRecord {
-  const JournalRecord({
-    required this.opId,
-    required this.app,
-    required this.createdAt,
-    required this.writes,
-    this.removals = const [],
-  });
-
-  factory JournalRecord.fromJson(Map<String, Object?> json) => JournalRecord(
-        opId: json['op_id'] as String,
-        app: (json['app'] as String?) ?? '',
-        createdAt: (json['created_at'] as String?) ?? '',
-        writes: [
-          for (final w in (json['writes'] as List?) ?? const [])
-            if (w is Map)
-              JournalWrite(w['path'] as String, w['text'] as String,
-                  expect: JournalExpect.fromJson(w['expect'])),
-        ],
-        removals: [
-          for (final r in (json['removals'] as List?) ?? const [])
-            if (r is Map)
-              JournalRemoval(r['path'] as String,
-                  expect: JournalExpect.fromJson(r['expect']),
-                  directory: r['directory'] == true),
-        ],
-      );
-
-  final String opId;
-  final String app;
-  final String createdAt;
-  final List<JournalWrite> writes;
-  final List<JournalRemoval> removals;
-
-  String get path => '$kJournalDir/$opId.json';
-
-  Set<String> get touchedPaths => {
-        for (final w in writes) w.path,
-        for (final r in removals) r.path,
-      };
-
-  Map<String, Object?> toJson() => {
-        'schema_version': kFolderSchemaVersion,
-        'op_id': opId,
-        'app': app,
-        'created_at': createdAt,
-        'writes': [
-          for (final w in writes)
-            {
-              'path': w.path,
-              'text': w.text,
-              if (w.expect != null) 'expect': w.expect!.toJson(),
-            },
-        ],
-        'removals': [
-          for (final r in removals)
-            {
-              'path': r.path,
-              if (r.expect != null) 'expect': r.expect!.toJson(),
-              if (r.directory) 'directory': true,
-            },
-        ],
-      };
-}
-
-/// `<UTC ms, 13 digits>-<4-digit per-tab sequence>-<8 random hex>`, so
-/// lexical order is creation order.
-class JournalOpIds {
-  JournalOpIds({Random? random}) : _random = random ?? Random.secure();
-
-  final Random _random;
-  int _sequence = 0;
-
-  String next(DateTime now) {
-    final ms = now.toUtc().millisecondsSinceEpoch.toString().padLeft(13, '0');
-    final seq = (_sequence++ % 10000).toString().padLeft(4, '0');
-    final hex = List.generate(4, (_) => _random.nextInt(256))
-        .map((b) => b.toRadixString(16).padLeft(2, '0'))
-        .join();
-    return '$ms-$seq-$hex';
-  }
-}
+// Write-ahead journal for multi-file operations (storage rules 3.4.1): the
+// apply order, roll-forward, and the R3 read path. The record format is in
+// `folder_journal_record.dart`.
 
 /// Thrown when step 4 finds a write target missing or of the wrong length.
 class FolderJournalException implements Exception {
@@ -144,6 +21,28 @@ class FolderJournalException implements Exception {
   @override
   String toString() => message;
 }
+
+/// A record whose `schema_version` is newer than this build's. It is left in
+/// place and reported as a failed roll-forward, so readers skip the paths it
+/// names (6.2 R3) until a newer build finishes it.
+class FolderJournalTooNew implements Exception {
+  const FolderJournalTooNew(this.opId, this.schemaVersion, this.touchedPaths);
+  final String opId;
+  final int schemaVersion;
+
+  /// Every `path` the record's writes and removals name.
+  final Set<String> touchedPaths;
+
+  @override
+  String toString() =>
+      LocalFolderMessages.journalTooNewCause(schemaVersion, kFolderSchemaVersion);
+}
+
+Set<String> _namedPaths(Map<String, Object?> json) => {
+      for (final key in const ['writes', 'removals'])
+        for (final item in jsonList(json[key]))
+          if (item is Map && item['path'] is String) item['path'] as String,
+    };
 
 class RollForwardResult {
   const RollForwardResult({
@@ -228,12 +127,18 @@ class FolderJournal {
   }
 
   /// Every path a pending record names; readers skip them when roll-forward
-  /// failed (6.2 R3).
+  /// failed (6.2 R3). An unreadable record names none.
   Future<Set<String>> pendingPaths() async {
     final out = <String>{};
     for (final id in await listPending()) {
-      final record = await _readRecord(id);
-      if (record != null) out.addAll(record.touchedPaths);
+      try {
+        final record = await _readRecord(id);
+        if (record != null) out.addAll(record.touchedPaths);
+      } on FolderJournalTooNew catch (e) {
+        out.addAll(e.touchedPaths);
+      } on FolderJournalException {
+        // The next roll-forward discards it.
+      }
     }
     return out;
   }
@@ -242,6 +147,10 @@ class FolderJournal {
     final text = await readTextOrNull(fs, '$kJournalDir/$opId.json');
     if (text == null) return null;
     final json = decodeJsonObject(text);
+    final version = json?['schema_version'];
+    if (json != null && version is int && version > kFolderSchemaVersion) {
+      throw FolderJournalTooNew(opId, version, _namedPaths(json));
+    }
     try {
       if (json != null && json['op_id'] == opId) {
         return JournalRecord.fromJson(json);
@@ -255,7 +164,9 @@ class FolderJournal {
 
   /// Replays every leftover record, one at a time in op-id order. The list
   /// is read here, inside the caller's exclusive hold, so a record another
-  /// tab already finished is skipped (3.4.1 "re-lists").
+  /// tab already finished is skipped (3.4.1 "re-lists"). A record that
+  /// cannot be parsed is deleted and logged; a newer build's record throws
+  /// [FolderJournalTooNew] and stays.
   Future<RollForwardResult> rollForward() async {
     final replayed = <String>[];
     var snapshots = 0;
@@ -287,12 +198,14 @@ class FolderJournal {
     final ordered = [for (final (_, w) in ranked) w];
     final written = <String, int>{};
     final prunedBodies = <String>[];
+    final floor = replay ? _journaledCounters(record) : const <String, int>{};
     var snapshots = 0;
     for (final w in ordered) {
       var text = w.text;
       if (replay) {
         if (w.expect != null && isNoteBodyPath(w.path)) {
-          snapshots += await _keepExternalEdit(record, w.path, w.expect!, w.text);
+          snapshots += await _keepExternalEdit(
+              record, w.path, w.expect!, w.text, floor);
         }
         text = await _replayText(record, w.path, text, prunedBodies);
         final current = await readTextOrNull(fs, w.path);
@@ -320,7 +233,8 @@ class FolderJournal {
     ];
     for (final r in removals) {
       if (replay && r.expect != null && isNoteBodyPath(r.path)) {
-        snapshots += await _keepExternalEdit(record, r.path, r.expect!, null);
+        snapshots +=
+            await _keepExternalEdit(record, r.path, r.expect!, null, floor);
       }
       await removeIfPresent(fs, r.path, recursive: r.directory);
     }
@@ -328,11 +242,42 @@ class FolderJournal {
     return snapshots;
   }
 
+  /// The counters the record issued itself: those of its `manifest.json`
+  /// write and the version ids in its history index writes. The replay's
+  /// `external_edit` snapshot is numbered above them, because the record's
+  /// manifest is written last, so the disk counter can still be below a
+  /// version the record allocated (a `concurrent_edit` snapshot journaled
+  /// with a PATCH, a `before_restore` restore).
+  Map<String, int> _journaledCounters(JournalRecord record) {
+    final floor = <String, int>{};
+    void see(String kind, int id) {
+      if (id > (floor[kind] ?? 0)) floor[kind] = id;
+    }
+
+    for (final w in record.writes) {
+      if (w.path == kManifestPath) {
+        try {
+          decodeFolderManifest(w.text).idCounters.forEach(see);
+        } on FolderLayoutException {
+          // A record never journals an invalid manifest; nothing to raise.
+        }
+      } else if (_isHistoryIndex(w.path)) {
+        for (final v in decodeHistoryIndex(w.text)?.versions ??
+            const <HistoryEntry>[]) {
+          see('version', v.id);
+        }
+      }
+    }
+    return floor;
+  }
+
   /// N15: before a replay rewrites or removes a note body, a body that
   /// matches neither `expect` nor the journaled text was edited after the
-  /// crash; its text is saved as one `external_edit` snapshot.
+  /// crash; its text is saved as one `external_edit` snapshot, with a
+  /// version id above [floor].
   Future<int> _keepExternalEdit(JournalRecord record, String path,
-      JournalExpect expect, String? journaledText) async {
+      JournalExpect expect, String? journaledText,
+      Map<String, int> floor) async {
     final stat = await fs.stat(path);
     if (stat == null || stat.sameAs(expect.size, expect.lastModified)) {
       return 0;
@@ -347,7 +292,8 @@ class FolderJournal {
         reason: 'external_edit',
         text: current,
         notePath: path,
-        opId: record.opId);
+        opId: record.opId,
+        counterFloor: floor);
     log(LocalFolderLogLevel.info,
         LocalFolderMessages.externalEditSaved(path, entry.id));
     return 1;
@@ -412,20 +358,26 @@ Future<RollForwardResult> rollForwardUnderLock({
   required FolderJournal journal,
   Duration? timeLeft,
 }) {
-  return locks.run(lockName, FolderLockMode.exclusive, () async {
-    try {
-      return await journal.rollForward();
-    } on FolderLockTimeout {
-      rethrow;
-    } catch (error) {
-      final pending = await _firstPendingOrNull(journal);
-      journal.log(
-          LocalFolderLogLevel.warning,
-          LocalFolderMessages.journalIncomplete(
-              pending ?? 'a record', journal.app, '$error'));
-      return RollForwardResult(failure: error, failedOpId: pending);
-    }
-  }, timeLeft: timeLeft);
+  return locks.run(lockName, FolderLockMode.exclusive,
+      () => rollForwardHeld(journal),
+      timeLeft: timeLeft);
+}
+
+/// [rollForwardUnderLock] for a caller that already holds the exclusive
+/// lock, such as a scan step about to write (3.4.1 "before any write").
+Future<RollForwardResult> rollForwardHeld(FolderJournal journal) async {
+  try {
+    return await journal.rollForward();
+  } on FolderLockTimeout {
+    rethrow;
+  } catch (error) {
+    final pending = await _firstPendingOrNull(journal);
+    journal.log(
+        LocalFolderLogLevel.warning,
+        LocalFolderMessages.journalIncomplete(
+            pending ?? 'a record', journal.app, '$error'));
+    return RollForwardResult(failure: error, failedOpId: pending);
+  }
 }
 
 Future<String?> _firstPendingOrNull(FolderJournal journal) async {

@@ -167,6 +167,26 @@ List<IdentityFix> planIdentityFixes(Map<String, IndexedFile> files) {
   return fixes;
 }
 
+/// Every path [applyIdentityFix] reads or writes for [fix], so a scan can
+/// skip a fix that touches a pending journal record (6.2 R3).
+Set<String> identityFixPaths(IdentityFix fix) => switch (fix) {
+      ReassignNoteUuid(:final path, :final keeper) => {
+          kManifestPath,
+          path,
+          sidecarPathForBody(path),
+          keeper,
+          sidecarPathForBody(keeper),
+        },
+      AdoptNote(:final path) => {kManifestPath, path, sidecarPathForBody(path)},
+      ReassignNoteId(:final path, :final keeper) => {
+          kManifestPath,
+          sidecarPathForBody(path),
+          sidecarPathForBody(keeper),
+        },
+      FixCourseIdentity(:final path) => {kManifestPath, path},
+      FixRecordIds(:final path) => {kManifestPath, path},
+    };
+
 String? _claimOf(String? mdText, NoteSidecar? sidecar) =>
     sidecar?.uuid ?? (mdText == null ? null : frontmatterUuidOf(mdText));
 

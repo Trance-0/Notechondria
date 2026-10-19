@@ -9,6 +9,7 @@ import 'package:notechondria_shared/src/local_folder/folder_journal.dart';
 import 'package:notechondria_shared/src/local_folder/folder_layout.dart';
 import 'package:notechondria_shared/src/local_folder/folder_lock.dart';
 import 'package:notechondria_shared/src/local_folder/folder_scanner.dart';
+import 'package:notechondria_shared/src/local_folder/folder_snapshots.dart';
 import 'package:notechondria_shared/src/local_folder/note_codec.dart';
 
 import 'folder_fixtures.dart';
@@ -234,6 +235,89 @@ void main() {
       await createNoteOp(fs, FolderJournal(fs, app: 'editor'), uuid: _u1);
       final result = await _scanner(fs).scanner.scan();
       expect(result.countersRaised, isFalse);
+    });
+  });
+
+  group('hand-edited files (3.8)', () {
+    test('wrong-typed fields read as absent and the scan finishes', () async {
+      final fs = await newNotechondriaFolder();
+      await _note(fs, _u1, id: 1);
+      final hex = uuidHex(_u1);
+      final sidecarPath = sidecarPathForBody(noteBodyPath(hex));
+      final sidecar = jsonDecode(fs.textOf(sidecarPath)!) as Map;
+      fs.externalEdit(sidecarPath, jsonEncode({
+        ...sidecar,
+        'description': 5,
+        'word_count': 'many',
+        'client_draft_id': 3,
+        'md_size': '12',
+      }));
+      fs.externalEdit('courses/bio.json',
+          jsonEncode({'id': 2, 'slug': ['bio'], 'title': 7}));
+      fs.externalEdit(historyIndexPath(hex), jsonEncode({
+        'note_uuid': 9,
+        'versions': [
+          {'id': 3, 'reason': 1, 'title': false, 'created_at': 5, 'op_id': []},
+        ],
+      }));
+      final manifest = jsonDecode(fs.textOf(kManifestPath)!) as Map;
+      fs.externalEdit(kManifestPath, jsonEncode({
+        ...manifest,
+        'github_sync_schema_version': 'one',
+        'restored_from_folder_id': 4,
+      }));
+
+      final result = await _scanner(fs).scanner.scan();
+      final indexed = result.index.files[sidecarPath]!;
+      expect([indexed.uuid, indexed.id], [_u1, 1]);
+      final course = result.index.files['courses/bio.json']!;
+      expect([course.id, course.slug, course.title], [2, null, null]);
+      expect(result.fixes, isEmpty);
+      final m = (await readFolderManifest(fs))!;
+      expect([m.counter('course'), m.counter('version')], [2, 3]);
+      final decoded = decodeSidecar(fs.textOf(sidecarPath)!)!;
+      expect([decoded.description, decoded.wordCount, decoded.clientDraftId],
+          [null, null, null]);
+      final entry =
+          decodeHistoryIndex(fs.textOf(historyIndexPath(hex))!)!.versions.single;
+      expect([entry.id, entry.reason, entry.title, entry.createdAt, entry.opId],
+          [3, 'manual', null, '', null]);
+    });
+  });
+
+  group('a journal record that keeps failing (6.2 R3)', () {
+    test('the scan finishes and skips every change that touches it',
+        () async {
+      final fs = await newNotechondriaFolder();
+      await _note(fs, _u1, id: 40);
+      fs.externalEdit('notes/hand.md', '# Hand\n');
+      fs.externalEdit('notes/old.md', 'old');
+      final journal = FolderJournal(fs, app: 'planner');
+      final record = journal.newRecord([
+        const JournalWrite('notes/new.md', 'new'),
+        JournalWrite(kManifestPath, fs.textOf(kManifestPath)!),
+      ], [
+        const JournalRemoval('notes/old.md'),
+      ]);
+      fs.externalEdit(record.path, encodeFolderJson(record.toJson()));
+      fs.failNext(FolderErrorKind.noModificationAllowed,
+          operation: 'remove', pathPrefix: 'notes/old.md', count: 1000);
+
+      final s = _scanner(fs);
+      final result = await s.scanner.scan();
+      expect(result.countersRaised, isFalse);
+      expect((await readFolderManifest(fs))!.counter('note'), 0);
+      expect(result.fixes, isEmpty);
+      expect(fs.exists('notes/hand.meta.json'), isFalse);
+      expect(result.index.files.keys,
+          containsAll([noteBodyPath(uuidHex(_u1)), 'notes/hand.md']));
+      expect(result.index.files.keys, isNot(contains('notes/old.md')));
+      expect(result.index.files.keys, isNot(contains('notes/new.md')));
+      expect(await journal.listPending(), [record.opId]);
+      expect(
+          s.logs,
+          anyElement(startsWith('Folder change not finished: '
+              'Shared.LocalFolder/journal — ${record.opId} ')));
     });
   });
 

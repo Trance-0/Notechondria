@@ -160,9 +160,8 @@ class FolderManifest {
       createdAt: '${json['created_at'] ?? ''}',
       createdByAppVersion: '${json['created_by_app_version'] ?? ''}',
       idCounters: counters,
-      githubSyncSchemaVersion:
-          (json['github_sync_schema_version'] as int?) ?? 1,
-      restoredFromFolderId: json['restored_from_folder_id'] as String?,
+      githubSyncSchemaVersion: jsonInt(json['github_sync_schema_version']) ?? 1,
+      restoredFromFolderId: jsonString(json['restored_from_folder_id']),
       extra: {
         for (final e in json.entries)
           if (!known.contains(e.key)) e.key: e.value,
@@ -285,6 +284,15 @@ Map<String, Object?>? decodeJsonObject(String text) {
   final decoded = decodeJsonValue(text);
   return decoded is Map ? Map<String, Object?>.from(decoded) : null;
 }
+
+// Typed reads of decoded JSON. Folder files may be edited by hand (3.8), so
+// a value of the wrong type reads as absent instead of throwing.
+
+String? jsonString(Object? value) => value is String ? value : null;
+
+int? jsonInt(Object? value) => value is int ? value : null;
+
+List<Object?> jsonList(Object? value) => value is List ? value : const [];
 
 final Random _secureRandom = Random.secure();
 

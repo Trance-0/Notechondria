@@ -29,13 +29,15 @@ class HistoryEntry {
     this.extra = const {},
   });
 
+  /// A wrong-typed field reads as absent (the file may be hand-edited, 3.8).
+  /// The caller checks that `id` is an int.
   factory HistoryEntry.fromJson(Map<String, Object?> json) => HistoryEntry(
         id: json['id'] as int,
-        reason: (json['reason'] as String?) ?? 'manual',
-        label: (json['label'] as String?) ?? '',
-        createdAt: (json['created_at'] as String?) ?? '',
-        title: json['title'] as String?,
-        opId: json['op_id'] as String?,
+        reason: jsonString(json['reason']) ?? 'manual',
+        label: jsonString(json['label']) ?? '',
+        createdAt: jsonString(json['created_at']) ?? '',
+        title: jsonString(json['title']),
+        opId: jsonString(json['op_id']),
         extra: {
           for (final e in json.entries)
             if (!const {'id', 'reason', 'label', 'created_at', 'title', 'op_id'}
@@ -72,9 +74,9 @@ class HistoryIndex {
   const HistoryIndex({required this.noteUuid, required this.versions});
 
   factory HistoryIndex.fromJson(Map<String, Object?> json) => HistoryIndex(
-        noteUuid: (json['note_uuid'] as String?) ?? '',
+        noteUuid: jsonString(json['note_uuid']) ?? '',
         versions: [
-          for (final v in (json['versions'] as List?) ?? const [])
+          for (final v in jsonList(json['versions']))
             if (v is Map && v['id'] is int)
               HistoryEntry.fromJson(Map<String, Object?>.from(v)),
         ],
@@ -198,13 +200,16 @@ class FolderSnapshotWriter {
   }
 
   /// Plans a snapshot from the current disk state (manifest and history
-  /// index re-read from disk, 6.2 R2).
+  /// index re-read from disk, 6.2 R2). Counters are first raised to
+  /// [counterFloor], so a journal replay can issue an id above the ones
+  /// its record journaled but has not written yet (3.4.1).
   Future<SnapshotPlan> plan({
     required String noteUuid,
     required String reason,
     required String text,
     required String notePath,
     String? opId,
+    Map<String, int> counterFloor = const {},
   }) async {
     final manifest = await readFolderManifest(fs);
     if (manifest == null) {
@@ -212,7 +217,8 @@ class FolderSnapshotWriter {
           'Snapshot not saved: Shared.LocalFolder/journal — manifest.json is '
           'missing, so no version id can be issued.');
     }
-    final (updated, id) = manifest.allocate('version');
+    final (updated, id) =
+        (manifest.raisedTo(counterFloor) ?? manifest).allocate('version');
     final hex = uuidHex(noteUuid);
     final now = _now();
     final entry = HistoryEntry(
@@ -247,13 +253,15 @@ class FolderSnapshotWriter {
     required String text,
     required String notePath,
     String? opId,
+    Map<String, int> counterFloor = const {},
   }) async {
     final p = await plan(
         noteUuid: noteUuid,
         reason: reason,
         text: text,
         notePath: notePath,
-        opId: opId);
+        opId: opId,
+        counterFloor: counterFloor);
     await fs.writeText(kManifestPath, p.manifestText);
     await fs.writeText(p.bodyPath, p.bodyText);
     await fs.writeText(p.indexPath, p.indexText);

@@ -131,7 +131,9 @@ release the lock before the operation's first `await`.
   non-empty `.notechondria/journal/` releases its shared hold, takes the
   exclusive lock, re-lists the journal, rolls forward what is still there
   (3.4.1), takes the shared lock again, and then serves. If roll-forward
-  fails, the reader skips every path the pending record names.
+  fails, the reader skips every path the pending record names. A write
+  step of the scan (counter raise, identity fix) that finds roll-forward
+  failing skips itself when it touches one of those paths.
 - **R4 Bounded holds.** One hold targets at most 2 s
   (`kFolderLockHoldTarget`) and 50 file writes. An operation that can
   exceed that runs as a sequence of separately locked and journaled

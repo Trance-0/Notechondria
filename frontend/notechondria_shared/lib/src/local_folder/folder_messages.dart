@@ -20,6 +20,26 @@ bool containsSessionRejectionSentinel(String text) {
   return kSessionRejectionSentinels.any(lower.contains);
 }
 
+final List<RegExp> _sentinelPatterns = [
+  for (final s in kSessionRejectionSentinels)
+    RegExp(RegExp.escape(s), caseSensitive: false),
+];
+
+/// Breaks every session-rejection sentinel in [text], in any letter case,
+/// with a word joiner (U+2060, zero width) after its first letter. The
+/// message builders contain no sentinel, but the folder names and browser
+/// error texts they interpolate might (a folder named "Invalid token"),
+/// so every assembled 503 detail goes through this (2.5). The text looks
+/// the same.
+String scrubSessionSentinels(String text) {
+  var out = text;
+  for (final pattern in _sentinelPatterns) {
+    out = out.replaceAllMapped(
+        pattern, (m) => '${m[0]!.substring(0, 1)}\u2060${m[0]!.substring(1)}');
+  }
+  return out;
+}
+
 enum LocalFolderLogLevel { info, warning, error }
 
 /// Where folder code reports log lines; [message] is a full 1.8 string.
@@ -249,8 +269,13 @@ abstract final class LocalFolderMessages {
 
   static String journalUnreadable(String opId, String cause) =>
       'Folder change discarded: Shared.LocalFolder/journal — record $opId '
-      'could not be read ($cause). Records are written in full before any '
-      'change starts, so nothing of it was applied.';
+      'could not be read ($cause), so it was deleted without being '
+      'replayed; the files it names keep their current contents.';
+
+  /// The cause [journalIncomplete] names for a newer build's record.
+  static String journalTooNewCause(int found, int supported) =>
+      'record schema_version $found is above $supported, the newest this '
+      'build reads; update the app to finish it';
 
   static String externalEditSaved(String file, int versionId) =>
       "External edit kept: Shared.LocalFolder/journal — '$file' changed on "

@@ -97,10 +97,15 @@ class FolderScanner {
       readWithJournalCheck(
           locks: locks, lockName: lockName, journal: journal, read: read);
 
-  Future<T> _exclusive<T>(Future<T> Function() operation) =>
+  /// Runs [operation] under the exclusive lock, after the roll-forward that
+  /// precedes every write (3.4.1). If that roll-forward fails, [operation]
+  /// gets the paths of the pending records and skips any change that
+  /// touches one (6.2 R3), so the scan still finishes and the folder opens.
+  Future<T> _exclusive<T>(Future<T> Function(Set<String> skip) operation) =>
       locks.run(lockName, FolderLockMode.exclusive, () async {
-        await journal.rollForward();
-        return operation();
+        final rolled = await rollForwardHeld(journal);
+        return operation(
+            rolled.failed ? await journal.pendingPaths() : const <String>{});
       });
 
   /// Scans the folder; unchanged files ([previous] has the same size and
@@ -165,8 +170,10 @@ class FolderScanner {
     final touched = <String>{};
     final applied = <IdentityFix>[];
     for (final fix in fixes) {
-      final changed =
-          await _exclusive(() => applyIdentityFix(fs, journal, fix));
+      final changed = await _exclusive((skip) async {
+        if (identityFixPaths(fix).any(skip.contains)) return const <String>{};
+        return applyIdentityFix(fs, journal, fix);
+      });
       if (changed.isNotEmpty) applied.add(fix);
       touched.addAll(changed);
     }
@@ -229,9 +236,11 @@ class FolderScanner {
     });
   }
 
-  /// 3.7: raises each counter to the largest id seen, in one journaled write.
+  /// 3.7: raises each counter to the largest id seen, in one journaled
+  /// write; skipped while a pending record still has to write the manifest.
   Future<bool> _raiseCounters(Map<String, int> maxIds) {
-    return _exclusive(() async {
+    return _exclusive((skip) async {
+      if (skip.contains(kManifestPath)) return false;
       final manifest = await readFolderManifest(fs);
       final raised = manifest?.raisedTo(maxIds);
       if (manifest == null || raised == null) return false;

@@ -100,17 +100,41 @@ interrupted and replayed. Rules:
     entry, and then proceeds. A second replay of the same record finds
     that entry and does not snapshot again.
 
+  The snapshot's version id is issued above both the counter on disk and
+  the counters the record itself journals (its `manifest.json` write and
+  the ids in its `history/<hex>/index.json` writes). The record's manifest
+  is written last, so a record that issued a version itself, such as a
+  `concurrent_edit` snapshot journaled with a PATCH or a `before_restore`
+  restore, would otherwise share that id with the replay's snapshot, and
+  its own history body would overwrite the external text.
+
   `expect` lives in the record rather than in the sidecar, because a
   crash after step 3's sidecar writes leaves the new sidecar on disk. The
   same check covers removals, so a delete or trash move interrupted by a
   crash never discards an edit made later.
 - It runs in the startup step (2.9), when a GET handler or a scan page
   finds a non-empty journal directory (6.2 R3), and before any write.
+- **Records that cannot be replayed.** A record that is not a JSON object,
+  names another `op_id` than its file name, or has a wrong-typed field is
+  deleted and logged as "Folder change discarded:
+  Shared.LocalFolder/journal — record <op-id> could not be read (<cause>),
+  so it was deleted without being replayed; the files it names keep their
+  current contents." A record lands in one replace-on-close write before
+  step 3, so a record this code wrote is complete or absent; one damaged
+  later (for example a sync tool's conflict copy) is discarded the same
+  way. A record whose `schema_version` is newer than this build's is not
+  deleted and not replayed with only the fields this build knows: it stays
+  in place and roll-forward fails with the cause "record schema_version
+  <n> is above <supported>, the newest this build reads; update the app to
+  finish it", which takes the path of the next rule.
 - If roll-forward fails (for example `NotAllowedError` after a
   revocation), readers skip every path the pending record names, and the
   status card shows "Folder change not finished: Shared.LocalFolder/journal
   — <op-id> from <app> is incomplete (<cause>); the notes it touches are
-  hidden until Reconnect or Rescan finishes it."
+  hidden until Reconnect or Rescan finishes it." The scan's exclusive
+  steps take the same path: the counter raise and every identity fix
+  (3.7) that reads or writes a pending path are skipped, so the folder
+  still opens and Rescan still finishes.
 - Operations that could hold the lock for long are split into separately
   journaled chunks (6.2 R4).
 
@@ -125,7 +149,11 @@ Three leftover records apply in `op-id` order. A crash after step 2 of a
 note PATCH, followed by an external edit of the `.md` (the fake's
 external-edit injection), replays to the journaled text with the
 external text kept as one `external_edit` snapshot; a second replay adds
-none. The same holds for a delete interrupted before its removals.
+none. The same holds for a delete interrupted before its removals, and
+for a PATCH whose record also journals a `concurrent_edit` snapshot: both
+versions survive with distinct ids. A newer build's record stays in place
+and fails roll-forward; a scan with a record that keeps failing still
+finishes.
 
 ## 3.5 Delete and trash semantics (match the backend)
 
@@ -358,3 +386,7 @@ folder's per-day counts in `planner/heatmap.json` stay as they were.
   in 3.7). Files that disappear are dropped from the index and logged at
   INFO: "Note dropped from index: Shared.LocalFolder/scan —
   'notes/<file>' no longer exists on disk."
+- Sidecars, course files, history indexes, and `manifest.json` may be
+  edited by hand. A field of the wrong type (`"description": 5`,
+  `"title": 7`) reads as absent, so one bad value never stops a scan; the
+  next app write of that file drops it.

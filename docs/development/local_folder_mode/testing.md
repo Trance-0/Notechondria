@@ -15,7 +15,8 @@ main document unless they start with 8. Sections 2.8 to 2.10 and 7 are in
    replay external-edit check (3.4.1), two-transport concurrency tests
    (6.2), ID allocation and duplicate identities (3.7), trash semantics
    and the empty-trash cascade (3.5), course delete over notes, trashed
-   notes, events, and feeds (3.5), snapshot pools (3.8), recurrence and
+   notes, events, and feeds (3.5), snapshot pools (3.8), scans of
+   hand-edited files with wrong-typed fields (3.8), recurrence and
    search ports, archive bridge, the secret denylist in both directions
    (5), the per-device settings filter (F08), the detail-sentinel check
    (2.5), `decideStorageMode` over seeded `SharedPreferences` (2.8), the

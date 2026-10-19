@@ -320,17 +320,17 @@ IndexedFile indexFile(String path, FolderStat stat, String? text) {
     case IndexedKind.course:
       final json = decodeJsonObject(text);
       if (json == null) return plain(kind);
-      final id = json['id'];
-      final client = json['client_course_id'];
+      // Course files may be edited by hand: wrong types read as absent.
+      final client = jsonString(json['client_course_id']);
       return IndexedFile(
         path: path,
         size: stat.size,
         lastModified: stat.lastModified,
         kind: kind,
-        id: id is int ? id : null,
-        slug: json['slug'] as String?,
-        title: json['title'] as String?,
-        clientCourseId: client is String && client.isNotEmpty ? client : null,
+        id: jsonInt(json['id']),
+        slug: jsonString(json['slug']),
+        title: jsonString(json['title']),
+        clientCourseId: client != null && client.isNotEmpty ? client : null,
       );
     case IndexedKind.records:
     case IndexedKind.history:
