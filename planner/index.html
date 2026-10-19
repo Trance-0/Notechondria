@@ -37,7 +37,8 @@
   <title>Notechondria Planner</title>
   <link rel="manifest" href="manifest.json">
   <style>
-    /* Startup fallback (0.1.198): see the #nc-boot block in <body>. */
+    /* Startup fallback (0.1.198) and boot surface (0.1.199): see the
+       #nc-boot block in <body>. */
     #nc-boot {
       position: fixed; inset: 0; z-index: 0; box-sizing: border-box;
       display: flex; flex-direction: column; align-items: center;
@@ -45,39 +46,49 @@
       font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       background: #f8fafc; color: #334155;
     }
+    /* While loading: a static copy of the Flutter splash header (title and
+       status line at 8vw from the right, 12vh from the bottom), so the
+       first Flutter frame replaces it without a second loading screen. */
+    #nc-boot:not([data-state]) {
+      align-items: flex-end; justify-content: flex-end;
+      padding: 0 8vw 12vh 0; text-align: right;
+    }
     #nc-boot[data-state="failed"] { z-index: 2147483646; }
     #nc-boot p { margin: 0; max-width: 40em; }
+    #nc-boot .nc-boot-header { display: flex; flex-direction: column; gap: 8px; }
+    #nc-boot:not([data-state]) .nc-boot-header { align-items: flex-end; }
     #nc-boot .nc-boot-title { font-weight: 600; }
-    #nc-boot .nc-boot-spinner {
-      width: 36px; height: 36px; border-radius: 50%;
-      border: 3px solid rgba(100, 116, 139, 0.25); border-top-color: #4338CA;
-      animation: nc-boot-spin 0.9s linear infinite;
+    #nc-boot:not([data-state]) .nc-boot-title {
+      font-size: 28px; line-height: 36px; font-weight: 700; color: #0f172a;
     }
-    #nc-boot[data-state="failed"] .nc-boot-spinner { display: none; }
+    #nc-boot .nc-boot-status { font-size: 16px; line-height: 24px; opacity: 0.5; }
+    #nc-boot[data-state] .nc-boot-status { display: none; }
     #nc-boot .nc-boot-reload {
       font: inherit; padding: 8px 16px; border: 0; border-radius: 6px;
       background: #4338CA; color: #fff; cursor: pointer;
     }
     #nc-boot .nc-boot-reload:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
-    @keyframes nc-boot-spin { to { transform: rotate(360deg); } }
-    @media (prefers-reduced-motion: reduce) {
-      #nc-boot .nc-boot-spinner { animation-duration: 3s; }
-    }
     @media (prefers-color-scheme: dark) {
       #nc-boot { background: #0f172a; color: #e2e8f0; }
+      #nc-boot:not([data-state]) .nc-boot-title { color: #f8fafc; }
     }
   </style>
 </head>
 <body>
-  <!-- Startup fallback (0.1.198). The loading indicator sits under Flutter's
-       view, so the first painted frame covers it; it is removed on the
+  <!-- Startup fallback (0.1.198) and boot surface (0.1.199). While loading
+       it shows no spinner: it is a static copy of the Flutter splash header
+       (same background, title, and "Starting ..." status in the same place),
+       so when the first Flutter frame covers it the user sees one loading
+       screen, not two. It sits under Flutter's view and is removed on the
        `flutter-first-frame` event. If flutter_bootstrap.js cannot be
        downloaded, the Flutter loader throws, or nothing has rendered after
        20s, it shows why and offers a reload instead of a blank page (the
        0.1.196/0.1.197 white screen). Messages follow AGENTS.md 1.8. -->
   <div id="nc-boot" role="status" aria-live="polite">
-    <div class="nc-boot-spinner" aria-hidden="true"></div>
-    <p class="nc-boot-title">Loading Notechondria Planner&hellip;</p>
+    <div class="nc-boot-header">
+      <p class="nc-boot-title">Notechondria Planner</p>
+      <p class="nc-boot-status">Starting Notechondria Planner</p>
+    </div>
     <p class="nc-boot-detail" hidden></p>
     <button type="button" class="nc-boot-reload" hidden>Reload</button>
   </div>
@@ -98,6 +109,7 @@
       function show(state, title, detail) {
         if (done) return;
         root.setAttribute('data-state', state);
+        part('status').hidden = true;
         part('title').textContent = title;
         part('detail').textContent = detail;
         part('detail').hidden = false;
