@@ -602,6 +602,63 @@ round. Not fixed in code yet; file as Issues with
   the Compose network), then decide whether `APP_HOST_PORT` and the
   gateway's `ROOT_HTTP_PORT` should be loopback behind the FRP tunnel.
 
+## Local folder storage mode (owner request; design `docs/development/local_folder_mode.md`)
+
+Phase 1 (foundation) landed in 0.1.200 with the option hidden in every
+app. Phase numbers and file rows are in
+`docs/development/local_folder_mode/implementation_plan.md` (9.1 to 9.3);
+the differences the code made from the design are in `revision_log.md`
+12.4.
+
+- [x] (0.1.200) Phase 1: storage core, transport, `StorageModeClient`,
+  router, handlers (handshake, ping, settings, session, logout, Casdoor
+  config, courses, notes, trash), fixtures and the Q14 backend recorder,
+  the sign-in option, status card, and reconnect view, the multipart
+  `_httpClient.send` fix, `pingBackend(client:)`, `runGuardedApp(prepare:)`,
+  and the inert `cloudOnly` gates.
+- [ ] Phase 0 spike on desktop Chrome (U1, U3, U5, U7, U10, U17, U18):
+  run before Phase 2 ships the option.
+- [ ] Phase 2, editor: attachments, covers, avatar,
+  `folderAwareImageProvider`, promotion failures and "Copy browser
+  attachments into the folder", history and snapshot routes, sessions, the
+  `note_search_score` port (Phase 1 searches by substring), the front page.
+  Editor wiring: `core/local_folder_connect.dart`, the `local_folder`
+  startup step, `prepare: LocalFolderBoot.preload`, the controller and
+  default client in `_NotechondriaAppState`, the settings gating with
+  `onPing`, the status card, and app-level smoke checks (cold
+  `#/notes/<uuid>` in `needsPick`/`needsPermission`, T2). The ARB strings
+  for the option, card, and view (English constants in 0.1.200). Then
+  show the option in the editor.
+- [ ] Phase 3, planner and portal: events and recurrence, deadlines, week
+  view, heatmap, calendar import and URL fetch with the CORS fallback,
+  the `client_local_id` upsert and the connect-time push with the 30-day
+  recovery list, both apps' wiring, the note viewers' `sizedImageBuilder`,
+  the portal's `_NoteRoutePage` reconnect view, and their smoke files.
+  Then show the option in the planner and portal.
+- [ ] Phase 4: `.nchron` bridge (new `folder_id` on restore, chunked
+  import, the status card's Export and the option's "Start from an
+  archive"), change messages, `FileSystemObserver` and focus rescans, and
+  "adopt a GitHub data-sync clone".
+- [ ] Phase 5: GitHub with a fine-grained token (credential store, status,
+  repos, push, course repo bind and import); replaces the GitHub card's
+  `cloudOnly` gate.
+- [ ] Q13: decide on a CI grep guard for the OPFS test-hook marker in the
+  release bundles.
+- [ ] Manual checks on desktop Chrome once the editor shows the option
+  (design `testing.md` 8.6, items 1 to 17), on
+  `https://trance-0.github.io` and on `http://127.0.0.1:9068`: the option
+  and Firefox's disabled message; connect an empty folder from the notice;
+  a non-empty folder's confirmation and a refused system folder; create,
+  edit, delete, restore, and empty trash with the files checked on disk;
+  an outside edit kept as `external_edit`; three app tabs saving at once;
+  Reconnect and "Choose again" after closing every tab; access removed
+  mid-edit and background revocation; a moved folder; attachments, covers,
+  and the avatar; `.ics` import and the CORS message; `.nchron` round
+  trip; GitHub push with a token that appears in no file or log; the
+  loopback preview with and without "Remember this folder"; copied notes
+  and folders; the wrong folder after a reload and "Switch to this
+  folder"; and `navigator.locks.query()` during a long empty trash.
+
 ## Release / CI
 
 

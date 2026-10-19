@@ -77,6 +77,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.200 - Local folder mode: foundation (option not shown yet)](versions/0.1.200.md)
 - [0.1.199 - Fix: offline calendar import, copyable warnings, startup logs, one loading screen](versions/0.1.199.md)
 - [0.1.198 - Fix: white screen on all Pages apps + backend-unavailable fallbacks](versions/0.1.198.md)
 - [0.1.197 - Note-conflict resolver: side-by-side diff](versions/0.1.197.md)

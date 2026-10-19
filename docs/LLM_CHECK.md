@@ -33,6 +33,37 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.200 (2026-10-19): FEATURE, owner request (local folder storage
+  mode), Phase 1 foundation of `docs/development/local_folder_mode.md`
+  9.1. Option HIDDEN in every app; no app reads the storage key yet.
+  NEW (shared `lib/src/`): `local_folder/transport.dart`,
+  `storage_mode_client.dart`, `router.dart`, `handlers/{records,
+  auth_settings,courses,notes,trash}.dart`,
+  `components/local_folder_{sign_in_option,status_card,reconnect_view}.dart`;
+  21 fixtures in `test/fixtures/api_v1/`; `backend/notes/test_api_contract.py`
+  (Q14). CHANGED: `AuthHub.localFolderOption` slot; `runGuardedApp(prepare:)`;
+  startup budget skipped for requests a `LocalRoutingClient` answers in the
+  page; `pingBackend(client:)`; session mixin `localFolder` getter (each
+  shell returns null, T7(c)), `disconnectFolder()`, `logout()` guard,
+  folder session messages, `cloudOnly`/`cloudOnlyAction` (inert gates on
+  the GitHub card builder and the template restore, T7(f)); multipart
+  `_httpClient.send(request)` at 8 sites; `scrubSessionSentinels` folds per
+  character (phase 1a review LOW, U+212A); `backend-tests.yml` paths and
+  `contract-responses` artifact. Deviations recorded in design 12.4.
+  VERIFIED (Docker `ghcr.io/cirruslabs/flutter:stable`, Flutter 3.44.0, one
+  container at a time, `timeout`; `--memory` discarded by this kernel):
+  shared analyze 7 issues (all pre-existing, unchanged), shared tests 306
+  pass / 3 fail (the pre-existing `version_update_banner_test.dart` ones;
+  baseline 241 / 3), `test/local_folder/` 217 pass; editor smoke 8 pass
+  (baseline 5), planner 15 pass, portal smoke 15 pass; app analyze 99 /
+  105 / 123 issues, 0 errors (unchanged); web release builds of all three
+  apps OK (bundle reports 0.1.200); `notes.test_api_contract` OK in
+  `python:3.11-slim` (it first caught `app_settings` carrying the
+  per-device keys, fixed in the fixtures). No listener started; the folder
+  tests assert zero requests reach the recorder. NOT RUN: Chromium OPFS
+  test, full backend suite, manual Chrome checks (8.6, in `docs/TODO.md`),
+  CI (not pushed).
+
 - 0.1.199 follow-up (2026-10-17, no VERSION bump): Phase 1 review
   finding 1. ROOT CAUSE: `planner_app/lib/core/calendar.dart:154-172`
   `_subscribeCalendarFeed` wrapped `createCalendarFeed` and
