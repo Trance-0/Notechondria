@@ -7,6 +7,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -67,7 +69,9 @@ typedef _Seeded = ({
 /// this browser's data (2.10 rule 3); this page load has a fresh tab of
 /// the same origin and a preloaded snapshot. Runs with real async.
 Future<_Seeded> _seedFolder(
-    {required bool remember, Map<String, Object> prefs = const {}}) async {
+    {required bool remember,
+    Map<String, Object> prefs = const {},
+    bool pushed = true}) async {
   SharedPreferences.setMockInitialValues({..._seenFirstRun, ...prefs});
   await LocalFolderBoot.preload();
   final platform = MemoryFolderPlatform();
@@ -100,7 +104,9 @@ Future<_Seeded> _seedFolder(
   final folderId = seed.record!.folderId;
   seed.dispose();
   final stored = await SharedPreferences.getInstance();
-  await stored.setString('notechondria.planner.folder_pushed', folderId);
+  if (pushed) {
+    await stored.setString('notechondria.planner.folder_pushed', folderId);
+  }
   await LocalFolderBoot.preload();
   return (tab: platform.anotherTab(), fs: fs, imageUrl: url);
 }
@@ -224,6 +230,51 @@ class _CloudBackend {
   }
 }
 
+/// File picker stand-in for the iCal import (the real one opens a native
+/// dialog).
+class _FakeFileSelector extends FileSelectorPlatform {
+  XFile? next;
+
+  @override
+  Future<XFile?> openFile({
+    List<XTypeGroup>? acceptedTypeGroups,
+    String? initialDirectory,
+    String? confirmButtonText,
+  }) async =>
+      next;
+}
+
+/// A one-event calendar for tomorrow 10:00-11:00 device-local time.
+String _ics() {
+  String two(int v) => v.toString().padLeft(2, '0');
+  final day = DateTime.now().add(const Duration(days: 1));
+  final date = '${day.year}${two(day.month)}${two(day.day)}';
+  return 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//phase3//EN\r\n'
+      'X-WR-CALNAME:Folder Test Calendar\r\n'
+      'BEGIN:VEVENT\r\nUID:phase3-1\r\nSUMMARY:Folder Lecture\r\n'
+      'DTSTART:${date}T100000\r\nDTEND:${date}T110000\r\nEND:VEVENT\r\n'
+      'END:VCALENDAR\r\n';
+}
+
+/// Imports [_ics] through the activity FAB's secondary menu.
+Future<void> _importCalendar(WidgetTester tester) async {
+  final fab = find.byType(FloatingActionButton);
+  expect(fab, findsOneWidget);
+  await tester.tapAt(tester.getCenter(fab),
+      buttons: kSecondaryMouseButton, kind: PointerDeviceKind.mouse);
+  await _pumpShort(tester);
+  if (find.text('Import iCal').evaluate().isEmpty) {
+    await tester.longPress(fab);
+    await _pumpShort(tester);
+  }
+  await tester.tap(find.text('Import iCal'));
+  await _pumpShort(tester);
+  expect(find.text('1 event parsed'), findsOneWidget);
+  await tester.tap(find.text('Confirm import'));
+  await _pumpSeconds(tester, 2);
+  expect(find.text('Review calendar import'), findsNothing);
+}
+
 /// Signs in through Settings > "Use email / password instead" > Login.
 Future<void> _signIn(WidgetTester tester) async {
   final expander = find.text('Use email / password instead');
@@ -311,6 +362,141 @@ void registerLocalFolderSmokeTests() {
       });
       expect(recorder.requests, isEmpty,
           reason: recorder.requests.map((r) => '${r.url}').join('\n'));
+    });
+
+    testWidgets(
+        'an .ics import in folder mode lands in the folder with zero network '
+        'requests', (tester) async {
+      final seeded =
+          (await tester.runAsync(() => _seedFolder(remember: true)))!;
+      final original = FileSelectorPlatform.instance;
+      final picker = _FakeFileSelector()
+        ..next = XFile.fromData(utf8.encode(_ics()),
+            name: 'folder.ics', path: 'folder.ics');
+      FileSelectorPlatform.instance = picker;
+      addTearDown(() => FileSelectorPlatform.instance = original);
+      final recorder = await _inFolderZone(() async {
+        final c = _appController(seeded.tab);
+        await _pumpApp(tester, c, initialIndex: 2);
+        expect(c.state, LocalFolderState.active);
+        // The "Folder session restored" SnackBar covers the FAB until it
+        // times out.
+        await _pumpSeconds(tester, 11);
+        await _importCalendar(tester);
+        await tester.runAsync(c.flushIndex);
+        await _pumpSeconds(tester, 2);
+        await _unmount(tester);
+      });
+      expect(recorder.requests, isEmpty,
+          reason: recorder.requests.map((r) => '${r.url}').join('\n'));
+      final feeds = seeded.fs.paths.where((p) => p.endsWith('.ics')).toList();
+      expect(feeds, hasLength(1), reason: seeded.fs.paths.join('\n'));
+      expect(seeded.fs.textOf(feeds.single), contains('SUMMARY:Folder Lecture'));
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('notechondria.planner.local_calendar_feeds'),
+          isNull);
+      final logs = await _logs();
+      expect(
+          logs.any((l) => l.contains('Calendar imported: '
+              'Planner.Sync.Calendar/push \u2014 "Folder Test Calendar" '
+              "(1 event) added to the folder 'Smoke'.")),
+          isTrue,
+          reason: logs.where((l) => l.contains('Calendar')).join('\n'));
+    });
+
+    testWidgets(
+        'first start in a folder: courses, planner events, and imported '
+        'calendars move in with the course map and recovery copies (7.1)',
+        (tester) async {
+      final now = DateTime.now().toUtc();
+      final day = now.add(const Duration(days: 1));
+      final course = {
+        'id': -5,
+        'client_course_id': 'local-course-5',
+        'title': 'Browser course',
+        'description': '',
+        'is_local_course': true,
+        'is_owned': true,
+      };
+      final event = {
+        'id': -7,
+        'title': 'Browser deadline',
+        'event_date': day.toIso8601String().split('T').first,
+        'starts_at': day.toIso8601String(),
+        'ends_at': day.add(const Duration(hours: 1)).toIso8601String(),
+        'difficulty_weight': 3,
+        'description': '',
+        'course_id': -5,
+        'is_completed': false,
+        'completed_at': null,
+        'is_local_event': true,
+      };
+      final feed = {
+        'id': -9,
+        'title': 'Browser calendar',
+        'source_kind': 'I',
+        'is_enabled': true,
+        'course_id': null,
+        'is_local_feed': true,
+        'events': [
+          {
+            'uid': 'b-1',
+            'title': 'Browser lecture',
+            'description': 'Room 1, floor 2',
+            'starts_at': day.toIso8601String(),
+            'ends_at': day.add(const Duration(hours: 1)).toIso8601String(),
+            'all_day': false,
+          },
+        ],
+      };
+      final seeded = (await tester.runAsync(() => _seedFolder(
+          remember: true,
+          pushed: false,
+          prefs: {
+            'notechondria.planner.local_courses': jsonEncode([course]),
+            'notechondria.planner.local_cache': jsonEncode({
+              'planner_events': [event],
+            }),
+            'notechondria.planner.local_calendar_feeds': jsonEncode([feed]),
+          })))!;
+      final recorder = await _inFolderZone(() async {
+        final c = _appController(seeded.tab);
+        await _pumpApp(tester, c, initialIndex: 2);
+        expect(c.state, LocalFolderState.active);
+        await tester.runAsync(c.flushIndex);
+        await _unmount(tester);
+      });
+      expect(recorder.requests, isEmpty,
+          reason: recorder.requests.map((r) => '${r.url}').join('\n'));
+      final events = jsonDecode(seeded.fs.textOf('planner/events.json')!);
+      final rows = (events is Map ? events['events'] : events) as List;
+      final pushedEvent = rows.cast<Map>().singleWhere(
+          (e) => e['client_local_id'] == 'planner:-7');
+      expect(pushedEvent['title'], 'Browser deadline');
+      expect(pushedEvent['course_id'], isA<int>());
+      expect(pushedEvent['course_id'], greaterThan(0));
+      final feeds = jsonDecode(seeded.fs.textOf('planner/feeds.json')!);
+      final feedRows = (feeds is Map ? feeds['feeds'] : feeds) as List;
+      expect(feedRows.cast<Map>().where(
+          (f) => f['client_local_id'] == 'planner:-9'), hasLength(1));
+      final ics = seeded.fs.paths.where((p) => p.endsWith('.ics')).toList();
+      expect(ics, hasLength(1));
+      expect(seeded.fs.textOf(ics.single), contains('SUMMARY:Browser lecture'));
+      expect(seeded.fs.textOf(ics.single),
+          contains(r'DESCRIPTION:Room 1\, floor 2'));
+      final prefs = await SharedPreferences.getInstance();
+      final recovery = jsonDecode(
+          prefs.getString('notechondria.planner.pushed_to_folder')!) as List;
+      expect(recovery, hasLength(1));
+      expect((recovery.single as Map)['events'], hasLength(1));
+      expect((recovery.single as Map)['feeds'], hasLength(1));
+      expect(prefs.getString('notechondria.planner.local_cache'),
+          isNot(contains('Browser deadline')));
+      expect(prefs.getString('notechondria.planner.local_calendar_feeds'),
+          '[]');
+      expect(prefs.getString('notechondria.planner.folder_pushed'), isNotNull);
+      // The push's log lines are not checked: the persisted log keeps the
+      // last 80 lines, and the folder requests' DEBUG lines come after.
     });
 
     testWidgets(
