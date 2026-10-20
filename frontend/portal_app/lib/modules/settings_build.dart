@@ -146,7 +146,15 @@ extension _SettingsPageBuildX on _SettingsPageState {
     if (!_isAuthenticated) {
       return _buildSignedOutAccount(context);
     }
-    return _buildSignedInAccount(context);
+    // Folder mode: the status card replaces the account rows (design 2.7);
+    // a cloud session that won over a folder shows it above them (2.10).
+    final card = widget.localFolderCard;
+    if (card != null && widget.profile?['is_local_folder'] == true) {
+      return card;
+    }
+    final signedIn = _buildSignedInAccount(context);
+    if (card == null) return signedIn;
+    return Column(children: [card, const SizedBox(height: 12), signedIn]);
   }
 
   /// Signed-out account block. Renders the shared `AuthHub` which
@@ -164,6 +172,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
           onCasdoorLogin: widget.onCasdoorLogin,
           casdoorOrgLoginUrl: widget.casdoorOrgLoginUrl,
           apiBaseUrl: widget.apiBaseUrl,
+          localFolderOption: widget.localFolderOption,
         ),
         if (widget.onApplyLocalSettings != null)
           CheckboxListTile(
@@ -490,8 +499,9 @@ extension _SettingsPageBuildX on _SettingsPageState {
             ),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400, maxHeight: 400),
-              child: Image.network(
-                imageUrl,
+              child: Image(
+                image: folderAwareImageProvider(imageUrl,
+                    folder: _PortalFolder.current),
                 fit: BoxFit.contain,
                 errorBuilder: (_, __, ___) => const Padding(
                   padding: EdgeInsets.all(32),

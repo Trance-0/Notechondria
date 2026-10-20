@@ -16,11 +16,11 @@ part of notechondria_frontend;
 /// the cause), and the splash shows the running step. Order: local_state,
 /// config, handshake, session_restore, oauth_callback, initial_data.
 extension _AppShellBootstrapX on _AppShellState {
-  Future<void> _bootstrapApp() async {
-    _startupFailure = null;
+  /// Safety net only: startup itself is bounded by the 10s budget, so the
+  /// splash normally ends when `_loadInitialData` finishes. A folder scan
+  /// re-arms it on every progress report (local folder 2.9 "Splash").
+  void _armSplashTimer() {
     _splashTimer?.cancel();
-    // Safety net only: startup itself is bounded by the 10s budget, so
-    // the splash normally ends when `_loadInitialData` finishes.
     _splashTimer =
         Timer(kBackendStartupTimeout + const Duration(seconds: 2), () {
       if (!mounted) return;
@@ -28,6 +28,11 @@ extension _AppShellBootstrapX on _AppShellState {
       _showSplash = false;
       refreshState();
     });
+  }
+
+  Future<void> _bootstrapApp() async {
+    _startupFailure = null;
+    _armSplashTimer();
     try {
       await runWithStartupBudget(
         StartupRequestBudget(source: 'Portal.Startup/bootstrap'),
@@ -46,44 +51,35 @@ extension _AppShellBootstrapX on _AppShellState {
                   '${_localEvents.length} local event(s).',
             ),
           );
+          // Folder mode (local folder 2.9): opens the folder and starts
+          // the folder session; makes no network request.
+          await _runLocalFolderStep();
           _logStartupConfig();
           await _runStartupHandshake();
-          await startupStep<String>(
-            'Portal.Startup/session_restore',
-            _restoreSession,
-            status: _splashStatus,
-            label: 'Restoring session',
-            failureConsequence: 'Session not restored',
-            outcome: (outcome) => _sessionRestoreOutcome(
-                'Portal.Startup/session_restore', outcome),
-          );
-          final freshSignIn = await startupStep<bool>(
-            'Portal.Startup/oauth_callback',
-            handleOAuthCallback,
-            status: _splashStatus,
-            label: 'Completing sign-in',
-            failureConsequence: 'Sign-in not completed',
-            outcome: (signedIn) => signedIn
-                ? (
-                    level: DebugLogLevel.info,
-                    message: 'Sign-in completed: '
-                        'Portal.Startup/oauth_callback \u2014 the sign-in '
-                        'redirect was exchanged for a session.',
-                  )
-                : (
-                    level: DebugLogLevel.debug,
-                    message: 'No sign-in completed: '
-                        'Portal.Startup/oauth_callback \u2014 the page URL '
-                        'has no usable sign-in code (see any Auth line '
-                        'above for a failed exchange).',
-                  ),
-          );
+          // In folder mode the session comes from the folder, so
+          // session_restore and oauth_callback are skipped (2.9).
+          var freshSignIn = false;
+          if (inFolderMode) {
+            _logFolderSkipsSignIn();
+          } else {
+            freshSignIn = await _restoreSessionAndCallback();
+          }
+          if (_folderPending) {
+            _finishStartupWithFolderPending();
+            // The course deep link waits for the folder session.
+            _folderSession.pendingCourseLink = true;
+            return;
+          }
+          final name = _folder?.folderName ?? '';
           await startupStep<void>(
             'Portal.Startup/initial_data',
             _loadInitialData,
             status: _splashStatus,
-            label: 'Loading public notes data',
-            failureConsequence: 'Cloud data not loaded',
+            label: inFolderMode
+                ? "Reading folder '$name'"
+                : 'Loading public notes data',
+            failureConsequence:
+                inFolderMode ? 'Folder data not loaded' : 'Cloud data not loaded',
             outcome: (_) => _initialDataOutcome('Portal.Startup/initial_data'),
           );
           if (freshSignIn) {
@@ -92,15 +88,66 @@ extension _AppShellBootstrapX on _AppShellState {
           await _openInitialCourseDeepLink();
         },
       );
+      // Outside the startup budget (local folder 2.9 step 3).
+      unawaited(_verifyFolderAfterStartup());
     } catch (error, stack) {
       _handleBootstrapFailure(error, stack);
     }
+  }
+
+  /// The cloud half of the startup pass: session_restore, the 2.10 rule 2
+  /// notice when a saved session won over a connected folder, then the
+  /// oauth_callback. Returns whether a fresh sign-in completed (for the
+  /// keep-offline choice).
+  Future<bool> _restoreSessionAndCallback() async {
+    await startupStep<String>(
+      'Portal.Startup/session_restore',
+      _restoreSession,
+      status: _splashStatus,
+      label: 'Restoring session',
+      failureConsequence: 'Session not restored',
+      outcome: (outcome) =>
+          _sessionRestoreOutcome('Portal.Startup/session_restore', outcome),
+    );
+    _noteCloudSessionPrecedence();
+    return startupStep<bool>(
+      'Portal.Startup/oauth_callback',
+      handleOAuthCallback,
+      status: _splashStatus,
+      label: 'Completing sign-in',
+      failureConsequence: 'Sign-in not completed',
+      outcome: (signedIn) => signedIn
+          ? (
+              level: DebugLogLevel.info,
+              message: 'Sign-in completed: '
+                  'Portal.Startup/oauth_callback \u2014 the sign-in '
+                  'redirect was exchanged for a session.',
+            )
+          : (
+              level: DebugLogLevel.debug,
+              message: 'No sign-in completed: '
+                  'Portal.Startup/oauth_callback \u2014 the page URL '
+                  'has no usable sign-in code (see any Auth line '
+                  'above for a failed exchange).',
+            ),
+    );
   }
 
   /// Logs which API base URL this start uses and why (0.1.199).
   void _logStartupConfig() {
     final base = _httpClient?.baseUrl ?? 'no HTTP client';
     final saved = _localSettings['api_base_url']?.toString() ?? '';
+    if (inFolderMode) {
+      log(
+        level: DebugLogLevel.info,
+        source: 'Portal.Startup/config',
+        message: 'API base resolved: Portal.Startup/config \u2014 folder '
+            'mode; requests are answered in the page (the saved URL '
+            '${saved.isEmpty ? base : saved} is used only by Check for '
+            'updates).',
+      );
+      return;
+    }
     final origin = kIsWeb ? '; page origin ${Uri.base.origin}' : '';
     final offline = _localSettings['offline_mode'] == true;
     log(
@@ -118,7 +165,9 @@ extension _AppShellBootstrapX on _AppShellState {
   /// A failed handshake does not stop startup: the session restore and
   /// data load still run (and fail fast once the budget has timed out).
   Future<void> _runStartupHandshake() async {
-    if (_localSettings['offline_mode'] == true) {
+    // Folder mode ignores offline_mode: the handshake is answered in the
+    // page (local folder 2.7, 2.8 rule 4).
+    if (!inFolderMode && _localSettings['offline_mode'] == true) {
       log(
         level: DebugLogLevel.debug,
         source: 'Portal.Startup/handshake',
@@ -135,7 +184,7 @@ extension _AppShellBootstrapX on _AppShellState {
         'Portal.Startup/handshake',
         () => widget.client.verifyHandshake(base),
         status: _splashStatus,
-        label: 'Connecting to server',
+        label: inFolderMode ? 'Opening folder backend' : 'Connecting to server',
         failureConsequence: 'Backend not reachable',
         outcome: (result) => result.ok
             ? (
@@ -181,11 +230,14 @@ extension _AppShellBootstrapX on _AppShellState {
     }
     return (
       level: DebugLogLevel.debug,
-      message: _localSettings['offline_mode'] == true
-          ? 'Startup step finished: $source \u2014 offline mode is on; '
-              'rendered from the local cache.'
-          : 'Startup step finished: $source \u2014 every cloud request '
-              'answered.',
+      message: inFolderMode
+          ? 'Startup step finished: $source \u2014 every folder request '
+              'answered.'
+          : _localSettings['offline_mode'] == true
+              ? 'Startup step finished: $source \u2014 offline mode is on; '
+                  'rendered from the local cache.'
+              : 'Startup step finished: $source \u2014 every cloud request '
+                  'answered.',
     );
   }
 

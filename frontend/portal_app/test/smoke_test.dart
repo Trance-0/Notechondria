@@ -10,6 +10,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:portal_app/main.dart' as app;
 import 'package:notechondria_shared/notechondria_shared.dart';
 
+import 'local_folder_smoke.dart';
+
 /// Fake backend for the startup-fallback tests: either never answers
 /// (an unresponsive server) or answers every request with empty data.
 class _Backend {
@@ -311,4 +313,8 @@ void main() {
       expect(find.textContaining('A new version is available'), findsNothing);
     });
   });
+  // Last: the boot test above draws app.main()'s warm-up frame, which reuses
+  // the binding's last frame time, so it must run before these tests pump
+  // frames on their own fake clocks.
+  registerLocalFolderSmokeTests();
 }

@@ -134,6 +134,10 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
                                     },
                                     builders: _markdownBuilders(),
                                     inlineSyntaxes: _markdownInlineSyntaxes(),
+                                    // `local://` and `nc-folder:` images
+                                    // (local folder 3.6).
+                                    sizedImageBuilder:
+                                        _localAttachmentImageBuilder,
                                   ),
                                 );
                               },

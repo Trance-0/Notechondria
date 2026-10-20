@@ -60,7 +60,7 @@ extension _AppShellBuildPageX on _AppShellState {
           onDeleteCover: _token != null
               ? (noteId) => widget.client.deleteNoteCoverImage(_token!, noteId)
               : null,
-          offlineMode: _localSettings['offline_mode'] == true,
+          offlineMode: !inFolderMode && _localSettings['offline_mode'] == true,
           onLoadPublicNotes: () => _loadLearnerNotes(),
         );
       case 2:
@@ -129,12 +129,18 @@ extension _AppShellBuildPageX on _AppShellState {
           currentLocale: _localSettings['locale']?.toString() ?? 'system',
           onSetLocale: _setLocale,
           onProbeStorageArch: _probeStorageArch,
-          casdoorOrgLoginUrl: _casdoorOrgLoginUrl,
-          onCasdoorLogin: () => launchOAuth('casdoor', intent: 'login'),
-          onBindCasdoor: (_casdoorConfigured && _token != null)
+          // Folder mode (local folder 2.7, 9.3): cloud-only controls get a
+          // null callback, so the settings pages hide or disable them.
+          casdoorOrgLoginUrl: cloudOnly(_casdoorOrgLoginUrl),
+          onCasdoorLogin:
+              cloudOnly(() => launchOAuth('casdoor', intent: 'login')),
+          localFolderOption: _folderSignInOption(),
+          localFolderCard: _folderStatusCard(),
+          onPing: _pingThroughFolderClient,
+          onBindCasdoor: cloudOnly((_casdoorConfigured && _token != null)
               ? () => launchOAuth('casdoor', intent: 'bind')
-              : null,
-          onUnlinkCasdoor: (_casdoorConfigured && _token != null)
+              : null),
+          onUnlinkCasdoor: cloudOnly((_casdoorConfigured && _token != null)
               ? () async {
                   try {
                     await widget.client.casdoorUnlink(_token!);
@@ -147,13 +153,14 @@ extension _AppShellBuildPageX on _AppShellState {
                     }
                   } catch (_) {/* swallowed; UI stays stale */}
                 }
-              : null,
+              : null),
           onRestoreDeletedNote: _restoreDeletedNote,
           onEmptyDeletedNotes: _emptyDeletedNotes,
           onCopyLogs: _copyFrontendLogs,
           onUploadAvatar: _uploadAvatar,
           onSyncLocalData: _syncAllLocalData,
-          onPullCloudData: _pullCloudNotesToLocal,
+          onPullCloudData:
+              cloudOnlyAction(_pullCloudNotesToLocal, _folderPullNotNeeded),
           onClearLocalCache: _clearLocalCache,
           onClearLocalData: _clearLocalData,
           onRestoreTemplateCourses: cloudOnlyAction(_restoreTemplateCourses,
@@ -161,7 +168,7 @@ extension _AppShellBuildPageX on _AppShellState {
           onOpenLocalRecycleBin: _openLocalRecycleBinDialog,
           localTrashedDraftCount: _localTrashedDrafts.length,
           localTrashedCourseCount: _localTrashedCourses.length,
-          onOfflineModeChanged: _setOfflineMode,
+          onOfflineModeChanged: cloudOnly(_setOfflineMode),
           onApplyLocalSettings: _applyLocalAppSettings,
           localDraftCount: _localDrafts.length,
           localCourseCount: _localCourses.length,
@@ -171,7 +178,7 @@ extension _AppShellBuildPageX on _AppShellState {
           debugHistoryListenable: _httpClient?.debugHistory,
           debugLogController: logController,
           uiLogs: uiLogs,
-          onRotateApiKey: _token != null
+          onRotateApiKey: cloudOnly(_token != null
               ? () async {
                   try {
                     final result = await widget.client.rotateApiKey(_token!);
@@ -209,9 +216,9 @@ extension _AppShellBuildPageX on _AppShellState {
                     rethrow;
                   }
                 }
-              : null,
-          onSaveMcpSkill: _token != null
-              ? (skillMd) async {
+              : null),
+          onSaveMcpSkill: cloudOnly(_token != null
+              ? (String skillMd) async {
                   try {
                     final result = await widget.client.updateSettings(
                       _token!,
@@ -237,7 +244,7 @@ extension _AppShellBuildPageX on _AppShellState {
                     );
                   }
                 }
-              : null,
+              : null),
           // Folder mode sends no GitHub status request until Phase 5 (9.3).
           githubSyncCardBuilder: cloudOnly(_token != null
               ? () => GithubSyncExperimentalCard(

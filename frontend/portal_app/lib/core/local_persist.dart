@@ -15,6 +15,8 @@ part of notechondria_frontend;
 /// AGENTS.md \u00a71.5 1000-line ceiling.
 extension _AppShellLocalPersistX on _AppShellState {
   Future<void> _persistLocalCache() async {
+    // Folder payloads stay out of localStorage (local folder 2.7).
+    if (inFolderMode) return;
     _localCache = {
       ..._localCache,
       'front_page': _frontPage ?? const <String, dynamic>{},

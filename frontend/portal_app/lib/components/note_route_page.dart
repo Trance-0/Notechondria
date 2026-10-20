@@ -8,18 +8,25 @@ part of notechondria_frontend;
 ///  - **Cold-start deep links** fetch by uuid through the shared client —
 ///    anonymously that reads public notes; with a token it also reads the
 ///    owner's and subscribed courses' private notes (the backend policy).
+///
+/// Folder mode (local folder design 2.7 "Portal note route"): the page
+/// listens to the app's controller. While the folder is pending it shows
+/// the reconnect view instead of its error text, and once the folder is
+/// active it loads again. The shell under it runs step 3 (T1).
 class _NoteRoutePage extends StatefulWidget {
   const _NoteRoutePage({
     required this.client,
     required this.noteUuid,
     this.token,
     this.preloaded,
+    this.localFolder,
   });
 
   final NotechondriaClient client;
   final String noteUuid;
   final String? token;
   final Map<String, dynamic>? preloaded;
+  final LocalFolderController? localFolder;
 
   @override
   State<_NoteRoutePage> createState() => _NoteRoutePageState();
@@ -28,27 +35,59 @@ class _NoteRoutePage extends StatefulWidget {
 class _NoteRoutePageState extends State<_NoteRoutePage> {
   Map<String, dynamic>? _note;
   String? _error;
+  bool _loading = false;
+
+  bool get _inFolderMode =>
+      widget.localFolder?.storageMode == StorageMode.folder;
+
+  bool get _folderPending =>
+      _inFolderMode &&
+      _kFolderPendingStates.contains(widget.localFolder!.state);
 
   @override
   void initState() {
     super.initState();
+    widget.localFolder?.addListener(_onFolderChanged);
     _note = widget.preloaded;
     if (_note == null) {
       _load();
     }
   }
 
+  @override
+  void dispose() {
+    widget.localFolder?.removeListener(_onFolderChanged);
+    super.dispose();
+  }
+
+  void _onFolderChanged() {
+    if (!mounted) return;
+    if (_inFolderMode &&
+        widget.localFolder!.state == LocalFolderState.active &&
+        _note == null &&
+        !_loading) {
+      _load();
+    }
+    setState(() {});
+  }
+
   Future<void> _load() async {
+    _loading = true;
     try {
       final detail = await widget.client
           .getNoteDetailByUuid(widget.noteUuid, token: widget.token);
       if (!mounted) return;
-      setState(() => _note = detail);
+      setState(() {
+        _note = detail;
+        _error = null;
+      });
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _error = error.toString().replaceFirst('Exception: ', '');
       });
+    } finally {
+      _loading = false;
     }
   }
 
@@ -86,6 +125,17 @@ class _NoteRoutePageState extends State<_NoteRoutePage> {
     if (note != null) {
       return _NoteViewerDialog(note: note, onFollowLink: _followLink);
     }
+    final folder = widget.localFolder;
+    if (folder != null && _folderPending) {
+      return Scaffold(
+        appBar: AppBar(
+          leading: BackButton(onPressed: () => Navigator.of(context).pop()),
+        ),
+        body: SingleChildScrollView(
+          child: LocalFolderReconnectView(controller: folder),
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         leading: BackButton(onPressed: () => Navigator.of(context).pop()),
@@ -105,13 +155,16 @@ class _NoteRoutePageState extends State<_NoteRoutePage> {
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'This note may be private — sign in from the app to '
-                      'read owned or subscribed content.',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+                    // A folder has no private notes (design review 3 T2).
+                    if (!_inFolderMode) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'This note may be private — sign in from the app to '
+                        'read owned or subscribed content.',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
                   ],
                 ),
               ),

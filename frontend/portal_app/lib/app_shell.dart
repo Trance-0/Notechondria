@@ -8,12 +8,17 @@ class NotechondriaApp extends StatefulWidget {
     this.initialIndex = 0,
     this.title = 'Notechondria',
     this.visibleIndices = const <int>[0, 1, 2, 3, 4],
+    this.localFolder,
   });
 
   final NotechondriaClient? client;
   final int initialIndex;
   final String title;
   final List<int> visibleIndices;
+
+  /// Test seam (local folder design 2.7, 8.5): a controller over
+  /// `MemoryFolderPlatform`. Production builds pass none.
+  final LocalFolderController? localFolder;
 
   @override
   State<NotechondriaApp> createState() => _NotechondriaAppState();
@@ -35,8 +40,30 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
   /// client with a fresh one at the compile-time default URL, wiping
   /// the `_loadLocalState.updateBaseUrl(...)` that had pointed it at
   /// the user's saved API URL. Cache once here instead.
-  late final NotechondriaClient _client =
-      widget.client ?? HttpNotechondriaClient();
+  ///
+  /// The local folder controller is created first (design 2.5, 2.7): its
+  /// `StorageModeClient` routes every request to the folder in folder
+  /// mode and to the network otherwise. Every shell route and the note
+  /// route share it.
+  late final LocalFolderController _localFolder = widget.localFolder ??
+      LocalFolderController.forApp('portal', log: _PortalFolder.log);
+  late final NotechondriaClient _client = widget.client ??
+      HttpNotechondriaClient(httpClient: _localFolder.httpClient);
+
+  @override
+  void initState() {
+    super.initState();
+    _PortalFolder.current = _localFolder;
+  }
+
+  @override
+  void dispose() {
+    if (identical(_PortalFolder.current, _localFolder)) {
+      _PortalFolder.current = null;
+    }
+    if (widget.localFolder == null) _localFolder.dispose();
+    super.dispose();
+  }
 
   void _handleThemeChanged(String preset, String mode) {
     setState(() {
@@ -95,6 +122,7 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
       String? initialModuleKey}) {
     return AppShell(
       client: _client,
+      localFolder: _localFolder,
       onThemeChanged: _handleThemeChanged,
       onLocaleChanged: _handleLocaleChanged,
       initialIndex: initialIndex,
@@ -120,6 +148,7 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
         settings: settings,
         builder: (_) => _NoteRoutePage(
           client: _client,
+          localFolder: _localFolder,
           noteUuid: segments[1],
           token: args['token']?.toString(),
           preloaded: args['note'] is Map
@@ -195,9 +224,13 @@ class AppShell extends StatefulWidget {
     this.initialModuleKey,
     this.appTitle = 'Notechondria',
     this.visibleIndices = const <int>[0, 1, 2, 3, 4],
+    this.localFolder,
   });
 
   final NotechondriaClient client;
+
+  /// Owned by `_NotechondriaAppState` (local folder design 2.7).
+  final LocalFolderController? localFolder;
   final void Function(String preset, String mode)? onThemeChanged;
 
   /// Called with the persisted `app_settings['locale']` value so the
@@ -237,9 +270,11 @@ class _AppShellState extends State<AppShell>
   AuthClient get authClient => widget.client;
   @override
   String get logAppTag => 'Portal';
-  // Local folder controller: none until the portal's wiring (Phase 3).
   @override
-  LocalFolderController? get localFolder => null;
+  LocalFolderController? get localFolder => widget.localFolder;
+
+  /// Folder bookkeeping for `core/local_folder_connect.dart`.
+  final _FolderSessionState _folderSession = _FolderSessionState();
   @override
   String? get token => _token;
   @override
@@ -546,6 +581,7 @@ class _AppShellState extends State<AppShell>
       if (!mounted) return;
       log(level: level, source: source, message: message);
     });
+    _attachLocalFolder();
     _bootstrapApp();
   }
 
@@ -559,6 +595,7 @@ class _AppShellState extends State<AppShell>
 
   @override
   void dispose() {
+    _detachLocalFolder();
     _splashTimer?.cancel();
     _splashStatus.dispose();
     logController.dispose();
@@ -633,15 +670,16 @@ class _AppShellState extends State<AppShell>
         onContinue: _continueAfterBootstrapFailure,
       );
     }
-    final scaffold = LayoutBuilder(
-      builder: (context, constraints) {
-        final isWideLayout = constraints.maxWidth >= 960;
-        if (isWideLayout) {
-          return _buildWideScaffold(context);
-        }
-        return _buildCompactScaffold(context);
-      },
-    );
+    final scaffold = _withFolderBanner(_folderGateView() ??
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isWideLayout = constraints.maxWidth >= 960;
+            if (isWideLayout) {
+              return _buildWideScaffold(context);
+            }
+            return _buildCompactScaffold(context);
+          },
+        ));
     if (_showSplash) {
       // A user-chosen startup image (Preferences → Startup image; local
       // upload or remote URL) replaces the default reactor splash. It
@@ -844,7 +882,8 @@ class _AppShellState extends State<AppShell>
               LoadErrorBanner(
                 message: _errorMessage!,
                 source: 'Portal.Startup/initial_data',
-                onWorkOffline: _localSettings['offline_mode'] != true
+                onWorkOffline: !inFolderMode &&
+                        _localSettings['offline_mode'] != true
                     ? _workOffline
                     : null,
                 onRetry: _retryStartup,

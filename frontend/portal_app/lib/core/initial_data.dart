@@ -92,7 +92,10 @@ extension _AppShellInitialDataX on _AppShellState {
     // Offline-mode gate: skip every remote fetch and render from the
     // local cache. Sign-in and explicit sync still work because those
     // paths call into `widget.client` directly, not through here.
-    final offlineMode = _localSettings['offline_mode'] == true;
+    // Folder mode ignores offline_mode (local folder 2.7): the folder is
+    // read in the page, so skipping it would only hide local data.
+    final offlineMode =
+        !inFolderMode && _localSettings['offline_mode'] == true;
     if (offlineMode) {
       // Category auto-sync: if authenticated, still fetch courses so
       // the sidebar category list stays up-to-date even in offline mode.

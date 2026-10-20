@@ -52,6 +52,9 @@ class _SettingsPage extends StatefulWidget {
     this.currentLocale,
     this.onSetLocale,
     this.onProbeStorageArch,
+    this.localFolderOption,
+    this.localFolderCard,
+    this.onPing,
   });
 
   final Map<String, dynamic>? profile;
@@ -151,6 +154,13 @@ class _SettingsPage extends StatefulWidget {
   final Widget Function()? githubSyncCardBuilder;
   final Future<void> Function()? onExportLocalData;
   final Future<void> Function()? onRestoreFromLocalImport;
+
+  /// Local folder mode (design 1.3, 2.7): the sign-in option for the
+  /// signed-out AuthHub, the status card for the signed-in block, and
+  /// `ping` through the app's `StorageModeClient`.
+  final Widget? localFolderOption;
+  final Widget? localFolderCard;
+  final Future<PingResult> Function()? onPing;
 
   @override
   State<_SettingsPage> createState() => _SettingsPageState();
@@ -472,7 +482,7 @@ class _SettingsPageState extends State<_SettingsPage> {
         title: l10n.debugLogTitle,
         summary: summary,
         onCopyLogs: widget.onCopyLogs,
-        onPing: () => pingBackend(widget.apiBaseUrl),
+        onPing: widget.onPing ?? () => pingBackend(widget.apiBaseUrl),
       );
     }
     return Card(
