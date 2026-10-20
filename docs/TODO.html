@@ -192,7 +192,15 @@ has its own status, discussion thread, and close event.</p>
 <a href="https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%3Aauth">auth</a> ·
 <a href="https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%3Amcp">mcp</a> ·
 <a href="https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%3Ai18n">i18n</a> ·
-<a href="https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%3Agithub-sync">github-sync</a></p>
+<a href="https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%3Agithub-sync">github-sync</a> ·
+<a href="https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%3Alocal-folder">local-folder</a> ·
+<a href="https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%3Astartup">startup</a></p>
+<p><strong>Owner decisions</strong> are issues labelled
+<a href="https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Adecision"><code>decision</code></a>;
+the thread is the record. Manual work only the owner can do is labelled
+<a href="https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Aowner-action"><code>owner-action</code></a>.
+The local folder findings, Planner, and Startup items were filed on
+2026-10-21 (<a href="https://github.com/Trance-0/Notechondria/issues/32">#32</a> to <a href="https://github.com/Trance-0/Notechondria/issues/102">#102</a>).</p>
 <p><strong>New work goes straight to an Issue, not to this file.</strong> If you do add
 <code>- [ ]</code> items here, <code>python3 scripts/todo_to_issues.py --dry-run</code> previews
 them and <code>--create</code> files the new ones (existing titles are skipped, so
@@ -610,35 +618,14 @@ editable from the always-reachable Backend settings page, so a
 signed-out user can repoint the backend.)</li>
 </ul>
 <h2 id="planner"><a class="header" href="#planner">Planner</a></h2>
-<p>Recorded in 0.1.199 (owner request for this task; not filed as Issues yet).</p>
+<p>Recorded in 0.1.199; filed as Issues on 2026-10-21. Open items:</p>
 <ul>
-<li><input disabled="" type="checkbox"/>
-Upload calendars imported on this device after sign-in
-(<code>Planner.Sync.Calendar/push</code>). Local feeds live in
-<code>notechondria.planner.local_calendar_feeds</code>
-(<code>frontend/planner_app/lib/core/local_calendar.dart</code>) and are never
-pushed. Rebuild a VCALENDAR from each feed's <code>events</code>, push it from
-<code>_syncAllLocalData</code>, and drop the local copy once the server has it.</li>
-<li><input disabled="" type="checkbox"/>
-Offline-created planner events say "queued for sync on next sign-in"
-(<code>frontend/planner_app/lib/core/settings_actions.dart</code>,
-<code>_createPlannerEvent</code>), but nothing pushes them, and a signed-in
-<code>_loadInitialData</code> replaces <code>_plannerEvents</code>, after which
-<code>_persistLocalCache</code> overwrites the local ones.</li>
-<li><input disabled="" type="checkbox"/>
-The offline iCal reader (<code>notechondria_shared/lib/src/utils/ical_events.dart</code>)
-does not expand RRULE (a recurring event imports its first occurrence) and
-reads <code>TZID=</code> times as device-local time.</li>
-<li><input disabled="" type="checkbox"/>
-Portal iCal import still needs a cloud session
-(<code>frontend/portal_app/lib/modules/activity_week.dart</code>); split that
-2300-line file before touching it.</li>
-<li><input disabled="" type="checkbox"/>
-The editor's "no cloud session; sign in first." guards were left out of
-0.1.199 (Phase 1 covered the planner import only).</li>
-<li><input disabled="" type="checkbox"/>
-Local calendars cannot be edited or removed one by one (the planner
-has no feed-management UI); "Clear local data" removes all of them.</li>
+<li><a href="https://github.com/Trance-0/Notechondria/issues/84">#84</a> Upload calendars imported on this device after sign-in (Planner.Sync.Calendar/push)</li>
+<li><a href="https://github.com/Trance-0/Notechondria/issues/85">#85</a> Planner: offline-created events say "queued for sync" but nothing pushes them</li>
+<li><a href="https://github.com/Trance-0/Notechondria/issues/86">#86</a> Offline iCal reader does not expand RRULE and reads TZID times as device-local</li>
+<li><a href="https://github.com/Trance-0/Notechondria/issues/87">#87</a> Portal iCal import still needs a cloud session (split activity_week.dart first)</li>
+<li><a href="https://github.com/Trance-0/Notechondria/issues/88">#88</a> Editor: "no cloud session; sign in first." guards left out of 0.1.199</li>
+<li><a href="https://github.com/Trance-0/Notechondria/issues/89">#89</a> Planner: local calendars cannot be edited or removed one by one</li>
 </ul>
 <h2 id="version-update-notification-landed-0115101152"><a class="header" href="#version-update-notification-landed-0115101152">Version-update notification (landed 0.1.151–0.1.152)</a></h2>
 <p>Owner-confirmed <strong>handshake-compare</strong> approach (no GitHub polling) + a
@@ -715,25 +702,10 @@ POST-only) so <code>list_note_sessions</code> works over REST.</li>
 <h3 id="github-sync"><a class="header" href="#github-sync">GitHub Sync</a></h3>
 <h2 id="startup-fallback-follow-ups-open-since-01198"><a class="header" href="#startup-fallback-follow-ups-open-since-01198">Startup fallback follow-ups (open since 0.1.198)</a></h2>
 <p>Found in the 0.1.198 white-screen review and the 2026-10-16 local-preview
-round. Not fixed in code yet; file as Issues with
-<code>scripts/todo_to_issues.py</code> when picked up.</p>
+round. Filed as Issues on 2026-10-21 (label <code>area:startup</code> and others). Open items:</p>
 <ul>
-<li><input disabled="" type="checkbox"/>
-A refused or 5xx backend at cold start still clears the saved
-session. <code>catch (_)</code> then <code>clearSession()</code> in
-<code>frontend/editor_app/lib/core/auth_flows.dart</code> (<code>_restoreSession</code>) and
-<code>frontend/portal_app/lib/core/bootstrap.dart</code> signs the user out, while a
-timeout keeps the session, and Retry cannot restore it. Clear only on a
-real auth rejection (<code>authenticated != true</code>, 401/403, or the
-<code>token_not_valid</code> / <code>invalid token</code> sentinels).</li>
-<li><input disabled="" type="checkbox"/>
-The 10s startup budget leaks into background work started during
-startup. It is a zone value, so <code>unawaited(_pullCloudNotesToLocal())</code>
-(portal <code>core/bootstrap.dart</code>) and <code>unawaited(_autoMigrateLegacyInbox())</code>
-(editor <code>core/initial_data.dart</code>) inherit the cap and the sticky
-fail-fast flag. Run them outside the budget, then fix
-<code>docs/versions/0.1.198.md</code> and the <code>send()</code> doc comment, which say
-requests outside a pass stay unbounded.</li>
+<li><a href="https://github.com/Trance-0/Notechondria/issues/90">#90</a> Startup: a refused or 5xx backend at cold start clears the saved session</li>
+<li><a href="https://github.com/Trance-0/Notechondria/issues/91">#91</a> Startup: the 10 s startup budget leaks into background work</li>
 <li><input disabled="" type="checkbox" checked=""/>
 (0.1.199) Verified on the local preview with a refused upstream
 (<code>REMOTE_BACKEND_ORIGIN=http://127.0.0.1:9</code>): the gateway's HTML 502 now
@@ -750,78 +722,17 @@ unavailable.</li>
 (0.1.199) That message also violates AGENTS.md §1.8: it has no
 consequence and no <code>Module/process</code>. Reworded to
 <code>Server response not usable: &lt;App&gt;.HTTP/response — expected JSON from &lt;method&gt; &lt;url&gt; but received HTML (HTTP &lt;n&gt;, &lt;content-type&gt;, &lt;n&gt;B); check the API base URL and backend routing.</code> and logged at WARNING.</li>
-<li><input disabled="" type="checkbox"/>
-<code>StartupGuard.installErrorHandlers</code>
-(<code>notechondria_shared/lib/src/startup/startup_guard.dart</code>) logs every
-<code>FlutterError</code> as <code>Screen element not rendered: &lt;App&gt;.UI/render</code>, which
-is wrong for gesture, image-codec, and services errors. Branch on
-<code>details.library</code> or use a neutral consequence.</li>
-<li><input disabled="" type="checkbox"/>
-<code>friendlyError</code>'s fallback source <code>Backend.HTTP/request</code>
-(<code>notechondria_shared/lib/src/utils/friendly_error.dart</code>) labels
-client-side failures with a server-side name and is not in the
-<code>docs/AGENTS.md</code> module table. Rename it to a client-side module and
-register it.</li>
-<li><input disabled="" type="checkbox"/>
-<code>docs/AGENTS.md</code> lists the <code>render</code> process under <code>Portal.UI</code> only,
-but the code also emits <code>Editor.UI/render</code> and <code>Planner.UI/render</code>. Add
-it to those rows or add a shared row.</li>
-<li><input disabled="" type="checkbox"/>
-No automated browser check of the bootstrap JS. CI never executes
-<code>flutter_bootstrap.js</code> or the <code>#nc-boot</code> script, which is how the
-0.1.196 white screen stayed green. Add a headless-browser load of one
-built app to <code>frontend-pages.yml</code>.</li>
-<li><input disabled="" type="checkbox"/>
-Generated l10n was hand-spliced in 0.1.198 because <code>flutter gen-l10n</code>
-fails on the pre-existing <code>activityWeightN</code> select placeholder. Fix the
-placeholder, regenerate, and confirm the committed
-<code>app_localizations*.dart</code> match the ARBs.</li>
-<li><input disabled="" type="checkbox"/>
-Three shared-package tests already fail on <code>main</code> (the shared suite
-is not run in CI): in
-<code>frontend/notechondria_shared/test/version_update_banner_test.dart</code>,
-"shows localized update banner when backend is newer", "update banner
-localizes to zh", and "unsupported (below floor) shows update-required,
-no dismiss". Each exact-text finder matches 0 widgets.</li>
-<li><input disabled="" type="checkbox"/>
-Direct <code>showSnackBar(SnackBar(content: Text(...)))</code> sites outside the
-shared helpers are still not copyable (0.1.199 converted <code>showMessage</code>,
-<code>FeedbackText</code>, <code>ConfirmWithDelayDialog</code>, <code>LoadErrorBanner</code>,
-<code>StartupFailureView</code>, the OAuth mixin, and the planner's calendar
-dialogs): 14 in editor, 4 in portal, 4 in
-<code>notechondria_shared/lib/src/components/mcp_skill_section.dart</code>, and the
-debug log's "Logs copied" note. Route them through <code>showCopyableSnackBar</code>.</li>
-<li><input disabled="" type="checkbox"/>
-<code>#nc-boot</code> in each <code>web/index.html</code> follows <code>prefers-color-scheme</code>,
-while the Flutter splash follows the app's saved theme, so a forced light
-or dark theme flashes at the handoff. The portal's custom startup image
-likewise appears only after the HTML header. Its status line is
-English-only ("Starting Notechondria <App>"), so zh users see it switch
-to the localized splash text at the handoff; pick the string from
-<code>navigator.language</code> (or the saved locale) in the inline script.</li>
-<li><input disabled="" type="checkbox"/>
-Docker on the dev host discards <code>--memory</code> ("kernel does not support
-memory limit capabilities") and rejects <code>--cpus</code> (cgroup v2 in threaded
-mode), so the preview's <code>--memory 256m</code> / <code>128m</code> and the verification
-containers' caps are not enforced (<code>docker inspect</code> shows
-<code>HostConfig.Memory=0</code>). Runs rely on <code>timeout</code> and sequential jobs.</li>
-<li><input disabled="" type="checkbox"/>
-The root <code>docker-compose.yml</code> (used by <code>docker compose up</code> and
-<code>deployment/jenkins/scripts/deploy_full_stack.sh</code>) does not forward
-<code>APP_VERSION</code>, so its frontends report 0.1.21. Add
-<code>APP_VERSION: ${APP_VERSION:-}</code> to the three frontend build args, and in
-the same change bind its published ports (<code>APP_HOST_PORT</code>,
-<code>ROOT_HTTP_PORT</code>, and any others) to <code>127.0.0.1</code>, since that file is for
-local all-in-one use.</li>
-<li><input disabled="" type="checkbox"/>
-Security: PostgreSQL is published on all host interfaces in
-<code>backend/docker-compose.yml</code> (<code>${DB_HOST_PORT:-9032}:5432</code>) and the root
-<code>docker-compose.yml</code>, and the backend's gunicorn port in
-<code>backend/docker-compose.yml</code> (<code>${BACKEND_HOST_PORT:-9090}:8000</code>) is too.
-Change them to <code>"127.0.0.1:${DB_HOST_PORT:-9032}:5432"</code> and
-<code>"127.0.0.1:${BACKEND_HOST_PORT:-9090}:8000"</code> (Jenkins reaches <code>db</code> over
-the Compose network), then decide whether <code>APP_HOST_PORT</code> and the
-gateway's <code>ROOT_HTTP_PORT</code> should be loopback behind the FRP tunnel.</li>
+<li><a href="https://github.com/Trance-0/Notechondria/issues/92">#92</a> StartupGuard logs every FlutterError as "Screen element not rendered"</li>
+<li><a href="https://github.com/Trance-0/Notechondria/issues/93">#93</a> friendlyError's fallback source Backend.HTTP/request labels client failures as server-side</li>
+<li><a href="https://github.com/Trance-0/Notechondria/issues/94">#94</a> docs/AGENTS.md: add the render process to Editor.UI and Planner.UI</li>
+<li><a href="https://github.com/Trance-0/Notechondria/issues/95">#95</a> CI: no headless-browser load of the bootstrap JS (the 0.1.196 white screen stayed green)</li>
+<li><a href="https://github.com/Trance-0/Notechondria/issues/96">#96</a> flutter gen-l10n fails on the activityWeightN placeholder; l10n is hand-spliced</li>
+<li><a href="https://github.com/Trance-0/Notechondria/issues/97">#97</a> Three version_update_banner tests fail on main</li>
+<li><a href="https://github.com/Trance-0/Notechondria/issues/98">#98</a> Route the remaining direct showSnackBar sites through showCopyableSnackBar</li>
+<li><a href="https://github.com/Trance-0/Notechondria/issues/99">#99</a> Boot HTML (#nc-boot) ignores the saved theme and locale, so the splash flashes</li>
+<li><a href="https://github.com/Trance-0/Notechondria/issues/100">#100</a> Docker on the dev host ignores --memory and rejects --cpus (caps not enforced)</li>
+<li><a href="https://github.com/Trance-0/Notechondria/issues/101">#101</a> Root docker-compose.yml: forward APP_VERSION and bind published ports to 127.0.0.1</li>
+<li><a href="https://github.com/Trance-0/Notechondria/issues/102">#102</a> Security: PostgreSQL and gunicorn ports are published on all host interfaces</li>
 </ul>
 <h2 id="local-folder-storage-mode-owner-request-design-docsdevelopmentlocal_folder_modemd"><a class="header" href="#local-folder-storage-mode-owner-request-design-docsdevelopmentlocal_folder_modemd">Local folder storage mode (owner request; design <code>docs/development/local_folder_mode.md</code>)</a></h2>
 <p>Phase 1 (foundation) landed in 0.1.200 with the option hidden in every
@@ -860,50 +771,19 @@ the <code>client_local_id</code> upsert and the connect-time push with the 30-da
 recovery list, both apps' wiring, the note viewers' <code>sizedImageBuilder</code>,
 the portal's <code>_NoteRoutePage</code> reconnect view, and their smoke files.
 All three apps now show the option.</li>
-<li><input disabled="" type="checkbox"/>
-Phase 4: <code>.nchron</code> bridge (new <code>folder_id</code> on restore, chunked
-import, the status card's Export and the option's "Start from an
-archive"), change messages, <code>FileSystemObserver</code> and focus rescans, and
-"adopt a GitHub data-sync clone".</li>
-<li><input disabled="" type="checkbox"/>
-Phase 5: GitHub with a fine-grained token (credential store, status,
-repos, push, course repo bind and import); replaces the GitHub card's
-<code>cloudOnly</code> gate.</li>
-<li><input disabled="" type="checkbox"/>
-Q13: decide on a CI grep guard for the OPFS test-hook marker in the
-release bundles. In 0.1.201 the release bundles hold neither
-<code>NOTECHONDRIA_TEST_OPFS_FOLDER</code> nor <code>notechondria-opfs-test-hook</code>, but
-an editor build with the hook define holds neither as well (no app code
-calls <code>openOpfsTestFolder</code>, so the compiler drops it). A guard needs a
-marker that survives in a hook build, or it cannot fail. In 0.1.202 the
-planner and portal hook builds' <code>main.dart.js</code> are byte-identical to
-their release builds.</li>
-<li><input disabled="" type="checkbox"/>
-Manual checks on desktop Chrome once the editor shows the option
-(design <code>testing.md</code> 8.6, items 1 to 17), on
-<code>https://trance-0.github.io</code> and on <code>http://127.0.0.1:9068</code>. The
-0.1.201 headless run covered create, edit, delete, restore, empty
-trash, and reload over an OPFS folder returned by a stubbed picker, and
-Firefox's disabled message; the 0.1.202 headless runs covered the
-planner (event create, complete, <code>.ics</code> import, reload) and the portal
-(event, note, reload, cold <code>#/note/&lt;uuid&gt;</code>) the same way. A real disk
-folder from the picker is still unchecked in all three apps. The list: the option
-and Firefox's disabled message; connect an empty folder from the notice;
-a non-empty folder's confirmation and a refused system folder; create,
-edit, delete, restore, and empty trash with the files checked on disk;
-an outside edit kept as <code>external_edit</code>; three app tabs saving at once;
-Reconnect and "Choose again" after closing every tab; access removed
-mid-edit and background revocation; a moved folder; attachments, covers,
-and the avatar; <code>.ics</code> import and the CORS message; <code>.nchron</code> round
-trip; GitHub push with a token that appears in no file or log; the
-loopback preview with and without "Remember this folder"; copied notes
-and folders; the wrong folder after a reload and "Switch to this
-folder"; and <code>navigator.locks.query()</code> during a long empty trash.</li>
+<li>Phase 4: milestone <a href="https://github.com/Trance-0/Notechondria/milestone/2">Local folder Phase 4</a> (<a href="https://github.com/Trance-0/Notechondria/issues/46">#46</a>, <a href="https://github.com/Trance-0/Notechondria/issues/47">#47</a>, <a href="https://github.com/Trance-0/Notechondria/issues/48">#48</a>, <a href="https://github.com/Trance-0/Notechondria/issues/49">#49</a>).</li>
+<li>Phase 5: milestone <a href="https://github.com/Trance-0/Notechondria/milestone/3">Local folder Phase 5</a> (<a href="https://github.com/Trance-0/Notechondria/issues/50">#50</a>; blocked on decision <a href="https://github.com/Trance-0/Notechondria/issues/74">#74</a>).</li>
+<li>Q13 (CI grep guard for the OPFS test hook): decision <a href="https://github.com/Trance-0/Notechondria/issues/44">#44</a>.</li>
+<li>Manual desktop Chrome checks with a real disk folder (testing.md 8.6): owner issue <a href="https://github.com/Trance-0/Notechondria/issues/73">#73</a>.</li>
 </ul>
-<h3 id="next-session-handoff-2026-10-20"><a class="header" href="#next-session-handoff-2026-10-20">Next session (handoff 2026-10-20)</a></h3>
-<p>Plan and resume steps:
+<h3 id="next-session-handoff-2026-10-20-issues-since-2026-10-21"><a class="header" href="#next-session-handoff-2026-10-20-issues-since-2026-10-21">Next session (handoff 2026-10-20, issues since 2026-10-21)</a></h3>
+<p>All open local folder work is in GitHub Issues with the label
+<a href="https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%3Alocal-folder"><code>area:local-folder</code></a>;
+owner decisions carry the label
+<a href="https://github.com/Trance-0/Notechondria/issues?q=is%3Aissue+is%3Aopen+label%3Adecision"><code>decision</code></a>
+and are recorded in their threads. Plan and resume steps:
 <a href="development/local_folder_mode/next_phase.html"><code>docs/development/local_folder_mode/next_phase.md</code></a>.
-Open findings:
+Background for each finding (by ID):
 <a href="development/local_folder_mode/deferred.html"><code>docs/development/local_folder_mode/deferred.md</code></a>.
 Verification scripts:
 <a href="../scripts/local_folder_verify/README.html"><code>scripts/local_folder_verify/README.md</code></a>.
@@ -911,15 +791,12 @@ In order:</p>
 <ol>
 <li>Set up on the new machine (clone, <code>git submodule update --init</code>,
 <code>build_image.sh</code>, <code>ci.sh</code>) and match the 0.1.202 baselines.</li>
-<li>Hardening round, release 0.1.203: split the controller's index cache,
-then 202-N6, 202-N9, the scan and first-list holds, L2A2-1 to L2A2-3,
-offline fonts, <code>NoteCoverImage</code>, portal viewer semantics, Q13, and the
-backend SSRF guard (202-N3).</li>
-<li>Phase 4 in four reviewed sub-steps: export, import, change messages
-with observer and focus rescans, adopt a data-sync clone.</li>
-<li>Phase 5 (GitHub token) once the owner settles Q6.</li>
-<li>Owner: the 17 manual desktop Chrome checks (<code>testing.md</code> 8.6) with a
-real disk folder; no agent has run them.</li>
+<li>Hardening round, release 0.1.203: milestone
+<a href="https://github.com/Trance-0/Notechondria/milestone/1">0.1.203 local folder hardening</a>,
+starting with <a href="https://github.com/Trance-0/Notechondria/issues/32">#32</a>, then <a href="https://github.com/Trance-0/Notechondria/issues/33">#33</a>, <a href="https://github.com/Trance-0/Notechondria/issues/34">#34</a>, <a href="https://github.com/Trance-0/Notechondria/issues/35">#35</a>, <a href="https://github.com/Trance-0/Notechondria/issues/36">#36</a> to <a href="https://github.com/Trance-0/Notechondria/issues/38">#38</a>, <a href="https://github.com/Trance-0/Notechondria/issues/39">#39</a>, <a href="https://github.com/Trance-0/Notechondria/issues/40">#40</a>, <a href="https://github.com/Trance-0/Notechondria/issues/41">#41</a>, <a href="https://github.com/Trance-0/Notechondria/issues/44">#44</a>, <a href="https://github.com/Trance-0/Notechondria/issues/42">#42</a>, <a href="https://github.com/Trance-0/Notechondria/issues/43">#43</a>.</li>
+<li>Phase 4 in four reviewed sub-steps: <a href="https://github.com/Trance-0/Notechondria/issues/46">#46</a>, <a href="https://github.com/Trance-0/Notechondria/issues/47">#47</a>, <a href="https://github.com/Trance-0/Notechondria/issues/48">#48</a>, <a href="https://github.com/Trance-0/Notechondria/issues/49">#49</a>.</li>
+<li>Phase 5 (<a href="https://github.com/Trance-0/Notechondria/issues/50">#50</a>) once the owner settles Q6 (<a href="https://github.com/Trance-0/Notechondria/issues/74">#74</a>).</li>
+<li>Owner: the 17 manual desktop Chrome checks (<a href="https://github.com/Trance-0/Notechondria/issues/73">#73</a>); no agent has run them.</li>
 </ol>
 <h2 id="release--ci"><a class="header" href="#release--ci">Release / CI</a></h2>
 <h2 id="documentation-pages"><a class="header" href="#documentation-pages">Documentation pages</a></h2>
