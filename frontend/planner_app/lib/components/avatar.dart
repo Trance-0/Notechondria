@@ -21,15 +21,17 @@ class _RemoteMedia extends StatelessWidget {
     if (imageUrl.trim().isEmpty) {
       return fallback;
     }
+    // `nc-folder:` URLs read through the folder (local folder 3.6, T4).
     if (_isSvg) {
-      return SvgPicture.network(
+      return folderAwareSvg(
         imageUrl,
+        folder: _PlannerFolder.current,
         fit: fit,
         placeholderBuilder: (_) => fallback,
       );
     }
-    return Image.network(
-      imageUrl,
+    return Image(
+      image: folderAwareImageProvider(imageUrl, folder: _PlannerFolder.current),
       fit: fit,
       errorBuilder: (_, __, ___) => fallback,
     );

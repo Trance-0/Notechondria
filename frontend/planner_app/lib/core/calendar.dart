@@ -9,6 +9,11 @@ part of notechondria_frontend;
 /// unchanged. Subscribing by URL stays cloud-only (the server downloads
 /// the feed; a browser cannot fetch another site's .ics cross-origin), so
 /// it explains that instead of failing silently.
+///
+/// Folder mode (local folder 2.7, Phase 3): the folder session's token is
+/// set, so import and subscribe go through the client to the folder's
+/// `calendar-feeds` routes (`raw_ical`, `source_url`); offline_mode is
+/// ignored there, and a failed folder save keeps the import on this device.
 extension _AppShellCalendarX on _AppShellState {
   Future<void> _refreshCalendarState() async {
     final token = _token;
@@ -59,7 +64,7 @@ extension _AppShellCalendarX on _AppShellState {
     }
     final token = _token;
     final signedIn = token != null && token.isNotEmpty;
-    final offline = _localSettings['offline_mode'] == true;
+    final offline = !inFolderMode && _localSettings['offline_mode'] == true;
     if (!signedIn || offline) {
       return _saveCalendarLocally(
         title: title,
@@ -81,26 +86,31 @@ extension _AppShellCalendarX on _AppShellState {
       // this device and say why. `cause` is redacted (no query string or
       // credential), unlike the raw error text.
       final cause = describeRequestFailure(error);
+      final failed = inFolderMode
+          ? "the folder '${_folder?.folderName ?? ''}' did not save it"
+          : 'cloud upload failed';
       log(
         level: DebugLogLevel.warning,
         source: 'Planner.Sync.Calendar/push',
         message: 'Calendar saved on this device only: '
-            'Planner.Sync.Calendar/push \u2014 cloud upload failed '
-            '($cause).',
+            'Planner.Sync.Calendar/push \u2014 $failed ($cause).',
       );
       return _saveCalendarLocally(
         title: title,
         sourceName: sourceName,
         courseId: courseId,
         parsed: parsed,
-        reason: 'the cloud upload failed ($cause)',
+        reason: '${inFolderMode ? '' : 'the '}$failed ($cause)',
         uploadFailed: true,
       );
     }
     final count = parsed.events.length;
+    final destination = inFolderMode
+        ? "the folder '${_folder?.folderName ?? ''}'"
+        : 'your cloud calendars';
     final message = 'Calendar imported: Planner.Sync.Calendar/push \u2014 '
-        '"$title" ($count event${count == 1 ? '' : 's'}) added to your '
-        'cloud calendars.';
+        '"$title" ($count event${count == 1 ? '' : 's'}) added to '
+        '$destination.';
     log(
       level: DebugLogLevel.info,
       source: 'Planner.Sync.Calendar/push',
@@ -131,7 +141,8 @@ extension _AppShellCalendarX on _AppShellState {
     }
     final token = _token;
     final signedIn = token != null && token.isNotEmpty;
-    if (!signedIn || _localSettings['offline_mode'] == true) {
+    if (!signedIn ||
+        (!inFolderMode && _localSettings['offline_mode'] == true)) {
       final message = signedIn
           ? 'Calendar not subscribed: Planner.Sync.Calendar/subscribe \u2014 '
               'offline mode is on, and subscribing by URL needs the server '

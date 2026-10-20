@@ -8,12 +8,17 @@ class NotechondriaApp extends StatefulWidget {
     this.initialIndex = 0,
     this.title = 'Notechondria',
     this.visibleIndices = const <int>[0, 1, 2, 3, 4],
+    this.localFolder,
   });
 
   final NotechondriaClient? client;
   final int initialIndex;
   final String title;
   final List<int> visibleIndices;
+
+  /// Test seam (local folder design 2.7, 8.5): a controller over
+  /// `MemoryFolderPlatform`. Production builds pass none.
+  final LocalFolderController? localFolder;
 
   @override
   State<NotechondriaApp> createState() => _NotechondriaAppState();
@@ -35,8 +40,20 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
   /// client with a fresh one at the compile-time default URL, wiping
   /// the `_loadLocalState.updateBaseUrl(...)` that had pointed it at
   /// the user's saved API URL. Cache once here instead.
-  late final NotechondriaClient _client =
-      widget.client ?? HttpNotechondriaClient();
+  ///
+  /// The local folder controller is created first (design 2.5, 2.7): its
+  /// `StorageModeClient` routes every request to the folder in folder
+  /// mode and to the network otherwise.
+  late final LocalFolderController _localFolder = widget.localFolder ??
+      LocalFolderController.forApp('planner', log: _PlannerFolder.log);
+  late final NotechondriaClient _client = widget.client ??
+      HttpNotechondriaClient(httpClient: _localFolder.httpClient);
+
+  @override
+  void dispose() {
+    if (widget.localFolder == null) _localFolder.dispose();
+    super.dispose();
+  }
 
   void _handleThemeChanged(String preset, String mode) {
     setState(() {
@@ -81,6 +98,7 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
       ),
       home: AppShell(
         client: _client,
+        localFolder: _localFolder,
         onThemeChanged: _handleThemeChanged,
         onLocaleChanged: _handleLocaleChanged,
         initialIndex: widget.initialIndex,
@@ -101,9 +119,13 @@ class AppShell extends StatefulWidget {
     this.initialIndex = 0,
     this.appTitle = 'Notechondria',
     this.visibleIndices = const <int>[0, 1, 2, 3, 4],
+    this.localFolder,
   });
 
   final NotechondriaClient client;
+
+  /// Owned by `_NotechondriaAppState` (local folder design 2.7).
+  final LocalFolderController? localFolder;
   final void Function(String preset, String mode)? onThemeChanged;
 
   /// Called with the persisted `app_settings['locale']` value so the
@@ -134,9 +156,11 @@ class _AppShellState extends State<AppShell>
   AuthClient get authClient => widget.client;
   @override
   String get logAppTag => 'Planner';
-  // Local folder controller: none until the planner's wiring (Phase 3).
   @override
-  LocalFolderController? get localFolder => null;
+  LocalFolderController? get localFolder => widget.localFolder;
+
+  /// Folder bookkeeping for `core/local_folder_connect.dart`.
+  final _FolderSessionState _folderSession = _FolderSessionState();
   @override
   String? get token => _token;
   @override
@@ -245,9 +269,7 @@ class _AppShellState extends State<AppShell>
   @override
   Future<void> syncAllLocalDrafts() => _syncAllLocalDrafts();
   @override
-  void clearAppSpecificSessionFields() {
-    _plannerEvents = const [];
-  }
+  void clearAppSpecificSessionFields() => _clearPlannerSessionFields();
 
   // Session metadata hooks are no-ops post-Casdoor cutover: Casdoor
   // owns session lifecycle, so the SPA no longer tracks per-device
@@ -400,8 +422,18 @@ class _AppShellState extends State<AppShell>
     // the Debug log card.
     _httpClient?.setLogger((level, source, message) {
       if (!mounted) return;
+      // A request sent from a build (the GitHub card's initState) logs after
+      // the frame: the debug log card cannot rebuild during a build.
+      final binding = SchedulerBinding.instance;
+      if (binding.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+        binding.addPostFrameCallback((_) {
+          if (mounted) log(level: level, source: source, message: message);
+        });
+        return;
+      }
       log(level: level, source: source, message: message);
     });
+    _attachLocalFolder();
     _bootstrapApp();
   }
 
@@ -414,6 +446,7 @@ class _AppShellState extends State<AppShell>
 
   @override
   void dispose() {
+    _detachLocalFolder();
     _splashTimer?.cancel();
     _splashStatus.dispose();
     logController.dispose();
@@ -490,15 +523,16 @@ class _AppShellState extends State<AppShell>
         onContinue: _continueAfterBootstrapFailure,
       );
     }
-    final scaffold = LayoutBuilder(
-      builder: (context, constraints) {
-        final isWideLayout = constraints.maxWidth >= 960;
-        if (isWideLayout) {
-          return _buildWideScaffold(context);
-        }
-        return _buildCompactScaffold(context);
-      },
-    );
+    final scaffold = _withFolderBanner(_folderGateView() ??
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isWideLayout = constraints.maxWidth >= 960;
+            if (isWideLayout) {
+              return _buildWideScaffold(context);
+            }
+            return _buildCompactScaffold(context);
+          },
+        ));
     if (_showSplash) {
       return Stack(
         children: [
@@ -689,9 +723,10 @@ class _AppShellState extends State<AppShell>
               LoadErrorBanner(
                 message: _errorMessage!,
                 source: 'Planner.Startup/initial_data',
-                onWorkOffline: _localSettings['offline_mode'] != true
-                    ? _workOffline
-                    : null,
+                onWorkOffline: cloudOnly(
+                    _localSettings['offline_mode'] != true
+                        ? _workOffline
+                        : null),
                 onRetry: _retryStartup,
                 onDismiss: () => setState(() => _errorMessage = null),
               ),
@@ -770,7 +805,7 @@ class _AppShellState extends State<AppShell>
           onDeleteCover: _token != null
               ? (noteId) => widget.client.deleteNoteCoverImage(_token!, noteId)
               : null,
-          offlineMode: _localSettings['offline_mode'] == true,
+          offlineMode: !inFolderMode && _localSettings['offline_mode'] == true,
           onLoadPublicNotes: () => _loadLearnerNotes(),
         );
       case 1:
@@ -827,12 +862,18 @@ class _AppShellState extends State<AppShell>
           currentLocale: _localSettings['locale']?.toString() ?? 'system',
           onSetLocale: _setLocale,
           onProbeStorageArch: _probeStorageArch,
-          casdoorOrgLoginUrl: _casdoorOrgLoginUrl,
-          onCasdoorLogin: () => launchOAuth('casdoor', intent: 'login'),
-          onBindCasdoor: (_casdoorConfigured && _token != null)
+          // Folder mode (local folder 2.7, 9.3): cloud-only controls get a
+          // null callback, so the settings page hides or disables them.
+          casdoorOrgLoginUrl: cloudOnly(_casdoorOrgLoginUrl),
+          onCasdoorLogin:
+              cloudOnly(() => launchOAuth('casdoor', intent: 'login')),
+          localFolderOption: _folderSignInOption(),
+          localFolderCard: _folderStatusCard(),
+          onPing: _pingThroughFolderClient,
+          onBindCasdoor: cloudOnly((_casdoorConfigured && _token != null)
               ? () => launchOAuth('casdoor', intent: 'bind')
-              : null,
-          onUnlinkCasdoor: (_casdoorConfigured && _token != null)
+              : null),
+          onUnlinkCasdoor: cloudOnly((_casdoorConfigured && _token != null)
               ? () async {
                   try {
                     await widget.client.casdoorUnlink(_token!);
@@ -845,13 +886,14 @@ class _AppShellState extends State<AppShell>
                     }
                   } catch (_) {/* swallowed; UI stays stale */}
                 }
-              : null,
+              : null),
           onRestoreDeletedNote: _restoreDeletedNote,
           onEmptyDeletedNotes: _emptyDeletedNotes,
           onCopyLogs: _copyFrontendLogs,
           onUploadAvatar: _uploadAvatar,
           onSyncLocalData: _syncAllLocalData,
-          onPullCloudData: _pullCloudNotesToLocal,
+          onPullCloudData:
+              cloudOnlyAction(_pullCloudNotesToLocal, _folderPullNotNeeded),
           onClearLocalCache: _clearLocalCache,
           onClearLocalData: _clearLocalData,
           onRestoreTemplateCourses: cloudOnlyAction(_restoreTemplateCourses,
@@ -859,7 +901,7 @@ class _AppShellState extends State<AppShell>
           onOpenLocalRecycleBin: _openLocalRecycleBinDialog,
           localTrashedDraftCount: _localTrashedDrafts.length,
           localTrashedCourseCount: _localTrashedCourses.length,
-          onOfflineModeChanged: _setOfflineMode,
+          onOfflineModeChanged: cloudOnly(_setOfflineMode),
           localDraftCount: _localDrafts.length,
           localCourseCount: _localCourses.length,
           apiBaseUrl: _localSettings['api_base_url']?.toString() ??
@@ -870,8 +912,8 @@ class _AppShellState extends State<AppShell>
           uiLogs: uiLogs,
           onExportLocalData: _exportLocalArchive,
           onRestoreFromLocalImport: _restoreFromLocalImport,
-          onSaveMcpSkill: _token != null
-              ? (skillMd) async {
+          onSaveMcpSkill: cloudOnly(_token != null
+              ? (String skillMd) async {
                   try {
                     final result = await widget.client.updateSettings(
                       _token!,
@@ -897,7 +939,7 @@ class _AppShellState extends State<AppShell>
                     );
                   }
                 }
-              : null,
+              : null),
           // Folder mode sends no GitHub status request until Phase 5 (9.3).
           githubSyncCardBuilder: cloudOnly(_token != null
               ? () => GithubSyncExperimentalCard(

@@ -177,6 +177,8 @@ String _resolveRemoteUrl(String raw, {String? apiBaseUrl}) {
   if (value.isEmpty) {
     return '';
   }
+  // Folder media is read through the folder, never from the API (3.6).
+  if (isFolderUrl(value)) return value;
   final parsed = Uri.tryParse(value);
   final origin = _apiOrigin(apiBaseUrl);
   final originUri = origin.isEmpty ? null : Uri.tryParse(origin);
@@ -280,12 +282,14 @@ List<md.InlineSyntax> _markdownInlineSyntaxes() {
 /// shared `LocalAttachmentStore` and renders the bytes via
 /// `Image.memory`. Matches the editor's helper verbatim so planner
 /// drafts imported from a `.nchron` archive keep rendering their
-/// attachments; non-local URIs fall through to `Image.network`.
+/// attachments; non-local URIs fall through to a network image (folder
+/// bytes for `nc-folder:` URIs, local folder 3.6).
 Widget _localAttachmentImageBuilder(MarkdownImageConfig config) {
   final uri = config.uri;
   if (uri.scheme != 'local') {
-    return Image.network(
-      uri.toString(),
+    return Image(
+      image: folderAwareImageProvider(uri.toString(),
+          folder: _PlannerFolder.current),
       width: config.width,
       height: config.height,
       errorBuilder: (context, error, stack) {

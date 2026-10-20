@@ -18,11 +18,11 @@ part of notechondria_frontend;
 /// config, handshake, session_restore (nothing to restore: the planner
 /// keeps sign-in in memory only), oauth_callback, initial_data.
 extension _AppShellBootstrapX on _AppShellState {
-  Future<void> _bootstrapApp() async {
-    _startupFailure = null;
+  /// Safety net only: startup itself is bounded by the 10s budget, so the
+  /// splash normally ends when `_loadInitialData` finishes. A folder scan
+  /// re-arms it on every progress report (local folder 2.9 "Splash").
+  void _armSplashTimer() {
     _splashTimer?.cancel();
-    // Safety net only: startup itself is bounded by the 10s budget, so
-    // the splash normally ends when `_loadInitialData` finishes.
     _splashTimer =
         Timer(kBackendStartupTimeout + const Duration(seconds: 2), () {
       if (!mounted) return;
@@ -30,6 +30,11 @@ extension _AppShellBootstrapX on _AppShellState {
       _showSplash = false;
       refreshState();
     });
+  }
+
+  Future<void> _bootstrapApp() async {
+    _startupFailure = null;
+    _armSplashTimer();
     try {
       await runWithStartupBudget(
         StartupRequestBudget(source: 'Planner.Startup/bootstrap'),
@@ -50,55 +55,92 @@ extension _AppShellBootstrapX on _AppShellState {
                   '${_localCalendarFeeds.length} imported calendar(s).',
             ),
           );
+          // Folder mode (local folder 2.9): opens the folder and starts
+          // the folder session; makes no network request.
+          await _runLocalFolderStep();
           _logStartupConfig();
           await _runStartupHandshake();
-          log(
-            level: DebugLogLevel.debug,
-            source: 'Planner.Startup/session_restore',
-            message: 'No saved session: Planner.Startup/session_restore '
-                '\u2014 the planner keeps sign-in in memory only, so '
-                'startup has nothing to restore.',
-          );
-          await startupStep<bool>(
-            'Planner.Startup/oauth_callback',
-            handleOAuthCallback,
-            status: _splashStatus,
-            label: 'Completing sign-in',
-            failureConsequence: 'Sign-in not completed',
-            outcome: (signedIn) => signedIn
-                ? (
-                    level: DebugLogLevel.info,
-                    message: 'Sign-in completed: '
-                        'Planner.Startup/oauth_callback \u2014 the sign-in '
-                        'redirect was exchanged for a session.',
-                  )
-                : (
-                    level: DebugLogLevel.debug,
-                    message: 'No sign-in completed: '
-                        'Planner.Startup/oauth_callback \u2014 the page URL '
-                        'has no usable sign-in code (see any Auth line '
-                        'above for a failed exchange).',
-                  ),
-          );
-          await startupStep<void>(
-            'Planner.Startup/initial_data',
-            _loadInitialData,
-            status: _splashStatus,
-            label: 'Loading categories',
-            failureConsequence: 'Cloud data not loaded',
-            outcome: (_) => _initialDataOutcome('Planner.Startup/initial_data'),
-          );
+          // In folder mode the session comes from the folder, so
+          // oauth_callback is skipped (2.9).
+          if (inFolderMode) {
+            _logFolderSkipsSignIn();
+          } else {
+            await _runOAuthCallbackStep();
+          }
+          if (_folderPending) {
+            _finishStartupWithFolderPending();
+          } else {
+            await startupStep<void>(
+              'Planner.Startup/initial_data',
+              _loadInitialData,
+              status: _splashStatus,
+              label: inFolderMode
+                  ? "Reading folder '${_folder?.folderName ?? ''}'"
+                  : 'Loading categories',
+              failureConsequence: inFolderMode
+                  ? 'Folder data not loaded'
+                  : 'Cloud data not loaded',
+              outcome: (_) =>
+                  _initialDataOutcome('Planner.Startup/initial_data'),
+            );
+          }
         },
       );
+      // Outside the startup budget (local folder 2.9 step 3).
+      unawaited(_verifyFolderAfterStartup());
     } catch (error, stack) {
       _handleBootstrapFailure(error, stack);
     }
+  }
+
+  /// The cloud half of the startup pass: no session to restore (the
+  /// planner keeps sign-in in memory only), then the oauth_callback.
+  Future<void> _runOAuthCallbackStep() async {
+    log(
+      level: DebugLogLevel.debug,
+      source: 'Planner.Startup/session_restore',
+      message: 'No saved session: Planner.Startup/session_restore '
+          '\u2014 the planner keeps sign-in in memory only, so '
+          'startup has nothing to restore.',
+    );
+    await startupStep<bool>(
+      'Planner.Startup/oauth_callback',
+      handleOAuthCallback,
+      status: _splashStatus,
+      label: 'Completing sign-in',
+      failureConsequence: 'Sign-in not completed',
+      outcome: (signedIn) => signedIn
+          ? (
+              level: DebugLogLevel.info,
+              message: 'Sign-in completed: '
+                  'Planner.Startup/oauth_callback \u2014 the sign-in '
+                  'redirect was exchanged for a session.',
+            )
+          : (
+              level: DebugLogLevel.debug,
+              message: 'No sign-in completed: '
+                  'Planner.Startup/oauth_callback \u2014 the page URL '
+                  'has no usable sign-in code (see any Auth line '
+                  'above for a failed exchange).',
+            ),
+    );
   }
 
   /// Logs which API base URL this start uses and why (0.1.199).
   void _logStartupConfig() {
     final base = _httpClient?.baseUrl ?? 'no HTTP client';
     final saved = _localSettings['api_base_url']?.toString() ?? '';
+    if (inFolderMode) {
+      log(
+        level: DebugLogLevel.info,
+        source: 'Planner.Startup/config',
+        message: 'API base resolved: Planner.Startup/config \u2014 folder '
+            'mode; requests are answered in the page (the saved URL '
+            '${saved.isEmpty ? base : saved} is used only by Check for '
+            'updates).',
+      );
+      return;
+    }
     final origin = kIsWeb ? '; page origin ${Uri.base.origin}' : '';
     final offline = _localSettings['offline_mode'] == true;
     log(
@@ -116,7 +158,9 @@ extension _AppShellBootstrapX on _AppShellState {
   /// A failed handshake does not stop startup: the data load still runs
   /// (and fails fast once the budget has timed out).
   Future<void> _runStartupHandshake() async {
-    if (_localSettings['offline_mode'] == true) {
+    // Folder mode ignores offline_mode: the handshake is answered in the
+    // page (local folder 2.7, 2.8 rule 4).
+    if (!inFolderMode && _localSettings['offline_mode'] == true) {
       log(
         level: DebugLogLevel.debug,
         source: 'Planner.Startup/handshake',
@@ -133,7 +177,7 @@ extension _AppShellBootstrapX on _AppShellState {
         'Planner.Startup/handshake',
         () => widget.client.verifyHandshake(base),
         status: _splashStatus,
-        label: 'Connecting to server',
+        label: inFolderMode ? 'Opening folder backend' : 'Connecting to server',
         failureConsequence: 'Backend not reachable',
         outcome: (result) => result.ok
             ? (
@@ -179,11 +223,14 @@ extension _AppShellBootstrapX on _AppShellState {
     }
     return (
       level: DebugLogLevel.debug,
-      message: _localSettings['offline_mode'] == true
-          ? 'Startup step finished: $source \u2014 offline mode is on; '
-              'rendered from the local cache.'
-          : 'Startup step finished: $source \u2014 every cloud request '
-              'answered.',
+      message: inFolderMode
+          ? 'Startup step finished: $source \u2014 every folder request '
+              'answered.'
+          : _localSettings['offline_mode'] == true
+              ? 'Startup step finished: $source \u2014 offline mode is on; '
+                  'rendered from the local cache.'
+              : 'Startup step finished: $source \u2014 every cloud request '
+                  'answered.',
     );
   }
 

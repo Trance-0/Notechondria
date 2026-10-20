@@ -12,6 +12,8 @@ import 'package:notechondria_shared/notechondria_shared.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:planner_app/main.dart' as app;
 
+import 'local_folder_smoke.dart';
+
 /// Fake backend for the startup-fallback tests: never answers (an
 /// unresponsive server), refuses every connection, or answers every
 /// request with empty data plus a valid handshake. Signed-in calendar
@@ -764,4 +766,8 @@ void main() {
       await _pumpSeconds(tester, 1);
     });
   });
+  // Last: the boot test above draws app.main()'s warm-up frame, which reuses
+  // the binding's last frame time, so it must run before these tests pump
+  // frames on their own fake clocks.
+  registerLocalFolderSmokeTests();
 }

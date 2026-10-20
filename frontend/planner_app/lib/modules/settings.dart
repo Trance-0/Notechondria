@@ -42,6 +42,9 @@ class _SettingsPage extends StatefulWidget {
     this.currentLocale,
     this.onSetLocale,
     this.onProbeStorageArch,
+    this.localFolderOption,
+    this.localFolderCard,
+    this.onPing,
   });
 
   final Map<String, dynamic>? profile;
@@ -142,6 +145,13 @@ class _SettingsPage extends StatefulWidget {
   /// `app_shell` so the network callbacks bind to the authenticated
   /// client + token. Null when the user is signed out.
   final Widget Function()? githubSyncCardBuilder;
+
+  /// Local folder mode (design 1.3, 2.7): the sign-in option for the
+  /// signed-out AuthHub, the status card that replaces the account rows in
+  /// folder mode, and `ping` through the app's `StorageModeClient`.
+  final Widget? localFolderOption;
+  final Widget? localFolderCard;
+  final Future<PingResult> Function()? onPing;
 
   @override
   State<_SettingsPage> createState() => _SettingsPageState();
@@ -447,7 +457,11 @@ class _SettingsPageState extends State<_SettingsPage> {
                     onCasdoorLogin: widget.onCasdoorLogin,
                     casdoorOrgLoginUrl: widget.casdoorOrgLoginUrl,
                     apiBaseUrl: widget.apiBaseUrl,
+                    localFolderOption: widget.localFolderOption,
                   ),
+                ] else if (widget.localFolderCard != null &&
+                    widget.profile?['is_local_folder'] == true) ...[
+                  widget.localFolderCard!,
                 ] else ...[
                   Text(
                     l10n.plannerSignedInAs(
@@ -642,7 +656,7 @@ class _SettingsPageState extends State<_SettingsPage> {
               widget.localCourseCount,
             ),
             onCopyLogs: widget.onCopyLogs,
-            onPing: () => pingBackend(widget.apiBaseUrl),
+            onPing: widget.onPing ?? () => pingBackend(widget.apiBaseUrl),
           )
         else
           Card(

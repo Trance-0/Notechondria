@@ -9,10 +9,10 @@ import 'package:archive/archive.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:http/http.dart' as http;
 import 'package:markdown/markdown.dart' as md;
 import 'package:notechondria_shared/notechondria_shared.dart';
@@ -35,6 +35,8 @@ part 'core/load_local_state.dart';
 part 'core/local_archive_io.dart';
 part 'core/local_calendar.dart';
 part 'core/local_course_builders.dart';
+part 'core/local_folder_connect.dart';
+part 'core/local_folder_push.dart';
 part 'core/local_persist.dart';
 part 'core/local_starter.dart';
 part 'core/local_store.dart';
@@ -68,6 +70,8 @@ void main() {
   runGuardedApp(
     appModule: 'Planner',
     appTitle: 'Notechondria Planner',
+    // Storage mode is decided before the first build (local folder 2.8).
+    prepare: LocalFolderBoot.preload,
     buildApp: () => const NotechondriaApp(
       initialIndex: 1,
       title: 'Notechondria Planner',
