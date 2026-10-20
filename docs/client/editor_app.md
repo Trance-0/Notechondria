@@ -110,6 +110,28 @@ SharedPreferences reads/writes happen. Keys:
 - `logs` → UI logs surfaced in the debug drawer.
 - `session` → `{token, user}` after login, cleared on logout.
 
+### Local folder mode (0.1.201)
+
+On desktop Chromium over https or `http://127.0.0.1`, signed-out
+Settings shows "Use a local folder (no account)". The picked folder
+becomes the editor's storage: `HttpNotechondriaClient` runs over the
+`LocalFolderController`'s `StorageModeClient`, and the shared in-page
+backend answers every `/api/v1` call from files in the folder (notes,
+categories, trash, history, snapshots, attachments, covers, avatar,
+sessions, search, front page, heatmap). Only "Check for updates" reaches
+the saved server, with no token. Firefox, Safari, and mobile show the
+option disabled with the 1.8 reason.
+
+- Wiring: `core/local_folder_connect.dart` (the `Editor.Startup/local_folder`
+  step, the folder session and connect-time move of browser drafts, the
+  verification rescan, the reconnect view, the status card);
+  `cloudOnly` gates on the cloud-only Settings controls;
+  `folderAwareImageProvider` for `nc-folder:` images.
+- Tests: `test/local_folder_smoke.dart` (registered from
+  `smoke_test.dart`, so CI runs it).
+- Design: [`development/local_folder_mode.md`](../development/local_folder_mode.md);
+  open items in [`TODO.md`](../TODO.md).
+
 ## API client contract
 
 `HttpNotechondriaClient` talks to `<base>/api/v1/...`. See

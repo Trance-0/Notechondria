@@ -17,10 +17,14 @@ Related: [`server/notes.md`](../server/notes.md),
 | Backend authoritative DB | PostgreSQL via Django ORM | Forever | Source of truth: users, creators, courses, notes, blocks, attachments, planner events, calendar feeds, recycle bin, version history. |
 | Backend file storage | Cloudflare R2 (cloud) or local disk (Docker dev) | Forever (R2) / volume-bound (local) | Static assets, user-uploaded media, course covers, note attachments. |
 | Frontend offline | `SharedPreferences` JSON blobs (one per concern) | Until logout, manual clear, or the user clears site data | Local mirror of recently seen courses + notes, settings, draft notes, stats, cached front-page, UI logs, session token. |
+| Local folder (editor only, since 0.1.201) | Files in a user-picked folder through the File System Access API (desktop Chromium) | Until the user deletes the files | Notes as Markdown + `.meta.json` sidecars, categories, trash, history, attachments, covers, avatar, sessions, planner heatmap; an in-page backend answers `/api/v1`. Design: [`local_folder_mode.md`](local_folder_mode.md). |
 
 The frontend never persists to a structured local DB (no `sqflite`,
 no Hive). Everything is a JSON document under one of seven
-`SharedPreferences` keys per app.
+`SharedPreferences` keys per app, except in local folder mode, where the
+editor's data lives in the picked folder (layout in
+[`local_folder_mode/storage_rules.md`](local_folder_mode/storage_rules.md)).
+The planner and portal get folder mode in Phase 3.
 
 ## Backend storage
 

@@ -605,10 +605,11 @@ round. Not fixed in code yet; file as Issues with
 ## Local folder storage mode (owner request; design `docs/development/local_folder_mode.md`)
 
 Phase 1 (foundation) landed in 0.1.200 with the option hidden in every
-app. Phase numbers and file rows are in
+app. Phase 2 landed in 0.1.201: the editor shows the option; the planner
+and portal do not yet. Phase numbers and file rows are in
 `docs/development/local_folder_mode/implementation_plan.md` (9.1 to 9.3);
 the differences the code made from the design are in `revision_log.md`
-12.4.
+12.4 to 12.6.
 
 - [x] (0.1.200) Phase 1: storage core, transport, `StorageModeClient`,
   router, handlers (handshake, ping, settings, session, logout, Casdoor
@@ -641,7 +642,8 @@ the differences the code made from the design are in `revision_log.md`
   - P1A-7 (LOW): closed in 0.1.200; the `invalid to\u212Aen` test added,
     and overlapping sentinels are now broken too.
 - [x] Loop 2a review follow-ups (`.agents/tasks/review-2a.json`, design
-  `revision_log.md` 12.5):
+  `revision_log.md` 12.5; `review-2a-pass2.json` APPROVED and marks
+  L2A-1 to L2A-5 and L2A-7 fixed, with the residues listed below):
   - L2A-1 (MEDIUM): `index.json` was written only by scans and trusted
     on open, so a reload listed pre-edit rows. The in-memory index is now
     flushed to `index.json` 1 s after this tab's first write of a burst,
@@ -679,7 +681,7 @@ the differences the code made from the design are in `revision_log.md`
   until its old id is asked for or a rescan runs. Course delete stats
   every note before its detach chunks, so a note moved into the course
   between that pass and its chunk keeps the slug.
-- [x] Phase 2, editor: attachments, covers, avatar,
+- [x] (0.1.201) Phase 2, editor: attachments, covers, avatar,
   `folderAwareImageProvider`, promotion failures and "Copy browser
   attachments into the folder", history and snapshot routes, sessions, the
   `note_search_score` port (Phase 1 searches by substring), the front page.
@@ -742,6 +744,48 @@ the differences the code made from the design are in `revision_log.md`
     spliced the committed member back (0.1.198 procedure). The regenerated
     doc comments of `activityWeightN` and the two heatmap strings now match
     the ARB files.
+- [ ] Review LOW findings of loop 2a pass 2 (`.agents/tasks/review-2a-pass2.json`),
+  deferred for 0.1.201:
+  - L2A2-1: the rescan replays this tab's index changes over the scan's
+    entries without checking order, so an identity fix or another tab's
+    save that the scan read can be reverted in the index (GET by the new
+    id answers 404, or the list shows the older row) until a reload. Stat
+    each logged path in the final hold and keep the entry that matches
+    the disk; add the two-notes-same-id test.
+  - L2A2-2: purged-note summaries (title, description, excerpt) can stay
+    in `.notechondria/index.json` when the tab closes within the 1 s
+    flush delay, and a listing that drops entries schedules no flush.
+    Write `index.json` at once after a purge or empty trash.
+  - L2A2-3: a journal roll-forward, and a commit that fails partway, do
+    not update the in-memory index; this tab lists the old rows until a
+    rescan, a read of the note, or a reload. Re-index the replayed paths
+    or mark them unverified.
+  - L2A2-4: the first list after an open from `index.json` holds the
+    lock 1,733 ms for 2,000 notes, and the first full scan's longest page
+    2,087 ms (printed only). The review asked to close the two TODO items
+    above ("Scan page size", L2A-6) before the option is shown; the owner
+    deferred them for 0.1.201. Also assert the startup verification
+    rescan's page hold in the timing test.
+  - L2A2-5 (INFO): `local_folder_controller.dart` is near the 1000-line
+    cap; move the index cache (`_unverified`, `_scanLog`, `_scan`,
+    `_scheduleFlush`, `flushIndex`) into its own file before it grows.
+- [ ] Found by the 0.1.201 browser check (headless Chromium, editor in
+  folder mode):
+  - Fonts: Flutter web loads Roboto and the Noto Sans Symbols fallback
+    from `fonts.gstatic.com` (the bundle ships only MaterialIcons,
+    CupertinoIcons, and the KaTeX fonts). With no network the first load
+    draws no text, and folder mode still sends these font requests to
+    Google (no note data). Bundle the fonts or set the engine's font
+    fallback base URL to the app's own assets. Affects every mode, not
+    only the folder.
+  - Folder-mode wording: note cards say "Synced to cloud", Settings shows
+    "Backend settings: Online. API URL: ...", and the recycle bin page
+    says "Cloud recycle bin" and "soft-deleted note(s) on the server".
+  - "Start empty" on an empty folder still put the browser's starter
+    draft into the folder (the 7.1 connect-time move). By design, but the
+    label suggests an empty folder; reword or skip the starter draft.
+  - The empty-folder step shows "Start empty" and "Cancel" only; "Start
+    from an archive" is Phase 4.
 - [ ] Phase 3, planner and portal: events and recurrence, deadlines, week
   view, heatmap, calendar import and URL fetch with the CORS fallback,
   the `client_local_id` upsert and the connect-time push with the 30-day
@@ -756,10 +800,18 @@ the differences the code made from the design are in `revision_log.md`
   repos, push, course repo bind and import); replaces the GitHub card's
   `cloudOnly` gate.
 - [ ] Q13: decide on a CI grep guard for the OPFS test-hook marker in the
-  release bundles.
+  release bundles. In 0.1.201 the release bundles hold neither
+  `NOTECHONDRIA_TEST_OPFS_FOLDER` nor `notechondria-opfs-test-hook`, but
+  an editor build with the hook define holds neither as well (no app code
+  calls `openOpfsTestFolder`, so the compiler drops it). A guard needs a
+  marker that survives in a hook build, or it cannot fail.
 - [ ] Manual checks on desktop Chrome once the editor shows the option
   (design `testing.md` 8.6, items 1 to 17), on
-  `https://trance-0.github.io` and on `http://127.0.0.1:9068`: the option
+  `https://trance-0.github.io` and on `http://127.0.0.1:9068`. The
+  0.1.201 headless run covered create, edit, delete, restore, empty
+  trash, and reload over an OPFS folder returned by a stubbed picker, and
+  Firefox's disabled message; a real disk folder from the picker is still
+  unchecked. The list: the option
   and Firefox's disabled message; connect an empty folder from the notice;
   a non-empty folder's confirmation and a refused system folder; create,
   edit, delete, restore, and empty trash with the files checked on disk;

@@ -33,6 +33,49 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.201 (2026-10-20): RELEASE, owner request (local folder storage
+  mode), Phase 2 of `docs/development/local_folder_mode.md` 9.1. The
+  editor SHOWS "Use a local folder (no account)" (desktop Chromium);
+  planner and portal still hidden (Phase 3). Code commits (earlier in
+  the round, not pushed): 66781a5d folder-aware image provider, 92364f5d
+  content routes, ce17e61b editor wiring, ada0555c option strings and
+  widgets, bf345d6c show the option (plus loop 2a 3b28d0bb, cf441968).
+  This commit: VERSION, `docs/versions/0.1.201.md` + SUMMARY entry,
+  TODO (Phase 2 ticked; review-2a-pass2 L2A2-1 to L2A2-5 and this
+  round's browser findings deferred), README, `docs/readme.md`,
+  `docs/client/editor_app.md`, `docs/development/storage_model.md`.
+  VERIFIED (Flutter 3.44.0 `ghcr.io/cirruslabs/flutter:stable`, one
+  container at a time under `flock`, `timeout`; `--memory` discarded by
+  this kernel; scratch = `git archive bf345d6c frontend`; logs in
+  `/tmp/nc_verify/rel201_*`): planner analyze 105 / portal 123 issues,
+  0 errors (unchanged from 0.1.200); smoke planner 14 (the 0.1.200 "15"
+  was all of `test/`, smoke file has 14 in both), portal 15, editor 15;
+  release web builds of all three with `APP_VERSION=0.1.201` OK, each
+  bundle's dominant version `0.1.201`; `test/local_folder/ -r compact`
+  without `pub get` 306 passed; no OPFS test-hook string in any release
+  bundle (the hook build has none either: the hook is unreachable from
+  app code, so the grep cannot fail today, TODO Q13). Headless Chromium
+  131 (`nc-lf1a-flutter-chromium:local`, `--network none`, no `-p`,
+  listeners 127.0.0.1:8099 and :9222 only): connect, create, edit,
+  delete, restore, second note deleted, empty recycle bin, reload; folder
+  files checked after each step; `/api/` requests 4 during the signed-out
+  boot, 0 after the folder was chosen and 0 on the reload boot. The
+  picker was stubbed to return an OPFS directory (headless answers
+  AbortError, U3). Firefox 132 (Playwright build, WebDriver BiDi on
+  127.0.0.1): option `aria-disabled="true"` with the noDirectoryPicker
+  message. Loopback preview rebuilt (`scripts/local_remote_deploy.sh up`;
+  only 127.0.0.1:9068 published). Earlier in Phase 2: shared all 395
+  pass / 3 fail (pre-existing banner trio), editor analyze 99 / 0
+  errors, editor `test/` 29, backend contract OK. NOT RUN: manual
+  desktop-Chrome checks with a real disk folder (8.6), U1/U5/U7/U10/U17/
+  U18, Chromium OPFS suite after Phase 2 (no web-only file in Phase 2
+  but `writeBytes` over OPFS is untested), CI (not pushed). FOUND,
+  deferred to TODO: Roboto and Noto fallback fonts load from
+  `fonts.gstatic.com` (offline first load draws no text; screenshots of
+  the `--network none` run show no glyphs, the semantics label dumps are
+  the readable evidence); folder-mode labels "Synced to cloud", "Online.
+  API URL", "Cloud recycle bin".
+
 - 0.1.200 (2026-10-19): FEATURE, owner request (local folder storage
   mode), Phase 1 foundation of `docs/development/local_folder_mode.md`
   9.1. Option HIDDEN in every app; no app reads the storage key yet.
