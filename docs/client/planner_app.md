@@ -112,6 +112,29 @@ Signed out or offline, the subscribe dialog says so inline:
 URL needs a cloud session because the server downloads the feed; ... Sign
 in, or download the .ics file and use Import iCal, which works offline.`
 
+### Local folder mode (0.1.202)
+
+On desktop Chromium over https or `http://127.0.0.1`, signed-out Settings
+shows "Use a local folder (no account)", the same shared option as the
+editor. The picked folder becomes the planner's storage: the shared
+in-page backend answers the planner's `/api/v1` calls from files in the
+folder (courses, notes, planner events in `planner/events.json`, calendar
+feeds in `planner/feeds.json` with the `.ics` text in
+`planner/feeds/<id>.ics`, and the week view). Import iCal
+writes the calendar into the folder instead of
+`local_calendar_feeds`. On connect, the planner's browser-local courses,
+events, and imported calendars move into the folder once
+(`core/local_folder_push.dart`; recovery copies in
+`notechondria.planner.pushed_to_folder` for 30 days). Firefox, Safari, and
+mobile show the option disabled with the reason.
+
+- Wiring: `core/local_folder_connect.dart` (the `Planner.Startup/local_folder`
+  step, the folder session, the reconnect view, the status card).
+- Tests: `test/local_folder_smoke.dart` (registered from
+  `smoke_test.dart`, so CI runs it).
+- Design: [`development/local_folder_mode.md`](../development/local_folder_mode.md);
+  open items in [`TODO.md`](../TODO.md).
+
 ## API client contract
 
 Same `HttpNotechondriaClient` surface as the editor app — see

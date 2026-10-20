@@ -33,14 +33,15 @@ deployable.
 - **Cloud**: the Django backend (PostgreSQL, R2 media), when signed in.
 - **Browser-local**: `SharedPreferences` and IndexedDB in each app, for
   signed-out use and offline drafts.
-- **Local folder** (since 0.1.201, editor only, desktop Chromium over
-  https or `http://127.0.0.1`): "Use a local folder (no account)" in the
-  editor's Settings makes a picked folder the editor's storage. Notes are
-  Markdown files with JSON sidecars; the shared package's in-page backend
+- **Local folder** (desktop Chromium over https or `http://127.0.0.1`;
+  editor since 0.1.201, planner and portal since 0.1.202): "Use a local
+  folder (no account)" in each app's signed-out Settings makes a picked
+  folder the app's storage. Notes are Markdown files with JSON sidecars;
+  planner events and calendar feeds are files under `planner/`. The
+  shared package's in-page backend
   (`frontend/notechondria_shared/lib/src/local_folder/`) answers the
-  `/api/v1` calls, so no note data goes to the server. Other browsers
-  show the option disabled with the reason. The planner and portal get it
-  in Phase 3. Design:
+  `/api/v1` calls, so no note or planner data goes to the server. Other
+  browsers show the option disabled with the reason. Design:
   [`development/local_folder_mode.md`](development/local_folder_mode.md);
   storage summary in
   [`development/storage_model.md`](development/storage_model.md).

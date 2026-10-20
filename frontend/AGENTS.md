@@ -19,9 +19,8 @@ This directory contains the three standalone Notechondria frontend apps.
   Since 0.1.200 it also holds the in-page local folder backend
   (`src/local_folder/`, design `docs/development/local_folder_mode.md`):
   transport, router, handlers, and the sign-in option, status card, and
-  reconnect view. No app shows the option or reads the folder mode yet;
-  each app is wired in its phase (editor Phase 2, planner and portal
-  Phase 3).
+  reconnect view. The editor shows the option since 0.1.201 (Phase 2),
+  the planner and portal since 0.1.202 (Phase 3).
 - `README.md` — concise human overview
 
 ## Current progress

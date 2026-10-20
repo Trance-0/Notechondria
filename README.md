@@ -3,10 +3,11 @@
 Notechondria is a note-taking and course-planning system: three standalone
 Flutter apps that work offline first and sync through one Django backend.
 
-Since 0.1.201 the editor can also run with no account and no server: on
-desktop Chromium (Chrome, Edge), "Use a local folder (no account)" stores
-every note as plain files in a folder the user picks, and the page answers
-the API itself. The planner and portal get the option later. Design:
+All three apps can also run with no account and no server (editor since
+0.1.201, planner and portal since 0.1.202): on desktop Chromium (Chrome,
+Edge), "Use a local folder (no account)" stores notes, courses, planner
+events, and imported calendars as plain files in a folder the user picks,
+and the page answers the API itself. Design:
 [`docs/development/local_folder_mode.md`](docs/development/local_folder_mode.md).
 
 ## Components

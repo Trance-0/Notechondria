@@ -33,6 +33,53 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 0.1.202 (2026-10-20): RELEASE, owner request (local folder storage
+  mode), Phase 3 of `docs/development/local_folder_mode.md` 9.1. The
+  planner and portal SHOW "Use a local folder (no account)" (desktop
+  Chromium); all three apps now offer it. Code commits (earlier in the
+  round, not pushed): 336f24e4 and fa6d92ab shared planner events, week
+  view, calendar feeds; 95b0e013 and 9bbf1a77 planner wiring, option,
+  smoke checks; 44a3ed8a and ced339a4 portal wiring, option, smoke check;
+  835ceeb2 and 345b7fdd TODO "Deferred from Phase 3". This commit:
+  VERSION, `docs/versions/0.1.202.md` + SUMMARY entry, TODO (Phase 3
+  ticked; this round's browser findings added), README, `docs/readme.md`,
+  `docs/client/planner_app.md`, `docs/client/portal_app.md`,
+  `docs/development/storage_model.md`, and the stale "No app shows the
+  option" line in `frontend/AGENTS.md`. No code change in the release
+  step (no check failed). VERIFIED (Flutter 3.44.0
+  `ghcr.io/cirruslabs/flutter:stable`, one container at a time under
+  `flock`, `timeout`; `--memory 6g` discarded by this kernel; scratch =
+  `git archive 345b7fdd frontend`; logs in `/tmp/nc_verify/rel202_*`):
+  editor analyze 99 issues, 0 errors (unchanged); smoke editor 15,
+  planner 22, portal 23; release web builds of all three with
+  `--base-href /Notechondria/<app>/ --no-web-resources-cdn` and
+  `APP_VERSION=0.1.202` OK, each bundle's dominant version `0.1.202`;
+  `test/local_folder/ -r compact` without `pub get` 353 passed; no OPFS
+  test-hook string in any release bundle (planner and portal hook builds
+  are byte-identical, Q13). Headless Chromium 131
+  (`nc-lf1a-flutter-chromium:local`, `--network none`, no `-p`, listeners
+  127.0.0.1:8099 and :9222 only, picker stubbed to OPFS): planner connect,
+  event create, complete, `.ics` import, reload (event still checked,
+  lecture listed, folder files checked each step), `/api/` 6 in the
+  signed-out boot and 0 after connect; portal connect, event, note with
+  title, reload, cold `#/note/<uuid>` (title by screenshot; viewer text
+  is not in the semantics tree), `/api/` 5 in the boot and 0 after
+  connect. Firefox 132 (planner release build, BiDi on 127.0.0.1):
+  option `aria-disabled="true"` with the noDirectoryPicker message.
+  Loopback preview rebuilt (`scripts/local_remote_deploy.sh up` under
+  `flock`): `/api/v1/front-page/` 200 JSON, each `main.dart.js` reports
+  `0.1.202`, only the gateway publishes, on 127.0.0.1:9068. Earlier in
+  Phase 3: backend contract 42 fixtures OK; planner analyze 105 / portal
+  123, 0 errors. NOT RUN: manual desktop-Chrome checks with a real disk
+  folder (8.6) in any app, the Firefox check of the portal, subscribe by
+  URL in folder mode against a real calendar host, shared full suite
+  (only `test/local_folder/` this round), CI (not pushed). FOUND,
+  deferred to TODO: portal note viewer text missing from the
+  accessibility tree; "local-folder" shown as the author; a new folder
+  note missing from the portal list until a reload; offline font
+  fallback retries (1,866 `fonts.gstatic.com` requests in one planner
+  run); planner "Start empty" moves the starter data in.
+
 - 0.1.201 (2026-10-20): RELEASE, owner request (local folder storage
   mode), Phase 2 of `docs/development/local_folder_mode.md` 9.1. The
   editor SHOWS "Use a local folder (no account)" (desktop Chromium);

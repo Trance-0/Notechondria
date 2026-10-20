@@ -605,8 +605,9 @@ round. Not fixed in code yet; file as Issues with
 ## Local folder storage mode (owner request; design `docs/development/local_folder_mode.md`)
 
 Phase 1 (foundation) landed in 0.1.200 with the option hidden in every
-app. Phase 2 landed in 0.1.201: the editor shows the option; the planner
-and portal do not yet. Phase numbers and file rows are in
+app. Phase 2 landed in 0.1.201: the editor shows the option. Phase 3
+landed in 0.1.202: the planner and portal show it too, so all three apps
+offer folder mode on desktop Chromium. Phase numbers and file rows are in
 `docs/development/local_folder_mode/implementation_plan.md` (9.1 to 9.3);
 the differences the code made from the design are in `revision_log.md`
 12.4 to 12.6.
@@ -799,12 +800,12 @@ the differences the code made from the design are in `revision_log.md`
   - N10: `isFolderUrl` checks `nc-folder:` while `folderPathForUrl` needs `kFolderUrlPrefix`; skipped because the strict prefix would send a malformed `nc-folder:` URL to `NetworkImage` instead of the placeholder.
   - N11: `sanitizeFileName` does not rename Windows-reserved names (`CON`, `NUL`, ...) or names with a trailing dot or space; such a write fails with a 500.
   - F2 follow-up: composed and decomposed Unicode forms of one name (NFC/NFD) are one file on APFS, but `uniqueFileName` compares them as different; Dart has no built-in normalization.
-- [ ] Phase 3, planner and portal: events and recurrence, deadlines, week
+- [x] (0.1.202) Phase 3, planner and portal: events and recurrence, deadlines, week
   view, heatmap, calendar import and URL fetch with the CORS fallback,
   the `client_local_id` upsert and the connect-time push with the 30-day
   recovery list, both apps' wiring, the note viewers' `sizedImageBuilder`,
   the portal's `_NoteRoutePage` reconnect view, and their smoke files.
-  Then show the option in the planner and portal.
+  All three apps now show the option.
 - [ ] Deferred from Phase 3 (planner and portal):
   - Shared planner routes: URL feeds are downloaded only on subscribe and
     on `PATCH /calendar-feeds/{id}/` with `source_url` or the folder-only
@@ -901,6 +902,33 @@ the differences the code made from the design are in `revision_log.md`
     (the 7.1 check starts from a connected folder without
     `folder_pushed`). The U3 click check ran on the editor's build only;
     the portal uses the same shared option widget.
+- [ ] Found by the 0.1.202 browser check (headless Chromium, planner and
+  portal in folder mode; evidence in `.agents/tasks/rel202/`, not
+  committed):
+  - Portal note viewer: the title, the subtitle, and the Markdown body
+    are not in the accessibility tree, in session and on a cold
+    `#/note/<uuid>` (the dialog holds an unlabeled close button and an
+    empty read-only text field). The editor's viewer, also inside a
+    `SelectionArea`, labels its title. Screen readers get no note text;
+    the e2e checked the cold route by screenshot instead.
+  - Portal note viewer: the subtitle shows the folder session's user name,
+    "local-folder", as the author.
+  - Portal Learner list: a note created in folder mode does not appear in
+    the list (default "Public" scope, "No cloud notes yet") until a
+    reload; after the reload the same scope lists it as "Private".
+    Folder-mode wording there: "Search your cloud notes", "No cloud notes
+    yet".
+  - Fonts (extends the 0.1.201 item): with no network the engine requests
+    the fallback fonts again and again. One planner run sent 1,866
+    requests to `fonts.gstatic.com` (Noto Sans Symbols 691, Noto Sans SC
+    759, Noto Sans HK 414); the portal run, with Roboto answered in the
+    browser, sent 327 for Noto Sans Symbols.
+  - Planner "Start empty" on an empty folder moved the browser's starter
+    course, two starter notes, and the starter event "Draft weekly study
+    block" into the folder (the 7.1 connect-time push), as in the editor
+    item above.
+  - The Firefox check ran on the planner only; the portal uses the same
+    shared option widget.
 - [ ] Phase 4: `.nchron` bridge (new `folder_id` on restore, chunked
   import, the status card's Export and the option's "Start from an
   archive"), change messages, `FileSystemObserver` and focus rescans, and
@@ -913,14 +941,18 @@ the differences the code made from the design are in `revision_log.md`
   `NOTECHONDRIA_TEST_OPFS_FOLDER` nor `notechondria-opfs-test-hook`, but
   an editor build with the hook define holds neither as well (no app code
   calls `openOpfsTestFolder`, so the compiler drops it). A guard needs a
-  marker that survives in a hook build, or it cannot fail.
+  marker that survives in a hook build, or it cannot fail. In 0.1.202 the
+  planner and portal hook builds' `main.dart.js` are byte-identical to
+  their release builds.
 - [ ] Manual checks on desktop Chrome once the editor shows the option
   (design `testing.md` 8.6, items 1 to 17), on
   `https://trance-0.github.io` and on `http://127.0.0.1:9068`. The
   0.1.201 headless run covered create, edit, delete, restore, empty
   trash, and reload over an OPFS folder returned by a stubbed picker, and
-  Firefox's disabled message; a real disk folder from the picker is still
-  unchecked. The list: the option
+  Firefox's disabled message; the 0.1.202 headless runs covered the
+  planner (event create, complete, `.ics` import, reload) and the portal
+  (event, note, reload, cold `#/note/<uuid>`) the same way. A real disk
+  folder from the picker is still unchecked in all three apps. The list: the option
   and Firefox's disabled message; connect an empty folder from the notice;
   a non-empty folder's confirmation and a refused system folder; create,
   edit, delete, restore, and empty trash with the files checked on disk;

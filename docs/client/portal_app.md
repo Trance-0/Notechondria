@@ -53,6 +53,27 @@ Same `part of notechondria_frontend` pattern as the other two apps:
 page')` is present (matches both the compact AppBar title and the
 navigation destination label after the 0.1.18 rewrite).
 
+### Local folder mode (0.1.202)
+
+On desktop Chromium over https or `http://127.0.0.1`, signed-out Settings
+shows "Use a local folder (no account)", the same shared option as the
+editor and planner. The picked folder becomes the portal's storage: the
+shared in-page backend answers the portal's `/api/v1` calls from files in
+the folder (front page, notes, courses, planner events, and the week
+view). A cold `#/note/<uuid>` of a folder note opens the folder first and
+shows the reconnect view while the folder waits for a pick or a
+permission. On connect, the portal's browser-local events move into the
+folder once (`Portal.Sync.Events/push`; recovery copies in
+`notechondria.portal.pushed_to_folder`). Firefox, Safari, and mobile show
+the option disabled with the reason.
+
+- Wiring: `core/local_folder_connect.dart`, `core/build_page.dart`
+  (cloud-only gates), `components/note_route_page.dart`.
+- Tests: `test/local_folder_smoke.dart` (registered from
+  `smoke_test.dart`, so CI runs it).
+- Design: [`development/local_folder_mode.md`](../development/local_folder_mode.md);
+  open items in [`TODO.md`](../TODO.md).
+
 ## API client contract
 
 Same `HttpNotechondriaClient` contract as the other two apps — see
