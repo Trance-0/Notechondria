@@ -140,6 +140,7 @@ extension _SettingsPageBuildX on _SettingsPageState {
       onLogin: widget.onLogin,
       onCasdoorLogin: widget.onCasdoorLogin,
       casdoorOrgLoginUrl: widget.casdoorOrgLoginUrl,
+      localFolderOption: widget.localFolderOption,
     );
   }
 

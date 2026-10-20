@@ -13,7 +13,7 @@ main document in revision 2, so that the main document stays under the
 |---|---|---|---|
 | U1 | Flutter web `Image.network` with `blob:` URLs | 3.6 (avoided by the `nc-folder:` provider) | Spike |
 | U2 | `idb_shim` storing a raw `FileSystemDirectoryHandle` | Handle store (avoided by using `package:web` IndexedDB) | Spike |
-| U3 | Transient user activation survives Flutter web `onPressed` until `showDirectoryPicker` | 1.2, 1.3 | Spike |
+| U3 | Transient user activation survives Flutter web `onPressed` until `showDirectoryPicker` | 1.2, 1.3 | Closed in Phase 2 (below) |
 | U4 | Chrome blocks the home directory root (the brief's claim); only OS folders are confirmed | 1.4 | Manual check 3 |
 | U5 | `FileSystemFileHandle.move()` overwrite behavior | 3.4 (not relied on) | Spike |
 | U6 | Scan time for large folders | 2.9, 3.8 | Measure in Phase 1 |
@@ -44,6 +44,36 @@ Closed in revision 1:
   `profile/settings.json`; locale is not in its payload
   (`frontend/planner_app/lib/core/settings_helpers.dart:16-23`) and stays
   per device.
+
+Closed in Phase 2 (2026-10-20, the U3 part of the Phase 0 spike):
+
+- U3: verified in headless Chromium 131 (Playwright build 1148, the
+  `nc-lf1a-flutter-chromium:local` image, Flutter 3.44.0). The editor's
+  release web build with the Phase 2 wiring and the option (built at
+  `ada0555c` plus the option commit; an earlier build gave the same
+  result) was served on `http://127.0.0.1:8099` in a `--network none`
+  container, so the page was a secure context and the only listeners were
+  127.0.0.1:8099 and Chromium's DevTools on 127.0.0.1:9222. A script added
+  before the page loaded wrapped `window.showDirectoryPicker` to record
+  `navigator.userActivation.isActive` at call time and the promise outcome.
+  Trusted DevTools mouse input clicked the real "Use a local folder (no
+  account)" button on `#/settings`, twice: once with Flutter semantics on
+  (the button's `flt-semantics` node took the click), and once on a fresh
+  page load with semantics off (0 `flt-semantics` nodes), which is
+  Flutter's pointer path for a mouse user. Both clicks called
+  `showDirectoryPicker({id: 'notechondria-folder', mode: 'readwrite'})`
+  with `isActive: true`, and both promises rejected with `AbortError`
+  ("The user aborted a request."; headless Chromium has no picker UI).
+  The control call on the same page, made without a gesture, rejected
+  with `SecurityError` ("Must be handling a user gesture to show a file
+  picker."), so the browser does enforce activation. The real picker
+  dialog on desktop Chrome stays manual check 2 (8.6). Evidence (outside
+  the repo): `/tmp/nc_verify/agentb_u3/u3/u3_result.json`, the driver
+  `/tmp/nc_verify/agentb_u3/u3_driver.dart`, and screenshots
+  `u3_1_before_semantics_click.png` to `u3_4_after_pointer_click.png` in
+  the same directory.
+- U1, U5, U7, U10, U17, and U18 stay open; they are on the manual check
+  list in `docs/TODO.md` ("Deferred from Phase 2").
 
 ## 11.2 Sources (checked 2026-10-17)
 

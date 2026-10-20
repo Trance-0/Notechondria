@@ -16,6 +16,10 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:notechondria_shared/local_folder_testing.dart';
 import 'package:notechondria_shared/notechondria_shared.dart';
+// The probe inputs of an unqualified browser (no barrel export).
+// ignore: implementation_imports
+import 'package:notechondria_shared/src/local_folder/qualification.dart'
+    show LocalFolderProbeInputs;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:editor_app/main.dart' as app;
 
@@ -464,5 +468,40 @@ void _registerAppLevelTests() {
             reason: recorder.requests.map((r) => '${r.url}').join('\n'));
       });
     }
+
+    testWidgets(
+        'the sign-in option is enabled when qualified and disabled with the '
+        'gap message when not', (tester) async {
+      await tester.runAsync(() async {
+        SharedPreferences.setMockInitialValues(_seenFirstRun);
+        await LocalFolderBoot.preload();
+      });
+      const firefox = LocalFolderProbeInputs(
+          hasDirectoryPicker: false,
+          isSecureContext: true,
+          hasPermissionApi: false,
+          hasDirectoryIteration: true,
+          hasWebLocks: true,
+          userAgent: 'Mozilla/5.0 (X11; Linux x86_64) Firefox/130.0');
+      final backend = MockClient(_cloudBackend);
+      await http.runWithClient(() async {
+        for (final qualified in [true, false]) {
+          final c = _appController(qualified
+              ? MemoryFolderPlatform()
+              : MemoryFolderPlatform(probeInputs: firefox));
+          await _pumpApp(tester, c, initialIndex: 4);
+          final option = find.widgetWithText(
+              OutlinedButton, 'Use a local folder (no account)');
+          expect(option, findsOneWidget);
+          final button = tester.widget<OutlinedButton>(option);
+          expect(button.onPressed != null, qualified);
+          expect(
+              find.textContaining(
+                  localFolderGapMessage(LocalFolderGap.noDirectoryPicker)),
+              qualified ? findsNothing : findsOneWidget);
+          await _unmount(tester);
+        }
+      }, () => backend);
+    });
   });
 }

@@ -47,6 +47,7 @@ class _SettingsPage extends StatefulWidget {
     this.debugSnapshotListenable,
     this.debugHistoryListenable,
     this.debugLogController,
+    this.localFolderOption,
     this.localFolderCard,
     this.onPing,
   });
@@ -192,8 +193,10 @@ class _SettingsPage extends StatefulWidget {
   /// it falls back to the legacy string-list view.
   final DebugLogController? debugLogController;
 
-  /// Local folder mode (design 2.7): the status card for the signed-in
-  /// block, and `ping` through the app's `StorageModeClient`.
+  /// Local folder mode (design 1.3, 2.7): the sign-in option for the
+  /// signed-out AuthHub, the status card for the signed-in block, and
+  /// `ping` through the app's `StorageModeClient`.
+  final Widget? localFolderOption;
   final Widget? localFolderCard;
   final Future<PingResult> Function()? onPing;
 

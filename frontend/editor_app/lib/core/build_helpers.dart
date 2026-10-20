@@ -610,6 +610,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
           onCasdoorLogin:
               cloudOnly(() => launchOAuth('casdoor', intent: 'login')),
           casdoorOrgLoginUrl: _casdoorOrgLoginUrl,
+          localFolderOption: _folderSignInOption(),
           localFolderCard: _folderStatusCard(),
           onPing: _pingThroughFolderClient,
           onBindCasdoor: cloudOnly((_casdoorConfigured && _token != null)

@@ -322,6 +322,17 @@ extension _AppShellLocalFolderX on _AppShellState {
     );
   }
 
+  /// "Use a local folder (no account)" in the signed-out AuthHub (1.3), on
+  /// web builds only.
+  Widget? _folderSignInOption() {
+    final folder = _folder;
+    if (folder == null || !folder.platform.isWeb) return null;
+    return LocalFolderSignInOption(
+      controller: folder,
+      onConnected: () => _startFolderSession(restore: false),
+    );
+  }
+
   /// The status card: in folder mode it replaces the account rows; with a
   /// cloud session that took precedence it repeats the 2.10 rule 2 line.
   Widget? _folderStatusCard() {

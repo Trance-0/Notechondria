@@ -616,8 +616,11 @@ the differences the code made from the design are in `revision_log.md`
   the sign-in option, status card, and reconnect view, the multipart
   `_httpClient.send` fix, `pingBackend(client:)`, `runGuardedApp(prepare:)`,
   and the inert `cloudOnly` gates.
-- [ ] Phase 0 spike on desktop Chrome (U1, U3, U5, U7, U10, U17, U18):
-  run before Phase 2 ships the option.
+- [x] Phase 0 spike, U3 (Phase 2): a real click on the Flutter "Use a
+  local folder" button keeps transient activation until
+  `showDirectoryPicker`, on both the semantics and the pointer path, in
+  headless Chromium 131 (`unverified_and_sources.md` 11.1). The other
+  spike items are on the manual list under "Deferred from Phase 2".
 - [x] Phase 1b review follow-ups (`.agents/tasks/phase1b-review.json`),
   landed before Phase 2 shows the option (design `revision_log.md` 12.5):
   - P1B-1 (MEDIUM): note and course lookups read every note inside the
@@ -676,7 +679,7 @@ the differences the code made from the design are in `revision_log.md`
   until its old id is asked for or a rescan runs. Course delete stats
   every note before its detach chunks, so a note moved into the course
   between that pass and its chunk keeps the slug.
-- [ ] Phase 2, editor: attachments, covers, avatar,
+- [x] Phase 2, editor: attachments, covers, avatar,
   `folderAwareImageProvider`, promotion failures and "Copy browser
   attachments into the folder", history and snapshot routes, sessions, the
   `note_search_score` port (Phase 1 searches by substring), the front page.
@@ -709,6 +712,36 @@ the differences the code made from the design are in `revision_log.md`
     `MemoryFolderFs` only.
   - The full-scan longest hold (2,087 ms, see "Scan page size") is
     unchanged by Phase 2.
+  - Editor wiring: on desktop Chrome, check the spike items U1, U5, U7,
+    U10, U17, and U18 (`unverified_and_sources.md` 11.1) with the manual
+    checks of `testing.md` 8.6; headless Chromium answers the picker with
+    `AbortError`, so the real dialog (check 2) is still unchecked.
+  - Editor wiring: a mid-session revocation replaces the shell with the
+    reconnect view (as at startup) instead of a banner over the shell
+    (6.3). Edits in an open note dialog survive as browser-local drafts.
+  - Editor wiring: "Browser data moved" (7.1 step 5) is a log line and a
+    snackbar only; the status card does not repeat it, and the card has
+    no "Folder used by the editor only" line (2.10 rule 5).
+  - Editor wiring: with a cloud session that won over a folder, the
+    status card still shows the folder state ("Disconnected") and the
+    "Remember this folder" box; show only the precedence line there.
+  - Editor wiring: `LocalFolderController.disconnect()` keeps `record`;
+    the sign-in option ignores it after a Disconnect in the same tab
+    (`disconnectReason == thisTab`). Clear it in the controller.
+  - Editor wiring: a folder start first renders the cached cloud front
+    page and categories from `local_cache` until the folder load replaces
+    them.
+  - Editor wiring: app-level smoke checks not written yet (8.5): startup
+    with another tab holding the lock for 7 s, the "Choose again"
+    refusals (other `folder_id`, empty folder, `AbortError`) through the
+    app, the passthrough and the snapshot through the app, and Disconnect
+    with a pending note edit. The client-level checks cover the
+    passthrough, uploads, and the 503s.
+  - Editor wiring: `flutter gen-l10n` still rejects `activityWeightN`;
+    Phase 2 regenerated from a scratch copy with a String placeholder and
+    spliced the committed member back (0.1.198 procedure). The regenerated
+    doc comments of `activityWeightN` and the two heatmap strings now match
+    the ARB files.
 - [ ] Phase 3, planner and portal: events and recurrence, deadlines, week
   view, heatmap, calendar import and URL fetch with the CORS fallback,
   the `client_local_id` upsert and the connect-time push with the 30-day
