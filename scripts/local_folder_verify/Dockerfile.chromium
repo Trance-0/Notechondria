@@ -1,0 +1,25 @@
+# Flutter SDK + Playwright browsers for the local folder Chromium/OPFS
+# tests and the browser drivers (docs/development/local_folder_mode/
+# testing.md 8.3). Built by build_image.sh as nc-flutter-chromium:local.
+# Verified with Flutter 3.44.0 (ghcr.io/cirruslabs/flutter:stable at the
+# time) and Playwright 1.49.1: Chromium 131 (chromium-1148), Firefox 132
+# (firefox-1466). The drivers hard-code those two browser paths.
+ARG FLUTTER_IMAGE=ghcr.io/cirruslabs/flutter:stable
+FROM ${FLUTTER_IMAGE} AS flutter
+
+FROM mcr.microsoft.com/playwright/python:v1.49.1-noble
+COPY --from=flutter /sdks/flutter /sdks/flutter
+# The containers run as root, where Chrome's sandbox cannot start, so
+# CHROME_EXECUTABLE is a wrapper that adds --no-sandbox.
+RUN apt-get update && apt-get install -y --no-install-recommends unzip xz-utils \
+    && rm -rf /var/lib/apt/lists/* \
+    && git config --system --add safe.directory /sdks/flutter \
+    && printf '#!/bin/sh\nexec /ms-playwright/chromium-1148/chrome-linux/chrome --no-sandbox "$@"\n' \
+       > /usr/local/bin/chromium-no-sandbox \
+    && chmod +x /usr/local/bin/chromium-no-sandbox
+ENV PATH=/sdks/flutter/bin:/sdks/flutter/bin/cache/dart-sdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    CHROME_EXECUTABLE=/usr/local/bin/chromium-no-sandbox \
+    FLUTTER_SUPPRESS_ANALYTICS=true \
+    CI=true
+RUN flutter config --enable-web && flutter precache --web --no-android --no-ios \
+    --no-linux --no-windows --no-macos --no-fuchsia --no-universal

@@ -148,6 +148,11 @@ JavaScript return-value bug of 2.5; 8.3 covers that in Chromium.
   hook's marker string (Q13).
 - How OPFS handles answer `queryPermission` is **unverified** (U10); the
   hook does not depend on it.
+- Rerunnable scripts: `scripts/local_folder_verify/` (start with its
+  `README.md`) holds these recipes as scripts: the Chromium image, the
+  CI-equivalent run with the hook-string grep, these Chromium tests, the
+  e2e, Firefox, and U3 drivers, and the backend contract test, with their
+  0.1.202 baselines.
 
 ## 8.4 Contract fixtures (drift control)
 
