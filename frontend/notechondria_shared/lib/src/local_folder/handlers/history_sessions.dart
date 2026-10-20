@@ -183,7 +183,7 @@ Map<String, Object?> sessionPayload(
 }
 
 /// The course id of the note a session names, from the index.
-Future<int? Function(Map<String, Object?>)> _courseOfSession(
+Future<int? Function(Map<String, Object?>)> sessionCourseLookup(
     LocalHandlerContext ctx) async {
   final courses = CourseLookup(await readCourses(ctx.fs, skip: ctx.skipPaths));
   final notes = indexedNotes(ctx.index, trashed: true, skip: ctx.skipPaths);
@@ -223,7 +223,7 @@ Future<LocalResponse> _listSessions(LocalHandlerContext ctx) async {
           .compareTo(jsonString(a['started_at']) ?? '');
       return t != 0 ? t : jsonInt(b['id'])!.compareTo(jsonInt(a['id'])!);
     });
-  final course = await _courseOfSession(ctx);
+  final course = await sessionCourseLookup(ctx);
   return LocalResponse(200, [
     for (final r in rows.take(limit < 0 ? 0 : limit))
       sessionPayload(r, course(r)),
@@ -265,7 +265,7 @@ Future<LocalResponse> _startSession(LocalHandlerContext ctx) async {
         _encodeSessions(container, [...records, record])),
     JournalWrite(kManifestPath, updated.encode()),
   ]));
-  final course = await _courseOfSession(ctx);
+  final course = await sessionCourseLookup(ctx);
   return LocalResponse(201, sessionPayload(record, course(record)));
 }
 
@@ -290,7 +290,7 @@ Future<LocalResponse> _updateSession(LocalHandlerContext ctx) async {
   };
   final next = [...records]..[at] = record;
   await ctx.writeText(kPlannerSessionsPath, _encodeSessions(container, next));
-  final course = await _courseOfSession(ctx);
+  final course = await sessionCourseLookup(ctx);
   return LocalResponse(200, sessionPayload(record, course(record)));
 }
 

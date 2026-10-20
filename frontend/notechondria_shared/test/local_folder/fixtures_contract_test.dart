@@ -17,8 +17,9 @@ const String _fixtureDir = 'test/fixtures/api_v1';
 
 /// Seeds the folder as the fixture's `_setup` names; returns placeholder
 /// values for `{course_id}`, `{note_id}`, and `{note_uuid}`, plus
-/// `{attachment_id}`, `{version_id}`, or `{session_id}` for the setups that
-/// add one. A request with `files` is sent as multipart, with its `fields`.
+/// `{attachment_id}`, `{version_id}`, `{session_id}`, `{event_id}`, or
+/// `{feed_id}` for the setups that add one. A request with `files` is sent
+/// as multipart, with its `fields`.
 Future<Map<String, Object>> _setup(LocalFolderController c, String setup) async {
   if (setup == 'empty') return {};
   final course = mapOf(await callApi(c, 'POST', '/courses/',
@@ -47,9 +48,29 @@ Future<Map<String, Object>> _setup(LocalFolderController c, String setup) async 
     final r = await callApi(c, 'POST', '/note-sessions/',
         json: {'note_id': note['id']});
     ids['session_id'] = mapOf(r)['id']!;
+  } else if (setup == 'planner_event') {
+    final r = await callApi(c, 'POST', '/planner-events/', json: {
+      'title': 'Contract event',
+      'event_date': '2027-01-12',
+      'difficulty_weight': 2,
+      'course_id': course['id'],
+    });
+    ids['event_id'] = mapOf(r)['id']!;
+  } else if (setup == 'calendar_feed') {
+    final r = await callApi(c, 'POST', '/calendar-feeds/', json: {
+      'title': 'Contract feed',
+      'raw_ical': _contractIcs,
+      'course_id': course['id'],
+    });
+    ids['feed_id'] = mapOf(r)['id']!;
   }
   return ids;
 }
+
+/// The `.ics` text of the `calendar_feed` setup (one event).
+const String _contractIcs = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\n'
+    'UID:contract-1\r\nSUMMARY:Contract seminar\r\nDTSTART:20270113T150000Z\r\n'
+    'DTEND:20270113T160000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n';
 
 final List<int> _png = base64Decode(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==');

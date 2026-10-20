@@ -90,11 +90,22 @@ final List<String> _backendDetails = [
       'Attachment not saved', 'attachments', 'the request has no `file` part'),
   // F1: answered in the page for a folder-token request after Disconnect.
   LocalFolderMessages.requestNotSentDisconnected,
+  // Phase 3 planner routes and calendar downloads (F35-F43).
+  LocalFolderMessages.eventNotFound(5),
+  LocalFolderMessages.feedNotFound(6),
+  LocalFolderMessages.calendarNoCors('calendar.google.com'),
+  LocalFolderMessages.calendarNoCors('calendar.google.com', refresh: true),
+  LocalFolderMessages.calendarTimeout('cal.example.org', 5),
+  LocalFolderMessages.calendarHttpStatus('cal.example.org', 404),
+  LocalFolderMessages.calendarNotIcal('calendar.google.com'),
+  LocalFolderMessages.calendarTooLarge('cal.example.org', 5 * 1024 * 1024),
+  LocalFolderMessages.calendarIsBackend('notechondria.trance-0.com'),
+  LocalFolderMessages.calendarNoSourceUrl(6),
 ];
 
 void main() {
   test('every message has the 1.8 shape', () {
-    final shape = RegExp(r'^[^:]+: (Shared\.LocalFolder(\.\w+)?|\w+\.Startup)/[a-z_]+ — .+');
+    final shape = RegExp(r'^[^:]+: (Shared\.LocalFolder(\.\w+)?|\w+\.Startup)/[a-z_]+(\.[a-z_]+)? — .+');
     for (final m in _allMessages) {
       expect(shape.hasMatch(m), isTrue, reason: m);
     }

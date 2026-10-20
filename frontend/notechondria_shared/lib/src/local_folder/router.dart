@@ -104,6 +104,18 @@ class LocalHttpError implements Exception {
   String toString() => detail;
 }
 
+/// The answer of a class (b) calendar download (F42). [tooLarge] is set,
+/// and [body] empty, when the answer passed the size bound.
+class LocalFetchAnswer {
+  const LocalFetchAnswer(this.status, this.body, {this.tooLarge = false});
+  final int status;
+  final String body;
+  final bool tooLarge;
+}
+
+/// The largest calendar answer a feed caches (`planner/feeds/<id>.ics`).
+const int kCalendarFetchMaxBytes = 5 * 1024 * 1024;
+
 /// What a handler may use. The transport implements it per request.
 abstract class LocalHandlerContext {
   LocalRequest get request;
@@ -162,6 +174,15 @@ abstract class LocalHandlerContext {
 
   /// The status card's busy line (6.2 R4), or null when done.
   void setBusy(String? line);
+
+  /// F42, the only network call a handler may make: a GET of the
+  /// user-given calendar [url] through the transport's plain third-party
+  /// client, with an `Accept` header only (no `Authorization`, no
+  /// cookies), bounded by [timeout] and [kCalendarFetchMaxBytes]. Throws a
+  /// `TimeoutException`, or the client's exception when the browser got no
+  /// readable answer (F43). Callers never pass a Notechondria server URL
+  /// and never call it inside a folder lock hold.
+  Future<LocalFetchAnswer> fetchCalendarUrl(Uri url, {required Duration timeout});
 
   void log(LocalFolderLogLevel level, String message);
 }
@@ -253,7 +274,7 @@ _Fallback _later(String pattern, String feature, {Set<String>? methods}) =>
     _Fallback(methods, pattern,
         (m, p) => LocalFolderMessages.laterRelease(feature, m, p));
 
-/// The (c) routes of 4.1 and the routes of Phases 3 to 5. Every detail
+/// The (c) routes of 4.1 and the routes of Phases 4 and 5. Every detail
 /// contains "—" and no session-rejection sentinel or deep-link marker.
 final List<_Fallback> _fallbacks = [
   _serverOnly({'POST'}, 'auth/login', LocalFolderMessages.emailSignIn),
@@ -272,12 +293,6 @@ final List<_Fallback> _fallbacks = [
       LocalFolderMessages.templateCoursesNotRestored),
   _serverOnly(null, 'integrations/github/callback',
       LocalFolderMessages.githubAppUnavailable),
-  _later('planner-events', 'Planner events'),
-  _later('planner-events/{id}', 'Planner events'),
-  _later('activity', 'The deadline list'),
-  _later('activity/week', 'The week view'),
-  _later('calendar-feeds', 'Calendar feeds'),
-  _later('calendar-feeds/{id}', 'Calendar feeds'),
   _later('courses/{id}/git', 'Course repository sync'),
   _later('courses/{id}/git/import', 'Course repository sync'),
   _later('courses/{id}/git/sync', 'Course repository sync'),

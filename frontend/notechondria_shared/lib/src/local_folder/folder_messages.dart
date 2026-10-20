@@ -513,6 +513,58 @@ abstract final class LocalFolderMessages {
       'Study session not found in folder: Shared.LocalFolder.Backend/planner '
       '— session $id is not in this folder.';
 
+  // --- Planner and calendar feeds (Phase 3, F35-F43) ---
+
+  static String eventNotFound(int id) =>
+      'Planner event not found in folder: Shared.LocalFolder.Backend/planner '
+      '— event $id is not in this folder.';
+
+  static String feedNotFound(int id) =>
+      'Calendar feed not found in folder: Shared.LocalFolder.Backend/planner '
+      '— feed $id is not in this folder.';
+
+  static String _calendarConsequence(bool refresh) =>
+      refresh ? 'Calendar not refreshed' : 'Calendar not subscribed';
+
+  /// F43: the browser got no readable answer, which is what a host without
+  /// `Access-Control-Allow-Origin` produces (the text of feature_matrix F43).
+  static String calendarNoCors(String host, {bool refresh = false}) =>
+      '${_calendarConsequence(refresh)}: '
+      'Shared.LocalFolder.Backend/calendar.fetch — $host does not allow '
+      'browser downloads (no Access-Control-Allow-Origin header). Download '
+      'the .ics file and use Import iCal, or subscribe in cloud mode.';
+
+  static String calendarTimeout(String host, int seconds,
+          {bool refresh = false}) =>
+      '${_calendarConsequence(refresh)}: '
+      'Shared.LocalFolder.Backend/calendar.fetch — $host did not answer '
+      'within $seconds s.';
+
+  static String calendarHttpStatus(String host, int status) =>
+      'Calendar not refreshed: Shared.LocalFolder.Backend/calendar.fetch — '
+      '$host answered HTTP $status.';
+
+  static String calendarNotIcal(String host) =>
+      'Calendar not refreshed: Shared.LocalFolder.Backend/calendar.fetch — '
+      '$host did not return iCal data (the calendar is likely private; use '
+      "the 'Secret address in iCal format' instead of the public share link).";
+
+  static String calendarTooLarge(String host, int maxBytes,
+          {bool refresh = false}) =>
+      '${_calendarConsequence(refresh)}: '
+      'Shared.LocalFolder.Backend/calendar.fetch — the answer of $host is '
+      'larger than ${maxBytes ~/ (1024 * 1024)} MB.';
+
+  /// The folder backend never sends a request to the Notechondria server.
+  static String calendarIsBackend(String host) =>
+      'Calendar not subscribed: Shared.LocalFolder.Backend/calendar.fetch — '
+      '$host is the Notechondria server, which folder mode does not contact. '
+      'Use the calendar host\'s own .ics URL, or Import iCal.';
+
+  static String calendarNoSourceUrl(int id) =>
+      'Calendar not refreshed: Shared.LocalFolder.Backend/calendar.fetch — '
+      'feed $id has no source URL; import its .ics file again instead.';
+
   /// A request body field that fails validation (400).
   static String invalidField(
           String consequence, String process, String cause) =>

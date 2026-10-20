@@ -159,8 +159,7 @@ void main() {
         expect(detailOf(r), e.value, reason: e.key);
       }
       for (final path in [
-        '/activity/week/',
-        '/planner-events/',
+        '/courses/3/git/',
         '/permission-forbidden/403:/',
         '/integrations/github/status/',
       ]) {

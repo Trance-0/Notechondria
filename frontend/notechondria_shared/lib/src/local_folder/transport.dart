@@ -13,9 +13,11 @@ import 'folder_scanner.dart' show isIndexedPath;
 import 'handlers/activity.dart';
 import 'handlers/attachments.dart';
 import 'handlers/auth_settings.dart';
+import 'handlers/calendar.dart';
 import 'handlers/courses.dart';
 import 'handlers/history_sessions.dart';
 import 'handlers/notes.dart';
+import 'handlers/planner.dart';
 import 'handlers/trash.dart';
 import 'local_folder_controller.dart';
 import 'note_codec.dart';
@@ -26,10 +28,13 @@ import 'router.dart';
 // and the 503 details), takes the folder lock in the mode of 6.2 R1, runs
 // the handler within the read and write deadlines of 2.9, and answers JSON
 // with `x-notechondria-backend: local-folder`. No request reaches the
-// network from here.
+// network from here, except the declared class (b) calendar downloads of
+// F42 (`fetchCalendarUrl`), which go to the user-given feed URL through a
+// plain client of their own.
 
-/// Every route the folder answers (9.1): Phase 1, and the Phase 2 content
-/// routes (attachments, covers, history, sessions, front page, heatmap).
+/// Every route the folder answers (9.1): Phase 1, the Phase 2 content
+/// routes (attachments, covers, history, sessions, front page, heatmap),
+/// and the Phase 3 planner routes (events, deadlines, week, feeds).
 LocalBackendRouter localFolderRouter() => LocalBackendRouter([
       ...authSettingsRoutes(),
       ...courseRoutes(),
@@ -38,6 +43,8 @@ LocalBackendRouter localFolderRouter() => LocalBackendRouter([
       ...attachmentRoutes(),
       ...historySessionRoutes(),
       ...activityRoutes(),
+      ...plannerRoutes(),
+      ...calendarRoutes(),
     ]);
 
 /// A deadline passed; [cause] is one of the 2.9 causes.
@@ -105,12 +112,26 @@ class LocalFolderTransport extends http.BaseClient {
     LocalBackendRouter? router,
     this.readDeadline = kFolderReadDeadline,
     this.writeDeadline = kFolderWriteDeadline,
-  }) : router = router ?? localFolderRouter();
+    http.Client? calendarClient,
+  })  : router = router ?? localFolderRouter(),
+        _calendarClient = calendarClient;
 
   final LocalFolderController controller;
   final LocalBackendRouter router;
   final Duration readDeadline;
   final Duration writeDeadline;
+  http.Client? _calendarClient;
+
+  /// The plain third-party client of the F42 calendar downloads: never the
+  /// app's `StorageModeClient`, created on first use (in tests, the zone's
+  /// client of `http.runWithClient`).
+  http.Client get calendarClient => _calendarClient ??= http.Client();
+
+  @override
+  void close() {
+    _calendarClient?.close();
+    _calendarClient = null;
+  }
 
   /// Per note UUID, the body `lastModified` last served to this tab (3.8).
   final Map<String, int> servedLastModified = <String, int>{};
@@ -370,6 +391,28 @@ class _Context implements LocalHandlerContext {
 
   @override
   void setBusy(String? line) => _controller.setBusy(line);
+
+  @override
+  Future<LocalFetchAnswer> fetchCalendarUrl(Uri url,
+      {required Duration timeout}) {
+    Future<LocalFetchAnswer> fetch() async {
+      // A fresh request with Accept only: no Authorization, no app header.
+      final request = http.Request('GET', url)
+        ..headers['Accept'] = 'text/calendar, */*;q=0.1';
+      final streamed = await _transport.calendarClient.send(request);
+      final bytes = <int>[];
+      await for (final chunk in streamed.stream) {
+        bytes.addAll(chunk);
+        if (bytes.length > kCalendarFetchMaxBytes) {
+          return LocalFetchAnswer(streamed.statusCode, '', tooLarge: true);
+        }
+      }
+      return LocalFetchAnswer(
+          streamed.statusCode, utf8.decode(bytes, allowMalformed: true));
+    }
+
+    return fetch().timeout(timeout);
+  }
 
   @override
   void log(LocalFolderLogLevel level, String message) =>

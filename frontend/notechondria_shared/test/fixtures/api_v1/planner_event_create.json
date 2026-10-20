@@ -1,0 +1,39 @@
+{
+  "_source": "backend/notes/api.py PlannerEventListCreateApiView.post (:2161-2188) with PlannerEventWriteSerializer (:595-612) and normalize_planner_event_window (:2425-2432), 201.",
+  "_setup": "course_and_note",
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/planner-events/",
+    "body": {
+      "title": "Contract series",
+      "event_date": "2027-01-12",
+      "difficulty_weight": 3,
+      "course_id": "{course_id}",
+      "recurrence_freq": "W",
+      "recurrence_count": 3
+    }
+  },
+  "status": 201,
+  "body": {
+    "id": 1,
+    "title": "Contract series",
+    "event_date": "2027-01-12",
+    "starts_at": "2027-01-12T12:00:00+00:00",
+    "ends_at": "2027-01-12T13:00:00+00:00",
+    "difficulty_weight": 3,
+    "description": "",
+    "course_id": 1,
+    "course": {
+      "id": 1,
+      "title": "Contract course",
+      "slug": "contract-course",
+      "color_hue": null
+    },
+    "is_completed": false,
+    "completed_at": null,
+    "recurrence_freq": "W",
+    "recurrence_interval": 1,
+    "recurrence_end_date": null,
+    "recurrence_count": 3
+  }
+}

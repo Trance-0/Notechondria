@@ -1,0 +1,37 @@
+{
+  "_source": "backend/notes/api.py CalendarFeedListCreateApiView.post (:2284-2311): CalendarFeedSerializer plus import_summary from summarize_calendar_feed (backend/notes/services.py:585-617), 201.",
+  "_setup": "course_and_note",
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/calendar-feeds/",
+    "body": {
+      "title": "Contract feed",
+      "source_kind": "I",
+      "raw_ical": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:contract-1\r\nSUMMARY:Contract seminar\r\nDTSTART:20270113T150000Z\r\nDTEND:20270113T160000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+      "course_id": "{course_id}"
+    }
+  },
+  "status": 201,
+  "body": {
+    "id": 1,
+    "title": "Contract feed",
+    "source_kind": "I",
+    "source_url": "",
+    "is_enabled": true,
+    "course_id": 1,
+    "last_sync": null,
+    "date_created": "2026-10-19T00:00:00Z",
+    "last_edit": "2026-10-19T00:00:00Z",
+    "import_summary": {
+      "ok": true,
+      "count": 1,
+      "events": [
+        {
+          "title": "Contract seminar",
+          "starts_at": "2027-01-13T15:00:00+00:00"
+        }
+      ],
+      "error": null
+    }
+  }
+}

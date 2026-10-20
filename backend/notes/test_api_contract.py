@@ -11,8 +11,8 @@ uploads, so a fixture can be refreshed from CI without a local backend.
 Keys starting with `_` are fixture metadata. `_setup` names the seed data,
 `_backend_route: false` marks a route the backend does not have (Q17), and
 `{course_id}`, `{note_id}`, `{note_uuid}` in a request are replaced with
-the seeded ids (plus `{attachment_id}`, `{version_id}`, `{session_id}` for
-the setups that add one). A request with `files` (field -> filename,
+the seeded ids (plus `{attachment_id}`, `{version_id}`, `{session_id}`,
+`{event_id}`, `{feed_id}` for the setups that add one). A request with `files` (field -> filename,
 content_type, base64) is sent as multipart together with its `fields`.
 """
 
@@ -30,6 +30,7 @@ from rest_framework.test import APIClient
 from courses.models import Course
 from creators.models import Creator
 from notes.models import Note
+from planner.models import CalendarFeed, PlannerEvent
 
 BACKEND_DIR = Path(settings.BASE_DIR)
 FIXTURE_DIR = (
@@ -51,6 +52,13 @@ def _substitute(value, ids):
         return {key: _substitute(item, ids) for key, item in value.items()}
     return value
 
+
+# The `.ics` text of the `calendar_feed` setup (one event).
+CONTRACT_ICS = (
+    "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\n"
+    "UID:contract-1\r\nSUMMARY:Contract seminar\r\nDTSTART:20270113T150000Z\r\n"
+    "DTEND:20270113T160000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+)
 
 # A 1x1 PNG, so image fields (avatar, cover) accept the upload.
 PNG_1X1 = (
@@ -146,6 +154,21 @@ class ApiContractFixtureTests(TestCase):
                 "/api/v1/note-sessions/", {"note_id": note["id"]}, format="json"
             ).json()
             ids["session_id"] = session["id"]
+        elif setup == "planner_event":
+            event = self.api.post(
+                "/api/v1/planner-events/",
+                {"title": "Contract event", "event_date": "2027-01-12",
+                 "difficulty_weight": 2, "course_id": course["id"]},
+                format="json",
+            ).json()
+            ids["event_id"] = event["id"]
+        elif setup == "calendar_feed":
+            feed = self.api.post(
+                "/api/v1/calendar-feeds/",
+                {"title": "Contract feed", "raw_ical": CONTRACT_ICS, "course_id": course["id"]},
+                format="json",
+            ).json()
+            ids["feed_id"] = feed["id"]
         return ids
 
     def test_fixtures_match_live_responses(self):
@@ -184,6 +207,8 @@ class ApiContractFixtureTests(TestCase):
                 self.assertEqual(response.status_code, fixture["status"], response.content[:500])
                 errors = shape_errors(live, fixture["body"], path.name)
                 self.assertEqual(errors, [], "\n".join(errors))
-            # Each fixture starts without courses or notes.
+            # Each fixture starts without courses, notes, events, or feeds.
             Note.objects.all().delete()
+            PlannerEvent.objects.all().delete()
+            CalendarFeed.objects.all().delete()
             Course.objects.all().delete()

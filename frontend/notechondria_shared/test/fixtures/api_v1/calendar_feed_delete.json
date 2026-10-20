@@ -1,0 +1,10 @@
+{
+  "_source": "backend/notes/api.py CalendarFeedDetailApiView.delete (:2331-2335), 204 without a body.",
+  "_setup": "calendar_feed",
+  "request": {
+    "method": "DELETE",
+    "path": "/api/v1/calendar-feeds/{feed_id}/"
+  },
+  "status": 204,
+  "body": null
+}

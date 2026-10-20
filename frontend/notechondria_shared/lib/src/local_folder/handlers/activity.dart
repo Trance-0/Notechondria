@@ -3,6 +3,7 @@ import '../folder_index.dart' show recordListOf;
 import '../folder_layout.dart';
 import '../router.dart';
 import 'lookup.dart';
+import 'planner_records.dart' show plannerEventPayload, readEventsFile, usableEvents;
 import 'records.dart';
 
 // The front page from the user's own data (F44) and the activity heatmap
@@ -10,7 +11,8 @@ import 'records.dart';
 // included, since only the user sees it (decision D1). `planner/heatmap.json`
 // holds per-day counts of created notes, written with each note creation
 // (`record_note_activity`, `backend/notes/services.py:99-109`); future cells
-// sum the `difficulty_weight` of `planner/events.json` (Phase 3 writes it).
+// sum the `difficulty_weight` of `planner/events.json` by base date, as the
+// backend sums its rows (no recurrence expansion).
 
 /// `{"schema_version": 1, "days": {"YYYY-MM-DD": {"created_notes": n,
 /// "peak_words": m}}}`.
@@ -69,7 +71,7 @@ Future<Map<String, int>> _pastValues(FolderFs fs) async {
   return out;
 }
 
-/// The records of `planner/events.json` (empty until Phase 3 writes it).
+/// The records of `planner/events.json`.
 Future<List<Map<String, Object?>>> readPlannerEvents(FolderFs fs) async {
   final text = await readTextOrNull(fs, kPlannerEventsPath);
   return text == null ? [] : recordListOf(decodeJsonValue(text)) ?? [];
@@ -145,14 +147,9 @@ Future<LocalResponse> _frontPage(LocalHandlerContext ctx) async {
   ];
   final todayKey = isoDate(localDay(ctx.now()));
   final upcoming = [
-    for (final e in await readPlannerEvents(ctx.fs))
-      if ((jsonString(e['event_date']) ?? '').compareTo(todayKey) >= 0 &&
-          e['is_completed'] != true)
-        {
-          for (final kv in e.entries)
-            if (kv.key != 'client_local_id' && kv.key != 'schema_version')
-              kv.key: kv.value,
-        },
+    for (final e in usableEvents(await readEventsFile(ctx.fs)))
+      if ('${e['event_date']}'.compareTo(todayKey) >= 0 && e['is_completed'] != true)
+        plannerEventPayload(e, lookup),
   ]..sort((a, b) {
       final d = '${a['event_date']}'.compareTo('${b['event_date']}');
       return d != 0 ? d : '${a['title']}'.compareTo('${b['title']}');

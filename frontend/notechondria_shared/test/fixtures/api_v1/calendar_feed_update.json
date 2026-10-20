@@ -1,0 +1,23 @@
+{
+  "_source": "backend/notes/api.py CalendarFeedDetailApiView.patch (:2317-2330): CalendarFeedSerializer.",
+  "_setup": "calendar_feed",
+  "request": {
+    "method": "PATCH",
+    "path": "/api/v1/calendar-feeds/{feed_id}/",
+    "body": {
+      "is_enabled": false
+    }
+  },
+  "status": 200,
+  "body": {
+    "id": 1,
+    "title": "Contract feed",
+    "source_kind": "I",
+    "source_url": "",
+    "is_enabled": false,
+    "course_id": 1,
+    "last_sync": null,
+    "date_created": "2026-10-19T00:00:00Z",
+    "last_edit": "2026-10-19T00:00:00Z"
+  }
+}
