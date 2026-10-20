@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:notechondria_shared/src/local_folder/folder_messages.dart';
 import 'package:notechondria_shared/src/local_folder/handlers/auth_settings.dart';
 import 'package:notechondria_shared/src/local_folder/handlers/records.dart';
@@ -7,6 +8,14 @@ import 'package:notechondria_shared/src/local_folder/storage_mode_client.dart';
 import 'package:notechondria_shared/src/utils/ping_backend.dart';
 
 import 'backend_harness.dart';
+
+/// One POST through [client], with [auth] in the [header] header if given.
+Future<http.Response> _send(http.Client client,
+    {String? auth, String header = 'Authorization'}) async {
+  final request = http.Request('POST', Uri.parse('$kApiBase/notes/1/'));
+  if (auth != null) request.headers[header] = auth;
+  return http.Response.fromStream(await client.send(request));
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -81,15 +90,49 @@ void main() {
       var mode = StorageMode.browserOrCloud;
       final (c, _) = await folderApp();
       final client = StorageModeClient(mode: () => mode, local: c.transport, inner: inner);
-      await callApi(c, 'GET', '/settings/', client: client);
-      expect(inner.requests.single.headers['Authorization'], 'Token local-folder');
+      final cloud = await _send(client, auth: 'Token cloud-abc');
+      expect(cloud.statusCode, 200);
+      expect(inner.requests.single.headers['Authorization'], 'Token cloud-abc');
       expect(client.routesLocally('GET', Uri.parse('$kApiBase/settings/')), isFalse);
+      // F1: the folder token is answered in the page in browserOrCloud too.
+      final folderToken = await callApi(c, 'GET', '/settings/', client: client);
+      expect(folderToken.statusCode, 503);
+      expect(inner.requests, hasLength(1));
       mode = StorageMode.folder;
       final r = await callApi(c, 'GET', '/settings/', client: client,
           base: 'https://anything.example/api/v1');
       expect(r.headers['x-notechondria-backend'], 'local-folder');
       expect(inner.requests, hasLength(1));
       expect(client.routesLocally('GET', Uri.parse('$kApiBase/handshake/')), isTrue);
+    });
+
+    test('the folder token never reaches the network after Disconnect (F1)',
+        () async {
+      final inner = RecordingClient();
+      final (c, _) = await folderApp();
+      final client = StorageModeClient(
+          mode: () => c.storageMode, local: c.transport, inner: inner);
+      await c.disconnect();
+      expect(c.storageMode, StorageMode.browserOrCloud);
+      final upload = http.MultipartRequest(
+          'POST', Uri.parse('$kApiBase/notes/1/attachments/'))
+        ..headers['Authorization'] = 'Token $kLocalFolderToken'
+        ..files.add(http.MultipartFile.fromBytes('file', [1, 2, 3], filename: 'a.png'));
+      final answers = [
+        await http.Response.fromStream(await client.send(upload)),
+        for (final name in ['authorization', 'AUTHORIZATION'])
+          await _send(client, auth: 'Token $kLocalFolderToken', header: name),
+      ];
+      for (final r in answers) {
+        expect(r.statusCode, 503);
+        expect(detailOf(r), LocalFolderMessages.requestNotSentDisconnected);
+        expect(r.headers['content-type'], 'application/json');
+        expect(r.headers['x-notechondria-backend'], 'local-folder');
+      }
+      expect(inner.requests, isEmpty);
+      final plain = await _send(client);
+      expect(plain.statusCode, 200);
+      expect(inner.requests, hasLength(1));
     });
 
     test('the one passthrough: a bare handshake inside runCloudVersionCheck',

@@ -359,6 +359,12 @@ abstract final class LocalFolderMessages {
       "Folder disconnected: Shared.LocalFolder/disconnect — '$name' is no "
       'longer used in this tab; the app shows its browser-local data again.';
 
+  /// F1, 2.10 rule 4: a request that still carries the folder token after
+  /// Disconnect is answered in the page and never sent.
+  static const String requestNotSentDisconnected =
+      'Request not sent: Shared.LocalFolder/disconnect — the folder was '
+      'disconnected, and this request still carried the folder session.';
+
   /// 6.1 mitigation 2, shown before the first connect on a shared origin.
   static String sharedOriginNotice(String origin) =>
       'Folder access is shared with this web address: Shared.LocalFolder/pick '

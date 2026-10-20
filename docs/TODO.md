@@ -786,6 +786,19 @@ the differences the code made from the design are in `revision_log.md`
     label suggests an empty folder; reword or skip the starter draft.
   - The empty-folder step shows "Start empty" and "Cancel" only; "Start
     from an archive" is Phase 4.
+- [ ] Deferred from the 0.1.201 final review (`.agents/tasks/review-phase2-final.json`;
+  F1, F2, and N8 landed in 0.1.201):
+  - N1: add an app-level test of the 7.1 connect-time push (drafts and courses land in the folder, copies in the recycle bin, zero network requests).
+  - N2: `_promoteQueuedAttachments` deletes local blobs before the content patch; a failed patch leaves `local://` URLs with no blob.
+  - N3: skip the cloud-copy draft path (`draft_sync.dart:244`) in folder mode; its cloud note id can name an unrelated folder note.
+  - N4: purge removes `assets/notes/<hex>/` even when another note's body links to those files; document it or check references first.
+  - N5: `encodeAttachments` drops unknown top-level keys and records without `id`/`filename` from `attachments.json`.
+  - N6: search reads every body on every query (tracked as "Search hold").
+  - N7: a malformed `planner/heatmap.json` is silently replaced on the next note create.
+  - N9: folder sessions skip the `foreign_local_data_owner` guard, so another cloud user's browser drafts move into the folder; document as a design choice.
+  - N10: `isFolderUrl` checks `nc-folder:` while `folderPathForUrl` needs `kFolderUrlPrefix`; skipped because the strict prefix would send a malformed `nc-folder:` URL to `NetworkImage` instead of the placeholder.
+  - N11: `sanitizeFileName` does not rename Windows-reserved names (`CON`, `NUL`, ...) or names with a trailing dot or space; such a write fails with a 500.
+  - F2 follow-up: composed and decomposed Unicode forms of one name (NFC/NFD) are one file on APFS, but `uniqueFileName` compares them as different; Dart has no built-in normalization.
 - [ ] Phase 3, planner and portal: events and recurrence, deadlines, week
   view, heatmap, calendar import and URL fetch with the CORS fallback,
   the `client_local_id` upsert and the connect-time push with the 30-day

@@ -32,10 +32,28 @@ void main() {
       expect(uniqueFileName('a.png', {'a.png', 'a-2.png'}), 'a-3.png');
       expect(uniqueFileName('a', {'a'}), 'a-2');
       expect(uniqueFileName('b.png', {'a.png'}), 'b.png');
+      // F2: taken holds lower-cased names; the result keeps the casing.
+      expect(uniqueFileName('photo.png', {'photo.png'}), 'photo-2.png');
+      expect(uniqueFileName('Photo.PNG', {'photo.png', 'photo-2.png'}), 'Photo-3.PNG');
     });
   });
 
   group('attachments', () {
+    test('names that differ only in case get their own file (F2)', () async {
+      final (c, fs) = await folderApp();
+      final note = await createNote(c, title: 'Cells');
+      final dir = '$kAssetsDir/notes/${uuidHex('${note['uuid']}')}/attachments';
+      final first = await callMultipart(c, 'POST', '/notes/${note['id']}/attachments/',
+          files: {'file': ('Photo.png', _png)});
+      expect(first.statusCode, 201, reason: first.body);
+      final second = await callMultipart(c, 'POST', '/notes/${note['id']}/attachments/',
+          files: {'file': ('photo.png', [1, 2, 3])});
+      expect(second.statusCode, 201, reason: second.body);
+      expect(mapOf(first)['url'], 'nc-folder:///$dir/Photo.png');
+      expect(mapOf(second)['url'], 'nc-folder:///$dir/photo-2.png');
+      expect(await fs.readBytes('$dir/Photo.png'), _png);
+      expect(await fs.readBytes('$dir/photo-2.png'), [1, 2, 3]);
+    });
     test('upload writes the file and attachments.json; list and delete', () async {
       final (c, fs) = await folderApp();
       final note = await createNote(c, title: 'Cells');

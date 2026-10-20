@@ -88,6 +88,8 @@ final List<String> _backendDetails = [
   LocalFolderMessages.sessionNotFound(4),
   LocalFolderMessages.invalidField(
       'Attachment not saved', 'attachments', 'the request has no `file` part'),
+  // F1: answered in the page for a folder-token request after Disconnect.
+  LocalFolderMessages.requestNotSentDisconnected,
 ];
 
 void main() {

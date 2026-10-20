@@ -40,11 +40,6 @@ LocalBackendRouter localFolderRouter() => LocalBackendRouter([
       ...activityRoutes(),
     ]);
 
-const Map<String, String> _kResponseHeaders = {
-  'content-type': 'application/json',
-  kLocalBackendHeader: kLocalBackendHeaderValue,
-};
-
 /// A deadline passed; [cause] is one of the 2.9 causes.
 class _Deadline implements Exception {
   const _Deadline(this.cause);
@@ -221,7 +216,7 @@ class LocalFolderTransport extends http.BaseClient {
     return http.StreamedResponse(http.ByteStream.fromBytes(bytes), r.status,
         contentLength: bytes.length,
         request: request,
-        headers: _kResponseHeaders);
+        headers: kLocalResponseHeaders);
   }
 
   /// Every detail goes through the sentinel scrub (2.5); every 404 and 501,

@@ -64,14 +64,16 @@ String sanitizeFileName(String? name) {
 }
 
 /// `<stem>-2.<ext>`, `<stem>-3.<ext>`, ... for a name already in [taken].
+/// [taken] holds lower-cased names, because APFS and NTFS fold case: the
+/// check is case-insensitive, and the returned name keeps [name]'s casing.
 String uniqueFileName(String name, Set<String> taken) {
-  if (!taken.contains(name)) return name;
+  if (!taken.contains(name.toLowerCase())) return name;
   final dot = name.lastIndexOf('.');
   final stem = dot > 0 ? name.substring(0, dot) : name;
   final ext = dot > 0 ? name.substring(dot) : '';
   for (var n = 2;; n++) {
     final candidate = '$stem-$n$ext';
-    if (!taken.contains(candidate)) return candidate;
+    if (!taken.contains(candidate.toLowerCase())) return candidate;
   }
 }
 
@@ -171,9 +173,12 @@ Future<LocalResponse> _create(LocalHandlerContext ctx) async {
           LocalFolderMessages.manifestMissing(ctx.folderName, importPending: false)));
   final (updated, id) = manifest.allocate('attachment');
   final dir = _attachmentsDir(hex);
-  final taken = {for (final e in await listOrEmpty(ctx.fs, dir)) e.name};
+  final taken = {
+    for (final e in await listOrEmpty(ctx.fs, dir)) e.name.toLowerCase(),
+  };
   final records = await readAttachments(ctx.fs, hex);
-  taken.addAll([for (final r in records) jsonString(r['filename'])!]);
+  taken.addAll(
+      [for (final r in records) jsonString(r['filename'])!.toLowerCase()]);
   final original = (upload.filename ?? '').trim();
   final name = uniqueFileName(sanitizeFileName(original), taken);
   final record = <String, Object?>{

@@ -4,8 +4,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'folder_messages.dart';
+import 'handlers/auth_settings.dart' show kLocalFolderToken;
 import 'local_folder_boot.dart';
-import 'router.dart' show kLocalBackendHeader, kLocalBackendHeaderValue;
+import 'router.dart'
+    show kLocalBackendHeader, kLocalBackendHeaderValue, kLocalResponseHeaders;
 
 // Routing by storage mode (modes and migration 2.8): in folder mode every
 // request through the app client is answered in the page, whatever its
@@ -69,9 +71,22 @@ bool isVersionCheckPassthrough(String method, Uri url,
       '${saved.path}/' == prefix;
 }
 
+/// True when [request] has an `Authorization` header (any case) whose token
+/// is the folder session's [kLocalFolderToken].
+bool _carriesFolderToken(http.BaseRequest request) {
+  for (final e in request.headers.entries) {
+    if (e.key.toLowerCase() != 'authorization') continue;
+    final parts = e.value.trim().split(RegExp(r'\s+'));
+    if (parts.last == kLocalFolderToken) return true;
+  }
+  return false;
+}
+
 /// The app's `http.Client` (main 2.5): [StorageMode.browserOrCloud] goes to
-/// the inner client unchanged; [StorageMode.folder] goes to [local], the
-/// `LocalFolderTransport`, except the passthrough.
+/// the inner client unchanged, except a request that still carries the
+/// folder token, which is answered in the page with a 503 (2.10 rule 4);
+/// [StorageMode.folder] goes to [local], the `LocalFolderTransport`, except
+/// the passthrough.
 class StorageModeClient extends http.BaseClient implements LocalRoutingClient {
   StorageModeClient({
     required StorageMode Function() mode,
@@ -95,7 +110,14 @@ class StorageModeClient extends http.BaseClient implements LocalRoutingClient {
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) {
-    if (!_folder) return _inner.send(request);
+    if (!_folder) {
+      // A flow that captured the folder token before Disconnect must not
+      // send it, or the folder's content, to the cloud host.
+      if (_carriesFolderToken(request)) {
+        return Future.value(_notSent(request));
+      }
+      return _inner.send(request);
+    }
     final bodyLength = request is http.Request
         ? request.bodyBytes.length
         : (request.contentLength ?? -1);
@@ -107,6 +129,16 @@ class StorageModeClient extends http.BaseClient implements LocalRoutingClient {
       return _inner.send(bare);
     }
     return _local.send(request);
+  }
+
+  http.StreamedResponse _notSent(http.BaseRequest request) {
+    final bytes = utf8.encode(jsonEncode({
+      'detail': scrubSessionSentinels(LocalFolderMessages.requestNotSentDisconnected),
+    }));
+    return http.StreamedResponse(http.ByteStream.fromBytes(bytes), 503,
+        contentLength: bytes.length,
+        request: request,
+        headers: kLocalResponseHeaders);
   }
 
   @override

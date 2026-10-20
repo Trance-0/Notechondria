@@ -14,6 +14,12 @@ import 'folder_messages.dart';
 const String kLocalBackendHeader = 'x-notechondria-backend';
 const String kLocalBackendHeaderValue = 'local-folder';
 
+/// The headers of every in-page JSON answer.
+const Map<String, String> kLocalResponseHeaders = {
+  'content-type': 'application/json',
+  kLocalBackendHeader: kLocalBackendHeaderValue,
+};
+
 /// One uploaded file of a multipart request.
 class LocalUpload {
   const LocalUpload({

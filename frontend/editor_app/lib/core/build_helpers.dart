@@ -609,7 +609,7 @@ extension _AppShellBuildHelpersX on _AppShellState {
           // null callback, so the settings pages hide or disable them.
           onCasdoorLogin:
               cloudOnly(() => launchOAuth('casdoor', intent: 'login')),
-          casdoorOrgLoginUrl: _casdoorOrgLoginUrl,
+          casdoorOrgLoginUrl: cloudOnly(_casdoorOrgLoginUrl),
           localFolderOption: _folderSignInOption(),
           localFolderCard: _folderStatusCard(),
           onPing: _pingThroughFolderClient,
