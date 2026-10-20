@@ -1599,7 +1599,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String activityImportedCount(int count, String title) {
-    return 'Imported $count event(s) from "$title":';
+    return 'Imported $count event(s) from \"$title\":';
   }
 
   @override
@@ -1783,4 +1783,125 @@ class AppLocalizationsEn extends AppLocalizations {
   String courseNoteCount(int count) {
     return '$count note(s)';
   }
+
+  @override
+  String get localFolderOptionLabel => 'Use a local folder (no account)';
+
+  @override
+  String get localFolderOptionLine =>
+      'Notes, courses, and planner data are saved as files in a folder you choose. No account is needed, and none of this data is sent to the Notechondria server.';
+
+  @override
+  String get localFolderRemember => 'Remember this folder on this browser';
+
+  @override
+  String localFolderUseConnected(String name) {
+    return 'Use the connected folder \'$name\'';
+  }
+
+  @override
+  String get localFolderFallbackLine =>
+      'Keep working signed out in browser-local mode and back up with the local-data export (.nchron), or use the Notechondria desktop build.';
+
+  @override
+  String get localFolderNoticeTitle => 'Folder access on this web address';
+
+  @override
+  String get localFolderChooseFolder => 'Choose folder';
+
+  @override
+  String get localFolderStartEmpty => 'Start empty';
+
+  @override
+  String localFolderConnectAnyway(String name) {
+    return 'Connect \'$name\' anyway';
+  }
+
+  @override
+  String get localFolderCardTitle => 'Local folder';
+
+  @override
+  String get localFolderFieldFolder => 'Folder';
+
+  @override
+  String get localFolderFieldState => 'State';
+
+  @override
+  String get localFolderFieldBrowser => 'Browser';
+
+  @override
+  String get localFolderFieldLastScan => 'Last scan';
+
+  @override
+  String get localFolderFieldContents => 'Contents';
+
+  @override
+  String localFolderContents(
+      int notes, int trashed, int courses, int files, String size) {
+    return '$notes notes, $trashed in the trash, $courses categories, $files files, $size';
+  }
+
+  @override
+  String get localFolderStateOpening => 'Opening';
+
+  @override
+  String get localFolderStateNeedsPick => 'Needs to be chosen again';
+
+  @override
+  String get localFolderStateNeedsPermission =>
+      'Access needs to be granted again';
+
+  @override
+  String get localFolderStateScanning => 'Reading the folder';
+
+  @override
+  String get localFolderStateActive => 'Open';
+
+  @override
+  String get localFolderStateError => 'Unavailable';
+
+  @override
+  String get localFolderStateDisconnected => 'Disconnected';
+
+  @override
+  String get localFolderRescan => 'Rescan folder';
+
+  @override
+  String localFolderReconnect(String name) {
+    return 'Reconnect \'$name\'';
+  }
+
+  @override
+  String localFolderChooseAgain(String name) {
+    return 'Choose \'$name\' again';
+  }
+
+  @override
+  String get localFolderCheckUpdates => 'Check for updates';
+
+  @override
+  String get localFolderDisconnect => 'Disconnect folder';
+
+  @override
+  String get localFolderCloudOnly => 'Cloud-only features';
+
+  @override
+  String localFolderViewTitle(String name) {
+    return 'Local folder \'$name\'';
+  }
+
+  @override
+  String get localFolderSwitch => 'Switch to this folder';
+
+  @override
+  String get localFolderCheckRemembered => 'Check the remembered folder';
+
+  @override
+  String get localFolderGiveIdentity => 'Give it its own identity';
+
+  @override
+  String get localFolderSameMoved => 'It is the same folder, moved';
+
+  @override
+  String get localFolderUseBrowserLocal => 'Use browser-local mode instead';
 }

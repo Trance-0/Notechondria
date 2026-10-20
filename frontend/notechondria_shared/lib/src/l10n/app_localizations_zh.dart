@@ -1706,4 +1706,124 @@ class AppLocalizationsZh extends AppLocalizations {
   String courseNoteCount(int count) {
     return '$count 篇笔记';
   }
+
+  @override
+  String get localFolderOptionLabel => '使用本地文件夹（无需账户）';
+
+  @override
+  String get localFolderOptionLine =>
+      '笔记、课程和计划数据以文件形式保存在您选择的文件夹中。无需账户，这些数据都不会发送到 Notechondria 服务器。';
+
+  @override
+  String get localFolderRemember => '在此浏览器上记住此文件夹';
+
+  @override
+  String localFolderUseConnected(String name) {
+    return '使用已连接的文件夹“$name”';
+  }
+
+  @override
+  String get localFolderFallbackLine =>
+      '可以继续以未登录的浏览器本地模式使用，并用本地数据导出（.nchron）备份，或使用 Notechondria 桌面版。';
+
+  @override
+  String get localFolderNoticeTitle => '此网址上的文件夹访问权限';
+
+  @override
+  String get localFolderChooseFolder => '选择文件夹';
+
+  @override
+  String get localFolderStartEmpty => '从空文件夹开始';
+
+  @override
+  String localFolderConnectAnyway(String name) {
+    return '仍然连接“$name”';
+  }
+
+  @override
+  String get localFolderCardTitle => '本地文件夹';
+
+  @override
+  String get localFolderFieldFolder => '文件夹';
+
+  @override
+  String get localFolderFieldState => '状态';
+
+  @override
+  String get localFolderFieldBrowser => '浏览器';
+
+  @override
+  String get localFolderFieldLastScan => '上次扫描';
+
+  @override
+  String get localFolderFieldContents => '内容';
+
+  @override
+  String localFolderContents(
+      int notes, int trashed, int courses, int files, String size) {
+    return '$notes 篇笔记，回收站中 $trashed 篇，$courses 个分类，$files 个文件，$size';
+  }
+
+  @override
+  String get localFolderStateOpening => '正在打开';
+
+  @override
+  String get localFolderStateNeedsPick => '需要重新选择';
+
+  @override
+  String get localFolderStateNeedsPermission => '需要重新授予访问权限';
+
+  @override
+  String get localFolderStateScanning => '正在读取文件夹';
+
+  @override
+  String get localFolderStateActive => '已打开';
+
+  @override
+  String get localFolderStateError => '不可用';
+
+  @override
+  String get localFolderStateDisconnected => '已断开';
+
+  @override
+  String get localFolderRescan => '重新扫描文件夹';
+
+  @override
+  String localFolderReconnect(String name) {
+    return '重新连接“$name”';
+  }
+
+  @override
+  String localFolderChooseAgain(String name) {
+    return '重新选择“$name”';
+  }
+
+  @override
+  String get localFolderCheckUpdates => '检查更新';
+
+  @override
+  String get localFolderDisconnect => '断开文件夹';
+
+  @override
+  String get localFolderCloudOnly => '仅限云端的功能';
+
+  @override
+  String localFolderViewTitle(String name) {
+    return '本地文件夹“$name”';
+  }
+
+  @override
+  String get localFolderSwitch => '切换到此文件夹';
+
+  @override
+  String get localFolderCheckRemembered => '检查已记住的文件夹';
+
+  @override
+  String get localFolderGiveIdentity => '为其分配独立身份';
+
+  @override
+  String get localFolderSameMoved => '这是同一个文件夹，只是移动了位置';
+
+  @override
+  String get localFolderUseBrowserLocal => '改用浏览器本地模式';
 }

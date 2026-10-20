@@ -690,5 +690,58 @@
   "courseNoteCount": "{count} note(s)",
   "@courseNoteCount": {
     "placeholders": { "count": { "type": "int" } }
-  }
+  },
+  "localFolderOptionLabel": "Use a local folder (no account)",
+  "localFolderOptionLine": "Notes, courses, and planner data are saved as files in a folder you choose. No account is needed, and none of this data is sent to the Notechondria server.",
+  "localFolderRemember": "Remember this folder on this browser",
+  "localFolderUseConnected": "Use the connected folder '{name}'",
+  "@localFolderUseConnected": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "localFolderFallbackLine": "Keep working signed out in browser-local mode and back up with the local-data export (.nchron), or use the Notechondria desktop build.",
+  "localFolderNoticeTitle": "Folder access on this web address",
+  "localFolderChooseFolder": "Choose folder",
+  "localFolderStartEmpty": "Start empty",
+  "localFolderConnectAnyway": "Connect '{name}' anyway",
+  "@localFolderConnectAnyway": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "localFolderCardTitle": "Local folder",
+  "localFolderFieldFolder": "Folder",
+  "localFolderFieldState": "State",
+  "localFolderFieldBrowser": "Browser",
+  "localFolderFieldLastScan": "Last scan",
+  "localFolderFieldContents": "Contents",
+  "localFolderContents": "{notes} notes, {trashed} in the trash, {courses} categories, {files} files, {size}",
+  "@localFolderContents": {
+    "placeholders": { "notes": { "type": "int" }, "trashed": { "type": "int" }, "courses": { "type": "int" }, "files": { "type": "int" }, "size": { "type": "String" } }
+  },
+  "localFolderStateOpening": "Opening",
+  "localFolderStateNeedsPick": "Needs to be chosen again",
+  "localFolderStateNeedsPermission": "Access needs to be granted again",
+  "localFolderStateScanning": "Reading the folder",
+  "localFolderStateActive": "Open",
+  "localFolderStateError": "Unavailable",
+  "localFolderStateDisconnected": "Disconnected",
+  "localFolderRescan": "Rescan folder",
+  "localFolderReconnect": "Reconnect '{name}'",
+  "@localFolderReconnect": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "localFolderChooseAgain": "Choose '{name}' again",
+  "@localFolderChooseAgain": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "localFolderCheckUpdates": "Check for updates",
+  "localFolderDisconnect": "Disconnect folder",
+  "localFolderCloudOnly": "Cloud-only features",
+  "localFolderViewTitle": "Local folder '{name}'",
+  "@localFolderViewTitle": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "localFolderSwitch": "Switch to this folder",
+  "localFolderCheckRemembered": "Check the remembered folder",
+  "localFolderGiveIdentity": "Give it its own identity",
+  "localFolderSameMoved": "It is the same folder, moved",
+  "localFolderUseBrowserLocal": "Use browser-local mode instead"
 }

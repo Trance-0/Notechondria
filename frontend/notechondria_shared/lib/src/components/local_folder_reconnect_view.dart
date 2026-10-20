@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../local_folder/folder_messages.dart';
 import '../local_folder/folder_pick_flow.dart';
 import '../local_folder/local_folder_boot.dart';
@@ -11,8 +12,8 @@ import 'auth_dialogs.dart' show FeedbackText;
 // one-line banners of 2.10 rule 5. "Reconnect '<name>'" calls
 // `requestPermission` and "Choose '<name>' again" calls the picker, each as
 // the first call of its `onPressed` (1.3 step 4); the picked folder's
-// folder_id is checked only after the picker returns. English only until
-// the option ships (9.1).
+// folder_id is checked only after the picker returns. Labels come from the
+// ARB files (Phase 2); the 1.8 messages stay English.
 
 /// A follow-up the last outcome offers: "Switch to this folder" after a
 /// different folder_id, or the copy questions of 3.7.
@@ -117,6 +118,7 @@ class _LocalFolderReconnectViewState extends State<LocalFolderReconnectView> {
     return ListenableBuilder(
       listenable: _c,
       builder: (context, _) {
+        final l10n = AppLocalizations.of(context);
         final theme = Theme.of(context);
         final name = _c.folderName;
         final state = _c.state;
@@ -136,7 +138,7 @@ class _LocalFolderReconnectViewState extends State<LocalFolderReconnectView> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Local folder '$name'",
+                    Text(l10n.localFolderViewTitle(name),
                         style: theme.textTheme.titleLarge),
                     const SizedBox(height: 12),
                     if (state == LocalFolderState.opening ||
@@ -151,41 +153,41 @@ class _LocalFolderReconnectViewState extends State<LocalFolderReconnectView> {
                       if (state == LocalFolderState.needsPermission)
                         FilledButton(
                           onPressed: _busy ? null : _reconnect,
-                          child: Text("Reconnect '$name'"),
+                          child: Text(l10n.localFolderReconnect(name)),
                         ),
                       if (canChoose)
                         FilledButton(
                           onPressed: _busy ? null : _chooseAgain,
-                          child: Text("Choose '$name' again"),
+                          child: Text(l10n.localFolderChooseAgain(name)),
                         ),
                       if (_followUps.contains(_FollowUp.switchFolder))
                         OutlinedButton(
                           onPressed: _busy ? null : _switch,
-                          child: const Text('Switch to this folder'),
+                          child: Text(l10n.localFolderSwitch),
                         ),
                       if (_followUps.contains(_FollowUp.checkRemembered))
                         OutlinedButton(
                           onPressed: _busy ? null : _checkRemembered,
-                          child: const Text('Check the remembered folder'),
+                          child: Text(l10n.localFolderCheckRemembered),
                         ),
                       if (_followUps.contains(_FollowUp.giveIdentity))
                         OutlinedButton(
                           onPressed: _busy
                               ? null
                               : () => _settle(_c.giveCopyOwnIdentity()),
-                          child: const Text('Give it its own identity'),
+                          child: Text(l10n.localFolderGiveIdentity),
                         ),
                       if (_followUps.contains(_FollowUp.moved))
                         OutlinedButton(
                           onPressed: _busy
                               ? null
                               : () => _settle(_c.treatPickedAsMoved()),
-                          child: const Text('It is the same folder, moved'),
+                          child: Text(l10n.localFolderSameMoved),
                         ),
                       if (widget.onUseBrowserLocal != null)
                         TextButton(
                           onPressed: _busy ? null : widget.onUseBrowserLocal,
-                          child: const Text('Use browser-local mode instead'),
+                          child: Text(l10n.localFolderUseBrowserLocal),
                         ),
                     ]),
                     if (_feedback != null) ...[

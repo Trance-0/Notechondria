@@ -2861,16 +2861,16 @@ abstract class AppLocalizations {
   /// No description provided for @activityWeightN.
   ///
   /// In en, this message translates to:
-  /// **'Weight {n}'**
+  /// **'{n, select, 1{Trivial} 2{Normal} 3{Important} 4{Significant} 5{Fatal} other{Normal}}'**
   String activityWeightN(int n);
 
-  /// Heatmap tooltip line for a past/today cell: activity intensity.
+  /// No description provided for @heatmapActivityValue.
   ///
   /// In en, this message translates to:
   /// **'{value} activity'**
   String heatmapActivityValue(int value);
 
-  /// Heatmap tooltip line for a future cell: planned difficulty load.
+  /// No description provided for @heatmapPlannedValue.
   ///
   /// In en, this message translates to:
   /// **'planned load {value}'**
@@ -3211,6 +3211,217 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} note(s)'**
   String courseNoteCount(int count);
+
+  /// No description provided for @localFolderOptionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a local folder (no account)'**
+  String get localFolderOptionLabel;
+
+  /// No description provided for @localFolderOptionLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes, courses, and planner data are saved as files in a folder you choose. No account is needed, and none of this data is sent to the Notechondria server.'**
+  String get localFolderOptionLine;
+
+  /// No description provided for @localFolderRemember.
+  ///
+  /// In en, this message translates to:
+  /// **'Remember this folder on this browser'**
+  String get localFolderRemember;
+
+  /// No description provided for @localFolderUseConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the connected folder \'{name}\''**
+  String localFolderUseConnected(String name);
+
+  /// No description provided for @localFolderFallbackLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep working signed out in browser-local mode and back up with the local-data export (.nchron), or use the Notechondria desktop build.'**
+  String get localFolderFallbackLine;
+
+  /// No description provided for @localFolderNoticeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder access on this web address'**
+  String get localFolderNoticeTitle;
+
+  /// No description provided for @localFolderChooseFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose folder'**
+  String get localFolderChooseFolder;
+
+  /// No description provided for @localFolderStartEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Start empty'**
+  String get localFolderStartEmpty;
+
+  /// No description provided for @localFolderConnectAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect \'{name}\' anyway'**
+  String localFolderConnectAnyway(String name);
+
+  /// No description provided for @localFolderCardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Local folder'**
+  String get localFolderCardTitle;
+
+  /// No description provided for @localFolderFieldFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder'**
+  String get localFolderFieldFolder;
+
+  /// No description provided for @localFolderFieldState.
+  ///
+  /// In en, this message translates to:
+  /// **'State'**
+  String get localFolderFieldState;
+
+  /// No description provided for @localFolderFieldBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Browser'**
+  String get localFolderFieldBrowser;
+
+  /// No description provided for @localFolderFieldLastScan.
+  ///
+  /// In en, this message translates to:
+  /// **'Last scan'**
+  String get localFolderFieldLastScan;
+
+  /// No description provided for @localFolderFieldContents.
+  ///
+  /// In en, this message translates to:
+  /// **'Contents'**
+  String get localFolderFieldContents;
+
+  /// No description provided for @localFolderContents.
+  ///
+  /// In en, this message translates to:
+  /// **'{notes} notes, {trashed} in the trash, {courses} categories, {files} files, {size}'**
+  String localFolderContents(
+      int notes, int trashed, int courses, int files, String size);
+
+  /// No description provided for @localFolderStateOpening.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening'**
+  String get localFolderStateOpening;
+
+  /// No description provided for @localFolderStateNeedsPick.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs to be chosen again'**
+  String get localFolderStateNeedsPick;
+
+  /// No description provided for @localFolderStateNeedsPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Access needs to be granted again'**
+  String get localFolderStateNeedsPermission;
+
+  /// No description provided for @localFolderStateScanning.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading the folder'**
+  String get localFolderStateScanning;
+
+  /// No description provided for @localFolderStateActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get localFolderStateActive;
+
+  /// No description provided for @localFolderStateError.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get localFolderStateError;
+
+  /// No description provided for @localFolderStateDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnected'**
+  String get localFolderStateDisconnected;
+
+  /// No description provided for @localFolderRescan.
+  ///
+  /// In en, this message translates to:
+  /// **'Rescan folder'**
+  String get localFolderRescan;
+
+  /// No description provided for @localFolderReconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect \'{name}\''**
+  String localFolderReconnect(String name);
+
+  /// No description provided for @localFolderChooseAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose \'{name}\' again'**
+  String localFolderChooseAgain(String name);
+
+  /// No description provided for @localFolderCheckUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for updates'**
+  String get localFolderCheckUpdates;
+
+  /// No description provided for @localFolderDisconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect folder'**
+  String get localFolderDisconnect;
+
+  /// No description provided for @localFolderCloudOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud-only features'**
+  String get localFolderCloudOnly;
+
+  /// No description provided for @localFolderViewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Local folder \'{name}\''**
+  String localFolderViewTitle(String name);
+
+  /// No description provided for @localFolderSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to this folder'**
+  String get localFolderSwitch;
+
+  /// No description provided for @localFolderCheckRemembered.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the remembered folder'**
+  String get localFolderCheckRemembered;
+
+  /// No description provided for @localFolderGiveIdentity.
+  ///
+  /// In en, this message translates to:
+  /// **'Give it its own identity'**
+  String get localFolderGiveIdentity;
+
+  /// No description provided for @localFolderSameMoved.
+  ///
+  /// In en, this message translates to:
+  /// **'It is the same folder, moved'**
+  String get localFolderSameMoved;
+
+  /// No description provided for @localFolderUseBrowserLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Use browser-local mode instead'**
+  String get localFolderUseBrowserLocal;
 }
 
 class _AppLocalizationsDelegate

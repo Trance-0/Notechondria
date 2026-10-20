@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../l10n/app_localizations.dart';
 import '../local_folder/folder_messages.dart';
 import '../local_folder/folder_pick_flow.dart';
 import '../local_folder/handle_store.dart';
@@ -14,7 +15,8 @@ import 'auth_dialogs.dart' show FeedbackText;
 // slot (local folder design 1.3). Each browser call that needs transient
 // user activation is the first call of its own click handler: the picker in
 // the option or in the notice's "Choose folder", `requestPermission` in
-// "Use the connected folder". English only until the option ships (9.1).
+// "Use the connected folder". Labels come from the ARB files (Phase 2); the
+// 1.8 messages stay English. The constants below are the English labels.
 
 const String kLocalFolderOptionLabel = 'Use a local folder (no account)';
 const String kLocalFolderOptionLine = 'Notes, courses, and planner data are '
@@ -61,9 +63,13 @@ class _LocalFolderSignInOptionState extends State<LocalFolderSignInOption> {
   bool get _needsNotice =>
       needsSharedOriginNotice(_c.platform.origin) && !_noticeAcked;
 
-  /// The connected folder of 2.10, when this app is not using it.
+  /// The connected folder of 2.10, when this app is not using it. After a
+  /// Disconnect in this tab the shared key is gone, so there is none.
   StorageModeRecord? get _connected =>
-      _c.storageMode == StorageMode.folder ? null : _c.record;
+      _c.storageMode == StorageMode.folder ||
+              _c.disconnectReason == DisconnectReason.thisTab
+          ? null
+          : _c.record;
 
   @override
   void initState() {
@@ -105,11 +111,12 @@ class _LocalFolderSignInOptionState extends State<LocalFolderSignInOption> {
   }
 
   Future<void> _openNotice() async {
+    final l10n = AppLocalizations.of(context);
     final picking = await showDialog<Future<ConnectPick?>>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialog) => AlertDialog(
-          title: const Text('Folder access on this web address'),
+          title: Text(l10n.localFolderNoticeTitle),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -124,21 +131,21 @@ class _LocalFolderSignInOptionState extends State<LocalFolderSignInOption> {
                 contentPadding: EdgeInsets.zero,
                 value: _remember,
                 onChanged: (v) => setDialog(() => _remember = v ?? false),
-                title: const Text(kRememberFolderLabel),
+                title: Text(l10n.localFolderRemember),
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(l10n.commonCancel),
             ),
             FilledButton(
               onPressed: () {
                 final picking = _c.pickForConnect(); // first call
                 Navigator.of(context).pop(picking);
               },
-              child: const Text('Choose folder'),
+              child: Text(l10n.localFolderChooseFolder),
             ),
           ],
         ),
@@ -204,6 +211,7 @@ class _LocalFolderSignInOptionState extends State<LocalFolderSignInOption> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final connected = _connected;
     final pending = _pending;
     final theme = Theme.of(context);
@@ -216,26 +224,26 @@ class _LocalFolderSignInOptionState extends State<LocalFolderSignInOption> {
             onPressed: _q.qualified && !_busy ? _onPressed : null,
             icon: const Icon(Icons.folder_open_outlined, size: 20),
             label: Text(connected == null
-                ? kLocalFolderOptionLabel
-                : useConnectedFolderLabel(connected.folderName)),
+                ? l10n.localFolderOptionLabel
+                : l10n.localFolderUseConnected(connected.folderName)),
           ),
         ),
         const SizedBox(height: 6),
         if (_q.qualified) ...[
-          Text(kLocalFolderOptionLine, style: theme.textTheme.bodySmall),
+          Text(l10n.localFolderOptionLine, style: theme.textTheme.bodySmall),
           if (connected == null && !needsSharedOriginNotice(_c.platform.origin))
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
               dense: true,
               value: _remember,
               onChanged: (v) => setState(() => _remember = v ?? false),
-              title: const Text(kRememberFolderLabel),
+              title: Text(l10n.localFolderRemember),
             ),
         ] else ...[
           FeedbackText(
               feedback: ActionFeedback(message: _q.message!, isError: true)),
           const SizedBox(height: 4),
-          Text(kLocalFolderFallbackLine, style: theme.textTheme.bodySmall),
+          Text(l10n.localFolderFallbackLine, style: theme.textTheme.bodySmall),
         ],
         if (pending != null)
           Wrap(spacing: 8, children: [
@@ -244,15 +252,15 @@ class _LocalFolderSignInOptionState extends State<LocalFolderSignInOption> {
                   ? null
                   : () => _run(() => _connect(pending, confirmed: !pending.isEmpty)),
               child: Text(pending.isEmpty
-                  ? 'Start empty'
-                  : "Connect '${pending.folder.name}' anyway"),
+                  ? l10n.localFolderStartEmpty
+                  : l10n.localFolderConnectAnyway(pending.folder.name)),
             ),
             TextButton(
               onPressed: () => setState(() {
                 _pending = null;
                 _feedback = null;
               }),
-              child: const Text('Cancel'),
+              child: Text(l10n.commonCancel),
             ),
           ]),
         if (_feedback != null) ...[

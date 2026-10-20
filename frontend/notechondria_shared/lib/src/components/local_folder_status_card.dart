@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../local_folder/folder_messages.dart';
 import '../local_folder/folder_pick_flow.dart';
 import '../local_folder/local_folder_boot.dart';
@@ -15,8 +16,8 @@ import 'auth_dialogs.dart' show FeedbackText;
 // Rescan, Reconnect or Choose again, Check for updates (the one passthrough,
 // Q9), Disconnect, the busy and precedence lines, the "Remember this
 // folder" choice (T3), and the collapsed list of cloud-only features.
-// Export arrives with the archive bridge (Phase 4). English only until the
-// option ships (9.1).
+// Export arrives with the archive bridge (Phase 4). Labels come from the
+// ARB files (Phase 2); the 1.8 messages stay English.
 
 /// The class (c) messages of 4.2, for the "Cloud-only features" list.
 const List<String> kCloudOnlyFeatureMessages = [
@@ -32,14 +33,16 @@ const List<String> kCloudOnlyFeatureMessages = [
   LocalFolderMessages.templateCoursesNotRestored,
 ];
 
-String localFolderStateLabel(LocalFolderState state) => switch (state) {
-      LocalFolderState.opening => 'Opening',
-      LocalFolderState.needsPick => 'Needs to be chosen again',
-      LocalFolderState.needsPermission => 'Access needs to be granted again',
-      LocalFolderState.scanning => 'Reading the folder',
-      LocalFolderState.active => 'Open',
-      LocalFolderState.error => 'Unavailable',
-      LocalFolderState.disconnected => 'Disconnected',
+/// The state line of the card, localized.
+String localFolderStateText(AppLocalizations l10n, LocalFolderState state) =>
+    switch (state) {
+      LocalFolderState.opening => l10n.localFolderStateOpening,
+      LocalFolderState.needsPick => l10n.localFolderStateNeedsPick,
+      LocalFolderState.needsPermission => l10n.localFolderStateNeedsPermission,
+      LocalFolderState.scanning => l10n.localFolderStateScanning,
+      LocalFolderState.active => l10n.localFolderStateActive,
+      LocalFolderState.error => l10n.localFolderStateError,
+      LocalFolderState.disconnected => l10n.localFolderStateDisconnected,
     };
 
 class LocalFolderStatusCard extends StatefulWidget {
@@ -132,6 +135,7 @@ class _LocalFolderStatusCardState extends State<LocalFolderStatusCard> {
     return ListenableBuilder(
       listenable: _c,
       builder: (context, _) {
+        final l10n = AppLocalizations.of(context);
         final theme = Theme.of(context);
         final counts = _c.index?.counts;
         final state = _c.state;
@@ -148,21 +152,27 @@ class _LocalFolderStatusCardState extends State<LocalFolderStatusCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Local folder', style: theme.textTheme.titleMedium),
+                Text(l10n.localFolderCardTitle,
+                    style: theme.textTheme.titleMedium),
                 const SizedBox(height: 8),
-                _line(context, 'Folder', _c.folderName),
-                _line(context, 'State', localFolderStateLabel(state)),
+                _line(context, l10n.localFolderFieldFolder, _c.folderName),
+                _line(context, l10n.localFolderFieldState,
+                    localFolderStateText(l10n, state)),
                 if (_q.browserLabel != null)
-                  _line(context, 'Browser', _q.browserLabel!),
+                  _line(context, l10n.localFolderFieldBrowser, _q.browserLabel!),
                 if (_c.index != null)
-                  _line(context, 'Last scan', _c.index!.generatedAt),
+                  _line(context, l10n.localFolderFieldLastScan,
+                      _c.index!.generatedAt),
                 if (counts != null)
                   _line(
                       context,
-                      'Contents',
-                      '${counts.notes} notes, ${counts.trashedNotes} in the '
-                          'trash, ${counts.courses} categories, '
-                          '${counts.files} files, ${formatBytes(counts.bytes)}'),
+                      l10n.localFolderFieldContents,
+                      l10n.localFolderContents(
+                          counts.notes,
+                          counts.trashedNotes,
+                          counts.courses,
+                          counts.files,
+                          formatBytes(counts.bytes))),
                 if (_c.cloudSessionWins && user != null)
                   FeedbackText(
                     feedback: ActionFeedback(
@@ -187,35 +197,35 @@ class _LocalFolderStatusCardState extends State<LocalFolderStatusCard> {
                     onChanged: _busy
                         ? null
                         : (v) => _run(() => _c.setRemember(v ?? false)),
-                    title: const Text('Remember this folder on this browser'),
+                    title: Text(l10n.localFolderRemember),
                   ),
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   if (state == LocalFolderState.active)
                     OutlinedButton(
                       onPressed: _busy ? null : () => _run(() => _c.rescan()),
-                      child: const Text('Rescan folder'),
+                      child: Text(l10n.localFolderRescan),
                     ),
                   if (state == LocalFolderState.needsPermission)
                     FilledButton(
                       onPressed: _busy ? null : _reconnect,
-                      child: Text("Reconnect '${_c.folderName}'"),
+                      child: Text(l10n.localFolderReconnect(_c.folderName)),
                     ),
                   if (state == LocalFolderState.needsPick ||
                       state == LocalFolderState.error)
                     FilledButton(
                       onPressed: _busy ? null : _chooseAgain,
-                      child: Text("Choose '${_c.folderName}' again"),
+                      child: Text(l10n.localFolderChooseAgain(_c.folderName)),
                     ),
                   if (base != null && base.trim().isNotEmpty)
                     OutlinedButton(
                       onPressed: _busy ? null : () => _checkForUpdates(base),
-                      child: const Text('Check for updates'),
+                      child: Text(l10n.localFolderCheckUpdates),
                     ),
                   if (widget.onDisconnect != null)
                     TextButton(
                       onPressed:
                           _busy ? null : () => _run(widget.onDisconnect!),
-                      child: const Text('Disconnect folder'),
+                      child: Text(l10n.localFolderDisconnect),
                     ),
                 ]),
                 if (_feedback != null) ...[
@@ -224,7 +234,7 @@ class _LocalFolderStatusCardState extends State<LocalFolderStatusCard> {
                 ],
                 ExpansionTile(
                   tilePadding: EdgeInsets.zero,
-                  title: const Text('Cloud-only features'),
+                  title: Text(l10n.localFolderCloudOnly),
                   children: [
                     for (final m in kCloudOnlyFeatureMessages)
                       Padding(
