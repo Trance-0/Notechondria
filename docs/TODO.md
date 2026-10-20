@@ -869,6 +869,38 @@ the differences the code made from the design are in `revision_log.md`
     picker in the planner (the 7.1 check starts from a connected folder
     without `folder_pushed`). The U3 click check ran on the editor's build
     only; the planner uses the same shared option widget.
+  - Portal wiring: Disconnect does not offer "Restore <n> planner items
+    pushed on <date>" (7.1 step 3). The portal writes its own recovery
+    list `notechondria.portal.pushed_to_folder` (`core/local_folder_connect.dart`;
+    replaced after 30 days or for another folder) and nothing reads it
+    yet. "Browser data moved" therefore names "a recovery list" instead of
+    "Disconnect → Restore", and it is a log line and a snackbar only.
+  - Portal wiring: `notechondria.portal.folder_pushed` is set only when the
+    folder accepted every local event. A refused event stays in the local
+    list and the push runs again at every start (the folder upserts on
+    `client_local_id`, so a repeat leaves one copy).
+  - Portal wiring: the reconnect view of `_NoteRoutePage` has no "Use
+    browser-local mode instead" (that is the shell's `disconnectFolder`);
+    Back shows the shell's reconnect view, which has it.
+  - Portal wiring: a later shell route (a hash change while the app runs)
+    does not open the folder again; it waits up to 30 s for the first
+    shell's open and then applies the folder payload. No smoke check
+    covers it.
+  - Portal wiring: as in the editor, a mid-session revocation replaces the
+    shell with the reconnect view instead of a banner over it (6.3), and a
+    folder start first renders the cached cloud front page, courses, and
+    activity from `local_cache` until the folder load replaces them.
+  - Portal wiring: folder-mode wording left as is: the course push log
+    says "created on server", and the Settings backend row still reads
+    "Online" with the cloud API URL.
+  - Portal wiring: app-level checks not written yet (8.5 "Portal"): the
+    front page from folder data, course reorder, the `.nchron` export
+    (Phase 4), startup while another tab holds the lock, the "Choose
+    again" refusals, the passthrough through the app, Disconnect with a
+    pending note edit, and a connect through the sign-in option's picker
+    (the 7.1 check starts from a connected folder without
+    `folder_pushed`). The U3 click check ran on the editor's build only;
+    the portal uses the same shared option widget.
 - [ ] Phase 4: `.nchron` bridge (new `folder_id` on restore, chunked
   import, the status card's Export and the option's "Start from an
   archive"), change messages, `FileSystemObserver` and focus rescans, and
