@@ -836,6 +836,39 @@ the differences the code made from the design are in `revision_log.md`
     the choices above, for `GET /activity/` answering the ten newest notes
     as `ActivityApiView` does (deadlines are in the week payload), and for
     the front page's `upcoming_events` built with `planner_event_payload`.
+  - Planner wiring: Disconnect does not offer "Restore <n> planner items
+    pushed on <date>" (7.1 step 3). The planner writes its own recovery
+    list `notechondria.planner.pushed_to_folder` (`core/local_folder_push.dart`,
+    entries pruned after 30 days), not a shared `pushed_items_store.dart`;
+    the restore button reads it once it exists.
+  - Planner wiring: a planner tab signed in to the cloud (in memory) when
+    another tab connects a folder shows the 2.10 rule 5 banner ("Reload to
+    use it"), and its status card has no rule 2 line: the controller sets
+    `cloudSessionWins` once at boot, and the planner has no saved session.
+    A reload ends that session and opens the folder.
+  - Planner wiring: the shared `NoteCoverImage` uses `Image.network`, so an
+    `nc-folder:` cover shows the barcode fallback (planner, and the editor
+    and portal too). Give it a folder-aware provider.
+  - Planner wiring: subscribing by URL in folder mode posts `source_url` to
+    the folder route; no planner smoke check covers it, and the planner
+    sends no `refresh: true` PATCH (see the F42 bullet above).
+  - Planner wiring: folder-mode wording left as is: the course and draft
+    push logs say "created on server", and the folder-failure fallback of
+    an `.ics` import ends "it is not uploaded to the cloud". "Browser data
+    moved" (7.1 step 5) is a log line and a snackbar only, and the push's
+    lines can leave the 80-line persisted debug log behind the folder
+    requests' DEBUG lines.
+  - Planner wiring: a folder start first renders the cached cloud courses
+    and activity from `local_cache` until the folder load replaces them;
+    only `is_local_event` rows are pushed, so cloud rows cached by an
+    earlier session stay in the browser (the offline planner events item
+    under "## Planner").
+  - Planner wiring: app-level checks not written yet (8.5): startup while
+    another tab holds the lock, the "Choose again" refusals, Disconnect
+    with a pending event edit, and a connect through the sign-in option's
+    picker in the planner (the 7.1 check starts from a connected folder
+    without `folder_pushed`). The U3 click check ran on the editor's build
+    only; the planner uses the same shared option widget.
 - [ ] Phase 4: `.nchron` bridge (new `folder_id` on restore, chunked
   import, the status card's Export and the option's "Start from an
   archive"), change messages, `FileSystemObserver` and focus rescans, and
