@@ -65,7 +65,9 @@ typedef _Seeded = ({
 /// same origin (shared handle store and locks) and a preloaded snapshot.
 /// Runs with real async.
 Future<_Seeded> _seedFolder(
-    {required bool remember, Map<String, Object> prefs = const {}}) async {
+    {required bool remember,
+    Map<String, Object> prefs = const {},
+    bool pushed = true}) async {
   SharedPreferences.setMockInitialValues({..._seenFirstRun, ...prefs});
   await LocalFolderBoot.preload();
   final platform = MemoryFolderPlatform();
@@ -91,8 +93,10 @@ Future<_Seeded> _seedFolder(
   await seed.flushIndex();
   final folderId = seed.record!.folderId;
   seed.dispose();
-  final stored = await SharedPreferences.getInstance();
-  await stored.setString('notechondria.portal.folder_pushed', folderId);
+  if (pushed) {
+    final stored = await SharedPreferences.getInstance();
+    await stored.setString('notechondria.portal.folder_pushed', folderId);
+  }
   await LocalFolderBoot.preload();
   return (
     tab: platform.anotherTab(),
@@ -404,6 +408,81 @@ void registerLocalFolderSmokeTests() {
           logs.any((l) =>
               l.contains('Folder disconnected: Shared.LocalFolder/disconnect')),
           isTrue);
+    });
+
+    testWidgets(
+        'the first start in a connected folder pushes the local course and '
+        'events, and a repeat push leaves one copy (7.1)', (tester) async {
+      const event = <String, Object?>{
+        'id': 'local-1',
+        'is_local': true,
+        'title': 'Exam',
+        'event_date': '2026-10-21',
+        'starts_at': '2026-10-21T09:00:00.000',
+        'ends_at': '2026-10-21T10:00:00.000',
+        'difficulty_weight': 3,
+        'description': '',
+        'is_completed': false,
+        'completed_at': null,
+        'course_id': -5,
+      };
+      final local = <String, Object>{
+        'notechondria.portal.local_events': jsonEncode([event]),
+        'notechondria.portal.local_courses': jsonEncode([
+          {
+            'id': -5,
+            'title': 'Local course',
+            'description': '',
+            'client_course_id': 'local-course-5',
+            'is_local': true,
+          }
+        ]),
+      };
+      final seeded = (await tester.runAsync(
+          () => _seedFolder(remember: true, prefs: local, pushed: false)))!;
+      List<Map<String, dynamic>> folderEvents() {
+        final raw = jsonDecode(seeded.fs.textOf('planner/events.json')!);
+        return [
+          for (final e in (raw as Map)['events'] as List)
+            if ((e as Map)['client_local_id'] == 'portal:local-1')
+              Map<String, dynamic>.from(e),
+        ];
+      }
+
+      late LocalFolderController c;
+      final recorder = await _inFolderZone(() async {
+        c = _appController(seeded.tab);
+        await _pumpApp(tester, c);
+        expect(c.state, LocalFolderState.active);
+        await _unmount(tester);
+      });
+      expect(recorder.requests, isEmpty, reason: _urls(recorder));
+      var events = folderEvents();
+      expect(events, hasLength(1));
+      expect(events.single['title'], 'Exam');
+      expect(events.single['course_id'], isA<int>());
+      expect(events.single['course_id'] as int, greaterThan(0));
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('notechondria.portal.local_events'), '[]');
+      expect(prefs.getString('notechondria.portal.folder_pushed'),
+          c.record!.folderId);
+      final recovery = jsonDecode(
+          prefs.getString('notechondria.portal.pushed_to_folder')!) as Map;
+      expect(recovery['folder_id'], c.record!.folderId);
+      expect(recovery['events'], hasLength(1));
+      // The push again (a reconnect, or another browser copy of the
+      // event): the folder upserts on client_local_id.
+      await prefs.remove('notechondria.portal.folder_pushed');
+      await prefs.setString(
+          'notechondria.portal.local_events', jsonEncode([event]));
+      final again = await _inFolderZone(() async {
+        await _pumpApp(tester, c);
+        await _unmount(tester);
+      });
+      expect(again.requests, isEmpty, reason: _urls(again));
+      events = folderEvents();
+      expect(events, hasLength(1));
+      expect(prefs.getString('notechondria.portal.local_events'), '[]');
     });
 
     testWidgets(
