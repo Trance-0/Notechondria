@@ -196,6 +196,8 @@ String _resolveRemoteUrl(String raw, {String? apiBaseUrl}) {
   if (value.isEmpty) {
     return '';
   }
+  // Folder media is read through the folder, never from the API (3.6).
+  if (isFolderUrl(value)) return value;
   final parsed = Uri.tryParse(value);
   final origin = _apiOrigin(apiBaseUrl);
   final originUri = origin.isEmpty ? null : Uri.tryParse(origin);
@@ -297,7 +299,8 @@ Map<String, MarkdownElementBuilder> _markdownBuilders() {
 /// Custom image builder for `MarkdownBody.sizedImageBuilder`.
 /// Resolves `local://<note_uuid>/<filename>` URIs through
 /// `LocalAttachmentStore` and renders the bytes via `Image.memory`.
-/// For non-local URIs this falls through to an `Image.network` so
+/// For non-local URIs this falls through to a network image (folder bytes
+/// for `nc-folder:` URIs) so
 /// existing cloud-hosted attachments keep rendering with the
 /// explicit width/height the markdown parser extracted.
 ///
@@ -306,8 +309,10 @@ Map<String, MarkdownElementBuilder> _markdownBuilders() {
 Widget _localAttachmentImageBuilder(MarkdownImageConfig config) {
   final uri = config.uri;
   if (uri.scheme != 'local') {
-    return Image.network(
-      uri.toString(),
+    // `nc-folder:` URLs read through the folder (local folder 3.6).
+    return Image(
+      image: folderAwareImageProvider(uri.toString(),
+          folder: _EditorFolder.current),
       width: config.width,
       height: config.height,
       errorBuilder: (context, error, stack) {

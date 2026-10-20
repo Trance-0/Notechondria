@@ -15,12 +15,17 @@ class NotechondriaApp extends StatefulWidget {
     this.initialIndex = 0,
     this.title = 'Notechondria',
     this.visibleIndices = const <int>[0, 1, 2, 3, 4],
+    this.localFolder,
   });
 
   final NotechondriaClient? client;
   final int initialIndex;
   final String title;
   final List<int> visibleIndices;
+
+  /// Test seam (local folder design 2.7, 8.5): a controller over
+  /// `MemoryFolderPlatform`. Production builds pass none.
+  final LocalFolderController? localFolder;
 
   @override
   State<NotechondriaApp> createState() => _NotechondriaAppState();
@@ -49,8 +54,20 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
   /// default `notechondria.trance-0.com` host after any theme tweak.
   /// Caching the client here pins `_baseUrl` for the lifetime of the
   /// app instance; `AppShell.updateBaseUrl` now survives rebuilds.
-  late final NotechondriaClient _client =
-      widget.client ?? HttpNotechondriaClient();
+  ///
+  /// The local folder controller is created first (design 2.5, 2.7): its
+  /// `StorageModeClient` routes every request to the folder in folder
+  /// mode and to the network otherwise.
+  late final LocalFolderController _localFolder = widget.localFolder ??
+      LocalFolderController.forApp('editor', log: _EditorFolder.log);
+  late final NotechondriaClient _client = widget.client ??
+      HttpNotechondriaClient(httpClient: _localFolder.httpClient);
+
+  @override
+  void dispose() {
+    if (widget.localFolder == null) _localFolder.dispose();
+    super.dispose();
+  }
 
   void _handleThemeChanged(String preset, String mode) {
     setState(() {
@@ -93,6 +110,7 @@ class _NotechondriaAppState extends State<NotechondriaApp> {
       ),
       home: AppShell(
         client: _client,
+        localFolder: _localFolder,
         onThemeChanged: _handleThemeChanged,
         onLocaleChanged: _handleLocaleChanged,
         initialIndex: widget.initialIndex,
@@ -113,9 +131,13 @@ class AppShell extends StatefulWidget {
     this.initialIndex = 0,
     this.appTitle = 'Notechondria',
     this.visibleIndices = const <int>[0, 1, 2, 3, 4],
+    this.localFolder,
   });
 
   final NotechondriaClient client;
+
+  /// Owned by `_NotechondriaAppState` (local folder design 2.7).
+  final LocalFolderController? localFolder;
   final void Function(String preset, String mode)? onThemeChanged;
 
   /// Called with the persisted `app_settings['locale']` value
@@ -148,9 +170,11 @@ class _AppShellState extends State<AppShell>
   AuthClient get authClient => widget.client;
   @override
   String get logAppTag => 'Editor';
-  // Local folder controller: none until the editor's wiring (Phase 2).
   @override
-  LocalFolderController? get localFolder => null;
+  LocalFolderController? get localFolder => widget.localFolder;
+
+  /// Folder bookkeeping for `core/local_folder_connect.dart`.
+  final _FolderSessionState _folderSession = _FolderSessionState();
   @override
   String? get token => _token;
   @override
@@ -511,11 +535,13 @@ class _AppShellState extends State<AppShell>
       if (!mounted) return;
       log(level: level, source: source, message: message);
     });
+    _attachLocalFolder();
     _bootstrapApp();
   }
 
   @override
   void dispose() {
+    _detachLocalFolder();
     _splashTimer?.cancel();
     _splashStatus.dispose();
     logController.dispose();
@@ -574,13 +600,14 @@ class _AppShellState extends State<AppShell>
         onContinue: _continueAfterBootstrapFailure,
       );
     }
-    final scaffold = LayoutBuilder(
-      builder: (context, constraints) {
-        final isWideLayout = constraints.maxWidth >= 960;
-        if (isWideLayout) return _buildWideScaffold(context);
-        return _buildCompactScaffold(context);
-      },
-    );
+    final scaffold = _withFolderBanner(_folderGateView() ??
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isWideLayout = constraints.maxWidth >= 960;
+            if (isWideLayout) return _buildWideScaffold(context);
+            return _buildCompactScaffold(context);
+          },
+        ));
     if (_showSplash) {
       return Stack(
         children: [

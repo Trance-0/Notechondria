@@ -47,6 +47,8 @@ class _SettingsPage extends StatefulWidget {
     this.debugSnapshotListenable,
     this.debugHistoryListenable,
     this.debugLogController,
+    this.localFolderCard,
+    this.onPing,
   });
 
   final Map<String, dynamic>? profile;
@@ -189,6 +191,11 @@ class _SettingsPage extends StatefulWidget {
   /// renders the shared `DebugLogCard` (level filter + terminal); otherwise
   /// it falls back to the legacy string-list view.
   final DebugLogController? debugLogController;
+
+  /// Local folder mode (design 2.7): the status card for the signed-in
+  /// block, and `ping` through the app's `StorageModeClient`.
+  final Widget? localFolderCard;
+  final Future<PingResult> Function()? onPing;
 
   @override
   State<_SettingsPage> createState() => _SettingsPageState();

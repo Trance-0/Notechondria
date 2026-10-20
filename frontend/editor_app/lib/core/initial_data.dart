@@ -108,7 +108,10 @@ extension _AppShellInitialDataX on _AppShellState {
       }
     }());
 
-    final offlineMode = _localSettings['offline_mode'] == true;
+    // Folder mode ignores offline_mode (local folder 2.7): the folder is
+    // read in the page, so skipping it would only hide local data.
+    final offlineMode =
+        !inFolderMode && _localSettings['offline_mode'] == true;
     if (offlineMode) {
       // Category auto-sync: if authenticated, still fetch courses so
       // the sidebar category list stays up-to-date even in offline mode.

@@ -31,15 +31,17 @@ class _RemoteMedia extends StatelessWidget {
     if (imageUrl.trim().isEmpty) {
       return onFail;
     }
+    // `nc-folder:` URLs read through the folder (local folder 3.6, T4).
     if (_isSvg) {
-      return SvgPicture.network(
+      return folderAwareSvg(
         imageUrl,
+        folder: _EditorFolder.current,
         fit: fit,
         placeholderBuilder: (_) => onFail,
       );
     }
-    return Image.network(
-      imageUrl,
+    return Image(
+      image: folderAwareImageProvider(imageUrl, folder: _EditorFolder.current),
       fit: fit,
       errorBuilder: (_, error, stackTrace) {
         debugPrint('[_RemoteMedia] failed to load image: $imageUrl — $error');

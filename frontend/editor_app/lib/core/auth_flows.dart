@@ -62,11 +62,15 @@ extension _AppShellAuthFlowsX on _AppShellState {
       // "Permission denied" string — a cold open of a shared link
       // should tell the user "you need to sign in to view this",
       // not look like a crash.
-      final needsAuth = lower.contains('permission') ||
-          lower.contains('forbidden') ||
-          lower.contains('not authenticated') ||
-          raw.contains(' 403 ') ||
-          raw.contains('403:');
+      // Folder details (503s naming Shared.LocalFolder/permission, for
+      // example) are never a private cloud note (design review 3 T2).
+      final needsAuth = !inFolderMode &&
+          !raw.contains('Shared.LocalFolder') &&
+          (lower.contains('permission') ||
+              lower.contains('forbidden') ||
+              lower.contains('not authenticated') ||
+              raw.contains(' 403 ') ||
+              raw.contains('403:'));
       if (needsAuth && (_token == null || _token!.isEmpty)) {
         _errorMessage = l10n.privateNoteSignInError;
         if (mounted) {

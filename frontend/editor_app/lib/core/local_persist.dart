@@ -16,6 +16,8 @@ extension _AppShellLocalPersistX on _AppShellState {
   /// `courses` in its cache bucket. Stays in this file because the
   /// shape diverges from planner / portal.
   Future<void> _persistLocalCache() async {
+    // Folder payloads stay out of localStorage (local folder 2.7).
+    if (inFolderMode) return;
     _localCache = {
       ..._localCache,
       'front_page': _frontPage ?? const <String, dynamic>{},

@@ -83,7 +83,6 @@ List<String> _mockClipboard(WidgetTester tester) {
 const String _secretToken = 'phase1-secret-token';
 
 void main() {
-  registerLocalFolderSmokeTests();
   testWidgets('editor app boots with starter offline content', (tester) async {
     SharedPreferences.setMockInitialValues({});
     // main() installs the startup ErrorWidget.builder; flutter_test
@@ -244,4 +243,8 @@ void main() {
       expect(find.textContaining('A new version is available'), findsNothing);
     });
   });
+  // Last: the boot test above draws app.main()'s warm-up frame, which reuses
+  // the binding's last frame time, so it must run before these tests pump
+  // frames on their own fake clocks.
+  registerLocalFolderSmokeTests();
 }

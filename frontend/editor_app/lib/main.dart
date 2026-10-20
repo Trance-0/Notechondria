@@ -13,7 +13,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:http/http.dart' as http;
 import 'package:markdown/markdown.dart' as md;
 import 'package:notechondria_shared/notechondria_shared.dart';
@@ -40,6 +39,7 @@ part 'core/inbox_migration.dart';
 part 'core/load_local_state.dart';
 part 'core/local_archive_io.dart';
 part 'core/local_course_builders.dart';
+part 'core/local_folder_connect.dart';
 part 'core/maintenance_actions.dart';
 part 'core/note_crud.dart';
 part 'core/local_persist.dart';
@@ -84,6 +84,8 @@ void main() {
   runGuardedApp(
     appModule: 'Editor',
     appTitle: 'Notechondria Editor',
+    // Storage mode is decided before the first build (local folder 2.8).
+    prepare: LocalFolderBoot.preload,
     buildApp: () => const NotechondriaApp(
       initialIndex: 1,
       title: 'Notechondria Editor',

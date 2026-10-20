@@ -17,11 +17,11 @@ part of notechondria_frontend;
 /// the cause), and the splash shows the running step. Order: local_state,
 /// config, handshake, session_restore, oauth_callback, initial_data.
 extension _AppShellBootstrapX on _AppShellState {
-  Future<void> _bootstrapApp() async {
-    _startupFailure = null;
+  /// Safety net only: startup itself is bounded by the 10s budget, so the
+  /// splash normally ends when `_loadInitialData` finishes. A folder scan
+  /// re-arms it on every progress report (local folder 2.9 "Splash").
+  void _armSplashTimer() {
     _splashTimer?.cancel();
-    // Safety net only: startup itself is bounded by the 10s budget, so
-    // the splash normally ends when `_loadInitialData` finishes.
     _splashTimer =
         Timer(kBackendStartupTimeout + const Duration(seconds: 2), () {
       if (mounted && _isLoading) {
@@ -30,6 +30,11 @@ extension _AppShellBootstrapX on _AppShellState {
         refreshState();
       }
     });
+  }
+
+  Future<void> _bootstrapApp() async {
+    _startupFailure = null;
+    _armSplashTimer();
     try {
       await runWithStartupBudget(
         StartupRequestBudget(source: 'Editor.Startup/bootstrap'),
@@ -47,69 +52,114 @@ extension _AppShellBootstrapX on _AppShellState {
                   '${_localCourses.length} local categor(ies).',
             ),
           );
+          // Folder mode (local folder 2.9): opens the folder and starts
+          // the folder session; makes no network request.
+          await _runLocalFolderStep();
           _logStartupConfig();
           await _runStartupHandshake();
-          // Restore the stored auth token BEFORE handling any OAuth
-          // callback. The bind flow needs `_token` to be non-null so it
-          // can call the authenticated /auth/bind/* endpoint; otherwise
-          // the fallback logic would hit the public /auth/<provider>/
-          // endpoint and either log in as the OAuth identity's email
-          // owner or create a new account, effectively overwriting the
-          // current user.
-          await startupStep<String>(
-            'Editor.Startup/session_restore',
-            _restoreSession,
-            status: _splashStatus,
-            label: 'Restoring session',
-            failureConsequence: 'Session not restored',
-            outcome: (outcome) => _sessionRestoreOutcome(
-                'Editor.Startup/session_restore', outcome),
-          );
-          await startupStep<bool>(
-            'Editor.Startup/oauth_callback',
-            handleOAuthCallback,
-            status: _splashStatus,
-            label: 'Completing sign-in',
-            failureConsequence: 'Sign-in not completed',
-            outcome: (signedIn) => signedIn
-                ? (
-                    level: DebugLogLevel.info,
-                    message: 'Sign-in completed: '
-                        'Editor.Startup/oauth_callback \u2014 the sign-in '
-                        'redirect was exchanged for a session.',
-                  )
-                : (
-                    level: DebugLogLevel.debug,
-                    message: 'No sign-in completed: '
-                        'Editor.Startup/oauth_callback \u2014 the page URL '
-                        'has no usable sign-in code (see any Auth line '
-                        'above for a failed exchange).',
-                  ),
-          );
-          await startupStep<void>(
-            'Editor.Startup/initial_data',
-            _loadInitialData,
-            status: _splashStatus,
-            label: 'Connecting to server',
-            failureConsequence: 'Cloud data not loaded',
-            outcome: (_) => _initialDataOutcome('Editor.Startup/initial_data'),
-          );
-          // Deep-link: if the URL contains a note UUID, load it.
+          // In folder mode the session comes from the folder, so
+          // session_restore and oauth_callback are skipped (2.9).
+          if (inFolderMode) {
+            _logFolderSkipsSignIn();
+          } else {
+            await _restoreSessionAndCallback();
+          }
+          if (_folderPending) {
+            _finishStartupWithFolderPending();
+          } else {
+            final name = _folder?.folderName ?? '';
+            await startupStep<void>(
+              'Editor.Startup/initial_data',
+              _loadInitialData,
+              status: _splashStatus,
+              label: inFolderMode
+                  ? "Reading folder '$name'"
+                  : 'Connecting to server',
+              failureConsequence: inFolderMode
+                  ? 'Folder data not loaded'
+                  : 'Cloud data not loaded',
+              outcome: (_) =>
+                  _initialDataOutcome('Editor.Startup/initial_data'),
+            );
+          }
+          // Deep-link: if the URL contains a note UUID, load it. While the
+          // folder is pending it waits for the folder (design review 3 T2).
           final deepLinkUuid = _parseNoteUuidFromUrl();
           if (deepLinkUuid != null) {
-            await _openNoteByUuid(deepLinkUuid);
+            if (_folderPending) {
+              _folderSession.pendingDeepLink = deepLinkUuid;
+            } else {
+              await _openNoteByUuid(deepLinkUuid);
+            }
           }
         },
       );
+      // Outside the startup budget (local folder 2.9 step 3).
+      unawaited(_verifyFolderAfterStartup());
     } catch (error, stack) {
       _handleBootstrapFailure(error, stack);
     }
+  }
+
+  /// The cloud half of the startup pass: session_restore, then the
+  /// oauth_callback, and the 2.10 rule 2 notice when a saved session won
+  /// over a connected folder.
+  Future<void> _restoreSessionAndCallback() async {
+    // Restore the stored auth token BEFORE handling any OAuth
+    // callback. The bind flow needs `_token` to be non-null so it
+    // can call the authenticated /auth/bind/* endpoint; otherwise
+    // the fallback logic would hit the public /auth/<provider>/
+    // endpoint and either log in as the OAuth identity's email
+    // owner or create a new account, effectively overwriting the
+    // current user.
+    await startupStep<String>(
+      'Editor.Startup/session_restore',
+      _restoreSession,
+      status: _splashStatus,
+      label: 'Restoring session',
+      failureConsequence: 'Session not restored',
+      outcome: (outcome) =>
+          _sessionRestoreOutcome('Editor.Startup/session_restore', outcome),
+    );
+    _noteCloudSessionPrecedence();
+    await startupStep<bool>(
+      'Editor.Startup/oauth_callback',
+      handleOAuthCallback,
+      status: _splashStatus,
+      label: 'Completing sign-in',
+      failureConsequence: 'Sign-in not completed',
+      outcome: (signedIn) => signedIn
+          ? (
+              level: DebugLogLevel.info,
+              message: 'Sign-in completed: '
+                  'Editor.Startup/oauth_callback \u2014 the sign-in '
+                  'redirect was exchanged for a session.',
+            )
+          : (
+              level: DebugLogLevel.debug,
+              message: 'No sign-in completed: '
+                  'Editor.Startup/oauth_callback \u2014 the page URL '
+                  'has no usable sign-in code (see any Auth line '
+                  'above for a failed exchange).',
+            ),
+    );
   }
 
   /// Logs which API base URL this start uses and why (0.1.199).
   void _logStartupConfig() {
     final base = _httpClient?.baseUrl ?? 'no HTTP client';
     final saved = _localSettings['api_base_url']?.toString() ?? '';
+    if (inFolderMode) {
+      log(
+        level: DebugLogLevel.info,
+        source: 'Editor.Startup/config',
+        message: 'API base resolved: Editor.Startup/config \u2014 folder '
+            'mode; requests are answered in the page (the saved URL '
+            '${saved.isEmpty ? base : saved} is used only by Check for '
+            'updates).',
+      );
+      return;
+    }
     final origin = kIsWeb ? '; page origin ${Uri.base.origin}' : '';
     final offline = _localSettings['offline_mode'] == true;
     log(
@@ -127,7 +177,9 @@ extension _AppShellBootstrapX on _AppShellState {
   /// A failed handshake does not stop startup: the session restore and
   /// data load still run (and fail fast once the budget has timed out).
   Future<void> _runStartupHandshake() async {
-    if (_localSettings['offline_mode'] == true) {
+    // Folder mode ignores offline_mode: the handshake is answered in the
+    // page (local folder 2.7, 2.8 rule 4).
+    if (!inFolderMode && _localSettings['offline_mode'] == true) {
       log(
         level: DebugLogLevel.debug,
         source: 'Editor.Startup/handshake',
@@ -144,7 +196,7 @@ extension _AppShellBootstrapX on _AppShellState {
         'Editor.Startup/handshake',
         () => widget.client.verifyHandshake(base),
         status: _splashStatus,
-        label: 'Connecting to server',
+        label: inFolderMode ? 'Opening folder backend' : 'Connecting to server',
         failureConsequence: 'Backend not reachable',
         outcome: (result) => result.ok
             ? (
@@ -190,7 +242,10 @@ extension _AppShellBootstrapX on _AppShellState {
     }
     return (
       level: DebugLogLevel.debug,
-      message: _localSettings['offline_mode'] == true
+      message: inFolderMode
+          ? 'Startup step finished: $source \u2014 every folder request '
+              'answered.'
+          : _localSettings['offline_mode'] == true
           ? 'Startup step finished: $source \u2014 offline mode is on; '
               'rendered from the local cache.'
           : 'Startup step finished: $source \u2014 every cloud request '
