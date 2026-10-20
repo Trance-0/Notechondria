@@ -805,6 +805,37 @@ the differences the code made from the design are in `revision_log.md`
   recovery list, both apps' wiring, the note viewers' `sizedImageBuilder`,
   the portal's `_NoteRoutePage` reconnect view, and their smoke files.
   Then show the option in the planner and portal.
+- [ ] Deferred from Phase 3 (planner and portal):
+  - Shared planner routes: URL feeds are downloaded only on subscribe and
+    on `PATCH /calendar-feeds/{id}/` with `source_url` or the folder-only
+    `refresh: true`. `GET /activity/week/` serves the cached
+    `planner/feeds/<id>.ics` and never downloads, because a GET may not
+    write (6.2 R1). F42's "refresh on demand and on focus" needs the
+    planner and portal to send that PATCH, or a transport read path that
+    downloads before it takes the lock.
+  - Shared planner routes: F43 is inferred. The browser reports a host
+    without `Access-Control-Allow-Origin`, a DNS failure, and no network
+    as the same opaque `ClientException`, so all three answer the F43
+    message (502). The tests use a fake client; a Chromium run against a
+    CORS-enabled host and a Google public calendar is still to do.
+  - Shared planner routes: one download is bounded by 5 s
+    (`kCalendarFetchTimeout`) so it fits the 7 s write deadline with its
+    lock waits (the backend allows 10 s); answers over 5 MB are refused.
+  - Shared planner routes: feed events come from the shared offline
+    reader (`utils/ical_events.dart`), not a port of `parse_ical_events`:
+    all-day events land on the local day (the backend uses UTC midnight),
+    `TZID` times are device-local, a VEVENT without SUMMARY is
+    "(untitled event)" (the backend uses the feed title), and RRULE is not
+    expanded (as in the backend).
+  - Shared planner routes: the 7.1 recovery list (`pushed_items_store.dart`
+    in implementation plan 9.2) is not built; it belongs with the planner
+    and portal connect-time push.
+  - Shared planner routes: design docs not updated for Phase 3:
+    implementation plan 9.2 rows (`planner_records.dart` 231 lines,
+    `planner.dart` 351, `calendar.dart` 411) and a revision log entry for
+    the choices above, for `GET /activity/` answering the ten newest notes
+    as `ActivityApiView` does (deadlines are in the week payload), and for
+    the front page's `upcoming_events` built with `planner_event_payload`.
 - [ ] Phase 4: `.nchron` bridge (new `folder_id` on restore, chunked
   import, the status card's Export and the option's "Start from an
   archive"), change messages, `FileSystemObserver` and focus rescans, and

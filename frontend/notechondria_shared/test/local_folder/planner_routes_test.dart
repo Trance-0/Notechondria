@@ -147,6 +147,22 @@ void main() {
       expect(_stored(fs).single['client_local_id'], 'planner:local-17');
     });
 
+    test('concurrent event creates from two tabs both land (6.2 R2)', () async {
+      final p = MemoryFolderPlatform();
+      final (a, fs) = await folderApp(platform: p, now: () => _noon);
+      final (b, _) = await folderApp(fs: fs, platform: p.anotherTab(), now: () => _noon);
+      final answers = await Future.wait([
+        for (var i = 0; i < 6; i++)
+          callApi(i.isEven ? a : b, 'POST', '/planner-events/',
+              json: {'title': 'e$i', 'event_date': '2026-10-2$i'}),
+      ]);
+      expect([for (final r in answers) r.statusCode], everyElement(201));
+      final ids = {for (final r in answers) mapOf(r)['id']};
+      expect(ids, hasLength(6));
+      expect(_stored(fs).map((r) => r['id']).toSet(), ids);
+      expect((await readFolderManifest(fs))!.idCounters['event'], 6);
+    });
+
     test('course delete nulls course_id in events and feeds (3.5)', () async {
       final (c, fs) = await folderApp(now: () => _noon);
       final course = mapOf(await callApi(c, 'POST', '/courses/', json: {'title': 'Bio'}));
