@@ -674,6 +674,28 @@ Deferred items and follow-ups: `docs/development/local_folder_mode/deferred.md`.
   and folders; the wrong folder after a reload and "Switch to this
   folder"; and `navigator.locks.query()` during a long empty trash.
 
+### Next session (handoff 2026-10-20)
+
+Plan and resume steps:
+[`docs/development/local_folder_mode/next_phase.md`](development/local_folder_mode/next_phase.md).
+Open findings:
+[`docs/development/local_folder_mode/deferred.md`](development/local_folder_mode/deferred.md).
+Verification scripts:
+[`scripts/local_folder_verify/README.md`](../scripts/local_folder_verify/README.md).
+In order:
+
+1. Set up on the new machine (clone, `git submodule update --init`,
+   `build_image.sh`, `ci.sh`) and match the 0.1.202 baselines.
+2. Hardening round, release 0.1.203: split the controller's index cache,
+   then 202-N6, 202-N9, the scan and first-list holds, L2A2-1 to L2A2-3,
+   offline fonts, `NoteCoverImage`, portal viewer semantics, Q13, and the
+   backend SSRF guard (202-N3).
+3. Phase 4 in four reviewed sub-steps: export, import, change messages
+   with observer and focus rescans, adopt a data-sync clone.
+4. Phase 5 (GitHub token) once the owner settles Q6.
+5. Owner: the 17 manual desktop Chrome checks (`testing.md` 8.6) with a
+   real disk folder; no agent has run them.
+
 ## Release / CI
 
 

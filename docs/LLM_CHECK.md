@@ -33,6 +33,15 @@ Use this checklist at the end of each modification round.
 
 ## Current round log
 
+- 2026-10-20 (docs only, no VERSION bump; stays 0.1.202): local folder
+  mode handoff for a new session on a new machine. Added
+  `docs/development/local_folder_mode/next_phase.md` (state, resume steps,
+  baselines, hardening round then Phase 4 sub-steps then Phase 5, working
+  method, open owner decisions) with its SUMMARY entry, and a "Next
+  session" block in `docs/TODO.md`. Paths and line counts checked against
+  the tree at `5efd96ff`; `scripts/local_folder_verify/` is written by a
+  parallel agent this round. NOT RUN: tests and builds (no code change).
+
 - 0.1.202 (2026-10-20): RELEASE, owner request (local folder storage
   mode), Phase 3 of `docs/development/local_folder_mode.md` 9.1. The
   planner and portal SHOW "Use a local folder (no account)" (desktop

@@ -52,6 +52,7 @@
   - [Unverified items and sources](development/local_folder_mode/unverified_and_sources.md)
   - [Revision logs](development/local_folder_mode/revision_log.md)
   - [Deferred items and follow-ups](development/local_folder_mode/deferred.md)
+  - [Next phase and session handoff](development/local_folder_mode/next_phase.md)
 
 # Integrations
 
