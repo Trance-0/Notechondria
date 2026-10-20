@@ -197,7 +197,7 @@ P1B-5) and the open item of the 1a review (P1A-7), resolved before Phase
 
 | ID | Resolution | Where |
 |---|---|---|
-| P1B-1 | Handlers locate notes through the in-memory index and re-read only the note they serve or rewrite. Index `schema_version` 2 adds a `summary` to note body and sidecar entries (the fields of the backend's note summary), so the list routes read no note file; a search reads only the bodies its title and description miss, 32 at a time. The list routes, and any lookup that misses, first list `notes/` (and `trash/notes/`) and index only the files the index lacks. This tab's writes update the in-memory index from the text they wrote and a fresh stat, and reach `index.json` through the coalesced flush of L2A-1 below. Chromium, 2,000 notes on OPFS: a single-note GET took 27 ms (21 ms hold) and a PATCH 59 ms (56 ms hold); 0.1.200 answered the same GET with the 8 s deadline's 503 after an 11 s hold. A search took 1.3 s, so it passes the 2 s hold target near 3,000 notes (Phase 2 search port, `docs/TODO.md`) | 3.8, 6.2 R2 R4, 8.3; `folder_index.dart`, `handlers/lookup.dart`, `handlers/{records,notes,courses,trash}.dart`, `transport.dart`, `local_folder_controller.dart` |
+| P1B-1 | Handlers locate notes through the in-memory index and re-read only the note they serve or rewrite. Index `schema_version` 2 adds a `summary` to note body and sidecar entries (the fields of the backend's note summary), so the list routes read no note file; a search reads only the bodies its title and description miss, 32 at a time. The list routes, and any lookup that misses, first list `notes/` (and `trash/notes/`) and index only the files the index lacks. This tab's writes update the in-memory index from the text they wrote and a fresh stat, and reach `index.json` through the coalesced flush of L2A-1 below. Chromium, 2,000 notes on OPFS: a single-note GET took 27 ms (21 ms hold) and a PATCH 59 ms (56 ms hold); 0.1.200 answered the same GET with the 8 s deadline's 503 after an 11 s hold. A search took 1.3 s, so it passes the 2 s hold target near 3,000 notes (Phase 2 search port, `docs/development/local_folder_mode/deferred.md`) | 3.8, 6.2 R2 R4, 8.3; `folder_index.dart`, `handlers/lookup.dart`, `handlers/{records,notes,courses,trash}.dart`, `transport.dart`, `local_folder_controller.dart` |
 | P1B-2 | `checkCloudVersion` treats an answer carrying `x-notechondria-backend: local-folder` as not checked: "Cloud version not checked: Shared.LocalFolder/version_check — folder mode sends the update check only to an https URL or a loopback http URL, so GET <host>/api/v1/handshake/ was answered in this page and nothing was sent." | 2.8 rule 3; `storage_mode_client.dart`, `folder_messages.dart` |
 | P1B-3 | Write lookups of notes and courses ignore the skip set of a failed roll-forward (`lookupSkip`), so `commit` and `writeText` answer `writeBlockedByJournal` instead of a 404 or a second note for the same `client_draft_id` | 6.2 R3; `handlers/lookup.dart`, `handlers/notes.dart`, `handlers/courses.dart` |
 | P1B-4 | The transport passes every 404 and 501 detail, router or handler, through `scrubRouteDetail` | 2.5; `transport.dart` |
@@ -215,7 +215,7 @@ where it could be out of date. Its fixes:
 | L2A-3 | A re-read note whose sidecar id, UUID, or summary fields differ from its entry gets a fresh sidecar entry (one stat, only on a difference), so another tab's description edit reaches the list and a renumbered id is found once the old id is asked for | 3.7, 3.8; `handlers/lookup.dart` |
 | L2A-4 | Note delete selects comments by `source_note_uuid` only and checks `is_public` on disk | 3.5, 6.2 R2; `handlers/notes.dart` |
 | L2A-5 | Course delete stats every note body (500 per hold) before it selects by `course_slug`, and indexes again each body that changed. Chromium, 2,000 notes: 11 holds, the longest 217 ms, 969 ms in all | 3.5, 6.2 R2 R4; `handlers/courses.dart`, `handlers/lookup.dart` |
-| L2A-6 | Not bounded yet: the first list after an open and a listing that finds many new files run in one hold. Measured 1,733 ms for 2,000 stored notes and 626 ms for 300 new ones, so about 2,300 stored notes or 900 new files pass the 2 s target. Read batches of 128 instead of 32 changed little (1,615 ms). Tracked in `docs/TODO.md` for Phase 4's paged rescans | 6.2 R4; `docs/TODO.md` |
+| L2A-6 | Not bounded yet: the first list after an open and a listing that finds many new files run in one hold. Measured 1,733 ms for 2,000 stored notes and 626 ms for 300 new ones, so about 2,300 stored notes or 900 new files pass the 2 s target. Read batches of 128 instead of 32 changed little (1,615 ms). Tracked in `docs/development/local_folder_mode/deferred.md` for Phase 4's paged rescans | 6.2 R4; `docs/development/local_folder_mode/deferred.md` |
 | L2A-7 | The Chromium timing test asserts every timed step's hold against `kFolderLockHoldTarget`; testing.md 8.3 names the numbers that are only printed | 8.3; `test/local_folder_opfs_timing_test.dart` |
 
 
@@ -225,8 +225,8 @@ Phase 2 added the shared routes the editor needs before it shows the
 option: attachments (id and uuid routes), covers, the avatar, history,
 snapshots, version restore, study sessions, the `note_search_score` port,
 the front page, and the heatmap, plus `folderAwareImageProvider` and
-`folderAwareSvg`. Deferred items are in `docs/TODO.md` ("Deferred from
-Phase 2").
+`folderAwareSvg`. Deferred items are in
+`docs/development/local_folder_mode/deferred.md` ("Deferred from Phase 2").
 
 | Item | Code | Where |
 |---|---|---|

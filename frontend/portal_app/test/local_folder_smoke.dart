@@ -426,8 +426,27 @@ void registerLocalFolderSmokeTests() {
         'completed_at': null,
         'course_id': -5,
       };
+      // A weekly event from the edit dialog: the repeat rule must reach the
+      // folder record.
+      const weekly = <String, Object?>{
+        'id': 'local-2',
+        'is_local': true,
+        'title': 'Lab',
+        'event_date': '2026-10-22',
+        'starts_at': null,
+        'ends_at': null,
+        'difficulty_weight': 1,
+        'description': '',
+        'is_completed': false,
+        'completed_at': null,
+        'course_id': null,
+        'recurrence_freq': 'W',
+        'recurrence_interval': 1,
+        'recurrence_end_date': null,
+        'recurrence_count': 3,
+      };
       final local = <String, Object>{
-        'notechondria.portal.local_events': jsonEncode([event]),
+        'notechondria.portal.local_events': jsonEncode([event, weekly]),
         'notechondria.portal.local_courses': jsonEncode([
           {
             'id': -5,
@@ -440,11 +459,11 @@ void registerLocalFolderSmokeTests() {
       };
       final seeded = (await tester.runAsync(
           () => _seedFolder(remember: true, prefs: local, pushed: false)))!;
-      List<Map<String, dynamic>> folderEvents() {
+      List<Map<String, dynamic>> folderEvents([String id = 'local-1']) {
         final raw = jsonDecode(seeded.fs.textOf('planner/events.json')!);
         return [
           for (final e in (raw as Map)['events'] as List)
-            if ((e as Map)['client_local_id'] == 'portal:local-1')
+            if ((e as Map)['client_local_id'] == 'portal:$id')
               Map<String, dynamic>.from(e),
         ];
       }
@@ -462,6 +481,11 @@ void registerLocalFolderSmokeTests() {
       expect(events.single['title'], 'Exam');
       expect(events.single['course_id'], isA<int>());
       expect(events.single['course_id'] as int, greaterThan(0));
+      final repeating = folderEvents('local-2');
+      expect(repeating, hasLength(1));
+      expect(repeating.single['recurrence_freq'], 'W');
+      expect(repeating.single['recurrence_interval'], 1);
+      expect(repeating.single['recurrence_count'], 3);
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString('notechondria.portal.local_events'), '[]');
       expect(prefs.getString('notechondria.portal.folder_pushed'),
@@ -469,7 +493,7 @@ void registerLocalFolderSmokeTests() {
       final recovery = jsonDecode(
           prefs.getString('notechondria.portal.pushed_to_folder')!) as Map;
       expect(recovery['folder_id'], c.record!.folderId);
-      expect(recovery['events'], hasLength(1));
+      expect(recovery['events'], hasLength(2));
       // The push again (a reconnect, or another browser copy of the
       // event): the folder upserts on client_local_id.
       await prefs.remove('notechondria.portal.folder_pushed');

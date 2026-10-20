@@ -51,6 +51,7 @@
   - [Implementation plan](development/local_folder_mode/implementation_plan.md)
   - [Unverified items and sources](development/local_folder_mode/unverified_and_sources.md)
   - [Revision logs](development/local_folder_mode/revision_log.md)
+  - [Deferred items and follow-ups](development/local_folder_mode/deferred.md)
 
 # Integrations
 

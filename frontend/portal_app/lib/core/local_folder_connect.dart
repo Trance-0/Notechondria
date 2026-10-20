@@ -405,6 +405,15 @@ extension _AppShellLocalFolderX on _AppShellState {
             'completed_at',
           ])
             key: event[key],
+          // The repeat rule, sent only when set: the folder refuses a null
+          // recurrence_freq or recurrence_interval.
+          for (final key in const [
+            'recurrence_freq',
+            'recurrence_interval',
+            'recurrence_end_date',
+            'recurrence_count',
+          ])
+            if (event[key] != null) key: event[key],
           'course_id': courseId,
           'client_local_id': 'portal:${event['id']}',
         });
@@ -415,9 +424,10 @@ extension _AppShellLocalFolderX on _AppShellState {
       }
     }
     if (pushed.isNotEmpty) {
+      // The recovery copy is written before the events leave the list.
+      await _recordPushedToFolder(record.folderId, pushed);
       _localEvents = kept;
       await _LocalAppStore.saveEvents(_localEvents);
-      await _recordPushedToFolder(record.folderId, pushed);
     }
     if (kept.isNotEmpty) {
       log(

@@ -73,7 +73,8 @@ Closed in Phase 2 (2026-10-20, the U3 part of the Phase 0 spike):
   `u3_1_before_semantics_click.png` to `u3_4_after_pointer_click.png` in
   the same directory.
 - U1, U5, U7, U10, U17, and U18 stay open; they are on the manual check
-  list in `docs/TODO.md` ("Deferred from Phase 2").
+  list in `docs/development/local_folder_mode/deferred.md` ("Deferred from
+  Phase 2").
 
 ## 11.2 Sources (checked 2026-10-17)
 
