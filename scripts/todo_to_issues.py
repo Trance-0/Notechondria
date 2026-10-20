@@ -30,6 +30,8 @@ API = "https://api.github.com"
 
 # Section heading (lowercased, matched by substring) -> label.
 LABEL_RULES = [
+    ("local folder", "area:local-folder"),
+    ("startup", "area:startup"),
     ("activity", "area:activity"),
     ("github course binding", "area:course-git"),
     ("github sync", "area:github-sync"),
