@@ -158,7 +158,12 @@ Future<LocalResponse> _create(LocalHandlerContext ctx) async {
   final courses = await _courses(ctx, write: true);
   if (clientId != null) {
     final existing = file.byClientLocalId(clientId);
-    if (existing != null && parseIsoDay(jsonString(existing['event_date'])) != null) {
+    if (existing != null) {
+      if (parseIsoDay(jsonString(existing['event_date'])) == null) {
+        // Answering 201 here would add a second copy of the pushed event.
+        throw LocalHttpError(409,
+            LocalFolderMessages.eventDateUnreadable(jsonInt(existing['id'])!, clientId));
+      }
       return LocalResponse(200, plannerEventPayload(existing, courses));
     }
   }

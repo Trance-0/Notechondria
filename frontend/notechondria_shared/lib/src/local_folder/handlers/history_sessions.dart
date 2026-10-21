@@ -9,6 +9,7 @@ import '../router.dart';
 import 'lookup.dart';
 import 'notes.dart'
     show frontmatterWith, servedDetail, sidecarWith, snapshotRemovals, snapshotWrites;
+import 'planner_records.dart' show isRecordsFileJson;
 import 'records.dart';
 
 // History, snapshots, version restore (F23, storage rules 3.8) and study
@@ -136,12 +137,18 @@ Future<LocalResponse> _restore(LocalHandlerContext ctx) async {
 
 /// `planner/sessions.json`: the container (null for a bare list or a
 /// missing file) and its records `{id, note_id, note_uuid, title, summary,
-/// started_at, ended_at}`.
+/// started_at, ended_at}`. With [forWrite], a file that is not a records
+/// file answers a 503 instead of reading as empty, so the write cannot
+/// replace it (202-N6).
 Future<(Map<String, Object?>?, List<Map<String, Object?>>)> readSessions(
-    FolderFs fs) async {
+    FolderFs fs, {bool forWrite = false}) async {
   final text = await readTextOrNull(fs, kPlannerSessionsPath);
   if (text == null) return (null, <Map<String, Object?>>[]);
   final json = decodeJsonValue(text);
+  if (forWrite && !isRecordsFileJson(json, 'sessions')) {
+    throw LocalHttpError(503, LocalFolderMessages.unreadableFolderFile(
+        'Study session not saved', 'planner', kPlannerSessionsPath));
+  }
   final records = [
     for (final r in recordListOf(json) ?? const <Map<String, Object?>>[])
       if (jsonInt(r['id']) != null) r,
@@ -246,7 +253,7 @@ Future<LocalResponse> _startSession(LocalHandlerContext ctx) async {
       (throw LocalHttpError(503,
           LocalFolderMessages.manifestMissing(ctx.folderName, importPending: false)));
   final (updated, id) = manifest.allocate('session');
-  final (container, records) = await readSessions(ctx.fs);
+  final (container, records) = await readSessions(ctx.fs, forWrite: true);
   final record = <String, Object?>{
     'id': id,
     'note_id': n.id,
@@ -277,7 +284,7 @@ Future<LocalResponse> _updateSession(LocalHandlerContext ctx) async {
   final summary = b.string('summary', maxLength: 255);
   final started = b.has('started_at') ? _dateTime(b, 'started_at') : null;
   final ended = b.has('ended_at') ? _dateTime(b, 'ended_at') : null;
-  final (container, records) = await readSessions(ctx.fs);
+  final (container, records) = await readSessions(ctx.fs, forWrite: true);
   final at = records.indexWhere((r) => jsonInt(r['id']) == id);
   if (at < 0) throw LocalHttpError(404, LocalFolderMessages.sessionNotFound(id));
   final record = {

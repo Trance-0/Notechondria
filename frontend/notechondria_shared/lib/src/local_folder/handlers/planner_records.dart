@@ -1,6 +1,8 @@
 import '../folder_fs.dart';
 import '../folder_index.dart' show recordListKeyOf, recordListOf;
 import '../folder_layout.dart';
+import '../folder_messages.dart';
+import '../router.dart' show LocalHttpError;
 import 'activity.dart' show isoDate;
 import 'records.dart';
 
@@ -14,7 +16,8 @@ import 'records.dart';
 /// A records file read from disk: the object it was (null for a bare list
 /// or a missing file), its records, and the key the list sits under.
 class PlannerFile {
-  PlannerFile(this.path, this.container, this.records, this.key);
+  PlannerFile(this.path, this.container, this.records, this.key,
+      {this.unreadable = false, this.consequence = 'Change not saved'});
 
   final String path;
   final Map<String, Object?>? container;
@@ -23,6 +26,13 @@ class PlannerFile {
   /// answers skip (no integer `id`), so a hand-edited row is never dropped.
   final List<Map<String, Object?>> records;
   final String key;
+
+  /// The file exists but is not a records file (202-N6): reads answer it
+  /// as empty, and [encode] refuses, so a write never replaces it.
+  final bool unreadable;
+
+  /// The 1.8 consequence of a refused write.
+  final String consequence;
 
   /// Records with an integer `id`.
   List<Map<String, Object?>> get withIds =>
@@ -46,7 +56,12 @@ class PlannerFile {
   }
 
   /// The file's text with [next] as its records, in the file's own shape.
+  /// Throws a 503 for an [unreadable] file (202-N6).
   String encode(List<Map<String, Object?>> next) {
+    if (unreadable) {
+      throw LocalHttpError(503,
+          LocalFolderMessages.unreadableFolderFile(consequence, 'planner', path));
+    }
     final container = this.container;
     final listKey = container == null ? null : recordListKeyOf(container);
     return encodeFolderJson({
@@ -57,19 +72,27 @@ class PlannerFile {
   }
 }
 
-Future<PlannerFile> readPlannerFile(FolderFs fs, String path, String key) async {
+Future<PlannerFile> readPlannerFile(FolderFs fs, String path, String key,
+    {String consequence = 'Change not saved'}) async {
   final text = await readTextOrNull(fs, path);
-  if (text == null) return PlannerFile(path, null, [], key);
+  if (text == null) return PlannerFile(path, null, [], key, consequence: consequence);
   final json = decodeJsonValue(text);
   return PlannerFile(path, json is Map ? Map<String, Object?>.from(json) : null,
-      recordListOf(json) ?? [], key);
+      recordListOf(json) ?? [], key,
+      unreadable: !isRecordsFileJson(json, key), consequence: consequence);
 }
 
-Future<PlannerFile> readEventsFile(FolderFs fs) =>
-    readPlannerFile(fs, kPlannerEventsPath, 'events');
+/// Whether [json] (decoded, null when it did not parse) is a records file a
+/// write can rewrite without losing data: a list, or an object whose
+/// [key] is absent or a list (202-N6).
+bool isRecordsFileJson(Object? json, String key) =>
+    json is List || (json is Map && (!json.containsKey(key) || json[key] is List));
 
-Future<PlannerFile> readFeedsFile(FolderFs fs) =>
-    readPlannerFile(fs, kPlannerFeedsPath, 'feeds');
+Future<PlannerFile> readEventsFile(FolderFs fs) => readPlannerFile(
+    fs, kPlannerEventsPath, 'events', consequence: 'Planner event not saved');
+
+Future<PlannerFile> readFeedsFile(FolderFs fs) => readPlannerFile(
+    fs, kPlannerFeedsPath, 'feeds', consequence: 'Calendar feed not saved');
 
 final RegExp _isoDay = RegExp(r'^(\d{4})-(\d{1,2})-(\d{1,2})$');
 

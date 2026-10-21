@@ -307,7 +307,7 @@ Future<LocalResponse> _create(LocalHandlerContext ctx) async {
   // backend counts the blocks built from content, else description, else
   // title.
   final heatmap = await heatmapWithCreatedNote(
-      ctx.fs,
+      ctx,
       localDay(ctx.now()),
       wordCountOf(content.isNotEmpty
           ? content

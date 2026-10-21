@@ -23,7 +23,8 @@ StorageModeRecord folderRecord({String name = 'Notes', bool remember = true}) =>
         remember: remember);
 
 /// An app in folder mode over [fs] (a fresh Notechondria folder by
-/// default), opened to `active` unless [open] is false.
+/// default), opened to `active` unless [open] is false; its log lines go
+/// to [logs] when given.
 Future<(LocalFolderController, MemoryFolderFs)> folderApp({
   MemoryFolderFs? fs,
   MemoryFolderPlatform? platform,
@@ -31,6 +32,7 @@ Future<(LocalFolderController, MemoryFolderFs)> folderApp({
   String name = 'Notes',
   bool open = true,
   DateTime Function()? now,
+  List<String>? logs,
 }) async {
   final folder = fs ?? await newNotechondriaFolder(name: name);
   SharedPreferences.setMockInitialValues(
@@ -39,7 +41,11 @@ Future<(LocalFolderController, MemoryFolderFs)> folderApp({
   final p = platform ?? MemoryFolderPlatform();
   p.handleStore.records[kTestFolderId] = folder;
   final c = LocalFolderController.forTest(
-      app: app, platform: p, boot: LocalFolderBoot.snapshot, now: now);
+      app: app,
+      platform: p,
+      boot: LocalFolderBoot.snapshot,
+      now: now,
+      log: (_, message) => logs?.add(message));
   addTearDown(c.dispose);
   if (open) await c.open();
   return (c, folder);

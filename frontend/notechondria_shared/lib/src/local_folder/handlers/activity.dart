@@ -1,6 +1,7 @@
 import '../folder_fs.dart';
 import '../folder_index.dart' show recordListOf;
 import '../folder_layout.dart';
+import '../folder_messages.dart';
 import '../router.dart';
 import 'lookup.dart';
 import 'planner_records.dart' show plannerEventPayload, readEventsFile, usableEvents;
@@ -30,12 +31,21 @@ DateTime localDay(DateTime now) {
 
 /// The text of `planner/heatmap.json` after one more created note with
 /// [words] words on [day]; null when [words] is 0 (the backend records no
-/// row then).
+/// row then), or when the file exists but is not a heatmap object: the
+/// note is still saved, the file is left as it is, and a warning is logged
+/// (202-N6, 201-N7).
 Future<String?> heatmapWithCreatedNote(
-    FolderFs fs, DateTime day, int words) async {
+    LocalHandlerContext ctx, DateTime day, int words) async {
   if (words <= 0) return null;
-  final text = await readTextOrNull(fs, kPlannerHeatmapPath);
-  final json = (text == null ? null : decodeJsonObject(text)) ?? {};
+  final text = await readTextOrNull(ctx.fs, kPlannerHeatmapPath);
+  final decoded = text == null ? <String, Object?>{} : decodeJsonObject(text);
+  if (decoded == null ||
+      (decoded.containsKey(kHeatmapDaysKey) && decoded[kHeatmapDaysKey] is! Map)) {
+    ctx.log(LocalFolderLogLevel.warning,
+        LocalFolderMessages.heatmapNotUpdated(kPlannerHeatmapPath));
+    return null;
+  }
+  final json = decoded;
   final days = json[kHeatmapDaysKey] is Map
       ? Map<String, Object?>.from(json[kHeatmapDaysKey] as Map)
       : <String, Object?>{};

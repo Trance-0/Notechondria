@@ -101,6 +101,9 @@ final List<String> _backendDetails = [
   LocalFolderMessages.calendarTooLarge('cal.example.org', 5 * 1024 * 1024),
   LocalFolderMessages.calendarIsBackend('notechondria.trance-0.com'),
   LocalFolderMessages.calendarNoSourceUrl(6),
+  LocalFolderMessages.unreadableFolderFile('Planner event not saved', 'planner', 'planner/events.json'),
+  LocalFolderMessages.eventDateUnreadable(4, 'planner:local-1'),
+  LocalFolderMessages.heatmapNotUpdated('planner/heatmap.json'),
 ];
 
 void main() {

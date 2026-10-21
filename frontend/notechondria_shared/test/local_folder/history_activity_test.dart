@@ -155,6 +155,22 @@ void main() {
           json: {'note_id': note['id'], 'started_at': 'yesterday'});
       expect(badTime.statusCode, 400);
     });
+
+    test('an unparsable sessions.json is never replaced (202-N6)', () async {
+      final (c, fs) = await folderApp(now: () => _noon);
+      final note = await createNote(c);
+      await fs.writeText(kPlannerSessionsPath, '{"sessions": [{"id": 1,');
+      final listed = await callApi(c, 'GET', '/note-sessions/');
+      expect(listed.statusCode, 200, reason: listed.body);
+      expect(listOf(listed), isEmpty);
+      for (final (method, path) in [('POST', '/note-sessions/'), ('PATCH', '/note-sessions/1/')]) {
+        final r = await callApi(c, method, path, json: {'note_id': note['id'], 'title': 'x'});
+        expect(r.statusCode, 503, reason: '$method ${r.body}');
+        expect(detailOf(r), LocalFolderMessages.unreadableFolderFile(
+            'Study session not saved', 'planner', kPlannerSessionsPath));
+      }
+      expect(fs.textOf(kPlannerSessionsPath), '{"sessions": [{"id": 1,');
+    });
   });
 
   group('front page and heatmap', () {
@@ -233,6 +249,19 @@ void main() {
       expect(h['days_before'], 182);
       expect((h['cells'] as List).length, 365);
       expect(h['max_past_value'], 2, reason: 'peak 250 words grades 2');
+    });
+
+    test('an unparsable heatmap.json is kept and the note still saves (201-N7)', () async {
+      final logs = <String>[];
+      final (c, fs) = await folderApp(now: () => _noon, logs: logs);
+      for (final bad in ['{"days": {"2026-10-18":', '[1, 2]', '{"days": 3}']) {
+        await fs.writeText(kPlannerHeatmapPath, bad);
+        final note = await createNote(c, title: 'A $bad', content: 'one two');
+        expect(note['title'], 'A $bad');
+        expect(fs.textOf(kPlannerHeatmapPath), bad);
+      }
+      expect(logs.where((l) => l == LocalFolderMessages.heatmapNotUpdated(kPlannerHeatmapPath)),
+          hasLength(3));
     });
 
     test('an empty folder answers an empty front page', () async {

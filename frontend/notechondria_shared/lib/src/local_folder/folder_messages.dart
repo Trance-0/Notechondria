@@ -519,6 +519,26 @@ abstract final class LocalFolderMessages {
       'Planner event not found in folder: Shared.LocalFolder.Backend/planner '
       '— event $id is not in this folder.';
 
+  /// 202-N6: a records file that does not parse is never replaced by a
+  /// write, which would keep only the new record.
+  static String unreadableFolderFile(String consequence, String process, String path) =>
+      '$consequence: Shared.LocalFolder.Backend/$process — $path in the '
+      'folder is not valid JSON, and saving would replace its contents; fix '
+      'or remove the file, then try again.';
+
+  /// 202-N6: a create with this `client_local_id` would add a second copy.
+  static String eventDateUnreadable(int id, String clientLocalId) =>
+      'Planner event not saved: Shared.LocalFolder.Backend/planner — event '
+      '$id in planner/events.json already has client_local_id "$clientLocalId" but '
+      'its event_date is not a YYYY-MM-DD date; fix that record, then try '
+      'again.';
+
+  /// 202-N6 (201-N7): the note is saved; the heatmap file is left as it is.
+  static String heatmapNotUpdated(String path) =>
+      'Activity heatmap not updated: Shared.LocalFolder.Backend/notes — '
+      '$path in the folder is not valid JSON, so the new note is not counted; '
+      'fix or remove the file to count new notes again.';
+
   static String feedNotFound(int id) =>
       'Calendar feed not found in folder: Shared.LocalFolder.Backend/planner '
       '— feed $id is not in this folder.';

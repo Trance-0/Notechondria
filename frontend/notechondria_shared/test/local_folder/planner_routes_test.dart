@@ -182,6 +182,49 @@ void main() {
       final feeds = listOf(await callApi(c, 'GET', '/calendar-feeds/'));
       expect(feeds.single['course_id'], isNull);
     });
+
+    test('an unparsable events.json or feeds.json is never replaced (202-N6)', () async {
+      for (final bad in ['{"events": [', 'not json', '{"events": "x"}', '7']) {
+        final (c, fs) = await folderApp(now: () => _noon);
+        await fs.writeText(kPlannerEventsPath, bad);
+        await fs.writeText(kPlannerFeedsPath, bad.replaceAll('events', 'feeds'));
+        // Reads answer the file as empty.
+        final listed = await callApi(c, 'GET', '/planner-events/');
+        expect(listed.statusCode, 200, reason: listed.body);
+        expect(listOf(listed), isEmpty);
+        // Writes, the 7.1 push included, are refused and leave the file alone.
+        for (final body in [
+          {'title': 'Exam', 'event_date': '2026-10-21'},
+          {'title': 'Pushed', 'event_date': '2026-10-21', 'client_local_id': 'planner:local-1'},
+        ]) {
+          final r = await callApi(c, 'POST', '/planner-events/', json: body);
+          expect(r.statusCode, 503, reason: '$bad ${r.body}');
+          expect(detailOf(r), LocalFolderMessages.unreadableFolderFile(
+              'Planner event not saved', 'planner', kPlannerEventsPath));
+        }
+        expect(fs.textOf(kPlannerEventsPath), bad);
+        final feed = await callApi(c, 'POST', '/calendar-feeds/',
+            json: {'title': 'Lectures', 'raw_ical': _ics});
+        expect(feed.statusCode, 503, reason: '$bad ${feed.body}');
+        expect(detailOf(feed), LocalFolderMessages.unreadableFolderFile(
+            'Calendar feed not saved', 'planner', kPlannerFeedsPath));
+        expect(fs.textOf(kPlannerFeedsPath), bad.replaceAll('events', 'feeds'));
+      }
+    });
+
+    test('a known client_local_id with an unreadable event_date answers 409', () async {
+      final (c, fs) = await folderApp(now: () => _noon);
+      final stored = jsonEncode({'schema_version': 1, 'events': [
+        {'id': 4, 'title': 'Old', 'event_date': 'soon', 'client_local_id': 'planner:local-1'},
+      ]});
+      await fs.writeText(kPlannerEventsPath, stored);
+      final r = await callApi(c, 'POST', '/planner-events/', json: {
+        'title': 'Old', 'event_date': '2026-10-21', 'client_local_id': 'planner:local-1',
+      });
+      expect(r.statusCode, 409, reason: r.body);
+      expect(detailOf(r), LocalFolderMessages.eventDateUnreadable(4, 'planner:local-1'));
+      expect(fs.textOf(kPlannerEventsPath), stored, reason: 'no second copy');
+    });
   });
 
   group('activity', () {
