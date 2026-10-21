@@ -285,6 +285,8 @@ class _AppShellState extends State<AppShell>
   Future<void> syncAllLocalCourses() => _syncAllLocalCourses();
   @override
   Future<void> syncAllLocalDrafts() => _syncAllLocalDrafts();
+  @override
+  void clearAppSpecificSessionFields() => _clearFolderSessionFields();
   // Session metadata hooks default to no-ops post-Casdoor cutover —
   // Casdoor owns session lifecycle, so the SPA no longer tracks
   // per-device ids / multi-device flags / other-session counts.

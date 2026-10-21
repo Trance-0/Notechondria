@@ -43,6 +43,19 @@ class _Recorder extends http.BaseClient {
   }
 }
 
+/// The partly failed reload of 202-N9: `/courses/` answers an empty list,
+/// every other request fails, so the reload marks the cache updated while
+/// the front-page request keeps the page already in memory.
+class _CoursesOnly extends _FailingRecorder {
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    if (!request.url.path.endsWith('/courses/')) return super.send(request);
+    requests.add(request);
+    return http.StreamedResponse(Stream.value(utf8.encode('[]')), 200,
+        headers: {'content-type': 'application/json'});
+  }
+}
+
 /// A dart:io client created outside the zone fails the test (8.5).
 class _NoDartIo extends HttpOverrides {
   @override
@@ -254,8 +267,9 @@ Future<List<String>> _logs() async {
 
 /// Every folder check: the zone client is the failing recorder and a
 /// dart:io client created outside the zone fails too (8.5).
-Future<_FailingRecorder> _inFolderZone(Future<void> Function() body) async {
-  final recorder = _FailingRecorder();
+Future<_FailingRecorder> _inFolderZone(Future<void> Function() body,
+    {_FailingRecorder? client}) async {
+  final recorder = client ?? _FailingRecorder();
   final previous = HttpOverrides.current;
   HttpOverrides.global = _NoDartIo();
   try {
@@ -429,6 +443,28 @@ void _registerAppLevelTests() {
           logs.any((l) =>
               l.contains('Folder disconnected: Shared.LocalFolder/disconnect')),
           isTrue);
+    });
+
+    testWidgets(
+        'after Disconnect a partly failed reload writes no folder row to '
+        'local_cache (202-N9)', (tester) async {
+      final seeded =
+          (await tester.runAsync(() => _seedFolder(remember: true)))!;
+      final recorder = await _inFolderZone(() async {
+        final c = _appController(seeded.tab);
+        await _pumpApp(tester, c, initialIndex: 4);
+        expect(c.state, LocalFolderState.active);
+        await tester.tap(find.text('Disconnect folder'));
+        await _pumpSeconds(tester, 3);
+        expect(c.storageMode, StorageMode.browserOrCloud);
+        await _unmount(tester);
+      }, client: _CoursesOnly());
+      expect(recorder.requests.map((r) => r.url.path),
+          contains(endsWith('/courses/')),
+          reason: 'the reload must have marked the cache updated');
+      final prefs = await SharedPreferences.getInstance();
+      final cache = prefs.getString('notechondria.editor.local_cache') ?? '';
+      expect(cache, isNot(contains('Folder note')));
     });
 
     for (final pending in ['needsPick', 'needsPermission']) {

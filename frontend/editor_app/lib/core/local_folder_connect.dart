@@ -360,4 +360,23 @@ extension _AppShellLocalFolderX on _AppShellState {
       'Cloud notes not pulled: Editor.Sync.Notes/pull \u2014 this app uses '
       "the folder '${_folder?.folderName ?? ''}', which has no cloud copy; "
       'disconnect the folder and sign in to pull cloud notes.';
+
+  /// `clearAppSpecificSessionFields`: a Disconnect (still in folder mode
+  /// while the session is cleared, 2.10 rule 4) drops every folder row
+  /// from memory and puts this browser's own cached rows back, so the
+  /// signed-out reload that follows cannot write a folder row to
+  /// `local_cache` (2.7, 202-N9). A cloud logout keeps its old behavior.
+  void _clearFolderSessionFields() {
+    if (!inFolderMode) return;
+    _frontPage = Map<String, dynamic>.from(
+        _localCache['front_page'] as Map? ?? const {});
+    _courses = (_localCache['courses'] as List<dynamic>? ?? const [])
+        .map((item) =>
+            decorateRemoteCourse(Map<String, dynamic>.from(item as Map)))
+        .toList(growable: false);
+    _courseNotes = const [];
+    _learnerNotes = const [];
+    _selectedNote = null;
+    _selectedCourse = null;
+  }
 }

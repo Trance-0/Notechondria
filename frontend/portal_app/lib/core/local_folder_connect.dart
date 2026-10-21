@@ -552,4 +552,29 @@ extension _AppShellLocalFolderX on _AppShellState {
       'Cloud notes not pulled: Portal.Sync.Notes/pull \u2014 this app uses '
       "the folder '${_folder?.folderName ?? ''}', which has no cloud copy; "
       'disconnect the folder and sign in to pull cloud notes.';
+
+  /// `clearAppSpecificSessionFields`: a cloud logout clears the planner
+  /// events as before; a Disconnect (still in folder mode while the
+  /// session is cleared, 2.10 rule 4) drops every folder row from memory
+  /// and puts this browser's own cached rows back, so the signed-out
+  /// reload that follows cannot write a folder row to `local_cache` (2.7,
+  /// 202-N9), as the planner's `_clearPlannerSessionFields` does.
+  void _clearFolderSessionFields() {
+    _plannerEvents = const [];
+    if (!inFolderMode) return;
+    List<Map<String, dynamic>> cached(String key) =>
+        (_localCache[key] as List<dynamic>? ?? const [])
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList(growable: false);
+    _frontPage = Map<String, dynamic>.from(
+        _localCache['front_page'] as Map? ?? const {});
+    _courses = cached('courses').map(decorateRemoteCourse).toList();
+    _activity = cached('activity');
+    _activityWeek = null;
+    _calendarFeeds = const [];
+    _courseNotes = const [];
+    _learnerNotes = const [];
+    _selectedNote = null;
+    _selectedCourse = null;
+  }
 }

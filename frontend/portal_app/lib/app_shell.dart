@@ -387,9 +387,7 @@ class _AppShellState extends State<AppShell>
   @override
   Future<void> syncAllLocalDrafts() => _syncAllLocalDrafts();
   @override
-  void clearAppSpecificSessionFields() {
-    _plannerEvents = const [];
-  }
+  void clearAppSpecificSessionFields() => _clearFolderSessionFields();
 
   // Session metadata hooks default to no-ops post-Casdoor cutover —
   // session lifecycle lives on the Casdoor side now.

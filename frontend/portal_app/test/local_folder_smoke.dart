@@ -40,6 +40,26 @@ class _FailingRecorder extends http.BaseClient {
   }
 }
 
+/// The partly failed reload of 202-N9: `/front-page/` answers 200, every
+/// other request fails, so the reload marks the cache updated while the
+/// course and activity requests keep the rows already in memory.
+class _FrontPageOnly extends _FailingRecorder {
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    if (!request.url.path.endsWith('/front-page/')) return super.send(request);
+    requests.add(request);
+    final body = utf8.encode(jsonEncode({
+      'default_course': null,
+      'carousel_courses': <Object?>[],
+      'collections': <Object?>[],
+      'recent_notes': <Object?>[],
+      'recommended_notes': <Object?>[],
+    }));
+    return http.StreamedResponse(Stream.value(body), 200,
+        headers: {'content-type': 'application/json'});
+  }
+}
+
 /// A dart:io client created outside the zone fails the test (8.5).
 class _NoDartIo extends HttpOverrides {
   @override
@@ -158,8 +178,9 @@ Future<List<String>> _logs() async {
 
 /// Every folder check: the zone client is the failing recorder and a
 /// dart:io client created outside the zone fails too (8.5).
-Future<_FailingRecorder> _inFolderZone(Future<void> Function() body) async {
-  final recorder = _FailingRecorder();
+Future<_FailingRecorder> _inFolderZone(Future<void> Function() body,
+    {_FailingRecorder? client}) async {
+  final recorder = client ?? _FailingRecorder();
   final previous = HttpOverrides.current;
   HttpOverrides.global = _NoDartIo();
   try {
@@ -408,6 +429,29 @@ void registerLocalFolderSmokeTests() {
           logs.any((l) =>
               l.contains('Folder disconnected: Shared.LocalFolder/disconnect')),
           isTrue);
+    });
+
+    testWidgets(
+        'after Disconnect a partly failed reload writes no folder row to '
+        'local_cache (202-N9)', (tester) async {
+      final seeded =
+          (await tester.runAsync(() => _seedFolder(remember: true)))!;
+      final recorder = await _inFolderZone(() async {
+        final c = _appController(seeded.tab);
+        await _pumpApp(tester, c, initialIndex: 4);
+        expect(c.state, LocalFolderState.active);
+        await tester.tap(find.text('Disconnect folder'));
+        await _pumpSeconds(tester, 3);
+        expect(c.storageMode, StorageMode.browserOrCloud);
+        await _unmount(tester);
+      }, client: _FrontPageOnly());
+      expect(recorder.requests.map((r) => r.url.path),
+          contains(endsWith('/front-page/')),
+          reason: 'the reload must have marked the cache updated');
+      final prefs = await SharedPreferences.getInstance();
+      final cache = prefs.getString('notechondria.portal.local_cache') ?? '';
+      expect(cache, isNot(contains('Folder note')));
+      expect(cache, isNot(contains('nc-folder:')));
     });
 
     testWidgets(
