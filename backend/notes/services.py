@@ -20,6 +20,7 @@ CALENDAR_RANGE_DAYS = {3, 7, 30}
 DEFAULT_CALENDAR_RANGE_DAYS = 7
 
 from courses.models import Course, CourseOperationLog, CourseOperationTypeChoices
+from .calendar_fetch import fetch_calendar_text
 from planner.models import (
     CalendarFeed,
     HeatmapActivity,
@@ -540,17 +541,17 @@ def read_calendar_feed(feed: CalendarFeed) -> str:
         return feed.raw_ical
     if feed.source_url:
         target = normalize_calendar_url(feed.source_url)
-        request = urllib.request.Request(
+        # Refuses private, loopback, and metadata hosts, also after a
+        # redirect (issue #42, BlockedCalendarURL is a ValueError).
+        body = fetch_calendar_text(
             target,
-            headers={
+            {
                 # Some providers (notably Google Calendar) reject requests
                 # without a real User-Agent header.
                 "User-Agent": "Notechondria/0.1 (+calendar-feed)",
                 "Accept": "text/calendar, */*;q=0.1",
             },
         )
-        with urllib.request.urlopen(request, timeout=10) as response:
-            body = response.read().decode("utf-8")
         # Google serves an HTML sign-in/consent page (HTTP 200) instead of
         # an iCal document when the calendar is private or the secret
         # address is wrong. Treat that as a feed error so the caller can log
