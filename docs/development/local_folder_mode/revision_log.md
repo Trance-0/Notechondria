@@ -241,3 +241,14 @@ the front page, and the heatmap, plus `folderAwareImageProvider` and
 | Front page | Carousel and collections: the folder's courses that hold at least one live note (the backend: at least one public note), in course order, at most 6; recent and recommended notes: every live note by `last_edit` (D1); `upcoming_events` from `planner/events.json` without `client_local_id`. `GET /heatmap/` (182 days each way) is answered too | F44; `handlers/activity.dart` |
 | Handshake | `capabilities.attachments` is 1 | F46; `handlers/auth_settings.dart` |
 | Fixtures | 14 new fixtures. Setups `note_with_attachment`, `note_with_snapshot`, and `note_with_session` add `{attachment_id}`, `{version_id}`, `{session_id}`; a request with `files` (field to `filename`, `content_type`, `base64`) is sent as multipart with its `fields`, by both the Dart test and `backend/notes/test_api_contract.py` | 8.4; `test/fixtures/api_v1/` |
+
+
+## 12.7 Hardening round (0.1.203): index cache extracted
+
+The first follow-up of the section A hardening round in
+`next_phase.md` (deferred item L2A2-5). A pure refactor with no
+behaviour change.
+
+| Item | Code | Where |
+|---|---|---|
+| L2A2-5 | The in-memory index cache moved out of `local_folder_controller.dart` into a new `FolderIndexCache` in `lf/folder_index_cache.dart`: the index state (`_index`, the unverified set, the scan-time change log, the flush timer and dirty flag, scan progress) and its methods (`setIndex`, `scan`, the scanner factory, `isUnverified`, `updateIndex`, the coalesced `_scheduleFlush`, `flushIndex`). The class is controller-free like `folder_index.dart`, reading the controller's live folder, record, lock name, and `active` state through accessor callbacks as `FolderScanner` takes its collaborators, and calling back into `notifyListeners`. The controller keeps thin `index`/`progress`/`isUnverified`/`updateIndex`/`flushIndex`/`rescan` delegators, so the transport, the router `RouteContext`, the handlers, and the tests are unchanged; `kIndexFlushDelay` moved with the cache and is re-exported from the controller file. The controller dropped from 892 to 788 lines | 3.8, L2A-1, L2A-2, 6.2 R1 R2 R4; `local_folder_controller.dart`, `folder_index_cache.dart` |

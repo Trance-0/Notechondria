@@ -147,9 +147,15 @@ unchanged. "Above" and "below" in them refer to this file, and
     above ("Scan page size", L2A-6) before the option is shown; the owner
     deferred them for 0.1.201. Also assert the startup verification
     rescan's page hold in the timing test.
-  - L2A2-5 (INFO): `local_folder_controller.dart` is near the 1000-line
-    cap; move the index cache (`_unverified`, `_scanLog`, `_scan`,
-    `_scheduleFlush`, `flushIndex`) into its own file before it grows.
+  - [x] L2A2-5 (INFO): `local_folder_controller.dart` was near the
+    1000-line cap; the index cache (`_unverified`, `_scanLog`, `_scan`,
+    `_scheduleFlush`, `flushIndex`, plus `_index`, `_flushTimer`,
+    `_indexDirty`, `_progress`, `_setIndex`, `_scanner`, `isUnverified`,
+    `updateIndex`) moved to `lf/folder_index_cache.dart` as
+    `FolderIndexCache` in 0.1.203. The controller keeps thin
+    `index`/`progress`/`isUnverified`/`updateIndex`/`flushIndex`/`rescan`
+    delegators, so the transport, handlers, and tests are unchanged, and
+    dropped from 892 to 788 lines.
 - [ ] Found by the 0.1.201 browser check (headless Chromium, editor in
   folder mode):
   - Fonts: Flutter web loads Roboto and the Noto Sans Symbols fallback

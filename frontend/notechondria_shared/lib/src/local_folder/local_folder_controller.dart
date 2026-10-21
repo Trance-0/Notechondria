@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'change_channel.dart';
 import 'folder_fs.dart';
 import 'folder_index.dart';
+import 'folder_index_cache.dart';
 import 'folder_journal.dart';
 import 'folder_layout.dart';
 import 'folder_lock.dart';
@@ -17,6 +18,8 @@ import 'local_folder_boot.dart';
 import 'local_folder_platform.dart';
 import 'storage_mode_client.dart';
 import 'transport.dart';
+
+export 'folder_index_cache.dart' show FolderIndexCache, kIndexFlushDelay;
 
 /// Folder state (main 2.5). It never changes routing (2.8).
 enum LocalFolderState {
@@ -50,15 +53,6 @@ String _causeOf(String message) {
 const String _kAppVersion =
     String.fromEnvironment('APP_VERSION', defaultValue: 'dev');
 
-/// L2A-1: how long after this tab's last write the in-memory index is
-/// written to `index.json`, so that a burst of saves costs one write.
-const Duration kIndexFlushDelay = Duration(seconds: 1);
-
-bool _isNoteEntry(IndexedFile f) =>
-    f.kind == IndexedKind.note ||
-    f.kind == IndexedKind.trashNote ||
-    f.kind == IndexedKind.sidecar;
-
 /// One per app instance, owned by `_NotechondriaAppState` (main 2.5, 2.7).
 /// It captures `Zone.current` when created, during the root widget's first
 /// build inside `runGuardedApp`'s zone; void listeners are bound to it.
@@ -87,6 +81,19 @@ class LocalFolderController extends ChangeNotifier {
     } else {
       _channel = NoopFolderChangeChannel();
     }
+    _cache = FolderIndexCache(
+      folder: () => _folder,
+      record: () => _record,
+      isActive: () => _state == LocalFolderState.active,
+      locks: platform.locks,
+      lockName: () => lockName,
+      zone: zone,
+      indexFlushDelay: indexFlushDelay,
+      now: _now,
+      log: log,
+      onProgress: notifyListeners,
+      onIndexChanged: notifyListeners,
+    );
   }
 
   /// The production controller: the browser platform and the snapshot of
@@ -136,17 +143,12 @@ class LocalFolderController extends ChangeNotifier {
   StorageModeRecord? _record;
   FolderFs? _folder;
   FolderJournal? _journal;
-  FolderIndex? _index;
 
-  /// Note body and sidecar entries loaded from `index.json` and not yet
-  /// compared with the disk in this page (3.8, L2A-1).
-  Set<String> _unverified = <String>{};
+  /// The in-memory index, the unverified set, the coalesced flush, and the
+  /// scan that keeps this tab's changes (L2A2-5): extracted to
+  /// [FolderIndexCache] so the controller stays under the 1.6 line cap.
+  late final FolderIndexCache _cache;
 
-  /// This tab's index changes while a scan runs (L2A-2).
-  IndexChangeLog? _scanLog;
-  Timer? _flushTimer;
-  bool _indexDirty = false;
-  ScanProgress? _progress;
   LocalFolderFailure? _failure;
   DisconnectReason? _disconnectReason;
   String? _switchedTo;
@@ -167,8 +169,8 @@ class LocalFolderController extends ChangeNotifier {
   StorageModeRecord? get record => _record;
   FolderFs? get folder => _folder;
   FolderJournal? get journal => _journal;
-  FolderIndex? get index => _index;
-  ScanProgress? get progress => _progress;
+  FolderIndex? get index => _cache.index;
+  ScanProgress? get progress => _cache.progress;
   LocalFolderFailure? get failure => _failure;
   DisconnectReason? get disconnectReason => _disconnectReason;
   FolderLocks get locks => platform.locks;
@@ -238,7 +240,7 @@ class LocalFolderController extends ChangeNotifier {
         return LocalFolderMessages.needsPermission(name);
       case LocalFolderState.scanning:
         return LocalFolderMessages.scanning(
-            name, _progress?.done ?? 0, _progress?.total ?? 0);
+            name, _cache.progress?.done ?? 0, _cache.progress?.total ?? 0);
       case LocalFolderState.error:
         final f = _failure;
         return LocalFolderMessages.unavailable(
@@ -373,138 +375,35 @@ class LocalFolderController extends ChangeNotifier {
       if (index != null) {
         // Active at once (2.9 step 3); the list routes compare these
         // entries with the disk before answering from them (3.8).
-        _setIndex(index, fromFile: true);
+        _cache.setIndex(index, fromFile: true);
         _setState(LocalFolderState.active);
         return;
       }
-      _progress = const ScanProgress(0, 0);
+      _cache.startProgress();
       _setState(LocalFolderState.scanning);
-      await _scan(journal);
+      await _cache.scan(journal);
       _setState(LocalFolderState.active);
     } catch (error) {
       reportFolderError(error, process: 'scan');
     }
   }
 
-  /// Replaces the in-memory index. Entries of a [fromFile] index start
-  /// unverified; a scanned index is verified. Drops a pending flush.
-  void _setIndex(FolderIndex? index, {bool fromFile = false}) {
-    _flushTimer?.cancel();
-    _flushTimer = null;
-    _indexDirty = false;
-    _index = index;
-    _unverified = {
-      if (fromFile && index != null)
-        for (final f in index.files.values)
-          if (_isNoteEntry(f)) f.path,
-    };
-  }
-
-  /// A scan from [previous]; index changes this tab makes while it runs are
-  /// applied to its result, in its final hold for `index.json` and again
-  /// for those made after that hold (L2A-2).
-  Future<ScanResult> _scan(FolderJournal journal,
-      {FolderIndex? previous, Set<String> changedPaths = const {}}) async {
-    final during = _scanLog = IndexChangeLog();
-    var applied = 0;
-    try {
-      final result = await _scanner(journal).scan(
-          previous: previous,
-          changedPaths: changedPaths,
-          beforeWrite: (files) {
-            during.applyTo(files);
-            applied = during.length;
-          });
-      final files = Map<String, IndexedFile>.of(result.index.files);
-      during.applyTo(files, from: applied);
-      _setIndex(FolderIndex(
-          folderId: result.index.folderId,
-          generatedAt: result.index.generatedAt,
-          files: files,
-          layoutVersion: result.index.layoutVersion));
-      if (during.length > applied) _scheduleFlush();
-      return ScanResult(
-          index: _index!,
-          fixes: result.fixes,
-          dropped: result.dropped,
-          countersRaised: result.countersRaised);
-    } finally {
-      if (identical(_scanLog, during)) _scanLog = null;
-    }
-  }
-
-  FolderScanner _scanner(FolderJournal journal) => FolderScanner(
-        fs: _folder!,
-        locks: locks,
-        lockName: lockName,
-        journal: journal,
-        folderId: _record!.folderId,
-        now: _now,
-        onProgress: (p) {
-          _progress = p;
-          notifyListeners();
-        },
-      );
-
   /// Whether [path]'s entry came from `index.json` and has not been
-  /// compared with the disk in this page (3.8, L2A-1).
-  bool isUnverified(String path) => _unverified.contains(path);
+  /// compared with the disk in this page (3.8, L2A-1). Held by [_cache].
+  bool isUnverified(String path) => _cache.isUnverified(path);
 
-  /// Applies changes to the in-memory index: this tab's own writes
-  /// ([written]), and files a handler re-read (6.2 R2, P1B-1). Every changed
-  /// path, and each of [verified], now matches the disk. [written] changes
-  /// reach `index.json` through a coalesced [flushIndex]; a scan running
-  /// meanwhile applies them to its result (L2A-2).
+  /// Applies changes to the in-memory index (6.2 R2, P1B-1, L2A-2); see
+  /// [FolderIndexCache.updateIndex].
   void updateIndex(Map<String, IndexedFile?> changes,
-      {Iterable<String> removedDirs = const [],
-      Iterable<String> verified = const [],
-      bool written = false}) {
-    _unverified
-      ..removeAll(changes.keys)
-      ..removeAll(verified);
-    if (changes.isEmpty && removedDirs.isEmpty) return;
-    final base = _index ??
-        FolderIndex(
-            folderId: _record?.folderId ?? '', generatedAt: '', files: const {});
-    _index = base.withChanges(changes, removedDirs: removedDirs);
-    _scanLog?.add(changes, removedDirs);
-    if (written) _scheduleFlush();
-    notifyListeners();
-  }
-
-  void _scheduleFlush() {
-    _indexDirty = true;
-    _flushTimer ??= zone.run(() => Timer(indexFlushDelay, () {
-          _flushTimer = null;
-          unawaited(flushIndex());
-        }));
-  }
+          {Iterable<String> removedDirs = const [],
+          Iterable<String> verified = const [],
+          bool written = false}) =>
+      _cache.updateIndex(changes,
+          removedDirs: removedDirs, verified: verified, written: written);
 
   /// Writes the in-memory index to `index.json` under the exclusive lock
-  /// (R1) when this tab's writes changed it since the last write of the
-  /// file (L2A-1), so a reload starts from them and purged notes leave the
-  /// file. A failure is logged and retried after the next write.
-  Future<void> flushIndex() async {
-    _flushTimer?.cancel();
-    _flushTimer = null;
-    final folder = _folder;
-    if (!_indexDirty || folder == null || _state != LocalFolderState.active) {
-      return;
-    }
-    _indexDirty = false;
-    try {
-      await locks.run(lockName, FolderLockMode.exclusive, () async {
-        final index = _index;
-        if (index != null && identical(folder, _folder)) {
-          await folder.writeText(kIndexPath, index.encode());
-        }
-      });
-    } catch (error) {
-      _indexDirty = true;
-      log(LocalFolderLogLevel.warning,
-          scrubSessionSentinels(LocalFolderMessages.indexNotSaved('$error')));
-    }
-  }
+  /// (L2A-1); see [FolderIndexCache.flushIndex].
+  Future<void> flushIndex() => _cache.flushIndex();
 
   /// Rescan (6.4) and the verification rescan after startup (2.9). Keeps
   /// the state `active`; a failure moves it as [reportFolderError] does.
@@ -512,8 +411,8 @@ class LocalFolderController extends ChangeNotifier {
     final journal = _journal;
     if (_state != LocalFolderState.active || journal == null) return null;
     try {
-      final result =
-          await _scan(journal, previous: _index, changedPaths: changedPaths);
+      final result = await _cache.scan(journal,
+          previous: _cache.index, changedPaths: changedPaths);
       notifyListeners();
       return result;
     } catch (error) {
@@ -687,7 +586,7 @@ class LocalFolderController extends ChangeNotifier {
     });
     _record = record;
     _folder = pending.folder;
-    _setIndex(null);
+    _cache.setIndex(null);
     _setState(LocalFolderState.opening);
     await _openGranted();
   }
@@ -857,7 +756,7 @@ class LocalFolderController extends ChangeNotifier {
     _mode = StorageMode.browserOrCloud;
     _folder = null;
     _journal = null;
-    _setIndex(null);
+    _cache.setIndex(null);
     notifyListeners();
   }
 
@@ -882,8 +781,7 @@ class LocalFolderController extends ChangeNotifier {
 
   @override
   void dispose() {
-    _flushTimer?.cancel();
-    _flushTimer = null;
+    _cache.cancelFlush();
     _subscription?.cancel();
     _channel.close();
     _httpClient?.close();

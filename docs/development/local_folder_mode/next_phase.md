@@ -106,17 +106,19 @@ Close the highest-value follow-ups before Phase 4 builds on the same
 code. IDs marked "202-" are from `deferred.md` "Deferred from the 0.1.202
 final review"; the 0.1.201 review used N1 to N11 for other findings.
 
-Do first: move the index cache (`_unverified`, `_scanLog`, `_scan`,
-`_scheduleFlush`, `flushIndex`) out of `lf/local_folder_controller.dart`
-(892 lines) into its own file (L2A2-5). The L2A2 fixes and Phase 4's
-change handling both land in that code.
+Do first (done 0.1.203): the index cache (`_unverified`, `_scanLog`,
+`_scan`, `_scheduleFlush`, `flushIndex`) moved out of
+`lf/local_folder_controller.dart` (892 lines) into
+`lf/folder_index_cache.dart` as `FolderIndexCache` (L2A2-5); the
+controller is now 788 lines. The L2A2 fixes and Phase 4's change handling
+land in that code.
 
 | Item | Problem | Files (lines) | Fix and test |
 |---|---|---|---|
 | 202-N6 | An unparsable `planner/events.json` or `planner/feeds.json` reads as empty, and the next create (the 7.1 push too) replaces it; `planner/sessions.json` and `planner/heatmap.json` behave the same | `lf/handlers/planner_records.dart` (231), `lf/handlers/planner.dart` (351), `lf/handlers/history_sessions.dart` (304), `lf/handlers/activity.dart` (171), `lf/folder_messages.dart` (572) | Refuse writes with a 1.8 503 while such a file exists; tests in `planner_routes_test.dart` (292) and `history_activity_test.dart` (248) |
 | 202-N9 | Portal Disconnect clears only `_plannerEvents`; folder rows stay in memory, and a partly failed signed-out reload writes them to `local_cache`; the editor does the same | `frontend/portal_app/lib/app_shell.dart` (924), `frontend/portal_app/lib/core/initial_data.dart` (328), the editor shell | Mirror the planner's `_clearPlannerSessionFields` (`frontend/planner_app/lib/core/local_folder_push.dart:170`); smoke check: no folder row in `local_cache` after Disconnect and a failed reload |
 | Scan holds | The first full scan's 500-entry page held the lock 1,993 to 2,228 ms over 2,000 OPFS notes, and the first list after an open from `index.json` 1,733 ms (L2A-6, L2A2-4), against R4's 2 s target | `lf/folder_scanner.dart` (269), `lf/handlers/lookup.dart` (220), the controller | Time-bounded pages; assert the scan page and the startup verification rescan in `test/local_folder_opfs_timing_test.dart` (230) |
-| L2A2-1 to L2A2-3 | Index staleness: rescan replay can revert an identity fix or another tab's save; purged summaries can stay in `index.json`; roll-forward does not update the in-memory index | The new index-cache file, `lf/folder_index.dart` (501), `lf/folder_journal.dart` (419) | As written in `deferred.md`, including the two-notes-same-id test |
+| L2A2-1 to L2A2-3 | Index staleness: rescan replay can revert an identity fix or another tab's save; purged summaries can stay in `index.json`; roll-forward does not update the in-memory index | `lf/folder_index_cache.dart` (the extracted index cache), `lf/folder_index.dart` (501), `lf/folder_journal.dart` (419) | As written in `deferred.md`, including the two-notes-same-id test |
 | Fonts | Flutter web loads Roboto and the Noto fallback fonts from `fonts.gstatic.com` in every mode; with no network it retries the fallbacks (1,866 requests in one planner run) | `frontend/{editor,planner,portal}_app/web/index.html`, `.github/workflows/frontend-pages.yml` | Bundle the fonts or point the engine's font fallback base URL at the app's own assets; prove it with a `--network none` browser load. Read `docs/LLM_CHECK.md` common mistake 9 before touching `flutter_bootstrap.js` |
 | Covers | Shared `NoteCoverImage` uses `Image.network` (`:53`), so `nc-folder:` covers show the fallback in all three apps (202-N15) | `frontend/notechondria_shared/lib/src/components/note_cover_image.dart` (205) | `folderAwareImageProvider`; test in `folder_aware_image_test.dart` |
 | Viewer semantics | The portal note viewer's title, subtitle, and body are not in the accessibility tree; the subtitle names "local-folder" as the author | `frontend/portal_app/lib/components/note_viewer.dart` (158) | Label it as the editor's viewer does; a smoke check finds the title by semantics |
