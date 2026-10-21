@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRE_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRE_DB:-postgres}
     ports:
-      - "${DB_HOST_PORT:-9032}:5432"
+      - "127.0.0.1:${DB_HOST_PORT:-9032}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -39,7 +39,7 @@ services:
     depends_on:
       - app
     ports:
-      - "${APP_HOST_PORT:-9060}:80"
+      - "127.0.0.1:${APP_HOST_PORT:-9060}:80"
 
   editor_frontend:
     build:
@@ -48,6 +48,7 @@ services:
       args:
         FRONTEND_API_BASE_URL: http://localhost:${ROOT_HTTP_PORT:-8080}/api/v1
         APP_BASE_HREF: /editor/
+        APP_VERSION: ${APP_VERSION:-}
     environment:
       FRONTEND_BACKEND_ORIGIN: http://backend_nginx
     depends_on:
@@ -60,6 +61,7 @@ services:
       args:
         FRONTEND_API_BASE_URL: http://localhost:${ROOT_HTTP_PORT:-8080}/api/v1
         APP_BASE_HREF: /planner/
+        APP_VERSION: ${APP_VERSION:-}
     environment:
       FRONTEND_BACKEND_ORIGIN: http://backend_nginx
     depends_on:
@@ -72,6 +74,7 @@ services:
       args:
         FRONTEND_API_BASE_URL: http://localhost:${ROOT_HTTP_PORT:-8080}/api/v1
         APP_BASE_HREF: /portal/
+        APP_VERSION: ${APP_VERSION:-}
     environment:
       FRONTEND_BACKEND_ORIGIN: http://backend_nginx
     depends_on:
@@ -85,7 +88,7 @@ services:
       - planner_frontend
       - portal_frontend
     ports:
-      - "${ROOT_HTTP_PORT:-8080}:80"
+      - "127.0.0.1:${ROOT_HTTP_PORT:-8080}:80"
     volumes:
       - ./deployment/docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
 

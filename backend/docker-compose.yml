@@ -48,7 +48,7 @@ services:
       - static_volume:/home/staticfiles
       - media_volume:/home/mediafiles
     ports:
-      - ${BACKEND_HOST_PORT:-9090}:8000
+      - "127.0.0.1:${BACKEND_HOST_PORT:-9090}:8000"
     depends_on:
       - db
     healthcheck:
@@ -70,7 +70,7 @@ services:
       - POSTGRES_DB=${POSTGRE_DB}
     ports:
       # port 5432 for connection on local computer
-      - ${DB_HOST_PORT:-9032}:5432
+      - "127.0.0.1:${DB_HOST_PORT:-9032}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRE_USERNAME} -d ${POSTGRE_DB}"]
       interval: 5s
@@ -87,7 +87,7 @@ services:
       - media_volume:/home/mediafiles
     ports:
       # host-facing web port
-      - ${APP_HOST_PORT:-9080}:80
+      - "127.0.0.1:${APP_HOST_PORT:-9080}:80"
     depends_on:
       - app
     healthcheck:
