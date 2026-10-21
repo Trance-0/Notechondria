@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../local_folder/local_folder_controller.dart';
+import '../utils/folder_aware_image.dart';
+
 /// Cover-image renderer for a note.
 ///
-/// When [imageUrl] is non-empty, displays the network image inside a
-/// rounded card. Otherwise falls back to a deterministic theme-colored
+/// When [imageUrl] is non-empty, displays the image inside a rounded card:
+/// an `nc-folder:` cover is read from [folder] (local folder 3.6, 202-N15),
+/// any other URL from the network. Otherwise falls back to a deterministic theme-colored
 /// barcode generated from [seed] (typically the note's uuid + title)
 /// — purely a frontend render, never persisted to R2 / CDN.
 ///
@@ -22,6 +26,7 @@ class NoteCoverImage extends StatelessWidget {
     this.showCaption = false,
     this.aspectRatio = 16 / 5,
     this.borderRadius = 16,
+    this.folder,
   });
 
   /// Stable per-note seed string. The barcode pattern is derived
@@ -41,6 +46,10 @@ class NoteCoverImage extends StatelessWidget {
   final double aspectRatio;
   final double borderRadius;
 
+  /// The app's folder controller, for `nc-folder:` covers; null outside
+  /// folder mode, where such a URL shows the barcode fallback.
+  final LocalFolderController? folder;
+
   @override
   Widget build(BuildContext context) {
     final hasImage = imageUrl != null && imageUrl!.isNotEmpty;
@@ -50,8 +59,8 @@ class NoteCoverImage extends StatelessWidget {
       child: AspectRatio(
         aspectRatio: aspectRatio,
         child: hasImage
-            ? Image.network(
-                imageUrl!,
+            ? Image(
+                image: folderAwareImageProvider(imageUrl!, folder: folder),
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => _BarcodeCover(
                   seed: seed,

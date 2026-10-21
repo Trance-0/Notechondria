@@ -180,6 +180,7 @@ class _NoteMetadataDialogState extends State<_NoteMetadataDialog> {
         ),
         const SizedBox(height: 10),
         NoteCoverImage(
+          folder: _EditorFolder.current,
           seed: _coverSeed,
           imageUrl: _coverUrl,
           caption: widget.note['title']?.toString(),

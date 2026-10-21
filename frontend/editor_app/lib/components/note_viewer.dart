@@ -167,6 +167,7 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               NoteCoverImage(
+                                folder: _EditorFolder.current,
                                 seed: uuid.isNotEmpty ? uuid : 'note-$title',
                                 imageUrl: coverUrl.isNotEmpty ? coverUrl : null,
                                 caption: title,

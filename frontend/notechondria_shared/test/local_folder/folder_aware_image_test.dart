@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:notechondria_shared/local_folder_testing.dart';
+import 'package:notechondria_shared/src/components/note_cover_image.dart';
 import 'package:notechondria_shared/src/local_folder/local_folder_controller.dart';
 import 'package:notechondria_shared/src/utils/folder_aware_image.dart';
 
@@ -84,6 +85,42 @@ void main() {
     });
     expect(error, isNull);
     expect(info!.image.width, 1);
+  });
+
+  testWidgets('NoteCoverImage shows an nc-folder: cover from the folder (202-N15)',
+      (tester) async {
+    late (LocalFolderController, MemoryFolderFs) app;
+    await tester.runAsync(() async {
+      app = await folderApp();
+      await app.$2.writeBytes('assets/notes/ab/cover.png', kPng);
+    });
+    Widget cover(String url) => MaterialApp(
+          home: SizedBox(
+            width: 320,
+            child: NoteCoverImage(
+                seed: 'n1',
+                imageUrl: url,
+                caption: 'Cover fallback',
+                showCaption: true,
+                folder: app.$1),
+          ),
+        );
+    Future<void> settle() async {
+      for (var i = 0; i < 3; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+        await tester.pump();
+      }
+    }
+
+    await tester.pumpWidget(cover('nc-folder:///assets/notes/ab/cover.png?v=1'));
+    await settle();
+    final image = tester.widget<Image>(find.byType(Image));
+    expect(image.image, isA<FolderImage>());
+    expect(find.text('Cover fallback'), findsNothing, reason: 'the folder bytes decoded');
+
+    await tester.pumpWidget(cover('nc-folder:///assets/notes/ab/missing.png'));
+    await settle();
+    expect(find.text('Cover fallback'), findsOneWidget, reason: 'a missing file shows the barcode');
   });
 
   testWidgets('folderAwareSvg renders SvgPicture.memory for folder URLs',

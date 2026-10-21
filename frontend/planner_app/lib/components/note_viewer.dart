@@ -94,6 +94,7 @@ class _NoteViewerDialogState extends State<_NoteViewerDialog> {
                           Padding(
                             padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                             child: NoteCoverImage(
+                              folder: _PlannerFolder.current,
                               seed: uuid.isNotEmpty
                                   ? uuid
                                   : 'note-${note['title']?.toString() ?? ''}',

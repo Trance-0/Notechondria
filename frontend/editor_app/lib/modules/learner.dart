@@ -674,6 +674,7 @@ class _LearnerNoteCard extends StatelessWidget {
           // the same visual moment the rest of the app does.
           final horizontal = showCoverBanner && constraints.maxWidth >= 600;
           final cover = NoteCoverImage(
+            folder: _EditorFolder.current,
             seed: uuid.isNotEmpty ? uuid : 'note-$title',
             imageUrl: coverUrl.isNotEmpty ? coverUrl : null,
             caption: title,

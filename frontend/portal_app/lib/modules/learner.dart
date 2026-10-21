@@ -668,6 +668,7 @@ class _LearnerNoteCard extends StatelessWidget {
           children: [
             if (coverUrl.isNotEmpty)
               NoteCoverImage(
+                folder: _PortalFolder.current,
                 seed: uuid.isNotEmpty ? uuid : 'note-$noteTitle',
                 imageUrl: coverUrl,
                 caption: noteTitle,
