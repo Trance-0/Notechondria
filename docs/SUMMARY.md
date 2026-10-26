@@ -79,6 +79,7 @@ Release notes for each `0.1.x` update, in reverse chronological order. Each
 entry documents what shipped, why, and which files changed, so the docs site
 doubles as a changelog alongside the mdBook developer guide.
 
+- [0.1.203 - Local folder index cache extracted (L2A2-5)](versions/0.1.203.md)
 - [0.1.202 - Local folder mode in the planner and portal](versions/0.1.202.md)
 - [0.1.201 - Local folder mode in the editor](versions/0.1.201.md)
 - [0.1.200 - Local folder mode: foundation (option not shown yet)](versions/0.1.200.md)
