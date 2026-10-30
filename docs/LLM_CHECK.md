@@ -906,3 +906,12 @@ Use this checklist at the end of each modification round.
 - Jenkins's server-side pipeline validator passed. Changed Python compilation,
   all deployment shell syntax, backend Compose model and whitespace checks
   passed. Push/webhook deployment outcome is recorded below after execution.
+
+- Pushed source fix 2f8dc048 to GitHub main. The public webhook reached
+  https://jenkins.trance-0.com/github-webhook/ and Jenkins logged its receipt.
+  Because the previous run had no SCM checkout state, seeded the restored SCM
+  job with remote build #13; both controller Jenkinsfile and agent workspace
+  checked out 2f8dc048 from GitHub. Backend 281, editor smoke, and shared 358
+  tests passed; GitHub backend-tests also passed. A documentation push after
+  this baseline is used to verify automatic scheduling, independently of a
+  manual Build Now action.

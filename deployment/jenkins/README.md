@@ -130,3 +130,10 @@ Earlier builds #6 (systemd) and #12 (Docker) proved the test/deployment stages
 using snapshots. They do not prove webhook behavior. Their logs remain under
 ignored `logs/`. The remote webhook verification is recorded separately in
 `docs/LLM_CHECK.md`.
+
+When changing an existing job from inline Pipeline back to SCM, run one
+**Build Now** against GitHub to establish checkout/polling state. A webhook
+may be received without scheduling while the last run has no SCM state.
+After that baseline, push a commit and verify the automatic build cause.
+The initial restored SCM build is #13 for revision `2f8dc048`; its checkout
+comes from GitHub on both the controller and build agent.
