@@ -437,6 +437,10 @@ Cloudflare R2 using repo-root <code>.env</code>.</li>
 <li><a href="../AGENTS.md/AGENTS.html"><code>../AGENTS.md/AGENTS.md</code></a> — shared
 cross-project agent contract (submodule, pinned).</li>
 </ul>
+<p>Local full-stack Jenkins deployment pulls GitHub <code>main</code> on push webhooks.
+PostgreSQL, Django, three apps, gateway, Casdoor and GitHub sync use a private
+root <code>local.env</code> on the local build agent. See
+<a href="../deployment/jenkins/README.html">Jenkins runbook</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="notechondria--long-form-agent-handoff"><a class="header" href="#notechondria--long-form-agent-handoff">Notechondria — Long-Form Agent Handoff</a></h1>
 <p>Project-local agent rules and the open-work / caution list. The
 canonical cross-project rules live in the
