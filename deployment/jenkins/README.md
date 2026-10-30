@@ -173,7 +173,36 @@ Logs are retained at `logs/jenkins-build-6.log`; backups live outside the
 workspace in `/var/lib/jenkins/backups/notechondria/`.
 
 Browser sign-in/callbacks and user-authorized GitHub pushes remain untested.
-The Docker controller's separate admin password/token was unavailable; its
-SCM pipeline definition was not edited live. It will read the committed
-Jenkinsfile after the owner pushes these changes. The system controller's
-pipeline and boot configuration already contain the local fixes.
+The Docker controller's admin login was subsequently verified using the
+owner-provided credentials. Its job now uses the same sandboxed pipeline
+on `local-docker`, with a sanitized source snapshot outside the job workspace.
+The system controller's pipeline and boot configuration also contain the fixes.
+
+## Refresh the Docker controller from this checkout
+
+Run on the host, supplying the admin password through a hidden prompt:
+
+```bash
+read -r -s -p 'Jenkins admin password: ' JENKINS_PASSWORD
+export JENKINS_PASSWORD
+python3 deployment/jenkins/configure_docker_job.py \
+  --source-dir /home/motuariki/Documents/workspace/Docker/jenkins/workspace/local-source/notechondria-20261030 \
+  --build
+unset JENKINS_PASSWORD
+```
+
+This snapshots Git-visible source without env files, saves the previous job
+XML privately under `logs/`, installs the pipeline in sandbox mode on the
+`local-docker` node, and optionally starts a full deployment. The snapshot
+must be refreshed after edits. Keep its directory outside Jenkins's build
+workspace. This changes the Docker job from SCM mode to local snapshot mode;
+its GitHub webhook therefore deploys the staged snapshot unless
+`LOCAL_SOURCE_DIR` is empty. No credentials are written into the job script.
+
+Docker Jenkins [build #12](http://127.0.0.1:8081/job/notechondria/12/) also
+succeeded on 2026-10-30 after configuring the local snapshot job. All seven
+application containers are healthy, and API/frontend/asset/Casdoor checks
+passed. Log: `logs/jenkins-docker-build-12.log`. The owner-supplied admin
+credential authenticates to :8081; the supplied soragoto credential did not
+authenticate to either controller. Neither password was saved in the helper,
+job configuration, or repository.

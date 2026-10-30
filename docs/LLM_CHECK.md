@@ -871,3 +871,22 @@ Use this checklist at the end of each modification round.
   supplies its separate admin credentials. No push performed.
 - VERSION unchanged: deployment tooling and deterministic test setup only;
   no product API or frontend behavior change beyond build packaging.
+
+### 2026-10-30 — Docker Jenkins credential follow-up
+
+- Owner-supplied admin credential authenticated to Docker Jenkins :8081;
+  neither supplied credential authenticated to system Jenkins :8080, and the
+  supplied soragoto credential was rejected by both. No password committed.
+- Replaced the Docker SCM job with the same sandboxed local pipeline on
+  `local-docker`, staging a sanitized Git source snapshot outside its build
+  workspace. Added `configure_docker_job.py` to reproduce this setup and keep
+  credential input in an environment variable. Restoring SCM mode remains an
+  explicit owner choice; empty LOCAL_SOURCE_DIR checks out GitHub main.
+- Resolved copied-source Git ownership check and imported the existing capped
+  Buildx worker configuration into the agent. Docker build #12 SUCCESS:
+  backend/frontend test gates, backup, full-stack deployment, route/assets and
+  Casdoor checks; all seven containers healthy. Persistent log:
+  `logs/jenkins-docker-build-12.log`. This resolves the earlier Docker admin
+  access limitation; optional AI/SMTP credentials and browser authorization
+  checks remain as documented.
+- Python compilation and git diff whitespace checks passed. Local commit only.
