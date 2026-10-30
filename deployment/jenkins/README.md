@@ -137,3 +137,10 @@ may be received without scheduling while the last run has no SCM state.
 After that baseline, push a commit and verify the automatic build cause.
 The initial restored SCM build is #13 for revision `2f8dc048`; its checkout
 comes from GitHub on both the controller and build agent.
+
+Verified on 2026-10-30: [Docker build #14](http://127.0.0.1:8081/job/notechondria/14/)
+was **Started by GitHub push by Trance-0**, checked out
+`2e0ba01e95e06b041ecc407c6061e08eab1bc028` from GitHub main, and completed
+SUCCESS. All seven containers were healthy, and the running handshake
+reported the same commit. Test, backup, frontend-assets and Casdoor checks
+passed. Logs remain locally at `logs/jenkins-remote-build-14.log`.

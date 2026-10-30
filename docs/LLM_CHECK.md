@@ -921,3 +921,12 @@ Use this checklist at the end of each modification round.
   explicit checkout step returns GIT_COMMIT without automatically exporting
   it; Jenkinsfile now assigns the returned revision to env.GIT_COMMIT.
   The follow-up push tests webhook scheduling after the successful SCM baseline.
+
+- Final remote webhook verification: Docker Jenkins build #14 was started by
+  GitHub push by Trance-0, checked out 2e0ba01e95e06b041ecc407c6061e08eab1bc028,
+  and completed SUCCESS. All test, backup, full-stack deployment and HTTP/
+  compiled-assets/Casdoor gates passed. All seven application containers are
+  healthy. /api/v1/handshake/ reports that exact commit with target jenkins.
+  Persistent logs: logs/jenkins-remote-build-13.log and -14.log. GitHub
+  backend-tests and frontend-pages passed for source fix 2f8dc048; docs-pages
+  passed for 2e0ba01e. No local source is used by the active job.
