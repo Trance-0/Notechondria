@@ -115,3 +115,6 @@ backend/static/monaco-editor/esm/
 
 # Private keys
 *.pem
+
+# Private deployment diagnostics and Jenkins configuration backups
+/logs/
