@@ -240,3 +240,8 @@ The owner also authorizes full-stack local Jenkins testing on this current
 hardware. Measure resources each run; keep sequential builds and resource
 caps. Production GitHub Pages/Northflank remains separate. Runbook:
 `docs/deployment/jenkins.md`; private test reference: root `local.env`.
+
+Owner correction, 2026-10-30: local Jenkins means locally hosted runtime
+and private deployment env, with code pulled from GitHub main by its push
+webhook. Do not replace remote SCM with local source snapshots. Push the
+authorized code changes and verify the resulting webhook build.

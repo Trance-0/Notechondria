@@ -1,5 +1,5 @@
 pipeline {
-  agent any
+  agent { label 'local-docker' }
   options {
     timestamps()
     disableConcurrentBuilds()
@@ -9,7 +9,6 @@ pipeline {
   }
   parameters {
     string(name: 'DEPLOY_ENV_SOURCE', defaultValue: '/var/lib/jenkins/secrets/notechondria-deploy.env', description: 'Private env file on the build agent.')
-    string(name: 'LOCAL_SOURCE_DIR', defaultValue: '', description: 'Trusted local source snapshot; leave empty for SCM checkout.')
   }
   environment {
     ENV_FILE = '.env.deploy'
@@ -23,18 +22,10 @@ pipeline {
   }
   triggers { githubPush() }
   stages {
-    stage('Source snapshot') {
+    stage('Checkout GitHub main') {
       steps {
         deleteDir()
-        script {
-          if (params.LOCAL_SOURCE_DIR?.trim()) {
-            withEnv(["SOURCE_DIR=${params.LOCAL_SOURCE_DIR}"]) {
-              sh 'python3 /usr/local/lib/notechondria-jenkins/snapshot_source.py "$SOURCE_DIR" "$WORKSPACE"'
-            }
-          } else {
-            checkout scm
-          }
-        }
+        checkout scm
       }
     }
     stage('Prepare environment') {

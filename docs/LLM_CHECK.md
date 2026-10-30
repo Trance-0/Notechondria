@@ -890,3 +890,19 @@ Use this checklist at the end of each modification round.
   access limitation; optional AI/SMTP credentials and browser authorization
   checks remain as documented.
 - Python compilation and git diff whitespace checks passed. Local commit only.
+
+### 2026-10-30 — restore GitHub SCM and webhook deployment
+
+- Owner corrected the source topology: locally hosted Jenkins must pull GitHub
+  main on push webhooks; only deployment env belongs on the local agent.
+- Removed LOCAL_SOURCE_DIR from Jenkinsfile, require remote `checkout scm`,
+  and select `local-docker`. Restored Docker and system job definitions and
+  native startup bootstrap to SCM so restart cannot restore snapshot mode.
+- Replaced the snapshot configuration helper with an SCM-only job helper;
+  retained existing GitHub push triggers and private agent env. Updated the
+  runbook, README, project overview, and agent convention accordingly.
+- Added checked-out GIT_COMMIT to backend build/runtime provenance so the
+  deployed handshake can be compared to the pushed revision.
+- Jenkins's server-side pipeline validator passed. Changed Python compilation,
+  all deployment shell syntax, backend Compose model and whitespace checks
+  passed. Push/webhook deployment outcome is recorded below after execution.

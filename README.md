@@ -135,6 +135,7 @@ done
 Continue working on this project, with prompts in ./docs/TODO.md.
 ```
 
-Local full-stack Jenkins deployment (PostgreSQL, Django, three apps, gateway,
-Casdoor and GitHub sync) uses a private root `local.env`. See
+Local full-stack Jenkins deployment pulls GitHub `main` on push webhooks.
+PostgreSQL, Django, three apps, gateway, Casdoor and GitHub sync use a private
+root `local.env` on the local build agent. See
 [deployment/jenkins/README.md](deployment/jenkins/README.md).

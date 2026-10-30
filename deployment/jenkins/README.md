@@ -1,208 +1,132 @@
 # Jenkins full-stack deployment
 
-This target uses Jenkins to test and deploy the full stack:
-- Django backend
-- PostgreSQL database
-- backend nginx
-- editor frontend
-- planner frontend
-- portal frontend
-- root gateway nginx
+The local Docker Jenkins controller builds **GitHub `main`**, triggered by
+GitHub push webhooks. It reads `Jenkinsfile` from the remote repository.
+Deployment secrets stay on the local build agent. Local checkout files are
+not used as pipeline source.
 
-## Ubuntu installation
+## Current host
 
-The home-directory scaffold on this host invokes the versioned installer:
+- Controller: http://127.0.0.1:8081/ (public URL https://jenkins.trance-0.com/).
+- Job: `notechondria`, **Pipeline script from SCM**.
+- Git repository: `https://github.com/Trance-0/Notechondria.git`.
+- Branch: `*/main`; script path: `Jenkinsfile`; lightweight checkout disabled.
+- Build node label: `local-docker`; its workspace is bind-mounted at the same
+  absolute path on the host so Docker bind mounts resolve correctly.
+- Trigger: **GitHub hook trigger for GITScm polling**.
+- Webhook receiver: `https://jenkins.trance-0.com/github-webhook/`.
 
-```bash
-bash ~/scripts/install-jenkins.sh
-```
+A separate systemd controller runs at http://127.0.0.1:8080/. Its login,
+configuration, and build history are independent. The Docker controller at
+:8081 is the webhook deployment target documented here.
 
-Run as your normal Ubuntu user. The script requests sudo, installs Java 21
-and Jenkins LTS using the official signed apt repository, verifies the plugin
-manager checksum, installs required plugins, and creates the `notechondria`
-pipeline. Docker Engine and Compose must already work for that user; existing
-Docker applications are preserved. Both amd64 and arm64 hosts are supported.
+## Environment configuration
 
-Jenkins listens at **http://127.0.0.1:8080**. Sign in as `admin`; read the
-password locally from `/var/lib/jenkins/secrets/notechondria-admin-password`.
-Passwords are not printed in install logs. The application gateway uses port
-9060. Override an occupied Jenkins port with `JENKINS_PORT=8081` before the
-install command.
+`local.env` at the repository root is the private reference for this target;
+it is ignored by Git and mode 0600. Its Casdoor and GitHub sync settings
+reference `prod.env`, while PostgreSQL credentials match the existing local
+cluster. Never commit either private env file.
 
-Rerunning preserves generated passwords, deployment settings, jobs' build
-history, databases, and media. It refreshes plugins and the managed job
-definition, then restarts Jenkins. This is installation/reconfiguration,
-not a purge of an existing Jenkins home. Jenkins runs as the invoking user
-so it can read the trusted checkout and use that user's Docker permissions.
-Use this controller only for trusted project pipelines.
-
-## Local workflow
-
-Open `/job/notechondria/` and select **Build Now** after installation. No
-deployment is started automatically by the installer.
-
-1. Copy Git-visible source into a clean workspace, excluding ignored files,
-   `.env` files, private keys, symlinks, and Git metadata. Uncommitted source
-   fixes are included. `LOCAL_SOURCE_DIR` defaults to this checkout.
-2. Copy `/var/lib/jenkins/secrets/notechondria-deploy.env` into the workspace.
-3. Run backend tests, then each frontend smoke-test image sequentially.
-4. Back up PostgreSQL to `/var/lib/jenkins/backups/notechondria`.
-5. Deploy backend, each frontend with a distinct image tag and base path,
-   and finally the gateway. Services restart after Docker restarts.
-6. Require HTTP success from `/api/v1/handshake/`, `/editor/`, `/planner/`,
-   and `/portal/` before Jenkins can report success.
-
-A failed test or backup blocks deployment. Automatic database reinitialization
-is disabled. Backups remain outside workspaces and build-history retention.
-The generated deployment env contains random database, Django, and app-admin
-passwords; edit it locally to configure OAuth, email, or an existing database.
-Do not replace existing database credentials with new values on a populated
-volume. Jenkins removes the workspace env in its final cleanup.
-
-Frontend Docker build context is `frontend/`, which includes the sibling
-`notechondria_shared` path dependency; use `-f frontend/editor_app/Dockerfile`
-when building an app manually. Base images support native ARM64.
-
-## Copy-paste diagnostics
-
-The installer saves a private per-run log under
-`~/.local/state/jenkins-install/` and emits a delimited diagnostic block on
-failure. Logs remain on disk for local inspection. To collect a fresh report:
+The active agent reads
+`/var/lib/jenkins/secrets/notechondria-deploy.env` **inside
+`jenkins-local-docker`**. Update it from the reference:
 
 ```bash
-bash ~/scripts/debug-jenkins.sh
+docker cp local.env jenkins-local-docker:/var/lib/jenkins/secrets/notechondria-deploy.env
+docker exec jenkins-local-docker chmod 600 /var/lib/jenkins/secrets/notechondria-deploy.env
 ```
 
-The report includes service state, listening ports, Java/Jenkins package
-versions, recent redacted Jenkins journal entries, Docker version, and
-Notechondria container state. It excludes environment files and credential
-contents. Review any additional build output before sharing it.
+The pipeline copies this private file into `.env.deploy` in its workspace
+and removes the workspace copy in final cleanup. `DEPLOY_ENV_SOURCE` can
+select another private agent path. Backend Compose forwards its integration
+variables using `ENV_FILE_PATH`; no credentials are embedded in Jenkinsfile.
+Keep existing database credentials when deploying over populated volumes.
 
-## Later FRP / GitHub webhook setup
+The local backend uses the existing PostgreSQL and static/media volumes.
+`DATABASE_URL` is explicitly empty in Compose to prevent a production URL
+from redirecting local migrations. Local uploads use Docker volumes instead
+of the production R2 bucket; the same application features remain available.
+Do not configure production R2 for local testing: startup clears collected
+static files. No database reinitialization is enabled.
 
-Tunnel to `127.0.0.1:8080` (or the chosen Jenkins port); update Jenkins's
-public URL under **Manage Jenkins → System** after the tunnel works. The
-GitHub webhook receiver path is `/github-webhook/`, with its trailing slash.
-No FRP configuration is changed by this installer.
+Optional missing credentials in the current reference:
 
-Local snapshot mode builds the local checkout even when a webhook triggers it.
-For automatic builds of GitHub `main`, push the workflow changes, switch the
-job to **Pipeline script from SCM**, set repository
-`https://github.com/Trance-0/Notechondria.git`, branch `*/main`, script path
-`Jenkinsfile`, and leave `LOCAL_SOURCE_DIR` empty. The deployment env stays on
-this Ubuntu host. The managed installer restores local mode when rerun.
+- `OPENAI_API_KEY`: needed for AI requests.
+- SMTP host, username, password: needed for email delivery.
 
-## Current host and reference environment (2026-10-30)
+Casdoor and GitHub App credentials are populated. Browser SSO requires local
+callback origins registered with the identity provider; GitHub installation
+and push authorization are per-user. Neither browser authorization flow was
+verified by the deployment health checks.
 
-There are two controllers: the Docker controller at `http://127.0.0.1:8081`
-(with agent `local-docker`, SCM `main`) and the systemd controller at
-`http://127.0.0.1:8080`. Their credentials and build histories are separate.
-The systemd controller can test an uncommitted local snapshot; the Docker
-SCM job sees fixes only after the owner pushes them.
+## Deployment sequence
 
-`local.env` at the checkout root is the private reference used for local
-testing. It is ignored by Git and mode 0600. Its Casdoor and GitHub sync
-settings come from `prod.env`; PostgreSQL credentials preserve the existing
-local cluster. `DATABASE_URL` is empty and the backend Compose service
-explicitly overrides it, so production database URLs cannot redirect local
-migrations. Storage uses the existing local static/media volumes; production
-R2 is deliberately not selected because startup clears collected static files.
-This supplies the same application features using local storage instead of R2.
-Do not copy the production database URL or R2 bucket into a local test env.
+1. Jenkins loads Jenkinsfile from GitHub main; checkout in the build workspace
+   fetches the remote source. The Git commit is recorded in build provenance.
+2. Prepare the private environment and the capped Buildx worker.
+3. Run 281 backend tests, each app's smoke suite, and shared local-folder tests.
+4. Back up PostgreSQL outside the workspace at
+   `/var/lib/jenkins/backups/notechondria/` inside the build agent.
+5. Deploy Django, PostgreSQL and backend nginx; build and deploy editor,
+   planner and portal sequentially; refresh the gateway.
+6. Require success from `/api/v1/handshake/`, all three app routes, compiled
+   JS/CanvasKit assets, and configured Casdoor when credentials are provided.
 
-The Docker agent's private source is
-`/var/lib/jenkins/secrets/notechondria-deploy.env` **inside the agent**, not
-the same-looking path on the host. The pipeline's `DEPLOY_ENV_SOURCE`
-parameter can point to another private file accessible by its selected agent.
-Backend Compose forwards the full env file, including Casdoor and GitHub
-sync; `ENV_FILE_PATH` points Compose to that file and is set by the scripts.
+The stack is available at http://localhost:9060/portal/, `/editor/`, and
+`/planner/`, with the API under `/api/v1/`. All three apps embed the repository
+VERSION and target the local backend. Tests and backups gate deployment;
+failures stop the pipeline. Persistent volumes and backups survive builds.
 
-Local snapshot pipeline setup uses Jenkins Groovy sandbox mode. The managed
-installer selects a fresh `/var/lib/jenkins/notechondria-workspace` for this
-controller. An old
-installer used an unsandboxed definition and failed before any stage with
-`UnapprovedUsageException`; rerun the corrected installer to update it.
-If an old workspace contains root-owned files, choose a fresh writable custom
-workspace in the node agent configuration rather than removing unrelated files.
+The Build resources stage requires at least 12 GB available RAM and creates
+`notechondria-local` with an 8 GiB memory cap, four CPU quota, and one parallel
+build step. Heavy builds run sequentially with timeouts. Backend containers
+are capped at 1 GiB, PostgreSQL at 512 MiB, nginx/app frontends at 128 MiB.
+Inspect logs before retrying any failed or five-minute-silent build.
 
-The Jenkins Build resources stage creates the `notechondria-local` Docker
-Buildx container builder automatically, after checking available RAM. Its settings are
-`memory=8g`, `cpu-period=100000`, `cpu-quota=400000`, `default-load=true`,
-and `--buildkitd-flags '--oci-max-parallelism=1'`; export `BUILDX_BUILDER`
-to that builder's name. Check available RAM first. The backend test container
-is capped at 1 GiB; build commands have explicit timeouts. If a build fails
-or stays silent for five minutes, inspect logs before retrying.
+## Restore or configure the remote job
 
-To run the same ordered gates outside Jenkins:
-
-```bash
-BUILDX_BUILDER=notechondria-local timeout 120m \
-  bash deployment/jenkins/scripts/deploy_full_stack.sh "$PWD/local.env"
-```
-
-This helper runs backend tests, the three frontend smoke tests and shared
-local-folder tests, PostgreSQL backup, backend deployment, sequential app
-builds, gateway deployment, and HTTP verification. Web builds include local
-CanvasKit resources. Persistent data volumes are retained.
-
-Known optional credential gaps: `OPENAI_API_KEY` and SMTP server/user/password
-are empty in the tested reference; AI requests and email delivery require
-those credentials. Casdoor login also requires the identity provider to allow
-the local app callback origins; the presence of its client credentials alone
-does not verify that allowlist. GitHub App installation authorization remains
-a per-user step. Never paste credential values into build logs.
-
-The previous Docker build #10 failed because `backend/Dockerfile` omitted the
-shared API contract JSON fixtures. The Docker image now includes them. The
-contract test explicitly selects its unconfigured Casdoor fixture state so
-real local SSO credentials do not change that expected response.
-
-The two controllers originally had different generated deployment passwords.
-Copy the same verified `local.env` to each controller/agent env source before
-building against the shared local cluster; a successful backup using a local
-PostgreSQL socket does not prove that the app password is correct over TCP.
-
-## Verified result, 2026-10-30
-
-System Jenkins build [#6](http://127.0.0.1:8080/job/notechondria/6/) succeeded:
-281 backend tests, all three frontend smoke suites, 358 shared local-folder
-tests, database backup, and the full deployment. All seven app containers
-are healthy. All three compiled bundles report 0.1.203 and target the local
-API. Casdoor configuration/discovery and GitHub sync PEM parsing passed.
-Logs are retained at `logs/jenkins-build-6.log`; backups live outside the
-workspace in `/var/lib/jenkins/backups/notechondria/`.
-
-Browser sign-in/callbacks and user-authorized GitHub pushes remain untested.
-The Docker controller's admin login was subsequently verified using the
-owner-provided credentials. Its job now uses the same sandboxed pipeline
-on `local-docker`, with a sanitized source snapshot outside the job workspace.
-The system controller's pipeline and boot configuration also contain the fixes.
-
-## Refresh the Docker controller from this checkout
-
-Run on the host, supplying the admin password through a hidden prompt:
+The host helper preserves the existing private env and backs up the old job
+XML under ignored `logs/`. It configures SCM and the webhook trigger without
+starting a build or copying local source:
 
 ```bash
 read -r -s -p 'Jenkins admin password: ' JENKINS_PASSWORD
 export JENKINS_PASSWORD
-python3 deployment/jenkins/configure_docker_job.py \
-  --source-dir /home/motuariki/Documents/workspace/Docker/jenkins/workspace/local-source/notechondria-20261030 \
-  --build
+python3 deployment/jenkins/configure_docker_job.py
 unset JENKINS_PASSWORD
 ```
 
-This snapshots Git-visible source without env files, saves the previous job
-XML privately under `logs/`, installs the pipeline in sandbox mode on the
-`local-docker` node, and optionally starts a full deployment. The snapshot
-must be refreshed after edits. Keep its directory outside Jenkins's build
-workspace. This changes the Docker job from SCM mode to local snapshot mode;
-its GitHub webhook therefore deploys the staged snapshot unless
-`LOCAL_SOURCE_DIR` is empty. No credentials are written into the job script.
+Make code changes, commit, and push to GitHub main. Verify the new Jenkins
+build says **Started by GitHub push**, checks out the pushed SHA, and finishes
+successfully. **Build Now** can retry the remote checkout; it also uses GitHub
+main. There is no local source override.
 
-Docker Jenkins [build #12](http://127.0.0.1:8081/job/notechondria/12/) also
-succeeded on 2026-10-30 after configuring the local snapshot job. All seven
-application containers are healthy, and API/frontend/asset/Casdoor checks
-passed. Log: `logs/jenkins-docker-build-12.log`. The owner-supplied admin
-credential authenticates to :8081; the supplied soragoto credential did not
-authenticate to either controller. Neither password was saved in the helper,
-job configuration, or repository.
+## Native Ubuntu installation
+
+`bash ~/scripts/install-jenkins.sh` invokes the versioned installer. Run as
+the normal Ubuntu user with Docker access; the script uses sudo for Java 21,
+Jenkins LTS, plugins, and service setup. It preserves existing data and env
+files. The managed job is also SCM-based; the native node is labeled
+`local-docker`. No deployment starts automatically. Jenkins binds loopback
+on :8080; `JENKINS_PORT` can select another verified-free port. The generated
+admin password stays at `/var/lib/jenkins/secrets/notechondria-admin-password`.
+Point any public webhook tunnel at the intended controller. The installer
+does not change FRP configuration.
+
+## Failure diagnosis and verification history
+
+Docker build #10 failed because the backend image omitted the shared API
+contract JSON fixtures. `backend/Dockerfile` now includes them. The contract
+test explicitly selects its unconfigured Casdoor fixture state so populated
+local credentials do not change its expected response. Backend Compose now
+forwards integration env variables that were previously dropped.
+
+The earlier system job failed on an unsandboxed local pipeline, an old
+workspace ownership mismatch, and different generated database credentials.
+Those local-source attempts are historical diagnostics; the deployment job
+has been restored to remote SCM per the owner's instruction.
+
+Earlier builds #6 (systemd) and #12 (Docker) proved the test/deployment stages
+using snapshots. They do not prove webhook behavior. Their logs remain under
+ignored `logs/`. The remote webhook verification is recorded separately in
+`docs/LLM_CHECK.md`.

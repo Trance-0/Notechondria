@@ -16,10 +16,15 @@ services:
     build:
       context: ..
       dockerfile: backend/Dockerfile
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-}
+        BUILD_TIME: ${BACKEND_BUILD_TIME:-}
     env_file:
       - ${ENV_FILE_PATH:-../.env}
     mem_limit: 1g
     environment:
+      BACKEND_BUILD_COMMIT: ${GIT_COMMIT:-}
+      BACKEND_DEPLOY_TARGET: ${BACKEND_DEPLOY_TARGET:-jenkins}
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DJANGO_DEBUG: ${DJANGO_DEBUG}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS_COMPOSE:-localhost 127.0.0.1}

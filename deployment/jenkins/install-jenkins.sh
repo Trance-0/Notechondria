@@ -72,7 +72,6 @@ sudo systemctl unmask --runtime jenkins.service
 STAGE=configuration
 log 'Configuring the trusted local build host — Jenkins runs as the invoking user with existing Docker access.'
 sudo install -d -m 0755 /etc/systemd/system/jenkins.service.d /usr/local/lib/notechondria-jenkins
-sudo install -m 0644 "$SCRIPT_DIR/snapshot_source.py" /usr/local/lib/notechondria-jenkins/snapshot_source.py
 sudo install -d -o "$(id -un)" -g "$(id -gn)" -m 0700 /var/lib/jenkins /var/cache/jenkins
 sudo chown -R "$(id -un):$(id -gn)" /var/lib/jenkins /var/cache/jenkins
 sudo python3 "$SCRIPT_DIR/configure_host.py" "$REPO_DIR" "$(id -un)" "$(id -gn)" "$PORT"

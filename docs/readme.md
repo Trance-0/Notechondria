@@ -285,6 +285,7 @@ on the device stays available after it opens.
 - [`../AGENTS.md/AGENTS.md`](../AGENTS.md/AGENTS.md) — shared
   cross-project agent contract (submodule, pinned).
 
-Local full-stack Jenkins deployment (PostgreSQL, Django, three apps, gateway,
-Casdoor and GitHub sync) uses a private root `local.env`. See
+Local full-stack Jenkins deployment pulls GitHub `main` on push webhooks.
+PostgreSQL, Django, three apps, gateway, Casdoor and GitHub sync use a private
+root `local.env` on the local build agent. See
 [Jenkins runbook](../deployment/jenkins/README.md).

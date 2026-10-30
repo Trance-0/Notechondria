@@ -1,6 +1,4 @@
 """Configure systemd and a one-time authenticated Jenkins bootstrap."""
-import base64
-import json
 import os
 from pathlib import Path
 import pwd
@@ -77,21 +75,15 @@ DJANGO_PRODUCTION_STATIC_ROOT=/home/staticfiles/
 DJANGO_PRODUCTION_MEDIA_ROOT=/home/mediafiles/
 DB_AUTO_REINIT_IF_MISMATCH=False
 """)
-# JSON string syntax is also valid for the Groovy strings used here.
-pipeline_text = (Path(repo) / "Jenkinsfile").read_text().replace(
-    "defaultValue: ''", "defaultValue: " + json.dumps(repo), 1
-)
-pipeline_text = pipeline_text.replace("agent any", f"agent {{ node {{ label 'built-in'; customWorkspace '{home}/notechondria-workspace' }} }}", 1)
-pipeline_encoded = base64.b64encode(pipeline_text.encode()).decode()
-repo_literal = json.dumps(repo)
 write(home / "init.groovy.d/10-notechondria.groovy", f"""import jenkins.model.Jenkins
 import jenkins.model.JenkinsLocationConfiguration
 import hudson.security.HudsonPrivateSecurityRealm
 import hudson.security.FullControlOnceLoggedInAuthorizationStrategy
-import hudson.model.ParametersDefinitionProperty
-import hudson.model.StringParameterDefinition
 import org.jenkinsci.plugins.workflow.job.WorkflowJob
-import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition
+import org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition
+import hudson.plugins.git.GitSCM
+import org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty
+import com.cloudbees.jenkins.GitHubPushTrigger
 
 def j = Jenkins.get()
 def marker = new File(j.rootDir, '.notechondria-bootstrap-complete')
@@ -111,10 +103,16 @@ if (!marker.exists()) {{
 }}
 def job = j.getItem('notechondria')
 if (job == null) {{ job = j.createProject(WorkflowJob, 'notechondria') }}
-job.setDefinition(new CpsFlowDefinition(new String('{pipeline_encoded}'.decodeBase64(), 'UTF-8'), true))
-job.addProperty(new ParametersDefinitionProperty(
-    new StringParameterDefinition('LOCAL_SOURCE_DIR', {repo_literal}, 'Trusted local checkout copied at build start.')))
-job.setDescription('Local Ubuntu Docker deployment. Sequential tests gate deployment; database backups are retained outside the workspace.')
+j.setLabelString('local-docker')
+j.save()
+def scm = new GitSCM('https://github.com/Trance-0/Notechondria.git')
+scm.branches = [new hudson.plugins.git.BranchSpec('*/main')]
+def definition = new CpsScmFlowDefinition(scm, 'Jenkinsfile')
+definition.setLightweight(false)
+job.setDefinition(definition)
+job.removeProperty(hudson.model.ParametersDefinitionProperty)
+job.addProperty(new PipelineTriggersJobProperty([new GitHubPushTrigger()]))
+job.setDescription('GitHub main via webhook. Local private env, sequential tests, database backup, full-stack deployment.')
 job.save()
 marker.text = 'configured\\n'
 println('Jenkins.Install/bootstrap — authenticated Notechondria job configured')
