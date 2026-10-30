@@ -112,3 +112,52 @@ The old snippets were too thin to be safe or reusable:
 - not clearly tied to migration workflows
 
 These replacement scripts are still simple, but they are at least portable, parameterized, and documented.
+
+## Northflank to local Jenkins preparation (2026-10-30)
+
+The local runtime remains a GitHub-main/webhook Jenkins deployment. Migration
+changes data volumes and the private local env; it does not replace SCM with
+local source and does not connect the local app to the production database.
+
+Cloudflare preparation is complete: 1,014 R2 objects (624 media, 390 static;
+56,379,831 bytes) were downloaded using `prod.env`, verified for size and
+checksum, and imported into the existing local Docker volumes. The `media/`
+and `static/` key prefixes map to `/home/mediafiles/` and `/home/staticfiles/`.
+All 624 media files were verified again through the local HTTP gateway.
+Original local data was backed up before import. Cloudflare objects were not
+changed or deleted; the local app keeps its local filesystem storage config.
+
+Private evidence lives under ignored `logs/migration/`. `latest-run` points to
+the timestamped download, SHA-256 manifest, operation scripts, logs and status.
+`local-before/` contains the original local custom-format PostgreSQL dump and
+both original volume tar archives, with backup checksums. These contain private
+data and must not be committed or shared as public artifacts.
+
+**Production database import is pending.** The hostname in prod.env resolves,
+but its PostgreSQL port 5432 times out from this host. The local database has
+not been replaced. Obtain a publicly reachable Northflank database endpoint
+and port (with TLS), a tunnel from an authorized Northflank environment, or a
+custom-format production dump. A dashboard/API credential may be needed to
+obtain that connection. Database credentials alone do not enable network access.
+
+Once connected:
+
+1. Preserve another local backup if any local data changed. Quiesce local
+   writes and avoid concurrent Jenkins deployment during restore.
+2. Take a consistent remote pg_dump snapshot using a client compatible with
+   the remote PostgreSQL version, then restore into a new local staging
+   database with no ownership/ACL transfer. Keep the current local database
+   available for rollback.
+3. Compare table/row counts, user IDs, note IDs, foreign keys, migrations,
+   sequences, and referenced media keys. Audit embedded production media URLs;
+   downloaded files alone do not rewrite URLs stored in Markdown.
+4. Switch the local app only after staging verification. Account for
+   bootstrap_platform resetting the env-named admin password and startup
+   clearing application sessions; preserve the intended production account
+   identity and credentials.
+5. Before the actual cutover, pause production writes and capture a final
+   database snapshot plus an R2 delta. Reconcile and verify again. The earlier
+   asset download is a preparation snapshot, not a live replication stream.
+6. Verify the local app, auth callbacks, uploads, and public routing before
+   retiring Northflank. Do not delete the source database or bucket until the
+   owner confirms the cutover and rollback retention.

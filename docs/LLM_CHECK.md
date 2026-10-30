@@ -930,3 +930,25 @@ Use this checklist at the end of each modification round.
   Persistent logs: logs/jenkins-remote-build-13.log and -14.log. GitHub
   backend-tests and frontend-pages passed for source fix 2f8dc048; docs-pages
   passed for 2e0ba01e. No local source is used by the active job.
+
+### 2026-10-30 — production asset retrieval and migration preparation
+
+- Owner requested R2 retrieval using prod.env and remote-to-local DB sync
+  before Northflank shutdown. Verified current named volumes and resource
+  headroom, then saved the original local DB custom dump and media/static
+  tar archives. pg_restore --list validates the DB archive; checksums retained.
+- Read-only R2 retrieval: 1,014 objects / 56,379,831 bytes, including 624 media
+  and 390 static objects. Every download verified against source size/ETag;
+  every imported file SHA-256 verified inside the volume; all 624 media files
+  returned the same bytes through http://127.0.0.1:9060/media/ URLs.
+- Retrieval files are private; served asset copies use readable file modes.
+  No source bucket objects were changed/deleted and no production service was
+  stopped. Local DB remains unchanged (1 user, 0 notes); local storage uses
+  Docker volumes, without a runtime dependency on production R2.
+- Remote DB address in prod.env resolves but TCP 5432 repeatedly times out.
+  Asked for public endpoint/port, authorized tunnel/API access, or production
+  dump. Full database sync and cutover remain pending; no complete migration
+  claim. Evidence in ignored logs/migration/latest-run and local-before/.
+- Re-ran deployment route/asset/Casdoor checks successfully. Updated the
+  migration runbook with staging restore, provenance, final delta and rollback
+  requirements. No application code changed; no build needed for these docs.
