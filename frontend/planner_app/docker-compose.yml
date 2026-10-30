@@ -7,6 +7,9 @@ networks:
 
 services:
   frontend:
+    container_name: notechondria-planner-v${APP_VERSION:-dev}
+    labels:
+      org.opencontainers.image.version: ${APP_VERSION:-dev}
     restart: unless-stopped
     mem_limit: 128m
     image: ${FRONTEND_IMAGE:-trancezero/notechondria-planner:latest}

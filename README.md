@@ -139,3 +139,7 @@ Local full-stack Jenkins deployment pulls GitHub `main` on push webhooks.
 PostgreSQL, Django, three apps, gateway, Casdoor and GitHub sync use a private
 root `local.env` on the local build agent. See
 [deployment/jenkins/README.md](deployment/jenkins/README.md).
+
+Jenkins image tags include the software VERSION and build number; running
+container names also include the software version (for example,
+`notechondria-editor-v0.1.203`).

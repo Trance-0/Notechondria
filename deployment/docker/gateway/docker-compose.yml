@@ -7,6 +7,9 @@ networks:
 
 services:
   gateway_nginx:
+    container_name: notechondria-gateway-v${APP_VERSION:-dev}
+    labels:
+      org.opencontainers.image.version: ${APP_VERSION:-dev}
     restart: unless-stopped
     mem_limit: 128m
     image: nginx:1.27-alpine

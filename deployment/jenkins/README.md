@@ -74,7 +74,15 @@ verified by the deployment health checks.
 
 The stack is available at http://localhost:9060/portal/, `/editor/`, and
 `/planner/`, with the API under `/api/v1/`. All three apps embed the repository
-VERSION and target the local backend. Tests and backups gate deployment;
+VERSION and target the local backend. App/backend/nginx and test images use
+`v<VERSION>-jenkins.<BUILD_NUMBER>` tags, for example
+`notechondria-editor_app:v0.1.203-jenkins.16`. Running containers include the
+software version, for example `notechondria-editor-v0.1.203` and
+`notechondria-app-v0.1.203`; their version label matches it. PostgreSQL and
+gateway nginx retain their own upstream image versions. Compose service and
+project names, network aliases, and named data volumes stay stable across
+software-version changes. The build stamp is applied after copying the
+private env, so stale `latest` or numeric tags cannot override VERSION. Tests and backups gate deployment;
 failures stop the pipeline. Persistent volumes and backups survive builds.
 
 The Build resources stage requires at least 12 GB available RAM and creates

@@ -6,16 +6,21 @@ SOURCE_PATH=${2:-}
 DEFAULT_FRONTEND_PUBLIC_ORIGIN="http://localhost:${FRONTEND_HOST_PORT:-9060}"
 
 # Read project version from VERSION file at repo root for image tagging.
-# Falls back to "0.0.0" when the file is missing.
+# A missing VERSION must not silently produce an unrelated deployment tag.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="${SCRIPT_DIR}/../../.."
 VERSION_FILE="${REPO_ROOT}/VERSION"
 if [[ -f "$VERSION_FILE" ]]; then
   PROJECT_VERSION="$(tr -d '\r\n' < "$VERSION_FILE")"
 else
-  PROJECT_VERSION="0.0.0"
+  echo 'Deployment blocked: Jenkins.Deploy/version — repository VERSION file is missing.' >&2
+  exit 1
 fi
-VERSION_TAG="v${PROJECT_VERSION}.${BUILD_NUMBER:-local}"
+if [[ ! "$PROJECT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+  echo 'Deployment blocked: Jenkins.Deploy/version — VERSION must contain a Docker-compatible semantic version.' >&2
+  exit 1
+fi
+VERSION_TAG="v${PROJECT_VERSION}-jenkins.${BUILD_NUMBER:-local}"
 
 normalize_container_path_value() {
   local value="${1:-}"
@@ -212,5 +217,22 @@ rewrite_env_path_key "DJANGO_PRODUCTION_STATIC_ROOT" "/home/staticfiles/"
 rewrite_env_path_key "DJANGO_PRODUCTION_MEDIA_ROOT" "/home/mediafiles/"
 rewrite_frontend_api_base_key "$(frontend_public_origin_from_env_file)/api/v1"
 
+# Apply build identity after either source path; copying private env previously
+# bypassed version defaults and left the backend tagged as latest.
+python3 - "$OUTPUT_PATH" "$PROJECT_VERSION" "$VERSION_TAG" <<'PY_STAMP'
+import pathlib
+import sys
+path = pathlib.Path(sys.argv[1])
+version, tag = sys.argv[2:]
+values = {
+    "APP_VERSION": version,
+    "DEPLOY_IMAGE_TAG": tag,
+    "APP_IMAGE": f"trancezero/notechondria:{tag}",
+    "NGINX_IMAGE": f"trancezero/nginx:{tag}",
+}
+lines = [line for line in path.read_text().splitlines()
+         if line.split("=", 1)[0].strip() not in values]
+path.write_text("\n".join(lines + [f"{key}={value}" for key, value in values.items()]) + "\n")
+PY_STAMP
 chmod 600 "$OUTPUT_PATH"
 echo "Deployment env prepared at $OUTPUT_PATH"

@@ -11,6 +11,9 @@ networks:
 
 services:
   app:
+    container_name: notechondria-app-v${APP_VERSION:-dev}
+    labels:
+      org.opencontainers.image.version: ${APP_VERSION:-dev}
     restart: unless-stopped
     image: ${APP_IMAGE:-trancezero/notechondria:latest}
     build:
@@ -69,6 +72,9 @@ services:
       - notechondria-back
       - notechondria-shared
   db:
+    container_name: notechondria-db-v${APP_VERSION:-dev}
+    labels:
+      org.opencontainers.image.version: ${APP_VERSION:-dev}
     restart: unless-stopped
     mem_limit: 512m
     image: postgres:15
@@ -89,6 +95,9 @@ services:
     networks:
       - notechondria-back
   nginx:
+    container_name: notechondria-nginx-v${APP_VERSION:-dev}
+    labels:
+      org.opencontainers.image.version: ${APP_VERSION:-dev}
     restart: unless-stopped
     image: ${NGINX_IMAGE:-trancezero/nginx:latest}
     mem_limit: 128m

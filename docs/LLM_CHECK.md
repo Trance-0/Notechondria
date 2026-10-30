@@ -952,3 +952,19 @@ Use this checklist at the end of each modification round.
 - Re-ran deployment route/asset/Casdoor checks successfully. Updated the
   migration runbook with staging restore, provenance, final delta and rollback
   requirements. No application code changed; no build needed for these docs.
+
+### 2026-10-30 — software versions in Docker deployment identity
+
+- Root cause: frontend image names used BUILD_NUMBER alone; copying an env
+  source skipped backend/nginx version defaults and allowed latest fallbacks.
+- Prepare-env now always stamps APP_VERSION, image tags and deployment tag
+  after the private env copy. Built app/backend/nginx/test images use
+  v<VERSION>-jenkins.<BUILD_NUMBER>; all seven container names include VERSION
+  and carry org.opencontainers.image.version. Base PostgreSQL and gateway
+  images retain their upstream versions. No software VERSION bump: packaging
+  identity correction only.
+- Compose projects/service aliases/named volumes remain stable. Verified the
+  rendered models preserve notechondria_postgres-data, all generated names
+  match VERSION, and private DB/Casdoor/GitHub settings survive env stamping.
+- All deployment shell syntax and git diff checks passed. Remote Jenkins
+  deployment verification follows the push; no local source pipeline used.

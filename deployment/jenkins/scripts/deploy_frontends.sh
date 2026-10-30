@@ -19,7 +19,7 @@ export APP_VERSION
 
 for app in editor_app planner_app portal_app; do
   cd "$ROOT_DIR/frontend/$app"
-  export FRONTEND_IMAGE="notechondria-${app}:${BUILD_NUMBER:-local}"
+  export FRONTEND_IMAGE="notechondria-${app}:v${APP_VERSION}-jenkins.${BUILD_NUMBER:-local}"
   export APP_BASE_HREF="/${app%_app}/"
   timeout 30m docker compose --env-file "$ENV_FILE" build
   docker compose --env-file "$ENV_FILE" up -d --wait --wait-timeout 180
