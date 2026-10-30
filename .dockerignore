@@ -1,0 +1,13 @@
+.git
+AGENTS.md/
+**/.env
+**/.env.*
+**/*.env
+**/*.pem
+**/venv
+**/.venv
+**/node_modules
+**/.dart_tool
+**/build
+**/__pycache__
+logs

@@ -5,6 +5,7 @@ umask 077
 ENV_PATH=${1:-.env}
 BACKUP_DIR=${2:-./backups}
 PROJECT_DIR=${3:-$(pwd)}
+export ENV_FILE_PATH="$ENV_PATH"
 
 if [[ ! -f "$ENV_PATH" ]]; then
   echo "Env file not found: $ENV_PATH"
@@ -19,7 +20,12 @@ cd "$PROJECT_DIR/backend"
 
 docker compose --env-file "$ENV_PATH" up -d db
 docker compose --env-file "$ENV_PATH" exec -T db sh -lc '
+  deadline=$(( $(date +%s) + 120 ))
   until pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1; do
+    if [ "$(date +%s)" -ge "$deadline" ]; then
+      echo "Deployment blocked: Jenkins.Database/backup — PostgreSQL readiness timed out after 120 seconds." >&2
+      exit 1
+    fi
     sleep 1
   done
 '

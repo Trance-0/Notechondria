@@ -8,6 +8,7 @@ networks:
 services:
   frontend:
     restart: unless-stopped
+    mem_limit: 128m
     image: ${FRONTEND_IMAGE:-trancezero/notechondria-portal:latest}
     build:
       context: ..

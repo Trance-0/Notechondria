@@ -284,3 +284,7 @@ on the device stays available after it opens.
 - [`LLM_CHECK.md`](LLM_CHECK.md) — end-of-round checklist.
 - [`../AGENTS.md/AGENTS.md`](../AGENTS.md/AGENTS.md) — shared
   cross-project agent contract (submodule, pinned).
+
+Local full-stack Jenkins deployment (PostgreSQL, Django, three apps, gateway,
+Casdoor and GitHub sync) uses a private root `local.env`. See
+[Jenkins runbook](../deployment/jenkins/README.md).

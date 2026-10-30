@@ -81,6 +81,7 @@ DB_AUTO_REINIT_IF_MISMATCH=False
 pipeline_text = (Path(repo) / "Jenkinsfile").read_text().replace(
     "defaultValue: ''", "defaultValue: " + json.dumps(repo), 1
 )
+pipeline_text = pipeline_text.replace("agent any", f"agent {{ node {{ label 'built-in'; customWorkspace '{home}/notechondria-workspace' }} }}", 1)
 pipeline_encoded = base64.b64encode(pipeline_text.encode()).decode()
 repo_literal = json.dumps(repo)
 write(home / "init.groovy.d/10-notechondria.groovy", f"""import jenkins.model.Jenkins
@@ -110,7 +111,7 @@ if (!marker.exists()) {{
 }}
 def job = j.getItem('notechondria')
 if (job == null) {{ job = j.createProject(WorkflowJob, 'notechondria') }}
-job.setDefinition(new CpsFlowDefinition(new String('{pipeline_encoded}'.decodeBase64(), 'UTF-8'), false))
+job.setDefinition(new CpsFlowDefinition(new String('{pipeline_encoded}'.decodeBase64(), 'UTF-8'), true))
 job.addProperty(new ParametersDefinitionProperty(
     new StringParameterDefinition('LOCAL_SOURCE_DIR', {repo_literal}, 'Trusted local checkout copied at build start.')))
 job.setDescription('Local Ubuntu Docker deployment. Sequential tests gate deployment; database backups are retained outside the workspace.')

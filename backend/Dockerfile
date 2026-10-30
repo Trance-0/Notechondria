@@ -28,6 +28,8 @@ RUN pip3 install -r requirements.txt --no-cache-dir
 WORKDIR ${APP_HOME}
 COPY backend/ .
 COPY sample/ /home/sample/
+# Contract tests compare Django responses with the shared frontend fixtures.
+COPY frontend/notechondria_shared/test/fixtures/api_v1/ /home/frontend/notechondria_shared/test/fixtures/api_v1/
 # Ship VERSION into the image so /api/v1/handshake/ can return the
 # deployed build. _read_backend_version() in notechondria.api_views
 # walks several candidate paths; /home/VERSION is the canonical

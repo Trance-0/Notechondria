@@ -3,6 +3,7 @@ set -euo pipefail
 
 PROJECT_DIR=${1:-$(pwd)}
 ENV_PATH=${2:-$PROJECT_DIR/.env}
+export ENV_FILE_PATH="$ENV_PATH"
 TIMEOUT_SECONDS=${3:-300}
 
 if [[ ! -f "$ENV_PATH" ]]; then

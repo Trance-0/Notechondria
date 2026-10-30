@@ -8,11 +8,15 @@ pipeline {
     buildDiscarder(logRotator(numToKeepStr: '20'))
   }
   parameters {
+    string(name: 'DEPLOY_ENV_SOURCE', defaultValue: '/var/lib/jenkins/secrets/notechondria-deploy.env', description: 'Private env file on the build agent.')
     string(name: 'LOCAL_SOURCE_DIR', defaultValue: '', description: 'Trusted local source snapshot; leave empty for SCM checkout.')
   }
   environment {
     ENV_FILE = '.env.deploy'
-    DEPLOY_ENV_SOURCE = '/var/lib/jenkins/secrets/notechondria-deploy.env'
+    DEPLOY_ENV_SOURCE = "${params.DEPLOY_ENV_SOURCE}"
+    ENV_FILE_PATH = "${WORKSPACE}/.env.deploy"
+    COMPOSE_PARALLEL_LIMIT = '1'
+    BUILDX_BUILDER = 'notechondria-local'
     BACKUP_DIR = '/var/lib/jenkins/backups/notechondria'
     NO_PROXY = 'localhost,127.0.0.1,::1'
     no_proxy = 'localhost,127.0.0.1,::1'
@@ -37,6 +41,9 @@ pipeline {
       steps {
         sh 'bash deployment/jenkins/scripts/prepare_env.sh "$WORKSPACE/$ENV_FILE" "$DEPLOY_ENV_SOURCE"'
       }
+    }
+    stage('Build resources') {
+      steps { sh 'bash deployment/jenkins/scripts/prepare_builder.sh' }
     }
     stage('Backend tests') {
       steps { sh 'bash deployment/jenkins/scripts/test_backend.sh "$WORKSPACE" "$WORKSPACE/$ENV_FILE"' }

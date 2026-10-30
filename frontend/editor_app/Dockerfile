@@ -23,6 +23,7 @@ COPY --chown=${FRONTEND_UID}:${FRONTEND_GID} editor_app/ .
 
 FROM frontend_base AS frontend_test
 RUN flutter test test/smoke_test.dart
+RUN cd /notechondria_shared && flutter test test/local_folder/ -r compact
 
 FROM frontend_base AS frontend_build
 ARG FRONTEND_API_BASE_URL=http://localhost:9060/api/v1
@@ -34,7 +35,7 @@ ARG APP_VERSION=
 RUN set -e; version_define=''; \
     if [ -n "${APP_VERSION}" ]; then version_define="--dart-define=APP_VERSION=${APP_VERSION}"; \
     else echo "Version banner and What's New will report the Dart default version: editor_app Docker build / APP_VERSION define — APP_VERSION build arg is empty or missing (pass --build-arg APP_VERSION from the repo-root VERSION file)." >&2; fi; \
-    flutter build web --release --no-tree-shake-icons --base-href ${APP_BASE_HREF} --dart-define=API_BASE_URL=${FRONTEND_API_BASE_URL} ${version_define}
+    flutter build web --release --no-web-resources-cdn --no-tree-shake-icons --base-href ${APP_BASE_HREF} --dart-define=API_BASE_URL=${FRONTEND_API_BASE_URL} ${version_define}
 
 FROM nginx:1.27-alpine AS frontend_runtime
 ENV FRONTEND_BACKEND_ORIGIN=http://nginx

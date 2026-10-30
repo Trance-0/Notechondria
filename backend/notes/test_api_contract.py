@@ -23,7 +23,7 @@ from pathlib import Path
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
@@ -108,6 +108,8 @@ def shape_errors(live, fixture, at):
     return []
 
 
+# The fixture explicitly records an unconfigured identity provider.
+@override_settings(CASDOOR_ENDPOINT="", CASDOOR_CLIENT_ID="", CASDOOR_CLIENT_SECRET="", CASDOOR_ORG_NAME="", CASDOOR_APP_NAME="", CASDOOR_CERTIFICATE="")
 class ApiContractFixtureTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(

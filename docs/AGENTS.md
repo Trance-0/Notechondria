@@ -232,3 +232,11 @@ device-specific secret.
 See <https://bark.day.app/> for the Bark API reference. Keep
 notifications short (1 line body) so they render on the iOS lock
 screen without truncation.
+
+## Local Jenkins target (owner request, 2026-10-30)
+
+The owner also authorizes full-stack local Jenkins testing on this current
+128 GB host. The historical 3.3 GiB host description above is not current
+hardware. Measure resources each run; keep sequential builds and resource
+caps. Production GitHub Pages/Northflank remains separate. Runbook:
+`docs/deployment/jenkins.md`; private test reference: root `local.env`.

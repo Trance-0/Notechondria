@@ -16,6 +16,9 @@ services:
     build:
       context: ..
       dockerfile: backend/Dockerfile
+    env_file:
+      - ${ENV_FILE_PATH:-../.env}
+    mem_limit: 1g
     environment:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DJANGO_DEBUG: ${DJANGO_DEBUG}
@@ -23,6 +26,7 @@ services:
       DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS}
       POSTGRE_USERNAME: ${POSTGRE_USERNAME}
       POSTGRE_PASSWORD: ${POSTGRE_PASSWORD}
+      DATABASE_URL: ""
       POSTGRE_HOST: db
       POSTGRE_PORT: ${POSTGRE_PORT}
       POSTGRE_DB: ${POSTGRE_DB}
@@ -61,6 +65,7 @@ services:
       - notechondria-shared
   db:
     restart: unless-stopped
+    mem_limit: 512m
     image: postgres:15
     volumes:
       - postgres-data:/var/lib/postgresql/data/
@@ -81,6 +86,7 @@ services:
   nginx:
     restart: unless-stopped
     image: ${NGINX_IMAGE:-trancezero/nginx:latest}
+    mem_limit: 128m
     build: ./nginx
     volumes:
       - static_volume:/home/staticfiles
