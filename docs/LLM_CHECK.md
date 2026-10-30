@@ -915,3 +915,9 @@ Use this checklist at the end of each modification round.
   tests passed; GitHub backend-tests also passed. A documentation push after
   this baseline is used to verify automatic scheduling, independently of a
   manual Build Now action.
+
+- Restored SCM build #13 completed SUCCESS, including all test, backup,
+  deployment, and HTTP gates. The remaining provenance check found that an
+  explicit checkout step returns GIT_COMMIT without automatically exporting
+  it; Jenkinsfile now assigns the returned revision to env.GIT_COMMIT.
+  The follow-up push tests webhook scheduling after the successful SCM baseline.

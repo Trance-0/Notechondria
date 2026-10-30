@@ -25,7 +25,10 @@ pipeline {
     stage('Checkout GitHub main') {
       steps {
         deleteDir()
-        checkout scm
+        script {
+          def revision = checkout scm
+          env.GIT_COMMIT = revision.GIT_COMMIT
+        }
       }
     }
     stage('Prepare environment') {
